@@ -64,6 +64,14 @@ src/
   workflow.ts     lessonWorkflow, resumeFrom, runLessonPipeline
   testing.ts      fixtures as values, scripted fake, recording deps (`@tj/generation/testing`)
   shapes.ts       lessonShapeOf: the decision table by verb × confidence (data; consumed, not edited)
+  The objectives-first planner's pure modules; not called until TEACH-93 (G) switches it on:
+  outline-from-facts.ts     outlineFromFacts: the outline written in code from merged facts
+  merge-objective-facts.ts  mergeObjectiveFacts: per-objective outputs merged into one LessonFacts
+  objectives-check.ts       checkObjectives: the structural block on the objectives call
+  outline-feasibility.ts    outlineFeasibility: can the slide count hold every objective's floor
+  numeric-check.ts          numericMismatches / numericFindings: numbers that disagree with facts
+  planner/        coded-slides (starter, quick checks, exit ticket printed from facts, seeded
+                  option order), question-demand (counts read off the outline), later-questions
   fixtures/       plan-skeleton.<verb>.json (one per verb, same positions 0–6), plan-facts.json,
                   slides.json, worksheet.json, evaluate.json, repair.json, verify.json
   mastra.dev.ts   Studio entry (`bun run studio:generation`: Bedrock from apps/worker/.env;

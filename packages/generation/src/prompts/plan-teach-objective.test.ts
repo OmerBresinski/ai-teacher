@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { SPEC_LIMITS } from "@tj/slides";
+import { mergeObjectiveFacts } from "../merge-objective-facts";
 import { lessonShapeOf } from "../shapes";
 import { planFactsObjectivePrompt, REFERENCE_INSTRUCTION } from "./plan-facts-objective";
 import { CURRICULUM_INSTRUCTION, PRIOR_KNOWLEDGE_LABEL } from "./plan-objectives";
 import { PLAN_TEACH_OBJECTIVE_SAMPLE as SAMPLE } from "./plan-samples";
 import {
+  type PlanTeachObjectiveOutput,
   PlanTeachObjectiveOutputSchema,
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,
@@ -204,5 +206,22 @@ describe("plan-teach-objective", () => {
         taught({ vocabulary: [{ ...VOCABULARY, definition: "  " }] }),
       ).success,
     ).toBe(false);
+  });
+
+  test("merges as one objective's facts with `questions: []`", () => {
+    const parsed = PlanTeachObjectiveOutputSchema.parse(
+      taught({
+        workedExamples: [
+          { ...WORKED_EXAMPLE, misconceptionRef: { type: "misconception", index: 0 } },
+        ],
+      }),
+    );
+    const output: PlanTeachObjectiveOutput = parsed;
+    const merged = mergeObjectiveFacts([null, { ...output, questions: [] }]);
+    expect(merged.keyIdeas).toEqual([
+      { ...KEY_IDEA, objectiveRefs: [{ type: "objective", index: 1 }] },
+    ]);
+    expect(merged.workedExamples[0]?.misconceptionRef).toEqual({ type: "misconception", index: 0 });
+    expect(merged.questions).toEqual([]);
   });
 });

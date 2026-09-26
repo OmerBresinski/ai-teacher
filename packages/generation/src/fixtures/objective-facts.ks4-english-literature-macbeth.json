@@ -1,0 +1,502 @@
+{
+  "id": "ks4-english-literature-macbeth",
+  "from": "lab bench facts-round4 luna repeat 1, openai/gpt-5.6-luna, merged by mergeObjectiveFacts",
+  "topic": "Ambition and its consequences in Macbeth, Act 1",
+  "durationMin": 50,
+  "yearGroup": "Year 11",
+  "subject": "English Literature",
+  "answers": {
+    "objectiveVerb": "Evaluate how Shakespeare presents ambition in Act 1 of Macbeth",
+    "priorConfidence": "Some prior knowledge"
+  },
+  "priorKnowledge": "Read Act 1 scenes 1 to 5 in class.",
+  "objectives": [
+    {
+      "text": "Explain how Shakespeare presents Macbeth's ambition through language in Act 1"
+    },
+    {
+      "text": "Evaluate whether ambition or the witches' influence drives Macbeth's choices in Act 1, supporting your judgement"
+    },
+    {
+      "text": "Evaluate ambition's consequences for the Macbeths by Act 1's end, supporting a judgement with textual evidence"
+    }
+  ],
+  "facts": {
+    "keyIdeas": [
+      {
+        "statement": "Shakespeare presents Macbeth’s ambition as a powerful desire that he recognises as morally dangerous.",
+        "explanation": "In his soliloquy, Macbeth calls his wishes “black and deep desires”. The colour suggests evil or secrecy, while “deep” implies that ambition is rooted strongly within him.",
+        "example": "In Act 1, Scene 4, Macbeth says, “Stars, hide your fires; / Let not light see my black and deep desires.”",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "Shakespeare presents ambition as a force that drives Macbeth beyond sensible limits.",
+        "explanation": "The metaphor “vaulting ambition” compares ambition with a rider leaping too far and falling. Macbeth understands that ambition, rather than justice, could cause his downfall.",
+        "example": "In Act 1, Scene 7, Macbeth admits, “I have no spur / To prick the sides of my intent, but only / Vaulting ambition.”",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "The witches influence Macbeth by awakening the possibility of kingship, but they do not command him to kill Duncan.",
+        "explanation": "Their prophecies give Macbeth a future to imagine. However, Macbeth turns that possibility into a desire for power and begins considering murder himself.",
+        "example": "In Act 1, Scene 3, Macbeth says, “My thought, whose murder yet is fantastical,” before the witches have instructed him to kill anyone.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "Macbeth’s ambition drives his final choice because he understands the moral consequences and still agrees to murder Duncan.",
+        "explanation": "Macbeth initially recognises that he has no strong reason to act except “vaulting ambition”. Lady Macbeth pressures him, but he chooses to accept her plan.",
+        "example": "In Act 1, Scene 7, Macbeth concludes, “I am settled, and bend up / Each corporal agent to this terrible feat.”",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "By the end of Act 1, ambition has damaged both Macbeths’ moral judgement and their relationship.",
+        "explanation": "Macbeth knows murder is wrong but chooses to plan Duncan’s death. Lady Macbeth pressures him, so their marriage becomes a partnership built on manipulation and secrecy.",
+        "example": "In Act 1, Scene 7, Macbeth admits he has ‘no spur’ except ‘vaulting ambition’, yet he agrees to murder Duncan.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "statement": "Ambition brings immediate psychological consequences, even before Duncan is killed.",
+        "explanation": "Macbeth becomes fearful and divided, while Lady Macbeth tries to suppress compassion. Their desire for power creates danger, guilt and the threat of discovery.",
+        "example": "In Act 1, Scene 5, Lady Macbeth calls on spirits to ‘unsex me here’, showing the extreme change she believes ambition requires.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "Macbeth is unaware of his ambition until Lady Macbeth persuades him to act.",
+        "correction": "Macbeth identifies his own “black and deep desires” before Lady Macbeth challenges him, so Shakespeare presents him as already tempted and self-aware.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "belief": "The witches control Macbeth completely, so he has no responsibility for his choices in Act 1.",
+        "correction": "The witches plant an idea, but Macbeth interprets their words, imagines murder and finally chooses to act. Their influence helps explain his decision but does not remove his responsibility.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "belief": "Ambition rewards the Macbeths by the end of Act 1 because they have secured the crown.",
+        "correction": "They have not secured the crown: Duncan is still king. Their ambition has instead led them towards regicide, fear, deception and a damaged relationship.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "Soliloquy",
+        "definition": "A speech in which a character alone on stage reveals private thoughts directly to the audience.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "Metaphor",
+        "definition": "A comparison that describes one thing as if it were another, without using “like” or “as”.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "Agency",
+        "definition": "The ability to make your own choices and act on them, rather than simply being controlled by someone else.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "regicide",
+        "definition": "The killing of a king, especially when it is treated as a serious crime against the country.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "term": "conscience",
+        "definition": "A person’s inner sense of right and wrong, which can cause guilt about harmful actions.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "workedExamples": [
+      {
+        "problem": "Explain how Shakespeare presents Macbeth’s ambition in “I have no spur… but only / Vaulting ambition”.",
+        "steps": [
+          "“No spur” suggests Macbeth has no honourable reason pushing him towards murder.",
+          "The riding image makes ambition seem like a powerful force that can leap beyond control.",
+          "“Vaulting” also suggests the leap may go too far and lead to a fall.",
+          "Macbeth’s ambition is presented as self-generated, dangerous and likely to cause his downfall."
+        ],
+        "answer": "Shakespeare presents Macbeth’s ambition as a powerful and reckless force that he knows is dangerous.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 0
+        }
+      },
+      {
+        "problem": "Evaluate the view: “The witches, rather than Macbeth, drive his choices in Act 1.”",
+        "steps": [
+          "Identify the witches’ influence: their prophecy makes Macbeth imagine becoming king.",
+          "Use a counterpoint: the witches predict his future but do not tell him to murder Duncan.",
+          "Analyse Macbeth’s language: “black and deep desires” reveals that he develops a private wish for power.",
+          "Weigh the final decision: Macbeth knows the moral risks but agrees to the plan after Lady Macbeth challenges him.",
+          "Reach a judgement: the witches spark Macbeth’s ambition, but his choices are mainly driven by his own desire for kingship."
+        ],
+        "answer": "The witches begin Macbeth’s temptation, but ambition drives his choices more strongly. Their prophecy creates the possibility of kingship; Macbeth then develops “black and deep desires” and knowingly chooses murder. Lady Macbeth influences him, but he remains responsible because he makes the final decision.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 1
+        }
+      },
+      {
+        "problem": "Evaluate the judgement: ‘By the end of Act 1, ambition has harmed Lady Macbeth more than Macbeth.’ Use textual evidence.",
+        "steps": [
+          "Identify the consequence for each character, not just their desire for power.",
+          "Use Macbeth’s ‘vaulting ambition’ to show that he recognises the moral danger.",
+          "Use Lady Macbeth’s wish to be ‘unsex[ed]’ to show what she believes ambition demands.",
+          "Compare the evidence and decide which character appears more damaged at this point."
+        ],
+        "answer": "The judgement is partly convincing: Lady Macbeth suppresses compassion, but Macbeth suffers more visible moral conflict because he knows the murder is wrong and still chooses it.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 2
+        }
+      }
+    ],
+    "questions": [
+      {
+        "stem": "Explain what the imperative “Stars, hide your fires” reveals about Macbeth’s ambition.",
+        "answer": "He wants the heavens and the world to hide his wishes because he knows they are shameful and dangerous.",
+        "reasoning": "The command “hide” shows that Macbeth recognises his thoughts as morally wrong.",
+        "tier": "easy",
+        "use": "worksheet",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Explain how the adjectives “black and deep” present Macbeth’s desires.",
+        "answer": "“Black” suggests evil or secrecy, while “deep” suggests that his ambition is powerful and firmly rooted.",
+        "reasoning": "The paired adjectives make his ambition seem both morally corrupt and difficult to remove.",
+        "tier": "core",
+        "use": "slide",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Explain how the metaphor “vaulting ambition” presents Macbeth’s desire for power.",
+        "answer": "It presents ambition as a force that leaps beyond sensible limits and may cause Macbeth to fall.",
+        "reasoning": "The image of a rider overleaping suggests both reckless energy and an approaching downfall.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Compare how “black and deep desires” and “vaulting ambition” present Macbeth’s ambition.",
+        "answer": "Both show ambition as dangerous, but the first stresses hidden evil whereas the second stresses reckless movement towards downfall.",
+        "reasoning": "The contrasting images reveal Macbeth’s private moral awareness and the ambition driving his intended action.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Which judgement best evaluates the witches’ role in Macbeth’s choices in Act 1?",
+        "answer": "They awaken ambition, but Macbeth remains responsible for acting on it.",
+        "reasoning": "The prophecy influences Macbeth, yet he imagines murder and makes the final decision himself.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "They force Macbeth to murder Duncan.",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 1
+            }
+          },
+          {
+            "text": "They have no effect on Macbeth at all."
+          },
+          {
+            "text": "Lady Macbeth makes every choice for Macbeth."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which quotation most strongly supports the view that Macbeth has personal responsibility?",
+        "answer": "“I am settled, and bend up / Each corporal agent to this terrible feat.”",
+        "reasoning": "Macbeth presents himself as determined to carry out the murder after considering its consequences.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "“All hail, Macbeth, that shalt be king hereafter!”"
+          },
+          {
+            "text": "“Thou shalt get kings, though thou be none.”"
+          },
+          {
+            "text": "“A drum, a drum! Macbeth doth come!”"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "How should a reader evaluate the claim that the witches cause Macbeth’s ambition?",
+        "answer": "They stimulate his ambition, but Shakespeare shows that it already becomes Macbeth’s own desire.",
+        "reasoning": "Macbeth transforms a prediction into private thoughts of murder and power.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "The claim is completely true because Macbeth has no free will."
+          },
+          {
+            "text": "The claim is completely false because the witches are irrelevant."
+          },
+          {
+            "text": "The claim is true only because Lady Macbeth is absent from Act 1."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which conclusion best weighs the witches’ influence against Macbeth’s ambition by the end of Act 1?",
+        "answer": "The witches provide the temptation, but Macbeth’s ambition and consent make him chiefly responsible.",
+        "reasoning": "He is influenced by prophecy and pressure, yet he understands the crime and agrees to commit it.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "The witches are chiefly responsible because predictions always control people."
+          },
+          {
+            "text": "Macbeth is entirely innocent because Lady Macbeth persuades him."
+          },
+          {
+            "text": "Neither the witches nor ambition matters because Duncan causes the conflict."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "Which judgement is best supported by Act 1, Scene 7?",
+        "answer": "Ambition damages Macbeth because he recognises murder is wrong but still accepts the plan.",
+        "reasoning": "His moral conflict shows that gaining power has already threatened his conscience.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "Ambition makes Macbeth completely calm."
+          },
+          {
+            "text": "Ambition has already made Macbeth king."
+          },
+          {
+            "text": "Ambition affects only Lady Macbeth."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Evaluate whether ambition damages Macbeth and Lady Macbeth equally by the end of Act 1.",
+        "answer": "Ambition damages both, but not equally: Macbeth shows guilt and hesitation, while Lady Macbeth appears more determined to suppress compassion.",
+        "reasoning": "The contrast between Macbeth’s conflict and her ruthless language supports a qualified judgement.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "It harms neither because Duncan survives."
+          },
+          {
+            "text": "It harms only Macbeth because Lady Macbeth has no ambition."
+          },
+          {
+            "text": "It benefits both without creating danger."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "How far does Act 1 suggest that ambition has strengthened the Macbeths’ relationship?",
+        "answer": "Only to a limited extent: it gives them a shared plan, but Lady Macbeth manipulates Macbeth and their partnership depends on secrecy and murder.",
+        "reasoning": "A shared ambition connects them, yet the methods they use create moral and emotional damage.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "It makes their relationship completely equal."
+          },
+          {
+            "text": "It separates them because they never speak."
+          },
+          {
+            "text": "It strengthens them because Duncan rewards them."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "Which consequence should receive the greatest emphasis in a judgement about ambition by Act 1’s end?",
+        "answer": "The loss of moral security, because both characters move from imagining power to accepting Duncan’s murder.",
+        "reasoning": "Their ambition has changed a desire into a dangerous decision with consequences for the kingdom and themselves.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "Their enjoyment of a peaceful royal life."
+          },
+          {
+            "text": "Their certainty that no one will suspect them."
+          },
+          {
+            "text": "Their success in becoming monarchs."
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ]
+  },
+  "duplicates": {
+    "keyIdeas": 0,
+    "misconceptions": 0,
+    "vocabulary": 0,
+    "workedExamples": 0,
+    "questions": 0
+  }
+}

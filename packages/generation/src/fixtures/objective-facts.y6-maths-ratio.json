@@ -1,0 +1,533 @@
+{
+  "id": "y6-maths-ratio",
+  "from": "lab bench facts-round1 luna repeat 1, openai/gpt-5.6-luna, merged by mergeObjectiveFacts",
+  "topic": "Ratio and proportion: sharing amounts in a given ratio",
+  "durationMin": 60,
+  "yearGroup": "Year 6",
+  "subject": "Maths",
+  "answers": {
+    "objectiveVerb": "Apply ratio to share amounts",
+    "priorConfidence": "Some prior knowledge"
+  },
+  "objectives": [
+    {
+      "text": "Calculate the total number of equal parts in a given ratio."
+    },
+    {
+      "text": "Calculate the value of one ratio part from a total amount."
+    },
+    {
+      "text": "Solve unequal-sharing problems using a given ratio."
+    }
+  ],
+  "facts": {
+    "keyIdeas": [
+      {
+        "statement": "Add the numbers in a ratio to find the total number of equal parts.",
+        "explanation": "Each number tells how many equal parts belong to one quantity. Adding all the ratio numbers gives the whole amount of equal parts.",
+        "example": "A drink uses juice and water in the ratio 2:5. It has 2 + 5 = 7 equal parts altogether.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "A ratio with more than two numbers has one part for each number.",
+        "explanation": "For 1:3:4, the quantities are split into 1 part, 3 parts and 4 parts. The total is 1 + 3 + 4 = 8 parts.",
+        "example": "A 12 kg mixture has ingredients in the ratio 2:3:1, so it contains 2 + 3 + 1 = 6 equal parts.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "statement": "To find the value of one ratio part, divide the total amount by the known total number of equal parts.",
+        "explanation": "The total amount is shared equally across every part in the ratio. The quotient gives the amount represented by one part.",
+        "example": "A total of 72 cm has 9 equal ratio parts: 72 cm ÷ 9 = 8 cm per part.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "The answer keeps the same unit as the total amount.",
+        "explanation": "If the total is measured in pounds, the value of one part is in pounds; if it is measured in litres, the value is in litres.",
+        "example": "A total of £45 split into 5 equal parts gives £45 ÷ 5 = £9 per part.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "statement": "To share an amount in a ratio, find the value of one part, then multiply by each ratio number.",
+        "explanation": "The total is split into equal parts first. Each share contains a different number of these parts, so the shares are unequal but keep the given ratio.",
+        "example": "£84 is shared in the ratio 3:4. The shares are £36 and £48, because 36:48 simplifies to 3:4.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "statement": "Check that the shares add to the original amount and have the correct ratio.",
+        "explanation": "Adding the shares checks the whole amount. Dividing both shares by the same number checks whether their relationship matches the given ratio.",
+        "example": "£36 + £48 = £84, and 36:48 simplifies by 12 to 3:4.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "misconceptions": [
+      {
+        "belief": "The total number of parts is the larger ratio number or the difference between the numbers.",
+        "correction": "The total number of parts is found by adding every number in the ratio. For 3:5, there are 3 + 5 = 8 parts.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "belief": "To find one part, divide the total by just one of the numbers in the ratio.",
+        "correction": "Divide by the total number of equal parts. For a ratio of 3:2, there are 5 parts, so a total of £40 gives £40 ÷ 5 = £8 per part.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "belief": "The larger share is found by dividing the total by the larger ratio number.",
+        "correction": "First add the ratio numbers to find all the equal parts. Divide the total by this sum, then multiply by each ratio number. For 3:4, divide by 7, not 4.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "vocabulary": [
+      {
+        "term": "ratio part",
+        "definition": "One equal share represented by one number in a ratio.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          },
+          {
+            "type": "objective",
+            "index": 1
+          },
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "term": "total parts",
+        "definition": "The number of equal shares when all the numbers in a ratio are added.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "term": "total amount",
+        "definition": "The whole quantity available before it is shared.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "term": "unequal sharing",
+        "definition": "Dividing a whole amount into shares that are different sizes but keep a stated ratio.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "workedExamples": [
+      {
+        "problem": "How many equal parts are in the ratio 6:5?",
+        "steps": [
+          "Write the ratio numbers: 6 and 5.",
+          "Add the numbers: 6 + 5 = 11.",
+          "The sum is the total number of equal parts."
+        ],
+        "answer": "There are 11 equal parts.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 0
+        }
+      },
+      {
+        "problem": "A total of 84 stickers represents 12 equal ratio parts. What is the value of one part?",
+        "steps": [
+          "Identify the total amount: 84 stickers.",
+          "Use the known total number of parts: 12.",
+          "Divide the total amount by the number of parts: 84 ÷ 12 = 7.",
+          "Write the unit with the answer: 7 stickers per part."
+        ],
+        "answer": "One ratio part is worth 7 stickers.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "problem": "£84 is shared between two people in the ratio 3:4. Find each share.",
+        "steps": [
+          "Add the ratio numbers: 3 + 4 = 7 equal parts.",
+          "Find one part: £84 ÷ 7 = £12.",
+          "Find the first share: 3 × £12 = £36.",
+          "Find the second share: 4 × £12 = £48."
+        ],
+        "answer": "The shares are £36 and £48. They total £84 and have the ratio 3:4.",
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ],
+        "misconceptionRef": {
+          "type": "misconception",
+          "index": 2
+        }
+      }
+    ],
+    "questions": [
+      {
+        "stem": "How many equal parts are in the ratio 2:7?",
+        "answer": "9 parts",
+        "reasoning": "Add the two ratio numbers: 2 + 7 = 9.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "7 parts",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "5 parts",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "14 parts"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "A paint mixture has the ratio red:white = 4:3. How many equal parts are there?",
+        "answer": "7 parts",
+        "reasoning": "The total is 4 + 3 = 7 equal parts.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "4 parts",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "3 parts",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "1 part"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "A fruit salad has apple:orange:grape in the ratio 3:2:4. How many equal parts are there?",
+        "answer": "9 parts",
+        "reasoning": "Add every number in the ratio: 3 + 2 + 4 = 9.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "6 parts"
+          },
+          {
+            "text": "8 parts",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "4 parts",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "Which ratio has exactly 12 equal parts?",
+        "answer": "5:4:3",
+        "reasoning": "Only 5 + 4 + 3 equals 12.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "5:7",
+            "misconceptionRef": {
+              "type": "misconception",
+              "index": 0
+            }
+          },
+          {
+            "text": "2:6:5"
+          },
+          {
+            "text": "4:4:4"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 0
+          }
+        ]
+      },
+      {
+        "stem": "A total of 36 apples represents 6 equal ratio parts. What is the value of one part?",
+        "answer": "6 apples",
+        "reasoning": "Divide the total number of apples by the number of equal parts: 36 ÷ 6 = 6.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "5 apples"
+          },
+          {
+            "text": "12 apples"
+          },
+          {
+            "text": "30 apples"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "A total of £56 is divided into 8 equal ratio parts. What is the value of one part?",
+        "answer": "£7",
+        "reasoning": "£56 ÷ 8 = £7, so each ratio part is worth £7.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "£6"
+          },
+          {
+            "text": "£8"
+          },
+          {
+            "text": "£48"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "A total of 96 litres represents 12 equal ratio parts. Find the value of one part.",
+        "answer": "8 litres",
+        "reasoning": "Dividing 96 litres by 12 gives 8 litres for each part.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "7 litres"
+          },
+          {
+            "text": "9 litres"
+          },
+          {
+            "text": "84 litres"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "A total of 135 beads represents 9 equal ratio parts. What is the value of one part?",
+        "answer": "15 beads",
+        "reasoning": "135 ÷ 9 = 15, so one ratio part is worth 15 beads.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "14 beads"
+          },
+          {
+            "text": "16 beads"
+          },
+          {
+            "text": "126 beads"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "stem": "£40 is shared in the ratio 3:2. How much is the larger share?",
+        "answer": "£24",
+        "reasoning": "There are 5 parts, so one part is £8 and the larger share is 3 × £8 = £24.",
+        "tier": "easy",
+        "use": "slide",
+        "distractors": [
+          {
+            "text": "£20"
+          },
+          {
+            "text": "£16"
+          },
+          {
+            "text": "£8"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "A prize of £72 is shared in the ratio 5:4. What are the two shares?",
+        "answer": "£40 and £32",
+        "reasoning": "There are 9 parts, so one part is £8; multiplying by 5 and 4 gives £40 and £32.",
+        "tier": "core",
+        "use": "worksheet",
+        "distractors": [
+          {
+            "text": "£36 and £36"
+          },
+          {
+            "text": "£45 and £27"
+          },
+          {
+            "text": "£40 and £36"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "stem": "A farmer has 96 kg of feed and shares it between horses and goats in the ratio 5:3. How much more feed do the horses get?",
+        "answer": "24 kg",
+        "reasoning": "One part is 96 ÷ 8 = 12 kg; the difference is 2 parts, so 2 × 12 = 24 kg.",
+        "tier": "stretch",
+        "use": "exit",
+        "distractors": [
+          {
+            "text": "12 kg"
+          },
+          {
+            "text": "36 kg"
+          },
+          {
+            "text": "60 kg"
+          }
+        ],
+        "objectiveRefs": [
+          {
+            "type": "objective",
+            "index": 2
+          }
+        ]
+      }
+    ]
+  },
+  "duplicates": {
+    "keyIdeas": 0,
+    "misconceptions": 0,
+    "vocabulary": 2,
+    "workedExamples": 0,
+    "questions": 0
+  }
+}
