@@ -1,11 +1,33 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
-import { checkLesson, type Finding, SlideSchema } from "@tj/domain/documents";
+import {
+  checkLesson,
+  type Finding,
+  type Lesson,
+  type LessonFacts,
+  type Slide,
+  SlideSchema,
+} from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
-import { PROMPT_VERSIONS, VERB_WRITING } from "../prompts";
+import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
+import {
+  CODE_MODEL,
+  codedSetSpec,
+  isCodeBuilt,
+  isRetrievalStarter,
+  withShuffledOptions,
+} from "../planner/coded-slides";
+import { laterQuestionsFor } from "../planner/later-questions";
+import {
+  type GenerateSlideInput,
+  generateSlidePrompt,
+  PROMPT_VERSIONS,
+  repairPrompt,
+  VERB_WRITING,
+} from "../prompts";
 import { lessonShapeOf } from "../shapes";
-import { assignFactIds, planFactsSchemaFor } from "../specs";
+import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, planFactsSchemaFor } from "../specs";
 import {
   callLimitedBudget,
   FIXTURES,
@@ -19,14 +41,27 @@ import {
   sampleBriefLesson,
 } from "../testing";
 import { StageFailure } from "../types";
-import { evaluate, verbFitApplies } from "./evaluate";
+import { evaluate, factConsistencyApplies, verbFitApplies } from "./evaluate";
 import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
+
+/** A budget that admits four calls: what one batch was before `GENERATE_CONCURRENCY` rose (lab pw). */
+const FOUR_CALLS = 4;
+
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
-import { MAX_TARGETS, repair, repairTargets } from "./repair";
+import {
+  MAX_TARGETS,
+  MAX_WARNING_TARGETS,
+  repair,
+  repairContext,
+  repairPlanOf,
+  repairTargets,
+  reprintPatchedSets,
+} from "./repair";
 import {
   audienceOf,
   BUDGET_FINDING,
   blockText,
+  retrievalInput,
   slideText,
   specFieldsCover,
   specFieldsOf,
@@ -120,7 +155,8 @@ describe("plan", () => {
     });
     expect(deps.progress).toHaveLength(3);
     expect(deps.persisted).toHaveLength(3);
-    // Row 8: the verify call is the third plan call, standard class at high effort.
+    // Row 8: the verify call is the third plan call, standard class; low effort since 17 Sep 2026
+    // (at "high" through a gateway the checker reasoned its whole output cap away and answered nothing).
     expect(
       ai.calls.map((c) => [
         c.modelClass,
@@ -706,6 +742,132 @@ describe("generate", () => {
     expect(checkLesson(state.lesson)).toEqual([]);
   });
 
+  test("a callout box on a slide with no assigned callout is never an editorial miss outside the lab outline", async () => {
+    // Production's Plan assigns no callouts (`outline-from-facts` is not in the planned stamp),
+    // so a writer that adds a box, or leaves one out, is accepted as written: no retry, no
+    // spec-rule finding, the box kept.
+    const start = await planned();
+    const box = { kind: "watch-out", text: "Not every road was straight." };
+    const slides = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .map((e) =>
+        json(
+          e.kind === "content"
+            ? { ...FIXTURES.slides[e.kind], callout: box }
+            : FIXTURES.slides[e.kind],
+        ),
+      );
+    const ai = createFakeAi({ script: routed(slides), usage });
+    const state = await generate(start, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(slides.length);
+    expect(state.lesson.generation?.findings.filter((f) => f.check === "spec-rule")).toEqual([]);
+    expect(state.lesson.generation?.promptVersions.planned?.includes("outline-from-facts")).toBe(
+      false,
+    );
+  });
+
+  test("with the lab outline's stamp the same unassigned box is an editorial miss, accepted on the retry", async () => {
+    const start = await planned();
+    const generation = start.lesson.generation;
+    if (!generation) throw new Error("planned");
+    const labStart = {
+      ...start,
+      lesson: {
+        ...start.lesson,
+        generation: {
+          ...generation,
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: `${generation.promptVersions.planned}+outline-from-facts`,
+          },
+        },
+      },
+    };
+    const box = { kind: "watch-out", text: "Not every road was straight." };
+    const contentAt = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .findIndex((e) => e.kind === "content");
+    const slides = FIXTURES.planSkeleton.outline
+      .slice(PLANNED_SLIDES)
+      .map((e, i) =>
+        json(
+          i === contentAt ? { ...FIXTURES.slides[e.kind], callout: box } : FIXTURES.slides[e.kind],
+        ),
+      );
+    // The unassigned box is refused once, then accepted with the miss recorded (`soft`).
+    const ai = createFakeAi({
+      script: routed(slides.flatMap((s, i) => (i === contentAt ? [s, s] : [s]))),
+      usage,
+    });
+    const state = await generate(labStart, recordingDeps(ai));
+    // r1: the lab prints its set slides (the exit quiz here) in code, with no call.
+    const labFacts = labStart.lesson.facts;
+    if (!labFacts) throw new Error("fixture has no facts");
+    const coded = labFacts.outline
+      .slice(PLANNED_SLIDES)
+      .filter((e) => codedSetSpec(e, labFacts, "s") !== undefined).length;
+    expect(coded).toBeGreaterThan(0);
+    expect(ai.calls).toHaveLength(slides.length + 1 - coded);
+    const misses = state.lesson.generation?.findings.filter((f) => f.check === "spec-rule") ?? [];
+    expect(misses).toHaveLength(1);
+    expect(misses[0]?.message).toContain("no callout");
+  });
+
+  test("lab r3: a teaching slide's input carries the later questions on its key ideas; production's never does", async () => {
+    const start = await planned();
+    const generation = start.lesson.generation;
+    const facts = start.lesson.facts;
+    if (!generation || !facts) throw new Error("planned");
+    // Every question tests the first key idea, which the first content slide teaches.
+    const k = facts.keyIdeas?.[0]?.id;
+    if (!k) throw new Error("fixture has no key idea");
+    const taughtAt = facts.outline.findIndex((e) => e.kind === "content");
+    const withIdeas = {
+      ...facts,
+      questions: facts.questions.map((q) => ({ ...q, keyIdeaRefs: [k] })),
+      outline: facts.outline.map((e, i) =>
+        i === taughtAt ? { ...e, factRefs: [...e.factRefs, k] } : e,
+      ),
+    };
+    const run = async (planned: string) => {
+      const inputs: GenerateSlideInput[] = [];
+      const original = generateSlidePrompt.user.bind(generateSlidePrompt);
+      const spy = spyOn(generateSlidePrompt, "user").mockImplementation(
+        (input: GenerateSlideInput) => {
+          inputs.push(input);
+          return original(input);
+        },
+      );
+      const slides = withIdeas.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) => json(FIXTURES.slides[e.kind]));
+      const ai = createFakeAi({ script: routed([...slides, ...slides]), usage });
+      const lesson = {
+        ...start.lesson,
+        facts: withIdeas,
+        generation: { ...generation, promptVersions: { ...generation.promptVersions, planned } },
+      };
+      try {
+        await generate({ ...start, lesson }, recordingDeps(ai));
+      } finally {
+        spy.mockRestore();
+      }
+      return { inputs, lesson };
+    };
+    const lab = await run(`${generation.promptVersions.planned}+${OUTLINE_FROM_FACTS_VERSION}`);
+    const taught = lab.inputs.find((input) => input.position.index === taughtAt + 1);
+    const expected = laterQuestionsFor(withIdeas, taughtAt, lab.lesson.id);
+    expect(expected?.length ?? 0).toBeGreaterThan(0);
+    expect(taught?.laterQuestions).toEqual(expected);
+    // Not a teaching slide, or one naming no key idea: no field.
+    expect(
+      lab.inputs.filter((input) => input.laterQuestions !== undefined).map((i) => i.position.index),
+    ).toEqual([taughtAt + 1]);
+    const production = await run(generation.promptVersions.planned ?? "");
+    expect(production.inputs.length).toBeGreaterThan(0);
+    expect(production.inputs.every((input) => !("laterQuestions" in input))).toBe(true);
+  });
+
   test("TEACH-263: an extra field on the first slide is stripped without retrying Generate", async () => {
     const start = await planned();
     const slides = FIXTURES.planSkeleton.outline
@@ -745,12 +907,13 @@ describe("generate", () => {
       .slice(PLANNED_SLIDES)
       .map((e) => json(FIXTURES.slides[e.kind]));
     const ai = createFakeAi({ script: routed(slides), usage });
-    // The first batch is admitted; the next reservation is refused.
-    const budget = callLimitedBudget(GENERATE_CONCURRENCY);
+    // Four calls are admitted (every slide starts at once under `GENERATE_CONCURRENCY`, so the
+    // reservations are made in index order); the fifth reservation is refused.
+    const budget = callLimitedBudget(FOUR_CALLS);
     const deps = recordingDeps(ai, { budget });
     const state = await generate(start, deps);
-    expect(ai.calls).toHaveLength(GENERATE_CONCURRENCY);
-    expect(state.lesson.slides).toHaveLength(PLANNED_SLIDES + GENERATE_CONCURRENCY);
+    expect(ai.calls).toHaveLength(FOUR_CALLS);
+    expect(state.lesson.slides).toHaveLength(PLANNED_SLIDES + FOUR_CALLS);
     expect(state.lesson.generation?.stage).toBe("generated");
     expect(state.lesson.generation?.findings).toEqual([
       expect.objectContaining({
@@ -824,7 +987,7 @@ describe("generate", () => {
     expect(mc.promptText).toContain("Misconceptions:");
   });
 
-  test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most four in flight", async () => {
+  test("rows 2–4: slides resolving out of order are persisted in outline order, one at a time, at most GENERATE_CONCURRENCY in flight", async () => {
     const start = await planned();
     const entries = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES);
     let inFlight = 0;
@@ -1324,9 +1487,9 @@ describe("generate", () => {
       const facts = fullFacts();
       const touched = facts.outline.findIndex((e) => e.factRefs.includes("v1"));
       const ai = createFakeAi({ script: generateScript(), usage });
-      // One batch's worth: the first four slide calls go ahead; the vocabulary slide's second
+      // Four calls' worth: the first four slide calls go ahead; the vocabulary slide's second
       // call (and every later slide) is refused.
-      const budget = callLimitedBudget(GENERATE_CONCURRENCY);
+      const budget = callLimitedBudget(FOUR_CALLS);
       const deps = recordingDeps(ai, { budget });
       const run = generate(state, deps);
       await new Promise((r) => setTimeout(r, 5));
@@ -1559,6 +1722,132 @@ describe("evaluate", () => {
     expect(next.lesson.generation?.findings).toContainEqual(verify);
   });
 
+  test("w0b: a numeric mismatch in a fact becomes a fact-consistency error on the slide built from it, so Repair's repair-fact call corrects the fact", async () => {
+    const state = await generated();
+    const generation = state.lesson.generation;
+    const facts = state.lesson.facts;
+    const v1 = facts?.vocabulary[0];
+    if (!generation || !facts || !v1) throw new Error("fixture");
+    const wrong = `${v1.definition} Four rows of 3 make 3 × 4 = 13.`;
+    // Verify's warning, as `runVerify` records it: the fact only, which Repair never reads.
+    const verifyWarning: Finding = {
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: "v1" },
+      message: NUMERIC_MESSAGE,
+      evidence: "3 × 4 = 13",
+    };
+    const withSlip = {
+      ...state,
+      lesson: {
+        ...state.lesson,
+        facts: {
+          ...facts,
+          vocabulary: facts.vocabulary.map((v) =>
+            v.id === "v1" ? { ...v, definition: wrong } : v,
+          ),
+        },
+        generation: { ...generation, findings: [...generation.findings, verifyWarning] },
+      },
+    };
+    const citing = withSlip.lesson.slides.filter(
+      (s, i) =>
+        facts.outline[i]?.factRefs.includes("v1") ||
+        s.elements.some((e) => e.generatedFrom?.factRefs.includes("v1")),
+    );
+    const vocab = citing.find((s) => s.kind === "vocabulary");
+    if (!vocab) throw new Error("fixture: the vocabulary slide cites v1");
+    const evaluated = await evaluate(
+      withSlip,
+      recordingDeps(createFakeAi({ script: [json({ findings: [] })], usage })),
+    );
+    const found = evaluated.lesson.generation?.findings ?? [];
+    expect(found).toContainEqual({
+      check: "fact-consistency",
+      severity: "error",
+      target: { slideId: vocab.id, factId: "v1" },
+      message: NUMERIC_MESSAGE,
+      evidence: "3 × 4 = 13",
+    });
+    // Replaced, not doubled: Verify's warning is gone once the error carries it.
+    expect(found).not.toContainEqual(verifyWarning);
+    expect(found.filter((f) => f.check === "fact-consistency")).toHaveLength(citing.length);
+
+    const ai = createFakeAi({
+      script: citing.flatMap((s) => [
+        json({
+          corrections: [
+            {
+              factId: "v1",
+              field: "definition",
+              value: `${v1.definition} Four rows of 3 make 3 × 4 = 12.`,
+              reason: "arithmetic",
+            },
+          ],
+        }),
+        json(FIXTURES.slides[s.kind as keyof typeof FIXTURES.slides]),
+      ]),
+      usage,
+    });
+    const repaired = await repair(evaluated, recordingDeps(ai));
+    expect(ai.calls[0]?.context?.promptVersion).toBe(PROMPT_VERSIONS["repair-fact"]);
+    expect(ai.calls[0]?.promptText).toContain("3 × 4 = 13");
+    expect(ai.calls[1]?.context?.promptVersion).toBe(PROMPT_VERSIONS.repair);
+    expect(repaired.lesson.facts?.vocabulary[0]?.definition).toContain("3 × 4 = 12");
+    expect(numericFactMismatches(repaired.lesson.facts as never)).toEqual([]);
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(
+      false,
+    );
+  });
+
+  test("w0b: a numeric mismatch in a fact no slide cites stays a warning on the fact", async () => {
+    const state = await generated();
+    const facts = state.lesson.facts;
+    if (!facts) throw new Error("fixture");
+    const uncite = (refs: string[]) => refs.filter((r) => r !== "v1");
+    const next = await evaluate(
+      {
+        ...state,
+        lesson: {
+          ...state.lesson,
+          slides: state.lesson.slides.map((s) => ({
+            ...s,
+            elements: s.elements.map((e) =>
+              e.generatedFrom
+                ? {
+                    ...e,
+                    generatedFrom: {
+                      ...e.generatedFrom,
+                      factRefs: uncite(e.generatedFrom.factRefs),
+                    },
+                  }
+                : e,
+            ),
+          })) as never,
+          facts: {
+            ...facts,
+            outline: facts.outline.map((e) => ({ ...e, factRefs: uncite(e.factRefs) })) as never,
+            vocabulary: facts.vocabulary.map((v) =>
+              v.id === "v1" ? { ...v, definition: `${v.definition} 3 × 4 = 13.` } : v,
+            ),
+          },
+        },
+      },
+      recordingDeps(createFakeAi({ script: [json({ findings: [] })], usage })),
+    );
+    const found = next.lesson.generation?.findings ?? [];
+    expect(found).toContainEqual({
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: "v1" },
+      message: NUMERIC_MESSAGE,
+      evidence: "3 × 4 = 13",
+    });
+    expect(found.some((f) => f.check === "fact-consistency" && f.target.factId === "v1")).toBe(
+      false,
+    );
+  });
+
   test("a review that fails twice becomes a warning; the schema checks still run", async () => {
     const state = await generated();
     const broken = {
@@ -1630,6 +1919,97 @@ describe("evaluate", () => {
     // Worksheet blocks and untargeted findings are the model's call.
     expect(verbFitApplies(finding("verb-fit", { blockId: "b1" }), state)).toBe(true);
     expect(verbFitApplies(finding("verb-fit", {}), state)).toBe(true);
+  });
+
+  test("lab r4: factConsistencyApplies drops fact-consistency on the retrieval starter only", async () => {
+    const base = await generated();
+    const finding = (check: string, target: Finding["target"]): Finding => ({
+      check,
+      severity: "error",
+      target,
+      message: "The supplied facts do not define weathering.",
+    });
+    const index = base.lesson.slides.findIndex((s) => s.kind === "starter");
+    const starter = base.lesson.slides[index] as Slide;
+    const content = base.lesson.slides.find((s) => s.kind === "content") as Slide;
+    // A model-written starter, and a code-built one with no retrieval set, are checked as before.
+    expect(factConsistencyApplies(finding("fact-consistency", { slideId: starter.id }), base)).toBe(
+      true,
+    );
+    const coded = {
+      ...starter,
+      elements: starter.elements.map((el) =>
+        el.generatedFrom
+          ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+          : el,
+      ),
+    };
+    const slides = base.lesson.slides.map((s, i) => (i === index ? coded : s));
+    const noSet = { ...base, lesson: { ...base.lesson, slides } };
+    expect(
+      factConsistencyApplies(finding("fact-consistency", { slideId: starter.id }), noSet),
+    ).toBe(true);
+    const facts = {
+      ...(base.lesson.facts as LessonFacts),
+      retrieval: [{ question: "What is weathering?", answer: "Rock wearing away in place" }],
+    };
+    const state = { ...noSet, lesson: { ...noSet.lesson, facts } };
+    expect(isRetrievalStarter(coded, facts)).toBe(true);
+    expect(
+      factConsistencyApplies(finding("fact-consistency", { slideId: starter.id }), state),
+    ).toBe(false);
+    // Any other check on it stands, as does this check on a model-written slide.
+    expect(
+      factConsistencyApplies(finding("answer-correctness", { slideId: starter.id }), state),
+    ).toBe(true);
+    expect(
+      factConsistencyApplies(finding("fact-consistency", { slideId: content.id }), state),
+    ).toBe(true);
+    expect(factConsistencyApplies(finding("fact-consistency", {}), state)).toBe(true);
+  });
+});
+
+describe("evaluate reviews only what a model wrote (audit A2, C1)", () => {
+  test("a slide printed in code is left out of the review; the others go in", async () => {
+    const ai0 = createFakeAi({
+      script: routed([
+        ...planScript(),
+        ...FIXTURES.planSkeleton.outline
+          .slice(PLANNED_SLIDES)
+          .map((e) => json(FIXTURES.slides[e.kind])),
+      ]),
+      usage,
+    });
+    const d0 = recordingDeps(ai0);
+    const state = await generate(await plan(initialState(), d0), d0);
+    const index = state.lesson.slides.findIndex((s) => s.elements.some((e) => e.generatedFrom));
+    const target = state.lesson.slides[index] as Slide;
+    const coded = {
+      ...target,
+      elements: target.elements.map((el) =>
+        el.generatedFrom
+          ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+          : el,
+      ),
+    };
+    const slides = state.lesson.slides.map((s, i) => (i === index ? coded : s));
+    const withCoded = { ...state, lesson: { ...state.lesson, slides } };
+    const ai = createFakeAi({ script: [json({ findings: [] })], usage });
+    await evaluate(withCoded, recordingDeps(ai));
+    const prompt = ai.calls[0]?.promptText ?? "";
+    expect(prompt).not.toContain(`[slideId ${coded.id},`);
+    const other = slides.find((s, i) => i !== index && s.elements.some((e) => e.generatedFrom));
+    expect(prompt).toContain(`[slideId ${(other as Slide).id},`);
+  });
+
+  test("retrievalInput: the starter's questions, or nothing", () => {
+    expect(retrievalInput({})).toEqual({});
+    expect(retrievalInput({ retrieval: [] })).toEqual({});
+    expect(
+      retrievalInput({
+        retrieval: [{ question: "What is weathering?", answer: "Rock breaking down" }],
+      }),
+    ).toEqual({ retrieval: [{ question: "What is weathering?", answer: "Rock breaking down" }] });
   });
 });
 
@@ -1926,7 +2306,8 @@ describe("repair", () => {
     ]);
     // Row 2 (TEACH-222): the slide's current text is shown field by field, never the caption line.
     const slidePrompt = ai.calls[0]?.promptText ?? "";
-    expect(slidePrompt).toContain("heading: ");
+    // Audit C5: a question kind's heading is labelled by its spec field, `stem`.
+    expect(slidePrompt).toContain("stem: ");
     expect(slidePrompt).toContain("option A");
     expect(slidePrompt).toContain("(correct)");
     expect(deps.progress).toEqual([
@@ -2214,6 +2595,30 @@ describe("specFieldsOf (TEACH-222)", () => {
     }
   });
 
+  test("audit C5: fields carry spec names, so a worked-example shows its question and 0-based steps", async () => {
+    const setupDeps = recordingDeps(
+      createFakeAi({
+        script: routed([
+          ...planScript(),
+          ...FIXTURES.planSkeleton.outline
+            .slice(PLANNED_SLIDES)
+            .map((e) => json(FIXTURES.slides[e.kind])),
+        ]),
+        usage,
+      }),
+    );
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const worked = generated.lesson.slides.find((s) => s.kind === "worked-example") as Slide;
+    const names = specFieldsOf(worked).map((f) => f.field);
+    expect(names).toContain("question");
+    expect(names).toContain("steps[0]");
+    expect(names).toContain("steps[2]");
+    expect(names).not.toContain("body");
+    const mc = generated.lesson.slides.find((s) => s.kind === "multiple-choice") as Slide;
+    expect(specFieldsOf(mc).map((f) => f.field)).toContain("stem");
+    expect(specFieldsOf(mc).map((f) => f.field)).not.toContain("heading");
+  });
+
   test("a slide whose text the projection cannot label is not covered, so Repair shows the flat text", () => {
     const slide = generatedLesson().slides[0];
     if (!slide) throw new Error("fixture");
@@ -2250,5 +2655,624 @@ describe("specFieldsOf (TEACH-222)", () => {
       ],
     } as unknown as typeof slide;
     expect(specFieldsCover(odd)).toBe(false);
+  });
+});
+
+describe("generate: callouts are checked only against a plan that assigns them", () => {
+  test("a production plan assigns no callouts, so a slide that writes a box is not an editorial miss", async () => {
+    // Plan's stamp has no `outline-from-facts`: the writer's box is neither demanded nor refused.
+    const start = await plan(
+      initialState(),
+      recordingDeps(createFakeAi({ script: planScript(), usage })),
+    );
+    expect(start.lesson.generation?.promptVersions.planned).not.toContain("outline-from-facts");
+    const slides = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES).map((e) =>
+      json({
+        ...FIXTURES.slides[e.kind],
+        ...(e.kind === "content"
+          ? { callout: { kind: "watch-out", text: "A box no plan assigned." } }
+          : {}),
+      }),
+    );
+    const ai = createFakeAi({ script: routed(slides), usage });
+    const state = await generate(start, recordingDeps(ai));
+    // One call per slide: no retry for the box, and no spec-rule finding about it.
+    expect(ai.calls).toHaveLength(slides.length);
+    expect(
+      state.lesson.generation?.findings.filter(
+        (f) => f.check === "spec-rule" && /callout/i.test(f.message),
+      ),
+    ).toEqual([]);
+  });
+
+  test("the stamp is read one version per `+`, whole: a version that merely contains the outline's name does not turn the check on", async () => {
+    const start = await plan(
+      initialState(),
+      recordingDeps(createFakeAi({ script: planScript(), usage })),
+    );
+    const generation = start.lesson.generation;
+    if (!generation) throw new Error("planned");
+    const stamped = {
+      ...start,
+      lesson: {
+        ...start.lesson,
+        generation: {
+          ...generation,
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: `${generation.promptVersions.planned}+${OUTLINE_FROM_FACTS_VERSION}-lite`,
+          },
+        },
+      },
+    };
+    const slides = FIXTURES.planSkeleton.outline.slice(PLANNED_SLIDES).map((e) =>
+      json({
+        ...FIXTURES.slides[e.kind],
+        ...(e.kind === "content"
+          ? { callout: { kind: "watch-out", text: "A box no plan assigned." } }
+          : {}),
+      }),
+    );
+    const ai = createFakeAi({ script: routed(slides), usage });
+    const state = await generate(stamped, recordingDeps(ai));
+    expect(ai.calls).toHaveLength(slides.length);
+    expect(
+      state.lesson.generation?.findings.filter(
+        (f) => f.check === "spec-rule" && /callout/i.test(f.message),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("Repair acts on the warnings judges punish (lab round 1)", () => {
+  const w = (check: string, slideId: string, evidence?: string): Finding => ({
+    check,
+    severity: "warning",
+    target: { slideId },
+    message: "m",
+    ...(evidence === undefined ? {} : { evidence }),
+  });
+  const e = (check: string, slideId: string): Finding => ({
+    check,
+    severity: "error",
+    target: { slideId },
+    message: "m",
+  });
+
+  test("cb-y1-animals-L: the error target carries nothing extra; two of the three verb-fit slides become targets; pitch stays a residual", () => {
+    // Evaluate call 15's findings, as recorded (messages shortened).
+    const targets = repairTargets([
+      e("fact-consistency", "labp"),
+      w("verb-fit", "lab12", "What is one feature that a kitten and its cat parent can both have?"),
+      w("verb-fit", "laby", "What happens to a young animal as it becomes an adult?"),
+      w(
+        "verb-fit",
+        "lab1e",
+        "It changes its body shape and later becomes an adult butterfly with wings.",
+      ),
+      w("pitch", "labp", "Their shape, body covering or way of moving can change too."),
+    ]);
+    expect(
+      targets.map((t) => [t.key, t.findings.map((f) => f.check), t.warningOnly ?? false]),
+    ).toEqual([
+      ["slide:labp", ["fact-consistency"], false],
+      ["slide:lab12", ["verb-fit"], true],
+      ["slide:laby", ["verb-fit"], true],
+    ]);
+    expect(targets.filter((t) => t.warningOnly)).toHaveLength(MAX_WARNING_TARGETS);
+  });
+
+  test("cb-y10-tempest-L: the repetition warning on lab14 becomes a target beside the error; tested-not-taught outranks verb-fit; a warning rides with its slide's error", () => {
+    const tempest = repairTargets([
+      e("fact-consistency", "labo"),
+      w(
+        "repetition",
+        "lab14",
+        "Which word in “But this rough magic / I here abjure” shows that Prospero deliberately gives up magic?",
+      ),
+    ]);
+    expect(tempest.map((t) => t.key)).toEqual(["slide:labo", "slide:lab14"]);
+    const ranked = repairTargets([
+      w("verb-fit", "a"),
+      w("repetition", "b"),
+      w("tested-not-taught", "c"),
+      e("answer-correctness", "d"),
+      w("verb-fit", "d"),
+      { ...w("repetition", "x"), target: {} },
+    ]);
+    expect(ranked.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:d", ["answer-correctness", "verb-fit"]],
+      ["slide:c", ["tested-not-taught"]],
+      ["slide:a", ["verb-fit"]],
+    ]);
+  });
+
+  test("repairContext: the neighbours, the slide holding repeated text, and the teaching slides before a tested-not-taught target", () => {
+    const slide = (id: string, kind: Slide["kind"], body: string): Slide =>
+      ({
+        id,
+        kind,
+        elements: [
+          {
+            id: `${id}-t`,
+            type: "text",
+            doc: {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: body }] }],
+            },
+            style: { preset: "body" },
+            frame: { x: 0, y: 0, w: 10, h: 10 },
+          },
+        ],
+      }) as unknown as Slide;
+    const lesson = {
+      ...sampleBriefLesson(),
+      slides: [
+        slide("s0", "title", "Title"),
+        slide("s1", "content", "A kitten grows into a cat."),
+        slide("s2", "content", "A tadpole becomes a frog."),
+        slide("s3", "worked-example", "Rough magic I here abjure."),
+        slide("s4", "multiple-choice", "Which word shows he gives up magic?"),
+        slide("s5", "exit-ticket", "Explain why."),
+        slide("s6", "plenary", "Rough magic I here abjure again."),
+      ],
+    } as Lesson;
+    const ctx = (findings: Finding[]) =>
+      repairContext(lesson, 5, findings).map((c) => [c.position, c.why]);
+    expect(ctx([])).toEqual([
+      [5, "before"],
+      [7, "after"],
+    ]);
+    expect(ctx([w("repetition", "s5", "rough magic I here abjure")])).toEqual([
+      [4, "repeats"],
+      [5, "before"],
+      [7, "repeats"],
+    ]);
+    expect(ctx([w("tested-not-taught", "s5")])).toEqual([
+      [2, "taught-earlier"],
+      [3, "taught-earlier"],
+      [4, "taught-earlier"],
+      [5, "before"],
+      [7, "after"],
+    ]);
+    expect(repairContext(lesson, 5, [])[0]?.text).toContain("Which word shows he gives up magic?");
+  });
+
+  test("a verb-fit warning alone gets one repair call on its slide; a pitch warning alone gets none", async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((x) => json(FIXTURES.slides[x.kind])),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const target = generated.lesson.slides.find((s) => s.kind === "multiple-choice") as Slide;
+    const evaluatedWith = (findings: Finding[]) => ({
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        generation: {
+          ...(generated.lesson.generation as NonNullable<typeof generated.lesson.generation>),
+          stage: "evaluated" as const,
+          findings,
+        },
+      },
+    });
+    const answering = () =>
+      createFakeAi({
+        fallback: (call) => {
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+          return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+        },
+        usage,
+      });
+    const evidence = slideText(target).split("\n")[0] ?? "";
+    const ai = answering();
+    await repair(
+      evaluatedWith([
+        { ...w("verb-fit", target.id, evidence), message: "Names, does not explain." },
+      ]),
+      recordingDeps(ai),
+    );
+    const repairs = ai.calls.filter((c) => c.context?.stage === "repair");
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]?.promptText).toContain("[verb-fit, warning] Names, does not explain.");
+    const quiet = answering();
+    await repair(evaluatedWith([w("pitch", target.id, evidence)]), recordingDeps(quiet));
+    expect(quiet.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+  });
+});
+
+describe("Repair leaves the code-built quizzes alone and reshuffles what it rewrites (lab round 2)", () => {
+  const w = (check: string, slideId: string, evidence?: string): Finding => ({
+    check,
+    severity: "warning",
+    target: { slideId },
+    message: "m",
+    ...(evidence === undefined ? {} : { evidence }),
+  });
+  const e = (check: string, slideId: string): Finding => ({
+    check,
+    severity: "error",
+    target: { slideId },
+    message: "m",
+  });
+
+  test("r1-h-y2-plants-L and r1-cb-y5-fractions-L: verb-fit on a code-built set is no target, alone or beside an error", () => {
+    // Evaluate's findings as recorded; lab18 (plants) and lab1j, labr (fractions) were printed in code.
+    const plants = repairTargets(
+      [
+        e("degenerate-question", "laby"),
+        w(
+          "verb-fit",
+          "lab18",
+          "Suppose a young plant is growing in a pot. Which two things does it need?",
+        ),
+        w(
+          "verb-fit",
+          "lab18",
+          "A potted plant has drooping leaves and dry soil. What is the best action?",
+        ),
+        w("pitch", "lab1g"),
+      ],
+      new Set(["lab18"]),
+    );
+    expect(plants.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:laby", ["degenerate-question"]],
+    ]);
+    const fractions = repairTargets(
+      [
+        w("verb-fit", "lab1j", "Find one quarter of 28 buttons."),
+        w("verb-fit", "labr", "Which answer is 4/7 of 21 stickers?"),
+      ],
+      new Set(["lab1j", "labr"]),
+    );
+    expect(fractions).toEqual([]);
+    // An error on a code-built set is still repaired, without the verb-fit riding along.
+    const erred = repairTargets(
+      [e("answer-correctness", "lab1j"), w("verb-fit", "lab1j"), w("verb-fit", "model")],
+      new Set(["lab1j"]),
+    );
+    expect(erred.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:lab1j", ["answer-correctness"]],
+      ["slide:model", ["verb-fit"]],
+    ]);
+  });
+
+  const labLesson = async () => {
+    const script = [
+      ...planScript(),
+      ...FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((x) => json(FIXTURES.slides[x.kind])),
+    ];
+    const setupDeps = recordingDeps(createFakeAi({ script: routed(script), usage }));
+    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
+    const generation = generated.lesson.generation as NonNullable<
+      typeof generated.lesson.generation
+    >;
+    return (findings: Finding[], slides = generated.lesson.slides) => ({
+      ...generated,
+      lesson: {
+        ...generated.lesson,
+        slides,
+        generation: {
+          ...generation,
+          stage: "evaluated" as const,
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: `${generation.promptVersions.planned ?? "plan"}+${OUTLINE_FROM_FACTS_VERSION}`,
+          },
+          findings,
+        },
+      },
+    });
+  };
+  const answering = () =>
+    createFakeAi({
+      fallback: (call) => {
+        const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+        return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+      },
+      usage,
+    });
+
+  test("a verb-fit warning on a slide printed in code gets no repair call and stays a residual", async () => {
+    const evaluatedWith = await labLesson();
+    const base = evaluatedWith([]).lesson.slides;
+    const index = base.findIndex((s) => s.kind === "exit-ticket");
+    const coded = base.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const target = coded[index] as Slide;
+    expect(isCodeBuilt(target)).toBe(true);
+    const ai = answering();
+    const out = await repair(evaluatedWith([w("verb-fit", target.id)], coded), recordingDeps(ai));
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+    expect(out.lesson.generation?.findings.some((f) => f.check === "verb-fit")).toBe(true);
+    expect(out.lesson.slides[index]).toEqual(target);
+  });
+
+  test("audit A3: an error on a slide printed in code gets no slide rewrite; with no fact named it stays a residual", async () => {
+    const evaluatedWith = await labLesson();
+    const base = evaluatedWith([]).lesson.slides;
+    const index = base.findIndex((s) => s.kind === "exit-ticket");
+    const coded = base.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const target = coded[index] as Slide;
+    const ai = answering();
+    const out = await repair(
+      evaluatedWith([e("answer-correctness", target.id)], coded),
+      recordingDeps(ai),
+    );
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+    expect(out.lesson.slides[index]).toEqual(target);
+    expect(out.lesson.generation?.findings.some((f) => f.check === "answer-correctness")).toBe(
+      true,
+    );
+  });
+
+  test("audit A3: reprintPatchedSets prints a code-built set again only when a fact it cites was patched", async () => {
+    const evaluatedWith = await labLesson();
+    const state = evaluatedWith([]);
+    const index = state.lesson.slides.findIndex((s) => s.kind === "exit-ticket");
+    const slides = state.lesson.slides.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const lesson = { ...state.lesson, slides };
+    const cited = (slides[index] as Slide).elements.flatMap(
+      (el) => el.generatedFrom?.factRefs ?? [],
+    );
+    expect(cited.length).toBeGreaterThan(0);
+    const deps = recordingDeps(answering());
+    // Nothing patched: the lesson comes back as it was.
+    expect(reprintPatchedSets(lesson, [], deps)).toBe(lesson);
+    const correction = {
+      factId: cited[0] as string,
+      field: "answer" as const,
+      value: "x",
+      reason: "wrong-answer" as const,
+    };
+    const out = reprintPatchedSets(
+      lesson,
+      [{ kind: "facts", key: "slide:x", corrections: [correction] }],
+      deps,
+    );
+    const fresh = out.slides[index] as Slide;
+    expect(fresh.id).toBe((slides[index] as Slide).id);
+    expect(isCodeBuilt(fresh)).toBe(true);
+    // Other slides are the same objects.
+    expect(out.slides.filter((s, i) => i !== index && s !== slides[i])).toEqual([]);
+  });
+
+  test("audit C2/C3: repairPlanOf gives the planned facts, the brief as one line, and the cited facts", () => {
+    const slide = generatedLesson().slides.find((s) =>
+      s.elements.some((el) => (el.generatedFrom?.factRefs.length ?? 0) > 0),
+    ) as Slide;
+    const plan = repairPlanOf(slide, {
+      factRefs: ["o3", "k5", "k6", "v5"],
+      brief: { adds: "Hard engineering with two examples.", avoids: "the seawall case" },
+    });
+    expect(plan.planned).toEqual({
+      factRefs: ["o3", "k5", "k6", "v5"],
+      brief: "Hard engineering with two examples. Avoid: the seawall case",
+    });
+    expect(plan.currentFactRefs?.length).toBeGreaterThan(0);
+    expect(repairPlanOf(slide, undefined).planned).toBeUndefined();
+    // The repair prompt renders both under the names the contract fixes.
+    const text = repairPrompt.user({
+      facts: generatedLesson().facts as LessonFacts,
+      audience: {},
+      lessonShape: { verb: "Explain", confidence: "New to it" },
+      target: { kind: "slide", slideKind: slide.kind, slideId: slide.id, text: "x" },
+      findings: [],
+      shape: "a slide spec",
+      ...plan,
+    });
+    expect(text).toContain(
+      "Planned to teach o3, k5, k6, v5: Hard engineering with two examples. Avoid: the seawall case",
+    );
+    expect(text).toContain(`factRefs: ${plan.currentFactRefs?.join(", ")}`);
+  });
+
+  test("lab pw: the targets' calls run at once and the outcomes land in target order whichever call returned first", async () => {
+    const evaluatedWith = await labLesson();
+    const slides = evaluatedWith([]).lesson.slides;
+    const chosen = slides.filter((s) => s.kind === "content" || s.kind === "worked-example");
+    expect(chosen.length).toBeGreaterThanOrEqual(2);
+    const targets = chosen.slice(0, 3);
+    const findings = targets.map((s) => e("answer-correctness", s.id));
+    // A fake that answers each target after the scripted delay; `slowest` returns last.
+    const timed = (slowest: string) => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const ai = createFakeAi({
+        fallback: async (call) => {
+          inFlight += 1;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
+          const slow = call.promptText.includes(slowest);
+          await new Promise((r) => setTimeout(r, slow ? 30 : 1));
+          inFlight -= 1;
+          return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
+        },
+        usage,
+      });
+      return { ai, max: () => maxInFlight };
+    };
+    const first = timed(targets[0]?.id ?? "");
+    const a = await repair(evaluatedWith(findings), recordingDeps(first.ai));
+    expect(first.ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(
+      targets.length,
+    );
+    expect(first.max()).toBeGreaterThanOrEqual(2);
+    const last = timed(targets.at(-1)?.id ?? "");
+    const b = await repair(evaluatedWith(findings), recordingDeps(last.ai));
+    // Same slides, same ids, same findings: the order the calls returned in left no trace.
+    expect(b.lesson.slides).toEqual(a.lesson.slides);
+    expect(b.lesson.generation?.findings).toEqual(a.lesson.generation?.findings);
+    for (const t of targets) {
+      const i = slides.findIndex((s) => s.id === t.id);
+      expect(a.lesson.slides[i]?.id).toBe(t.id);
+      expect(a.lesson.slides[i]).not.toEqual(t);
+    }
+    // Element ids are handed out in target order, not completion order.
+    const idsOf = (i: number) => (a.lesson.slides[i]?.elements ?? []).map((el) => el.id);
+    const positions = targets.map((t) => slides.findIndex((s) => s.id === t.id));
+    const numeric = (id: string) => Number(id.replace(/^e/, ""));
+    for (let k = 1; k < positions.length; k++) {
+      const prev = idsOf(positions[k - 1] as number).map(numeric);
+      const next = idsOf(positions[k] as number).map(numeric);
+      expect(Math.min(...next)).toBeGreaterThan(Math.max(...prev));
+    }
+  });
+
+  // Lab r4 (r3-h-y9-coasts-L): the retrieval starter as `codedSetSpec` prints it, its elements
+  // stamped `CODE_MODEL` and the facts carrying the set it was printed from.
+  const withRetrievalStarter = (
+    state: Awaited<ReturnType<Awaited<ReturnType<typeof labLesson>>>>,
+  ) => {
+    const index = state.lesson.slides.findIndex((s) => s.kind === "starter");
+    const slides = state.lesson.slides.map((s, i) =>
+      i !== index
+        ? s
+        : {
+            ...s,
+            elements: s.elements.map((el) =>
+              el.generatedFrom
+                ? { ...el, generatedFrom: { ...el.generatedFrom, model: CODE_MODEL } }
+                : el,
+            ),
+          },
+    );
+    const facts = {
+      ...(state.lesson.facts as LessonFacts),
+      retrieval: [
+        { question: "What is weathering?", answer: "The wearing away of rock in place" },
+        { question: "What is longshore drift?", answer: "Sediment moved along a beach by waves" },
+      ],
+    };
+    return { index, state: { ...state, lesson: { ...state.lesson, slides, facts } } };
+  };
+
+  test("r3-h-y9-coasts-L: a fact-consistency error on the retrieval starter gets no repair call and the slide is unchanged", async () => {
+    const evaluatedWith = await labLesson();
+    const { index, state: base } = withRetrievalStarter(evaluatedWith([]));
+    const target = base.lesson.slides[index] as Slide;
+    expect(isRetrievalStarter(target, base.lesson.facts)).toBe(true);
+    const finding = {
+      ...e("fact-consistency", target.id),
+      message: "The supplied facts do not define weathering or longshore drift.",
+    };
+    const state = {
+      ...base,
+      lesson: {
+        ...base.lesson,
+        generation: {
+          ...(base.lesson.generation as NonNullable<Lesson["generation"]>),
+          findings: [finding],
+        },
+      },
+    };
+    const ai = answering();
+    const out = await repair(state, recordingDeps(ai));
+    expect(ai.calls.filter((c) => c.context?.stage === "repair")).toHaveLength(0);
+    expect(out.lesson.slides[index]).toEqual(target);
+    // The error stays a residual: nothing regenerated its target.
+    expect(out.lesson.generation?.findings).toContainEqual(finding);
+  });
+
+  test("the same fact-consistency error on a model-written slide still repairs it", async () => {
+    const evaluatedWith = await labLesson();
+    const { state: base } = withRetrievalStarter(evaluatedWith([]));
+    const index = base.lesson.slides.findIndex((s) => s.kind === "content");
+    const target = base.lesson.slides[index] as Slide;
+    expect(isRetrievalStarter(target, base.lesson.facts)).toBe(false);
+    const state = {
+      ...base,
+      lesson: {
+        ...base.lesson,
+        generation: {
+          ...(base.lesson.generation as NonNullable<Lesson["generation"]>),
+          findings: [e("fact-consistency", target.id)],
+        },
+      },
+    };
+    const ai = answering();
+    const out = await repair(state, recordingDeps(ai));
+    const repairs = ai.calls.filter((c) => c.context?.stage === "repair");
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]?.promptText).toContain(target.id);
+    expect(out.lesson.slides[index]).not.toEqual(target);
+    expect(out.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(false);
+  });
+
+  test("repairTargets never targets the retrieval starter, at either severity; a code-built set still repairs an error", () => {
+    const targets = repairTargets(
+      [
+        e("fact-consistency", "starter"),
+        w("verb-fit", "starter"),
+        e("answer-correctness", "quiz"),
+        e("fact-consistency", "content"),
+      ],
+      new Set(["starter", "quiz"]),
+      new Set(["starter"]),
+    );
+    expect(targets.map((t) => [t.key, t.findings.map((f) => f.check)])).toEqual([
+      ["slide:quiz", ["answer-correctness"]],
+      ["slide:content", ["fact-consistency"]],
+    ]);
+  });
+
+  test("a multiple-choice slide Repair rewrites on the lab path gets Generate's seeded option order", async () => {
+    const evaluatedWith = await labLesson();
+    const state = evaluatedWith([]);
+    const index = state.lesson.slides.findIndex((s) => s.kind === "multiple-choice");
+    const target = state.lesson.slides[index] as Slide;
+    const out = await repair(
+      evaluatedWith([e("answer-correctness", target.id)]),
+      recordingDeps(answering()),
+    );
+    const fixture = FIXTURES.slides["multiple-choice"] as { options: { text: string }[] };
+    const expected = (
+      withShuffledOptions(
+        fixture as unknown as Parameters<typeof withShuffledOptions>[0],
+        `${state.lesson.id}:${index}`,
+      ) as unknown as { options: { text: string }[] }
+    ).options.map((o) => o.text);
+    expect(expected).not.toEqual(fixture.options.map((o) => o.text));
+    const text = slideText(out.lesson.slides[index] as Slide);
+    const at = expected.map((o) => text.indexOf(o));
+    expect(at.every((n) => n >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 });

@@ -10,12 +10,24 @@ import {
 } from "@tj/slides";
 import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import {
+  CODE_MODEL,
+  codedSetSpec,
+  withAnswersReveal,
+  withShuffledOptions,
+} from "../planner/coded-slides";
+import { laterQuestionsFor } from "../planner/later-questions";
+import {
   generateSlidePrompt,
   pickOrRequeryPrompt,
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
-import { retrievalIndexOf, verifiableArrayOf } from "../specs";
+import {
+  isOutlineFromFacts,
+  retrievalIndexOf,
+  verifiableArrayOf,
+  withAssignedCallout,
+} from "../specs";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, throwIfAborted } from "../types";
 import {
   busyFinding,
@@ -62,8 +74,14 @@ import { runVerify } from "./verify";
 /** The number of slides Plan materialises itself (`title`, `objectives`). */
 export const PLANNED_SLIDES = 2;
 
-/** Slide calls in flight at once — what the proposal jobs already do in production. */
-export const GENERATE_CONCURRENCY = 4;
+/**
+ * Slide calls in flight at once. Was 4 (what the proposal jobs do); 10 since lab pw: a 10-slide
+ * lesson has 8 slides to write (title and objectives are code), so every slide of the usual lesson
+ * starts at once and the stage's wall time is one call, not two; a 60-minute lesson (16 slides)
+ * takes two waves. Nothing else depends on the number: slides are persisted in outline order by
+ * `turnOf` whatever order they return in, and the budget reserves each call before it starts.
+ */
+export const GENERATE_CONCURRENCY = 10;
 
 /**
  * Progress runs from 10 (planned) to 80 (all slides, then the `generated` checkpoint at the same
@@ -96,6 +114,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   });
   let stems = stemPlan(facts);
   let stopped: Finding | null = null;
+  // Callouts are assigned only by the lab's code-written outline (`outlineFromFacts`, stamped in
+  // `promptVersions.planned`). Production's Plan never assigns one, so there a slide that writes a
+  // box, or leaves one out, is never an editorial miss. The stamp is read as `joinVersions`
+  // writes it: one version per `+`, compared whole, so a version that merely contains the name
+  // does not turn the check on.
+  const calloutsAssigned = isOutlineFromFacts(generation.promptVersions.planned);
   // Picture first (TEACH-220): the photograph for every image-text entry is searched and judged as
   // soon as Generate starts, alongside the first slide batch; that entry's slide call waits for its
   // own pick and no other. Nothing here fails the lesson.
@@ -174,15 +198,33 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     photo: SlidePhoto | "none" | undefined,
   ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
     const builtFrom = facts;
+    // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
+    // facts in code, answers revealed on the slide; no model call, so no item is invented.
+    const coded = calloutsAssigned
+      ? codedSetSpec(entry, builtFrom, `${lesson.id}:${i}`)
+      : undefined;
+    if (coded) {
+      const slide = withAnswersReveal(
+        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
+      );
+      return { slide, misses: [], builtFrom };
+    }
     // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
-    const specSchema = (soft: boolean) =>
-      entry.kind === "image-text"
-        ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
-            soft,
-          })
-        : slideSpecSchemaFor(entry.kind, { soft });
+    const specSchema = (soft: boolean) => {
+      const base =
+        entry.kind === "image-text"
+          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
+              soft,
+            })
+          : slideSpecSchemaFor(entry.kind, { soft });
+      return base && (calloutsAssigned ? withAssignedCallout(base, entry.callout, { soft }) : base);
+    };
     const schema = specSchema(false);
     if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
+    // Lab only (r3): a teaching slide sees the later questions that test its key ideas.
+    const laterQuestions = calloutsAssigned
+      ? laterQuestionsFor(builtFrom, i, lesson.id)
+      : undefined;
     const call = await callStructured({
       deps,
       stage: "generate",
@@ -201,6 +243,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         reservedStems: stems.reservedFor(i),
         phase: entry.phase,
         ...(photo !== undefined ? { photo } : {}),
+        ...(laterQuestions ? { laterQuestions } : {}),
         audience,
         vocabularySlots: vocabularySlots(lesson.themeId),
         lessonTitle: lesson.title,
@@ -209,8 +252,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       soft: specSchema(true),
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
+    // Lab only: the model lists the answer first, so the options go out in a seeded order.
+    const spec = calloutsAssigned
+      ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
+      : call.output;
     const slide = materialiseSlide(
-      withImageCaption(call.output, entry),
+      withImageCaption(spec, entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,

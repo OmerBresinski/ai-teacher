@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import { assignFactIds, type VerifyCorrection, verifyOutputSchemaFor } from "../specs";
-import { answeringAi, FIXTURES, recordingDeps } from "../testing";
+import { answeringAi, callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
 import { touchesCorrected } from "./generate";
 import { applyVerifyPatch, runVerify, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
 
@@ -130,6 +130,29 @@ describe("verifyFinding", () => {
       "Key idea statement corrected: named something that does not exist.",
     );
     expect(VERIFY_FAILED_FINDING.target).toEqual({});
+  });
+});
+
+describe("runVerify: the numeric check", () => {
+  test("a calculation whose sides differ is recorded even when the call itself is refused", async () => {
+    const before = facts();
+    const q = before.questions[0];
+    if (!q) throw new Error("fixture has no question");
+    q.answer = "Use sine: sin(40°) = 6 cm ÷ 10 cm.";
+    const deps = recordingDeps(answeringAi([]), { budget: callLimitedBudget(0) });
+    const result = await runVerify(
+      before,
+      { topic: "Trigonometry", audience: { yearGroup: "Year 10", subject: "Maths" } as never },
+      deps,
+      "standard",
+    );
+    expect(result.facts).toBe(before);
+    expect(result.findings.map((f) => f.check)).toEqual(["budget", "fact-verify"]);
+    expect(result.findings[1]).toMatchObject({
+      severity: "warning",
+      target: { factId: q.id },
+      evidence: "sin(40°) = 6 cm ÷ 10 cm",
+    });
   });
 });
 
