@@ -217,8 +217,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v3",
-    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+    // v4: each key idea's slide `shape` (CONTENT_SHAPES) and optional `visual`; v5 its wording.
+    version: "plan-teach-objective.v5",
+    hash: "c43f0544ca2b7e8f60bba79f2bdca5a4f388fe32b3901fa323d2f63e69f4b7dd",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -234,8 +235,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // tightens the diagram trigger; v28 replaces its "single claim" none case. v29: the label
     // heading, the lead and the optional `points` (look/headings); v30 restores the 30-word body
     // and gates `points` on the lead naming three or more things.
-    version: "generate-slide.v30",
-    hash: "05f544ba06e21d9af21664ee9f3020eef552636aecf8e8a17fd13dd577144b26",
+    // v31: the planned shape's fields on the slide line (CONTENT_BUDGETS); no diagram or points gate.
+    version: "generate-slide.v31",
+    hash: "c649b9afe31466852d25ef4a153713f8131951a8cdcb9b9b753ba69de72b41cc",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -263,7 +265,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   repair: {
     // v17 changes only the user turn (the shape line it copies, the `points` label).
-    version: "repair.v17",
+    // v18 changes only the user turn (the content shape it copies, the compare field labels).
+    version: "repair.v18",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
@@ -607,33 +610,30 @@ describe("prompt versions", () => {
     expect(schema?.safeParse({ ...base, points: ["shield"] }).success).toBe(false);
   });
 
-  test("look uplift (v26): only the content shape offers a diagram, and the schema carries it", () => {
+  test("look uplift (v31): no shape offers a diagram; the content shape defers to the slide line", () => {
     const system = PROMPTS["generate-slide"].system;
     const shapeLines = system.split("\n").filter((line) => line.startsWith("- "));
-    const withDiagram = shapeLines.filter((line) => line.includes('"diagram"'));
-    expect(withDiagram).toHaveLength(1);
-    expect(withDiagram[0]).toStartWith("- content:");
-    expect(withDiagram[0]).toContain(
-      '"heading" (2–5 words), "body" (≤ 30 words, its first sentence ≤ 20;',
-    );
-    expect(withDiagram[0]).toContain('"points"? [2–4 strings, each ≤ 8 words]');
+    expect(shapeLines.filter((line) => line.includes('"diagram"'))).toHaveLength(0);
+    const content = shapeLines.find((line) => line.startsWith("- content:"));
+    expect(content).toContain('"points" [strings], "compare": { "left": { "label", "points" }');
+    expect(content).toContain('"steps" [strings] as the slide line says');
     expect(system).toContain("heading/subtitle ≤ 60, each item ≤ 110");
     expect(system).toContain("body ≤ 260");
-    const content = {
+    const cycle = {
       kind: "content",
       heading: "Water moves round a cycle",
       body: "Water keeps moving between sea, air and land. The sun heats it, so it rises as vapour.",
       diagram: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise",
       factRefs: ["k1"],
     };
-    expect(slideSpecSchemaFor("content")?.safeParse(content).success).toBe(true);
+    expect(slideSpecSchemaFor("content")?.safeParse(cycle).success).toBe(true);
     // "none" (the named empty value) and any untyped text are dropped; a typed instruction stays.
-    expect(keptDiagram(content).diagram).toBe(content.diagram);
-    expect(keptDiagram({ ...content, diagram: " Number line: 0 to 1 in quarters " }).diagram).toBe(
+    expect(keptDiagram(cycle).diagram).toBe(cycle.diagram);
+    expect(keptDiagram({ ...cycle, diagram: " Number line: 0 to 1 in quarters " }).diagram).toBe(
       "Number line: 0 to 1 in quarters",
     );
     for (const diagram of ["none", "None", "N/A", "A picture of a cliff", "Cycle:"]) {
-      expect("diagram" in keptDiagram({ ...content, diagram })).toBe(false);
+      expect("diagram" in keptDiagram({ ...cycle, diagram })).toBe(false);
     }
     const question = { kind: "open-response", diagram: "Cycle: a → b" };
     expect(keptDiagram(question)).toBe(question);
@@ -758,7 +758,11 @@ describe("prompt versions", () => {
       expect(render(kind)).not.toContain("Reserved for other slides");
     }
     const define = "Define each vocabulary term in a few words where the slide first uses it";
-    expect(render("content")).toContain(define);
+    const panel = "The side panel shows a vocabulary term's definition beside the body";
+    expect(render("worked-example")).toContain(define);
+    // v31: a content slide's side panel shows the definition, so its body does not repeat it.
+    expect(render("content")).toContain(panel);
+    expect(render("content")).not.toContain(define);
     expect(render("vocabulary")).not.toContain(define);
     const noVocabulary = PROMPTS["generate-slide"].user({
       ...base,

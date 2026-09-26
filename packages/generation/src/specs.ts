@@ -796,6 +796,9 @@ export type PlanFacts = z.infer<typeof PlanFactsShape>;
  * What `assignFactIds` merges: the facts call's answer, or the skeleton-only stand-in below, which
  * has no pitch yet (a lesson's facts are `pitch`-less until the facts call lands).
  */
+/** What the objectives-first teach call adds to a key idea; the older facts call writes neither. */
+export type KeyIdeaLayout = { shape?: string | undefined; visual?: string | undefined };
+
 export type PlanFactsLike = Omit<PlanFacts, "pitch"> & { pitch?: PlanFacts["pitch"] | undefined };
 
 export const EMPTY_PLAN_FACTS: PlanFactsLike = {
@@ -1149,6 +1152,9 @@ export function assignFactIds(
             example: k.example,
             ...optional("analogy", k.analogy),
             objectiveRefs: dedupe(k.objectiveRefs.map(refId)),
+            // The teach call's slide shape and drawing (plan-teach-objective v4), when it wrote them.
+            ...optional("shape", (k as KeyIdeaLayout).shape),
+            ...optional("visual", (k as KeyIdeaLayout).visual),
           })),
     ),
     vocabulary: facts.vocabulary.map(({ objectiveRefs: refs, ...v }, i) => ({

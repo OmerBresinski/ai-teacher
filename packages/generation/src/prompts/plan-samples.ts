@@ -67,12 +67,15 @@ export const PLAN_TAUGHT_SAMPLE = PlanTeachObjectiveOutputSchema.parse({
       statement: "Roman roads let soldiers and goods move quickly between new towns.",
       explanation: "Straight, paved roads meant an army could march to trouble in days, not weeks.",
       example: "Watling Street ran from Dover to Wroxeter, about 250 miles.",
+      shape: "explain",
     },
     {
       statement: "Roman towns had a forum, baths and straight streets.",
       explanation: "A town was planned on a grid, with the forum as its market and meeting place.",
       example: "Colchester was the first Roman town in Britain.",
       analogy: "A forum was like a town square with a market on it.",
+      shape: "list",
+      visual: "Parts: forum at the centre, baths beside it, straight streets on a grid",
     },
   ],
   misconceptions: [

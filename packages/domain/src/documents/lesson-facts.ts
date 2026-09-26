@@ -88,6 +88,13 @@ export type KeyIdea = {
   example: string;
   analogy?: string;
   objectiveRefs: FactId[];
+  /**
+   * How its slide sets it out, one of `@tj/slides` `CONTENT_SHAPES` (explain, list, compare,
+   * sequence), written by the plan's teach call. Absent on facts planned before it.
+   */
+  shape?: string;
+  /** A drawing instruction for its slide's side panel ("Cycle: …"), from the same call. */
+  visual?: string;
 };
 
 export type VocabularyItem = {
@@ -250,6 +257,8 @@ export const KeyIdeaSchema = z.strictObject({
   example: z.string(),
   analogy: z.string().optional(),
   objectiveRefs: ObjectiveRefsSchema,
+  shape: z.string().optional(),
+  visual: z.string().optional(),
 });
 
 export const VocabularyItemSchema = z.strictObject({

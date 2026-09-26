@@ -34,6 +34,14 @@ import {
  * v17 (26 Sept 2026, generate-slide v29): the content shape line it copies now carries the label
  * heading, the ≤ 20-word lead and the optional `points`, and a content slide's bullet list reaches
  * the call labelled `points` (`specFieldsOf`), not folded into `body`. System text unchanged.
+ *
+ * v18 (26 Sept 2026, look/shape-prompt): only the user turn changes. The content shape it copies
+ * (`slideShapeOf`) is generate-slide v31's, naming `points`, `compare` and `steps`, and a
+ * content slide's compare cards reach the call as `compare.left.label`, `compare.left.points` and
+ * the same for the right (`specFieldsOf`); a steps strip already arrives as `steps[i]`. A content
+ * slide's shape line is followed by generate-slide's line for its planned shape (`shapeLine`), and
+ * code keeps only that shape's fields (`withPlannedShape`): on the v4/v31 demo, repairs turned two
+ * ratio sequence slides into `points`, and grew bodies to 47 and 61 words. System text unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -92,7 +100,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v17",
+  version: "repair.v18",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",

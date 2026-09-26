@@ -20,8 +20,10 @@ import {
   generateSlidePrompt,
   keptDiagram,
   pickOrRequeryPrompt,
+  plannedShapeOf,
   type SlidePhoto,
   verifyFactsPrompt,
+  withPlannedShape,
 } from "../prompts";
 import {
   isOutlineFromFacts,
@@ -258,9 +260,19 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
-    const spec = calloutsAssigned
+    const shuffled = calloutsAssigned
       ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
       : call.output;
+    // v31: a content slide keeps its planned shape's fields and the plan's drawing.
+    const planned = plannedShapeOf(builtFrom, entry);
+    const shaped = withPlannedShape(shuffled, planned);
+    if (planned) {
+      deps.logger.info(
+        { slide: i, shape: planned.shape, filled: shaped.filled, extra: shaped.extra },
+        "slide shape",
+      );
+    }
+    const spec = shaped.spec;
     // The lesson's vocabulary is picked out in the slide's running text (structure.ts key terms).
     const slide = materialiseSlide(
       withImageCaption(keptDiagram(spec), entry),
