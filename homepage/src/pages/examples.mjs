@@ -41,7 +41,7 @@ const slideViewer = (example) => {
     <ol class="viewer-slides" role="list">${example.slides
       .map(
         (slide, index) =>
-          `<li class="viewer-slide${index === 0 ? " is-current" : ""}"${slide.answer ? " data-has-answer" : ""}>${image(example.slug, slide, `width="1440" height="810"${index > 0 ? ' loading="lazy"' : ""}`)}${slide.answer ? image(example.slug, slide.answer, 'width="1440" height="810" loading="lazy" hidden data-answer') : ""}</li>`,
+          `<li class="viewer-slide${index === 0 ? " is-current" : ""}"${slide.answer ? " data-has-answer" : ""}>${image(example.slug, slide, `width="1440" height="810"${index > 0 ? ' loading="lazy"' : ""}`)}${slide.answer ? image(example.slug, slide.answer, 'width="1440" height="810" loading="lazy" data-answer') : ""}</li>`,
       )
       .join("")}</ol>
     <div class="viewer-controls" hidden>

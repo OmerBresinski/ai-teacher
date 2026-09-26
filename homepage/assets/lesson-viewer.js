@@ -23,6 +23,8 @@
     const answers = viewer.querySelector("[data-slide-answers]");
     if (slides.length < 2 || !controls) continue;
     let current = 0;
+    // Without this script each answer sits under its question; with it, answers wait for the switch.
+    for (const answer of viewer.querySelectorAll("[data-answer]")) answer.hidden = true;
 
     // Each slide opens on its question; the switch appears only where a slide has answers.
     const showAnswer = (on) => {
@@ -78,6 +80,8 @@
       const delta = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
       const edge = { Home: 0, End: slides.length - 1 }[event.key];
       if (delta === undefined && edge === undefined) return;
+      // Arrow keys on the Questions | Answers switch belong to the switch, not the slides.
+      if (event.target.closest?.(".view-switch")) return;
       event.preventDefault();
       const onThumb = event.target.classList?.contains("viewer-thumb");
       show(edge ?? current + delta, onThumb);
