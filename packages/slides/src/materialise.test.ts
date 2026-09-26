@@ -25,6 +25,7 @@ import {
   variantsFor,
   vocabularyGrid,
 } from "./layouts";
+import { ACCENT_BAR_NAME } from "./look";
 import {
   type IdSupplier,
   materialiseBlock,
@@ -401,9 +402,12 @@ describe("materialiseSlide", () => {
     const defs = texts.filter((element) => element.style.preset === "small");
     expect(terms.map(plain)).toEqual(["Evaporation", "Condensation"]);
     expect(defs.map(plain)).toEqual(["Liquid to gas.", "Gas to liquid."]);
-    // Heading hairline plus the one rule between the two entries in the first column.
-    const rules = slide.elements.filter((element) => element.type === "shape");
-    expect(rules).toHaveLength(2);
+    // The one rule between the two entries in the first column; the heading's hairline gave its
+    // lane to the kind tag, and the accent bar is the look's (`look.ts`).
+    const rules = slide.elements.filter(
+      (element) => element.type === "shape" && element.name !== ACCENT_BAR_NAME,
+    );
+    expect(rules).toHaveLength(1);
     expect(SlideSchema.safeParse(slide).success).toBe(true);
   });
 

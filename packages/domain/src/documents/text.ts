@@ -20,10 +20,17 @@ export function walkElements(
 }
 
 /** Every doc on a slide, groups included, as one text with a line per element. */
+/**
+ * The look's deck chrome (`@tj/slides` withDeckChrome): the year-and-subject line and the slide
+ * counter say the same on every slide and are not the slide's words.
+ */
+export const DECK_CHROME_NAMES: ReadonlySet<string> = new Set(["Deck line", "Slide counter"]);
+
 export function slideText(slide: Slide): string {
   const lines: string[] = [];
   walkElements(slide.elements, (element) => {
     if (element.type === "group") return;
+    if (element.name && DECK_CHROME_NAMES.has(element.name)) return;
     if ("doc" in element && element.doc) {
       const text = richDocToPlainText(element.doc as RichDoc).trim();
       if (text) lines.push(text);
