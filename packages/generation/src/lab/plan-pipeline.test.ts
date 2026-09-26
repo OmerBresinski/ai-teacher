@@ -145,6 +145,8 @@ function labAi(
     objectives?: unknown;
     /** The objectives call's retrieval set (v12); omitted: an answer without one, as v11 gave. */
     retrieval?: unknown;
+    /** l6f: the objectives call's flow; omitted: an answer without one. */
+    flow?: unknown;
     facts?: (call: FakeCall, target: number) => string | Promise<string>;
     /** Lab pw: the teach call's answer (default the fixture slice without its questions). */
     teach?: (call: FakeCall, target: number) => string | Promise<string>;
@@ -165,6 +167,7 @@ function labAi(
       return json({
         objectives: options.objectives ?? romans.objectives,
         ...(options.retrieval === undefined ? {} : { retrieval: options.retrieval }),
+        ...(options.flow === undefined ? {} : { flow: options.flow }),
       });
     if (version.startsWith("plan-facts-objective")) {
       // The prompt (v9) lists objectives by 0-based index and names the target the same way.
@@ -899,5 +902,39 @@ describe("labPlan --waves (lab pw)", () => {
     expect(state.lesson.slides).toHaveLength(10);
     expect(countOf(ai, "plan-facts-objective")).toBe(0);
     expect(countOf(ai, "verify-facts")).toBe(0);
+  });
+});
+
+describe("labPlan ignoreFlow (lab l6g, --no-flow)", () => {
+  const retrieval = [
+    { question: "Who invaded Britain in AD 43?", answer: "The Romans" },
+    { question: "What is an empire?", answer: "Lands ruled by one state" },
+    { question: "Name one Roman road.", answer: "Watling Street" },
+  ];
+  const flow = {
+    opener: "hook",
+    workedExample: false,
+    commonMistake: true,
+    vocabulary: true,
+  } as const;
+  const outlineOf = async (ai: ReturnType<typeof labAi>, ignoreFlow?: boolean) => {
+    const state = await labPlan({ lesson: romansLesson() }, recordingDeps(ai), {
+      verify: false,
+      waves: true,
+      ...(ignoreFlow ? { ignoreFlow } : {}),
+    });
+    return { outline: state.lesson.facts?.outline, report: state.labPlan };
+  };
+
+  test("the model's flow is dropped: the outline equals round B's (no flow) and the report carries none", async () => {
+    const b = await outlineOf(labAi({ retrieval }));
+    const withFlow = await outlineOf(labAi({ retrieval, flow }));
+    const ignored = await outlineOf(labAi({ retrieval, flow }), true);
+
+    expect(b.outline?.length).toBeGreaterThan(0);
+    expect(withFlow.report.flow).toEqual(flow);
+    expect(withFlow.outline).not.toEqual(b.outline);
+    expect(ignored.report.flow).toBeUndefined();
+    expect(ignored.outline).toEqual(b.outline);
   });
 });

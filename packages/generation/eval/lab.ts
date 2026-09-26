@@ -1003,6 +1003,9 @@ if (import.meta.main) {
   const labPlanOn = flag("lab-plan") || saved !== undefined;
   /** Lab pw: the plan's facts in waves (teach per objective, then question sets per objective and use). */
   const wavesOn = flag("waves");
+  /** Lab l6g: ignore the objectives call's flow (round B's outline with v22's other changes). */
+  const noFlow = flag("no-flow");
+  if (noFlow && !labPlanOn) throw new Error("--no-flow needs --lab-plan");
   if (wavesOn && !labPlanOn) throw new Error("--waves needs --lab-plan");
   if (wavesOn && saved)
     throw new Error("--waves and --from-facts do not combine: no facts call is made");
@@ -1457,6 +1460,7 @@ if (import.meta.main) {
         ...(planEffort ? { effort: planEffort } : {}),
         ...(labArm ? { arm: labArm } : {}),
         ...(wavesOn ? { waves: true } : {}),
+        ...(noFlow ? { ignoreFlow: true } : {}),
       });
       lesson = result.state.lesson;
       worksheet = result.state.worksheet;

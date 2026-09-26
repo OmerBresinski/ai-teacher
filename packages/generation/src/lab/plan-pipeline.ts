@@ -137,6 +137,11 @@ export interface LabPlanOptions {
    * which `false` (default) keeps untouched for the A/B. Not combined with an arm.
    */
   waves?: boolean | undefined;
+  /**
+   * Lab l6g, `--no-flow`: drop the flow the objectives call returned before `withFlow`, so the
+   * shape, starter and outline are round B's (the teacher-override spot, set to "none").
+   */
+  ignoreFlow?: boolean | undefined;
 }
 
 /** A saved run's plan inputs, for `LabPlanOptions.fromFacts`. */
@@ -375,7 +380,10 @@ export async function labPlan(
   // fact question, so no check, practise slide or exit quiz can reach it.
   // l6f: the teaching extras the objectives call chose shape every later step; the checks, floors
   // and exit stay the verb table's. A teacher's choice would be set over `flow` here.
-  const flow = "flow" in objectivesCall.output ? objectivesCall.output.flow : undefined;
+  const flow =
+    options.ignoreFlow !== true && "flow" in objectivesCall.output
+      ? objectivesCall.output.flow
+      : undefined;
   const shape = flow ? withFlow(briefShape, flow) : briefShape;
   // A hook opens the lesson instead: the retrieval set stays off the deck and off what verify sees.
   const retrieval =
