@@ -49,7 +49,10 @@
       // Reads "Slide 3 of 10"; a phone shows it as "3 / 10".
       status.innerHTML = `<span class="vs-word">Slide </span>${current + 1}<span class="vs-word"> of</span><span class="vs-total"> ${slides.length}</span>`;
       if (answers) {
-        answers.hidden = !slides[current].hasAttribute("data-has-answer");
+        // Slides without answers keep the control's space but hide and disable it.
+        const idle = !slides[current].hasAttribute("data-has-answer");
+        answers.toggleAttribute("data-idle", idle);
+        answers.inert = idle;
         showAnswer(false);
       }
       const thumb = thumbs[current];
@@ -106,6 +109,7 @@
     );
 
     controls.hidden = false;
+    if (answers) answers.hidden = false;
     viewer.dataset.enhanced = "";
     show(0);
   }
