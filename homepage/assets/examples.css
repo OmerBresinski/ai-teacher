@@ -335,24 +335,93 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Phone: the slide and the sheets run edge to edge, and the controls shrink to one quiet row:
+   previous, where you are, next, and the answers switch. Thumbnails give way to swiping. */
 @media (max-width: 760px) {
+  .lesson-head {
+    padding-block: 0.25rem 1.25rem;
+  }
+  .lesson-back {
+    margin-bottom: 0.25rem;
+  }
+  .lesson-head .eyebrow {
+    margin-bottom: 0.4rem;
+  }
+  .lesson-head h1 {
+    font-size: 2rem;
+  }
+  .lesson-title-row {
+    gap: 0.5rem;
+  }
+  .viewer-slides,
+  .paper-sheet,
+  .paper-answers {
+    margin-inline: calc(-1 * var(--gutter));
+  }
   .viewer-slides {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .paper-doc .paper-page img,
+  .viewer .viewer-slide img {
+    border-inline: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .viewer[data-enhanced] .viewer-slide img {
+    box-shadow: none;
+  }
+  .viewer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .viewer-actions {
+    display: contents;
+  }
+  .viewer-step {
+    width: 40px;
+    height: 44px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    font-size: 1.25rem;
+  }
+  .viewer-step[data-step="-1"] {
+    order: 1;
+  }
+  .viewer-status {
+    order: 2;
+    min-width: 7.5em;
+    text-align: center;
+    font-size: 0.875rem;
+  }
+  .viewer-step[data-step="1"] {
+    order: 3;
+  }
+  .viewer-actions .answer-toggle {
+    order: 4;
+    margin: 0 0 0 auto;
+    min-height: 40px;
+    font-size: 0.9375rem;
   }
   .viewer-thumbs {
-    grid-auto-columns: 30%;
+    display: none;
   }
   .lesson-papers {
     grid-template-columns: 1fr;
+    gap: 2.5rem;
   }
-  .viewer-status {
+  .paper-bar {
+    margin-bottom: 0.6rem;
+  }
+  .paper-title {
+    font-size: 1.125rem;
+  }
+  .paper-bar .answer-toggle {
+    min-height: 40px;
     font-size: 0.9375rem;
-  }
-  .viewer-actions {
-    gap: 0.4rem;
-  }
-  .viewer-actions .answer-toggle {
-    margin-right: 0.2rem;
   }
 }
 @media (max-width: 560px) {

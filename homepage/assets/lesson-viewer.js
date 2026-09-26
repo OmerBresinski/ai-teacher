@@ -70,6 +70,31 @@
       show(edge ?? current + delta, onThumb);
     });
 
+    // On a phone the thumbnails give way to swiping the slide itself.
+    const stage = viewer.querySelector(".viewer-slides");
+    let start = null;
+    stage.addEventListener(
+      "touchstart",
+      (event) => {
+        const touch = event.touches[0];
+        start = { x: touch.clientX, y: touch.clientY };
+      },
+      { passive: true },
+    );
+    stage.addEventListener(
+      "touchend",
+      (event) => {
+        if (!start) return;
+        const touch = event.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        start = null;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5)
+          show(current + (dx < 0 ? 1 : -1));
+      },
+      { passive: true },
+    );
+
     controls.hidden = false;
     viewer.dataset.enhanced = "";
     show(0);
