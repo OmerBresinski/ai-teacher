@@ -60,6 +60,8 @@ export function slidesReferencing(lesson: Lesson, factIds: readonly string[]): I
   const changed = new Set(factIds);
   const out: Id[] = [];
   for (const slide of lesson.slides) {
+    // The worker never re-derives the objectives slide (ruling 96), so it is never busy.
+    if (slide.kind === "objectives") continue;
     let hit = false;
     walk(slide.elements, (element) => {
       if (hit || element.authoredBy !== "ai") return;

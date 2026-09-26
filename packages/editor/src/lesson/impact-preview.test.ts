@@ -61,7 +61,8 @@ describe("impactPreview", () => {
 
   test("slidesReferencing lists the slides a cascade for the facts would touch", () => {
     const lesson = generatedLesson();
-    expect(slidesReferencing(lesson, ["o1"])).toEqual(["s-objectives", "s-mc", "s-teach-1"]);
+    // The objectives slide is the objectives' home and is never re-derived (ruling 96).
+    expect(slidesReferencing(lesson, ["o1"])).toEqual(["s-mc", "s-teach-1"]);
     expect(slidesReferencing(lesson, ["v2"])).toEqual(["s-vocab"]);
     expect(slidesReferencing(lesson, ["nope"])).toEqual([]);
   });

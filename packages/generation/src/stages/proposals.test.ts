@@ -47,9 +47,9 @@ describe("impactSet", () => {
   test("AI elements and blocks naming a changed fact are redone; a teacher element is flagged", () => {
     const { lesson, worksheet } = fixturePair();
     // Make one of the o2 elements the teacher's.
-    const objectives = lesson.slides.find((s) => s.id === "s-objectives");
-    const ob2 = objectives?.elements.find((e) => e.id === "ob-2") as SlideElement;
-    ob2.authoredBy = "teacher";
+    const teach2 = lesson.slides.find((s) => s.id === "s-teach-2");
+    const c2h = teach2?.elements.find((e) => e.id === "c2-h") as SlideElement;
+    c2h.authoredBy = "teacher";
     // Add a second AI element on another slide that also names o2.
     const vocab = lesson.slides.find((s) => s.id === "s-vocab");
     vocab?.elements.push({
@@ -64,16 +64,21 @@ describe("impactSet", () => {
     const { redo, flagged } = impactSet(lesson, worksheet, ["o2"]);
     expect(redo).toEqual([
       { slideId: "s-vocab", elementId: "v-extra" },
-      { slideId: "s-teach-2", elementId: "c2-h" },
       { slideId: "s-teach-2", elementId: "c2-b" },
       { blockId: "wb3" },
     ]);
-    expect(flagged).toEqual([{ slideId: "s-objectives", elementId: "ob-2", reason: "teacher" }]);
+    expect(flagged).toEqual([{ slideId: "s-teach-2", elementId: "c2-h", reason: "teacher" }]);
+  });
+
+  test("the objectives slide is never re-derived: it is the objectives' home (ruling 96)", () => {
+    const { lesson, worksheet } = fixturePair();
+    const { redo, flagged } = impactSet(lesson, worksheet, ["o1", "o2"]);
+    expect([...redo, ...flagged].some((t) => t.slideId === "s-objectives")).toBe(false);
   });
 
   test("an element with no authoredBy counts as the teacher's; groups are walked", () => {
     const { lesson } = fixturePair();
-    const slide = lesson.slides[1] as (typeof lesson.slides)[number];
+    const slide = lesson.slides.find((s) => s.id === "s-teach-1") as (typeof lesson.slides)[number];
     const [heading, ...rest] = slide.elements;
     const inserted: SlideElement = {
       id: "hand",
@@ -96,8 +101,8 @@ describe("impactSet", () => {
       { id: "grp", type: "group", x: 0, y: 0, w: 1, h: 1, children: [...rest, inserted] },
     ];
     const { redo, flagged } = impactSet(lesson, undefined, ["o1"]);
-    expect(redo.map((t) => t.elementId)).toContain("ob-1");
-    expect(flagged).toEqual([{ slideId: "s-objectives", elementId: "hand", reason: "teacher" }]);
+    expect(redo.map((t) => t.elementId)).toContain("c1-b");
+    expect(flagged).toEqual([{ slideId: "s-teach-1", elementId: "hand", reason: "teacher" }]);
   });
 
   test("no worksheet: only slide targets; unrelated facts: nothing", () => {

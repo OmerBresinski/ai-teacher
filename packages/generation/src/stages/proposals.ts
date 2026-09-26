@@ -38,7 +38,8 @@ const intersects = (a: readonly string[] | undefined, b: ReadonlySet<string>) =>
   (a ?? []).some((id) => b.has(id));
 
 /**
- * Every element (groups walked) and block whose `generatedFrom.factRefs` names a changed fact:
+ * Every element (groups walked, the objectives slide skipped) and block whose
+ * `generatedFrom.factRefs` names a changed fact:
  * `redo` when AI-authored, `flagged` (`reason: "teacher"`) otherwise — an element with no
  * `authoredBy` was inserted by hand and counts as the teacher's. Past `MAX_REDO_TARGETS`, the
  * remainder is `flagged` with `reason: "too_many"`.
@@ -68,6 +69,9 @@ export function impactSet(
     redo.push(target);
   };
   for (const slide of lesson.slides) {
+    // The objectives slide is the objectives' home (ruling 96): it is written in code from the
+    // facts and edited by the teacher, never re-derived by a model.
+    if (slide.kind === "objectives") continue;
     const walk = (elements: SlideElement[]) => {
       for (const element of elements) {
         if (element.type === "group") {

@@ -5,7 +5,13 @@ import { type Lesson, objectiveListLines, type TextElement } from "@tj/domain/do
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import type { ReactNode } from "react";
 import { useDocumentHistory } from "../use-document-history";
-import { ignoreCheck, objectiveLineIds, writeElementDoc, writeObjectiveLines } from "./index";
+import {
+  ignoreCheck,
+  objectiveLineIds,
+  updateFact,
+  writeElementDoc,
+  writeObjectiveLines,
+} from "./index";
 import { type Line, listLesson, objectivesDoc } from "./objective-lines.test-helpers";
 
 /*
@@ -128,6 +134,18 @@ describe("writeObjectiveLines", () => {
     expect(writeObjectiveLines(lesson, "s-objectives", "ob-list")).toBe(lesson);
     expect(writeObjectiveLines(lesson, "s-vocab", "v1-term")).toBe(lesson);
     expect(objectiveLineIds(lesson, "s-vocab", "v1-term")).toBeNull();
+  });
+});
+
+describe("updateFact on an objective (the Facts panel)", () => {
+  test("writes the objective's own stamped line, in the same step, and leaves the others", () => {
+    const next = updateFact(listLesson(), "o2", { text: "Explain why evaporation needs heat" });
+    expect(next.facts?.objectives[1]?.text).toBe("Explain why evaporation needs heat");
+    const list = next.slides[1]?.elements.find((e) => e.id === "ob-list") as TextElement;
+    expect(objectiveListLines(list.doc)?.map((l) => l.text)).toEqual([
+      "describe the stages of the water cycle",
+      "explain why evaporation needs heat",
+    ]);
   });
 });
 

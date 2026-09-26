@@ -20,6 +20,7 @@ import type {
   WorkedExample,
   Worksheet,
 } from "@tj/domain/documents";
+import { objectiveLine, objectiveListLines } from "@tj/domain/documents";
 import { edit, type WithId } from "./core";
 
 /**
@@ -81,12 +82,23 @@ function findFact(facts: LessonFacts, factId: FactId): AnyFact | undefined {
   return undefined;
 }
 
-/** Patch one fact's text fields; unknown ids and unchanged values are a no-op. */
+/**
+ * Patch one fact's text fields; unknown ids and unchanged values are a no-op. An objective's new
+ * words are also written onto its own line of the objectives slide (the line stamped with its id),
+ * in the same step: the slide is the objective's home and no model re-derives it (ruling 96).
+ */
 export const updateFact = (lesson: Lesson, factId: FactId, patch: FactPatch): Lesson =>
   edit(lesson, (draft) => {
     if (!draft.facts) return;
     const fact = findFact(draft.facts, factId);
     if (!fact) return;
+    if (
+      "text" in patch &&
+      patch.text !== undefined &&
+      draft.facts.objectives.includes(fact as Objective)
+    ) {
+      writeObjectiveOnSlide(draft, factId, patch.text);
+    }
     for (const [key, value] of Object.entries(patch)) {
       if (value === undefined) continue;
       const current = (fact as Record<string, unknown>)[key];
@@ -98,6 +110,35 @@ export const updateFact = (lesson: Lesson, factId: FactId, patch: FactPatch): Le
       if (!same) (fact as Record<string, unknown>)[key] = value;
     }
   });
+
+/** The objectives slide's line stamped `factId` shows `text` under the slide's stem. */
+function writeObjectiveOnSlide(draft: Lesson, factId: FactId, text: string): void {
+  const line = objectiveLine(text);
+  for (const slide of draft.slides) {
+    if (slide.kind !== "objectives") continue;
+    for (const element of slide.elements) {
+      if (element.type !== "text") continue;
+      const items = element.doc.content?.find(
+        (n) => n.type === "orderedList" || n.type === "bulletList",
+      )?.content;
+      for (const item of items ?? []) {
+        if (item.type !== "listItem" || item.attrs?.factId !== factId) continue;
+        if (
+          objectiveListLines({
+            type: "doc",
+            content: [{ type: "orderedList", content: [item] }],
+          })?.[0]?.text === line
+        )
+          continue;
+        item.content = [
+          line
+            ? { type: "paragraph", content: [{ type: "text", text: line }] }
+            : { type: "paragraph" },
+        ];
+      }
+    }
+  }
+}
 
 /** Every fact id the worksheet's blocks derive from — what `addFact` must not mint again. */
 export function worksheetFactRefs(worksheet: Worksheet | undefined): readonly string[] {

@@ -472,9 +472,9 @@ describe("LessonEditorPage", () => {
         { timeout: 3_000 },
       );
       expect(fakeApi.requests.at(-1)?.body).toEqual({ changedFactIds: ["o1"] });
-      // The impact set (slides 2, 4 and the content slide 5 teaching o1) is busy until the
-      // proposals land.
-      await waitFor(() => expect(document.querySelectorAll("[data-slide-busy]").length).toBe(3));
+      // The impact set (slide 4 and the content slide 5 teaching o1; never the objectives slide,
+      // ruling 96) is busy until the proposals land.
+      await waitFor(() => expect(document.querySelectorAll("[data-slide-busy]").length).toBe(2));
       const source = FakeEventSource.latest;
       expect(source.url).toBe(`/api/jobs/${CASCADE_JOB}/events`);
       act(() => {

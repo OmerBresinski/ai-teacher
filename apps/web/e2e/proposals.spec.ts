@@ -53,10 +53,10 @@ test.describe("facts panel and proposals", () => {
     await objective.fill("Describe the water cycle in order");
     await objective.press("Enter");
 
-    // The cascade lands. Slides 2 and 4 derive from o1; the fixture objectives recipe has no
-    // element in the position of the seeded one, so the worker skips that target (logged) and the
-    // question slide — a whole-slide proposal — is what changes, plus a block on the linked worksheet.
-    const toast = page.getByText("Auto changed on slide 4 and the worksheet to match");
+    // The cascade lands. Slides 4 and 5 derive from o1 (the objectives slide is never re-derived,
+    // ruling 96): the question slide — a whole-slide proposal — and the content slide change, plus
+    // a block on the linked worksheet.
+    const toast = page.getByText("Auto changed on slides 4 and 5 and the worksheet to match");
     await expect(toast).toBeVisible({ timeout: 20_000 });
     const rail = page.getByRole("listbox", { name: "Slides" });
     const question = rail.getByRole("option").nth(3);

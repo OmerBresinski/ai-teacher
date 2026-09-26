@@ -73,7 +73,10 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
     proposals.busy && snap !== null && snap.updated.size > 0 && selectedBox !== undefined;
 
   const [measured, setMeasured] = useState<Measured>({});
-  const wanted = notes.map((n) => keyOf(n.elementId, "line" in n ? n.line : undefined)).join("|");
+  const keys = notes.map((n) => keyOf(n.elementId, "line" in n ? n.line : undefined));
+  // "Updating slides…" sits under the box whose "Update them" was clicked.
+  if (updating && snap) keys.push(keyOf(snap.id));
+  const wanted = [...new Set(keys)].join("|");
   // Reads the rendered list: an external layout read, redone when the slide, the zoom or the set
   // of lines to mark changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `slide` is the trigger — new words re-wrap the lines
@@ -120,7 +123,9 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
       data-objective-notes
       aria-live="polite"
       className="pointer-events-none absolute inset-0"
-      style={{ zIndex: 30 }}
+      // Above the selection layer (1000), so the notes' buttons take the click; the layer itself
+      // lets every other press through.
+      style={{ zIndex: 1001 }}
     >
       {notes.map((note) => {
         const key = keyOf(note.elementId, "line" in note ? note.line : undefined);
@@ -164,19 +169,12 @@ export function ObjectiveNotes({ slide, scale }: { slide: Slide; scale: number }
           </div>
         );
       })}
-      {updating && snap ? (
-        <UpdatingPill anchor={measured[firstKey(notes, snap.id)]} scale={scale} />
-      ) : null}
+      {updating && snap ? <UpdatingPill anchor={measured[keyOf(snap.id)]} scale={scale} /> : null}
     </div>
   );
 }
 
 const EMPTY: ReadonlySet<FactId> = new Set();
-
-function firstKey(notes: ObjectiveNote[], elementId: Id): string {
-  const n = notes.find((x) => x.elementId === elementId && "line" in x);
-  return keyOf(elementId, n && "line" in n ? n.line : undefined);
-}
 
 function NotePill({
   note,
