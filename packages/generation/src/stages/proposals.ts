@@ -1,5 +1,11 @@
 import type { Proposal, ProposalTarget } from "@tj/domain";
-import type { Lesson, SlideElement, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import {
+  type Lesson,
+  outlineIndexOf,
+  type SlideElement,
+  type Worksheet,
+  type WorksheetBlock,
+} from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
   type MaterialiseMeta,
@@ -199,7 +205,7 @@ export async function proposeFor(
     });
     const index = lesson.slides.findIndex((s) => s.id === job.slideId);
     const fresh = materialiseSlide(
-      withImageCaption(call.output, lesson.facts?.outline[index]),
+      withImageCaption(call.output, lesson.facts?.outline[outlineIndexOf(lesson.slides, index)]),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,

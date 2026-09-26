@@ -2,15 +2,18 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import {
   checkLesson,
+  entriesWritten,
   type Finding,
+  isContinuation,
   type Lesson,
   type LessonFacts,
+  outlineIndices,
   type Slide,
   SlideSchema,
 } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
-import { materialiseSlide } from "@tj/slides";
+import { fitSlide, getTheme, materialiseSlide } from "@tj/slides";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import {
   CODE_MODEL,
@@ -1567,6 +1570,88 @@ describe("generate", () => {
     expect(slideCalls[0]?.promptText).toContain("Slide 6 of 10");
     expect(state.lesson.slides).toHaveLength(FIXTURES.planSkeleton.outline.length);
     expect(state.lesson.slides.slice(0, 5)).toEqual(full.lesson.slides.slice(0, 5));
+  });
+
+  describe("a teaching slide too long for one slide continues (UX ruling 91)", () => {
+    // 85 words: a full explanation, as the writer now sets one.
+    const LONG_BODY = [
+      "Everything is made of tiny particles that are far too small to see, even with a microscope.",
+      "How the particles are arranged and how they move decides whether a substance is a solid, a liquid or a gas.",
+      "In a solid the particles are packed close together in a regular pattern and only vibrate.",
+      "Some pupils think the particles themselves melt, but this is wrong.",
+      "Heating gives the particles more energy, so they move further apart.",
+    ].join(" ");
+    const longScript = () =>
+      FIXTURES.planSkeleton.outline
+        .slice(PLANNED_SLIDES)
+        .map((e) =>
+          json(
+            e.kind === "content"
+              ? { ...FIXTURES.slides.content, body: LONG_BODY }
+              : FIXTURES.slides[e.kind],
+          ),
+        );
+    const contentEntries = FIXTURES.planSkeleton.outline.filter((e) => e.kind === "content").length;
+
+    test("materialised as two slides in the stored lesson; one write and one progress event per entry", async () => {
+      const start = await planned();
+      const deps = recordingDeps(createFakeAi({ script: routed(longScript()), usage }));
+      const state = await generate(start, deps);
+      const total = FIXTURES.planSkeleton.outline.length;
+      const { slides } = state.lesson;
+      expect(contentEntries).toBeGreaterThan(0);
+      expect(slides).toHaveLength(total + contentEntries);
+      expect(entriesWritten(slides)).toBe(total);
+      const theme = getTheme(state.lesson.themeId);
+      slides.forEach((slide, i) => {
+        if (slide.kind !== "content") return;
+        expect(fitSlide(slide, theme).overflow).toEqual([]);
+        const continues = isContinuation(slide, slides[i - 1]);
+        // Notes stay on the first slide; the continuation carries the entry's fact references.
+        if (continues) expect(slide.notes).toBeUndefined();
+        else expect(slide.notes).toBe(FIXTURES.slides.content.notes);
+        expect(slide.elements[0]?.generatedFrom?.factRefs).toEqual(
+          FIXTURES.slides.content.factRefs,
+        );
+      });
+      expect(slides.filter((s, i) => isContinuation(s, slides[i - 1]))).toHaveLength(
+        contentEntries,
+      );
+      // Ids are unique across the slides this run wrote (Plan's two came from another supplier).
+      const ids = slides
+        .slice(PLANNED_SLIDES)
+        .flatMap((s) => [s.id, ...s.elements.map((e) => e.id)]);
+      expect(new Set(ids).size).toBe(ids.length);
+      // Each write covers one more entry (a continuation lands with its first slide), in order.
+      expect(deps.persisted.map((p) => entriesWritten(p.lesson.slides))).toEqual([
+        3, 4, 5, 6, 7, 8, 9, 10, 10,
+      ]);
+      expect(
+        deps.progress.filter((p) => p.message.startsWith("Slide ")).map((p) => p.message),
+      ).toEqual(Array.from({ length: total - PLANNED_SLIDES }, (_, k) => `Slide ${k + 3} of 10`));
+      expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
+    });
+
+    test("a resumed run counts entries, not slides", async () => {
+      const start = await planned();
+      const full = await generate(
+        start,
+        recordingDeps(createFakeAi({ script: routed(longScript()), usage })),
+      );
+      const entryOf = outlineIndices(full.lesson.slides);
+      const cut = entryOf.indexOf(5);
+      const partial = {
+        ...start,
+        lesson: { ...start.lesson, slides: full.lesson.slides.slice(0, cut) },
+      };
+      expect(entriesWritten(partial.lesson.slides)).toBe(5);
+      const ai = createFakeAi({ script: routed(longScript().slice(3)), usage });
+      const state = await generate(partial, recordingDeps(ai));
+      expect(ai.calls).toHaveLength(FIXTURES.planSkeleton.outline.length - 5);
+      expect(ai.calls[0]?.promptText).toContain("Slide 6 of 10");
+      expect(entriesWritten(state.lesson.slides)).toBe(FIXTURES.planSkeleton.outline.length);
+      expect(state.lesson.slides).toHaveLength(full.lesson.slides.length);
+    });
   });
 });
 

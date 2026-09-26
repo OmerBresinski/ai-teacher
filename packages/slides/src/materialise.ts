@@ -47,6 +47,7 @@ import {
   BODY_NAME,
   BULLET_NAME,
   COMPARE_NAME,
+  continueParagraph,
   ITEM_NAME,
   LEAD_NAME,
   type SlideStructure,
@@ -95,6 +96,36 @@ export function materialiseSlide(
   variant: number | string = 0,
   structure: SlideStructure = {},
 ): Slide {
+  return materialisePages(spec, themeId, meta, ids, variant, structure, false)[0] as Slide;
+}
+
+/**
+ * `materialiseSlide` as every slide the words need, for generation (UX ruling 91): a teaching
+ * slide whose text does not fit at or above the body floor continues on the next slide, split at a
+ * sentence (a list after its lead and first points), its heading marked "(continued)". The notes
+ * stay on the first slide; every slide carries the spec's fact references. Any other kind is the
+ * one slide `materialiseSlide` makes.
+ */
+export function materialiseSlides(
+  spec: SlideSpec,
+  themeId: string,
+  meta: MaterialiseMeta,
+  ids: IdSupplier = uid,
+  variant: number | string = 0,
+  structure: SlideStructure = {},
+): Slide[] {
+  return materialisePages(spec, themeId, meta, ids, variant, structure, spec.kind === "content");
+}
+
+function materialisePages(
+  spec: SlideSpec,
+  themeId: string,
+  meta: MaterialiseMeta,
+  ids: IdSupplier,
+  variant: number | string,
+  structure: SlideStructure,
+  pages: boolean,
+): Slide[] {
   // The shape the writer filled wins over what the words suggest (`content-shapes.ts`).
   structure = withShapeHints(spec, structure);
   // A slide with a diagram instruction is always laid out `headed`: the slot takes the right half,
@@ -115,8 +146,12 @@ export function materialiseSlide(
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
-  const fitted = lookAndFit(slide, getTheme(themeId), ids, structure);
-  return { ...fitted, elements: fitted.elements.map((element) => stampElement(element, stamp)) };
+  const fitted = lookAndFitPages(slide, getTheme(themeId), ids, structure, { pages });
+  const out = pages ? fitted : fitted.slice(0, 1);
+  return out.map((page) => ({
+    ...page,
+    elements: page.elements.map((element) => stampElement(element, stamp)),
+  }));
 }
 
 /**
@@ -137,14 +172,20 @@ export function lookAndFitPages(
   // the fitted look.
   const looked = fitSlide(applyLook(slide, theme, ids), theme).slide;
   const pages = structureSlide(looked, theme, structure, ids, options);
-  const done = pages.map((page) => {
+  const done = pages.flatMap((page) => {
     const looked = fitSlide(page, theme);
     const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
-    if (!split || looked.overflow.length === 0) return looked.slide;
-    return fitSlide(
+    if (!split || looked.overflow.length === 0) return [looked.slide];
+    const paragraph = fitSlide(
       withTerms(applyLook(slide, theme, ids, { lead: false }), theme, structure.terms),
       theme,
     ).slide;
+    // With pages, a paragraph that still overruns at the floor continues (UX ruling 91).
+    return options.pages === false || pages.length > 1
+      ? [paragraph]
+      : continueParagraph(paragraph, theme, ids, structure.terms).map(
+          (p) => fitSlide(p, theme).slide,
+        );
   });
   // The top line (year, subject, the counter drawn at render time) when the deck is known.
   return structure.deck ? withDeckChrome(done, theme, structure.deck, ids) : done;

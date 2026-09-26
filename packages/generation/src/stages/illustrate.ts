@@ -1,4 +1,11 @@
-import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
+import {
+  type Finding,
+  type ImageBrief,
+  type Lesson,
+  outlineIndices,
+  type PhotoSource,
+  type SlideElement,
+} from "@tj/domain/documents";
 import {
   isBlockedQuery,
   normaliseQuery,
@@ -161,10 +168,13 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     );
   };
   let busy = false;
+  // A continuation slide (UX ruling 91) shares its outline entry with the slide before it.
+  const entryOf = outlineIndices(lesson.slides);
   for (let index = 0; index < lesson.slides.length; index++) {
     throwIfAborted(deps.signal);
     const slide = lesson.slides[index];
-    const brief = outline[index]?.imageBrief;
+    const entry = entryOf[index] ?? index;
+    const brief = outline[entry]?.imageBrief;
     if (slide?.kind !== "image-text" || !brief) continue;
     const target = slide.elements.find(
       (element) => element.type === "image" && element.src === PLACEHOLDER_IMAGE,
@@ -179,7 +189,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
     }
     let placed: PlaceOutcome;
     try {
-      placed = await placeOne({ lesson, slide, brief, images, deps, index });
+      placed = await placeOne({ lesson, slide, brief, images, deps, index: entry });
     } catch (error) {
       if (error instanceof BudgetExceeded) {
         deps.logger.info({ stage: "illustrate", slideIndex: index }, "illustrate budget stop");
@@ -264,6 +274,7 @@ type PlaceArgs = {
   brief: ImageBrief;
   images: PhotoPlacer;
   deps: PipelineDeps;
+  /** The outline entry (a continuation slide shares its entry with the slide before it). */
   index: number;
 };
 

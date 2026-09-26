@@ -10,7 +10,7 @@ import type {
   TextStyle,
   Theme,
 } from "@tj/domain/documents";
-import { docFromText, uid } from "./factories";
+import { docFromBullets, docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, snapY } from "./grid";
 import { accentTint } from "./look";
@@ -1208,7 +1208,12 @@ function structureContent(
     if (split) return [split];
   }
   if (!s.compare && !s.keyCard && !s.sequence) {
-    return paginate ? (splitParagraph(slide, bodies, t, ids, hints.terms) ?? plain) : plain;
+    if (!paginate) return plain;
+    return (
+      (points.length ? splitList(slide, bodies, t, hints, ids) : undefined) ??
+      splitParagraph(slide, bodies, t, ids, hints.terms) ??
+      plain
+    );
   }
 
   const measure = measureHeadless(t);
@@ -1368,15 +1373,113 @@ function splitParagraph(
     };
   };
   const keep = slide.elements.filter((e) => e !== body);
-  const next = continued(slide, chromeOf(slide), [part(joinSentences(all.slice(n)), body.y)], ids);
+  const tail = part(joinSentences(all.slice(n)), body.y);
+  const next = continued(slide, chromeOf(slide), [tail], ids);
   return [
     withTerms(
       { ...slide, elements: [...keep, part(joinSentences(all.slice(0, n)), body.y)] },
       t,
       terms,
     ),
-    withTerms(next, t, terms),
+    ...continuedAgain(next, tail, t, ids, terms),
   ];
+}
+
+/**
+ * A continuation whose words still overrun at the floor continues again, a sentence boundary at a
+ * time, so no page of a long explanation runs off the slide (UX ruling 91).
+ */
+function continuedAgain(
+  next: Slide,
+  body: TextElement,
+  t: Theme,
+  ids: Ids,
+  terms?: string[],
+): Slide[] {
+  const fitted = fitSlide(next, t).slide;
+  const fittedBody = fitted.elements.find((e) => e.id === body.id) as TextElement | undefined;
+  return (
+    (fittedBody && splitParagraph(fitted, [fittedBody], t, ids, terms)) ?? [
+      withTerms(next, t, terms),
+    ]
+  );
+}
+
+/**
+ * A teaching slide set as one paragraph that still overruns at the floor, as every slide it needs
+ * (UX ruling 91): the sentences that fit stay, the rest continue. The slide as it is when it fits,
+ * or when it is not one paragraph under a heading.
+ */
+export function continueParagraph(
+  slide: Slide,
+  t: Theme,
+  ids: Ids = uid,
+  terms?: string[],
+): Slide[] {
+  const bodies = slide.elements.filter(
+    (e): e is TextElement =>
+      isText(e) &&
+      e.style.preset === "body" &&
+      (!e.name || e.name === LEAD_CARD || e.name === BODY_NAME),
+  );
+  if (slide.kind !== "content" || !headingOf(slide)) return [slide];
+  return splitParagraph(slide, bodies, t, ids, terms) ?? [slide];
+}
+
+/**
+ * A written list too long for the slide at the floor, kept a list (UX ruling 91): the lead and the
+ * first points that fit stay, the remaining points continue on the next slide as a list of their
+ * own. `undefined` when no split keeps both slides within the safe area.
+ */
+function splitList(
+  slide: Slide,
+  bodies: TextElement[],
+  t: Theme,
+  hints: SlideStructure,
+  ids: Ids,
+): Slide[] | undefined {
+  if (bodies.length !== 1 || fitSlide(slide, t).overflow.length === 0) return undefined;
+  const body = bodies[0] as TextElement;
+  const points = pointsOf(body.doc);
+  if (points.length < 3) return undefined;
+  const lead = docText(proseOf(body.doc));
+  const withList = (s: Slide, from: TextElement, words: string, items: string[]): Slide => ({
+    ...s,
+    elements: s.elements.map((e) =>
+      e.id === from.id ? { ...from, doc: listDoc(words, items), name: undefined } : e,
+    ),
+  });
+  const clear = (pages: Slide[]) =>
+    pages.length === 1 && fitSlide(pages[0] as Slide, t).overflow.length === 0;
+  // The most points the first slide keeps, and never fewer than two on either slide.
+  for (let k = points.length - 2; k >= 2; k--) {
+    const head = structureContent(
+      withList(slide, body, lead, points.slice(0, k)),
+      t,
+      { ...hints, points: points.slice(0, k) },
+      ids,
+      false,
+    );
+    if (!clear(head)) continue;
+    const carried: TextElement = { ...body, id: ids() };
+    const next = continued(slide, chromeOf(slide), [carried], ids);
+    const tail = structureContent(
+      withList(next, carried, "", points.slice(k)),
+      t,
+      { ...hints, points: points.slice(k) },
+      ids,
+      false,
+    );
+    if (!clear(tail)) continue;
+    return [...head, ...tail];
+  }
+  return undefined;
+}
+
+/** A lead paragraph (when there is one) and its points as one bullet list. */
+function listDoc(lead: string, items: string[]): RichDoc {
+  const prose = lead.trim() ? (docFromText(lead).content ?? []) : [];
+  return { type: "doc", content: [...prose, ...(docFromBullets(items).content ?? [])] };
 }
 
 const DIAGRAM_SLOT = "Diagram placeholder";
@@ -1484,15 +1587,11 @@ function structureDiagram(
     n--;
   }
   const beside = para(joinSentences(all.slice(0, n)), floor, w);
-  const next = continued(
-    slide,
-    chromeOf(slide),
-    [para(joinSentences(all.slice(n)), body, SAFE.w)],
-    ids,
-  );
+  const tail = para(joinSentences(all.slice(n)), body, SAFE.w);
+  const next = continued(slide, chromeOf(slide), [tail], ids);
   return [
     withTerms({ ...slide, elements: [...keep, beside, placedSlot] }, t, hints.terms),
-    withTerms(next, t, hints.terms),
+    ...continuedAgain(next, tail, t, ids, hints.terms),
   ];
 }
 

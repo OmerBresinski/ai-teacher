@@ -1,4 +1,11 @@
-import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
+import {
+  checkLesson,
+  FACT_ARRAYS,
+  type Finding,
+  type LessonFacts,
+  outlineIndexOf,
+  outlineIndices,
+} from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS, SPEC_RULE_CHECK } from "../call";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { isCodeBuilt, isRetrievalStarter } from "../planner/coded-slides";
@@ -79,7 +86,8 @@ export function knownTargetsWithEvidence(
 function imageFitAsError(finding: Finding, state: PipelineState): Finding {
   if (finding.check !== "image-fit" || finding.target.slideId === undefined) return finding;
   const index = state.lesson.slides.findIndex((s) => s.id === finding.target.slideId);
-  const purpose = state.lesson.facts?.outline[index]?.imageBrief?.purpose;
+  const entry = outlineIndexOf(state.lesson.slides, index);
+  const purpose = state.lesson.facts?.outline[entry]?.imageBrief?.purpose;
   if (purpose !== "identify-parts" && purpose !== "observe") return finding;
   return { ...finding, severity: "error", fix: { kind: "regenerate-slide" } };
 }
@@ -96,12 +104,13 @@ export function numericAsErrors(state: PipelineState): Finding[] {
   const facts = state.lesson.facts;
   if (!facts) return [];
   const out: Finding[] = [];
+  const entryOf = outlineIndices(state.lesson.slides);
   for (const m of numericFactMismatches(facts)) {
     // Lab r4: the retrieval starter carries its entry's refs but prints none of them.
     const citing = state.lesson.slides.filter(
       (slide, i) =>
         !isRetrievalStarter(slide, facts) &&
-        (facts.outline[i]?.factRefs.includes(m.factId) ||
+        (facts.outline[entryOf[i] ?? -1]?.factRefs.includes(m.factId) ||
           slide.elements.some((e) => e.generatedFrom?.factRefs.includes(m.factId))),
     );
     if (citing.length === 0) {
