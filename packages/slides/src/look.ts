@@ -22,8 +22,8 @@ import { measureHeadless } from "./text-measure";
  * idempotent: a slide that already carries a kind tag or an accent bar is returned untouched.
  */
 
-/** The version of the look. A stored lesson whose `lookVersion` is behind can be restyled. */
-export const LOOK_VERSION = 1;
+/** The version of the look (2: the structured components, `structure.ts`). A stored lesson whose `lookVersion` is behind can be restyled. */
+export const LOOK_VERSION = 2;
 
 export const KIND_TAG_NAME = "Kind tag";
 export const ACCENT_BAR_NAME = "Accent bar";

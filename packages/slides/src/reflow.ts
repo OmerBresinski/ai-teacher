@@ -188,9 +188,22 @@ export function isFootBand(el: SlideElement): boolean {
  */
 export const HEADING_NAME = "Heading";
 
+/**
+ * The answers card a question set reveals (`structure.ts`): anchored to the foot and laid over the
+ * questions on reveal, so it is never part of the flow. Were it one, the words above growing would
+ * push it off the slide and step the questions' type down while it is still hidden.
+ */
+export const ANSWERS_NAME = "Answers";
+
 /** Never repositioned by the engine (SPEC: images and locked elements stay put). */
 export function isFrozen(el: SlideElement): boolean {
-  return !!el.locked || el.type === "image" || !!el.rotation || isBackdrop(el);
+  return (
+    !!el.locked ||
+    el.type === "image" ||
+    !!el.rotation ||
+    isBackdrop(el) ||
+    (el.type === "shape" && el.name === ANSWERS_NAME)
+  );
 }
 
 /** The text carried by an element, plus the chrome its renderer draws around it. */

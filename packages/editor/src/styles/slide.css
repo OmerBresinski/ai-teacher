@@ -118,6 +118,20 @@
   font-weight: 700;
 }
 
+/*
+ * A key term (`@tj/slides` structure.ts `markTerms`): bold in a colour, drawn as a tinted chip.
+ * Bold and colour are the toolbar's own marks, so a teacher removes the chip like any formatting.
+ * The chip's inset is negative margin, so the words measure and wrap as plain bold does.
+ */
+.td-rt strong > span[style*="color"] {
+  background: color-mix(in srgb, currentColor 13%, transparent);
+  border-radius: 0.28em;
+  padding: 0.02em 0.2em;
+  margin: 0 -0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .td-rt em,
 .td-rt i {
   font-style: italic;

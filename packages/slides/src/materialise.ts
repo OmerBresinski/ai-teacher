@@ -27,6 +27,7 @@ import {
 } from "./layouts";
 import { applyLook, KEY_IDEA_NAME, withDiagramSlot } from "./look";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
+import { type SlideStructure, structureSlide, withTerms } from "./structure";
 import { getTheme } from "./themes";
 
 /*
@@ -66,6 +67,7 @@ export function materialiseSlide(
   meta: MaterialiseMeta,
   ids: IdSupplier = uid,
   variant: number | string = 0,
+  structure: SlideStructure = {},
 ): Slide {
   const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
   const filled = fillSlide(spec, themeId, laid, ids, variant);
@@ -77,20 +79,50 @@ export function materialiseSlide(
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
-  const fitted = lookAndFit(slide, getTheme(themeId), ids);
+  const fitted = lookAndFit(slide, getTheme(themeId), ids, structure);
   return { ...fitted, elements: fitted.elements.map((element) => stampElement(element, stamp)) };
 }
 
 /**
- * The lesson look (`look.ts`), then the fit. A teaching slide whose lead and card still overrun at
- * the floor is set as one paragraph instead, which keeps the room the card's inset would take;
- * whatever overruns then is the fit engine's to report or carry over (UX ruling 91).
+ * The lesson look (`look.ts`), the structured components (`structure.ts`), then the fit, as every
+ * page the slide needs: a question set too long for one slide at the body size continues on the
+ * next (UX ruling 91). A teaching slide whose lead and card still overrun at the floor is set as
+ * one paragraph instead, which keeps the room the card's inset would take; whatever overruns then
+ * is the fit engine's to report or carry over.
  */
-export function lookAndFit(slide: Slide, theme: Theme, ids: IdSupplier = uid): Slide {
-  const looked = fitSlide(applyLook(slide, theme, ids), theme);
-  const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
-  if (!split || looked.overflow.length === 0) return looked.slide;
-  return fitSlide(applyLook(slide, theme, ids, { lead: false }), theme).slide;
+export function lookAndFitPages(
+  slide: Slide,
+  theme: Theme,
+  ids: IdSupplier = uid,
+  structure: SlideStructure = {},
+  options: { pages?: boolean } = { pages: true },
+): Slide[] {
+  // The structure pass places its components under the heading as the fit sets it, so it runs on
+  // the fitted look.
+  const looked = fitSlide(applyLook(slide, theme, ids), theme).slide;
+  const pages = structureSlide(looked, theme, structure, ids, options);
+  return pages.map((page) => {
+    const looked = fitSlide(page, theme);
+    const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
+    if (!split || looked.overflow.length === 0) return looked.slide;
+    return fitSlide(
+      withTerms(applyLook(slide, theme, ids, { lead: false }), theme, structure.terms),
+      theme,
+    ).slide;
+  });
+}
+
+/**
+ * `lookAndFitPages` for one slide (a generated slide is one slide): a set that would need a second
+ * keeps its list, its answers on the panel, for the editor's Tidy to continue (UX ruling 91).
+ */
+export function lookAndFit(
+  slide: Slide,
+  theme: Theme,
+  ids: IdSupplier = uid,
+  structure: SlideStructure = {},
+): Slide {
+  return lookAndFitPages(slide, theme, ids, structure, { pages: false })[0] as Slide;
 }
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };
