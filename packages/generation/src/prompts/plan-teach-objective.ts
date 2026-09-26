@@ -1,5 +1,6 @@
-import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
+import { CONTENT_SHAPES, editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
+import { DIAGRAM_TYPES } from "./generate-slide";
 import {
   carriesWorkedExample,
   type PlanFactsObjectiveInput,
@@ -50,6 +51,14 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * v4 (26 Sept 2026, look/shape-prompt; look GENERATION-RESULTS-3.md open item 1): the slide writer
+ * put `points` on 1 of 13 slides, because inside one slide it cannot tell a set from a claim. This
+ * call, which writes the idea, now also says how its slide sets it out: a required `shape`
+ * (`@tj/slides` CONTENT_SHAPES), decided from what the idea is, and an optional `visual`, the
+ * drawing instruction the slide writer's v28 `diagram` gate used to decide (same types and
+ * trigger, moved here so the drawing is planned with the idea it shows). `visual` is left out of
+ * the sketch on purpose, as `misconceptionRef` is, so it is not filled every time.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -95,6 +104,8 @@ const keyIdeaSchema = (line: Line) =>
     explanation: line(SPEC_LIMITS.body),
     example: line(SPEC_LIMITS.body),
     analogy: line(SPEC_LIMITS.item).optional(),
+    shape: z.enum(CONTENT_SHAPES),
+    visual: line(SPEC_LIMITS.diagram).optional(),
   });
 
 const misconceptionSchema = (line: Line) =>
@@ -178,14 +189,14 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
-  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
+  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…","shape":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v3",
+  version: "plan-teach-objective.v4",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -197,6 +208,8 @@ export const planTeachObjectivePrompt = {
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
+    'A key idea\'s "shape" is how its slide sets it out, from what the idea is: "list" for a set of parallel parts, factors, features or types; "compare" for two things contrasted; "sequence" for a process or method in order; otherwise "explain".',
+    `Give a key idea a "visual" when a drawing shows what the words cannot (the parts of a structure, stages in order or round a cycle, two things side by side, a bar model, a value changing on a graph or number line): its type and a colon (${DIAGRAM_TYPES.join(", ").replace(/, ([^,]+)$/, " or $1")}), then the labels in order and what connects them, in the idea's words: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise". Leave it out when a drawing would only put the idea's words in boxes.`,
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
     'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',

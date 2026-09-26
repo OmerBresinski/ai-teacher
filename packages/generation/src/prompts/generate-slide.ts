@@ -1,5 +1,11 @@
 import type { ImagePurpose, LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
-import { SPEC_LIMITS } from "@tj/slides";
+import {
+  CONTENT_BUDGETS,
+  CONTENT_SHAPES,
+  type ContentShape,
+  type SlotBudget,
+  SPEC_LIMITS,
+} from "@tj/slides";
 import {
   type Audience,
   audienceBlock,
@@ -118,6 +124,17 @@ import {
  * "a set of parallel things" gave 0 of 13 on a re-run: every idea reads as a claim. It is now a
  * test on the text, "the lead names three or more things of one kind", with the body then the lead
  * alone (no duplicate list), and each point says a few words on its thing, not a bare noun.
+ *
+ * v31 (26 Sept 2026, look/shape-prompt, `quality-prd/look/GENERATION-RESULTS-4.md`): the writer
+ * no longer decides a content slide's shape or drawing. The plan's teach call (v4) tags each key
+ * idea with a `shape` and an optional `visual`; the slide line names this slide's shape and only
+ * that shape's fields, their word budgets read from `CONTENT_BUDGETS` (`@tj/slides`, measured per
+ * composition), and code keeps only those fields and sets `diagram` from the plan
+ * (`withPlannedShape`). The v30 `points` gate and the v28 diagram gate leave the system text; the
+ * diagram types stay here for `keptDiagram`. A slide with two key ideas is an explain slide. A
+ * vocabulary term on a content slide is shown with its definition in the side panel
+ * (`structure.ts` glossary), so the body uses the term without defining it (Tempest 04 and
+ * photosynthesis 08 said the definition twice).
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -211,6 +228,97 @@ export function photoBlock(photo: SlidePhoto | "none"): string[] {
 export const IMAGE_TEXT_RULE =
   "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.";
 
+/** What the plan says a content slide sets out (`plannedShapeOf`). */
+export type PlannedShape = { shape: ContentShape; ideas: number; visual?: string | undefined };
+
+const isContentShape = (value: unknown): value is ContentShape =>
+  (CONTENT_SHAPES as readonly unknown[]).includes(value);
+
+/**
+ * v31: a content slide's shape and drawing, from the key ideas it covers. One key idea: its own
+ * shape (explain when the facts were planned without one). Two: explain, one paragraph each. The
+ * drawing is the first `visual` among them. Undefined for every other kind.
+ */
+export function plannedShapeOf(
+  referenced: LessonFacts,
+  entry: OutlineEntry,
+): PlannedShape | undefined {
+  if (entry.kind !== "content") return undefined;
+  const ideas = (referenced.keyIdeas ?? []).filter((k) => entry.factRefs.includes(k.id));
+  const own = ideas[0]?.shape;
+  const visual = ideas.find((k) => k.visual)?.visual;
+  return {
+    shape: ideas.length === 1 && isContentShape(own) ? own : "explain",
+    ideas: ideas.length,
+    ...(visual ? { visual } : {}),
+  };
+}
+
+/** The field each shape adds to the lead; explain adds none. */
+const SHAPE_FIELD = {
+  explain: undefined,
+  list: "points",
+  compare: "compare",
+  sequence: "steps",
+} as const;
+const SHAPE_FIELDS = ["points", "compare", "steps"] as const;
+
+const budget = (slot: SlotBudget | undefined, name: string): SlotBudget => {
+  if (!slot) throw new Error(`CONTENT_BUDGETS has no "${name}" slot`);
+  return slot;
+};
+const words = (slot: SlotBudget) => `≤ ${slot.max} words`;
+const members = (slot: SlotBudget) =>
+  `${slot.count ? `${slot.count[0]}–${slot.count[1]} strings` : "strings"}, each ${words(slot)}`;
+
+/** v31: the slide line naming this content slide's shape and the fields it fills. */
+export function shapeLine(planned: PlannedShape): string {
+  const b = CONTENT_BUDGETS[planned.shape];
+  const heading = `"heading" (a label, ${words(b.heading)})`;
+  const lead = `"body" (the lead alone: one sentence, ${words(b.lead)})`;
+  const fields = (() => {
+    switch (planned.shape) {
+      case "list":
+        return `${lead} and "points" (${members(budget(b.points, "points"))}: one member of the set each, with a few words on it)`;
+      case "compare": {
+        const side = `{ "label" (${words(budget(b.side, "side"))}), "points" [${members(budget(b.sidePoints, "sidePoints"))}] }`;
+        return `${lead} and "compare" ({ "left": ${side}, "right": the same })`;
+      }
+      case "sequence":
+        return `${lead} and "steps" (${members(budget(b.steps, "steps"))}, in order)`;
+      default: {
+        const body = budget(b.body, "body");
+        return planned.ideas > 1
+          ? `"body" (two short paragraphs, one per key idea, each opening with its idea; ${words(body)} in all)`
+          : `"body" (${words(body)}: the lead, ${words(b.lead)}, then the reason it holds and one example)`;
+      }
+    }
+  })();
+  return `Shape: ${planned.shape}. Fill exactly these content fields: ${heading}, ${fields}.`;
+}
+
+/**
+ * v31: a content spec cut to its planned shape: the other shapes' fields removed, `diagram` the
+ * plan's visual (typed, `keptDiagram`) or none. `filled` says whether the writer gave the shape's
+ * own field; `extra` names the fields it added that the shape does not have.
+ */
+export function withPlannedShape<T extends { kind: string }>(
+  spec: T,
+  planned: PlannedShape | undefined,
+): { spec: T; filled: boolean; extra: string[] } {
+  if (spec.kind !== "content" || planned === undefined) return { spec, filled: true, extra: [] };
+  const own = SHAPE_FIELD[planned.shape];
+  const record = spec as Record<string, unknown>;
+  const extra = SHAPE_FIELDS.filter((f) => f !== own && record[f] !== undefined);
+  const dropped = new Set<string>(["diagram", ...SHAPE_FIELDS.filter((f) => f !== own)]);
+  const kept = Object.fromEntries(Object.entries(record).filter(([key]) => !dropped.has(key)));
+  const withVisual = keptDiagram({
+    ...kept,
+    ...(planned.visual ? { diagram: planned.visual } : {}),
+  } as unknown as T & { diagram?: string });
+  return { spec: withVisual as T, filled: own === undefined || record[own] !== undefined, extra };
+}
+
 const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
   objectives: '{ "kind": "objectives", "items": [1–4 strings], "factRefs", "notes"? }',
@@ -219,7 +327,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading" (2–5 words), "body" (≤ 30 words, its first sentence ≤ 20; ≤ 45 with two key ideas), "points"? [2–4 strings, each ≤ 8 words], "diagram"? (≤ 25 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body", then "points" [strings], "compare": { "left": { "label", "points" }, "right": { "label", "points" } } or "steps" [strings] as the slide line says, "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 30 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
@@ -283,15 +391,14 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    'Follow the supplied objective verb. A content slide\'s `heading` is a label naming the idea ("The water cycle", "Types of volcano"); the claim goes in the body\'s first sentence, the lead, in words a pupil could copy down. When the lead names three or more things of one kind (factors, parts, features, types, changes), the body is the lead alone and `points` gives each one with a few words on it; otherwise leave `points` out and follow the lead with the reason it holds and one example, in short sentences. With two key ideas, teach both: the heading names what joins them, the body is two short paragraphs, one per idea, each opening with its idea. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.',
-    '`diagram` is "none" or an instruction for a drawing beside the body. Write one when the drawing shows what the words cannot: where the parts of a structure are, stages in order or round a cycle, two things side by side, a bar model, or how a value changes on a graph or number line. Write "none" when the body is a definition, a word equation or formula, an event, a quotation or a judgement, or when a drawing would only put the body\'s sentences or points in boxes. Start with its type and a colon (Sequence, Cycle, Parts, Comparison, Bar model, Graph or Number line), then the parts or labels in order and what connects them (arrows, axes), in the body\'s words, few enough for the year group: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise".',
+    'Follow the supplied objective verb. A content slide\'s `heading` is a label naming the idea ("The water cycle", "Types of volcano"); the claim goes in the body\'s first sentence, the lead, in words a pupil could copy down. The slide line gives the slide\'s shape and the fields that shape fills. With two key ideas, the heading names what joins them. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.',
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
@@ -372,7 +479,9 @@ export const generateSlidePrompt = {
         `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
       );
     }
-    const misconceptions = ownMisconceptions(input);
+    const planned = plannedShapeOf(input.referenced, input.entry);
+    if (planned) parts.push(shapeLine(planned));
+    const misconceptions = planned && planned.shape !== "explain" ? [] : ownMisconceptions(input);
     if (misconceptions.length > 0) {
       parts.push(
         `Its misconception (${misconceptions.join(", ")}): end the body with one sentence on what some pupils think and why it is wrong.`,
@@ -384,7 +493,11 @@ export const generateSlidePrompt = {
         `This theme shows at most ${input.vocabularySlots} vocabulary entries. When there are more terms than that, keep every term another shown definition uses, then the terms the objectives name; put the rest in \`notes\` with their definitions.`,
       );
     }
-    if (input.entry.kind !== "vocabulary" && input.referenced.vocabulary.length > 0) {
+    if (input.entry.kind === "content" && input.referenced.vocabulary.length > 0) {
+      parts.push(
+        "The side panel shows a vocabulary term's definition beside the body: use the term without defining it.",
+      );
+    } else if (input.entry.kind !== "vocabulary" && input.referenced.vocabulary.length > 0) {
       parts.push(
         "Define each vocabulary term in a few words where the slide first uses it, or in `notes` if that will not fit.",
       );

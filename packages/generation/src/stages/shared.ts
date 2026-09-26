@@ -9,7 +9,7 @@ import {
   type Slide,
   yearNumberOf,
 } from "@tj/domain/documents";
-import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
+import { COMPARE_NAME, type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
 import { type LessonShape, lessonShapeOf } from "../shapes";
 import type { PipelineDeps } from "../types";
@@ -167,7 +167,33 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
       ? slide.question.options.filter((o) => o.correct).map((o) => o.id)
       : [],
   );
+  // A content slide's compare cards (`@tj/slides` compareCards): each card, then its label
+  // (caption) and its points (body), reach Repair as `compare.left.*` / `compare.right.*`.
+  let side: "left" | "right" | undefined;
+  let sideLabelled = false;
   for (const element of slide.elements) {
+    if (slide.kind === "content" && element.name === COMPARE_NAME) {
+      side = side === undefined ? "left" : "right";
+      sideLabelled = false;
+      continue;
+    }
+    if (element.type === "text" && side !== undefined) {
+      const text = richDocToPlainText(element.doc).trim();
+      if (!sideLabelled && element.style?.preset === "caption") {
+        sideLabelled = true;
+        if (text) out.push({ field: `compare.${side}.label`, text });
+        continue;
+      }
+      if (sideLabelled && element.style?.preset === "body") {
+        const lines = text
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length > 0) out.push({ field: `compare.${side}.points`, text: lines.join("\n") });
+        if (side === "right") side = undefined;
+        continue;
+      }
+    }
     if (element.type === "text") {
       const preset = element.style?.preset;
       if (preset === "caption") continue;
