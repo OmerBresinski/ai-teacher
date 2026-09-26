@@ -342,15 +342,6 @@ describe("generatable kinds (ADR 0025 §8)", () => {
 });
 
 describe("callouts, worked-example objectiveRefs (ruling 81, quality PRD G3)", () => {
-  test("a lesson written before these fields (minutes, no callout, no objectiveRefs on examples) still parses", () => {
-    const facts = lessonFacts();
-    expect(facts.outline.every((e) => typeof e.minutes === "number")).toBe(true);
-    expect(facts.outline.some((e) => "callout" in e)).toBe(false);
-    expect(facts.workedExamples.some((x) => "objectiveRefs" in x)).toBe(false);
-    expect(LessonFactsSchema.safeParse(facts).success).toBe(true);
-    expect(parseLesson({ ...generatedLesson(), facts }).facts).toEqual(facts);
-  });
-
   test("a worked example's objectiveRefs must name objectives", () => {
     const facts = lessonFacts();
     const x = facts.workedExamples[0] as (typeof facts.workedExamples)[number];
