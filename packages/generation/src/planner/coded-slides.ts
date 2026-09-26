@@ -5,6 +5,7 @@ import type {
   OutlineEntry,
   Slide,
 } from "@tj/domain/documents";
+import { asksForUnlistedOptions } from "@tj/domain/documents";
 import type { SlideSpec } from "@tj/slides";
 
 /*
@@ -275,6 +276,9 @@ export function codedSetSpec(
     const q = questions.get(ref);
     const m = misconceptions.get(ref);
     if (q) {
+      // A stem that asks pupils to choose from options it does not list is left off; `asked`
+      // counts printed questions only, so a check slide left with none is the model's.
+      if (asksForUnlistedOptions(q)) continue;
       asked += 1;
       lines.push({ ...questionLine(q, `${seed}:${ref}`), ref });
     } else if (m && entry.kind !== "starter") lines.push(misconceptionLine(m));

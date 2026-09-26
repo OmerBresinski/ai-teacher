@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   allDistinct,
+  asksForUnlistedOptions,
   decodeEntities,
   hasLeakedPupilPhrase,
   hasLeakedRepairPhrase,
@@ -93,5 +94,50 @@ describe("normaliseText keeps maths (lab round 1, cb-y5-fractions-P)", () => {
     expect(normaliseText("A well-known fact.")).toBe("a well known fact");
     expect(normaliseText("It is 2.5 m.")).toBe("it is 2.5 m");
     expect(allDistinct(["24", "24."])).toBe(false);
+  });
+});
+
+describe("asksForUnlistedOptions (rivers, 25 Sep)", () => {
+  const none = { distractors: [] };
+  const three = { distractors: [{ text: "a" }, { text: "b" }, { text: "c" }] };
+  test.each([
+    ["Which of the following new housing plans would most reduce flood risk?", none, true],
+    ["Which ONE of the following is a mammal?", {}, true],
+    ["Choose from the options below the best definition of erosion.", none, true],
+    ["Choose from: igneous, sedimentary or metamorphic.", none, false],
+    ["Select the correct definition of photosynthesis.", none, true],
+    ["Choose the best word to describe Prospero.", none, true],
+    ["Which of these is a renewable energy source?", none, true],
+    ["Pick one from these and explain your choice.", none, true],
+    ["Which statement below is true?", none, true],
+    ["Tick the true statements.", none, true],
+    ["Which is the odd one out?", none, true],
+    ["Which of the following is a mammal?", { distractors: [{ text: "shark" }] }, true],
+    // Options are listed: three distractors, options, or in the stem itself.
+    ["Which of the following new housing plans would most reduce flood risk?", three, false],
+    ["Which of these is a mammal?", { options: ["shark", "dolphin"] }, false],
+    ["Which of these is a mammal: shark, dolphin or trout?", none, false],
+    ["Which of the following is a prime number? A) 4 B) 7 C) 9", none, false],
+    ["Why might they choose Britain? A For its materials  B Because it was close", none, false],
+    ["Select the correct word (erosion / deposition) for the process.", none, false],
+    // Open questions that expect no options.
+    ["Which city is the capital of France?", none, false],
+    ["Which vessel carries blood away from the heart?", none, false],
+    ["What is the value of x in the equation below?", none, false],
+    ["Explain how these conditions could cause the river to overflow its banks.", none, false],
+    ["State two examples of the following adaptations found in desert plants.", none, false],
+    ["Give one example of the following process: photosynthesis.", none, false],
+    ["Name one advantage of the following method.", none, false],
+    ["Explain why the answers below are incorrect for this method statement.", none, false],
+    ["Which two of the following are metals?", none, true],
+    ["Which of the statements below is true?", none, true],
+    ["Choose one from the following and explain why.", none, true],
+    ["Why might the Romans choose Britain?", none, false],
+    ["What protected the town from these floods?", none, false],
+    ["Choose one from these options and explain it.", none, true],
+    ["Choose a common factor and simplify 8:12.", none, false],
+    ["Describe the following process: evaporation.", none, false],
+  ] as const)("%s", (stem, question, expected) => {
+    expect(asksForUnlistedOptions({ stem, ...question })).toBe(expected);
   });
 });

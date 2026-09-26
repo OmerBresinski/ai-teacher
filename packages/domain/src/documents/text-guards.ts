@@ -113,3 +113,55 @@ export function isDoubleStatement(statement: string, minHalf = 60): boolean {
   const right = statement.slice(at + 5).trim();
   return left.length > minHalf && right.length > minHalf;
 }
+
+/**
+ * Phrases by which a stem points at a list of options: "Which of the following…", "Choose
+ * from…", "Select the correct…", "…the statements below", "Which of these…", "the odd one out".
+ * Each names a list, so an open question such as "Which city is the capital of France?" never
+ * matches.
+ */
+const LIST_REFERENCE: readonly RegExp[] = [
+  // "of the following" only after a choosing word: "State two examples of the following
+  // adaptations" is an open question.
+  /\b(?:which|what|who)(?:\s+\w+)?\s+of the following\b/i,
+  /\b(?:from|among) the following\b/i,
+  /\bfrom the (?:options|choices|answers|list|words|terms|statements|box)\b/i,
+  // "…the answers below" likewise: "Explain why the answers below are wrong" points at working.
+  /\b(?:which|what|who|from|among|choose|select|pick|circle|tick|underline)\b[^.?!]*?\b(?:options?|choices?|answers?|statements?|words?|sentences?|terms?|examples?|ones?|list)\s+(?:below|given|shown|listed|provided)\b/i,
+  /\b(?:which|what|who)(?: one)? of these\b/i,
+  /\b(?:from|among) these(?=\s*(?:options|choices|answers|words|statements|examples|terms|and\b|[:?.,;]|$))/i,
+  /\bchoose from\b/i,
+  /\b(?:select|choose|pick|circle|tick|underline) (?:the )?(?:correct|right|best|true|false|odd one)\b/i,
+  /\bodd one out\b/i,
+];
+
+/**
+ * Options written into the stem itself: lettered ("A) x B) y", or a printed line's "A x  B y"),
+ * a list after a colon or dash ("…: shark, dolphin or trout?"), or a bracketed choice
+ * ("(roads / walls)").
+ */
+const INLINE_OPTIONS: readonly RegExp[] = [
+  /(?:^|\s)\(?A[).:]\s*\S.*\s\(?B[).:]\s*\S/,
+  /(?:^|\s)A\s+\S.*\s{2}B\s+\S/,
+  /[:–—]\s*[^:–—]*(?:,|\bor\b)[^:–—]*$/,
+  /\([^)]*(?:\/|\bor\b)[^)]*\)/,
+];
+
+/**
+ * A question whose stem asks pupils to choose from options that are not there (lab
+ * cbm1-cb-y8-rivers-WL, 25 Sep: "Which of the following new housing plans…" with no
+ * distractors, printed as a bare stem). Options are listed when the question carries three
+ * distractors (what a multiple-choice line or slide needs), two or more `options`, or the stem
+ * lists them itself. Structural only: the stem's wording, never its meaning.
+ */
+export function asksForUnlistedOptions(question: {
+  stem: string;
+  distractors?: readonly unknown[] | undefined;
+  options?: readonly unknown[] | undefined;
+}): boolean {
+  if ((question.distractors?.length ?? 0) >= 3 || (question.options?.length ?? 0) >= 2)
+    return false;
+  const stem = question.stem.trim();
+  if (!LIST_REFERENCE.some((re) => re.test(stem))) return false;
+  return !INLINE_OPTIONS.some((re) => re.test(stem));
+}

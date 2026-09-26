@@ -857,6 +857,39 @@ describe("outlineFromFacts: no question without its options (w0)", () => {
   });
 });
 
+describe("outlineFromFacts: a stem that asks for options it does not list (rivers, 25 Sep)", () => {
+  const RIVERS = "Which of the following new housing plans would most reduce flood risk?";
+  test("the question is placed nowhere and a gap names it; a real multiple-choice one is placed", () => {
+    const facts = factsFor(3, { distractors: 0, forms: ["open-response"] });
+    const target = facts.questions.findIndex(
+      (q) => q.use === "slide" && q.stem.includes("objective 2"),
+    );
+    const q = facts.questions[target];
+    if (!q) throw new Error("fixture has no slide question for objective 2");
+    q.stem = RIVERS;
+    const r = run({ n: 3, facts });
+    const placed = r.result.outlineFactRefs.flatMap((e) =>
+      e.factRefs.filter((f) => f.type === "question").map((f) => f.index),
+    );
+    expect(placed).not.toContain(target);
+    expect(r.result.gaps).toContain(
+      `Question ${target + 1} asks pupils to choose from options it does not list, so it is left off the slides.`,
+    );
+    // The same stem with three distractors is a real multiple-choice question.
+    const listed = factsFor(3, { distractors: 3, forms: ["multiple-choice"] });
+    const mcQ = listed.questions[target];
+    if (!mcQ) throw new Error("fixture has no slide question for objective 2");
+    mcQ.stem = RIVERS;
+    const withOptions = run({ n: 3, facts: listed });
+    expect(withOptions.result.gaps.some((g) => g.includes("options it does not list"))).toBe(false);
+    expect(
+      withOptions.result.outlineFactRefs.some((e) =>
+        e.factRefs.some((f) => f.type === "question" && f.index === target),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("outlineFromFacts: a distractor that repeats the answer", () => {
   test("the question is not placed as multiple choice, nor as a bare stem", () => {
     const facts = factsFor(2);
