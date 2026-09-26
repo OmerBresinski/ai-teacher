@@ -60,7 +60,7 @@ describe("the lesson look", () => {
       expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
     });
 
-    test(`${theme.id}: a teaching slide takes a tag, a display heading, the two columns and the bar`, () => {
+    test(`${theme.id}: a teaching slide takes no tag, a display heading at the top, the two columns and the bar`, () => {
       const slide = materialiseSlide(
         {
           kind: "content",
@@ -72,13 +72,12 @@ describe("the lesson look", () => {
         META,
         counter(),
       );
-      const [tag] = named(slide, KIND_TAG_NAME) as TextElement[];
-      expect(tag && plain(tag)).toBe("TEACH");
-      expect(tag?.y).toBe(SAFE.y);
+      // No "TEACH" tag (Greg, 26 Sept): the heading takes the top lane, no empty band above it.
+      expect(named(slide, KIND_TAG_NAME)).toHaveLength(0);
       const [heading] = named(slide, HEADING_NAME) as TextElement[];
       // A short heading is a display line, a third above the theme's heading size.
       expect(heading?.style.fontSize).toBe(Math.round(theme.sizes.heading * HEADING_DISPLAY));
-      expect(heading && tag && heading.y).toBeGreaterThanOrEqual((tag?.y ?? 0) + (tag?.h ?? 0));
+      expect(heading?.y).toBe(SAFE.y);
       // No empty right half: the key idea sits on a tinted panel, the rest down the left.
       const [panel] = named(slide, PANEL_NAME);
       expect(panel && panel.type === "shape" && panel.fill).toBe(accentTint(theme));

@@ -827,10 +827,30 @@ describe("a slide exported as the class sees it", () => {
   });
 
   it("counts the slide from its place in the deck, not the stored words", async () => {
-    const stored = volcano.elements.find((e) => e.name === COUNTER_NAME);
-    expect(stored).toBeDefined();
-    const other = { ...volcano, id: "s0" };
-    const xml = await write([other, volcano, { ...volcano, id: "s2" }]);
+    // A teaching slide takes no counter since the TEACH tag went; an activity slide's counter,
+    // stored with the words "1 / 1", is counted again.
+    const withCounter: Slide = {
+      ...volcano,
+      elements: [
+        ...volcano.elements,
+        {
+          id: "counter",
+          type: "text",
+          x: 800,
+          y: 43,
+          w: 60,
+          h: 28,
+          name: COUNTER_NAME,
+          doc: {
+            type: "doc",
+            content: [{ type: "paragraph", content: [{ type: "text", text: "1 / 1" }] }],
+          },
+          style: { preset: "caption" },
+        },
+      ],
+    };
+    const other = { ...withCounter, id: "s0" };
+    const xml = await write([other, withCounter, { ...withCounter, id: "s2" }]);
     expect(xml[0]).toContain(">1 / 3<");
     expect(xml[1]).toContain(">2 / 3<");
     expect(xml[2]).toContain(">3 / 3<");

@@ -4,11 +4,13 @@ import { chooseVariant } from "./choose-variant";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import {
+  applyLook,
   COUNTER_NAME,
   DIAGRAM_NAME,
   EYEBROW_NAME,
   HEADING_DISPLAY,
   KIND_TAG_NAME,
+  stripLook,
   withDeckChrome,
 } from "./look";
 import { lookAndFitPages, materialiseSlide } from "./materialise";
@@ -317,8 +319,27 @@ describe("design pass", () => {
       },
     );
 
+  /** An activity slide's top line: a kind tag in the lane above the heading. */
+  const tagged = (s: Slide): Slide => ({
+    ...s,
+    elements: [
+      ...s.elements,
+      {
+        id: "tag",
+        type: "text",
+        x: SAFE.x + 40,
+        y: SAFE.y,
+        w: 95,
+        h: 28,
+        name: KIND_TAG_NAME,
+        doc: { type: "doc", content: [] },
+        style: { preset: "caption" },
+      },
+    ],
+  });
+
   test("the deck chrome: the tag at the left, the counter at the right, no year and subject", () => {
-    const s = slide("Waves wear cliffs away. Abrasion scrapes the rock.");
+    const s = tagged(slide("Waves wear cliffs away. Abrasion scrapes the rock."));
     const [out] = withDeckChrome([s, s], t);
     const tag = named(out?.elements ?? [], KIND_TAG_NAME)[0];
     const counter = named(out?.elements ?? [], COUNTER_NAME)[0];
@@ -333,7 +354,7 @@ describe("design pass", () => {
   });
 
   test("a stored deck line is taken off and the tag moves back to the margin", () => {
-    const s = slide("Waves wear cliffs away. Abrasion scrapes the rock.");
+    const s = tagged(slide("Waves wear cliffs away. Abrasion scrapes the rock."));
     const [once] = withDeckChrome([s], t);
     const tag = named(once?.elements ?? [], KIND_TAG_NAME)[0];
     const old = {
@@ -450,6 +471,54 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
     ).toEqual(["Chlorophyll absorbs light energy.", "This powers photosynthesis."]);
   });
 
+  test("a teaching slide takes no tag and so no counter; a stored TEACH tag goes on restyle", () => {
+    const t = getTheme("chalk");
+    const s = materialiseSlide(
+      {
+        kind: "content",
+        factRefs: [],
+        heading: "Erosion",
+        body: "Waves wear cliffs away. Abrasion scrapes the rock.",
+      },
+      "chalk",
+      meta,
+    );
+    expect(named(s.elements, KIND_TAG_NAME)).toHaveLength(0);
+    expect(named(s.elements, "Heading")[0]?.y).toBe(SAFE.y);
+    const [out] = withDeckChrome([s], t);
+    expect(named(out?.elements ?? [], COUNTER_NAME)).toHaveLength(0);
+    // A slide stored with the old tag: the heading under it, the words under that.
+    const heading = named(s.elements, "Heading")[0] as SlideElement;
+    const drop = 34;
+    const stored: Slide = {
+      ...s,
+      elements: [
+        ...s.elements.map((e) => (e.y >= heading.y ? { ...e, y: e.y + drop } : e)),
+        {
+          id: "old-tag",
+          type: "text",
+          x: SAFE.x,
+          y: SAFE.y,
+          w: 95,
+          h: 28,
+          name: KIND_TAG_NAME,
+          doc: { type: "doc", content: [] },
+          style: { preset: "caption" },
+        },
+      ],
+    };
+    const restyled = applyLook(stripLook(stored), t);
+    expect(named(restyled.elements, KIND_TAG_NAME)).toHaveLength(0);
+    const h = named(restyled.elements, "Heading")[0];
+    expect(h?.y).toBe(SAFE.y);
+    // The words rose with it: the same gap under the heading as a fresh slide has.
+    const firstBody = (x: Slide) =>
+      Math.min(
+        ...x.elements.filter((e) => e.type === "text" && e.style.preset === "body").map((e) => e.y),
+      );
+    expect(firstBody(restyled)).toBe(firstBody(s));
+  });
+
   test("with the deck known, a generated slide carries the counter and no year and subject line", () => {
     const s = materialiseSlide(
       { kind: "content", factRefs: [], heading: "Erosion", body: "Waves wear cliffs. Rock falls." },
@@ -460,6 +529,7 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
       { deck: { yearGroup: "Year 9", subject: "Geography" } },
     );
     expect(named(s.elements, EYEBROW_NAME)).toHaveLength(0);
-    expect(named(s.elements, COUNTER_NAME)).toHaveLength(1);
+    // A teaching slide is untagged, so its top lane is the heading's: no counter there.
+    expect(named(s.elements, COUNTER_NAME)).toHaveLength(0);
   });
 });

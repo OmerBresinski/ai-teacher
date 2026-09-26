@@ -96,6 +96,43 @@ describe("a photo brief keeps the right half of an explain or a list", () => {
     for (const e of items) expect(e.x + e.w).toBeLessThanOrEqual(img.x);
   });
 
+  for (const t of THEMES) {
+    test(`${t.id}: bullets that do not fit beside the photo continue as bullets, never a paragraph`, () => {
+      const floods: Content = {
+        kind: "content",
+        factRefs: [],
+        heading: "How river floods affect people",
+        body: "Floods cause damage to people and places in three main ways.",
+        points: [
+          "Homes: floodwater ruins floors, walls and furniture, and families may have to move out for months.",
+          "Roads: streets and bridges close, so people are cut off from shops, schools and hospitals.",
+          "Health: dirty water spreads disease, and damp homes grow mould that harms breathing.",
+        ],
+      };
+      const pages = materialiseSlides(floods, t.id, meta, undefined, 0, { photo });
+      const items = (p: Slide) =>
+        p.elements
+          .filter((e): e is TextElement => e.name === ITEM_NAME)
+          .map((e) => docLines(e.doc).join(" "));
+      expect(slot(pages[0] as Slide)).toBeDefined();
+      expect(pages.flatMap(items)).toEqual(floods.points as string[]);
+      for (const p of pages) {
+        expect(p.elements.some((e) => e.name === "Body")).toBe(false);
+        expect(fitSlide(p, t).overflow).toHaveLength(0);
+        for (const e of bodyText(p)) {
+          expect(e.style.fontSize ?? readingSize(t)).toBeGreaterThanOrEqual(readingSize(t));
+        }
+      }
+      if (pages.length > 1) {
+        // The lead (and the bullets that fit) beside the photo; every continuation carries bullets.
+        expect((pages[0] as Slide).elements.some((e) => e.name === "Lead")).toBe(true);
+        for (const p of pages.slice(1)) expect(items(p).length).toBeGreaterThan(0);
+        const img = slot(pages[0] as Slide);
+        for (const e of bodyText(pages[0] as Slide)) expect(e.x + e.w).toBeLessThanOrEqual(img.x);
+      }
+    });
+  }
+
   test("words too long beside the photo continue on the next slide, the photo not shrunk", () => {
     const t = getTheme("chalk");
     const pages = materialiseSlides({ ...why, body: LONG }, "chalk", meta, undefined, 0, {

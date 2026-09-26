@@ -37,6 +37,15 @@ export const LOOK_VERSION = 2;
 
 export const KIND_TAG_NAME = "Kind tag";
 export const ACCENT_BAR_NAME = "Accent bar";
+/**
+ * Headed kinds that take the look without a kind tag: the heading takes the tag's lane at the top
+ * of the safe area and the words move up with it, so no empty band is left.
+ */
+export const UNTAGGED_HEADED: ReadonlySet<SlideKind> = new Set<SlideKind>([
+  "objectives",
+  "content",
+  "image-text",
+]);
 /** A slide heading the fit engine keeps at its size (`reflow.ts`). */
 export { HEADING_NAME };
 export const KEY_IDEA_NAME = "Explanation card";
@@ -61,13 +70,14 @@ export const photoLabel = (brief: PhotoBrief): string =>
 export const isOpenPhotoSlot = (el: SlideElement): boolean =>
   el.type === "image" && el.name === PHOTO_NAME && el.src === PLACEHOLDER_IMAGE;
 
-/** What the slide is for, in the words a class sees on the tag. Kinds not listed get no tag. */
+/**
+ * What the slide is for, in the words a class sees on the tag. Only an activity, or a slide with a
+ * specific job, takes one (Greg, 26 Sept 2026: "it should only be there if it's an exercise or
+ * something specific"); teaching slides and the objectives go untagged (`UNTAGGED_HEADED`).
+ */
 export const KIND_TAGS: Partial<Record<SlideKind, string>> = {
-  objectives: "OBJECTIVES",
   starter: "STARTER",
   vocabulary: "KEY WORDS",
-  content: "TEACH",
-  "image-text": "TEACH",
   "worked-example": "WORKED EXAMPLE",
   instructions: "PRACTISE",
   discussion: "TALK",
@@ -473,7 +483,7 @@ export function applyLook(
   }
   if (slide.kind === "title") return cover(slide, t);
   const label = KIND_TAGS[slide.kind];
-  if (!label) return slide;
+  if (!label && !UNTAGGED_HEADED.has(slide.kind)) return slide;
 
   // The hairline under the heading: the topmost full-width rule. A vocabulary grid's rules between
   // entries are half width and stay.
@@ -485,7 +495,7 @@ export function applyLook(
   const flow = els.filter((e) => !isBackdrop(e));
   if (flow.length === 0) return { ...slide, elements: [...els, accentBar(ids, t, els)] };
   const top = Math.min(...flow.map((e) => e.y));
-  const want = snapY(SAFE.y + tagHeight(t) + TAG_GAP);
+  const want = label ? snapY(SAFE.y + tagHeight(t) + TAG_GAP) : SAFE.y;
 
   // The heading: the first heading-preset text at the top of a slide that is not a question.
   const heading = slide.question
@@ -514,13 +524,20 @@ export function applyLook(
     const below = els.filter(
       (e) => e !== heading && !isBackdrop(e) && e.y >= heading.y + heading.h,
     );
-    const firstBelow = Math.min(...below.map((e) => e.y), Number.POSITIVE_INFINITY);
+    // Untagged, the heading rises into the tag's lane and what sits under it rises with it.
+    const lift = label ? 0 : Math.min(0, want - heading.y);
+    const firstBelow = Math.min(...below.map((e) => e.y + lift), Number.POSITIVE_INFINITY);
     const push = Number.isFinite(firstBelow) ? Math.max(0, foot - firstBelow) : 0;
-    els = els.map((e) => (e === heading ? next : below.includes(e) ? { ...e, y: e.y + push } : e));
+    els = els.map((e) =>
+      e === heading ? next : below.includes(e) ? { ...e, y: e.y + lift + push } : e,
+    );
   }
 
   if (slide.kind === "content" && options.lead !== false) els = leadAndCard(els, t, ids);
   if (slide.kind === "worked-example") els = workedCard(els, t);
 
-  return { ...slide, elements: [...els, kindTag(ids, t, label), accentBar(ids, t, els)] };
+  return {
+    ...slide,
+    elements: [...els, ...(label ? [kindTag(ids, t, label)] : []), accentBar(ids, t, els)],
+  };
 }

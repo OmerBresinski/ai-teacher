@@ -1609,6 +1609,55 @@ function structureDiagram(
   const x = first.x;
   const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
   const placedSlot = slotPanel(slot, top, slot.x, slot.w, t);
+  // A list stays a list (look/image-slot): with pages, bullets that do not all fit beside the slot
+  // at the body size are split as evenly as fits, the rest continuing across the next slide.
+  const points = hints.points?.length ? hints.points : bodies.flatMap((b) => pointsOf(b.doc));
+  if (paginate && points.length >= 2) {
+    const lead = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
+    const keep = slide.elements.filter((e) => e !== slot && !bodies.includes(e as TextElement));
+    const n = points.length;
+    // The most even split first; the lead alone beside the photo, every bullet after, last.
+    const order = [
+      ...Array.from({ length: n - 1 }, (_, i) => i + 1).sort(
+        (a, b) => Math.abs(a - n / 2) - Math.abs(b - n / 2) || b - a,
+      ),
+      ...(lead ? [0] : []),
+    ];
+    // The continuation's heading says "(continued)" and may take a second line: its bullets
+    // start under it as the fit sets it.
+    const shell = fitSlide(continued(slide, chromeOf(slide), [], ids), t).slide;
+    const head = headingOf(shell);
+    const top2 = Math.max(top, head ? snapY(head.y + head.h + SPACE[4]) : top);
+    for (const k of order) {
+      const beside = dotsColumn(lead, points.slice(0, k), top, x, w, t, ids);
+      if (!beside) continue;
+      // The rest across as few continuation slides as hold them, split evenly.
+      const rest = points.slice(k);
+      for (let m = 1; m <= rest.length; m++) {
+        const size = Math.ceil(rest.length / m);
+        const groups = Array.from({ length: m }, (_, i) => rest.slice(i * size, (i + 1) * size));
+        const after = groups.map((g) => dotsColumn("", g, top2, SAFE.x, SAFE.w, t, ids));
+        if (after.some((a) => !a || a.length === 0)) continue;
+        return [
+          withTerms({ ...slide, elements: [...keep, ...beside, placedSlot] }, t, hints.terms),
+          ...after.map((a, i) =>
+            withTerms(
+              {
+                ...shell,
+                id: i === 0 ? shell.id : ids(),
+                elements: [
+                  ...shell.elements.map((e) => (i === 0 ? e : { ...e, id: ids() })),
+                  ...(a as SlideElement[]),
+                ],
+              },
+              t,
+              hints.terms,
+            ),
+          ),
+        ];
+      }
+    }
+  }
   const asIs: Slide = {
     ...slide,
     elements: slide.elements.map((e) => (e === slot ? placedSlot : e)),
@@ -1680,6 +1729,61 @@ function structureDiagram(
         ),
     ) ?? oneStepDown
   );
+}
+
+/**
+ * A lead and dot points set down a column at the body size, as `splitContent` sets them; the
+ * elements, or `undefined` when they run past the foot of the safe area.
+ */
+function dotsColumn(
+  lead: string,
+  items: string[],
+  top: number,
+  x: number,
+  width: number,
+  t: Theme,
+  ids: Ids,
+): SlideElement[] | undefined {
+  const measure = measureHeadless(t);
+  const leading = readingLeading(t);
+  const size = readingSize(t);
+  const els: SlideElement[] = [];
+  let y = top;
+  if (lead) {
+    const doc = docFromText(lead);
+    const style = { preset: "body" as const, fontSize: size, fontWeight: 600, lineHeight: leading };
+    const h = heightOf(measure, doc, width, "body", size, 0, style);
+    els.push(text(ids, { x, y, w: width, h }, doc, style, { name: LEAD_NAME }));
+    y = snapY(y + h + SPACE[3]);
+  }
+  const dot = Math.round(size * 0.42);
+  const indent = Math.round(size * 1.3);
+  for (const item of items) {
+    const doc = docFromText(item);
+    const h = heightOf(measure, doc, width - indent, "body", size, 0, { lineHeight: leading });
+    els.push({
+      id: ids(),
+      type: "shape",
+      shape: "ellipse",
+      x: x + Math.round((indent - dot) / 3),
+      y: Math.round(y + (size * leading) / 2 - dot / 2),
+      w: dot,
+      h: dot,
+      fill: t.colors.accent,
+      name: BULLET_NAME,
+    });
+    els.push(
+      text(
+        ids,
+        { x: x + indent, y, w: width - indent, h },
+        doc,
+        { preset: "body", fontSize: size, lineHeight: leading },
+        { name: ITEM_NAME },
+      ),
+    );
+    y = snapY(y + h + SPACE[2]);
+  }
+  return fits(y - SPACE[2]) ? els : undefined;
 }
 
 /** Key terms on a teaching slide's running text (never its heading, and never a question). */
