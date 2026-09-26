@@ -1,6 +1,7 @@
 import type { Finding, LessonFacts } from "@tj/domain/documents";
 import { LessonFactsSchema } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
   retrievalIndexOf,
@@ -30,8 +31,10 @@ export type { VerifyResult };
  * The Verify call and its patch. A cap stop records the budget finding and leaves the facts as they
  * are; two schema misses (or a provider fault) record `VERIFY_FAILED_FINDING`; a cancel settles
  * with the facts untouched and no finding — the stage awaiting it checks the signal itself. One
- * `fact-verify` warning per applied correction, content-free. Logged under `stage: "plan"`: it is
- * Plan's third call whichever stage awaits it.
+ * `fact-verify` warning per applied correction, content-free. Then the numeric check (code,
+ * `numeric-check.ts`) over the facts it hands on, whatever the call did: one `fact-verify` warning
+ * per equality whose sides disagree, with the equality as evidence. Logged under `stage: "plan"`:
+ * it is Plan's third call whichever stage awaits it.
  */
 export async function runVerify(
   facts: LessonFacts,
@@ -63,14 +66,19 @@ export async function runVerify(
       },
       "facts verified",
     );
+    const verified = patched.applied.length > 0 ? patched.facts : facts;
     return {
-      facts: patched.applied.length > 0 ? patched.facts : facts,
+      facts: verified,
       applied: patched.applied,
-      findings: patched.applied.map(verifyFinding),
+      findings: [...patched.applied.map(verifyFinding), ...numericFindings(verified)],
     };
   } catch (error) {
     if (error instanceof BudgetExceeded) {
-      return { facts, applied: [], findings: [BUDGET_FINDING(error.by, "fact verification")] };
+      return {
+        facts,
+        applied: [],
+        findings: [BUDGET_FINDING(error.by, "fact verification"), ...numericFindings(facts)],
+      };
     }
     if (error instanceof Error && error.name === "AbortError") {
       return { facts, applied: [], findings: [] };
@@ -79,7 +87,7 @@ export async function runVerify(
       { stage: "plan", call: "verify", err: error instanceof StageFailure ? undefined : error },
       "fact verification failed; facts kept",
     );
-    return { facts, applied: [], findings: [VERIFY_FAILED_FINDING] };
+    return { facts, applied: [], findings: [VERIFY_FAILED_FINDING, ...numericFindings(facts)] };
   }
 }
 

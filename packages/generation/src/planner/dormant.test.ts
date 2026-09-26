@@ -1,23 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
 /*
- * TEACH-90: the planner modules ship dormant. Nothing production runs may import them until the
- * stage changes (TEACH-91) and the switch (TEACH-93) land. TEACH-91 deletes this test.
+ * TEACH-91: the planner's entry points are exported but no job runs them. TEACH-93 wires the
+ * worker to them behind a flag and deletes this test.
  */
-const PLANNER =
-  /from\s+"(?:\.\.?\/)+(?:planner\/|outline-from-facts|merge-objective-facts|outline-feasibility|numeric-check|objectives-check)/;
-const PRODUCTION = ["stages/**/*.ts", "worksheet/**/*.ts", "workflow.ts", "index.ts"];
+const ENTRY = /\b(runPlannedLessonPipeline|planFromObjectives)\b/;
 
-describe("planner modules are dormant (TEACH-90)", () => {
-  test("no stage, worksheet, workflow or package entry imports them", async () => {
-    const src = `${import.meta.dir}/..`;
-    const offenders: string[] = [];
-    for (const pattern of PRODUCTION) {
-      for await (const path of new Bun.Glob(pattern).scan(src)) {
-        if (path.endsWith(".test.ts")) continue;
-        if (PLANNER.test(await Bun.file(`${src}/${path}`).text())) offenders.push(path);
-      }
+describe("the planner is dormant (TEACH-91)", () => {
+  test("neither workflow.ts nor the worker names its entry points", async () => {
+    const root = `${import.meta.dir}/../../../..`;
+    const files = [`${root}/packages/generation/src/workflow.ts`];
+    for await (const path of new Bun.Glob("**/*.ts").scan(`${root}/apps/worker/src`)) {
+      files.push(`${root}/apps/worker/src/${path}`);
     }
+    expect(files.length).toBeGreaterThan(1);
+    const offenders: string[] = [];
+    for (const file of files) if (ENTRY.test(await Bun.file(file).text())) offenders.push(file);
     expect(offenders).toEqual([]);
   });
 });

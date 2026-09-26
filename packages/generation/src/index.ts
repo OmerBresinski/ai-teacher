@@ -36,6 +36,21 @@ export {
   RULE_FIELDS,
   type RuleField,
 } from "./parse-brief";
+// The objectives-first planner (TEACH-91): exported for TEACH-93 to wire; no job calls it yet.
+export {
+  MISSING_MATERIAL_CHECK,
+  PLANNED_VERSION,
+  PlanBlocked,
+  type PlannedState,
+  type PlannerOptions,
+  type PlanReport,
+  type PlanStatus,
+  planFromObjectives,
+  planReportMarkdown,
+  runPlannedLessonPipeline,
+  runStatus,
+  statusLine,
+} from "./planner/plan-pipeline";
 export * from "./prompts";
 export * from "./shapes";
 export * from "./specs";

@@ -116,6 +116,10 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
   const counts = deps.imageCounts ?? emptyImageCounts();
   deps.imageCounts = counts;
   const outline = state.lesson.facts?.outline ?? [];
+  // Generate's picture-first pick may already have left an `image` warning on a slide this pass
+  // places again (a resume, or a store that failed): the later verdict replaces it, so a slide never
+  // carries the same warning twice.
+  const handled = new Set<string>();
   const baseFindings = generationOf(state.lesson).findings;
   const findings: Finding[] = [];
   let lesson = state.lesson;
@@ -128,7 +132,17 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
         ...lesson,
         generation: {
           ...generation,
-          findings: [...baseFindings, ...findings],
+          findings: [
+            ...baseFindings.filter(
+              (f) =>
+                !(
+                  f.check === "image" &&
+                  f.target.slideId !== undefined &&
+                  handled.has(f.target.slideId)
+                ),
+            ),
+            ...findings,
+          ],
           // No checkpoint of its own (`GenerationStage` has none), so the judge's version rides
           // on `generated` the way Plan joins its two prompts under `planned`.
           promptVersions:
@@ -156,6 +170,7 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
       (element) => element.type === "image" && element.src === PLACEHOLDER_IMAGE,
     );
     if (target?.type !== "image") continue;
+    handled.add(slide.id);
     counts.requested += 1;
     if (busy) {
       findings.push(busyFinding(slide.id, target.id));
@@ -212,6 +227,17 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
           : candidate,
       ),
     };
+    // The slide's text was written before this photograph existed (the picture-first pick failed
+    // or the job resumed), so it may say there is no picture, or describe the wrong thing. An
+    // `error` sends it to Repair, which rewrites the text to the photograph (quality lab, Sept 2026:
+    // a placed Hadrian's Wall under notes saying "the slide has no photograph" scored notes 1).
+    findings.push({
+      check: "image-fit",
+      severity: "error",
+      target: { slideId: slide.id, elementId: target.id },
+      message:
+        "The photograph was placed after the text was written; rewrite the text to what it shows.",
+    });
     // After the persist: a lost lock must propagate, not read as a placed picture.
     const { updatedAt } = await deps.persist(snapshot());
     await deps.onProgress(PROGRESS_ILLUSTRATED, "Pictures placed", "illustrate", updatedAt);
@@ -313,12 +339,46 @@ export async function pickPhoto(
  * caller stops searching for every remaining slide); a `BudgetExceeded` and any other failure
  * propagate for the caller to classify.
  */
+/** Results kept from one query, so two hints and the subject all reach the pool (`MAX_CANDIDATES`). */
+const PER_QUERY = 10;
+
+/**
+ * Named things the slide's own facts cite — "Hadrian's Wall", "Housesteads Roman Fort" — as
+ * search queries ahead of the brief's subject (quality lab, Sept 2026): a stock library holds
+ * hundreds of photographs of a named site and few of a category ("Roman fort Britain" returned
+ * castles, a Serbian site and a Russian log fort). Two to four capitalised words in a row, the
+ * first not opening a sentence, from the key ideas the outline entry references.
+ */
+export function factQueryHints(lesson: Lesson, index: number): string[] {
+  const facts = lesson.facts;
+  const entry = facts?.outline[index];
+  if (!facts || !entry) return [];
+  const refs = new Set(entry.factRefs);
+  const text = (facts.keyIdeas ?? [])
+    .filter((k) => refs.has(k.id))
+    .flatMap((k) => [k.statement, k.explanation, k.example])
+    .join(" ");
+  const hints: string[] = [];
+  const seen = new Set<string>();
+  for (const m of text.matchAll(
+    /(?<=^|[a-z,;:(] )((?:[A-Z][a-z]+(?:'s)?(?: (?:of|the|de|du))? ){1,3}[A-Z][a-z]+)/g,
+  )) {
+    const hint = (m[1] ?? "").trim();
+    const key = normaliseQuery(hint);
+    if (!hint || seen.has(key) || isBlockedQuery(hint)) continue;
+    seen.add(key);
+    hints.push(hint);
+    if (hints.length === 2) break;
+  }
+  return hints;
+}
+
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const { brief, images, deps, index } = args;
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
-  for (const query of queryCandidates(brief)) {
+  for (const query of [...factQueryHints(args.lesson, index), ...queryCandidates(brief)]) {
     if (candidates.length >= MAX_CANDIDATES) break;
     // Safety (TEACH-162): a blocked candidate searches nothing.
     if (isBlockedQuery(query)) {
@@ -328,9 +388,12 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     tried.push(query);
     const photos = await searchPortraits(images, query, deps.signal);
     if (photos === "busy") return { outcome: "busy" };
+    let kept = 0;
     for (const photo of photos) {
-      if (candidates.length >= MAX_CANDIDATES) break;
-      if (!candidates.some((seen) => seen.id === photo.id)) candidates.push(photo);
+      if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
+      if (candidates.some((seen) => seen.id === photo.id)) continue;
+      candidates.push(photo);
+      kept += 1;
     }
   }
   // Every candidate query was blocked: nothing to judge, nothing to say.

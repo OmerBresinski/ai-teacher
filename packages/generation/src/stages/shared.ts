@@ -126,6 +126,41 @@ export const slideHaystack = (slide: Slide) =>
  * generate prompt's shape names; `small` is the pupils' instruction line.
  */
 export function specFieldsOf(slide: Slide): { field: string; text: string }[] {
+  return withSpecNames(slide.kind, presetFieldsOf(slide));
+}
+
+/** Kinds whose `heading` element holds the spec's `stem` (`materialise.ts` fills it so). */
+const STEM_KINDS = new Set(["multiple-choice", "matching", "fill-gap", "sort", "open-response"]);
+/** Kinds that can carry a callout card, whose text is laid in `small` (`callout.ts`). */
+const CALLOUT_HOSTS = new Set(["content", "image-text", "worked-example"]);
+
+/**
+ * Audit A3 / C5: the preset labels renamed to the spec's own field names where they differ, so a
+ * rewrite of "steps[2]" lands on the step and not on the question (coasts W6NG-18). A
+ * worked-example's first body is its `question` and the second its numbered `steps`, one field per
+ * step, 0-based; a question kind's heading is its `stem` (`statement` on true-false); a callout
+ * host's `small` text is its `callout`; a discussion's subtitle is its `prompt`.
+ */
+function withSpecNames(
+  kind: string,
+  fields: { field: string; text: string }[],
+): { field: string; text: string }[] {
+  let bodies = 0;
+  return fields.flatMap((f) => {
+    if (kind === "worked-example" && f.field === "body") {
+      bodies += 1;
+      if (bodies === 1) return [{ field: "question", text: f.text }];
+      return f.text.split("\n").map((text, i) => ({ field: `steps[${i}]`, text }));
+    }
+    if (f.field === "heading" && STEM_KINDS.has(kind)) return [{ ...f, field: "stem" }];
+    if (f.field === "heading" && kind === "true-false") return [{ ...f, field: "statement" }];
+    if (f.field === "subtitle" && kind === "discussion") return [{ ...f, field: "prompt" }];
+    if (f.field === "instruction" && CALLOUT_HOSTS.has(kind)) return [{ ...f, field: "callout" }];
+    return [f];
+  });
+}
+
+function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
   const out: { field: string; text: string }[] = [];
   const correct = new Set(
     slide.question?.type === "multiple-choice"
@@ -256,4 +291,12 @@ export async function runBounded<T>(
   const settled = await Promise.allSettled(workers);
   const rejected = settled.find((r) => r.status === "rejected");
   if (rejected) throw rejected.reason;
+}
+
+/** Contract C1: the starter's retrieval questions as an optional prompt input (absent when none). */
+export function retrievalInput(facts: {
+  retrieval?: { question: string; answer: string }[] | undefined;
+}): { retrieval?: { question: string; answer: string }[] } {
+  const r = facts.retrieval?.map(({ question, answer }) => ({ question, answer }));
+  return r && r.length > 0 ? { retrieval: r } : {};
 }
