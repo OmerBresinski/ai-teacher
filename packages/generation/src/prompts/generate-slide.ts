@@ -66,7 +66,62 @@ import {
  * The outline often puts the WATCH OUT callout on another slide (02f34f: the groyne watch-out on
  * the erosion slide), so a teaching slide without its own watch-out is told, by a code-built line
  * (`ownMisconceptions`), to name its objective's misconception in one closing sentence.
+ *
+ * v26 (26 Sept 2026, look uplift, `quality-prd/look/GENERATION-PROPOSAL.md` §1, §2, §5): shorter
+ * bodies and a diagram instruction. The examples Greg approved carry 15–35 words per teaching slide
+ * as a lead sentence plus a short card; ours ran 40–75 in one paragraph. The body is now ≤ 30 words
+ * (≤ 45 with two key ideas), its first sentence the idea a pupil could copy down (the look renders
+ * it as the lead, `look.ts` `leadAndCard`), the rest the reason and one example, everything else in
+ * `notes`. Headings are unchanged (label vs claim is Greg's open decision) apart from the aim.
+ * The shorter aims (`SLIDE_AIMS`) are advertised here only: `SPEC_LIMITS.heading/item/body` also
+ * size the facts, worksheet blocks, planner briefs and evaluate evidence, so changing them would
+ * reach eight other prompts; the slide schema keeps its ceilings and the fit engine catches the rest.
+ * A content slide may carry `diagram`: a drawing instruction the editor shows beside the body. The
+ * slide call decides it, not the planner: it is the call that writes the body the drawing sits
+ * beside, and the diagram's labels have to be that body's words; a planner flag would need a new
+ * fact field, outline plumbing and a second call's paraphrase (CORE 2026-08-04). The gate is a
+ * two-sided test on the idea's shape (stages, cycle, parts, comparison, axis vs definition, reason,
+ * event, judgement), because a slot in the sketch is otherwise filled every time (openai.md
+ * 2026-09-23). Only the content shape has the field, so question, objectives and title slides
+ * cannot carry one. "none" is a named value, so the empty case has a positive description, the
+ * instruction opens with a closed type list, and code (`keptDiagram`) keeps only an instruction
+ * that opens with one of those types: the type is the gate, checked structurally. Demo (look
+ * GENERATION-RESULTS.md): with "a definition, reason, …" on the none side, 2 of 11 content slides
+ * got a diagram and none of the three photosynthesis slides did (a rate slide wrote "none"). A
+ * reason is usually drawable as cause → effect, and a method as steps or a bar model, so the none
+ * side now lists only what no drawing shows, and "Bar model" joins the types.
  */
+
+/** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
+export const DIAGRAM_TYPES = [
+  "Sequence",
+  "Cycle",
+  "Parts",
+  "Comparison",
+  "Bar model",
+  "Graph",
+  "Number line",
+] as const;
+
+const DIAGRAM_OPENING = new RegExp(`^(${DIAGRAM_TYPES.join("|")})\\s*:\\s*\\S`, "i");
+
+/**
+ * v26: a content spec keeps its `diagram` only when it opens with a listed type ("Cycle: …"); "none",
+ * "None" and any untyped text are removed, so the editor never shows "Diagram to add: none".
+ */
+export function keptDiagram<T extends { kind: string; diagram?: string | undefined }>(spec: T): T {
+  if (spec.kind !== "content" || spec.diagram === undefined) return spec;
+  if (DIAGRAM_OPENING.test(spec.diagram.trim())) return { ...spec, diagram: spec.diagram.trim() };
+  const { diagram: _dropped, ...rest } = spec;
+  return rest as T;
+}
+
+/**
+ * The one-line aims the slide writer is shown for heading, list item and body (look proposal §1).
+ * Below `SPEC_LIMITS` on purpose: those also size facts and worksheets. Aims, not walls: the schema
+ * still accepts up to `ceilingOf(SPEC_LIMITS.*)`.
+ */
+export const SLIDE_AIMS = { heading: 60, item: 110, body: 260 } as const;
 
 export type GenerateSlideInput = {
   /**
@@ -136,9 +191,9 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body" (≤ 40 words; ≤ 60 with two key ideas), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body" (≤ 30 words; ≤ 45 with two key ideas), "diagram"? (≤ 25 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
-    '{ "kind": "image-text", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "image-text", "heading", "body" (≤ 30 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
     '{ "kind": "worked-example", "heading"?, "question" (one or two lines), "steps": [1–4 strings, each one short line of about 56 characters], "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   instructions:
@@ -158,6 +213,15 @@ const SHAPES = {
     '{ "kind": "exit-ticket", "heading"?, "items": [exactly 3 strings], "footnote"?, "factRefs", "notes"? }',
   plenary: '{ "kind": "plenary", "heading"?, "items": [1–3 strings], "factRefs", "notes"? }',
 } as const;
+
+/**
+ * v26: the JSON shape Generate asks for on this kind, for Repair's user turn, so a repaired slide
+ * keeps the body's word aim and the `diagram` field (the look demo's repairs rewrote 30-word bodies
+ * to 60–87 words and dropped every diagram when the shape was only "a content slide spec").
+ */
+export function slideShapeOf(kind: string): string | undefined {
+  return (SHAPES as Record<string, string>)[kind];
+}
 
 /** The kinds that compose a stem, prompt or task of their own, so the reserved stems apply. */
 const STEM_KINDS: ReadonlySet<string> = new Set([
@@ -191,14 +255,15 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v25",
+  version: "generate-slide.v26",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
+    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading. The body's first sentence states the key idea in words a pupil could copy down; the rest gives the reason it holds and one example, in short sentences. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea, each opening with its idea. Everything else a teacher would say goes in `notes`. Question slides use the supplied question, answer and distractors verbatim.",
+    '`diagram` is "none" or an instruction for a drawing beside the body. Write one when the key idea can be drawn: stages or steps in order, a cycle, a structure with named parts, things compared by the same features, a bar model, or values on a graph or number line. Write "none" when no drawing shows it: a definition, an event, a quotation or a judgement. Start with its type and a colon (Sequence, Cycle, Parts, Comparison, Bar model, Graph or Number line), then the parts or labels in order and what connects them (arrows, axes), in the body\'s words, few enough for the year group: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise".',
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
@@ -206,11 +271,11 @@ export const generateSlidePrompt = {
     IMAGE_TEXT_RULE,
     limitsBlock({
       title: SPEC_LIMITS.title,
-      "heading/subtitle": SPEC_LIMITS.heading,
-      "each item": SPEC_LIMITS.item,
+      "heading/subtitle": SLIDE_AIMS.heading,
+      "each item": SLIDE_AIMS.item,
       "worked-example question": SPEC_LIMITS.question,
       "each worked-example step": SPEC_LIMITS.step,
-      body: SPEC_LIMITS.body,
+      body: SLIDE_AIMS.body,
       stem: SPEC_LIMITS.stem,
       option: SPEC_LIMITS.option,
       term: SPEC_LIMITS.term,

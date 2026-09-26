@@ -4,7 +4,7 @@ import { lessonShapeOf } from "../shapes";
 import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
-import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
+import { generateSlidePrompt, keptDiagram, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
 import {
@@ -230,8 +230,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
-    version: "generate-slide.v25",
-    hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
+    // v26: the copy-down lead, the diagram rule and the shorter slide aims (look uplift).
+    version: "generate-slide.v26",
+    hash: "a0ad1ed967131a4bfab2366de7e838ecebd9c4ea4e14c0d8e4d13593d3b08f44",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -258,7 +259,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
   },
   repair: {
-    version: "repair.v15",
+    version: "repair.v16",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
@@ -317,8 +318,9 @@ describe("prompt versions", () => {
     const budgets = {
       // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
       // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
-      // order, luna-direct FM3) is 979.
-      "generate-slide": 980,
+      // order, luna-direct FM3) is 979. v26 (look uplift: the copy-down lead and the `diagram`
+      // rule with its named "none" and type list, Greg 26 Sept) is 1123.
+      "generate-slide": 1125,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
@@ -583,6 +585,35 @@ describe("prompt versions", () => {
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
     );
+  });
+
+  test("look uplift (v26): only the content shape offers a diagram, and the schema carries it", () => {
+    const system = PROMPTS["generate-slide"].system;
+    const shapeLines = system.split("\n").filter((line) => line.startsWith("- "));
+    const withDiagram = shapeLines.filter((line) => line.includes('"diagram"'));
+    expect(withDiagram).toHaveLength(1);
+    expect(withDiagram[0]).toStartWith("- content:");
+    expect(withDiagram[0]).toContain("(≤ 30 words; ≤ 45 with two key ideas)");
+    expect(system).toContain("heading/subtitle ≤ 60, each item ≤ 110");
+    expect(system).toContain("body ≤ 260");
+    const content = {
+      kind: "content",
+      heading: "Water moves round a cycle",
+      body: "Water keeps moving between sea, air and land. The sun heats it, so it rises as vapour.",
+      diagram: "Cycle: evaporation → condensation → precipitation → collection, arrows clockwise",
+      factRefs: ["k1"],
+    };
+    expect(slideSpecSchemaFor("content")?.safeParse(content).success).toBe(true);
+    // "none" (the named empty value) and any untyped text are dropped; a typed instruction stays.
+    expect(keptDiagram(content).diagram).toBe(content.diagram);
+    expect(keptDiagram({ ...content, diagram: " Number line: 0 to 1 in quarters " }).diagram).toBe(
+      "Number line: 0 to 1 in quarters",
+    );
+    for (const diagram of ["none", "None", "N/A", "A picture of a cliff", "Cycle:"]) {
+      expect("diagram" in keptDiagram({ ...content, diagram })).toBe(false);
+    }
+    const question = { kind: "open-response", diagram: "Cycle: a → b" };
+    expect(keptDiagram(question)).toBe(question);
   });
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {

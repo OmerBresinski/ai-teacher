@@ -28,7 +28,7 @@ import { verifyFactsPrompt } from "./verify-facts";
 export type { CheckInputInput } from "./check-input";
 export type { EvaluateInput } from "./evaluate";
 export type { GenerateSlideInput, SlidePhoto } from "./generate-slide";
-export { IMAGE_TEXT_RULE, photoBlock } from "./generate-slide";
+export { IMAGE_TEXT_RULE, keptDiagram, photoBlock, slideShapeOf } from "./generate-slide";
 export type { GenerateWorksheetInput } from "./generate-worksheet";
 export { BLOCK_SHAPES } from "./generate-worksheet";
 export type {

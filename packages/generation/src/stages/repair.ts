@@ -12,6 +12,7 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
+  DIAGRAM_NAME,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
@@ -30,9 +31,11 @@ import {
 } from "../planner/coded-slides";
 import {
   type Audience,
+  keptDiagram,
   type RepairInput,
   repairFactPrompt,
   repairPrompt,
+  slideShapeOf,
   type WritingShape,
 } from "../prompts";
 import type { RepairContextSlide } from "../prompts/repair";
@@ -364,7 +367,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           // cites now, so a warning fix keeps every planned fact (the coasts groyne bug).
           ...repairPlanOf(slide, base.facts?.outline[index]),
           findings: target.findings,
-          shape: `a "${slide.kind}" slide spec`,
+          shape: slideShapeOf(slide.kind) ?? `a "${slide.kind}" slide spec`,
           context: { slides: repairContext(base, index, target.findings) },
         };
         const call = await callStructured({
@@ -384,7 +387,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           key: target.key,
           index,
           corrections,
-          spec: lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+          spec: withDiagramKept(
+            lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+            slide,
+          ),
           modelId: call.modelId,
           findings: call.editorialMisses.map((miss) =>
             specRuleFinding(miss, { slideId: slide.id }, "warning"),
@@ -748,3 +754,16 @@ const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta
   model: modelId,
   at: deps.now().toISOString(),
 });
+
+/**
+ * generate-slide v26: a repaired content slide keeps a typed `diagram` the model returned, else the
+ * one its diagram placeholder carried before the repair ("Diagram to add: <instruction>").
+ */
+export function withDiagramKept(spec: SlideSpec, before: Slide): SlideSpec {
+  const kept = keptDiagram(spec);
+  if (kept.kind !== "content" || kept.diagram) return kept;
+  const placeholder = before.elements.find((e) => e.name === DIAGRAM_NAME);
+  const text = placeholder ? slideText({ ...before, elements: [placeholder] }) : "";
+  const diagram = text.replace(/^\s*Diagram to add:\s*/, "").trim();
+  return diagram ? keptDiagram({ ...kept, diagram }) : kept;
+}

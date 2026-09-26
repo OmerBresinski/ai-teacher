@@ -18,6 +18,7 @@ import {
 import { laterQuestionsFor } from "../planner/later-questions";
 import {
   generateSlidePrompt,
+  keptDiagram,
   pickOrRequeryPrompt,
   type SlidePhoto,
   verifyFactsPrompt,
@@ -257,7 +258,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
       : call.output;
     const slide = materialiseSlide(
-      withImageCaption(spec, entry),
+      withImageCaption(keptDiagram(spec), entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,

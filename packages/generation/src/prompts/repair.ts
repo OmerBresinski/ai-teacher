@@ -25,6 +25,11 @@ import {
  * target lines carry spec-field labels from the caller (C5). The image-text rule moves from the
  * system text to the user turn, beside the photograph it is about, so the calls with no
  * photograph (all of them in the lab) do not carry it.
+ *
+ * v16 (26 Sept 2026, look uplift): a slide target's `shape` is now Generate's shape line for its
+ * kind (`slideShapeOf`) instead of "a "content" slide spec", so the repair keeps the ≤ 30-word body
+ * and the `diagram` field; the stage keeps a diagram the model drops (`withDiagramKept`). The
+ * system text is unchanged and the pinned sample passes its own shape, so the hash did not move.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -83,7 +88,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v15",
+  version: "repair.v16",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",
