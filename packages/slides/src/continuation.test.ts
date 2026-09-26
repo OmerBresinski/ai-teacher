@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { isContinuation, type Slide } from "@tj/domain/documents";
 import { fitSlide } from "./fit-slide";
-import { materialiseSlide, materialiseSlides } from "./materialise";
+import { DIAGRAM_NOTE_NAME } from "./look";
+import { materialiseSlide, materialiseSlides, presentedSlide } from "./materialise";
+import { SAFE_BOTTOM } from "./metrics";
 import type { SlideSpec, SlideSpecOf } from "./specs";
 import { docLines } from "./structure";
-import { floorBelow, readingSize } from "./text-style";
+import { floorBelow } from "./text-style";
 import { getTheme } from "./themes";
 
 /*
@@ -120,23 +122,33 @@ describe("materialiseSlides: a teaching slide too long for one slide continues",
     expect(heading(one)).toBe("Roman towns and daily life");
   });
 
-  test("a diagram slide too long for its column keeps the slot on the first slide and continues across the full measure", () => {
-    const slides = materialiseSlides(
-      spec(LONGER, { diagram: "Plan of a Roman town: forum, baths, grid of streets" }),
-      "chalk",
-      meta,
-      ids,
-    );
-    expect(slides.length).toBeGreaterThanOrEqual(2);
-    for (const slide of slides) expect(fitSlide(slide, theme).overflow).toEqual([]);
-    // The drawing keeps its space on the first slide, the words beside it at the body size.
-    expect(slides[0]?.elements.some((e) => e.name === "Diagram placeholder")).toBe(true);
-    for (const s of slides.slice(1)) {
-      expect(s.elements.some((e) => e.name === "Diagram placeholder")).toBe(false);
+  test("an undrawn diagram does not shape the text: words as without it, the instruction a strip", () => {
+    const diagram = { diagram: "Plan of a Roman town: forum, baths, grid of streets" };
+    for (const body of [LONG, LONGER]) {
+      const slides = materialiseSlides(spec(body, diagram), "chalk", meta, ids);
+      const plain = materialiseSlides(spec(body), "chalk", meta, ids);
+      // The same pages as the slide without a diagram: no split is caused by it.
+      expect(slides.length).toBe(plain.length);
+      expect(words(slides)).toBe(body);
+      for (const slide of slides) {
+        expect(fitSlide(slide, theme).overflow).toEqual([]);
+        expect(slide.elements.some((e) => e.name === "Diagram placeholder")).toBe(false);
+      }
+      // The instruction is a locked strip at the foot of the slide, on the first slide only.
+      const note = slides[0]?.elements.find((e) => e.name === DIAGRAM_NOTE_NAME);
+      expect(note?.locked).toBe(true);
+      expect(note && note.y + note.h).toBe(SAFE_BOTTOM + 26);
+      expect(JSON.stringify(note)).toContain("Diagram to add: Plan of a Roman town");
+      for (const s of slides.slice(1)) {
+        expect(s.elements.some((e) => e.name === DIAGRAM_NOTE_NAME)).toBe(false);
+      }
+      // Present and export never draw it.
+      expect(
+        presentedSlide(slides[0] as Slide, theme).elements.some(
+          (e) => e.name === DIAGRAM_NOTE_NAME,
+        ),
+      ).toBe(false);
     }
-    const beside = slides[0]?.elements.find((e) => e.name === "Body");
-    expect(beside?.type === "text" && beside.style.fontSize).toBe(readingSize(theme));
-    expect(words(slides)).toBe(LONGER);
   });
 
   test("a list too long for one slide keeps its lead and first points, then the rest as a list", () => {

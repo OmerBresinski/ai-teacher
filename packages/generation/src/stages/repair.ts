@@ -15,8 +15,8 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
-  DIAGRAM_NAME,
   imageTextSpecSchemaFor,
+  isDiagramMark,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
@@ -835,7 +835,7 @@ export function repairedToShape(
 export function withDiagramKept(spec: SlideSpec, before: Slide): SlideSpec {
   const kept = keptDiagram(spec);
   if (kept.kind !== "content" || kept.diagram) return kept;
-  const placeholder = before.elements.find((e) => e.name === DIAGRAM_NAME);
+  const placeholder = before.elements.find(isDiagramMark);
   const text = placeholder ? slideText({ ...before, elements: [placeholder] }) : "";
   const diagram = text.replace(/^\s*Diagram to add:\s*/, "").trim();
   return diagram ? keptDiagram({ ...kept, diagram }) : kept;

@@ -34,11 +34,13 @@ import {
   counted,
   DIAGRAM_NAME,
   EYEBROW_NAME,
+  isDiagramMark,
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
   type SlidePosition,
   stripLook,
   withDeckChrome,
+  withDiagramNote,
   withDiagramSlot,
 } from "./look";
 import { HEADING_NAME } from "./reflow";
@@ -140,14 +142,22 @@ function materialisePages(
   const stamp = provenance(spec.factRefs, meta);
   let slide: Slide = { id: ids(), kind: spec.kind, elements: filled.elements };
   const diagram = spec.kind === "content" ? diagramOf(spec) : undefined;
-  if (diagram && variantName(spec.kind, variant) === "headed") {
+  // With pages (generation), an undrawn diagram does not shape the text: the words are laid out
+  // as if it were not there and the instruction is the editor's strip (`withDiagramNote`).
+  if (diagram && !pages && variantName(spec.kind, variant) === "headed") {
     slide = withDiagramSlot(slide, getTheme(themeId), diagram, ids);
   }
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
   const fitted = lookAndFitPages(slide, getTheme(themeId), ids, structure, { pages });
-  const out = pages ? fitted : fitted.slice(0, 1);
+  const noted =
+    diagram && pages
+      ? fitted.map((page, i) =>
+          i === 0 ? withDiagramNote(page, getTheme(themeId), diagram, ids) : page,
+        )
+      : fitted;
+  const out = pages ? noted : noted.slice(0, 1);
   return out.map((page) => ({
     ...page,
     elements: page.elements.map((element) => stampElement(element, stamp)),
@@ -275,7 +285,7 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
 export function presentedSlide(slide: Slide, theme: Theme, position?: SlidePosition): Slide {
   const shown = withoutDiagramSlot(slide, theme);
   const elements = shown.elements.flatMap((e) => {
-    if (e.name === DIAGRAM_NAME) return [];
+    if (isDiagramMark(e)) return [];
     if (e.name === COUNTER_NAME) return position ? [counted(e, position)] : [];
     return [e];
   });
