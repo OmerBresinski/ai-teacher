@@ -9,6 +9,7 @@ import {
   isOpenPhotoSlot,
   KIND_TAG_NAME,
   PHOTO_NAME,
+  PHOTO_TEXT_SHARE,
   photoLabel,
 } from "./look";
 import {
@@ -22,7 +23,7 @@ import {
 import { SAFE_BOTTOM } from "./metrics";
 import type { SlideSpecOf } from "./specs";
 import { docLines, ITEM_NAME } from "./structure";
-import { readingSize } from "./text-style";
+import { floorBelow, readingSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
 
 /*
@@ -64,7 +65,7 @@ const words = (slides: Slide[]) =>
     .join(" ")
     .replace(/\s+/g, " ");
 
-describe("a photo brief keeps the right half of an explain or a list", () => {
+describe("a photo brief keeps the right of an explain or a list", () => {
   for (const t of THEMES) {
     test(`${t.id}: explain, text left at the body size, a rounded cover-cropped slot right`, () => {
       const [s] = materialiseSlides(why, t.id, meta, undefined, 0, { photo });
@@ -74,8 +75,10 @@ describe("a photo brief keeps the right half of an explain or a list", () => {
       expect(img.alt).toBe("Roman legionaries — shields, armour");
       expect(img.fit).toBe("cover");
       expect(img.radius).toBe(t.radius);
-      // About half the width, to the foot of the safe area.
-      const half = Math.floor((SAFE.w - SPACE[5]) / 2);
+      // About 38% of the width (a real photo, not a thumbnail), to the foot of the safe area.
+      expect(img.w / SAFE.w).toBeGreaterThan(0.35);
+      expect(img.w / SAFE.w).toBeLessThan(0.42);
+      const half = Math.floor((SAFE.w - SPACE[5]) * PHOTO_TEXT_SHARE);
       expect(Math.abs(img.w - (SAFE.w - half - SPACE[5]))).toBeLessThanOrEqual(1);
       expect(img.x + img.w).toBe(SAFE.x + SAFE.w);
       expect(img.y + img.h).toBe(SAFE_BOTTOM);
@@ -120,7 +123,7 @@ describe("a photo brief keeps the right half of an explain or a list", () => {
         expect(p.elements.some((e) => e.name === "Body")).toBe(false);
         expect(fitSlide(p, t).overflow).toHaveLength(0);
         for (const e of bodyText(p)) {
-          expect(e.style.fontSize ?? readingSize(t)).toBeGreaterThanOrEqual(readingSize(t));
+          expect(e.style.fontSize ?? readingSize(t)).toBeGreaterThanOrEqual(floorBelow(t, "body"));
         }
       }
       if (pages.length > 1) {
@@ -140,7 +143,7 @@ describe("a photo brief keeps the right half of an explain or a list", () => {
     });
     expect(pages.length).toBeGreaterThan(1);
     const img = slot(pages[0] as Slide);
-    const half = Math.floor((SAFE.w - SPACE[5]) / 2);
+    const half = Math.floor((SAFE.w - SPACE[5]) * PHOTO_TEXT_SHARE);
     expect(img.w).toBeGreaterThanOrEqual(SAFE.w - half - SPACE[5] - 1);
     // The photograph is on the first slide only, every word is said once, at the body size.
     expect(pages.slice(1).every((p) => !slot(p))).toBe(true);
@@ -261,5 +264,78 @@ describe("the demo view draws every slot (withSlotsShown)", () => {
   test("the placeholder's words", () => {
     expect(photoLabel({ subject: "A flooded town street" })).toBe("A flooded town street");
     expect(photoLabel(photo)).toBe("Roman legionaries — shields, armour");
+  });
+});
+
+describe("the first slide holds all it can; a continuation never holds one item alone", () => {
+  const sentencesIn = (p: Slide) =>
+    bodyText(p)
+      .filter((e) => e.name !== "Heading")
+      .flatMap((e) => docLines(e.doc))
+      .join(" ")
+      .split(/(?<=\.) /)
+      .filter(Boolean);
+  const itemsIn = (p: Slide) => p.elements.filter((e) => e.name === ITEM_NAME).length;
+
+  for (const t of THEMES) {
+    test(`${t.id}: a list beside a photo keeps every point that fits on the first slide`, () => {
+      const spec: Content = {
+        kind: "content",
+        factRefs: [],
+        heading: "Why the Romans invaded Britain",
+        body: "Britain offered the Romans wealth and glory.",
+        points: [
+          "Wealth: metals such as tin and lead.",
+          "Glory: a victory made Claudius look strong.",
+          "Safety: Britons had helped Rome's enemies in Gaul.",
+          "Trade: grain and slaves could be sent to Rome.",
+        ],
+      };
+      const pages = materialiseSlides(spec, t.id, meta, undefined, 0, { photo });
+      const first = pages[0] as Slide;
+      expect(slot(first)).toBeDefined();
+      expect(itemsIn(first)).toBeGreaterThan(0);
+      for (const p of pages.slice(1)) expect(itemsIn(p)).toBeGreaterThanOrEqual(2);
+      expect(pages.reduce((n, p) => n + itemsIn(p), 0)).toBe(4);
+      for (const p of pages) expect(fitSlide(p, t).overflow).toHaveLength(0);
+    });
+
+    test(`${t.id}: sentences beside a photo fill the first slide; the rest never one sentence alone`, () => {
+      const pages = materialiseSlides({ ...why, body: LONG }, t.id, meta, undefined, 0, { photo });
+      expect(sentencesIn(pages[0] as Slide).length).toBeGreaterThanOrEqual(2);
+      for (const p of pages.slice(1)) expect(sentencesIn(p).length).toBeGreaterThanOrEqual(2);
+      for (const p of pages) {
+        for (const e of bodyText(p)) {
+          expect(e.style.fontSize ?? readingSize(t)).toBeGreaterThanOrEqual(floorBelow(t, "body"));
+        }
+      }
+    });
+  }
+
+  test("rivers 04: steps too long for the strip read as dots across the full measure, at the body size", () => {
+    const t = getTheme("chalk");
+    const spec: Content = {
+      kind: "content",
+      factRefs: [],
+      heading: "How rainfall can cause river flooding",
+      body: "Heavy or prolonged rainfall can raise a river’s discharge until it spills over its banks.",
+      steps: [
+        "When rain falls heavily or for a long time, the ground may not absorb it all.",
+        "The extra water flows over the land into streams and rivers, raising their discharge.",
+        "If the river cannot contain this added water, it spills onto nearby land.",
+        "During Storm Desmond in 2015, heavy rain caused river flooding in Cumbria.",
+      ],
+    };
+    const pages = materialiseSlides(spec, "chalk", meta);
+    for (const p of pages) {
+      expect(fitSlide(p, t).overflow).toHaveLength(0);
+      const words = bodyText(p).filter((e) => e.name !== "Heading");
+      const right = Math.max(...words.map((e) => e.x + e.w));
+      expect(right).toBeGreaterThanOrEqual(SAFE.x + SAFE.w - 2);
+      // At the body size, or the one step down that keeps an item from standing alone.
+      for (const e of words)
+        expect(e.style.fontSize ?? readingSize(t)).toBeGreaterThanOrEqual(floorBelow(t, "body"));
+    }
+    expect(pages.reduce((n, p) => n + itemsIn(p), 0)).toBe(4);
   });
 });

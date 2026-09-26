@@ -6,6 +6,7 @@ import { SAFE } from "./grid";
 import {
   applyLook,
   COUNTER_NAME,
+  counterRoom,
   DIAGRAM_NAME,
   EYEBROW_NAME,
   HEADING_DISPLAY,
@@ -400,7 +401,7 @@ describe("design pass", () => {
     expect(chips.length).toBeLessThanOrEqual(2);
   });
 
-  test("a short heading is a display line; a long one keeps the theme size", () => {
+  test("one heading size across teaching slides: a long heading wraps at the display size, beside the counter", () => {
     const short = named(slide("One idea. Two ideas.").elements, "Heading")[0];
     const long = named(
       slide(
@@ -412,7 +413,12 @@ describe("design pass", () => {
     expect(short?.type === "text" && short.style.fontSize).toBe(
       Math.round(t.sizes.heading * HEADING_DISPLAY),
     );
-    expect(long?.type === "text" && long.style.fontSize).toBeFalsy();
+    expect(long?.type === "text" && long.style.fontSize).toBe(
+      Math.round(t.sizes.heading * HEADING_DISPLAY),
+    );
+    expect(long?.h).toBeGreaterThan((short?.h ?? 0) * 1.5);
+    // It leaves the top-right corner to the counter.
+    expect((long?.x ?? 0) + (long?.w ?? 0)).toBeLessThanOrEqual(SAFE.x + SAFE.w - counterRoom(t));
   });
 });
 
@@ -471,7 +477,7 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
     ).toEqual(["Chlorophyll absorbs light energy.", "This powers photosynthesis."]);
   });
 
-  test("a teaching slide takes no tag and so no counter; a stored TEACH tag goes on restyle", () => {
+  test("a teaching slide takes no tag but keeps the counter; a stored TEACH tag goes on restyle", () => {
     const t = getTheme("chalk");
     const s = materialiseSlide(
       {
@@ -486,7 +492,11 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
     expect(named(s.elements, KIND_TAG_NAME)).toHaveLength(0);
     expect(named(s.elements, "Heading")[0]?.y).toBe(SAFE.y);
     const [out] = withDeckChrome([s], t);
-    expect(named(out?.elements ?? [], COUNTER_NAME)).toHaveLength(0);
+    const counter = named(out?.elements ?? [], COUNTER_NAME)[0];
+    expect(counter?.y).toBe(SAFE.y);
+    expect((counter?.x ?? 0) + (counter?.w ?? 0)).toBe(SAFE.x + SAFE.w);
+    const head = named(s.elements, "Heading")[0];
+    expect((head?.x ?? 0) + (head?.w ?? 0)).toBeLessThanOrEqual(counter?.x ?? 0);
     // A slide stored with the old tag: the heading under it, the words under that.
     const heading = named(s.elements, "Heading")[0] as SlideElement;
     const drop = 34;
@@ -529,7 +539,7 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
       { deck: { yearGroup: "Year 9", subject: "Geography" } },
     );
     expect(named(s.elements, EYEBROW_NAME)).toHaveLength(0);
-    // A teaching slide is untagged, so its top lane is the heading's: no counter there.
-    expect(named(s.elements, COUNTER_NAME)).toHaveLength(0);
+    // Untagged, the counter still sits at the top right (the heading leaves it the corner).
+    expect(named(s.elements, COUNTER_NAME)).toHaveLength(1);
   });
 });

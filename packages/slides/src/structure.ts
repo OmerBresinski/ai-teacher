@@ -13,7 +13,7 @@ import type {
 import { docFromBullets, docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, snapY } from "./grid";
-import { accentTint, PHOTO_NAME, type PhotoBrief } from "./look";
+import { accentTint, PHOTO_NAME, PHOTO_TEXT_SHARE, type PhotoBrief } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
@@ -1335,7 +1335,15 @@ function structureContent(
       paginate,
     );
     if (split) return [split];
-    return paginate ? (splitParagraph(slide, bodies, t, ids, hints.terms) ?? plain) : plain;
+    if (!paginate) return plain;
+    // Too long for one slide: the lead and the dots across the full measure, continued as dots.
+    const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement));
+    const lead = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
+    return (
+      greedyPages(slide, t, hints, ids, keep, undefined, top, SAFE.x, SAFE.w, lead, points, true) ??
+      splitParagraph(slide, bodies, t, ids, hints.terms) ??
+      plain
+    );
   }
   // The words left over continue on the next slide; but a component never costs a slide the
   // plain text did not need, so a slide that fitted stays as it was.
@@ -1609,54 +1617,29 @@ function structureDiagram(
   const x = first.x;
   const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
   const placedSlot = slotPanel(slot, top, slot.x, slot.w, t);
-  // A list stays a list (look/image-slot): with pages, bullets that do not all fit beside the slot
-  // at the body size are split as evenly as fits, the rest continuing across the next slide.
+  // With pages the words fill the column beside the slot at the body size, as many points or
+  // sentences as fit, and only the rest continues (look/image-slot): a list stays a list.
   const points = hints.points?.length ? hints.points : bodies.flatMap((b) => pointsOf(b.doc));
-  if (paginate && points.length >= 2) {
-    const lead = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
+  if (paginate) {
     const keep = slide.elements.filter((e) => e !== slot && !bodies.includes(e as TextElement));
-    const n = points.length;
-    // The most even split first; the lead alone beside the photo, every bullet after, last.
-    const order = [
-      ...Array.from({ length: n - 1 }, (_, i) => i + 1).sort(
-        (a, b) => Math.abs(a - n / 2) - Math.abs(b - n / 2) || b - a,
-      ),
-      ...(lead ? [0] : []),
-    ];
-    // The continuation's heading says "(continued)" and may take a second line: its bullets
-    // start under it as the fit sets it.
-    const shell = fitSlide(continued(slide, chromeOf(slide), [], ids), t).slide;
-    const head = headingOf(shell);
-    const top2 = Math.max(top, head ? snapY(head.y + head.h + SPACE[4]) : top);
-    for (const k of order) {
-      const beside = dotsColumn(lead, points.slice(0, k), top, x, w, t, ids);
-      if (!beside) continue;
-      // The rest across as few continuation slides as hold them, split evenly.
-      const rest = points.slice(k);
-      for (let m = 1; m <= rest.length; m++) {
-        const size = Math.ceil(rest.length / m);
-        const groups = Array.from({ length: m }, (_, i) => rest.slice(i * size, (i + 1) * size));
-        const after = groups.map((g) => dotsColumn("", g, top2, SAFE.x, SAFE.w, t, ids));
-        if (after.some((a) => !a || a.length === 0)) continue;
-        return [
-          withTerms({ ...slide, elements: [...keep, ...beside, placedSlot] }, t, hints.terms),
-          ...after.map((a, i) =>
-            withTerms(
-              {
-                ...shell,
-                id: i === 0 ? shell.id : ids(),
-                elements: [
-                  ...shell.elements.map((e) => (i === 0 ? e : { ...e, id: ids() })),
-                  ...(a as SlideElement[]),
-                ],
-              },
-              t,
-              hints.terms,
-            ),
-          ),
-        ];
-      }
-    }
+    const listed = points.length >= 2;
+    const lead = listed ? joinSentences(bodies.map((b) => docText(proseOf(b.doc)))) : "";
+    const items = listed ? points : sentences(bodies.map((b) => docText(b.doc)).join(" "));
+    const paged = greedyPages(
+      slide,
+      t,
+      hints,
+      ids,
+      keep,
+      placedSlot,
+      top,
+      x,
+      w,
+      lead,
+      items,
+      listed,
+    );
+    if (paged) return paged;
   }
   const asIs: Slide = {
     ...slide,
@@ -1732,6 +1715,126 @@ function structureDiagram(
 }
 
 /**
+ * A teaching slide's words as the fewest slides, the first filled first (look/image-slot): the
+ * lead and as many items (dot points, or sentences as one paragraph) as fit the first column at
+ * the body size, beside `slot` when there is one; the rest across the full measure on
+ * "(continued)" slides, each as full as fits. A continuation does not hold one item alone: the
+ * first slide takes it a step down (never below the floor), else gives it one of its own while
+ * it keeps at least one; a first slide with room for only one item keeps it (one each).
+ * `undefined` when an item does not fit a slide on its own.
+ */
+function greedyPages(
+  slide: Slide,
+  t: Theme,
+  hints: SlideStructure,
+  ids: Ids,
+  keep: SlideElement[],
+  slot: SlideElement | undefined,
+  top: number,
+  x: number,
+  w: number,
+  lead: string,
+  items: string[],
+  dots: boolean,
+): Slide[] | undefined {
+  const body = readingSize(t);
+  const floor = floorBelow(t, "body");
+  const column = (
+    from: string[],
+    y: number,
+    cx: number,
+    cw: number,
+    size: number,
+    withLead: boolean,
+  ) =>
+    dots
+      ? dotsColumn(withLead ? lead : "", from, y, cx, cw, t, ids, size)
+      : from.length === 0
+        ? []
+        : paragraphColumn(joinSentences(from), y, cx, cw, t, ids, size);
+  const first = (k: number, size = body) => column(items.slice(0, k), top, x, w, size, true);
+  let k = items.length;
+  while (k > 0 && !first(k)) k -= 1;
+  const n = items.length;
+  const page = (els: SlideElement[]) =>
+    withTerms({ ...slide, elements: [...keep, ...els, ...(slot ? [slot] : [])] }, t, hints.terms);
+  if (k === n) {
+    const els = first(n);
+    return els ? [page(els)] : undefined;
+  }
+  if (n - k === 1) {
+    const down = first(n, floor);
+    if (down) return [page(down)];
+    // Else the first slide gives one of its own, while it keeps at least one beside the lead.
+    if (k >= 2) k -= 1;
+  }
+  if (k === 0 && !lead) return undefined;
+  const firstEls = first(k);
+  if (!firstEls) return undefined;
+  const shell = fitSlide(continued(slide, chromeOf(slide), [], ids), t).slide;
+  const head = headingOf(shell);
+  const top2 = Math.max(top, head ? snapY(head.y + head.h + SPACE[4]) : top);
+  const groups: { items: string[]; size: number }[] = [];
+  let rest = items.slice(k);
+  while (rest.length) {
+    let m = rest.length;
+    while (m > 0 && !column(rest.slice(0, m), top2, SAFE.x, SAFE.w, body, false)) m -= 1;
+    if (m === 0) return undefined;
+    // Never one item alone on the last slide: this slide takes it a step down, else gives it one.
+    if (rest.length - m === 1 && column(rest, top2, SAFE.x, SAFE.w, floor, false)) {
+      groups.push({ items: rest, size: floor });
+      break;
+    }
+    if (rest.length - m === 1 && m >= 3) m -= 1;
+    groups.push({ items: rest.slice(0, m), size: body });
+    rest = rest.slice(m);
+  }
+  return [
+    page(firstEls),
+    ...groups.map((g, i) =>
+      withTerms(
+        {
+          ...shell,
+          id: i === 0 ? shell.id : ids(),
+          elements: [
+            ...shell.elements.map((e) => (i === 0 ? e : { ...e, id: ids() })),
+            ...(column(g.items, top2, SAFE.x, SAFE.w, g.size, false) as SlideElement[]),
+          ],
+        },
+        t,
+        hints.terms,
+      ),
+    ),
+  ];
+}
+
+/** Sentences as one paragraph down a column at `size`, or `undefined` past the safe area. */
+function paragraphColumn(
+  words: string,
+  top: number,
+  x: number,
+  width: number,
+  t: Theme,
+  ids: Ids,
+  size: number,
+): SlideElement[] | undefined {
+  const measure = measureHeadless(t);
+  const leading = readingLeading(t);
+  const doc = docFromText(words);
+  const h = heightOf(measure, doc, width, "body", size, 0, { lineHeight: leading });
+  if (!fits(top + h)) return undefined;
+  return [
+    text(
+      ids,
+      { x, y: top, w: width, h },
+      doc,
+      { preset: "body", fontSize: size, lineHeight: leading },
+      { name: BODY_NAME },
+    ),
+  ];
+}
+
+/**
  * A lead and dot points set down a column at the body size, as `splitContent` sets them; the
  * elements, or `undefined` when they run past the foot of the safe area.
  */
@@ -1743,10 +1846,10 @@ function dotsColumn(
   width: number,
   t: Theme,
   ids: Ids,
+  size = readingSize(t),
 ): SlideElement[] | undefined {
   const measure = measureHeadless(t);
   const leading = readingLeading(t);
-  const size = readingSize(t);
   const els: SlideElement[] = [];
   let y = top;
   if (lead) {
@@ -1990,7 +2093,11 @@ function splitContent(
   const across = label === "";
   // Every share at the body size first. With pages nothing steps down beside a panel: the panel
   // gives way to the full-width paragraph (a step down there, then a continuation, UX ruling 91).
-  const shares = across ? [1] : slot ? [0.5] : [0.5, 0.6, 0.66];
+  const shares = across
+    ? [1]
+    : slot
+      ? [slot.type === "image" ? PHOTO_TEXT_SHARE : 0.5]
+      : [0.5, 0.6, 0.66];
   const settings = sizes.flatMap((size) => shares.map((share) => ({ share, size })));
   for (const { share, size } of settings) {
     if (size !== sizes[0] && floorless && !across) break;

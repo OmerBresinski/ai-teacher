@@ -3,7 +3,8 @@ import type { OptionElement, Slide, SlideElement, TextElement } from "@tj/domain
 import { docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
-import { materialiseSlide } from "./materialise";
+import { HEADING_DISPLAY } from "./look";
+import { materialiseSlide, materialiseSlides } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { reflowSlide } from "./reflow";
 import type { SlideSpec } from "./specs";
@@ -86,10 +87,24 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     const [body] = byPreset(slide, "body");
     if (!heading || !body) throw new Error("content");
     expect(heading.h).toBeGreaterThanOrEqual(needed(heading) - 0.5);
-    // The look names the heading so the fit never steps it down (`look.ts`).
-    expect(heading.style.fontSize).toBeUndefined();
+    // The look names the heading so the fit never steps it down (`look.ts`): one display size
+    // across teaching slides, a long heading wrapping to two lines at it.
+    expect(heading.style.fontSize).toBe(Math.round(theme.sizes.heading * HEADING_DISPLAY));
     expect(body.y).toBeGreaterThanOrEqual(bottom(heading));
-    for (const el of texts(slide)) expect(bottom(el)).toBeLessThanOrEqual(SAFE_BOTTOM);
+    // A two-line display heading leaves less room: as one slide the words may overrun, which the
+    // fit reports for Tidy; with pages (generation) every slide stays inside the safe area.
+    const pages = materialiseSlides(
+      {
+        kind: "content",
+        heading: "War exposed tsarist weaknesses and created a Petrograd crisis",
+        body: "War brought defeats, deaths, inflation and shortages. In Petrograd, bread and fuel queues turned hardship into protests; soldiers mutinied (refused orders). The Tsar failed to restore trust or control the crisis, so he abdicated (gave up power).",
+        factRefs: ["k1"],
+      },
+      THEME,
+      META,
+    );
+    for (const p of pages)
+      for (const el of texts(p)) expect(bottom(el)).toBeLessThanOrEqual(SAFE_BOTTOM);
   });
 
   test("options that wrap in the grid's cards are laid as full-width rows, one line each, in order", () => {

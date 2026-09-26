@@ -52,8 +52,9 @@ export type ShapeComposition = "panel" | "full";
  * `fitSlide`, the path a slide takes when no panel is placed). It counts only when it comes out as
  * one slide with no overflow, all running text at or above the body floor (the one step down UX
  * ruling 91 allows, `floorBelow`, never lower), a one-line display heading, and the composition
- * measured: `panel` has a right panel beside the words (a key term for explain, a diagram for a
- * list), `full` has none. Lead first: the heading (one display line) and a compare side's label
+ * measured: `panel` has a photograph beside the words (`PHOTO_TEXT_SHARE` of the measure for the
+ * text, look/image-slot: the writer reads `panel` for a slide with a planned photo), `full` has
+ * none. Lead first: the heading (one display line) and a compare side's label
  * (one line of its card); then the lead, up to two lines across or three beside the panel, and at
  * most 18 words; then the shape's slot in what is left, up to its target (`TARGETS`: an explain
  * body 36 words after the lead, a point 16, a compare point or a step 12), the lead giving words
@@ -80,7 +81,9 @@ export const COMPOSITION_BUDGETS: Record<
     full: { heading: { max: 4 }, lead: { max: 18 }, body: { max: 32 } },
   },
   list: {
-    panel: { heading: { max: 4 }, lead: { max: 14 }, points: { max: 6, count: [2, 3] } },
+    // Beside a photograph at `PHOTO_TEXT_SHARE` (look/image-slot, 27 Sept 2026): "Label:
+    // sentence" points, not fragments (6 words at the half split lost E49).
+    panel: { heading: { max: 4 }, lead: { max: 13 }, points: { max: 13, count: [2, 3] } },
     full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 16, count: [2, 3] } },
   },
   compare: {

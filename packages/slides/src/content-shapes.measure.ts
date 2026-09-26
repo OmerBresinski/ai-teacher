@@ -4,7 +4,7 @@ import { docFromBullets, docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
 import { layoutSlide } from "./layouts";
-import { applyLook, DIAGRAM_NAME, HEADING_DISPLAY } from "./look";
+import { applyLook, DIAGRAM_NAME, HEADING_DISPLAY, PHOTO_NAME } from "./look";
 import { materialiseSlide } from "./materialise";
 import { HEADING_NAME } from "./reflow";
 import type { SlideSpecOf } from "./specs";
@@ -123,29 +123,31 @@ export function check(
   t: Theme,
   leadLines = 2,
 ): Slide | string {
-  // A list's right half is a diagram's (a written list never takes the key-term panel).
-  const spec =
-    shape === "list" && composition === "panel"
-      ? { ...specFor(shape, c), diagram: "A labelled drawing" }
-      : specFor(shape, c);
+  // An explain's or a list's panel composition is the photograph's (look/image-slot): the writer
+  // reads `panel` for a slide with a planned photo. A written list never takes the key-term panel.
+  const spec = specFor(shape, c);
+  const photo = composition === "panel" && (shape === "list" || shape === "explain");
   const slide =
     shape === "explain" && composition === "full"
       ? fullMeasure(spec, t)
       : materialiseSlide(spec, t.id, meta, undefined, 0, {
           terms: [TERM],
-          ...(composition === "panel" ? { glossary: GLOSSARY } : {}),
+          ...(photo ? { photo: { subject: "A photograph" } } : {}),
+          ...(composition === "panel" && !photo ? { glossary: GLOSSARY } : {}),
         });
   if (fitSlide(slide, t).overflow.length > 0) return "overflow";
   const els = slide.elements;
   const has = (name: string) => els.some((e) => e.name === name);
   // The composition it was measured for.
-  if ((composition === "panel") !== (has(PANEL_NAME) || has(DIAGRAM_NAME))) return "composition";
+  if ((composition === "panel") !== (has(PANEL_NAME) || has(DIAGRAM_NAME) || has(PHOTO_NAME)))
+    return "composition";
   if (shape === "compare" && !has(COMPARE_NAME)) return "no compare cards";
   if (shape === "sequence" && !has(STEP_NAME)) return "no steps";
   if (shape === "list" && !has(ITEM_NAME)) return "no dot points";
   // One line of display heading.
   const heading = els.find((e) => e.name === HEADING_NAME) as TextElement | undefined;
-  if (heading?.style.fontSize !== Math.round(t.sizes.heading * HEADING_DISPLAY))
+  const display = Math.round(t.sizes.heading * HEADING_DISPLAY);
+  if (heading?.style.fontSize !== display || heading.h > display * 1.08 * 1.5)
     return "heading not one display line";
   // At or above the body floor: running text may take the one step down the fit allows (UX ruling
   // 91, `floorBelow`), never more, so the slide still reads from the back of the room.

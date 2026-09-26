@@ -61,6 +61,12 @@ export const isDiagramMark = (el: { name?: string }): boolean => el.name === DIA
  * empty box.
  */
 export const PHOTO_NAME = "Photo slot";
+/**
+ * The text column's share beside a photograph (the photo takes the rest, about 38%): wide enough
+ * for "Label: sentence" points of 10–12 words at the body size, the photo still a real picture,
+ * not a thumbnail. A diagram keeps the half.
+ */
+export const PHOTO_TEXT_SHARE = 0.62;
 /** What a slide's photograph should be: `ImageBrief`'s subject and the things it must show. */
 export type PhotoBrief = { subject: string; mustShow?: readonly string[] | undefined };
 /** The brief as one line, the placeholder's words: "Roman legionaries — shields, armour". */
@@ -322,8 +328,8 @@ export function withDiagramSlot(
 }
 
 /**
- * Keep the right half of a teaching slide for a photograph (look/image-slot): the body narrows to
- * the left half and an image slot, rounded and cover-cropped, takes the right, from the body's top
+ * Keep the right of a teaching slide for a photograph (look/image-slot): the body narrows to
+ * `PHOTO_TEXT_SHARE` of the measure and an image slot, rounded and cover-cropped, takes the rest, from the body's top
  * to the foot of the safe area. The structure pass (`structure.ts` `structureDiagram`) fits the
  * words beside it at the body size, continuing them on the next slide rather than shrinking the
  * slot. The slot holds `PLACEHOLDER_IMAGE` until `illustrate` finds the photograph.
@@ -333,7 +339,7 @@ export function withPhotoSlot(slide: Slide, t: Theme, brief: PhotoBrief, ids: Id
     (e): e is TextElement => e.type === "text" && e.style.preset === "body" && !e.name,
   );
   if (!body || slide.elements.some((e) => e.name === PHOTO_NAME)) return slide;
-  const half = Math.floor((SAFE.w - SPACE[5]) / 2);
+  const half = Math.floor((SAFE.w - SPACE[5]) * PHOTO_TEXT_SHARE);
   const x = SAFE.x + half + SPACE[5];
   const slot: SlideElement = {
     id: ids(),
@@ -355,28 +361,16 @@ export function withPhotoSlot(slide: Slide, t: Theme, brief: PhotoBrief, ids: Id
 }
 
 /**
- * A short heading is set as a display line, as in the examples ("Limiting factors" at about twice
- * the body): a third above the theme's heading size and tighter leading, when it still takes one
- * line of the full measure. A longer heading keeps the theme's size, on tighter leading.
+ * A heading is set as a display line, as in the examples ("Limiting factors" at about twice the
+ * body): a third above the theme's heading size, on tighter leading. One size across the deck:
+ * a heading too long for one line wraps to two at the same size rather than shrinking.
  */
 export const HEADING_DISPLAY = 1.33;
-function headingDisplay(heading: TextElement, t: Theme): { fontSize?: number; lineHeight: number } {
-  const size = Math.round(t.sizes.heading * HEADING_DISPLAY);
-  const words = plain(heading).trim();
-  const measure = measureHeadless(t);
-  const style = { ...heading.style, fontSize: size, lineHeight: 1.08 };
-  const h = measure({
-    doc: heading.doc,
-    width: SAFE.w,
-    style,
-    preset: "heading",
-    inset: 0,
-    chrome: 0,
-  });
-  const oneLine = h <= size * 1.08 * 1.5;
-  return words.split(/\s+/).length <= 7 && oneLine
-    ? { fontSize: size, lineHeight: 1.08 }
-    : { lineHeight: 1.12 };
+function headingDisplay(
+  _heading: TextElement,
+  t: Theme,
+): { fontSize?: number; lineHeight: number } {
+  return { fontSize: Math.round(t.sizes.heading * HEADING_DISPLAY), lineHeight: 1.08 };
 }
 
 /* ---------------------------------------------------------------- deck chrome */
@@ -405,6 +399,8 @@ export function counted(el: SlideElement, position: SlidePosition): SlideElement
 export type DeckContext = { yearGroup?: string | null; subject?: string | null };
 
 const captionWidth = (label: string, t: Theme) => Math.ceil(label.length * t.sizes.caption * 0.78);
+/** The room the counter takes at the right of the top lane, up to "88 / 88", and its gap. */
+export const counterRoom = (t: Theme): number => captionWidth("88 / 88", t) + SPACE[3];
 
 /**
  * The top line across a deck: the kind tag at the left and a quiet "7 / 12" at the right. The
@@ -419,16 +415,28 @@ export function withDeckChrome(slides: Slide[], t: Theme, ids: Ids = uid): Slide
   return slides.map((slide, i) => {
     const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
     const els = slide.elements.filter((e) => e.name !== EYEBROW_NAME && e.name !== COUNTER_NAME);
-    if (!tag) return els.length === slide.elements.length ? slide : { ...slide, elements: els };
     const counter = counterText({ index: i, total });
     const cw = captionWidth(counter, t);
+    const lane = tag ? { y: tag.y, h: tag.h } : { y: SAFE.y, h: tagHeight(t) };
+    const at = { x: SAFE.x + SAFE.w - cw, ...lane, w: cw };
+    // Every slide takes the counter at the top right, the cover aside, where the corner is free
+    // (an untagged heading leaves it, `applyLook`); a slide whose own content fills it goes without.
+    const clash = els.some(
+      (e) =>
+        !isBackdrop(e) &&
+        e.name !== ACCENT_BAR_NAME &&
+        e.x < at.x + at.w &&
+        e.x + e.w > at.x &&
+        e.y < at.y + at.h &&
+        e.y + e.h > at.y,
+    );
+    if (slide.kind === "title" || (!tag && clash)) {
+      return els.length === slide.elements.length ? slide : { ...slide, elements: els };
+    }
     const added: SlideElement = {
       id: ids(),
       type: "text",
-      x: SAFE.x + SAFE.w - cw,
-      y: tag.y,
-      h: tag.h,
-      w: cw,
+      ...at,
       name: COUNTER_NAME,
       doc: docFromText(counter),
       style: {
@@ -441,7 +449,7 @@ export function withDeckChrome(slides: Slide[], t: Theme, ids: Ids = uid): Slide
     };
     return {
       ...slide,
-      elements: [...els.map((e) => (e === tag ? { ...e, x: SAFE.x } : e)), added],
+      elements: [...els.map((e) => (tag && e === tag ? { ...e, x: SAFE.x } : e)), added],
     };
   });
 }
@@ -517,9 +525,13 @@ export function applyLook(
     const style = { ...heading.style };
     delete style.fontSize;
     delete style.lineHeight;
-    const display = headingDisplay(heading, t);
+    // Teaching slides share one display size; an activity keeps the theme's size, so its
+    // cards keep their room (a two-line display heading pushed a worked example's card off).
+    const display = label ? { lineHeight: 1.12 } : headingDisplay(heading, t);
     if (display) Object.assign(style, display);
-    const next: TextElement = { ...heading, y: want, name: HEADING_NAME, style };
+    // Untagged, the heading shares its lane with the slide counter at the right (`withDeckChrome`).
+    const w = label ? heading.w : Math.min(heading.w, SAFE.w - counterRoom(t));
+    const next: TextElement = { ...heading, y: want, w, name: HEADING_NAME, style };
     const foot = next.y + next.h + SPACE[3];
     const below = els.filter(
       (e) => e !== heading && !isBackdrop(e) && e.y >= heading.y + heading.h,
