@@ -141,9 +141,6 @@
     color 0.2s,
     box-shadow 0.2s;
 }
-.view-switch button:hover {
-  color: var(--ink);
-}
 .view-switch button[aria-pressed="true"] {
   background: var(--paper);
   color: var(--ink);
@@ -225,10 +222,6 @@
     background 0.2s,
     color 0.2s;
 }
-.viewer-step:hover {
-  background: var(--ink);
-  color: var(--cream);
-}
 .viewer-flip {
   transform: scaleX(-1);
 }
@@ -259,9 +252,6 @@
   transition:
     opacity 0.2s,
     box-shadow 0.2s;
-}
-.viewer-thumb:hover {
-  opacity: 1;
 }
 .viewer-thumb[aria-current="true"] {
   opacity: 1;
@@ -316,6 +306,19 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Hover styles only where there is a real pointer; on touch a tap would leave them stuck on. */
+@media (hover: hover) {
+  .viewer-step:hover {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .view-switch button:hover {
+    color: var(--ink);
+  }
+  .viewer-thumb:hover {
+    opacity: 1;
+  }
+}
 /* Phone: the slide and the sheets run edge to edge, and the controls shrink to one quiet row:
    previous, where you are, next, and the answers switch. Thumbnails give way to swiping. */
 @media (max-width: 760px) {
@@ -357,10 +360,10 @@
     display: contents;
   }
   .viewer-step {
-    width: 40px;
+    width: 44px;
     height: 44px;
     border: 0;
-    border-radius: var(--radius-control);
+    border-radius: 50%;
     background: transparent;
     font-size: 1.25rem;
   }
@@ -408,6 +411,19 @@
   .lesson-papers {
     grid-template-columns: 1fr;
     gap: 2.5rem;
+  }
+  /* The sheets start below a rule, so their controls never read as the slide's. */
+  .lesson-block + .lesson-block > .lesson-papers {
+    border-top: 1px solid var(--line);
+    padding-top: 1.75rem;
+  }
+  .viewer-step:active {
+    opacity: 0.55;
+  }
+  /* The narrow layout's arrows are bare icons: a soft round wash on hover, never a filled block. */
+  .viewer-step:hover {
+    background: rgb(41 59 50 / 0.07);
+    color: var(--ink);
   }
   .paper-bar {
     margin-bottom: 0.6rem;
