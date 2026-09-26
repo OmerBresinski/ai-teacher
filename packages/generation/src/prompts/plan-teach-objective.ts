@@ -41,6 +41,15 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * key stage" and a national-curriculum variant both still wrote "leaves make food" in 6 of 6 runs
  * (Luna guide rule 8: an instruction does not overturn the model's framing; the source does).
  * `priorKnowledge` stays on the input type for the callers and is no longer rendered.
+ *
+ * v3 (l6j, 26 Sept 2026; `quality-prd/lab/DIAG-ratio-checks.md` gap 1): an unfloored call was told
+ * "Worked example: none for this objective.", so a method taught under a non-final Explain
+ * objective ("Explain how dividing by a common factor simplifies a ratio") never got one, and its
+ * finished form (simplest form) was absent from the facts of 10 of 15 Y7 ratio decks. Code still floors Apply
+ * verbs and the reach; the other calls now read "one if this objective involves a method pupils
+ * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
+ * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
+ * finished form", so a method is not stopped part way. Not yet measured.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -151,7 +160,10 @@ export function planTeachObjectiveOutputSchemaFor(
   );
 }
 
-/** v14's worked-example line, unchanged: "required" or "none" per call, no line when no call is floored. */
+/**
+ * The worked-example line: "required" on a call `carriesWorkedExample` floors; on the others (v3)
+ * the call decides from its objective, default none. No line when no call is floored.
+ */
 export function workedExampleLine(position: PlanFactsObjectivePosition): string | undefined {
   const anyRequired = position.objectives.some((_, target) =>
     carriesWorkedExample({ ...position, target }),
@@ -159,7 +171,7 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
   if (!anyRequired) return undefined;
   return carriesWorkedExample(position)
     ? "Worked example: required for this objective."
-    : "Worked example: none for this objective.";
+    : "Worked example: one if this objective involves a method pupils carry out; otherwise none.";
 }
 
 /** The house rules less the `factRefs` line (no ids here) and the language-only pitch line (v14). */
@@ -173,7 +185,7 @@ export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v2",
+  version: "plan-teach-objective.v3",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -187,7 +199,7 @@ export const planTeachObjectivePrompt = {
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
-    'Follow the brief\'s worked-example line. A worked example is the method on one problem; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,
     "",
