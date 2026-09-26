@@ -17,6 +17,7 @@ import {
   ACCENT_BAR_NAME,
   accentTint,
   COUNTER_NAME,
+  DIAGRAM_NAME,
   KIND_TAG_NAME,
   PHOTO_NAME,
   PHOTO_TEXT_SHARE,
@@ -1602,9 +1603,8 @@ function listDoc(lead: string, items: string[]): RichDoc {
   return { type: "doc", content: [...prose, ...(docFromBullets(items).content ?? [])] };
 }
 
-const DIAGRAM_SLOT = "Diagram placeholder";
-/** The right-hand room a teaching slide keeps: a diagram slot or a photo slot (look/image-slot). */
-const isSlot = (e: SlideElement) => e.name === DIAGRAM_SLOT || e.name === PHOTO_NAME;
+/** The room a teaching slide keeps beside its words: a diagram slot or a photo slot (look/image-slot). */
+const isSlot = (e: SlideElement) => e.name === DIAGRAM_NAME || e.name === PHOTO_NAME;
 
 /**
  * A teaching slide with a diagram or photo slot: the words keep the left column and the slot the right,
@@ -1673,7 +1673,6 @@ export function slotSide(slide: Slide, side: SlotSide): Slide {
   if (!slot) return slide;
   const atLeft = slotSideOf(slide) === "left";
   if (atLeft === (side === "left")) return slide;
-  const shift = slot.w + SPACE[5];
   const beside = (e: SlideElement) =>
     e !== slot &&
     !isBackdrop(e) &&
@@ -1684,10 +1683,26 @@ export function slotSide(slide: Slide, side: SlotSide): Slide {
     e.y < slot.y + slot.h &&
     e.y + e.h > slot.y &&
     (atLeft ? e.x >= slot.x + slot.w : e.x + e.w <= slot.x);
+  const words = slide.elements.filter(beside);
+  // The slide's own geometry, as stored: the words' block and the slot trade places and the gap
+  // between them is kept, so a slide laid out under older measures mirrors true. Without words
+  // beside it the slot moves to the other margin.
+  const left = Math.min(...words.map((e) => e.x));
+  const right = Math.max(...words.map((e) => e.x + e.w));
+  const gap = words.length === 0 ? 0 : atLeft ? left - (slot.x + slot.w) : slot.x - right;
+  const shift = slot.w + gap;
+  const slotX =
+    words.length === 0
+      ? atLeft
+        ? SAFE.x + SAFE.w - slot.w
+        : SAFE.x
+      : atLeft
+        ? right - slot.w
+        : left;
   return {
     ...slide,
     elements: slide.elements.map((e) => {
-      if (e === slot) return { ...e, x: atLeft ? SAFE.x + SAFE.w - slot.w : SAFE.x };
+      if (e === slot) return { ...e, x: slotX };
       return beside(e) ? { ...e, x: e.x + (atLeft ? -shift : shift) } : e;
     }),
   };

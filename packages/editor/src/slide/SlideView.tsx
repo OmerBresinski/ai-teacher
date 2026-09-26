@@ -219,7 +219,7 @@ export function SlideView({
           (el.name === COUNTER_NAME && !position) ? null : (
             <ElementFrame
               key={el.id}
-              element={position ? counted(el, position) : el}
+              element={position ? counted(el, position, theme) : el}
               theme={theme}
               mode={mode}
               slideId={slide.id}

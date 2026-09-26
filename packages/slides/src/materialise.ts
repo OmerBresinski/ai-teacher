@@ -332,8 +332,10 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
       dropped.add(e);
     }
   }
+  // Nothing to lay out again (no heading, or no words under it): the slide as it was, never one
+  // with its words taken away and none put back.
+  if (!heading || !first) return slide;
   const kept = slide.elements.filter((e) => !dropped.has(e));
-  if (!heading || !first) return { ...slide, elements: kept };
   // One body again, as the writer gave it: the paragraphs, then the points as a bullet list.
   const content: RichNode[] = [];
   let list: RichNode | undefined;
@@ -377,7 +379,7 @@ export function presentedSlide(slide: Slide, theme: Theme, position?: SlidePosit
   const shown = withoutDiagramSlot(slide, theme);
   const elements = shown.elements.flatMap((e) => {
     if (isDiagramMark(e) || isOpenPhotoSlot(e)) return [];
-    if (e.name === COUNTER_NAME) return position ? [counted(e, position)] : [];
+    if (e.name === COUNTER_NAME) return position ? [counted(e, position, theme)] : [];
     return [e];
   });
   return { ...shown, elements };

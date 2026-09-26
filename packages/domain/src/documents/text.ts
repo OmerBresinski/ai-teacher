@@ -19,12 +19,15 @@ export function walkElements(
   }
 }
 
-/** Every doc on a slide, groups included, as one text with a line per element. */
 /**
  * The look's deck chrome (`@tj/slides` withDeckChrome): the year-and-subject line and the slide
- * counter say the same on every slide and are not the slide's words.
+ * counter say the same on every slide and are not the slide's words. The names are `@tj/slides`
+ * `EYEBROW_NAME` and `COUNTER_NAME`, spelt out because the domain cannot import the slides package;
+ * `@tj/slides` photo-slot.test.ts asserts they are equal.
  */
 export const DECK_CHROME_NAMES: ReadonlySet<string> = new Set(["Deck line", "Slide counter"]);
+
+/** Every doc on a slide, groups included, as one text with a line per element. */
 
 export function slideText(slide: Slide): string {
   const lines: string[] = [];

@@ -385,22 +385,28 @@ export type SlidePosition = { index: number; total: number };
 export const counterText = (position: SlidePosition): string =>
   `${position.index + 1} / ${position.total}`;
 
+const captionWidth = (label: string, t: Theme) => Math.ceil(label.length * t.sizes.caption * 0.78);
+/**
+ * The room a heading leaves the counter at the right of the top lane: "88 / 88" and its gap. The
+ * content budgets are measured with the heading at this width. A deck of 100 slides or more draws
+ * its counter wider than this (`counted` sizes the box from its words, so it never clips); a
+ * lesson deck is a tenth of that.
+ */
+export const counterRoom = (t: Theme): number => captionWidth("88 / 88", t) + SPACE[3];
+
 /**
  * A slide counter with its words set from the slide's place in the deck, so it stays true after a
- * reorder, insert or delete; any other element comes back as it is. Every renderer (SlideView,
- * the PPTX export) counts through this, never from the stored words.
+ * reorder, insert or delete; any other element comes back as it is. Its box is drawn from those
+ * words too, set against the right margin, so a counter stored in a box sized for a shorter count
+ * ("1 / 1") never clips ("10 /"). Every renderer (SlideView, the PPTX export) counts through this,
+ * never from the stored words or box.
  */
-export function counted(el: SlideElement, position: SlidePosition): SlideElement {
+export function counted(el: SlideElement, position: SlidePosition, t: Theme): SlideElement {
   if (el.name !== COUNTER_NAME || el.type !== "text") return el;
-  return { ...el, doc: docFromText(counterText(position)) };
+  const text = counterText(position);
+  const w = captionWidth(text, t);
+  return { ...el, x: SAFE.x + SAFE.w - w, w, doc: docFromText(text) };
 }
-
-/** The year and subject a deck is for. The top line no longer names them (Greg, 26 Sept 2026). */
-export type DeckContext = { yearGroup?: string | null; subject?: string | null };
-
-const captionWidth = (label: string, t: Theme) => Math.ceil(label.length * t.sizes.caption * 0.78);
-/** The room the counter takes at the right of the top lane, up to "88 / 88", and its gap. */
-export const counterRoom = (t: Theme): number => captionWidth("88 / 88", t) + SPACE[3];
 
 /**
  * The top line across a deck: the kind tag at the left and a quiet "7 / 12" at the right. The

@@ -80,9 +80,13 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
   // same placeholder as an open photo slot, "Diagram: <instruction>" in small muted type.
   if (element.name === DIAGRAM_NAME && mode !== "edit") {
     return (
-      <SlotPlaceholder kind="diagram" theme={theme} radius={element.radius}>
-        {element.doc ? richDocToPlainText(element.doc) : ""}
-      </SlotPlaceholder>
+      <SlotPlaceholder
+        kind="diagram"
+        theme={theme}
+        radius={element.radius}
+        height={element.h}
+        text={element.doc ? richDocToPlainText(element.doc) : ""}
+      />
     );
   }
   const w = Math.max(1, element.w);

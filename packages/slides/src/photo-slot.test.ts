@@ -1,11 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import type { ImageElement, Slide, TextElement } from "@tj/domain/documents";
+import {
+  DECK_CHROME_NAMES,
+  type ImageElement,
+  type Slide,
+  type TextElement,
+} from "@tj/domain/documents";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
 import { PLACEHOLDER_IMAGE } from "./layouts";
 import {
   COUNTER_NAME,
+  counted,
   DIAGRAM_NAME,
+  EYEBROW_NAME,
   isOpenPhotoSlot,
   KIND_TAG_NAME,
   PHOTO_NAME,
@@ -411,5 +418,73 @@ describe("the slot takes either side (look/slides-layout)", () => {
     const once = alternateSlotSides(deck);
     for (const [i, slide] of alternateSlotSides(once).entries())
       expect(slide).toBe(once[i] as Slide);
+  });
+});
+
+describe("review fixes (look/slides-layout)", () => {
+  const t = getTheme("chalk");
+  const right = SAFE.x + SAFE.w;
+  const width = (label: string) => Math.ceil(label.length * t.sizes.caption * 0.78);
+
+  test("an open slot on a slide with no heading keeps its words in present and export", () => {
+    const stored = materialiseSlides(why, "chalk", meta, undefined, 0, { photo })[0] as Slide;
+    const headless: Slide = {
+      ...stored,
+      elements: stored.elements.filter((e) => e.name !== "Heading"),
+    };
+    expect(words([withoutDiagramSlot(headless, t)])).toBe(words([headless]));
+    const out = presentedSlide(headless, t, { index: 0, total: 2 });
+    expect(words([out])).toBe(words([headless]));
+    expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
+  });
+
+  test("a counter stored in a box sized for '1 / 1' is drawn wide enough for its count", () => {
+    const w = width("1 / 1");
+    const stored = {
+      id: "c",
+      type: "text",
+      name: COUNTER_NAME,
+      x: right - w,
+      y: SAFE.y,
+      w,
+      h: 24,
+      doc: { type: "doc", content: [] },
+      style: { preset: "caption", align: "right" },
+    } as unknown as TextElement;
+    for (const [index, total, label] of [
+      [9, 12, "10 / 12"],
+      [119, 120, "120 / 120"],
+    ] as const) {
+      const c = counted(stored, { index, total }, t) as TextElement;
+      expect(docLines(c.doc).join("")).toBe(label);
+      expect(c.w).toBeGreaterThanOrEqual(width(label));
+      expect(c.x + c.w).toBe(right);
+    }
+  });
+
+  test("the swap mirrors the slide's stored geometry: words and slot trade places, the gap kept", () => {
+    const laid = materialiseSlides(why, "chalk", meta, undefined, 0, { photo })[0] as Slide;
+    // Stored under older measures: a narrower slot and so a wider gap than today's.
+    const stored: Slide = {
+      ...laid,
+      elements: laid.elements.map((e) => (e.name === PHOTO_NAME ? { ...e, w: e.w - 40 } : e)),
+    };
+    const words0 = bodyText(stored);
+    const slot0 = slot(stored);
+    const left0 = Math.min(...words0.map((e) => e.x));
+    const right0 = Math.max(...words0.map((e) => e.x + e.w));
+    const gap = left0 - (slot0.x + slot0.w);
+    expect(gap).toBe(SPACE[5] + 40);
+    const swapped = swapSlotSide(stored);
+    const moved = bodyText(swapped);
+    const img = slot(swapped);
+    expect(Math.min(...moved.map((e) => e.x))).toBe(slot0.x);
+    expect(img.x - Math.max(...moved.map((e) => e.x + e.w))).toBe(gap);
+    expect(img.x + img.w).toBe(right0);
+    expect(swapSlotSide(swapped).elements).toEqual(stored.elements);
+  });
+
+  test("the domain's deck chrome names are the look's", () => {
+    expect([...DECK_CHROME_NAMES].sort()).toEqual([COUNTER_NAME, EYEBROW_NAME].sort());
   });
 });

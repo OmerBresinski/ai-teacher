@@ -22,12 +22,9 @@ import {
   figureGroupOf,
   type ImageTextPhoto,
   KIND_TAG_NAME,
-  type PhotoBrief,
   PLACEHOLDER_IMAGE,
-  photoDropped,
   type SlideSpec,
   type SpecSchemaOptions,
-  shapeFallback,
 } from "@tj/slides";
 import type { z } from "zod";
 import type { Audience, SlidePhoto } from "../prompts";
@@ -462,54 +459,4 @@ export function retrievalInput(facts: {
 }): { retrieval?: { question: string; answer: string }[] } {
   const r = facts.retrieval?.map(({ question, answer }) => ({ question, answer }));
   return r && r.length > 0 ? { retrieval: r } : {};
-}
-
-/** The year and subject a lesson's slides name in the look's top line (`@tj/slides` withDeckChrome). */
-export const deckOf = (lesson: { yearGroup?: string | null; subject?: string | null }) => ({
-  yearGroup: lesson.yearGroup ?? null,
-  subject: lesson.subject ?? null,
-});
-
-/**
- * A content slide written in a shape it could not be placed in (a compare too long for its cards,
- * steps too long for the strip): the slide already reads as the lead plus points, so a word budget
- * missed is not a retry but a metric, logged by shape (`metric: "shape-fallback"`) for the lab to
- * count. Returns the shape, or `undefined` when the slide took its shape.
- */
-export function logShapeFallback(
-  logger: PipelineDeps["logger"],
-  stage: "generate" | "repair",
-  index: number,
-  spec: SlideSpec,
-  slide: Slide,
-): string | undefined {
-  const shape = shapeFallback(spec, slide);
-  if (shape) logger.info({ stage, metric: "shape-fallback", shape, index }, "shape fallback");
-  return shape;
-}
-
-/**
- * The photograph a content slide keeps room for (look/image-slot): its outline entry's image
- * brief, as a structure hint for `materialiseSlides`. A compare or a sequence is full width, so a
- * brief on one is dropped and logged (`metric: "photo-dropped"`).
- */
-export function photoStructure(
-  entry: OutlineEntry | undefined,
-  spec: SlideSpec,
-  logger: PipelineDeps["logger"],
-  stage: "generate" | "repair",
-  index: number,
-): { photo?: PhotoBrief } {
-  const brief = entry?.kind === "content" ? entry.imageBrief : undefined;
-  if (!brief) return {};
-  const photo = { subject: brief.subject, mustShow: brief.mustShow };
-  const dropped = photoDropped(spec, { photo });
-  if (dropped) {
-    logger.info(
-      { stage, metric: "photo-dropped", shape: dropped, index, subject: brief.subject },
-      "photo dropped: the shape is full width",
-    );
-    return {};
-  }
-  return { photo };
 }

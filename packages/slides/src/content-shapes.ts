@@ -116,8 +116,8 @@ function tightest(shape: ContentShape): ShapeBudget {
  * What each shape's slots hold, in words, for the writer. An explain slide is written for the full
  * measure, its roomiest composition: the renderer sets a right panel (a key term, the key idea or a
  * diagram) beside the words only when they still fit the column. A written list takes the full
- * measure unless the plan gives it a drawing, when it gets `COMPOSITION_BUDGETS.list.panel`
- * (`budgetFor`); compare and sequence have one composition.
+ * measure unless the plan gives it a drawing, when it gets `COMPOSITION_BUDGETS.list.panel`;
+ * compare and sequence have one composition.
  * The renderer's capacity data, not the writer's: since generate-slide v33 the prompt carries no
  * word budget (one soft 40–60-word target and `SPEC_LIMITS`), so a slot over its budget is placed
  * by the renderer's fallback (`shapeFallback`), never retried (only `SPEC_LIMITS` retries).
@@ -128,9 +128,3 @@ export const CONTENT_BUDGETS: Record<ContentShape, ShapeBudget> = {
   compare: tightest("compare"),
   sequence: tightest("sequence"),
 };
-
-/** The budget a spec of `shape` writes to: a list with a diagram sits beside it in a half column. */
-export function budgetFor(shape: ContentShape, diagram: boolean): ShapeBudget {
-  const panel = COMPOSITION_BUDGETS[shape].panel;
-  return shape === "list" && diagram && panel ? panel : CONTENT_BUDGETS[shape];
-}
