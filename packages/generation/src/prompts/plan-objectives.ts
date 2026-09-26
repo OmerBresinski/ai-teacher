@@ -249,6 +249,31 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * outline then runs as before. 352 -> 487 system words (the sketch's flow object is 45 of them),
  * all new capability; the bench decides whether any field is dead weight.
  *
+ * v21 (26 Sept 2026, l6e; rounds C and D judged, `lab/l6-e/CHANGES.md`):
+ *  - Coverage. Round C lost 4-12 to round B on thin lessons ("only two thin objectives", "omits soft
+ *    engineering", "never teaches simplest form"). v19's "at most two to an objective" capped what an
+ *    objective could name, so a method or case the topic needs had nowhere to go. The cap is gone:
+ *    the objective names what it covers, and the count sentence says the set covers every method,
+ *    case or form the topic needs at this year group. The count target is now three, unhedged (Luna
+ *    6 reads a range as its minimum, openai.md 2026-09-25), with two and one gated on the topic's parts.
+ *    v19's starter rule ("None goes beyond what this year group has been taught") is kept.
+ *  - Flow. Round D returned worked example, common mistake and vocabulary true on 21 of 21 attempts
+ *    and a retrieval opener on 20: a free boolean costs nothing, so every element was switched on.
+ *    Each element now has a price, stated once: it takes one of the deck's slides after the fixed
+ *    ones (title, objectives, a teaching slide per objective, the closing check), and the user turn
+ *    carries the deck's "Slides" line, so the price is a number the call can count against. The
+ *    system text names the line, never a number (CORE 2026-09-16). The glosses say what each
+ *    element is for; no subject-to-flow table.
+ *  - Closes. Round D lost 5-11 to round C, 9 of 11 on practice: a single open exit question, or a
+ *    one-statement check. The close is now a quiz, short written answers, or matching (Year 2 and
+ *    below), each checking every objective with several items (code: `chooseCloser`); `debate` left
+ *    the close enum and discussion or debate is a practice form. A check is "two or three questions".
+ *  - Starter questions (rounds C and D checklist): "What do many plants grow from?", "What is a
+ *    common factor of 8 and 12?" (several right), and a Year 12 PED starter asking the PED formula
+ *    (the lesson's own topic, read as fair since the shape line says the class knows some of it).
+ *    The one-answer sentence gains its method (ask for the one thing only it fits, with an example
+ *    from outside the benched briefs) and the "what the lesson teaches" sentence names the topic.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -262,6 +287,8 @@ export type PlanObjectivesInput = {
    * 1 to 5"). Where it bounds the material, the objectives stay inside it. Optional.
    */
   priorKnowledge?: string | undefined;
+  /** v21: the deck's slide count, the price the flow's elements are chosen against. Optional. */
+  slideCount?: number | undefined;
   /**
    * A curriculum extract retrieved for this brief: the programme-of-study bullet and a whole unit
    * (several lessons' outcomes, key learning points, keywords, misconceptions). Optional.
@@ -395,20 +422,20 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }], "flow": { "opener": "hook|retrieval|none", "workedExample": true|false, "commonMistake": true|false, "vocabulary": true|false, "checkAfter": [objective numbers], "practice": "questions|discussion|both", "close": "quiz|written|debate|matching" } }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }], "flow": { "opener": "hook|retrieval|none", "workedExample": true|false, "commonMistake": true|false, "vocabulary": true|false, "checkAfter": [objective numbers], "practice": "questions|discussion|both", "close": "quiz|written|matching" } }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v20",
+  version: "plan-objectives.v21",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives, three retrieval questions for its starter, and its flow.",
     "",
     OBJECTIVE_HOUSE_RULES,
-    "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods, at most two to an objective.",
+    "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods it covers.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
-    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
+    "Give one objective for each distinct part of the topic, so together they cover every method, case or form the topic needs at this year group's level and no two share an idea: three; two only when the topic has two distinct parts; one only when it is a single method or skill; four for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
-    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. None goes beyond what this year group has been taught. Ask it in one line with one right answer or, where several could fit, by picking from options the question names.",
-    'The flow fits the lesson to its subject, its year group and what the topic is: a method, a concept, a text or source, or a debate. "opener": a hook (a question or puzzle that draws pupils in) or the retrieval questions. "workedExample": a method or model answer shown step by step. "commonMistake": a slide on a mistake pupils often make. "vocabulary": terms pupils must learn. "checkAfter": the objectives followed by a quick check; [] for none before the end. "practice": what pupils do after the teaching. "close": how pupils show what they learned at the end: a quiz, a short written answer, a debate with a success check, or matching (up to Year 2).',
+    `Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks about this lesson's topic or what it teaches, its examples included, even if the class has met it. None goes beyond what this year group has been taught. Ask it in one line with one right answer ("the largest planet", not "a planet"); where several could fit, name the options.`,
+    'The flow fits the lesson to its subject, year group and kind of topic (a method, a concept, a text or source, a debate). After the title, objectives, a teaching slide per objective and the closing check, each element you switch on takes one of the slides the "Slides" line leaves, so switch on only what this topic and year group need. "opener": a hook (a question or puzzle), the retrieval questions, or none. "workedExample": a method or model answer shown step by step. "commonMistake": a slide on a mistake pupils often make. "vocabulary": a slide of new terms. "checkAfter": the objectives followed by a check of two or three questions; [] for none. "practice": questions, or a discussion or debate. "close": the last slide checks every objective with several items: a quiz, short written answers, or matching (Year 2 and below).',
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
@@ -420,6 +447,7 @@ export const planObjectivesPrompt = {
       parts.push(`${PRIOR_KNOWLEDGE_LABEL}: ${input.priorKnowledge}`, PRIOR_KNOWLEDGE_USE);
     }
     parts.push(`Lesson shape: ${shapeLine}`);
+    if (input.slideCount !== undefined) parts.push(`Slides: ${input.slideCount}`);
     if (input.curriculum) {
       parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text, "", CURRICULUM_USE);
     }

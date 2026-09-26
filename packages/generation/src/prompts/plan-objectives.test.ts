@@ -44,8 +44,8 @@ const PLAN_OBJECTIVES_SAMPLE: PlanObjectivesInput = {
 };
 
 const PLAN_OBJECTIVES_PIN: { version: string; hash: string } = {
-  version: "plan-objectives.v20",
-  hash: "5f468fc93ff6e3110ae76f6905ac7376e5c4c431c30ca2b615bfa5ff416568d9",
+  version: "plan-objectives.v21",
+  hash: "254a51701429ac08e67abc711e2dd991e936ff536fd53178fb6c01adeeac5e49",
 };
 
 describe("plan-objectives", () => {
@@ -74,10 +74,18 @@ describe("plan-objectives", () => {
     // v19: 352, the starter's "goes beyond" sentence and its options method; the objectives clause
     // got shorter (at most two named). The alarm moves once.
     // v20 (l6d): 487, the lesson's flow (a new output, not a rule on an old one). The alarm moves once.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(495);
-    // The flow's choices are in the sketch as alternatives, so no sample value is copied.
-    expect(system).toContain('"close": "quiz|written|debate|matching"');
-    expect(system).toContain("a method, a concept, a text or source, or a debate");
+    // v21 (l6e): 533, each flow element priced against the "Slides" line (round D switched every
+    // one on), the coverage clause and the starter's one-answer example. The alarm moves once.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(540);
+    // The flow's choices are in the sketch as alternatives, so no sample value is copied. v21: no
+    // debate close (round D: a close checks every objective with several items).
+    expect(system).toContain('"close": "quiz|written|matching"');
+    expect(system).toContain("kind of topic (a method, a concept, a text or source, a debate)");
+    expect(system).toContain(
+      'each element you switch on takes one of the slides the "Slides" line leaves',
+    );
+    expect(system).toContain("a check of two or three questions");
+    expect(system).toContain("the last slide checks every objective with several items");
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -127,21 +135,36 @@ describe("plan-objectives", () => {
     // v14: the count follows the topic's distinct parts, which together cover its core, so two
     // lines on one idea and a thin set are both outside the rule (latency-lab judges).
     expect(system).toContain("Give one objective for each distinct part of the topic");
-    expect(system).toContain("cover its core at this year group's level and no two share an idea");
+    // v21 (round C judges: "only two thin objectives", "never teaches simplest form"): the set
+    // covers every method, case or form the topic needs, and the unhedged target is three.
+    expect(system).toContain(
+      "cover every method, case or form the topic needs at this year group's level and no two share an idea",
+    );
     // v17 (gpt-6-luna): the hedge went; "usually" was read as licence for one objective.
-    expect(system).toContain("two or three; one only when the topic is a single method or skill");
+    expect(system).toContain(
+      "three; two only when the topic has two distinct parts; one only when it is a single method or skill",
+    );
     expect(system).not.toContain("usually two or three");
     // v10: "building on each other and sharing its key ideas" named no bench failure (rubric 3).
     expect(system).not.toContain("building on each other");
-    expect(system).toContain("four only for four distinct parts");
+    expect(system).toContain("four for four distinct parts");
     // v17: a topic about several needs or factors is several parts, and none is the topic restated.
     expect(system).toContain("has a part for each, or for each close pair");
     expect(system).toContain("No objective restates the topic.");
     expect(system).toContain("no filler line");
-    expect(system).not.toMatch(/slide count|slides\b|ceiling/i);
+    // The count sentence reads the topic only; the "Slides" line prices the flow (v21), never the count.
+    const countRule = system.split("\n").find((l) => l.startsWith("Give one objective")) ?? "";
+    expect(countRule).not.toMatch(/slide|ceiling/i);
+    expect(system).not.toMatch(/slide count|ceiling/i);
     expect(system).not.toMatch(/minutes/);
     // A single objective must not be told to open below the reach (the check needs it AT the reach).
     expect(system).toContain("start one level below the reach unless there is only one objective");
+  });
+
+  test("v21: a slide count is sent as the Slides line, after the lesson shape", () => {
+    const user = planObjectivesPrompt.user({ ...PLAN_OBJECTIVES_SAMPLE, slideCount: 10 });
+    expect(user).toContain("\nSlides: 10");
+    expect(user.indexOf("Lesson shape:")).toBeLessThan(user.indexOf("Slides: 10"));
   });
 
   test("the user turn carries no slide count and no count line", () => {
@@ -151,6 +174,7 @@ describe("plan-objectives", () => {
       { ...PLAN_OBJECTIVES_SAMPLE, priorKnowledge: "read Act 1 scenes 1 to 5" },
     ]) {
       const user = planObjectivesPrompt.user(input);
+      // v21: the "Slides" line is sent only when the caller gives a slide count (the lab plan).
       expect(user).not.toMatch(/\bslides?\b/i);
       expect(user).not.toContain("Number of objectives");
       expect(user).not.toMatch(/Lesson length|minutes/);
@@ -227,16 +251,21 @@ describe("plan-objectives", () => {
     expect(system).toContain("could plausibly have forgotten");
     // v16 (checklist judge): "no objective teaches" was read against the objectives' wording, so
     // a groyne under "engineering methods" passed. The rule is about the lesson, examples included.
-    expect(system).toContain("None asks what the lesson teaches, its examples included.");
+    // v21: a Year 12 starter asked the PED formula in a PED lesson; the topic is named too.
+    expect(system).toContain(
+      "None asks about this lesson's topic or what it teaches, its examples included, even if the class has met it.",
+    );
     // v16: a category word met v14's "not a heading"; the members are named instead. v19: at most
     // two to an objective, since a named list of four was one lumped objective and one crammed slide.
-    expect(system).toContain("Name the actual concepts or methods, at most two to an objective.");
+    // v21: the cap went (round C: "omits soft engineering"); each part is its own objective instead.
+    expect(system).toContain("Name the actual concepts or methods it covers.");
+    expect(system).not.toContain("at most two to an objective");
     expect(system).not.toContain("strategies, name them");
     expect(system).toContain("a different term, fact or method");
     // v19: the starter's faults were several-answer "which part" items and Year 3 content at Year 2.
     expect(system).toContain("None goes beyond what this year group has been taught.");
     expect(system).toContain(
-      "Ask it in one line with one right answer or, where several could fit, by picking from options the question names.",
+      'Ask it in one line with one right answer ("the largest planet", not "a planet"); where several could fit, name the options.',
     );
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
     expect(system).toContain('"retrieval": [{ "question"');
