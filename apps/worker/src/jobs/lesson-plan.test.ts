@@ -356,17 +356,13 @@ describeDb("lesson.plan job", () => {
     // script is routed: slide replies are matched by shape, since Generate runs them in parallel
     // (TEACH-213), and the throwing entry is left for Evaluate.
     const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2;
-    const first: FakeAi = createFakeAi({
-      script: routed(
-        pipelineScript({
-          overrides: {
-            [evaluateIndex]: () => {
-              throw new Error("provider unreachable");
-            },
-          },
-        }),
-      ),
-    });
+    // `callStructured` retries a provider failure once (TEACH-88), so the outage outlasts the retry.
+    const outage = () => {
+      throw new Error("provider unreachable");
+    };
+    const script = pipelineScript();
+    script.splice(evaluateIndex, 1, outage, outage);
+    const first: FakeAi = createFakeAi({ script: routed(script) });
 
     // `@tj/ai` wraps provider failures as a retryable `AiError`; the handler rethrows it as-is.
     await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow(
@@ -420,17 +416,13 @@ describeDb("lesson.plan job", () => {
       const jobId = newId<JobId>();
       const lessonId = await briefLesson(jobId);
       const evaluateIndex = SLIDES_INDEX + FIXTURES.planSkeleton.outline.length - 2;
-      const first = createFakeAi({
-        script: routed(
-          pipelineScript({
-            overrides: {
-              [evaluateIndex]: () => {
-                throw new Error("synthetic provider outage");
-              },
-            },
-          }),
-        ),
-      });
+      // The outage outlasts `callStructured`'s one provider retry (TEACH-88).
+      const outage = () => {
+        throw new Error("synthetic provider outage");
+      };
+      const script = pipelineScript();
+      script.splice(evaluateIndex, 1, outage, outage);
+      const first = createFakeAi({ script: routed(script) });
       await expect(lessonPlanJob(ctx(jobId, lessonId, depsWith(first)).ctx)).rejects.toThrow();
       const checkpoint = await storedLesson(lessonId);
       let prior = checkpoint.generation?.usage;
