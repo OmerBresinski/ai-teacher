@@ -1,6 +1,7 @@
 import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
+import type { ReasoningEffort } from "@tj/generation";
 import { createPexelsClient, type PexelsClient } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { createStorage, type StorageKind } from "@tj/storage";
@@ -29,6 +30,8 @@ export type WorkerDeps = {
   worksheetCapUsd: number;
   /** `AI_PLAN_FRONTIER_FROM_YEAR` (TEACH-259): Plan on `frontier` from this year group; unset → `standard`. */
   planFrontierFromYear?: number;
+  /** `AI_REASONING_EFFORT` (TEACH-72): every call's effort; unset → each stage's own. */
+  reasoningEffort?: ReasoningEffort;
   storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter };
   jobs?: JobsContext;
@@ -58,6 +61,7 @@ export function createWorkerDeps(
     ...(env.AI_PLAN_FRONTIER_FROM_YEAR !== undefined
       ? { planFrontierFromYear: env.AI_PLAN_FRONTIER_FROM_YEAR }
       : {}),
+    ...(env.AI_REASONING_EFFORT !== undefined ? { reasoningEffort: env.AI_REASONING_EFFORT } : {}),
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {

@@ -160,4 +160,40 @@ describe("worker env", () => {
     expect(blank.OPENAI_API_KEY).toBeUndefined();
     expect(blank.AI_GATEWAY_API_KEY).toBeUndefined();
   });
+
+  describe("AI_REASONING_EFFORT (TEACH-72)", () => {
+    test("unset or blank leaves every stage at its own effort", () => {
+      expect(parseEnv({ DATABASE_URL: DB }).AI_REASONING_EFFORT).toBeUndefined();
+      expect(parseEnv({ DATABASE_URL: DB, AI_REASONING_EFFORT: "  " }).AI_REASONING_EFFORT).toBe(
+        undefined,
+      );
+    });
+
+    test("accepts each of none | low | medium | high | xhigh", () => {
+      for (const effort of ["none", "low", "medium", "high", "xhigh"] as const) {
+        expect(
+          parseEnv({ DATABASE_URL: DB, AI_REASONING_EFFORT: effort }).AI_REASONING_EFFORT,
+        ).toBe(effort);
+      }
+    });
+
+    test("an invalid value stops the worker at boot, naming the variable and the allowed values", () => {
+      const exit = spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("exit");
+      }) as never);
+      const error = spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(() => parseEnv({ DATABASE_URL: DB, AI_REASONING_EFFORT: "minimal" })).toThrow(
+          "exit",
+        );
+        expect(exit).toHaveBeenCalledWith(1);
+        const message = String(error.mock.calls[0]?.[0]);
+        expect(message).toContain("AI_REASONING_EFFORT");
+        expect(message).toContain("xhigh");
+      } finally {
+        exit.mockRestore();
+        error.mockRestore();
+      }
+    });
+  });
 });
