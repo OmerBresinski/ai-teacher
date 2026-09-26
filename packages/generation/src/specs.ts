@@ -1,4 +1,6 @@
 import {
+  CALLOUT_KINDS,
+  type CalloutKind,
   type FactArray,
   type FactId,
   FactIdSchema,
@@ -10,6 +12,7 @@ import {
   LESSON_PHASES,
   type LessonFacts,
   LessonFactsSchema,
+  type OutlineCallout,
   QUESTION_TIERS,
   QUESTION_USES,
   type SlideCount,
@@ -19,13 +22,20 @@ import {
   blockSpecUnion,
   editorialIssue,
   noPictureReference,
+  type SlideSpec,
   SlideSpecSchema,
   SPEC_LIMITS,
   type SpecSchemaOptions,
   shapeIssue,
 } from "@tj/slides";
 import { z } from "zod";
-import { contentSentence, phaseOfKind } from "./prompts/shape";
+import {
+  contentSentence,
+  explainSentence,
+  phaseOfKind,
+  practiseSentence,
+  slidesFor,
+} from "./prompts/shape";
 import type { LessonShape, TierWeights } from "./shapes";
 import { INPUT_CHECKS } from "./types";
 
@@ -41,7 +51,7 @@ export { BlockSpecSchema, SlideSpecSchema };
  * Shape and editorial rules (ADR 0025 §7, TEACH-257; the tag and the two builds are `@tj/slides`'
  * `editorialIssue` / `SpecSchemaOptions`). Here the shape rules are the field types, the non-empty
  * strings, the list floors, every ordinal reference (a dangling id would fail `LessonFactsSchema`
- * in `assignFactIds` with no retry) and the caps `@tj/domain` re-checks on the stored facts
+ * in `assignFactIds` with no retry) except a callout's, which the soft build drops instead, and the caps `@tj/domain` re-checks on the stored facts
  * (`PlanImageBriefSchema`). Everything else we ask of the content — text caps, list ceilings,
  * counts, coverage, wording, phases, the lesson shape — is editorial: `callStructured` accepts a
  * retry that misses only those and Plan records them as `spec-rule` warnings.
@@ -146,7 +156,8 @@ function outlineEntrySchema(soft: boolean) {
   const line = lineFor(soft);
   return z.strictObject({
     kind: z.enum(GENERATABLE_SLIDE_KINDS),
-    minutes: z.number().int().min(1),
+    /** Ruling 82: a lesson's size is its slide count. Tolerated on older answers, never asked for. */
+    minutes: z.number().int().min(1).optional(),
     factRefs: z.array(OrdinalRefSchema),
     imageBrief: planImageBriefSchema(soft).optional(),
     /** Required from position 2 (checked in the skeleton's refinement, so the message can say so). */
@@ -166,18 +177,12 @@ function outlineEntrySchema(soft: boolean) {
  * "New to it" lesson must have one and must explain for 40 %, so refusing it in the explain phase
  * rejected a good outline twice in production).
  */
-const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
+export const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
   "content",
   "worked-example",
   "image-text",
   "vocabulary",
 ]);
-/**
- * A phase-share rule tolerates rounding (TEACH-237): the model writes whole minutes to a total
- * that is itself allowed to be ten per cent out, so a phase two minutes under its share is not a
- * Terra retry. The prompt still asks for the full share.
- */
-const SHARE_TOLERANCE_MIN = 2;
 /** The kinds a Recall lesson checks with when `open-response` is forbidden (the Shape sentence). */
 const RETRIEVAL_KINDS = "matching, fill-gap, multiple-choice or true-false";
 const PHASE_ORDER: Record<(typeof LESSON_PHASES)[number], number> = {
@@ -249,7 +254,8 @@ const PlanSkeletonShape = planSkeletonShape(false);
 
 /** What the skeleton's refinements need from the brief. */
 export type PlanSkeletonContext = {
-  durationMin: number;
+  /** The brief's stored duration. No rule reads it since ruling 82 (size is the slide count). */
+  durationMin?: number | undefined;
   /**
    * The lesson's shape (`lessonShapeOf`): its deterministic column becomes the refinements below.
    * Absent, only the structural rules apply (`PlanSkeletonSchema`: tests and the resume path).
@@ -266,6 +272,12 @@ export type PlanSkeletonContext = {
    * outline's ordinal references land on the teacher's objectives. A shape rule as above.
    */
   objectiveCount?: number | undefined;
+  /**
+   * Learning cycles (the lab's code-written outline, w0b flow): explain and practise slides may
+   * alternate — teach, check, teach, check — so a practise slide may come before a later explain
+   * slide. The starter still opens and the check phase still closes. Absent, phases never go back.
+   */
+  learningCycles?: boolean | undefined;
 };
 
 /**
@@ -391,7 +403,8 @@ export function planSkeletonSchemaFor(
         path: ["outline"],
       });
     }
-    // Phases run starter → explain → practise → check and never go back.
+    // Phases run starter → explain → practise → check and never go back (with `learningCycles`,
+    // explain and practise alternate).
     let last = -1;
     let lastPhase: string | undefined;
     const phases = new Set<string>();
@@ -404,7 +417,10 @@ export function planSkeletonSchemaFor(
           ["outline", i, "phase"],
         );
       }
-      const rank = PHASE_ORDER[entry.phase];
+      const rank =
+        context.learningCycles === true && entry.phase === "practise"
+          ? PHASE_ORDER.explain
+          : PHASE_ORDER[entry.phase];
       if (rank < last) {
         issue(
           `Outline position ${i} is a "${entry.phase}" slide but position ${i - 1} is already "${lastPhase}"; phases run starter, explain, practise, check and never go back. Move this slide before the first "${lastPhase}" slide, or give it the phase "${lastPhase}".`,
@@ -438,7 +454,7 @@ export function planSkeletonSchemaFor(
         path: ["learningObjectives"],
       });
     }
-    if (context.shape) refineShape(skeleton, context.shape, context.durationMin, issue);
+    if (context.shape) refineShape(skeleton, context.shape, issue);
   });
 }
 
@@ -453,23 +469,20 @@ export function planSkeletonSchemaFor(
 function refineShape(
   skeleton: PlanSkeleton,
   shape: LessonShape,
-  durationMin: number,
   issue: (message: string, path: (string | number)[]) => void,
 ) {
   const outline = skeleton.outline;
   const kinds = new Set<string>(outline.map((e) => e.kind));
   const count = (kind: string) => outline.filter((e) => e.kind === kind).length;
-  const minutesIn = (phase: string, only?: ReadonlySet<string>) =>
-    outline
-      .filter((e) => e.phase === phase && (only === undefined || only.has(e.kind)))
-      .reduce((sum, e) => sum + e.minutes, 0);
-  const share = (percent: number) => Math.floor((durationMin * percent) / 100);
-  /** The phase's minutes are under its share by more than the tolerance: how many to add. */
-  const shortBy = (minutes: number, percent: number) => {
-    const missing = share(percent) - minutes;
-    return missing > SHARE_TOLERANCE_MIN ? missing : 0;
-  };
-  const plural = (n: number) => (n === 1 ? "minute" : "minutes");
+  const slidesIn = (phase: string, only?: ReadonlySet<string>) =>
+    outline.filter((e) => e.phase === phase && (only === undefined || only.has(e.kind))).length;
+  // Ruling 82: shares are counted in slides, of the slides after title and objectives (the exit
+  // ticket counts), rounded down with no shortfall allowed — `slidesFor`, the floor the Shape
+  // block shows, so a retry names the sentence the model was given.
+  const counted = Math.max(0, outline.length - 2);
+  const share = (percent: number) => slidesFor(percent, counted);
+  const shortBy = (slides: number, percent: number) => Math.max(0, share(percent) - slides);
+  const plural = (n: number) => (n === 1 ? "slide" : "slides");
 
   // firstExplainKind: the explain phase opens with the definition. A vocabulary slide may come
   // first — the terms, then the definition that uses them — so the opener is the first explain
@@ -540,21 +553,21 @@ function refineShape(
   }
   // explainMinPercent: only slides that teach count — the same kinds `checkLesson` counts — so a
   // question slide tagged "explain" does not pad it.
-  const explainMinutes = minutesIn("explain", EXPLAIN_KINDS);
-  const explainShort = shortBy(explainMinutes, shape.explainMinPercent);
+  const explainSlides = slidesIn("explain", EXPLAIN_KINDS);
+  const explainShort = shortBy(explainSlides, shape.explainMinPercent);
   if (explainShort > 0) {
     issue(
-      `The explain phase needs at least ${share(shape.explainMinPercent)} minutes (${shape.explainMinPercent}% of ${durationMin}); it has ${explainMinutes}. Add ${explainShort} ${plural(explainShort)} to content, worked-example, image-text or vocabulary slides.`,
+      `${explainSentence(share(shape.explainMinPercent), counted)} This outline has ${explainSlides}. Add ${explainShort} content, worked-example, image-text or vocabulary ${plural(explainShort)} in the explain phase.`,
       ["outline"],
     );
   }
   // practiseMinPercent: every practise-phase slide counts.
-  const practiseMinutes = minutesIn("practise");
+  const practiseSlides = slidesIn("practise");
   const practiseShort =
-    shape.practiseMinPercent > 0 ? shortBy(practiseMinutes, shape.practiseMinPercent) : 0;
+    shape.practiseMinPercent > 0 ? shortBy(practiseSlides, shape.practiseMinPercent) : 0;
   if (practiseShort > 0) {
     issue(
-      `The practise phase needs at least ${share(shape.practiseMinPercent)} minutes (${shape.practiseMinPercent}% of ${durationMin}); it has ${practiseMinutes}. Add ${practiseShort} ${plural(practiseShort)} to practise slides.`,
+      `${practiseSentence(share(shape.practiseMinPercent), counted)} This outline has ${practiseSlides}. Add ${practiseShort} practise ${plural(practiseShort)}.`,
       ["outline"],
     );
   }
@@ -603,7 +616,7 @@ function anOf(word: string): string {
  * The skeleton shape without the brief-dependent refinements (no lesson shape): for tests and the
  * resume path, which parse a skeleton the pipeline has already accepted once.
  */
-export const PlanSkeletonSchema = planSkeletonSchemaFor({ durationMin: 1 });
+export const PlanSkeletonSchema = planSkeletonSchemaFor({});
 export type PlanSkeleton = z.infer<typeof PlanSkeletonShape>;
 
 /**
@@ -706,6 +719,8 @@ function planFactsShape(soft: boolean) {
           steps: atMost(soft, z.array(line(SPEC_LIMITS.item)).min(1), 6, "steps"),
           answer: line(SPEC_LIMITS.answer),
           misconceptionRef: MisconceptionOrdinalSchema.optional(),
+          /** Optional: the monolithic facts call never wrote it; the per-objective calls always do. */
+          objectiveRefs: z.array(ObjectiveOrdinalSchema).min(1).optional(),
         }),
       ),
       4,
@@ -761,6 +776,13 @@ function planFactsShape(soft: boolean) {
         z.object({
           index: z.number().int().nonnegative(),
           factRefs: z.array(OrdinalRefSchema),
+          /** Written by the outline step in code (`outlineFromFacts`); the facts prompt never asks. */
+          callout: z
+            .strictObject({
+              kind: z.enum(CALLOUT_KINDS),
+              refs: z.array(OrdinalRefSchema).min(1),
+            })
+            .optional(),
         }),
       )
       .max(16),
@@ -811,7 +833,7 @@ export function planFactsSchemaFor(
 ): z.ZodType<PlanFacts> {
   const soft = options.soft === true;
   const minimums = tierMinimumsOf(shape.tierWeights);
-  return planFactsShape(soft).superRefine((facts, ctx) => {
+  const refined = planFactsShape(soft).superRefine((facts, ctx) => {
     // The ordinal references (below, `refineRef`) are shape; everything written with `issue` —
     // coverage, self-containment, the pitch's own words, the tier floors, kind fit — is editorial
     // and left out of the soft build.
@@ -845,6 +867,13 @@ export function planFactsSchemaFor(
       }
     });
     facts.questions.forEach((q, i) => {
+      for (const j of distractorsEchoingAnswer(q)) {
+        issue(
+          "This distractor repeats the answer: every option must differ from the correct one.",
+          ["questions", i, "distractors", j],
+          "distractor-equals-answer",
+        );
+      }
       q.distractors?.forEach((d, j) => {
         if (d.misconceptionRef) {
           refineRef(
@@ -865,6 +894,21 @@ export function planFactsSchemaFor(
         });
       }
       refineOutlineRefs(ctx, ["outlineFactRefs", i, "factRefs"], entry.factRefs, sizes);
+      // A callout citing the wrong list (or past its end) is a cosmetic miss, not a broken plan:
+      // editorial here, and the soft build drops the callout (`dropMisplacedCallouts`).
+      const callout = entry.callout;
+      if (callout) {
+        const only = CALLOUT_LIST[callout.kind];
+        callout.refs.forEach((ref, j) => {
+          if (!calloutRefFits(callout.kind, ref, sizes)) {
+            issue(
+              `Callout kind "${callout.kind}" may cite only ${only} references, index below ${sizes[only]}.`,
+              ["outlineFactRefs", i, "callout", "refs", j],
+              "callout-ref-misplaced",
+            );
+          }
+        });
+      }
     });
     // Every objective is served by a key idea and checked by a question (the prompt's rule; the
     // objectives slide alone does not teach it).
@@ -946,7 +990,52 @@ export function planFactsSchemaFor(
       }
     });
   });
+  return soft ? refined.transform(dropMisplacedCallouts) : refined;
 }
+
+/** Whether one callout reference cites its kind's list and lands inside it. */
+function calloutRefFits(
+  kind: (typeof CALLOUT_KINDS)[number],
+  ref: OrdinalRef,
+  sizes: Record<"keyIdea" | "misconception" | "vocabulary", number>,
+): boolean {
+  const only = CALLOUT_LIST[kind];
+  return ref.type === only && ref.index < sizes[only];
+}
+
+/**
+ * The soft build's answer with every callout that cites a wrong or missing fact left out, so the
+ * plan keeps the slide and loses only the box; the strict build reported each one as editorial,
+ * so the stage records it as a `spec-rule` warning.
+ */
+function dropMisplacedCallouts(facts: PlanFacts): PlanFacts {
+  const sizes = {
+    keyIdea: facts.keyIdeas.length,
+    misconception: facts.misconceptions.length,
+    vocabulary: facts.vocabulary.length,
+  };
+  return {
+    ...facts,
+    outlineFactRefs: facts.outlineFactRefs.map((entry) => {
+      const callout = entry.callout;
+      if (!callout || callout.refs.every((ref) => calloutRefFits(callout.kind, ref, sizes))) {
+        return entry;
+      }
+      const { callout: _dropped, ...rest } = entry;
+      return rest;
+    }),
+  };
+}
+
+/** The fact list each callout kind is filled from (the ordinal twin of the domain's `CALLOUT_SOURCE`). */
+const CALLOUT_LIST: Record<
+  (typeof CALLOUT_KINDS)[number],
+  "misconception" | "keyIdea" | "vocabulary"
+> = {
+  "watch-out": "misconception",
+  example: "keyIdea",
+  "key-words": "vocabulary",
+};
 
 /** The id prefix each fact list gets (ADR 0025 §1: `o1`, `k1`, `v3`, `x1`, `q2`, `m1`, `s4`). */
 const ID_PREFIX: Record<FactListType | "outline", string> = {
@@ -958,6 +1047,50 @@ const ID_PREFIX: Record<FactListType | "outline", string> = {
   misconception: "m",
   outline: "s",
 };
+
+/**
+ * Whether a question can be set on a step that prints its stem only (the exit ticket, a shared
+ * practise slide, an open-response or discussion slide) and still be a whole question. Structural:
+ * its declared `forms` (absent: the native form) include open-response, it declares no true-false
+ * form (a true-false statement poses no question on its own line), and it has fewer than three
+ * distractors — three make multiple choice its form everywhere downstream, since `LessonFacts`
+ * keeps no `forms`, and a stem shown without them is a question missing its options.
+ */
+/**
+ * Option text compared without case, whitespace, quotes, brackets or sentence punctuation. Signs
+ * that carry meaning in an answer (`-`, `+`, `=`, `/`, `×`, `÷`, `°`) are kept: "x + 1" and
+ * "x - 1" stay different options.
+ */
+export function optionKey(text: string): string {
+  return text.toLowerCase().replace(/[\s.,;:!?'"‘’“”()[\]]+/g, "");
+}
+
+/**
+ * The indices of a question's distractors that repeat its answer (text compared by `optionKey`):
+ * a multiple-choice slide built from it would show the correct option twice, once marked wrong.
+ */
+export function distractorsEchoingAnswer(q: {
+  answer: string;
+  distractors?: readonly { text: string }[] | undefined;
+}): number[] {
+  const answer = optionKey(q.answer);
+  return (q.distractors ?? []).flatMap((d, j) =>
+    answer !== "" && optionKey(d.text) === answer ? [j] : [],
+  );
+}
+
+export function askableAsStem(q: {
+  forms?: readonly string[] | undefined;
+  distractors?: readonly unknown[] | undefined;
+}): boolean {
+  const declared = q.forms ?? [];
+  const distractors = q.distractors?.length ?? 0;
+  if (distractors >= 3) return false;
+  return (
+    declared.length === 0 ||
+    (declared.includes("open-response") && !declared.includes("true-false"))
+  );
+}
 
 /**
  * Merge the skeleton and the facts, mint the stable fact ids and rewrite every ordinal reference
@@ -981,11 +1114,15 @@ export function assignFactIds(
   const optional = <K extends string, V>(key: K, value: V | undefined) =>
     value === undefined ? {} : ({ [key]: value } as Record<K, V>);
   const added = new Map<number, OrdinalRef[]>();
-  for (const entry of facts.outlineFactRefs)
+  const callouts = new Map<number, { kind: (typeof CALLOUT_KINDS)[number]; refs: OrdinalRef[] }>();
+  for (const entry of facts.outlineFactRefs) {
     added.set(entry.index, [...(added.get(entry.index) ?? []), ...entry.factRefs]);
+    if (entry.callout) callouts.set(entry.index, entry.callout);
+  }
   // A question written for the exit ticket (`use: "exit"`) that no entry claims goes to the first
   // check-phase slide (TEACH-244): otherwise its writer never sees it and reaches for a worksheet
-  // question instead. Deterministic — no schema issue, no retry.
+  // question instead. Deterministic — no schema issue, no retry. Only a question `askableAsStem`:
+  // a check slide prints stems only, and `outlineFromFacts` leaves any other off on purpose.
   const check = skeleton.outline.findIndex((entry) => entry.phase === "check");
   if (check !== -1) {
     const claimed = new Set(
@@ -995,7 +1132,7 @@ export function assignFactIds(
         .map((ref) => ref.index),
     );
     facts.questions.forEach((q, index) => {
-      if (q.use !== "exit" || claimed.has(index)) return;
+      if (q.use !== "exit" || claimed.has(index) || !askableAsStem(q)) return;
       added.set(check, [...(added.get(check) ?? []), { type: "question", index }]);
     });
   }
@@ -1019,22 +1156,50 @@ export function assignFactIds(
       ...v,
       ...objectiveRefs(refs),
     })),
-    workedExamples: facts.workedExamples.map(({ misconceptionRef: ref, ...x }, i) => ({
-      id: id("workedExample", i),
-      ...x,
-      ...misconceptionRef(ref),
-    })),
-    questions: facts.questions.map(({ objectiveRefs: refs, distractors, use, tier, ...q }, i) => ({
-      id: id("question", i),
-      ...q,
-      ...objectiveRefs(refs),
-      ...optional(
-        "distractors",
-        distractors?.map((d) => ({ text: d.text, ...misconceptionRef(d.misconceptionRef) })),
-      ),
-      ...optional("use", use),
-      ...optional("tier", tier),
-    })),
+    workedExamples: facts.workedExamples.map(
+      ({ misconceptionRef: ref, objectiveRefs: refs, ...x }, i) => ({
+        id: id("workedExample", i),
+        ...x,
+        ...misconceptionRef(ref),
+        ...objectiveRefs(refs),
+      }),
+    ),
+    questions: facts.questions.map((question, i) => {
+      // The per-objective call's `forms` and `demand` are read by the outline step and go no
+      // further: `LessonFacts` does not carry them. `keyIdeaRefs` is kept.
+      const {
+        objectiveRefs: refs,
+        distractors,
+        use,
+        tier,
+        forms: _forms,
+        demand: _demand,
+        keyIdeaRefs: declared,
+        ...q
+      } = question as typeof question & {
+        forms?: unknown;
+        demand?: unknown;
+        keyIdeaRefs?: OrdinalRef[] | undefined;
+      };
+      // Kept as ids (lab round 1): `tested-not-taught` checks each is taught before it is asked.
+      const keyIdeaRefs = dedupe(
+        (declared ?? [])
+          .filter((r) => r.type === "keyIdea" && r.index < facts.keyIdeas.length)
+          .map(refId),
+      );
+      return {
+        id: id("question", i),
+        ...q,
+        ...objectiveRefs(refs),
+        ...optional("keyIdeaRefs", keyIdeaRefs.length > 0 ? keyIdeaRefs : undefined),
+        ...optional(
+          "distractors",
+          distractors?.map((d) => ({ text: d.text, ...misconceptionRef(d.misconceptionRef) })),
+        ),
+        ...optional("use", use),
+        ...optional("tier", tier),
+      };
+    }),
     misconceptions: facts.misconceptions.map((m, i) => ({
       id: id("misconception", i),
       belief: m.belief,
@@ -1045,11 +1210,20 @@ export function assignFactIds(
     outline: skeleton.outline.map((entry, i) => ({
       id: id("outline", i),
       kind: entry.kind,
-      minutes: entry.minutes,
+      ...optional("minutes", entry.minutes),
       factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
       ...optional("imageBrief", entry.imageBrief),
       ...optional("brief", entry.brief),
       ...optional("phase", entry.phase),
+      ...optional(
+        "callout",
+        callouts.has(i)
+          ? {
+              kind: callouts.get(i)?.kind,
+              factRefs: dedupe((callouts.get(i)?.refs ?? []).map(refId)),
+            }
+          : undefined,
+      ),
     })),
     durationMin,
   });
@@ -1138,6 +1312,54 @@ export const EvaluateOutputSchema = z.strictObject({
 });
 export type EvaluateOutput = z.infer<typeof EvaluateOutputSchema>;
 
+/* ------------------------------------------------------------------ */
+/* Generate: the callout the outline assigned (quality PRD G3)         */
+/* ------------------------------------------------------------------ */
+
+export const CALLOUT_MISSING = (kind: CalloutKind) =>
+  `This slide carries a "${kind}" callout: give \`callout\` with that kind and one line of text.`;
+export const CALLOUT_UNASSIGNED = "This slide has no callout: leave `callout` out.";
+export const CALLOUT_KIND = (kind: CalloutKind) =>
+  `\`callout.kind\` must be "${kind}", the kind this slide was assigned.`;
+
+/**
+ * A slide spec schema held to its outline entry's callout: the box is present exactly when the
+ * outline assigned one, and of the assigned kind. All three are editorial (ADR 0025 §7): the
+ * retry is told, a second miss becomes a `spec-rule` finding, and the soft build leaves them
+ * out. Structural only — what the box says is the writer's, never checked here.
+ */
+/**
+ * The `promptVersions.planned` segment the lab's code-written outline stamps (`outlineFromFacts`).
+ * Only that outline assigns callouts, so Generate checks a slide's box against its assignment
+ * only when the stamp is there.
+ */
+export const OUTLINE_FROM_FACTS_VERSION = "outline-from-facts";
+
+/**
+ * Whether a lesson's outline is the lab's code-written one, read from `promptVersions.planned` as
+ * `joinVersions` writes it: one version per `+`, compared whole, so a version that merely contains
+ * the name does not count. Generate and Repair both key the lab's code-side steps on it.
+ */
+export function isOutlineFromFacts(planned: string | undefined): boolean {
+  return (planned ?? "").split("+").includes(OUTLINE_FROM_FACTS_VERSION);
+}
+
+export function withAssignedCallout(
+  schema: z.ZodType<SlideSpec>,
+  callout: OutlineCallout | undefined,
+  options: SpecSchemaOptions = {},
+): z.ZodType<SlideSpec> {
+  if (options.soft) return schema;
+  return schema.superRefine((spec, ctx) => {
+    const box = "callout" in spec ? spec.callout : undefined;
+    if (callout && !box) ctx.addIssue(editorialIssue(CALLOUT_MISSING(callout.kind), ["callout"]));
+    if (!callout && box) ctx.addIssue(editorialIssue(CALLOUT_UNASSIGNED, ["callout"]));
+    if (callout && box && box.kind !== callout.kind) {
+      ctx.addIssue(editorialIssue(CALLOUT_KIND(callout.kind), ["callout", "kind"]));
+    }
+  }) as unknown as z.ZodType<SlideSpec>;
+}
+
 /** Repair asks for the same spec the target was generated from, one target at a time. */
 export const RepairSlideOutputSchema = SlideSpecSchema;
 export const RepairBlockOutputSchema = BlockSpecSchema;
@@ -1155,6 +1377,7 @@ export const VERIFY_FIELDS = [
   "answer",
   "stem",
   "reasoning",
+  "distractors",
   "statement",
   "explanation",
   "example",
@@ -1183,7 +1406,7 @@ export const VERIFY_FIELDS_BY_ARRAY: Record<
   keyIdeas: ["statement", "explanation", "example", "analogy"],
   vocabulary: ["term", "definition"],
   workedExamples: ["problem", "steps", "answer"],
-  questions: ["stem", "answer", "reasoning"],
+  questions: ["stem", "answer", "reasoning", "distractors"],
   misconceptions: ["belief", "correction"],
 };
 
@@ -1196,6 +1419,7 @@ export const VERIFY_LIMITS: Record<VerifyField, number> = {
   answer: SPEC_LIMITS.answer,
   stem: SPEC_LIMITS.stem,
   reasoning: SPEC_LIMITS.footnote,
+  distractors: SPEC_LIMITS.option,
   statement: SPEC_LIMITS.item,
   explanation: SPEC_LIMITS.body,
   example: SPEC_LIMITS.body,
@@ -1207,7 +1431,7 @@ export const VERIFY_LIMITS: Record<VerifyField, number> = {
 export const VerifyCorrectionSchema = z.strictObject({
   factId: FactIdSchema,
   field: z.enum(VERIFY_FIELDS),
-  /** For `steps`: which step. */
+  /** For `steps` and `distractors`: which one, 0-based. */
   index: z.number().int().nonnegative().optional(),
   value: line(SPEC_LIMITS.body),
   reason: z.enum(VERIFY_REASONS),
@@ -1218,6 +1442,20 @@ export const VerifyOutputSchema = z.strictObject({
   corrections: z.array(VerifyCorrectionSchema).max(12),
 });
 export type VerifyOutput = z.infer<typeof VerifyOutputSchema>;
+
+/**
+ * l6c (luna-direct DIAGNOSIS FM5: 9 of 38 false claims came from the starter, which verify never
+ * saw): the starter's retrieval questions are shown to verify as `r1`–`rN` (`retrieval[i - 1]`).
+ * They are not facts (no minted id, nothing refers to them), so they sit outside
+ * `VERIFY_FIELDS_BY_ARRAY`; a correction on one names `stem` (the question) or `answer`.
+ */
+export const RETRIEVAL_VERIFY_FIELDS = ["stem", "answer"] as const satisfies readonly VerifyField[];
+
+/** The 0-based `retrieval` position a verify id `r<n>` names, or `undefined` when it is not one. */
+export function retrievalIndexOf(id: string): number | undefined {
+  const m = /^r([1-9]\d*)$/.exec(id);
+  return m ? Number(m[1]) - 1 : undefined;
+}
 
 /** The fact array `id` was minted for, or `undefined` for an objective or an unknown id. */
 export function verifiableArrayOf(id: FactId): Exclude<FactArray, "objectives"> | undefined {
@@ -1234,12 +1472,16 @@ export function verifiableArrayOf(id: FactId): Exclude<FactArray, "objectives"> 
  * field's own limit. Messages name the id and the field so the retry can fix them.
  */
 export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutput> {
-  const byId = new Map<FactId, { array: Exclude<FactArray, "objectives">; steps?: number }>();
+  const byId = new Map<
+    FactId,
+    { array: Exclude<FactArray, "objectives">; steps?: number; distractors?: number }
+  >();
   for (const key of Object.keys(VERIFY_FIELDS_BY_ARRAY) as Exclude<FactArray, "objectives">[]) {
     for (const fact of facts[key] ?? []) {
       byId.set(fact.id, {
         array: key,
         ...("steps" in fact ? { steps: fact.steps.length } : {}),
+        ...("distractors" in fact ? { distractors: fact.distractors?.length ?? 0 } : {}),
       });
     }
   }
@@ -1249,6 +1491,24 @@ export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutpu
       // `field` is enum-checked before this runs and is ours to print.
       const issue = (say: (id: string) => string, path: (string | number)[]) =>
         ctx.addIssue(shapeIssue(say(c.factId), ["corrections", i, ...path], say("…")));
+      const r = retrievalIndexOf(c.factId);
+      if (r !== undefined && r < (facts.retrieval?.length ?? 0)) {
+        if (!(RETRIEVAL_VERIFY_FIELDS as readonly VerifyField[]).includes(c.field)) {
+          issue(
+            (id) =>
+              `${id} has no field "${c.field}"; its fields are ${RETRIEVAL_VERIFY_FIELDS.join(", ")}`,
+            ["field"],
+          );
+        } else if (c.index !== undefined) {
+          issue(() => "index is only for steps and distractors corrections", ["index"]);
+        } else if (c.value.length > VERIFY_LIMITS[c.field]) {
+          issue(
+            () => `the value for ${c.field} must be at most ${VERIFY_LIMITS[c.field]} characters`,
+            ["value"],
+          );
+        }
+        return;
+      }
       const fact = byId.get(c.factId);
       if (!fact) {
         issue(
@@ -1266,17 +1526,18 @@ export function verifyOutputSchemaFor(facts: LessonFacts): z.ZodType<VerifyOutpu
         );
         return;
       }
-      if (c.field === "steps") {
+      if (c.field === "steps" || c.field === "distractors") {
+        const count = fact[c.field] ?? 0;
         if (c.index === undefined) {
-          issue((id) => `a steps correction on ${id} needs an index`, ["index"]);
-        } else if (c.index >= (fact.steps ?? 0)) {
+          issue((id) => `a ${c.field} correction on ${id} needs an index`, ["index"]);
+        } else if (c.index >= count) {
           issue(
-            (id) => `${id} has ${fact.steps ?? 0} steps; index ${c.index} does not exist`,
+            (id) => `${id} has ${count} ${c.field}; index ${c.index} does not exist`,
             ["index"],
           );
         }
       } else if (c.index !== undefined) {
-        issue(() => "index is only for steps corrections", ["index"]);
+        issue(() => "index is only for steps and distractors corrections", ["index"]);
       }
       if (c.value.length > VERIFY_LIMITS[c.field]) {
         issue(

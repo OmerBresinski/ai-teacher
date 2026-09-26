@@ -34,7 +34,7 @@ const EXAMPLE = { yearGroup: "Year 8", subject: "Science", level: "standard", du
 const quoted = (values: string[]) => values.map((v) => `"${v}"`).join(", ");
 
 export const parseBriefPrompt = {
-  version: "parse-brief.v1",
+  version: "parse-brief.v2",
   system: [
     "You read the text a teacher typed to ask for a lesson and pick out the brief fields it states or clearly implies. You do not plan or write anything.",
     "",

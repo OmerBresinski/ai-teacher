@@ -52,14 +52,47 @@ export function verbBlock(shape: WritingShape): string {
   return `Objective verb: ${shape.verb}. ${VERB_WRITING[shape.verb]}\n${CONFIDENCE_WRITING[shape.confidence](shape.verb)}`;
 }
 
-/** Rules stated in every system prompt (ADR 0024 §2: no learner names; F06: British English). */
-export const HOUSE_RULES = [
-  "Write in British English spelling and conventions.",
-  "Never invent or include the name of any pupil, student or member of staff.",
-  "Pitch the language at the reading level and year group given; explain any word a pupil at that level would not know.",
-  "Every fact id you are given is stable: echo the exact ids in `factRefs`, never invent new ones.",
-  "Answer with the requested JSON only, no prose before or after it.",
-].join("\n");
+/**
+ * Rules stated in every system prompt (ADR 0024 §2: no learner names; F06: British English). The
+ * "JSON only, no prose" line went on 23 Sept 2026 (minimalism rubric 5): every call runs through
+ * `call.ts`, which repairs the text (`repair-json.ts`) and validates it against the schema, so the
+ * rule restated what code enforces. Since the 24 Sept 2026 audit a step takes only the rules it
+ * uses, by name (`houseRules`): a reviewer or fact patcher writes no pupil text and no `factRefs`,
+ * and a rule it cannot use only invites restyling (verify, CROSS-STEP c2).
+ */
+const RULES = {
+  british: "Write in British English spelling and conventions.",
+  names: "Never invent or include the name of any pupil, student or member of staff.",
+  pitch:
+    "Pitch the language at the reading level and year group given; explain any word a pupil at that level would not know.",
+  factRefs:
+    "Every fact id you are given is stable: echo the exact ids in `factRefs`, never invent new ones.",
+} as const;
+export type HouseRule = keyof typeof RULES;
+
+/** The named house rules, in their fixed order. */
+export function houseRules(...keys: HouseRule[]): string {
+  return (Object.keys(RULES) as HouseRule[])
+    .filter((k) => keys.includes(k))
+    .map((k) => RULES[k])
+    .join("\n");
+}
+
+/** All four, for the steps that write pupil text and echo fact ids. */
+export const HOUSE_RULES = houseRules("british", "names", "pitch", "factRefs");
+
+/** The starter's retrieval questions (lab, C1): earlier learning the lesson opens with. */
+export type Retrieval = { question: string; answer: string }[];
+
+/** The starter block a step embeds after its facts; nothing when there is no starter. */
+export function retrievalBlock(retrieval: Retrieval | undefined): string[] {
+  if (!retrieval || retrieval.length === 0) return [];
+  return [
+    "",
+    "Starter (earlier learning, not this lesson):",
+    ...retrieval.map((r) => `  - ${r.question} — ${r.answer}`),
+  ];
+}
 
 /** What the pipeline knows about the class, as one block the prompts embed. */
 export type Audience = {
@@ -137,7 +170,7 @@ export function factsBlock(facts: LessonFacts): string {
     for (const q of facts.questions) {
       const tags = [q.tier, q.use ? `use: ${q.use}` : undefined].filter(Boolean).join(", ");
       out.push(`  ${q.id}: ${q.stem}${tags ? ` (${tags})` : ""}${refs(q.objectiveRefs)}`);
-      out.push(`    Answer: ${q.answer} (${q.reasoning})`);
+      out.push(`    Answer: ${q.answer}`, `    Reasoning: ${q.reasoning}`);
       if (q.distractors && q.distractors.length > 0) {
         out.push(
           `    Distractors: ${q.distractors
@@ -153,7 +186,7 @@ export function factsBlock(facts: LessonFacts): string {
       `Pitch: reading age ${facts.pitch.readingAgeTarget}, sentences of at most ${facts.pitch.sentenceLengthMax} words${avoid}.`,
     );
   }
-  out.push(`Lesson length: ${facts.durationMin} minutes.`);
+  // No lesson length: minutes size nothing a writer or reviewer does (UX ruling 82, 23 Sept 2026).
   return out.join("\n");
 }
 

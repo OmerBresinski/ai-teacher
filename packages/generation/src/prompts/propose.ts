@@ -68,7 +68,7 @@ function user(input: ProposeInput): string {
 }
 
 export const cascadePrompt = {
-  version: "cascade.v2",
+  version: "cascade.v4",
   system: SYSTEM(
     "A fact the item was built from has been edited by the teacher; the item must match the new fact.",
   ),
@@ -76,7 +76,7 @@ export const cascadePrompt = {
 } as const;
 
 export const regeneratePrompt = {
-  version: "regenerate.v2",
+  version: "regenerate.v4",
   system: SYSTEM(
     "The teacher has asked for this item again, optionally with an instruction about what to change.",
   ),

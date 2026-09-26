@@ -137,7 +137,6 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
     givenObjectives: pinned,
   };
   const skeletonContext = {
-    durationMin: brief.durationMin,
     shape,
     slideCount: brief.slideCount,
     objectiveCount: pinned?.length,
@@ -271,8 +270,8 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
 /**
  * The facts with the pinned objectives' own ids (ADR 0029 item 8). `assignFactIds` mints `o<n>`
  * by position; after an add or remove the teacher's ids are not positional (`o1, o3, o4`), so
- * every objective id — on the objectives, in each fact's `objectiveRefs` (worked examples have
- * none) and in the outline's `factRefs` — is renamed in one pass from the minted id to the pinned
+ * every objective id — on the objectives, in each fact's `objectiveRefs` (worked examples' are
+ * optional) and in the outline's `factRefs` — is renamed in one pass from the minted id to the pinned
  * id at that position.
  */
 function withPinnedIds(
@@ -296,6 +295,7 @@ function withPinnedIds(
     objectives: facts.objectives.map((o) => ({ ...o, id: rename(o.id) })),
     ...(facts.keyIdeas ? { keyIdeas: refs(facts.keyIdeas) } : {}),
     misconceptions: refs(facts.misconceptions),
+    workedExamples: refs(facts.workedExamples),
     vocabulary: refs(facts.vocabulary),
     questions: refs(facts.questions),
     outline: facts.outline.map((entry) => ({
@@ -318,7 +318,7 @@ function withPinnedIds(
  *     hold the teacher's objectives over an emptied outline, is never mistaken for one;
  *   - every outline reference resolves to an objective (anything else is not skeleton output);
  *   - the rebuilt skeleton — briefs, phases and picture briefs included — passes
- *     `PlanSkeletonSchema` (the shape and structural rules; the brief-dependent minutes rule was
+ *     `PlanSkeletonSchema` (the structural rules; the brief-dependent shape and count rules were
  *     already met when this skeleton was accepted).
  */
 function existingSkeleton(
@@ -356,7 +356,8 @@ function existingSkeleton(
     learningObjectives: facts.objectives.map((o) => ({ text: o.text })),
     outline: facts.outline.map((entry) => ({
       kind: entry.kind,
-      minutes: entry.minutes,
+      // Ruling 82: only lessons planned before it carry minutes.
+      ...(entry.minutes !== undefined ? { minutes: entry.minutes } : {}),
       factRefs: entry.factRefs.map((ref) => ({
         type: "objective" as const,
         index: objectiveIndex.get(ref) as number,
