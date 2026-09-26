@@ -24,6 +24,7 @@ import {
   PHOTO_NAME,
   type SlideSpec,
   slideSpecSchemaFor,
+  slotSideOf,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import {
@@ -532,13 +533,17 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           // The slot only where the slide still has one: illustrate may have dropped a repeated
           // subject's slot, and a rewrite must not bring it back.
           ...(hasPhotoSlot(original)
-            ? photoStructure(
-                base.facts?.outline[outcome.entryIndex],
-                outcome.spec,
-                deps.logger,
-                "repair",
-                outcome.index,
-              )
+            ? {
+                ...photoStructure(
+                  base.facts?.outline[outcome.entryIndex],
+                  outcome.spec,
+                  deps.logger,
+                  "repair",
+                  outcome.index,
+                ),
+                // A rewrite keeps the side the slide had (a teacher may have swapped it).
+                slotSide: slotSideOf(original) ?? "left",
+              }
             : {}),
         },
         (note) => deps.logger.warn({ stage: "repair", index: outcome.index }, note),

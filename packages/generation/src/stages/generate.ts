@@ -310,7 +310,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       {
         terms: builtFrom.vocabulary.map((v) => v.term),
         glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
-        ...photoStructure(entry, spec, deps.logger, "generate", i),
+        ...photoStructure(entry, spec, deps.logger, "generate", i, builtFrom.outline),
       },
       (note) => deps.logger.warn({ stage: "generate", call: "slide", index: i }, note),
     );
