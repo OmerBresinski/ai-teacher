@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
+  FIGURE_TEMPLATE_NAMES,
   GENERATABLE_BLOCK_TYPES,
   GENERATABLE_SLIDE_KINDS,
   type GeneratableSlideKind,
+  type GroupElement,
   OBJECTIVES_SLIDE_HEADING,
   type RichNode,
   richDocToPlainText,
@@ -12,7 +14,9 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { z } from "zod";
+import { RIGHT_TRIANGLE } from "./figures";
 import {
+  FIGURE_RECT,
   LIST_SLOTS,
   LIST_VARIANT_NAMES,
   type ListKind,
@@ -31,6 +35,9 @@ import {
   type BlockSpec,
   BlockSpecSchema,
   blockSpecSchemaFor,
+  diagramSpecSchemaFor,
+  isEditorialIssue,
+  PICTURE_NONE_ANY,
   type SlideSpec,
   SlideSpecSchema,
   slideSpecSchemaFor,
@@ -117,8 +124,23 @@ function minimalSpec(kind: GeneratableSlideKind): SlideSpec {
       return { kind, factRefs, items: ["We can explain evaporation"] };
     case "image-text":
       return { kind, factRefs, heading: "Roman roads", body: "The Romans built straight roads." };
+    case "diagram":
+      return {
+        kind,
+        factRefs,
+        heading: "Find the hypotenuse",
+        body: "The base is 3 cm and the height is 4 cm. Use Pythagoras' theorem to find x.",
+        figure: { template: "right-triangle", values: TRIANGLE_345 },
+      };
   }
 }
+
+/** The fixture triangle (TEACH-89): legs 3 cm and 4 cm, the hypotenuse the unknown. */
+const TRIANGLE_345 = {
+  base: { length: 3, label: "3 cm" },
+  height: { length: 4, label: "4 cm" },
+  hypotenuse: { label: "x" },
+};
 
 function walk(elements: SlideElement[], visit: (element: SlideElement) => void): void {
   for (const element of elements) {
@@ -207,6 +229,8 @@ describe("materialiseSlide", () => {
       "Ask an open question",
       "One thing you learnt",
       "Something we can now",
+      "What the diagram shows",
+      "link the diagram to the idea",
     ];
     for (const kind of GENERATABLE_SLIDE_KINDS) {
       const spec = minimalSpec(kind);
@@ -218,6 +242,55 @@ describe("materialiseSlide", () => {
         expect(text, `${kind} still shows "${placeholder}"`).not.toContain(placeholder);
       }
     }
+  });
+
+  test("TEACH-89: diagram draws the spec's figure where the recipe's placeholder was, stamped", () => {
+    const spec = SlideSpecSchema.parse(minimalSpec("diagram"));
+    if (spec.kind !== "diagram") throw new Error("fixture");
+    const slide = materialiseSlide(spec, "chalk", meta, counter());
+    const groups = slide.elements.filter((el): el is GroupElement => el.type === "group");
+    expect(groups).toHaveLength(1);
+    const figure = groups[0] as GroupElement;
+    expect(figure).toMatchObject({ ...FIGURE_RECT, authoredBy: "ai", generatedFrom: { factRefs } });
+    expect(figure.figure).toEqual({ template: "right-triangle", values: TRIANGLE_345 });
+    expect(figure.alt).toBe("Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.");
+    // Labels carry the values; every child is the model's, like the text beside it.
+    const labels = figure.children.map(plain).filter(Boolean);
+    expect(labels).toEqual(["3 cm", "4 cm", "x"]);
+    for (const child of figure.children) {
+      expect(child).toMatchObject({ authoredBy: "ai", generatedFrom: { factRefs, ...meta } });
+    }
+    const text = slide.elements.map(plain);
+    expect(text).toContain("DIAGRAM");
+    expect(text).toContain("Find the hypotenuse");
+    expect(text).toContain(spec.body);
+    // Ids come from the supplier, so the same spec gives the same slide.
+    expect(materialiseSlide(spec, "chalk", meta, counter())).toEqual(slide);
+    // A caption from the spec replaces the recipe's.
+    const captioned = materialiseSlide({ ...spec, caption: "FIND X" }, "chalk", meta, counter());
+    expect(captioned.elements.map(plain)).toContain("FIND X");
+  });
+
+  test("TEACH-89 row 4: a triangle whose sides break a² + b² = c² is still drawn, captioned not to scale", () => {
+    const values = {
+      base: { length: 3, label: "3 cm" },
+      height: { length: 4, label: "4 cm" },
+      hypotenuse: { length: 6, label: "6 cm" },
+    };
+    const answer = { ...minimalSpec("diagram"), figure: { template: "right-triangle", values } };
+    const strict = diagramSpecSchemaFor("right-triangle").safeParse(answer);
+    expect(strict.success).toBe(false);
+    // Editorial only, so `callStructured` accepts the retry through the soft build.
+    expect(strict.error?.issues.every((issue) => isEditorialIssue(issue))).toBe(true);
+    const soft = diagramSpecSchemaFor("right-triangle", { soft: true }).parse(answer);
+    const slide = materialiseSlide(soft, "beacon", meta, counter());
+    const figure = slide.elements.find((el): el is GroupElement => el.type === "group");
+    expect(figure?.figure?.values).toEqual(values);
+    expect(figure?.alt).toBe(
+      "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse 6 cm. Not drawn to scale.",
+    );
+    expect(figure?.children.map(plain)).toContain("Not drawn to scale");
+    expect(SlideSchema.safeParse(slide).success).toBe(true);
   });
 
   test("is deterministic for the same spec and id supplier", () => {
@@ -519,7 +592,8 @@ void ({} as Slide);
 
 describe("per-kind spec schemas (structured-output providers need a top-level object)", () => {
   test("every generatable kind and type has a plain object schema whose JSON Schema is type object", () => {
-    for (const kind of GENERATABLE_SLIDE_KINDS) {
+    // A diagram's schema depends on its template: the loop below.
+    for (const kind of GENERATABLE_SLIDE_KINDS.filter((k) => k !== "diagram")) {
       const schema = slideSpecSchemaFor(kind);
       expect(schema).toBeDefined();
       expect(z.toJSONSchema(schema as z.ZodType).type).toBe("object");
@@ -535,8 +609,43 @@ describe("per-kind spec schemas (structured-output providers need a top-level ob
     expect(z.toJSONSchema(SlideSpecSchema).type).toBeUndefined();
   });
 
+  test("TEACH-89: every Figure template has a plain diagram schema with no union anywhere in it", () => {
+    for (const template of FIGURE_TEMPLATE_NAMES) {
+      for (const soft of [false, true]) {
+        const schema = diagramSpecSchemaFor(template, { soft });
+        const json = z.toJSONSchema(schema as z.ZodType);
+        expect(json.type).toBe("object");
+        expect(JSON.stringify(json)).not.toContain("anyOf");
+        expect(JSON.stringify(json)).not.toContain("oneOf");
+        expect(schema.safeParse(minimalSpec("diagram")).success).toBe(true);
+        expect(schema.safeParse(minimalSpec("content")).success).toBe(false);
+      }
+    }
+    // The model cannot answer with another template, and its values are the template's own.
+    const spec = minimalSpec("diagram");
+    const other = { ...spec, figure: { template: "bar-model", values: TRIANGLE_345 } };
+    expect(diagramSpecSchemaFor("right-triangle").safeParse(other).success).toBe(false);
+    expect(RIGHT_TRIANGLE.shape.safeParse(TRIANGLE_345).success).toBe(true);
+  });
+
+  test("TEACH-89: a diagram's text may say diagram or triangle, never photo, picture or image", () => {
+    const schema = diagramSpecSchemaFor("right-triangle");
+    const spec = minimalSpec("diagram");
+    const fine = { ...spec, body: "Look at the triangle in the diagram and find x." };
+    expect(schema.safeParse(fine).success).toBe(true);
+    const pictured = { ...spec, body: "The picture shows a right-angled triangle." };
+    expect(schema.safeParse(pictured).error?.issues).toEqual([
+      expect.objectContaining({ path: ["body"], message: PICTURE_NONE_ANY }),
+    ]);
+    // Editorial, so the soft build takes it.
+    const soft = diagramSpecSchemaFor("right-triangle", { soft: true });
+    expect(soft.safeParse(pictured).success).toBe(true);
+  });
+
   test("a kind the pipeline cannot generate has no schema", () => {
     expect(slideSpecSchemaFor("image-text")).toBeDefined();
+    // Generatable, but its schema is per template (`diagramSpecSchemaFor`).
+    expect(slideSpecSchemaFor("diagram")).toBeUndefined();
     expect(slideSpecSchemaFor("blank")).toBeUndefined();
     expect(blockSpecSchemaFor("image")).toBeUndefined();
   });
@@ -769,6 +878,7 @@ function specText(spec: SlideSpec): string[] {
       return spec.entries.flatMap((e) => [e.term, e.definition]);
     case "content":
     case "image-text":
+    case "diagram":
       return [spec.heading, spec.body];
     case "worked-example":
       return [spec.question, ...spec.steps];

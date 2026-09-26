@@ -10,6 +10,7 @@ import {
 } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
+import { figureGroupOf, materialiseSlide, type SlideSpecOf } from "@tj/slides";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import {
   CODE_MODEL,
@@ -69,6 +70,11 @@ import {
 
 const json = (v: unknown) => JSON.stringify(v);
 const usage = { inputTokens: 1000, outputTokens: 400 };
+const MATERIALISE_META = {
+  promptVersion: "generate-slide.v1",
+  model: "m",
+  at: "2026-09-26T10:00:00.000Z",
+};
 
 const planScript = () => [
   json(FIXTURES.planSkeleton),
@@ -2570,29 +2576,263 @@ describe("repair", () => {
   });
 });
 
-describe("specFieldsOf (TEACH-222)", () => {
-  test("covers every generatable kind's text: nothing slideText shows is missing from the fields, and captions are excluded", async () => {
-    const setupDeps = recordingDeps(
+describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
+  /** An Apply lesson, so Plan is fed the Apply skeleton, whose position 6 is a diagram. */
+  const applyLesson = () =>
+    sampleBriefLesson({
+      brief: {
+        topic: "States of matter and the particle model",
+        durationMin: 60,
+        answers: {
+          objectiveVerb: "Apply the particle model",
+          priorConfidence: "Some prior knowledge",
+        },
+      },
+    });
+  const APPLY = PLAN_SKELETONS.Apply;
+  const DIAGRAM = FIXTURES.slides.diagram as SlideSpecOf<"diagram">;
+  const DIAGRAM_VALUES = DIAGRAM.figure.values as Record<string, unknown>;
+  /** The fixture triangle with a hypotenuse that breaks a² + b² = c². */
+  const BROKEN = {
+    ...DIAGRAM,
+    figure: {
+      template: "right-triangle",
+      values: {
+        base: { length: 3, label: "3 cm" },
+        height: { length: 4, label: "4 cm" },
+        hypotenuse: { length: 6, label: "6 cm" },
+      },
+    },
+  };
+  const diagramCalls = (ai: { calls: { promptText: string; context?: { stage?: string } }[] }) =>
+    ai.calls.filter(
+      (c) => c.context?.stage === "generate" && c.promptText.includes('kind "diagram"'),
+    );
+
+  /** Plan, then Generate, on the Apply skeleton; `answers` reply to the diagram's slide call(s). */
+  async function generatedDiagram(answers: string[] = [json(DIAGRAM)]) {
+    const ai = createFakeAi({
+      script: routed([
+        json(APPLY),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+        ...APPLY.outline
+          .slice(PLANNED_SLIDES)
+          .flatMap((e) => (e.kind === "diagram" ? answers : [json(FIXTURES.slides[e.kind])])),
+      ]),
+      usage,
+    });
+    const deps = recordingDeps(ai);
+    const state = await generate(await plan(initialState(applyLesson()), deps), deps);
+    const index = state.lesson.slides.findIndex((s) => s.kind === "diagram");
+    const slide = state.lesson.slides[index];
+    if (!slide) throw new Error("no diagram slide");
+    return { state, ai, index, slide };
+  }
+
+  /** The state Repair starts from, with `findings` as the review left them. */
+  const evaluatedWith = (
+    state: Awaited<ReturnType<typeof generatedDiagram>>["state"],
+    findings: Finding[],
+  ) => ({
+    ...state,
+    lesson: {
+      ...state.lesson,
+      generation: {
+        ...(state.lesson.generation as NonNullable<typeof state.lesson.generation>),
+        stage: "evaluated" as const,
+        findings,
+      },
+    },
+  });
+
+  test("row 3: Plan names the template, Generate fills it, the slide carries the figure group, its alt text and the spec's text", async () => {
+    const { state, ai, index, slide } = await generatedDiagram();
+    expect(index).toBe(6);
+    expect(state.lesson.facts?.outline[index]).toMatchObject({
+      kind: "diagram",
+      figureBrief: {
+        template: "right-triangle",
+        purpose: "the triangle pupils find the missing side of",
+      },
+    });
+    const calls = diagramCalls(ai);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.promptText).toContain(
+      'This slide draws a "right-triangle" figure for the triangle pupils find the missing side of.',
+    );
+    expect(SlideSchema.safeParse(slide).success).toBe(true);
+    const figure = figureGroupOf(slide);
+    expect(figure?.figure).toEqual({ template: "right-triangle", values: DIAGRAM_VALUES });
+    expect(figure?.alt).toBe("Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.");
+    expect(figure?.generatedFrom?.promptVersion).toBe(PROMPT_VERSIONS["generate-slide"]);
+    expect(slideText(slide)).toContain(DIAGRAM.heading);
+    expect(slideText(slide)).toContain(DIAGRAM.body);
+    expect(state.lesson.generation?.findings).toEqual([]);
+    expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
+  });
+
+  test("row 4: sides that still break a² + b² = c² after the retry are drawn anyway, flagged spec-rule, and Repair rewrites them", async () => {
+    const { state, ai, index, slide } = await generatedDiagram([json(BROKEN), json(BROKEN)]);
+    // Retried once, then accepted through the soft build: the stage did not fail.
+    expect(diagramCalls(ai)).toHaveLength(2);
+    expect(state.lesson.generation?.stage).toBe("generated");
+    const figure = figureGroupOf(slide);
+    expect(figure?.figure?.values).toEqual(BROKEN.figure.values);
+    expect(figure?.alt).toBe(
+      "Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse 6 cm. Not drawn to scale.",
+    );
+    expect(
+      figure?.children.some((c) => slideText({ ...slide, elements: [c] }) === "Not drawn to scale"),
+    ).toBe(true);
+    const misses = state.lesson.generation?.findings ?? [];
+    expect(misses).toEqual([
+      expect.objectContaining({
+        check: "spec-rule",
+        severity: "error",
+        target: { slideId: slide.id },
+      }),
+    ]);
+    expect(misses[0]?.message).toContain("do not make a right angle");
+
+    // Repair rewrites the slide from its stored values and the finding.
+    const fixer = createFakeAi({ script: [json(DIAGRAM)], usage });
+    const repaired = await repair(evaluatedWith(state, misses), recordingDeps(fixer));
+    expect(fixer.calls).toHaveLength(1);
+    expect(fixer.calls[0]?.promptText).toContain(`figure: ${JSON.stringify(figure?.figure)}`);
+    const after = repaired.lesson.slides[index] as Slide;
+    expect(figureGroupOf(after)?.figure).toEqual({
+      template: "right-triangle",
+      values: DIAGRAM_VALUES,
+    });
+    expect(figureGroupOf(after)?.alt).not.toContain("Not drawn to scale");
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "spec-rule")).toBe(false);
+  });
+
+  test("row 5: Repair is given the figure as a field, keeps the template and redraws from the values it returns", async () => {
+    const { state, index, slide } = await generatedDiagram();
+    const fields = specFieldsOf(slide);
+    expect(fields.map((f) => f.field)).toEqual(["figure", "caption", "heading", "body", "notes"]);
+    const finding: Finding = {
+      check: "answer-correctness",
+      severity: "error",
+      target: { slideId: slide.id },
+      message: "The triangle should be the 5, 12, 13 one from the worked example.",
+    };
+    const values = {
+      base: { length: 5, label: "5 cm" },
+      height: { length: 12, label: "12 cm" },
+      hypotenuse: { label: "x" },
+    };
+    const fixer = createFakeAi({
+      script: [json({ ...DIAGRAM, figure: { template: "right-triangle", values } })],
+      usage,
+    });
+    const repaired = await repair(evaluatedWith(state, [finding]), recordingDeps(fixer));
+    const prompt = fixer.calls[0]?.promptText ?? "";
+    expect(prompt).toContain(
+      `figure: {"template":"right-triangle","values":${JSON.stringify(DIAGRAM.figure.values)}}`,
+    );
+    expect(prompt).toContain(`heading: ${DIAGRAM.heading}`);
+    const after = repaired.lesson.slides[index] as Slide;
+    expect(figureGroupOf(after)?.figure).toEqual({ template: "right-triangle", values });
+    expect(figureGroupOf(after)?.alt).toBe(
+      "Right-angled triangle. Base 5 cm, height 12 cm, hypotenuse x.",
+    );
+
+    // An answer with another template is not a diagram of this slide: refused twice, the slide stays.
+    const otherTemplate = json({ ...DIAGRAM, figure: { template: "bar-model", values } });
+    const stubborn = createFakeAi({ script: [otherTemplate, otherTemplate], usage });
+    const kept = await repair(evaluatedWith(state, [finding]), recordingDeps(stubborn));
+    expect(stubborn.calls).toHaveLength(2);
+    expect(kept.lesson.slides[index]).toEqual(slide);
+    expect(kept.lesson.generation?.findings.map((f) => f.check)).toContain("repair");
+  });
+
+  test("Plan resumed after the skeleton persist keeps the diagram entry's figureBrief", async () => {
+    const first = recordingDeps(
       createFakeAi({
-        script: routed([
-          ...planScript(),
-          ...FIXTURES.planSkeleton.outline
-            .slice(PLANNED_SLIDES)
-            .map((e) => json(FIXTURES.slides[e.kind])),
-        ]),
+        script: routed([json(APPLY), json(FIXTURES.planFacts), json(FIXTURES.verify)]),
         usage,
       }),
     );
-    const generated = await generate(await plan(initialState(), setupDeps), setupDeps);
-    for (const slide of generated.lesson.slides) {
-      expect({ kind: slide.kind, covered: specFieldsCover(slide) }).toEqual({
-        kind: slide.kind,
-        covered: true,
-      });
-      const fields = specFieldsOf(slide);
-      expect(fields.map((f) => f.text)).not.toContain("KEY IDEA");
-      expect(fields.map((f) => f.text)).not.toContain("QUESTION");
+    await plan(initialState(applyLesson()), first);
+    const afterSkeleton = first.persisted[1]?.lesson;
+    if (!afterSkeleton?.facts) throw new Error("no skeleton persist");
+    const ai = createFakeAi({
+      script: routed([json(FIXTURES.planFacts), json(FIXTURES.verify)]),
+      usage,
+    });
+    const { state } = await planVerified(initialState(afterSkeleton), recordingDeps(ai));
+    // The skeleton call was skipped: the rebuilt skeleton, figure brief included, passed.
+    expect(ai.calls).toHaveLength(2);
+    expect(state.lesson.facts?.outline[6]?.figureBrief).toEqual(APPLY.outline[6]?.figureBrief);
+    expect(state.lesson.facts).toEqual(assignFactIds(APPLY, FIXTURES.planFacts, 60));
+  });
+});
+
+describe("specFieldsOf (TEACH-222)", () => {
+  test("covers every generatable kind's text: nothing slideText shows is missing from the fields, and captions are excluded", async () => {
+    // The default lesson, and an Apply one: its skeleton carries the diagram (TEACH-89).
+    const apply = sampleBriefLesson({
+      brief: {
+        topic: "States of matter and the particle model",
+        durationMin: 60,
+        answers: { objectiveVerb: "Apply the model", priorConfidence: "Some prior knowledge" },
+      },
+    });
+    const runs = [
+      { skeleton: FIXTURES.planSkeleton, lesson: sampleBriefLesson() },
+      { skeleton: PLAN_SKELETONS.Apply, lesson: apply },
+    ];
+    const kinds = new Set<string>();
+    for (const { skeleton, lesson } of runs) {
+      const setupDeps = recordingDeps(
+        createFakeAi({
+          script: routed([
+            json(skeleton),
+            json(FIXTURES.planFacts),
+            json(FIXTURES.verify),
+            ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
+          ]),
+          usage,
+        }),
+      );
+      const generated = await generate(await plan(initialState(lesson), setupDeps), setupDeps);
+      for (const slide of generated.lesson.slides) {
+        kinds.add(slide.kind);
+        expect({ kind: slide.kind, covered: specFieldsCover(slide) }).toEqual({
+          kind: slide.kind,
+          covered: true,
+        });
+        const fields = specFieldsOf(slide);
+        expect(fields.map((f) => f.text)).not.toContain("KEY IDEA");
+        expect(fields.map((f) => f.text)).not.toContain("QUESTION");
+      }
     }
+    expect(kinds.has("diagram")).toBe(true);
+  });
+
+  test("TEACH-89: a grouped figure's labels are covered by its figure field; ungrouped, they are loose text", () => {
+    let n = 0;
+    const slide: Slide = {
+      ...materialiseSlide(FIXTURES.slides.diagram, "chalk", MATERIALISE_META, () => `d${++n}`),
+      kind: "diagram",
+    };
+    expect(slideText(slide)).toContain("3 cm");
+    expect(specFieldsCover(slide)).toBe(true);
+    const figure = specFieldsOf(slide).find((f) => f.field === "figure");
+    expect(JSON.parse(figure?.text ?? "{}")).toEqual(figureGroupOf(slide)?.figure);
+    // Ungrouped, there is no stored figure to show; the labels are loose `small` text fields.
+    const group = figureGroupOf(slide);
+    if (!group) throw new Error("no figure");
+    const ungrouped = {
+      ...slide,
+      elements: [...group.children, ...slide.elements.filter((e) => e !== group)],
+    };
+    expect(specFieldsCover(ungrouped)).toBe(true);
+    expect(specFieldsOf(ungrouped)).toContainEqual({ field: "instruction", text: "3 cm" });
+    expect(specFieldsOf(ungrouped).some((f) => f.field === "figure")).toBe(false);
   });
 
   test("audit C5: fields carry spec names, so a worked-example shows its question and 0-based steps", async () => {

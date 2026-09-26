@@ -11,9 +11,9 @@
  */
 import type { PathElement, TextElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
+import { editorialIssue } from "../editorial";
 import { newText, uid } from "../factories";
 import { boxH } from "../layouts";
-import { editorialIssue } from "../specs";
 import { countLines, lineWidth } from "../text-measure";
 import type { FigureDrawing, FigureTemplate } from "./index";
 

@@ -1,5 +1,6 @@
 import type { ImagePurpose, LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
+import { figureBlock } from "./figures";
 import {
   type Audience,
   audienceBlock,
@@ -66,6 +67,12 @@ import {
  * The outline often puts the WATCH OUT callout on another slide (02f34f: the groyne watch-out on
  * the erosion slide), so a teaching slide without its own watch-out is told, by a code-built line
  * (`ownMisconceptions`), to name its objective's misconception in one closing sentence.
+ *
+ * v26 (TEACH-89, ADR 0032): `diagram` is generatable. A diagram slide's call carries a figure block
+ * in the user turn (`figureBlock`, `./figures`): the template its `figureBrief` names, its values in
+ * words, what the figure is for, and that the labels carry the numbers of the worked example or
+ * question the slide covers. The system text is unchanged (it is at its word budget and cached),
+ * so the pinned hash of the non-diagram sample did not move.
  */
 
 export type GenerateSlideInput = {
@@ -191,7 +198,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v25",
+  version: "generate-slide.v26",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -286,6 +293,9 @@ export const generateSlidePrompt = {
       );
     }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
+    if (input.entry.kind === "diagram" && input.entry.figureBrief) {
+      parts.push(...figureBlock(input.entry.figureBrief));
+    }
     if (input.entry.kind === "vocabulary") {
       parts.push(
         `This theme shows at most ${input.vocabularySlots} vocabulary entries. When there are more terms than that, keep every term another shown definition uses, then the terms the objectives name; put the rest in \`notes\` with their definitions.`,

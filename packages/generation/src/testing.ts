@@ -44,7 +44,10 @@ import {
  * item 9). Each
  * satisfies the shape of every eval brief with that verb; `eval:schema` picks by the brief's verb.
  * The Explain one satisfies all three confidences: it is also the e2e worker's script
- * (`apps/worker/src/fake-ai.ts`), and the brief screen pre-selects Explain / New to it.
+ * (`apps/worker/src/fake-ai.ts`), and the brief screen pre-selects Explain / New to it. The Apply
+ * one's position 6, a multiple-choice slide before TEACH-89, is a practise-phase `diagram` with a
+ * `figureBrief`: it draws on the worked example `plan-facts.json` gives that position, and Apply's
+ * practise floor of three is still met.
  */
 export const PLAN_SKELETONS: Record<ObjectiveVerb, PlanSkeleton> = {
   Recall: planSkeletonRecall as PlanSkeleton,

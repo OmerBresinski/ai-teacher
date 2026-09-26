@@ -64,6 +64,7 @@ import {
   slideText,
   specFieldsCover,
   specFieldsOf,
+  storedDiagramSchema,
   withImageCaption,
 } from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
@@ -227,7 +228,12 @@ export function repairTargets(
 }
 
 /** Outline kinds whose slides teach; a `tested-not-taught` repair is shown what they said. */
-const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "worked-example"]);
+const TEACHING_KINDS: ReadonlySet<string> = new Set([
+  "content",
+  "image-text",
+  "diagram",
+  "worked-example",
+]);
 /** The most read-only slides one repair call is shown. */
 export const MAX_CONTEXT_SLIDES = 6;
 
@@ -334,6 +340,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const slide = base.slides[index];
         // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
         // An image-text slide keeps its photograph: its text is re-checked against the same evidence.
+        // A diagram keeps its template and is redrawn from the values the rewrite returns.
         const specSchema = (soft: boolean) =>
           !slide
             ? undefined
@@ -341,7 +348,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
               ? imageTextSpecSchemaFor(imageTextPhotoOf(slide, base.facts?.outline[index]), {
                   soft,
                 })
-              : slideSpecSchemaFor(slide.kind, { soft });
+              : slide.kind === "diagram"
+                ? storedDiagramSchema(slide, base.facts?.outline[index], { soft })
+                : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) return;
         // The slides around it, read-only (lab round 1), rendered by `repair.v14`.

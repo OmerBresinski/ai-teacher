@@ -4,6 +4,7 @@ import { lessonShapeOf } from "../shapes";
 import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
 import { FIXTURES, sampleBriefLesson } from "../testing";
+import { FIGURE_FIT, FIGURE_VALUES } from "./figures";
 import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
@@ -201,12 +202,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a4f3ff2d86262252006017bc4176e8d7a384fdeeaa87982b32c66a6044c8db69",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v19",
-    hash: "7333757394f2391ab9921f089296dc415cabdbd195308ff6ce552ab54453d6a2",
+    version: "plan-skeleton.v20",
+    hash: "415cda03e49c2ae40e1e42b5a6f103bcce626c4d724e576e04632d1572675136",
   },
   "plan-facts": {
-    version: "plan-facts.v11",
-    hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
+    version: "plan-facts.v12",
+    hash: "bb091639d1fd76a9b06bab04e09c875d44968ed160abf8006a194e6ef30e6669",
   },
   "plan-objectives": {
     version: "plan-objectives.v18",
@@ -229,8 +230,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e80585b89cd1ea9fc83f21b6f193109e72d5e022bef4407ea26ffd6061183e22",
   },
   "generate-slide": {
-    // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render.
-    version: "generate-slide.v25",
+    // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render, and so
+    // did v26 (the figure block, diagram entries only; pinned by its own test below).
+    version: "generate-slide.v26",
     hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
   },
   "generate-worksheet": {
@@ -583,6 +585,51 @@ describe("prompt versions", () => {
     expect(outline.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["open-response", "worked-example"]),
     );
+  });
+
+  test("TEACH-89: Plan is told a diagram explains and teaches, when each template fits, and to give a figureBrief", () => {
+    const system = planSkeletonPrompt.system;
+    expect(system).toContain(
+      'Explain slides are "content", "worked-example", "image-text", "diagram" and "vocabulary"',
+    );
+    expect(system).toContain(
+      "every objective gets its own content, worked-example or diagram slide",
+    );
+    for (const fit of Object.values(FIGURE_FIT)) expect(system).toContain(fit);
+    expect(system).toContain('"figureBrief": { "template", "purpose"');
+    // The photographable test already says a diagram is not photographable.
+    expect(system).toContain("a diagram, map, chart, process or abstract idea is not");
+    // The facts call is told what the kind-fit rule checks.
+    expect(planFactsPrompt.system).toContain(
+      "a diagram slide needs the worked example or question whose numbers its figure shows",
+    );
+  });
+
+  test("TEACH-89: a diagram call carries the figure block in the user turn; other kinds do not", () => {
+    const sample = SAMPLE_INPUTS["generate-slide"] as Parameters<
+      typeof generateSlidePrompt.user
+    >[0];
+    const figureBrief = {
+      template: "right-triangle" as const,
+      purpose: "the triangle for finding the hypotenuse",
+    };
+    const diagram = generateSlidePrompt.user({
+      ...sample,
+      entry: { id: "s7", kind: "diagram", factRefs: ["x1", "o2"], figureBrief },
+    });
+    expect(diagram).toContain(
+      'This slide draws a "right-triangle" figure for the triangle for finding the hypotenuse.',
+    );
+    expect(diagram).toContain(
+      `"figure": { "template": "right-triangle", ${FIGURE_VALUES["right-triangle"]} }`,
+    );
+    expect(diagram).toContain(
+      "The labels carry the numbers, with units, from the worked example or question",
+    );
+    expect(diagram).toContain('Answer with the JSON for a "diagram" slide.');
+    expect(generateSlidePrompt.user(sample)).not.toContain("figure");
+    // The system text says nothing of diagrams: the block rides only on diagram calls.
+    expect(generateSlidePrompt.system).not.toContain("diagram");
   });
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {

@@ -17,6 +17,8 @@ import { example, HOUSE_RULES, limitsBlock } from "./shared";
  * `level` (ADR 0029 item 9) moves the pitch one band either way, inside the schema's bounds; its
  * `givenObjectives` are treated as fixed. Bump `version` whenever `system` or `user` changes
  * wording (`shape.ts` included). UX ruling 82: the outline it is shown carries no minutes.
+ * v12 (TEACH-89): a diagram slide needs the worked example or question its figure's numbers come
+ * from, the kind-fit rule `planFactsSchemaFor` checks.
  */
 
 export type PlanFactsInput = PlanSkeletonInput & {
@@ -99,7 +101,7 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v11",
+  version: "plan-facts.v12",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides, each with a brief saying what it adds. Produce the facts the slides and worksheet will be built from, then say which outline slide each fact supports.",
@@ -114,7 +116,7 @@ export const planFactsPrompt = {
     'Then at least 12 questions, split across "easy", "core" and "stretch" in the counts the brief\'s "Question tiers" line gives. Tag each "use": "slide" for a whole-class question, "worksheet" for independent practice, "exit" for the exit ticket, "any" — so no stem is used twice across slides, sheet and exit ticket. Each has the answer and a one-sentence reasoning. For every question that will be a multiple-choice or true-false slide, give three distractors, each the answer a pupil holding a named misconception would give.',
     'Then "pitch": the reading age to write for, the longest sentence in words, and up to 6 words to avoid, all judged from the year group and reading level given. A "Level" line in the brief moves the reading age and the sentence length one band down ("easier") or up ("harder"), never outside the bounds the brief states.',
     'Every fact names the objectives it serves: "objectiveRefs": [{ "type": "objective", "index": 0-based }]. Every objective is served by at least one key idea and checked by at least one question.',
-    'Refer to facts by list and position: { "type": "keyIdea" | "misconception" | "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A content slide needs its key idea; a worked-example slide needs its worked example; a question slide needs a question; a vocabulary slide needs vocabulary; a true-false slide names the misconception it confronts.',
+    'Refer to facts by list and position: { "type": "keyIdea" | "misconception" | "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A content slide needs its key idea; a worked-example slide needs its worked example; a question slide needs a question; a vocabulary slide needs vocabulary; a true-false slide names the misconception it confronts; a diagram slide needs the worked example or question whose numbers its figure shows.',
     limitsBlock({
       statement: SPEC_LIMITS.item,
       explanation: SPEC_LIMITS.body,
