@@ -1,5 +1,5 @@
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, type SeededPaths, test } from "./fixtures";
+import { expect, type SeededPaths, seedCreditedLesson, test } from "./fixtures";
 
 const PRESENT = (paths: SeededPaths) => paths.lesson("demo-water-cycle", "/present");
 const status = (page: import("@playwright/test").Page) => page.getByRole("status").first();
@@ -243,5 +243,20 @@ test.describe("present mode", () => {
     await page.keyboard.press("Escape");
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
     await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
+  });
+
+  // TEACH-161 row 8: the credits page belongs to exports only; nothing on the stage or its end.
+  test("a lesson with credited pictures presents without an Image credits page", async ({
+    signedInPage: { page },
+  }) => {
+    const id = await seedCreditedLesson(page);
+    await page.goto(`/l/${id}/present`);
+    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(status(page)).toContainText("Slide 1 of 4");
+    await page.keyboard.press("End");
+    await expect(status(page)).toContainText("Slide 4 of 4");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByText("Image credits")).toHaveCount(0);
+    await expect(page.getByText("Photo by Ada on Pexels")).toHaveCount(0);
   });
 });

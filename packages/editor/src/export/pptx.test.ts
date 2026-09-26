@@ -8,6 +8,7 @@ import type {
   TextElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { drawFigure, FIGURE_RECT } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
@@ -505,6 +506,73 @@ describe("exportLessonPptx", () => {
     const without = await exportLessonPptx(water, getTheme(water.themeId));
     expect(without.size).toBeLessThan(withAnswers.size);
   }, 30_000);
+
+  // TEACH-161 row 5: the credits slide closes the deck, after the Answers slide when there is one.
+  describe("image credits slide", () => {
+    const slideFiles = (zip: JSZip) =>
+      Object.keys(zip.files)
+        .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+        .sort((a, b) => Number(a.match(/\d+/)?.[0]) - Number(b.match(/\d+/)?.[0]));
+    const paragraphs = (xml: string) =>
+      (xml.match(/<a:p>.*?<\/a:p>/g) ?? []).map((p) =>
+        (p.match(/<a:t>(.*?)<\/a:t>/g) ?? []).map((t) => t.slice(5, -6)).join(""),
+      );
+
+    it("adds one last slide listing each credit, the photographer and Pexels as run links", async () => {
+      const lesson = creditedLesson();
+      const blob = await exportLessonPptx(lesson, theme);
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const files = slideFiles(zip);
+      expect(files).toHaveLength(buildSlidePlan(lesson).length + 1);
+      const last = files.at(-1) ?? "";
+      const xml = (await zip.file(last)?.async("string")) ?? "";
+      expect(paragraphs(xml)).toEqual([
+        "Image credits",
+        "Photo by Ada on Pexels",
+        "Photo by Bob on Pexels",
+        "Sky by Cy, CC BY 2.0 · View the original",
+      ]);
+      expect(xml).toContain("<a:hlinkClick");
+      const rels =
+        (await zip
+          .file(last.replace("slides/", "slides/_rels/").concat(".rels"))
+          ?.async("string")) ?? "";
+      for (const url of [
+        "https://www.pexels.com/@ada",
+        "https://www.pexels.com/photo/1001/",
+        "https://www.pexels.com/@bob",
+        "https://openverse.org/x",
+      ]) {
+        expect(rels).toContain(`Target="${url}"`);
+      }
+    }, 30_000);
+
+    it("comes after the Answers slide", async () => {
+      const lesson = creditedLesson();
+      lesson.slides.push(newSlide("true-false", lesson.themeId));
+      const blob = await exportLessonPptx(lesson, theme, { includeAnswers: true });
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const files = slideFiles(zip);
+      expect(files).toHaveLength(buildSlidePlan(lesson).length + 2);
+      const [answers, credits] = await Promise.all(
+        files.slice(-2).map(async (f) => paragraphs((await zip.file(f)?.async("string")) ?? "")[0]),
+      );
+      expect([answers, credits]).toEqual(["Answers", "Image credits"]);
+    }, 30_000);
+
+    it("is not added to a deck without a credited picture", async () => {
+      const [water] = demoLibrary();
+      if (!water) throw new Error("fixture");
+      const zip = await JSZip.loadAsync(
+        await (await exportLessonPptx(water, getTheme(water.themeId))).arrayBuffer(),
+      );
+      expect(slideFiles(zip)).toHaveLength(buildSlidePlan(water).length);
+      const all = await Promise.all(
+        slideFiles(zip).map(async (f) => (await zip.file(f)?.async("string")) ?? ""),
+      );
+      expect(all.some((xml) => xml.includes("Image credits"))).toBe(false);
+    }, 30_000);
+  });
 
   // A GIF from the Add image panel is an image element like any other: embedded
   // when the bytes are reachable, a labelled plate when they are not. Neither

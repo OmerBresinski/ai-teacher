@@ -68,6 +68,7 @@ import {
   resolveTextStyle,
 } from "../slide/elements/kit";
 import { docToPlainText } from "../text/static";
+import { creditSegments, IMAGE_CREDITS_TITLE, type ImageCredit, imageCredits } from "./credits";
 import { imageCredentials } from "./image-credentials";
 import { slugify } from "./json";
 import { docToRuns, type RunParagraph } from "./runs";
@@ -1299,6 +1300,9 @@ export async function exportLessonPptx(
 
     const answers = revealAnswers ? lessonAnswers(lesson) : [];
     if (answers.length > 0) addAnswersSlide(pptx, lesson, theme, answers);
+    // Last of all, after the Answers slide: the one page every export ends on (TEACH-161).
+    const credits = imageCredits(lesson);
+    if (credits.length > 0) addCreditsSlide(pptx, theme, credits);
 
     const buffer = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
     return new Blob([buffer], {
@@ -1312,11 +1316,12 @@ export async function exportLessonPptx(
 const SAFE_X = 64;
 const SAFE_Y = 56;
 
-function addAnswersSlide(pptx: Pptx, lesson: Lesson, theme: Theme, answers: AnswerEntry[]): void {
+/** A closing slide's background and heading, as the Answers and Image credits slides draw them. */
+function addClosingSlide(pptx: Pptx, theme: Theme, title: string): PptxGenJS.Slide {
   const slide = pptx.addSlide();
   slide.background = { color: hexColor(theme.colors.background) ?? "FFFFFF" };
 
-  slide.addText("Answers", {
+  slide.addText(title, {
     x: inches(SAFE_X),
     y: inches(SAFE_Y),
     w: inches(SLIDE_W - SAFE_X * 2),
@@ -1328,6 +1333,28 @@ function addAnswersSlide(pptx: Pptx, lesson: Lesson, theme: Theme, answers: Answ
     color: hexColor(theme.colors.ink),
     charSpacing: trackingToPt(theme.titleTracking, resolveFontSize(theme, "heading")),
   });
+  return slide;
+}
+
+/** The body box under a closing slide's heading, filling the safe area. */
+function closingBodyOptions(theme: Theme): TextOptions {
+  const top = SAFE_Y + resolveFontSize(theme, "heading") * 1.4 + 16;
+  return {
+    x: inches(SAFE_X),
+    y: inches(top),
+    w: inches(SLIDE_W - SAFE_X * 2),
+    h: inches(SLIDE_H - top - SAFE_Y),
+    margin: 0,
+    valign: "top",
+    lineSpacingMultiple: 1.3,
+    isTextBox: true,
+    wrap: true,
+    fit: "shrink",
+  };
+}
+
+function addAnswersSlide(pptx: Pptx, lesson: Lesson, theme: Theme, answers: AnswerEntry[]): void {
+  const slide = addClosingSlide(pptx, theme, "Answers");
 
   const size = Math.max(14, Math.min(resolveFontSize(theme, "small"), 20));
   const body: TextProps[] = answers.flatMap((entry, i) => [
@@ -1353,19 +1380,33 @@ function addAnswersSlide(pptx: Pptx, lesson: Lesson, theme: Theme, answers: Answ
     },
   ]);
 
-  const top = SAFE_Y + resolveFontSize(theme, "heading") * 1.4 + 16;
-  slide.addText(body, {
-    x: inches(SAFE_X),
-    y: inches(top),
-    w: inches(SLIDE_W - SAFE_X * 2),
-    h: inches(SLIDE_H - top - SAFE_Y),
-    margin: 0,
-    valign: "top",
-    lineSpacingMultiple: 1.3,
-    isTextBox: true,
-    wrap: true,
-    fit: "shrink",
-  });
+  slide.addText(body, closingBodyOptions(theme));
 
   slide.addNotes(`Answer key for "${lesson.title}". Not shown to the class.`);
+}
+
+/**
+ * "Image credits" (TEACH-161; Images project Decision 2): one paragraph per credited picture in the
+ * whole deck, worded as the credit badge words it, the photographer and Pexels as run hyperlinks.
+ */
+function addCreditsSlide(pptx: Pptx, theme: Theme, credits: ImageCredit[]): void {
+  const slide = addClosingSlide(pptx, theme, IMAGE_CREDITS_TITLE);
+  const size = Math.max(14, Math.min(resolveFontSize(theme, "small"), 20));
+  const body: TextProps[] = credits.flatMap((credit, i) => {
+    const segments = creditSegments(credit);
+    return segments.map((segment, j) => {
+      const options: TextOptions = {
+        fontFace: fontFaceFor(theme.fonts.body),
+        fontSize: size,
+        color: hexColor(theme.colors.ink),
+      };
+      if (segment.href) options.hyperlink = { url: segment.href, tooltip: segment.href };
+      if (j === segments.length - 1) {
+        options.breakLine = i < credits.length - 1;
+        options.paraSpaceAfter = 8;
+      }
+      return { text: segment.text, options };
+    });
+  });
+  slide.addText(body, closingBodyOptions(theme));
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { parseLesson, parseWorksheet } from "@tj/domain/documents";
+import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorksheet } from "../model/demo-worksheet";
 import { demoLibrary } from "../model/starter";
 import {
@@ -41,6 +42,18 @@ describe("JSON export round-trips through the parsers (row 6)", () => {
     const lesson = water();
     const text = await documentJsonBlob(lesson).text();
     expect(parseLesson(JSON.parse(text))).toEqual(lesson);
+  });
+
+  // TEACH-161 row 9: JSON is the one export with no credits page; `source` carries it.
+  it("a lesson with credited pictures, `source` intact and no credits key", async () => {
+    const lesson = creditedLesson();
+    const text = await documentJsonBlob(lesson).text();
+    const parsed = parseLesson(JSON.parse(text));
+    expect(parsed).toEqual(lesson);
+    const [first] = parsed.slides[0]?.elements.filter((e) => e.type === "image") ?? [];
+    expect(first?.type === "image" && first.source?.photographer).toBe("Ada");
+    expect(Object.keys(JSON.parse(text))).not.toContain("credits");
+    expect(text).not.toContain("Image credits");
   });
 
   it("a worksheet", async () => {

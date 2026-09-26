@@ -229,3 +229,62 @@
       0 8px 24px -6px rgb(27 26 23 / 0.12);
   }
 }
+
+/* The "Image credits" page (TEACH-161): the last page of every layout, in that layout's size
+   (`.td-print-page` landscape, `.td-handout-page` / `.td-handout3-page` A4). Paper colours in every
+   theme, as the handout pages are. */
+.td-credits-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 18pt;
+  color: #1b1a17;
+  font-family: var(--font-ui);
+}
+
+.td-print-page.td-credits-page {
+  padding: 48pt 64pt;
+}
+
+.td-credits-title {
+  margin: 0;
+  font-size: 22pt;
+  line-height: 28pt;
+  font-weight: 600;
+}
+
+.td-credits-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11pt;
+  line-height: 15pt;
+}
+
+/* Landscape has the width for two columns; an A4 page reads better as one. */
+.td-print-page .td-credits-list {
+  column-count: 2;
+  column-gap: 36pt;
+}
+
+.td-credits-item {
+  break-inside: avoid;
+  padding-bottom: 9pt;
+}
+
+.td-credits-text {
+  margin: 0;
+}
+
+.td-credits-urls {
+  margin: 0;
+  font-size: 8.5pt;
+  line-height: 12pt;
+  color: #5c5950;
+  overflow-wrap: anywhere;
+}
+
+.td-credits-text a {
+  color: inherit;
+  text-decoration: underline;
+}

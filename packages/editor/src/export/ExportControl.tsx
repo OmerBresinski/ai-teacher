@@ -21,11 +21,13 @@ import {
   toast,
 } from "@tj/ui";
 import { ChevronDown } from "lucide-react";
-import { type ReactNode, useId, useRef, useState } from "react";
+import { type ComponentType, type ReactNode, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Segmented } from "../kit/Segmented";
 import { getTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
+import type { CreditsSlideProps } from "./CreditsSlide";
+import { type ImageCredit, imageCredits } from "./credits";
 import { downloadBlob } from "./download";
 import { downloadLessonJSON, downloadWorksheetJSON } from "./json";
 import { waitForSlidePaint } from "./paint";
@@ -48,7 +50,9 @@ import { ALL_SLIDES, parseSlideRange } from "./range";
  * PNG capture (ADR 0023 §3) mounts one slide at a time on an offscreen stage inside this control,
  * waits for its paint, rasterises it and downloads it, with a 120 ms gap between files so the
  * browser does not drop back-to-back downloads. The loop reads a cancel ref; closing the dialog
- * sets it, so the run stops after the file in hand. The stage is mounted with `flushSync` so the
+ * sets it, so the run stops after the file in hand. When the slides in the range hold a credited
+ * picture the run ends on one more file, `<slug>-credits.png`, drawn by `CreditsSlide` (which the
+ * PNG chunk carries) on the same stage and counted in "Exporting N of total" (TEACH-161). The stage is mounted with `flushSync` so the
  * loop can await `waitForSlidePaint` on the real element — no readiness effect.
  *
  * Option state is local `useState`: the dialog is transient chrome, not document state (ADR 0022
@@ -118,6 +122,11 @@ export const exportLoaders = {
 /** A live export. `cancellable` is the truth about the exporter, not a wish. */
 type Run = { label: string; cancellable: boolean };
 
+/** What the offscreen stage holds: a slide by index, or the PNG run's closing credits picture. */
+type Staged =
+  | { kind: "slide"; index: number }
+  | { kind: "credits"; credits: ImageCredit[]; Credits: ComponentType<CreditsSlideProps> };
+
 export function ExportControl({
   document,
   currentSlideId,
@@ -149,8 +158,8 @@ export function ExportControl({
   const [answerKey, setAnswerKey] = useState(worksheet ? document.includeAnswerKey : false);
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
-  /** The slide on the offscreen stage, by index; `null` between and after runs. */
-  const [staged, setStaged] = useState<number | null>(null);
+  /** What is on the offscreen stage; `null` between and after runs. */
+  const [staged, setStaged] = useState<Staged | null>(null);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef(false);
@@ -173,8 +182,8 @@ export function ExportControl({
   };
 
   /** One slide on the stage, painted: `flushSync` mounts it, `waitForSlidePaint` sees it land. */
-  const stageSlide = async (index: number): Promise<HTMLElement> => {
-    flushSync(() => setStaged(index));
+  const stageSlide = async (next: Staged): Promise<HTMLElement> => {
+    flushSync(() => setStaged(next));
     const el = stageRef.current?.querySelector<HTMLElement>("[data-slide-root]");
     if (!el) throw new Error("The slide could not be prepared for capture.");
     await waitForSlidePaint(el);
@@ -203,12 +212,17 @@ export function ExportControl({
   };
 
   const exportPng = async (deck: Lesson, indices: number[]) => {
-    const { captureSlidePng, pngFilename } = await exportLoaders.png();
-    const total = indices.length;
+    const { captureSlidePng, pngFilename, pngCreditsFilename, CreditsSlide } =
+      await exportLoaders.png();
+    const credits = imageCredits(deck, indices);
+    const jobs: Staged[] = indices.map((index) => ({ kind: "slide", index }));
+    if (credits.length > 0) jobs.push({ kind: "credits", credits, Credits: CreditsSlide });
+    const total = jobs.length;
     let failed = 0;
+    let slidesDone = 0;
     for (let n = 0; n < total; n += 1) {
-      const index = indices[n];
-      if (index === undefined) continue;
+      const job = jobs[n];
+      if (!job) continue;
       if (cancelRef.current) {
         toast("Export stopped");
         return;
@@ -218,23 +232,31 @@ export function ExportControl({
         cancellable: true,
       });
       try {
-        const el = await stageSlide(index);
+        const el = await stageSlide(job);
         if (cancelRef.current) {
           toast("Export stopped");
           return;
         }
         const blob = await captureSlidePng(el, pngScale, imageOrigin);
-        downloadBlob(blob, pngFilename(deck, index));
+        if (job.kind === "slide") {
+          downloadBlob(blob, pngFilename(deck, job.index));
+          slidesDone += 1;
+        } else {
+          downloadBlob(blob, pngCreditsFilename(deck));
+        }
       } catch {
         // One slide that will not rasterise (a tainted picture, a timeout) must not lose the rest.
         failed += 1;
-        toast(`Slide ${index + 1} could not be exported`);
+        toast(
+          job.kind === "slide"
+            ? `Slide ${job.index + 1} could not be exported`
+            : "The image credits could not be exported",
+        );
       }
       if (n < total - 1) await wait(DOWNLOAD_GAP_MS);
     }
-    const done = total - failed;
-    if (done === 0) throw new Error(EXPORT_FAILED);
-    finish(done > 1 ? `${done} slides exported as PNG` : "Lesson exported as PNG");
+    if (total - failed === 0) throw new Error(EXPORT_FAILED);
+    finish(slidesDone > 1 ? `${slidesDone} slides exported as PNG` : "Lesson exported as PNG");
   };
 
   const run_ = async () => {
@@ -301,7 +323,7 @@ export function ExportControl({
     }
   };
 
-  const stagedSlide = lesson && staged !== null ? lesson.slides[staged] : undefined;
+  const stagedSlide = lesson && staged?.kind === "slide" ? lesson.slides[staged.index] : undefined;
 
   return (
     <Dialog
@@ -482,7 +504,7 @@ export function ExportControl({
         {/* Offscreen capture stage (ADR 0023 §3): exactly one slide at a time, never visible.
             Inside the dialog so it is unmounted with it; off-canvas rather than `display: none`,
             which would give the rasteriser nothing to paint. */}
-        {stagedSlide && lesson ? (
+        {lesson && (stagedSlide || staged?.kind === "credits") ? (
           <div
             ref={stageRef}
             aria-hidden
@@ -496,12 +518,16 @@ export function ExportControl({
               pointerEvents: "none",
             }}
           >
-            <SlideView
-              slide={stagedSlide}
-              theme={getTheme(lesson.themeId)}
-              mode="capture"
-              revealAnswer={answers && !!stagedSlide.question}
-            />
+            {staged?.kind === "credits" ? (
+              <staged.Credits credits={staged.credits} theme={getTheme(lesson.themeId)} />
+            ) : stagedSlide ? (
+              <SlideView
+                slide={stagedSlide}
+                theme={getTheme(lesson.themeId)}
+                mode="capture"
+                revealAnswer={answers && !!stagedSlide.question}
+              />
+            ) : null}
           </div>
         ) : null}
       </DialogContent>

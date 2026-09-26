@@ -5,7 +5,8 @@
  */
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
-import { expect, test } from "./fixtures";
+import { expectNoSeriousA11yViolations } from "./a11y";
+import { expect, seedCreditedLesson, test } from "./fixtures";
 
 declare global {
   interface Window {
@@ -80,6 +81,81 @@ test.describe("lesson print route", () => {
     await expect(pages.first()).toHaveCSS("box-shadow", "none");
     const pdf = await page.pdf({ preferCSSPageSize: true });
     expect(pdfPageCount(pdf)).toBe(count);
+  });
+});
+
+// TEACH-161 row 4: the "Image credits" page the print route ends on.
+test.describe("lesson print image credits", () => {
+  test("?auto=1 ends on one credits page; the PDF has slides + 1 pages; ?slides=1-2 lists A and B", async ({
+    signedInPage: { page, paths },
+  }) => {
+    await page.addInitScript(() => {
+      window.print = () => {};
+    });
+    const id = await seedCreditedLesson(page);
+    await page.goto(`/l/${id}/print?auto=1`);
+    const main = page.locator(".td-print");
+    await expect(main.locator(".td-print-page")).toHaveCount(5);
+    const credits = main.locator("[data-credits-page]");
+    await expect(credits).toHaveCount(1);
+    await expect(main.locator("> section").last()).toHaveAttribute("data-credits-page");
+    await expect(credits.getByRole("heading", { level: 1, name: "Image credits" })).toBeVisible();
+    await expect(credits.getByRole("listitem")).toHaveText([
+      /^Photo by Ada on Pexels/,
+      /^Photo by Bob on Pexels/,
+      /^Sky by Cy, CC BY 2\.0 · View the original/,
+    ]);
+    await expect(credits.getByRole("link", { name: "Ada" })).toHaveAttribute(
+      "href",
+      "https://www.pexels.com/@ada",
+    );
+    await expect(credits.getByText("https://www.pexels.com/@ada", { exact: false })).toBeVisible();
+    await expect(main).toHaveAttribute("data-page-count", "5");
+    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
+    await page.emulateMedia({ media: "print" });
+    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(5);
+
+    await page.emulateMedia({ media: "screen" });
+    await page.goto(`/l/${id}/print?slides=1-2`);
+    await expect(main.locator("[data-credits-page]").getByRole("listitem")).toHaveText([
+      /^Photo by Ada on Pexels/,
+      /^Photo by Bob on Pexels/,
+    ]);
+    await expect(main).toHaveAttribute("data-page-count", "3");
+
+    // A lesson without credited pictures prints exactly as before.
+    await page.goto(paths.lesson("demo-water-cycle", "/print"));
+    await expect(main.locator(".td-print-page").first()).toBeVisible();
+    await expect(main.locator("[data-credits-page]")).toHaveCount(0);
+    await expect(page.getByText("Image credits")).toHaveCount(0);
+  });
+
+  test("the credits page takes the A4 page in the notes and 3-per-page layouts", async ({
+    signedInPage: { page },
+  }) => {
+    const id = await seedCreditedLesson(page);
+    await page.goto(`/l/${id}/print?notes=1`);
+    await expect(page.locator(".td-handout-page[data-credits-page]")).toHaveCount(1);
+    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
+    await page.emulateMedia({ media: "print" });
+    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(5);
+
+    await page.emulateMedia({ media: "screen" });
+    await page.goto(`/l/${id}/print?handout=3`);
+    await expect(page.locator(".td-handout3-page[data-credits-page]")).toHaveCount(1);
+    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
+    await page.emulateMedia({ media: "print" });
+    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(3);
+  });
+
+  test("the credits page passes axe in the three themes", async ({ signedInPage: { page } }) => {
+    const id = await seedCreditedLesson(page);
+    for (const theme of ["light", "dark", "high-contrast"] as const) {
+      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
+      await page.goto(`/l/${id}/print`);
+      await expect(page.getByRole("heading", { name: "Image credits" })).toBeVisible();
+      await expectNoSeriousA11yViolations(page, `/l/:id/print image credits (${theme})`);
+    }
   });
 });
 

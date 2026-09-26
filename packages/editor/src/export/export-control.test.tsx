@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Lesson, Worksheet } from "@tj/domain/documents";
+import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
 import { demoLibrary } from "../model/starter";
+import { CreditsSlide } from "./CreditsSlide";
 import { ExportControl, exportLoaders, PPTX_FONT_NOTE } from "./ExportControl";
 import * as paint from "./paint";
 
@@ -257,6 +259,63 @@ describe("ExportControl (TEACH-111)", () => {
       expect(captured).toEqual([3, 3]);
       expect(painted).toHaveBeenCalledTimes(2);
       // The stage is gone with the run.
+      await waitFor(() => expect(document.querySelector("[data-capture-stage]")).toBeNull());
+    } finally {
+      HTMLAnchorElement.prototype.click = original;
+      exportLoaders.png = realPng;
+    }
+  });
+
+  // TEACH-161 rows 6–7: the run ends on the credits picture for the slides in range, counted.
+  it("PNG: ends on <slug>-credits.png listing the credits of the slides in range", async () => {
+    spyOn(paint, "waitForSlidePaint").mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const shots: { credits: boolean; text: string; label: string }[] = [];
+    const realPng = exportLoaders.png;
+    exportLoaders.png = async () =>
+      ({
+        captureSlidePng: async (el: HTMLElement) => {
+          shots.push({
+            credits: el.hasAttribute("data-credits-slide"),
+            text: el.textContent ?? "",
+            label: document.querySelector("[data-export-dialog] output")?.textContent ?? "",
+          });
+          return new Blob(["png"], { type: "image/png" });
+        },
+        pngFilename: (_l: unknown, i: number) => `sky-${i + 1}.png`,
+        pngCreditsFilename: () => "sky-credits.png",
+        CreditsSlide,
+      }) as unknown as Awaited<ReturnType<typeof realPng>>;
+    const downloads: string[] = [];
+    const original = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    };
+    Object.assign(URL, { createObjectURL: () => "blob:x", revokeObjectURL: () => {} });
+    try {
+      renderControl(creditedLesson());
+      await openDialog(user);
+      await user.click(pickTab("PNG"));
+      const range = screen.getByRole("textbox", { name: "Slides" });
+      await user.clear(range);
+      await user.type(range, "1-2");
+      await user.click(screen.getByRole("button", { name: "Export PNG" }));
+      await waitFor(() => expect(downloads).toEqual(["sky-1.png", "sky-2.png", "sky-credits.png"]));
+      expect(shots.map((s) => s.label)).toEqual([
+        "Exporting 1 of 3",
+        "Exporting 2 of 3",
+        "Exporting 3 of 3",
+      ]);
+      const last = shots.at(-1);
+      expect(last?.credits).toBe(true);
+      expect(last?.text).toContain("Image credits");
+      expect(last?.text).toContain("Photo by Ada on Pexels");
+      expect(last?.text).toContain("Photo by Bob on Pexels");
+      expect(last?.text).toContain("https://www.pexels.com/@ada");
+      // Slide 3's Openverse picture is outside the range.
+      expect(last?.text).not.toContain("Sky by Cy");
+      // The slides themselves carry no credit.
+      expect(shots.slice(0, -1).some((s) => s.text.includes("Pexels"))).toBe(false);
       await waitFor(() => expect(document.querySelector("[data-capture-stage]")).toBeNull());
     } finally {
       HTMLAnchorElement.prototype.click = original;
