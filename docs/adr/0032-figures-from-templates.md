@@ -1,6 +1,6 @@
 # 0032 — Figures are drawn by code from named templates, with a `path` element
 
-- Status: Accepted
+- Status: Accepted (amended 2026-09-26; decisions 2, 4 and 6 amended by ADR 0034, 2026-09-27)
 - Date: 2026-09-26
 - Related PRD decisions: Images project, "Later phases" item 1 (native diagrams); PRD
   "Diagrams: figures in worksheets and slides" (13 Sep 2026); Greg's decision on TEACH-164
