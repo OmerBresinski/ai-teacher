@@ -3,7 +3,7 @@ import { defineJob, NonRetryableError } from "@tj/jobs";
 import { generateText } from "ai";
 import type { WorkerDeps } from "../deps";
 
-/** One bounded model call proving the configured Bedrock path (ADR 0018 §7). */
+/** One bounded model call proving the configured provider path (ADR 0031 §8). */
 export const aiPingJob = defineJob<"ai.ping", WorkerDeps>(
   "ai.ping",
   async ({ payload, signal, progress, deps }) => {
@@ -13,9 +13,7 @@ export const aiPingJob = defineJob<"ai.ping", WorkerDeps>(
       const modelId = deps.ai.modelId(payload.class);
       await progress(10, `calling ${modelId}`);
       if (deps.ai.kind === "unconfigured") {
-        throw new NonRetryableError(
-          "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
-        );
+        throw new NonRetryableError("AI provider is not configured (set OPENAI_API_KEY)");
       }
 
       const result = await generateText({

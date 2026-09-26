@@ -1,7 +1,8 @@
 import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
+import { createOpenAI } from "@ai-sdk/openai";
 import { ModelClass, ModelClassSchema, type ModelClass as ModelClassType } from "@tj/domain";
 import type { LanguageModel } from "ai";
-import { defaultSettingsMiddleware, wrapLanguageModel } from "ai";
+import { createGateway, defaultSettingsMiddleware, wrapLanguageModel } from "ai";
 import pino from "pino";
 import { AiError } from "./errors";
 import { createLoggingMiddleware } from "./logging-middleware";
@@ -33,9 +34,11 @@ type ModelIds = Record<ModelClassType, string>;
 type WrappableLanguageModel = Parameters<typeof wrapLanguageModel>[0]["model"];
 
 interface ConfiguredAiOptions {
+  kind: ConfiguredAi["kind"];
   region: string;
   modelIds: ModelIds;
   logger: pino.Logger;
+  route?: CreateAiOptions["route"];
   createModel(
     modelClass: ModelClassType,
     modelId: string,
@@ -67,7 +70,7 @@ function unconfiguredAi(region: string, modelIds: ModelIds): UnconfiguredAi {
     model() {
       throw new AiError(
         "unconfigured",
-        "AI is not configured: set AWS_BEARER_TOKEN_BEDROCK to use Bedrock models",
+        "AI is not configured: set OPENAI_API_KEY for openai/ ids, AWS_BEARER_TOKEN_BEDROCK for Bedrock ids, or AI_GATEWAY_API_KEY for other provider/model ids",
       );
     },
   };
@@ -76,14 +79,15 @@ function unconfiguredAi(region: string, modelIds: ModelIds): UnconfiguredAi {
 /** Builds a configured client around a model factory; used by the Bedrock adapter and test fake. */
 export function createConfiguredAi(options: ConfiguredAiOptions): ConfiguredAi {
   return {
-    kind: "bedrock",
+    kind: options.kind,
     region: options.region,
     modelId(modelClass) {
       return options.modelIds[requireModelClass(modelClass)];
     },
     model(modelClass, context): LanguageModel {
       const modelClassValue = requireModelClass(modelClass);
-      const modelId = options.modelIds[modelClassValue];
+      const modelId =
+        options.route?.(modelClassValue, context) ?? options.modelIds[modelClassValue];
       return wrapLanguageModel({
         model: options.createModel(modelClassValue, modelId, context),
         middleware: createLoggingMiddleware({
@@ -112,23 +116,73 @@ function warnUnpricedModels(logger: pino.Logger, modelIds: ModelIds): void {
 }
 
 /**
- * Creates the Bedrock-backed model client from explicit environment values. It never reads
- * `process.env`, allowing apps to validate their environment at boot and tests to be deterministic.
+ * An OpenAI id is `openai/<model>` (`openai/gpt-6-luna`): served directly from OpenAI's API
+ * with the prefix stripped (ADR 0031), or by the gateway as a fallback when only its key is set.
+ */
+export const OPENAI_PREFIX = "openai/";
+
+export function isOpenAiModelId(modelId: string): boolean {
+  return modelId.startsWith(OPENAI_PREFIX);
+}
+
+/**
+ * A Vercel AI Gateway id is any other `provider/model`; a Bedrock id never contains a slash.
+ * An `openai/` id is not one: it is decided first in `createAi` and only falls back to the
+ * gateway when there is no OpenAI key.
+ */
+export function isGatewayModelId(modelId: string): boolean {
+  return modelId.includes("/") && !isOpenAiModelId(modelId);
+}
+
+/**
+ * Creates the model client from explicit environment values. It never reads `process.env`,
+ * allowing apps to validate their environment at boot and tests to be deterministic. An OpenAI
+ * key serves `openai/<model>` ids directly (ADR 0031); a Bedrock key serves ids without a slash;
+ * a Vercel AI Gateway key serves every other `provider/model` id (the lab's model bench) and
+ * stands in for `openai/` ids when no OpenAI key is set. Any one key configures the client, and a
+ * class whose id needs a missing key fails at `model()`, not at boot.
  */
 export function createAi(env: AiEnv, options: CreateAiOptions = {}): CreatedAi {
   const apiKey = env.AWS_BEARER_TOKEN_BEDROCK?.trim();
+  const openAiKey = env.OPENAI_API_KEY?.trim();
+  const gatewayKey = env.AI_GATEWAY_API_KEY?.trim();
   const region = env.AWS_REGION?.trim() || DEFAULT_REGION;
   const modelIds = modelIdsFromEnv(env);
-  if (!apiKey) return unconfiguredAi(region, modelIds);
+  if (!apiKey && !openAiKey && !gatewayKey) return unconfiguredAi(region, modelIds);
 
   const logger = options.logger ?? pino({ level: "silent" });
   warnUnpricedModels(logger, modelIds);
-  const bedrock = createAmazonBedrock({ apiKey, region });
+  const openai = openAiKey ? createOpenAI({ apiKey: openAiKey }) : undefined;
+  const bedrock = apiKey ? createAmazonBedrock({ apiKey, region }) : undefined;
+  const gateway = gatewayKey ? createGateway({ apiKey: gatewayKey }) : undefined;
   return createConfiguredAi({
+    kind: openai ? "openai" : bedrock ? "bedrock" : "gateway",
     region,
     modelIds,
     logger,
+    route: options.route,
     createModel: (_modelClass, modelId) => {
+      // Before the gateway check: an `openai/` id also contains a slash.
+      if (isOpenAiModelId(modelId)) {
+        // The chat completions API: `.responses()` is a batch model in @ai-sdk/openai 4.0.58.
+        if (openai) return openai.chat(modelId.slice(OPENAI_PREFIX.length));
+        if (!gateway)
+          throw new AiError("unconfigured", `model id "${modelId}" needs OPENAI_API_KEY (OpenAI)`);
+        return gateway(modelId);
+      }
+      if (isGatewayModelId(modelId)) {
+        if (!gateway)
+          throw new AiError(
+            "unconfigured",
+            `model id "${modelId}" needs AI_GATEWAY_API_KEY (Vercel AI Gateway)`,
+          );
+        return gateway(modelId);
+      }
+      if (!bedrock)
+        throw new AiError(
+          "unconfigured",
+          `model id "${modelId}" needs AWS_BEARER_TOKEN_BEDROCK (Bedrock)`,
+        );
       const model = bedrock(modelId);
       if (!isAnthropicModelId(modelId)) return model;
       return wrapLanguageModel({

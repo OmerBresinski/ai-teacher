@@ -1,8 +1,11 @@
 # @tj/ai
 
-Server-only Amazon Bedrock model client for Teaching Journey (ADR 0018). `@tj/ai` is consumed from
-source and is the only package that creates the Bedrock provider. Apps pass validated environment
-values to `createAi`; this package never reads `process.env`.
+Server-only model client for Teaching Journey: Amazon Bedrock for the ids without a slash (ADR
+0018, the production default), OpenAI direct as an opt-in route for `openai/<model>` ids (ADR
+0031, active only with `OPENAI_API_KEY` set), and the Vercel AI Gateway as an optional fallback
+for other `provider/model` ids. `@tj/ai` is consumed from source
+and is the only package that creates a provider. Apps pass validated environment values to
+`createAi`; this package never reads `process.env`.
 
 ```ts
 import { generateText } from "ai";
@@ -20,7 +23,9 @@ const result = await generateText({
 
 | Variable | Effect |
 | --- | --- |
-| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock bearer API key. A blank value is unset; without it the client is `unconfigured`. |
+| `OPENAI_API_KEY` | OpenAI API key: serves every `openai/<model>` id directly, prefix stripped on the wire. A blank value is unset. |
+| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock bearer API key: serves ids without a slash. A blank value is unset. |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key: serves other `provider/model` ids, and `openai/` ids when no OpenAI key is set. Optional fallback. |
 | `AWS_REGION` | Bedrock region. Defaults to `us-east-1`. |
 | `AI_MODEL_FRONTIER` | `frontier` model ID. Default `us.openai.gpt-5.6-sol`. |
 | `AI_MODEL_STANDARD` | `standard` model ID. Default `us.openai.gpt-5.6-terra`. |
@@ -34,8 +39,11 @@ a provider model ID.
 
 Reference call site: `apps/worker` `ai.ping`.
 
-`createAi({})` returns `{ kind: "unconfigured" }` and only throws when `model()` is requested.
-That throw is `AiError` with code `"unconfigured"` and names `AWS_BEARER_TOKEN_BEDROCK`.
+With none of the three keys set (blank counts as unset) `createAi({})` returns
+`{ kind: "unconfigured" }` and only throws when `model()` is requested. That throw is `AiError`
+with code `"unconfigured"` and names all three variables. With at least one key, `kind` is
+`openai`, `bedrock` or `gateway` in that precedence, and a class whose id needs a key that is not
+set throws the same `AiError` at `model()`, naming the variable.
 
 ## Logging and errors
 
@@ -80,8 +88,9 @@ its models use the same logging middleware as production models.
 
 ```sh
 bun run --filter=@tj/ai test
-AWS_BEARER_TOKEN_BEDROCK=... bun run --filter=@tj/ai test
+OPENAI_API_KEY=... bun test packages/ai/src/openai.live.test.ts
+AWS_BEARER_TOKEN_BEDROCK=... bun test packages/ai/src/bedrock.live.test.ts
 ```
 
-The credentialed live test is skipped unless `AWS_BEARER_TOKEN_BEDROCK` is set. It makes one small,
-limited Bedrock call and therefore should not run in CI.
+The credentialed live tests are skipped unless their key is set. Each makes a small, bounded call
+to the real provider and therefore does not run in CI.

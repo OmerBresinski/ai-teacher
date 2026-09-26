@@ -78,7 +78,7 @@ describe("ai.ping job", () => {
 
     await expect(aiPingJob(h.ctx)).rejects.toMatchObject({
       name: "NonRetryableError",
-      message: "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
+      message: "AI provider is not configured (set OPENAI_API_KEY)",
     });
     expect(h.calls).toHaveLength(1);
   });

@@ -76,9 +76,13 @@ export const EnvSchema = z
     WEB_ORIGIN_PATTERNS: originPatternList,
     LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
 
-    // --- AI provider (ADR 0018) ------------------------------------------------------------
+    // --- AI provider (Bedrock per ADR 0018; OpenAI direct opt-in per ADR 0031) ----------------
+    /** OpenAI key: serves `openai/<model>` ids directly (`@tj/ai`). */
+    OPENAI_API_KEY: optionalString,
     AWS_BEARER_TOKEN_BEDROCK: optionalString,
     AWS_REGION: z.string().default(DEFAULT_REGION),
+    /** Vercel AI Gateway key: the fallback for other `provider/model` ids (`@tj/ai`). Optional. */
+    AI_GATEWAY_API_KEY: optionalString,
     AI_MODEL_FRONTIER: z.string().min(1).default(DEFAULT_MODEL_IDS.frontier),
     AI_MODEL_STANDARD: z.string().min(1).default(DEFAULT_MODEL_IDS.standard),
     AI_MODEL_SMALL: z.string().min(1).default(DEFAULT_MODEL_IDS.small),
@@ -121,11 +125,11 @@ export const EnvSchema = z
     ALLOW_WORKSPACE_HEADER_SHIM: optionalString,
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === "production" && !env.AWS_BEARER_TOKEN_BEDROCK) {
+    if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {
       ctx.addIssue({
         code: "custom",
-        path: ["AWS_BEARER_TOKEN_BEDROCK"],
-        message: "required in production (ADR 0018)",
+        path: ["OPENAI_API_KEY"],
+        message: "required in production unless AWS_BEARER_TOKEN_BEDROCK is set (ADR 0031)",
       });
     }
     if (env.ENABLE_TEST_ROUTES !== undefined && env.ENABLE_TEST_ROUTES !== "1") {
@@ -246,12 +250,13 @@ export function parseEnv(source: Record<string, string | undefined> = process.en
   }
   if (
     source.NODE_ENV === "production" &&
+    (source.OPENAI_API_KEY ?? "").trim() === "" &&
     (source.AWS_BEARER_TOKEN_BEDROCK ?? "").trim() === "" &&
-    !errors.some((e) => e.variable === "AWS_BEARER_TOKEN_BEDROCK")
+    !errors.some((e) => e.variable === "OPENAI_API_KEY")
   ) {
     errors.unshift({
-      variable: "AWS_BEARER_TOKEN_BEDROCK",
-      message: "required in production (ADR 0018)",
+      variable: "OPENAI_API_KEY",
+      message: "required in production unless AWS_BEARER_TOKEN_BEDROCK is set (ADR 0031)",
     });
   }
   return { ok: false, errors };

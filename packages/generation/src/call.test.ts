@@ -3,11 +3,17 @@ import { Writable } from "node:stream";
 import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
-import { APICallError } from "ai";
+import { APICallError, type Schema } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { z } from "zod";
-import { callStructured, imageMediaType, specRuleFinding } from "./call";
+import {
+  callStructured,
+  imageMediaType,
+  providerOptionsFor,
+  specRuleFinding,
+  wireSchemaFor,
+} from "./call";
 import { BudgetExceeded, type PipelineDeps, StageFailure } from "./types";
 
 const schema = z.strictObject({ answer: z.string() });
@@ -238,6 +244,66 @@ describe("callStructured repairs the text before validating it", () => {
 const PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
+describe("wireSchemaFor (Gemini's schema dialect)", () => {
+  const bounded = z.object({ items: z.array(z.string()).min(2).max(3) });
+
+  test("a Bedrock or OpenAI id sends the zod schema itself", () => {
+    expect(wireSchemaFor(bounded, "us.openai.gpt-5.6-luna")).toBe(bounded);
+    expect(wireSchemaFor(bounded, "openai/gpt-5.6-luna")).toBe(bounded);
+  });
+
+  test("a google/ id sends a JSON schema without array bounds, and zod still enforces them", async () => {
+    const wire = wireSchemaFor(bounded, "google/gemini-3.8-flash") as Schema<unknown>;
+    expect(wire).not.toBe(bounded);
+    expect(JSON.stringify(wire.jsonSchema)).not.toContain("minItems");
+    expect(JSON.stringify(wire.jsonSchema)).not.toContain("maxItems");
+    expect(JSON.stringify(wire.jsonSchema)).toContain('"items"');
+    const ok = await wire.validate?.({ items: ["a", "b"] });
+    expect(ok?.success).toBe(true);
+    const short = await wire.validate?.({ items: ["a"] });
+    expect(short?.success).toBe(false);
+  });
+});
+
+describe("providerOptionsFor (the effort under every provider's namespace, ADR 0031)", () => {
+  test("A8: an `openai/` id at `none` sends reasoningEffort none, non-strict schema, and Bedrock's floor `low`", () => {
+    expect(providerOptionsFor("openai/gpt-5.6-luna", "none")).toEqual({
+      providerOptions: {
+        bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
+        openai: { reasoningEffort: "none", strictJsonSchema: false },
+        google: { thinkingConfig: { thinkingLevel: "low" } },
+        alibaba: { enableThinking: false },
+        deepseek: { thinking: { type: "disabled" } },
+        gateway: { only: ["openai"] },
+      },
+    });
+  });
+
+  test("A9: a Bedrock id sends the effort as is, and no gateway pin", () => {
+    const options = providerOptionsFor("us.openai.gpt-5.6-luna", "medium").providerOptions;
+    expect(options?.openai).toEqual({ reasoningEffort: "medium", strictJsonSchema: false });
+    expect(options?.bedrock.reasoningConfig.maxReasoningEffort).toBe("medium");
+    expect(options && "gateway" in options).toBe(false);
+  });
+
+  test("the direct OpenAI route's bare id (`gpt-6-luna`) still sends a non-strict schema", () => {
+    // The direct provider strips the `openai/` prefix, so the routed model reports the bare id.
+    const sent = providerOptionsFor("gpt-6-luna", "none").providerOptions?.openai;
+    expect(sent).toEqual({ reasoningEffort: "none", strictJsonSchema: false });
+  });
+
+  test("A10: an Anthropic id gets no provider options at all", () => {
+    expect(providerOptionsFor("us.anthropic.claude-sonnet-5", "low")).toEqual({});
+  });
+
+  test("every offered effort is forwarded verbatim to OpenAI; `minimal` is not in the type", () => {
+    for (const effort of ["none", "low", "medium", "high"] as const) {
+      const sent = providerOptionsFor("openai/gpt-5.6-luna", effort).providerOptions?.openai;
+      expect(sent?.reasoningEffort).toBe(effort);
+    }
+  });
+});
+
 describe("callStructured", () => {
   test("returns the parsed object, charges the budget and carries the stage context", async () => {
     const ai = createFakeAi({
@@ -276,10 +342,40 @@ describe("callStructured", () => {
       schema,
       maxOutputTokens: 100,
     });
+    // Every provider namespace carries the same effort; a provider reads only its own.
     expect(ai.calls[0]?.providerOptions).toEqual({
       bedrock: { reasoningConfig: { maxReasoningEffort: "low" } },
+      openai: { reasoningEffort: "low", strictJsonSchema: false },
+      google: { thinkingConfig: { thinkingLevel: "low" } },
+      alibaba: { enableThinking: false },
+      deepseek: { thinking: { type: "disabled" } },
     });
     expect(ai.calls[0]?.context?.effort).toBe("low");
+  });
+
+  test("A12: the host's effortFor can turn a call down to `none`, and the fake records it as sent", async () => {
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: "42" })],
+      modelIds: { standard: "openai/gpt-5.6-luna" },
+    });
+    const d = deps(ai, { effortFor: () => "none" });
+    await callStructured({
+      deps: d,
+      stage: "generate",
+      cls: "standard",
+      effort: "medium",
+      prompt,
+      input: "hi",
+      schema,
+      maxOutputTokens: 100,
+    });
+    const sent = ai.calls[0]?.providerOptions as {
+      openai: { reasoningEffort: string; strictJsonSchema: boolean };
+      bedrock: { reasoningConfig: { maxReasoningEffort: string } };
+    };
+    expect(sent.openai).toEqual({ reasoningEffort: "none", strictJsonSchema: false });
+    expect(sent.bedrock.reasoningConfig.maxReasoningEffort).toBe("low");
+    expect(ai.calls[0]?.context?.effort).toBe("none");
   });
 
   test("row 1 (TEACH-220): images ride as image parts on the user turn, on the retry too", async () => {
@@ -347,8 +443,9 @@ describe("callStructured", () => {
     expect(ai.calls).toHaveLength(2);
     // The retry is the same call with the issues appended: same effort, same provider options.
     expect(ai.calls[1]?.providerOptions).toEqual(ai.calls[0]?.providerOptions);
-    expect(ai.calls[1]?.providerOptions).toEqual({
+    expect(ai.calls[1]?.providerOptions).toMatchObject({
       bedrock: { reasoningConfig: { maxReasoningEffort: "medium" } },
+      openai: { reasoningEffort: "medium" },
     });
     expect(log.text()).toContain("retrying once");
     // Logs retain finite validation codes/counts; details remain inside the retry prompt.
@@ -623,4 +720,48 @@ describe("callStructured: editorial misses are accepted, shape misses fail (TEAC
     expect(log.text()).not.toContain("puddle");
     expect(log.text()).not.toContain(longStep);
   });
+});
+
+test("an empty answer (no output at all) is retried once with the same text; a second one is a StageFailure (quality lab, Sept 2026)", async () => {
+  // With Output.object the SDK raises NoObjectGeneratedError (no text) when the model returns no
+  // content parts at all; it must take the empty-answer path, not the did-not-validate one.
+  const empty = {
+    content: [],
+    finishReason: { unified: "stop" as const, raw: "stop" },
+    usage: {
+      inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+      outputTokens: { total: 0, text: 0, reasoning: undefined },
+      raw: undefined,
+    },
+    warnings: [],
+  };
+  const answer = {
+    ...empty,
+    content: [{ type: "text" as const, text: JSON.stringify({ answer: "second time" }) }],
+  };
+  let calls = 0;
+  const prompts: string[] = [];
+  const flaky = createFakeAi();
+  flaky.model = () =>
+    new MockLanguageModelV4({
+      doGenerate: async (options) => {
+        calls++;
+        prompts.push(JSON.stringify(options.prompt));
+        return calls === 1 ? empty : answer;
+      },
+    });
+  const log = capturingLogger();
+  const result = await call(deps(flaky, { logger: log.logger }));
+  expect(result.output).toEqual({ answer: "second time" });
+  expect(result.attempts).toBe(2);
+  expect(calls).toBe(2);
+  // One retry, with the same text: no "did not validate" correction appended.
+  expect(prompts[1]).toBe(prompts[0]);
+  expect(prompts[1]).not.toContain("did not validate");
+  expect(log.text()).toContain("model returned no output; retrying once");
+  expect(log.text()).not.toContain("structured output did not validate");
+
+  const dead = createFakeAi();
+  dead.model = () => new MockLanguageModelV4({ doGenerate: async () => empty });
+  await expect(call(deps(dead))).rejects.toBeInstanceOf(StageFailure);
 });

@@ -4,12 +4,29 @@ import { costUsd, isPriced, PRICES } from "./prices";
 
 describe("PRICES", () => {
   test("has a row for exactly the three default model ids", () => {
-    expect(Object.keys(PRICES).sort()).toEqual(Object.values(DEFAULT_MODEL_IDS).sort());
+    // Every default id has a row; gateway ids (the model bench) may have rows too.
+    for (const id of Object.values(DEFAULT_MODEL_IDS)) expect(Object.keys(PRICES)).toContain(id);
+    for (const id of Object.keys(PRICES))
+      expect(id.includes("/") || Object.values(DEFAULT_MODEL_IDS).includes(id as never)).toBe(true);
     for (const price of Object.values(PRICES)) {
       expect(price.inputPerMTok).toBeGreaterThan(0);
       expect(price.outputPerMTok).toBeGreaterThan(price.inputPerMTok);
       expect(price.cachedInputPerMTok).toBeLessThan(price.inputPerMTok);
     }
+  });
+
+  test("every `openai/` id the lab routes is priced, so a budget is a dollar cap on the direct route (ADR 0031)", () => {
+    for (const id of [
+      "openai/gpt-5.6-luna",
+      "openai/gpt-5.6-terra",
+      "openai/gpt-5.6-sol",
+      "openai/gpt-6-luna",
+      "openai/gpt-6-sol",
+    ])
+      expect(isPriced(id)).toBe(true);
+    // Gateway-only (404 direct) and the lab's priority tier are deliberately absent.
+    expect(isPriced("openai/gpt-6-luna-fast")).toBe(false);
+    expect(isPriced("openai/gpt-5.6-luna@priority")).toBe(false);
   });
 });
 
@@ -72,5 +89,15 @@ describe("costUsd", () => {
 
   test("zero usage costs zero, not null", () => {
     expect(costUsd(DEFAULT_MODEL_IDS.frontier, { inputTokens: 0, outputTokens: 0 })).toBe(0);
+  });
+});
+
+describe("a bare OpenAI id (the direct provider strips the `openai/` prefix)", () => {
+  test("is priced under its openai/ row, and an id with a vendor prefix is not rewritten", () => {
+    const usage = { inputTokens: 1_000_000, outputTokens: 1_000_000 };
+    expect(isPriced("gpt-6-luna")).toBe(true);
+    expect(costUsd("gpt-6-luna", usage)).toBe(costUsd("openai/gpt-6-luna", usage));
+    expect(isPriced("not-a-model")).toBe(false);
+    expect(isPriced("vendor/gpt-6-luna")).toBe(false);
   });
 });

@@ -70,6 +70,89 @@ export const PRICES: Record<string, ModelPrice> = {
       cacheWriteInputPerMTok: 11,
     },
   },
+  // `provider/model` ids. The `openai/` rows are OpenAI's list prices (platform.openai.com/pricing;
+  // the Vercel AI Gateway showed the same numbers with no markup when it listed them on
+  // 2026-09-17 and 2026-09-23): one row prices a direct call (ADR 0031) and a gateway call alike,
+  // so a lesson budget is a dollar cap on either route. The other vendors' rows are the gateway's
+  // list prices from `getAvailableModels()` on 2026-09-17 (the lab's model bench). Not listed:
+  // `openai/gpt-6-luna-fast` (gateway-only; OpenAI direct returns 404 for it) and the priority
+  // service tier (lab-only, 2x these prices).
+  "openai/gpt-5.6-luna": {
+    inputPerMTok: 0.2,
+    outputPerMTok: 1.2,
+    cachedInputPerMTok: 0.02,
+    cacheWriteInputPerMTok: 0.25,
+  },
+  // Listed 2026-09-23 (lab model bench).
+  "openai/gpt-6-luna": {
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.5,
+    cachedInputPerMTok: 0.01,
+    cacheWriteInputPerMTok: 0.125,
+  },
+  "openai/gpt-5.6-terra": {
+    inputPerMTok: 2,
+    outputPerMTok: 12,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  "openai/gpt-5.6-sol": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  // Listed 2026-09-23: the lab plan path's fact checker.
+  "openai/gpt-6-sol": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  "google/gemini-3.8-flash": {
+    inputPerMTok: 0.75,
+    outputPerMTok: 3.75,
+    cachedInputPerMTok: 0.075,
+  },
+  "deepseek/deepseek-v4-flash": {
+    inputPerMTok: 0.22,
+    outputPerMTok: 0.66,
+    cachedInputPerMTok: 0.022,
+  },
+  "deepseek/deepseek-v4-pro": {
+    inputPerMTok: 0.66,
+    outputPerMTok: 1.98,
+    cachedInputPerMTok: 0.022,
+  },
+  "alibaba/qwen3.5-flash": {
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.4,
+    cachedInputPerMTok: 0.01,
+    cacheWriteInputPerMTok: 0.125,
+  },
+  "alibaba/qwen3.5-plus": {
+    inputPerMTok: 0.4,
+    outputPerMTok: 2.5,
+    cachedInputPerMTok: 0.04,
+    cacheWriteInputPerMTok: 0.5,
+  },
+  "moonshotai/kimi-k2.6": {
+    inputPerMTok: 0.95,
+    outputPerMTok: 4,
+    cachedInputPerMTok: 0.16,
+  },
+  "anthropic/claude-sonnet-5": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.2,
+    cacheWriteInputPerMTok: 2.5,
+  },
+  "anthropic/claude-opus-5": {
+    inputPerMTok: 5,
+    outputPerMTok: 25,
+    cachedInputPerMTok: 0.5,
+    cacheWriteInputPerMTok: 6.25,
+  },
 };
 
 export interface TokenUsage {
@@ -83,7 +166,11 @@ export interface TokenUsage {
 
 /** The row for a model id, or `undefined`. Own properties only: `"toString"` is not a model. */
 function priceOf(modelId: string): ModelPrice | undefined {
-  return Object.hasOwn(PRICES, modelId) ? PRICES[modelId] : undefined;
+  if (Object.hasOwn(PRICES, modelId)) return PRICES[modelId];
+  // The direct OpenAI provider (`OPENAI_API_KEY`) reports the bare id (`gpt-6-luna`): its row is
+  // the gateway's `openai/` one, at the same list price.
+  const direct = `openai/${modelId}`;
+  return !modelId.includes("/") && Object.hasOwn(PRICES, direct) ? PRICES[direct] : undefined;
 }
 
 /** Whether a model id has a row in `PRICES`. */

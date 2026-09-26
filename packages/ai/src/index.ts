@@ -17,7 +17,10 @@ export {
   DEFAULT_MODEL_IDS,
   DEFAULT_REGION,
   isAnthropicModelId,
+  isGatewayModelId,
+  isOpenAiModelId,
   NO_THINKING,
+  OPENAI_PREFIX,
 } from "./create-ai";
 export type { AiErrorCode } from "./errors";
 export { AiError, isAiError, ProviderFailure } from "./errors";
