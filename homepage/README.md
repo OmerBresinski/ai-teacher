@@ -20,7 +20,7 @@ bun run homepage:stage  # after a web build: copy homepage output into apps/web/
 `/homepage`; `bun homepage/build.mjs --base=/` builds for a domain root if needed (pass the same
 `--base=/` to `check.mjs` and `serve.mjs`). `--app=https://…` overrides the application origin the
 hero posts to; it must be an absolute https URL and defaults to `https://app.bresinski.org`.
-`--allow-provisional` lets the build emit an example lesson whose assets are stand-ins. Output is
+`--allow-provisional` lets the build emit a Top lesson whose assets are stand-ins. Output is
 in ignored `homepage/dist/`; never edit or commit generated HTML. No installation or network call
 is required to build this site. Scripts also work with Node.
 
@@ -44,7 +44,7 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
   terms, cookie and accessibility notices.
 - `src/examples-data.mjs`: reads the example manifests and decides which lessons the build emits.
 - `assets/`: styles, hero motion, font and favicon.
-- `assets/examples/<slug>/`: one folder per example lesson (see below).
+- `assets/examples/<slug>/`: one folder per Top lesson (see below).
 - `motion/`: original character artwork and animation. `vendor/gsap.min.js` is the original
   GSAP 3.14.2 distribution with its copyright/license header retained. Do not hand-edit it.
 - `config.mjs`, `build.mjs`, `check.mjs`, `stage.mjs`: URL prefix, application origin, generation,
@@ -106,7 +106,7 @@ immutable caching.
 `apps/web/e2e/homepage-launch.spec.ts` covers the hero form with JavaScript on and off, the upload
 link, navigation, an example page's images, 390 overflow, page errors and axe on four routes. The
 `apps/web` config regression tests cover SPA isolation, framing, indexing and cache policy. Before
-landing, verify the home page, an example lesson, the mobile menu and an unknown URL in a browser.
+landing, verify the home page, a Top lesson, the mobile menu and an unknown URL in a browser.
 
 `noindex,nofollow` and the Vercel `X-Robots-Tag` header are still in place; the launch-config
 ticket removes them together with the domain change. Product decisions and PRDs belong in Linear;
