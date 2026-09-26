@@ -13,7 +13,7 @@ import type {
 import { docFromBullets, docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, snapY } from "./grid";
-import { accentTint } from "./look";
+import { accentTint, PHOTO_NAME, type PhotoBrief } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
@@ -83,8 +83,13 @@ export type SlideStructure = {
   points?: string[];
   /** The lesson's vocabulary, picked out in running text. */
   terms?: string[];
-  /** The year and subject the look's top line names (`withDeckChrome`). */
+  /** The deck is known: the top line carries the slide counter (`withDeckChrome`). */
   deck?: { yearGroup?: string | null; subject?: string | null };
+  /**
+   * The photograph the plan asked for (a key idea's `photo`, carried on its outline entry as the
+   * image brief): an explain or a list keeps the right half for it (`withPhotoSlot`).
+   */
+  photo?: PhotoBrief;
   /** The vocabulary's definitions: a term a teaching slide uses can fill its side panel. */
   glossary?: { term: string; definition: string }[];
 };
@@ -1177,7 +1182,7 @@ function structureContent(
 ): Slide[] {
   const plain = [withTerms(slide, t, hints.terms)];
   const heading = headingOf(slide);
-  if (heading && slide.elements.some((e) => e.name === DIAGRAM_SLOT)) {
+  if (heading && slide.elements.some(isSlot)) {
     return structureDiagram(slide, t, hints, ids, paginate);
   }
   if (!heading || slide.elements.some((e) => e.type === "image")) return plain;
@@ -1555,9 +1560,11 @@ function listDoc(lead: string, items: string[]): RichDoc {
 }
 
 const DIAGRAM_SLOT = "Diagram placeholder";
+/** The right-hand room a teaching slide keeps: a diagram slot or a photo slot (look/image-slot). */
+const isSlot = (e: SlideElement) => e.name === DIAGRAM_SLOT || e.name === PHOTO_NAME;
 
 /**
- * A teaching slide with a diagram slot: the words keep the left column and the slot the right,
+ * A teaching slide with a diagram or photo slot: the words keep the left column and the slot the right,
  * from the column's top to the foot of the safe area, so neither runs over the other or past the
  * slide. Words too long for the column are set as one paragraph at the body size, then a step
  * down; still too long, the sentences that fit stay beside the diagram and the rest continue on
@@ -1571,7 +1578,7 @@ function structureDiagram(
   ids: Ids,
   paginate: boolean,
 ): Slide[] {
-  const slot = slide.elements.find((e) => e.name === DIAGRAM_SLOT) as SlideElement;
+  const slot = slide.elements.find(isSlot) as SlideElement;
   const bodies = slide.elements
     .filter(
       (e): e is TextElement =>
@@ -1601,7 +1608,7 @@ function structureDiagram(
   const top = first.y;
   const x = first.x;
   const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
-  const placedSlot = diagramPanel(slot, top, slot.x, slot.w, t);
+  const placedSlot = slotPanel(slot, top, slot.x, slot.w, t);
   const asIs: Slide = {
     ...slide,
     elements: slide.elements.map((e) => (e === slot ? placedSlot : e)),
@@ -1946,7 +1953,7 @@ function splitContent(
     const panel = across
       ? []
       : slot
-        ? [diagramPanel(slot, top, panelX, panelW, t)]
+        ? [slotPanel(slot, top, panelX, panelW, t)]
         : sidePanel(label, statement, top, panelX, panelW, t, ids, weight, textName);
     if (!panel) continue;
     const next: Slide = { ...slide, elements: [...keep, ...els, ...panel] };
@@ -1954,6 +1961,17 @@ function splitContent(
     return withTerms(next, t, hints.terms);
   }
   return undefined;
+}
+
+/**
+ * A slot set as the right panel, from the column's top to the foot of the safe area. A photo slot
+ * is the image itself, rounded and cover-cropped; a diagram slot is `diagramPanel`.
+ */
+function slotPanel(slot: SlideElement, top: number, x: number, w: number, t: Theme): SlideElement {
+  if (slot.type === "image") {
+    return { ...slot, x, y: top, w, h: SAFE_BOTTOM - top, fit: "cover", radius: t.radius };
+  }
+  return diagramPanel(slot, top, x, w, t);
 }
 
 /**

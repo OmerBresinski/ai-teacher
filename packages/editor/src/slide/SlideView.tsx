@@ -1,6 +1,13 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { COUNTER_NAME, counted, isDiagramMark, withoutDiagramSlot } from "@tj/slides";
+import {
+  COUNTER_NAME,
+  counted,
+  DIAGRAM_ICON_NAME,
+  isDiagramMark,
+  withoutDiagramSlot,
+  withSlotsShown,
+} from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -28,6 +35,7 @@ import {
 } from "./elements/kit";
 import { OverflowGlyph } from "./elements/TextView";
 import { applySlideClip } from "./slide-clip";
+import { slotPlaceholdersOn } from "./slot-placeholders";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
 
@@ -98,9 +106,19 @@ export function SlideView({
    * words are laid out as if the slide had no slot, so the right half is never left empty
    * (`@tj/slides` `withoutDiagramSlot`). The editor keeps the placeholder.
    */
+  /**
+   * The demo switch (`slot-placeholders.ts`, off by default and never in production) draws every
+   * slot instead, with what the model asked for; capture (export, print) never does.
+   */
+  const demo = mode !== "edit" && mode !== "capture" && slotPlaceholdersOn();
   const slide = useMemo(
-    () => (mode === "edit" ? given : withoutDiagramSlot(given, theme)),
-    [given, theme, mode],
+    () =>
+      mode === "edit"
+        ? given
+        : demo
+          ? withSlotsShown(given, theme)
+          : withoutDiagramSlot(given, theme),
+    [given, theme, mode, demo],
   );
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
@@ -198,7 +216,7 @@ export function SlideView({
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
           // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`). A slide counter is
           // drawn only where the slide's place in the deck is known.
-          (isDiagramMark(el) && mode !== "edit") ||
+          ((isDiagramMark(el) || el.name === DIAGRAM_ICON_NAME) && mode !== "edit" && !demo) ||
           (el.name === COUNTER_NAME && !position) ? null : (
             <ElementFrame
               key={el.id}

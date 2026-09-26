@@ -276,13 +276,13 @@ describe("a diagram instruction with no drawing, outside the editor", () => {
     const slide = materialiseSlide(cycle, "chalk", meta);
     expect(withoutDiagramSlot(slide, getTheme("chalk"))).toBe(slide);
   });
-  test("the deck line and counter survive the relayout", () => {
+  test("the counter and kind tag survive the relayout; no deck line is drawn", () => {
     const stored = materialiseSlide(volcano, "chalk", meta, undefined, 0, {
       deck: { yearGroup: "Year 8", subject: "Geography" },
     });
     const shown = withoutDiagramSlot(stored, getTheme("chalk"));
-    expect(named(stored, EYEBROW_NAME)).toHaveLength(1);
-    expect(named(shown, EYEBROW_NAME)).toEqual(named(stored, EYEBROW_NAME));
+    expect(named(stored, EYEBROW_NAME)).toHaveLength(0);
+    expect(named(shown, EYEBROW_NAME)).toHaveLength(0);
     expect(named(shown, COUNTER_NAME)).toEqual(named(stored, COUNTER_NAME));
     expect(named(shown, KIND_TAG_NAME)).toEqual(named(stored, KIND_TAG_NAME));
   });

@@ -21,6 +21,7 @@ export type ObjectiveFactsOutput = {
     analogy?: string;
     shape?: string;
     visual?: string;
+    photo?: { subject: string; mustShow?: string[] };
   }[];
   misconceptions: { belief: string; correction: string }[];
   vocabulary: { term: string; definition: string }[];

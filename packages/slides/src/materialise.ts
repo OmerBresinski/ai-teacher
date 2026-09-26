@@ -35,12 +35,15 @@ import {
   DIAGRAM_NAME,
   EYEBROW_NAME,
   isDiagramMark,
+  isOpenPhotoSlot,
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
+  PHOTO_NAME,
   type SlidePosition,
   stripLook,
   withDeckChrome,
   withDiagramSlot,
+  withPhotoSlot,
 } from "./look";
 import { HEADING_NAME } from "./reflow";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
@@ -51,6 +54,10 @@ import {
   continueParagraph,
   ITEM_NAME,
   LEAD_NAME,
+  PANEL_DEFINITION_NAME,
+  PANEL_LABEL_NAME,
+  PANEL_NAME,
+  PANEL_TEXT_NAME,
   type SlideStructure,
   STEP_NAME,
   structureSlide,
@@ -133,7 +140,8 @@ function materialisePages(
   // which a two-column body or a statement would leave no room for (GENERATION-RESULTS finding 3).
   // A compare or a sequence takes the full measure, so it has no half to give a diagram. A shape
   // the writer filled (compare, steps, points) is placed under the heading too.
-  if (spec.kind === "content" && (diagramOf(spec) || shapeOf(spec) !== "explain")) {
+  const photo = spec.kind === "content" ? photoOf(spec, structure) : undefined;
+  if (spec.kind === "content" && (diagramOf(spec) || photo || shapeOf(spec) !== "explain")) {
     variant = "headed";
   }
   const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
@@ -141,10 +149,15 @@ function materialisePages(
   const stamp = provenance(spec.factRefs, meta);
   let slide: Slide = { id: ids(), kind: spec.kind, elements: filled.elements };
   const diagram = spec.kind === "content" ? diagramOf(spec) : undefined;
+  // A photograph the plan asked for keeps the right half (look/image-slot), with pages too: the
+  // words sit beside it at the body size and continue on the next slide rather than shrink it.
+  if (photo && variantName(spec.kind, variant) === "headed") {
+    slide = withPhotoSlot(slide, getTheme(themeId), photo, ids);
+  }
   // With pages (generation), an undrawn diagram does not shape the text: the words are laid out
   // as if it were not there, and the instruction rides on the first slide as `slide.diagram`, which
   // the editor shows beside the canvas. TODO(diagram PR): relay the slide around a real drawing.
-  if (diagram && !pages && variantName(spec.kind, variant) === "headed") {
+  if (diagram && !photo && !pages && variantName(spec.kind, variant) === "headed") {
     slide = withDiagramSlot(slide, getTheme(themeId), diagram, ids);
   }
   if (filled.question) slide.question = filled.question;
@@ -195,8 +208,8 @@ export function lookAndFitPages(
           (p) => fitSlide(p, theme).slide,
         );
   });
-  // The top line (year, subject, the counter drawn at render time) when the deck is known.
-  return structure.deck ? withDeckChrome(done, theme, structure.deck, ids) : done;
+  // The top line (the counter, drawn at render time) when the deck is known.
+  return structure.deck ? withDeckChrome(done, theme, ids) : done;
 }
 
 /**
@@ -213,16 +226,68 @@ export function lookAndFit(
 }
 
 /**
- * A teaching slide with a diagram instruction and no drawing, as a class sees it (present, the
- * viewer, export, print). The slot is a note to the teacher that only the editor draws, so there
- * it would leave the right half empty: the words are laid out again as if the slide had no slot,
- * a key idea on the right panel when they carry one, else across the full measure. The top line
- * and counter are kept as they were. A slide without a slot comes back as it is (same object).
+ * A teaching slide with a diagram instruction and no drawing, or a photo slot no photograph
+ * filled, as a class sees it (present, the viewer, export, print). The slot is a note to the
+ * teacher that only the editor draws, so there it would leave the right half empty: the words are
+ * laid out again as if the slide had no slot, a key idea on the right panel when they carry one,
+ * else across the full measure. The top line and counter are kept as they were. A slide without
+ * an open slot (a placed photograph is not one) comes back as it is (same object).
  */
 export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
-  if (slide.kind !== "content" || !slide.elements.some((e) => e.name === DIAGRAM_NAME)) {
+  if (
+    slide.kind !== "content" ||
+    !slide.elements.some((e) => e.name === DIAGRAM_NAME || isOpenPhotoSlot(e))
+  ) {
     return slide;
   }
+  return relaid(slide, theme, (bare) => bare);
+}
+
+/**
+ * The demo and screenshot view (look/image-slot; off by default, never in production): every slot
+ * a slide should have is drawn where it goes, with what the model asked for in small muted type.
+ * An open photo slot is left as it is (the image view draws its placeholder); an undrawn diagram
+ * (`slide.diagram`, which takes no room at generation) is given the right half, the words laid
+ * out beside it, "Diagram: <instruction>" in it and a small icon at its corner. Any other slide
+ * comes back as it is (same object).
+ */
+export function withSlotsShown(slide: Slide, theme: Theme): Slide {
+  const instruction = slide.diagram?.instruction;
+  const hasSlot = slide.elements.some((e) => e.name === DIAGRAM_NAME || e.name === PHOTO_NAME);
+  let shown = slide;
+  if (slide.kind === "content" && instruction && !hasSlot) {
+    shown = relaid(slide, theme, (bare, ids) =>
+      withDiagramSlot(bare, theme, instruction, ids, `Diagram: ${instruction}`),
+    );
+  }
+  const slot = shown.elements.find((e) => e.name === DIAGRAM_NAME);
+  if (!slot || shown.elements.some((e) => e.name === DIAGRAM_ICON_NAME)) return shown;
+  const size = SLOT_ICON;
+  const icon: SlideElement = {
+    id: `${slot.id}~icon`,
+    type: "icon",
+    icon: "shapes",
+    x: slot.x + SLOT_ICON_INSET,
+    y: slot.y + SLOT_ICON_INSET,
+    w: size,
+    h: size,
+    color: theme.colors.muted,
+    name: DIAGRAM_ICON_NAME,
+  };
+  return { ...shown, elements: [...shown.elements, icon] };
+}
+
+/** The small icon at a demo slot's corner, and its size and inset in slide points. */
+export const DIAGRAM_ICON_NAME = "Diagram placeholder icon";
+const SLOT_ICON = 22;
+const SLOT_ICON_INSET = 14;
+
+/**
+ * A content slide's words laid out again from one body, as the writer gave them: the open slots
+ * and their dots taken away, `shape` given the bare slide (to add a slot back, or not), then the
+ * look and the fit. The top line and counter are kept as they were.
+ */
+function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier) => Slide): Slide {
   const heading = slide.elements.find((e) => e.name === HEADING_NAME);
   const column = new Set([LEAD_NAME, ITEM_NAME, BODY_NAME, KEY_IDEA_NAME]);
   const words = slide.elements
@@ -234,10 +299,25 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
         e.y >= (heading ? heading.y + heading.h : 0),
     )
     .sort((a, b) => a.y - b.y || a.x - b.x);
+  // A key idea set on the side panel is the writer's first sentence: it leads the words again.
+  // The panel's card, label and a glossary definition (not the writer's words) go with it.
+  const idea = slide.elements.find(
+    (e): e is TextElement => e.type === "text" && e.name === PANEL_TEXT_NAME,
+  );
+  if (idea) words.unshift({ ...idea, style: { preset: "body" } });
+  const panel = new Set([PANEL_NAME, PANEL_LABEL_NAME, PANEL_TEXT_NAME, PANEL_DEFINITION_NAME]);
   const first = words[0];
   const dropped = new Set<SlideElement>(words);
   for (const e of slide.elements) {
-    if (e.name === DIAGRAM_NAME || e.name === BULLET_NAME) dropped.add(e);
+    if (
+      panel.has(e.name ?? "") ||
+      e.name === DIAGRAM_NAME ||
+      e.name === DIAGRAM_ICON_NAME ||
+      e.name === BULLET_NAME ||
+      isOpenPhotoSlot(e)
+    ) {
+      dropped.add(e);
+    }
   }
   const kept = slide.elements.filter((e) => !dropped.has(e));
   if (!heading || !first) return { ...slide, elements: kept };
@@ -266,11 +346,11 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
     doc: { type: "doc", content },
     style: { preset: "body" },
   };
-  // The top line as it was: the kind tag keeps its place beside the deck line.
+  // The top line as it was: the kind tag keeps its place beside the counter.
   const top = new Set([EYEBROW_NAME, COUNTER_NAME, KIND_TAG_NAME]);
   const chrome = slide.elements.filter((e) => top.has(e.name ?? ""));
   const bare = stripLook({ ...slide, elements: [...kept, body] });
-  const laid = lookAndFit(bare, theme, ids, { terms: markedTerms(words) });
+  const laid = lookAndFit(shape(bare, ids), theme, ids, { terms: markedTerms(words) });
   const had = new Set(chrome.map((e) => e.name));
   return { ...laid, elements: [...laid.elements.filter((e) => !had.has(e.name)), ...chrome] };
 }
@@ -283,7 +363,7 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
 export function presentedSlide(slide: Slide, theme: Theme, position?: SlidePosition): Slide {
   const shown = withoutDiagramSlot(slide, theme);
   const elements = shown.elements.flatMap((e) => {
-    if (isDiagramMark(e)) return [];
+    if (isDiagramMark(e) || e.name === DIAGRAM_ICON_NAME || isOpenPhotoSlot(e)) return [];
     if (e.name === COUNTER_NAME) return position ? [counted(e, position)] : [];
     return [e];
   });
@@ -312,6 +392,24 @@ type ContentSpec = SlideSpecOf<"content">;
 /** The diagram a content slide keeps room for: none beside a compare or a sequence. */
 const diagramOf = (spec: ContentSpec) =>
   spec.compare || spec.steps?.length ? undefined : spec.diagram;
+
+/**
+ * The photograph a content slide keeps room for (`SlideStructure.photo`): an explain or a list
+ * only. A compare or a sequence takes the full measure, so its photograph is dropped (the caller
+ * logs it, `photoDropped`).
+ */
+const photoOf = (spec: ContentSpec, structure: SlideStructure) =>
+  structure.photo && !photoDropped(spec, structure) ? structure.photo : undefined;
+
+/** A photo brief a content spec's shape has no room for: a compare or a sequence is full width. */
+export function photoDropped(
+  spec: SlideSpec,
+  structure: Pick<SlideStructure, "photo">,
+): ContentShape | undefined {
+  if (spec.kind !== "content" || !structure.photo) return undefined;
+  const shape = shapeOf(spec);
+  return shape === "compare" || shape === "sequence" ? shape : undefined;
+}
 
 /**
  * A content spec's explicit shape fields as structure hints (`content-shapes.ts`): `compare` is

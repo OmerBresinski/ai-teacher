@@ -12,7 +12,9 @@ import {
 import {
   COMPARE_NAME,
   type ImageTextPhoto,
+  type PhotoBrief,
   PLACEHOLDER_IMAGE,
+  photoDropped,
   type SlideSpec,
   shapeFallback,
 } from "@tj/slides";
@@ -401,4 +403,30 @@ export function logShapeFallback(
   const shape = shapeFallback(spec, slide);
   if (shape) logger.info({ stage, metric: "shape-fallback", shape, index }, "shape fallback");
   return shape;
+}
+
+/**
+ * The photograph a content slide keeps room for (look/image-slot): its outline entry's image
+ * brief, as a structure hint for `materialiseSlides`. A compare or a sequence is full width, so a
+ * brief on one is dropped and logged (`metric: "photo-dropped"`).
+ */
+export function photoStructure(
+  entry: OutlineEntry | undefined,
+  spec: SlideSpec,
+  logger: PipelineDeps["logger"],
+  stage: "generate" | "repair",
+  index: number,
+): { photo?: PhotoBrief } {
+  const brief = entry?.kind === "content" ? entry.imageBrief : undefined;
+  if (!brief) return {};
+  const photo = { subject: brief.subject, mustShow: brief.mustShow };
+  const dropped = photoDropped(spec, { photo });
+  if (dropped) {
+    logger.info(
+      { stage, metric: "photo-dropped", shape: dropped, index, subject: brief.subject },
+      "photo dropped: the shape is full width",
+    );
+    return {};
+  }
+  return { photo };
 }

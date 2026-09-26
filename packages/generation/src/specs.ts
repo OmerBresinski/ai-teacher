@@ -796,8 +796,42 @@ export type PlanFacts = z.infer<typeof PlanFactsShape>;
  * What `assignFactIds` merges: the facts call's answer, or the skeleton-only stand-in below, which
  * has no pitch yet (a lesson's facts are `pitch`-less until the facts call lands).
  */
-/** What the objectives-first teach call adds to a key idea; the older facts call writes neither. */
-export type KeyIdeaLayout = { shape?: string | undefined; visual?: string | undefined };
+/** What the objectives-first teach call adds to a key idea; the older facts call writes none. */
+export type KeyIdeaLayout = {
+  shape?: string | undefined;
+  visual?: string | undefined;
+  photo?: { subject: string; mustShow?: string[] | undefined } | undefined;
+};
+
+/**
+ * A key idea's photograph as it is kept (look/image-slot): none beside a drawing (the prompt says
+ * never both, in prose only; the drawing wins), none without a subject, at most four things to show.
+ */
+export function keptPhoto(k: KeyIdeaLayout): { subject: string; mustShow?: string[] } | undefined {
+  const subject = k.photo?.subject.trim();
+  if (!subject || k.visual?.trim()) return undefined;
+  const mustShow = (k.photo?.mustShow ?? [])
+    .map((m) => m.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  return { subject: subject.slice(0, 60), ...(mustShow.length ? { mustShow } : {}) };
+}
+
+/**
+ * The image brief a content slide carries (look/image-slot): the first photograph its key ideas
+ * ask for, as a `context` picture. None when any of them has a drawing: the drawing takes the room.
+ */
+export function contentPhotoBrief(
+  ideas: readonly KeyIdeaLayout[],
+): { subject: string; mustShow: string[]; purpose: "context" } | undefined {
+  if (ideas.some((k) => k.visual?.trim())) return undefined;
+  for (const k of ideas) {
+    const photo = keptPhoto(k);
+    if (photo)
+      return { subject: photo.subject, mustShow: photo.mustShow ?? [], purpose: "context" };
+  }
+  return undefined;
+}
 
 export type PlanFactsLike = Omit<PlanFacts, "pitch"> & { pitch?: PlanFacts["pitch"] | undefined };
 
@@ -1155,6 +1189,7 @@ export function assignFactIds(
             // The teach call's slide shape and drawing (plan-teach-objective v4), when it wrote them.
             ...optional("shape", (k as KeyIdeaLayout).shape),
             ...optional("visual", (k as KeyIdeaLayout).visual),
+            ...optional("photo", keptPhoto(k as KeyIdeaLayout)),
           })),
     ),
     vocabulary: facts.vocabulary.map(({ objectiveRefs: refs, ...v }, i) => ({
@@ -1218,7 +1253,20 @@ export function assignFactIds(
       kind: entry.kind,
       ...optional("minutes", entry.minutes),
       factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
-      ...optional("imageBrief", entry.imageBrief),
+      // A content slide carries the photograph its key ideas ask for as its image brief
+      // (look/image-slot), for the slide to keep room for and `illustrate` to find.
+      ...optional(
+        "imageBrief",
+        entry.imageBrief ??
+          (entry.kind === "content"
+            ? contentPhotoBrief(
+                [...entry.factRefs, ...(added.get(i) ?? [])]
+                  .filter((r) => r.type === "keyIdea")
+                  .map((r) => facts.keyIdeas[r.index] as KeyIdeaLayout | undefined)
+                  .filter((k): k is KeyIdeaLayout => k !== undefined),
+              )
+            : undefined),
+      ),
       ...optional("brief", entry.brief),
       ...optional("phase", entry.phase),
       ...optional(

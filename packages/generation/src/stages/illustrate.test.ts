@@ -3,8 +3,11 @@ import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import type { ImageBrief, Lesson } from "@tj/domain/documents";
 import { PexelsError, type PhotoResult, type StoredPhoto } from "@tj/images";
 import {
+  isOpenPhotoSlot,
   type MaterialiseMeta,
   materialiseSlide,
+  materialiseSlides,
+  PHOTO_NAME,
   PLACEHOLDER_IMAGE,
   SlideSpecSchema,
 } from "@tj/slides";
@@ -856,5 +859,107 @@ describe("factQueryHints (quality lab, Sept 2026)", () => {
     expect(ai.calls[0]?.promptText).toContain("Had0");
     expect(ai.calls[0]?.promptText).toContain("rom0");
     expect(ai.calls[0]?.promptText).not.toContain("Hou10");
+  });
+});
+
+describe("a content slide's photo slot (look/image-slot)", () => {
+  /** Content slides, each with a photo slot for its subject; outline entries carry the brief. */
+  function photoLesson(subjects: string[]): Lesson {
+    const base = imageLesson(subjects.map(() => null));
+    let n = 0;
+    const ids = () => `p${++n}`;
+    const slides = subjects.map(
+      (subject, i) =>
+        materialiseSlides(
+          SlideSpecSchema.parse({
+            kind: "content",
+            factRefs: [],
+            heading: `Heading ${i}`,
+            body: "Rome wanted Britain for its metals. A victory made Claudius look strong.",
+          }),
+          "chalk",
+          meta,
+          ids,
+          0,
+          { photo: { subject, mustShow: [] } },
+        )[0] as Lesson["slides"][number],
+    );
+    const facts = base.facts as NonNullable<Lesson["facts"]>;
+    return {
+      ...base,
+      slides,
+      facts: {
+        ...facts,
+        outline: facts.outline.map((e, i) => ({
+          ...e,
+          imageBrief: brief({ subject: subjects[i] as string }),
+        })),
+      },
+    };
+  }
+  const slotOf = (lesson: Lesson, i: number) =>
+    lesson.slides[i]?.elements.find((e) => e.name === PHOTO_NAME);
+
+  test("is filled like an image-text slide's, with no image-fit rewrite of the words", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("r1", true)]);
+    const state = await run(
+      photoLesson(["Roman legionaries"]),
+      recordingDeps(judge(pick("r1")), { images }),
+    );
+    expect(stores).toEqual(["r1"]);
+    const slot = slotOf(state.lesson, 0);
+    expect(slot?.type === "image" && slot.src).toBe("/files/ws/images/r1.jpg");
+    expect(state.lesson.generation?.findings.some((f) => f.check === "image-fit")).toBe(false);
+  });
+
+  test("nothing found keeps the open slot and warns, as an image-text slide does", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("d", true)]);
+    const state = await run(photoLesson(["Roman fort"]), recordingDeps(judge(NONE), { images }));
+    expect(state.lesson.slides[0]?.elements.some(isOpenPhotoSlot)).toBe(true);
+    expect(state.lesson.generation?.findings.map((f) => f.check)).toContain("image");
+  });
+
+  test("a repeated subject searches without the photograph already placed; a different one keeps its slot", async () => {
+    const { images, stores } = fakeImages(async () => [
+      pexelsPhoto("same", true),
+      pexelsPhoto("other", true),
+    ]);
+    const ai = judge(pick("same"), pick("other"));
+    const state = await run(
+      photoLesson(["Roman legionaries", "roman legionaries"]),
+      recordingDeps(ai, { images }),
+    );
+    expect(stores).toEqual(["same", "other"]);
+    // The second judge was never shown the first photograph.
+    expect(ai.calls[1]?.promptText).not.toContain("id same");
+    const second = slotOf(state.lesson, 1);
+    expect(second?.type === "image" && second.src).toBe("/files/ws/images/other.jpg");
+  });
+
+  test("a repeated subject with no different photograph loses its slot: the words take the width", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("same", true)]);
+    const { lines, logger } = memoryLogger();
+    const state = await run(
+      photoLesson(["Roman legionaries", "Roman legionaries"]),
+      recordingDeps(judge(pick("same"), NONE), { images, logger }),
+    );
+    expect(stores).toEqual(["same"]);
+    expect(slotOf(state.lesson, 1)).toBeUndefined();
+    const words = state.lesson.slides[1]?.elements.filter(
+      (e) => e.type === "text" && e.style.preset === "body",
+    );
+    expect(Math.max(...(words ?? []).map((e) => e.x + e.w))).toBeGreaterThan(600);
+    // No "add a photograph" warning for a slot that is gone.
+    const id = state.lesson.slides[1]?.id;
+    expect(state.lesson.generation?.findings.some((f) => f.target.slideId === id)).toBe(false);
+    expect(lines.some((l) => l.includes('"metric":"photo-dropped"'))).toBe(true);
+  });
+
+  test("without images, the first slide for a subject keeps its slot and a repeat loses it", async () => {
+    const lesson = photoLesson(["Flooded street", "flooded street", "Roman fort"]);
+    const state = await run(lesson, recordingDeps(judge()));
+    expect(slotOf(state.lesson, 0)).toBeDefined();
+    expect(slotOf(state.lesson, 1)).toBeUndefined();
+    expect(slotOf(state.lesson, 2)).toBeDefined();
   });
 });

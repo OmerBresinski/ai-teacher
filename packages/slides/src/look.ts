@@ -9,6 +9,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
+import { PLACEHOLDER_IMAGE } from "./layouts";
 import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
@@ -43,6 +44,22 @@ export const KEY_IDEA_NAME = "Explanation card";
 export const DIAGRAM_NAME = "Diagram placeholder";
 /** The diagram slot a stored slide keeps (before undrawn diagrams stopped shaping the text). */
 export const isDiagramMark = (el: { name?: string }): boolean => el.name === DIAGRAM_NAME;
+/**
+ * The photograph a teaching slide keeps room for (look/image-slot): an image element at the right
+ * of the words. Until `illustrate` places a photograph its `src` is `PLACEHOLDER_IMAGE` and its
+ * `alt` says what it should show; the editor draws that as a placeholder, and present and export
+ * lay the words out across the slide instead (`withoutDiagramSlot`), so a class never sees an
+ * empty box.
+ */
+export const PHOTO_NAME = "Photo slot";
+/** What a slide's photograph should be: `ImageBrief`'s subject and the things it must show. */
+export type PhotoBrief = { subject: string; mustShow?: readonly string[] | undefined };
+/** The brief as one line, the placeholder's words: "Roman legionaries — shields, armour". */
+export const photoLabel = (brief: PhotoBrief): string =>
+  brief.mustShow?.length ? `${brief.subject} — ${brief.mustShow.join(", ")}` : brief.subject;
+/** A photo slot no photograph has filled yet. */
+export const isOpenPhotoSlot = (el: SlideElement): boolean =>
+  el.type === "image" && el.name === PHOTO_NAME && el.src === PLACEHOLDER_IMAGE;
 
 /** What the slide is for, in the words a class sees on the tag. Kinds not listed get no tag. */
 export const KIND_TAGS: Partial<Record<SlideKind, string>> = {
@@ -257,6 +274,8 @@ export function withDiagramSlot(
   t: Theme,
   instruction: string,
   ids: Ids = uid,
+  /** The slot's words; the demo placeholder (`withSlotsShown`) says "Diagram: …". */
+  label = `Diagram to add: ${instruction}`,
 ): Slide {
   const body = slide.elements.find(
     (e): e is TextElement => e.type === "text" && e.style.preset === "body" && !e.name,
@@ -277,7 +296,7 @@ export function withDiagramSlot(
     strokeWidth: 2,
     radius: t.radius,
     name: DIAGRAM_NAME,
-    doc: docFromText(`Diagram to add: ${instruction}`),
+    doc: docFromText(label),
     textStyle: {
       preset: "small",
       color: t.colors.muted,
@@ -285,6 +304,39 @@ export function withDiagramSlot(
       valign: "middle",
       padding: SPACE[4],
     },
+  };
+  return {
+    ...slide,
+    elements: slide.elements.flatMap((e) => (e === body ? [{ ...body, w: half }, slot] : [e])),
+  };
+}
+
+/**
+ * Keep the right half of a teaching slide for a photograph (look/image-slot): the body narrows to
+ * the left half and an image slot, rounded and cover-cropped, takes the right, from the body's top
+ * to the foot of the safe area. The structure pass (`structure.ts` `structureDiagram`) fits the
+ * words beside it at the body size, continuing them on the next slide rather than shrinking the
+ * slot. The slot holds `PLACEHOLDER_IMAGE` until `illustrate` finds the photograph.
+ */
+export function withPhotoSlot(slide: Slide, t: Theme, brief: PhotoBrief, ids: Ids = uid): Slide {
+  const body = slide.elements.find(
+    (e): e is TextElement => e.type === "text" && e.style.preset === "body" && !e.name,
+  );
+  if (!body || slide.elements.some((e) => e.name === PHOTO_NAME)) return slide;
+  const half = Math.floor((SAFE.w - SPACE[5]) / 2);
+  const x = SAFE.x + half + SPACE[5];
+  const slot: SlideElement = {
+    id: ids(),
+    type: "image",
+    x,
+    y: body.y,
+    w: SAFE.x + SAFE.w - x,
+    h: SAFE.y + SAFE.h - body.y,
+    src: PLACEHOLDER_IMAGE,
+    alt: photoLabel(brief),
+    fit: "cover",
+    radius: t.radius,
+    name: PHOTO_NAME,
   };
   return {
     ...slide,
@@ -339,59 +391,33 @@ export function counted(el: SlideElement, position: SlidePosition): SlideElement
   return { ...el, doc: docFromText(counterText(position)) };
 }
 
-/** What the eyebrow says: the year and the subject, as the examples set them ("YEAR 10 · BIOLOGY"). */
+/** The year and subject a deck is for. The top line no longer names them (Greg, 26 Sept 2026). */
 export type DeckContext = { yearGroup?: string | null; subject?: string | null };
 
 const captionWidth = (label: string, t: Theme) => Math.ceil(label.length * t.sizes.caption * 0.78);
 
 /**
- * The examples' top line, across a deck: the year and subject in the accent, the kind tag after
- * them on the same line, and a quiet "7 / 12" at the right. Only a slide with a kind tag takes it
- * (its lane is free); the cover and the question slides keep their compositions. Re-run after
- * slides are added, removed or moved: it replaces what it set before, so the counter stays true.
+ * The top line across a deck: the kind tag at the left and a quiet "7 / 12" at the right. The
+ * year-and-subject line the examples set before the tag is not drawn: said on every slide it is
+ * noise (Greg, 26 Sept 2026), and one written before is taken off. Only a slide with a kind tag
+ * takes the counter (its lane is free); the cover and the question slides keep their compositions.
+ * Re-run after slides are added, removed or moved: it replaces what it set before, so the counter
+ * stays true.
  */
-export function withDeckChrome(
-  slides: Slide[],
-  t: Theme,
-  deck: DeckContext,
-  ids: Ids = uid,
-): Slide[] {
-  const eyebrow = [deck.yearGroup, deck.subject].filter(Boolean).join(" · ").toUpperCase();
+export function withDeckChrome(slides: Slide[], t: Theme, ids: Ids = uid): Slide[] {
   const total = slides.length;
   return slides.map((slide, i) => {
     const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
     const els = slide.elements.filter((e) => e.name !== EYEBROW_NAME && e.name !== COUNTER_NAME);
     if (!tag) return els.length === slide.elements.length ? slide : { ...slide, elements: els };
-    const lane = { y: tag.y, h: tag.h };
-    const added: SlideElement[] = [];
-    let tagX = SAFE.x;
-    if (eyebrow) {
-      const w = captionWidth(eyebrow, t);
-      added.push({
-        id: ids(),
-        type: "text",
-        x: SAFE.x,
-        ...lane,
-        w,
-        name: EYEBROW_NAME,
-        doc: docFromText(eyebrow),
-        style: {
-          preset: "caption",
-          color: t.colors.accent,
-          fontWeight: 700,
-          padding: TAG_PAD_Y,
-          autoHeight: false,
-        },
-      });
-      tagX = SAFE.x + w + SPACE[2];
-    }
     const counter = counterText({ index: i, total });
     const cw = captionWidth(counter, t);
-    added.push({
+    const added: SlideElement = {
       id: ids(),
       type: "text",
       x: SAFE.x + SAFE.w - cw,
-      ...lane,
+      y: tag.y,
+      h: tag.h,
       w: cw,
       name: COUNTER_NAME,
       doc: docFromText(counter),
@@ -402,10 +428,10 @@ export function withDeckChrome(
         padding: TAG_PAD_Y,
         autoHeight: false,
       },
-    });
+    };
     return {
       ...slide,
-      elements: [...els.map((e) => (e === tag ? { ...e, x: tagX } : e)), ...added],
+      elements: [...els.map((e) => (e === tag ? { ...e, x: SAFE.x } : e)), added],
     };
   });
 }

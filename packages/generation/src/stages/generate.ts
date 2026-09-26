@@ -56,6 +56,7 @@ import {
   deckOf,
   generationOf,
   logShapeFallback,
+  photoStructure,
   planClassFor,
   runBounded,
   shapeOf,
@@ -297,6 +298,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         terms: builtFrom.vocabulary.map((v) => v.term),
         glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
         deck: deckOf(lesson),
+        ...photoStructure(entry, spec, deps.logger, "generate", i),
       },
     );
     const slide = slides[0] as Slide;

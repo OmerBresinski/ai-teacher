@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { materialiseSlide, type SlideSpec } from "@tj/slides";
 import type { PipelineDeps } from "../types";
-import { logShapeFallback } from "./shared";
+import { logShapeFallback, photoStructure } from "./shared";
 
 const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
 const long = (n: number) =>
@@ -33,5 +33,35 @@ describe("a shape the slide could not place is a metric, not a retry", () => {
         "shape fallback",
       ],
     ]);
+  });
+});
+
+describe("a content slide's photo brief (look/image-slot)", () => {
+  const lines: [unknown, string][] = [];
+  const logger = {
+    info: (o: unknown, m: string) => lines.push([o, m]),
+  } as unknown as PipelineDeps["logger"];
+  const entry = {
+    id: "s4",
+    kind: "content" as const,
+    factRefs: [],
+    imageBrief: { subject: "Roman fort", mustShow: ["gate"], purpose: "context" as const },
+  };
+  const explain: SlideSpec = { kind: "content", factRefs: [], heading: "Forts", body: "A fort." };
+
+  test("an explain or a list takes it as the photo hint", () => {
+    expect(photoStructure(entry, explain, logger, "generate", 3)).toEqual({
+      photo: { subject: "Roman fort", mustShow: ["gate"] },
+    });
+    expect(
+      photoStructure({ ...entry, imageBrief: undefined }, explain, logger, "generate", 3),
+    ).toEqual({});
+    expect(lines).toHaveLength(0);
+  });
+
+  test("a compare or a sequence drops it, with a log line", () => {
+    const steps: SlideSpec = { ...explain, steps: ["Dig a ditch", "Build a wall"] };
+    expect(photoStructure(entry, steps, logger, "repair", 3)).toEqual({});
+    expect(lines[0]?.[0]).toMatchObject({ metric: "photo-dropped", shape: "sequence", index: 3 });
   });
 });

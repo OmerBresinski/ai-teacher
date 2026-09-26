@@ -70,6 +70,7 @@ import {
   imageTextPhotoOf,
   logShapeFallback,
   normaliseText,
+  photoStructure,
   runBounded,
   shapeOf,
   slideHaystack,
@@ -507,6 +508,13 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
             definition: v.definition,
           })),
           deck: deckOf(lesson),
+          ...photoStructure(
+            base.facts?.outline[outcome.entryIndex],
+            outcome.spec,
+            deps.logger,
+            "repair",
+            outcome.index,
+          ),
         },
       );
       const fresh: Slide = keepPhoto(original, { ...(first as Slide), id: original.id });
@@ -707,10 +715,27 @@ function factsAround(facts: LessonFacts, factId: string): LessonFacts {
  */
 function keepPhoto(original: Slide, fresh: Slide): Slide {
   const image = original.elements.find((e) => e.type === "image");
-  if (!image) return fresh;
+  if (image?.type !== "image") return fresh;
   return {
     ...fresh,
-    elements: fresh.elements.map((e) => (e.type === "image" ? image : e)),
+    elements: fresh.elements.map((e) => {
+      if (e.type !== "image") return e;
+      // A content slide's photo slot (look/image-slot) is laid out again with the rewritten
+      // words: the photograph moves into the new slot's place.
+      if (fresh.kind === "content") {
+        const { src, alt, source, crop, focal, imageTransform } = image;
+        return {
+          ...e,
+          src,
+          ...(alt !== undefined ? { alt } : {}),
+          ...(source !== undefined ? { source } : {}),
+          ...(crop !== undefined ? { crop } : {}),
+          ...(focal !== undefined ? { focal } : {}),
+          ...(imageTransform !== undefined ? { imageTransform } : {}),
+        };
+      }
+      return image;
+    }),
   };
 }
 

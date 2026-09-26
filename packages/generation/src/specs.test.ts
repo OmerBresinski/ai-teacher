@@ -5,9 +5,11 @@ import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   askableAsStem,
   assignFactIds,
+  contentPhotoBrief,
   distractorsEchoingAnswer,
   EMPTY_PLAN_FACTS,
   EvaluateOutputSchema,
+  keptPhoto,
   PlanSkeletonSchema,
   planFactsSchemaFor,
   planSkeletonSchemaFor,
@@ -716,6 +718,56 @@ describe("planFactsSchemaFor", () => {
     const ids = assignFactIds(FIXTURES.planSkeleton, f, 60);
     expect(ids.outline[3]?.factRefs).toEqual(expect.arrayContaining(["k1", "m1"]));
   });
+  test("look/image-slot: a key idea's photo becomes its content slide's image brief; a drawing wins over it", () => {
+    const f = facts();
+    const at = FIXTURES.planSkeleton.outline.findIndex((e, i) => i >= 2 && e.kind === "content");
+    expect(at).toBeGreaterThan(-1);
+    const withPhoto = (k: number, photo: object, visual?: string) =>
+      Object.assign(f.keyIdeas[k] as object, { photo, ...(visual ? { visual } : {}) });
+    withPhoto(0, { subject: "Roman legionaries", mustShow: ["shields", "armour"] });
+    withPhoto(1, { subject: "Roman fort" }, "Map: the fort beside the river");
+    f.outlineFactRefs.push({ index: at, factRefs: [{ type: "keyIdea", index: 0 }] });
+    const facts0 = assignFactIds(FIXTURES.planSkeleton, f, 60);
+    expect(facts0.outline[at]?.imageBrief).toEqual({
+      subject: "Roman legionaries",
+      mustShow: ["shields", "armour"],
+      purpose: "context",
+    });
+    expect(facts0.keyIdeas?.[0]?.photo).toEqual({
+      subject: "Roman legionaries",
+      mustShow: ["shields", "armour"],
+    });
+    // Both on one key idea: the drawing is kept and the photo dropped.
+    expect(facts0.keyIdeas?.[1]?.visual).toBe("Map: the fort beside the river");
+    expect(facts0.keyIdeas?.[1]?.photo).toBeUndefined();
+    // A slide whose key ideas include a drawing takes no photo.
+    const g = facts();
+    Object.assign(g.keyIdeas[0] as object, { photo: { subject: "Roman legionaries" } });
+    Object.assign(g.keyIdeas[1] as object, { visual: "Map: the fort beside the river" });
+    g.outlineFactRefs.push({
+      index: at,
+      factRefs: [
+        { type: "keyIdea", index: 0 },
+        { type: "keyIdea", index: 1 },
+      ],
+    });
+    expect(assignFactIds(FIXTURES.planSkeleton, g, 60).outline[at]?.imageBrief).toBeUndefined();
+  });
+
+  test("keptPhoto and contentPhotoBrief: no subject, no photo; at most four things to show", () => {
+    expect(keptPhoto({ photo: { subject: "  " } })).toBeUndefined();
+    expect(keptPhoto({ photo: { subject: "A", mustShow: ["a", "b", "c", "d", "e"] } })).toEqual({
+      subject: "A",
+      mustShow: ["a", "b", "c", "d"],
+    });
+    expect(keptPhoto({ photo: { subject: "A" }, visual: "Cycle: x" })).toBeUndefined();
+    expect(contentPhotoBrief([{}, { photo: { subject: "B" } }])).toEqual({
+      subject: "B",
+      mustShow: [],
+      purpose: "context",
+    });
+  });
+
   test("every objective is served by a key idea and checked by a question; tiers have their minimums", () => {
     const f = facts();
     for (const k of f.keyIdeas) k.objectiveRefs = [O(0)];
