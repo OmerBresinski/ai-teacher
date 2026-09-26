@@ -1575,7 +1575,8 @@ const wordsIn = (x: string) => x.split(/\s+/).filter(Boolean).length;
  * then its points as accent-dot bullets, or the rest as a paragraph) and a tinted panel on the
  * right holding what the slide is about: its key card (a word equation, a formula, a defined
  * term), else the lesson's definition of a term the words use, else the key idea itself. No
- * right half is left empty. `undefined` when the words do not fit the column even a step down, or
+ * right half is left empty. A body of one sentence with none of these is the key idea on its own,
+ * set as a card across the measure. `undefined` when the words do not fit the column even a step down, or
  * there is nothing to set beside them: the full-width paragraph and its continuation (UX ruling
  * 91) take over.
  */
@@ -1646,6 +1647,25 @@ function splitContent(
     label = "Key idea";
     statement = docFromText(all[0] as string);
     left = all.slice(1);
+  } else if (all.length === 1) {
+    // One sentence and nothing to set beside it (no key card, glossary term or points). A panel
+    // would hold the sentence and leave the left column empty, and one line across the full
+    // measure leaves most of the slide bare. The sentence is the slide's key idea, so it is set
+    // as one: a "Key idea" card across the measure at the display size, every word once. This
+    // keeps the explain contract (the key idea is what the slide stands on) at the writer's
+    // panel budget, whose body always fits the card (`content-shapes.test.ts`).
+    const card = keyCard("Key idea", all[0] as string, top, SAFE_BOTTOM, t, ids);
+    if (!card) return undefined;
+    // The sentence is the slide's running text, so its key terms are picked out in the card.
+    const said = card.elements.map((e, i) =>
+      i === card.elements.length - 1 && isText(e) && hints.terms?.length
+        ? { ...e, doc: markTerms(e.doc, hints.terms, t, new Set<string>(), MAX_TERMS) }
+        : e,
+    );
+    const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement));
+    const next: Slide = { ...slide, elements: [...keep, ...said] };
+    if (fitSlide(next, t).overflow.length > 0) return undefined;
+    return next;
   } else return undefined;
   // The points: the writer's own items, else the sentences after the lead when each is short.
   // When the key idea itself went to the panel, every sentence left is a point.

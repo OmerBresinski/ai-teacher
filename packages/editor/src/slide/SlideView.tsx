@@ -1,6 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { COUNTER_NAME, DIAGRAM_NAME, withoutDiagramSlot } from "@tj/slides";
+import { COUNTER_NAME, counted, DIAGRAM_NAME, withoutDiagramSlot } from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -202,7 +202,7 @@ export function SlideView({
           (el.name === COUNTER_NAME && !position) ? null : (
             <ElementFrame
               key={el.id}
-              element={counted(el, position)}
+              element={position ? counted(el, position) : el}
               theme={theme}
               mode={mode}
               slideId={slide.id}
@@ -582,17 +582,4 @@ function ImageMatchAnswers({
       ))}
     </>
   );
-}
-
-/** A slide counter element with its words set from the slide's place in the deck. */
-function counted(el: SlideElement, position: SlideViewProps["position"]): SlideElement {
-  if (el.name !== COUNTER_NAME || el.type !== "text" || !position) return el;
-  const words = `${position.index + 1} / ${position.total}`;
-  return {
-    ...el,
-    doc: {
-      type: "doc",
-      content: [{ type: "paragraph", content: [{ type: "text", text: words }] }],
-    },
-  };
 }

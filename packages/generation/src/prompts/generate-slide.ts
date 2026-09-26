@@ -236,8 +236,10 @@ const isContentShape = (value: unknown): value is ContentShape =>
 
 /**
  * v31: a content slide's shape and drawing, from the key ideas it covers. One key idea: its own
- * shape (explain when the facts were planned without one). Two: explain, one paragraph each. The
- * drawing is the first `visual` among them. Undefined for every other kind.
+ * shape. Two: explain, one paragraph each. The drawing is the first `visual` among them.
+ * Undefined for every other kind, and when no key idea it covers carries a shape: the legacy
+ * planner (the production default) and facts planned before shapes plan none, so nothing is cut
+ * from what the writer gives and the renderer infers the layout as before.
  */
 export function plannedShapeOf(
   referenced: LessonFacts,
@@ -245,6 +247,7 @@ export function plannedShapeOf(
 ): PlannedShape | undefined {
   if (entry.kind !== "content") return undefined;
   const ideas = (referenced.keyIdeas ?? []).filter((k) => entry.factRefs.includes(k.id));
+  if (!ideas.some((k) => isContentShape(k.shape))) return undefined;
   const own = ideas[0]?.shape;
   const visual = ideas.find((k) => k.visual)?.visual;
   return {

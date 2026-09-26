@@ -9,6 +9,10 @@ import {
   shapeOf,
 } from "./content-shapes";
 import { type Counts, check, leadLinesFor, measure } from "./content-shapes.measure";
+import { fitSlide } from "./fit-slide";
+import { SAFE } from "./grid";
+import { materialiseSlide } from "./materialise";
+import { KEY_CARD_NAME } from "./structure";
 import { THEMES } from "./themes";
 
 /*
@@ -78,4 +82,26 @@ describe("content budgets are what the renderer fits", () => {
     expect(shapeOf({ steps: ["a", "b"], points: ["a", "b"] })).toBe("sequence");
     expect(shapeOf({ compare: {}, steps: ["a", "b"] })).toBe("compare");
   });
+});
+
+describe("an explain slide whose body is one sentence", () => {
+  const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
+  const lone = {
+    kind: "content" as const,
+    factRefs: [],
+    heading: "Why leaves are green",
+    body: "Chlorophyll in the leaf reflects green light and absorbs the red and blue light.",
+  };
+  for (const t of THEMES) {
+    test(`${t.id}: it is set as the key idea across the measure, not a line on an empty slide`, () => {
+      const slide = materialiseSlide(lone, t.id, meta);
+      const card = slide.elements.find((e) => e.name === KEY_CARD_NAME);
+      expect(card).toBeDefined();
+      expect(card?.w).toBe(SAFE.w);
+      const words = JSON.stringify(slide.elements);
+      expect(words).toContain("Key idea");
+      expect(words.split("Chlorophyll in the leaf").length - 1).toBe(1);
+      expect(fitSlide(slide, t).overflow).toEqual([]);
+    });
+  }
 });

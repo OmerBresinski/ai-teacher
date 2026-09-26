@@ -320,6 +320,23 @@ function headingDisplay(heading: TextElement, t: Theme): { fontSize?: number; li
 export const EYEBROW_NAME = "Deck line";
 export const COUNTER_NAME = "Slide counter";
 
+/** A slide's place in its deck, from which a counter is drawn. */
+export type SlidePosition = { index: number; total: number };
+
+/** The counter's words for a place in the deck: "7 / 12". */
+export const counterText = (position: SlidePosition): string =>
+  `${position.index + 1} / ${position.total}`;
+
+/**
+ * A slide counter with its words set from the slide's place in the deck, so it stays true after a
+ * reorder, insert or delete; any other element comes back as it is. Every renderer (SlideView,
+ * the PPTX export) counts through this, never from the stored words.
+ */
+export function counted(el: SlideElement, position: SlidePosition): SlideElement {
+  if (el.name !== COUNTER_NAME || el.type !== "text") return el;
+  return { ...el, doc: docFromText(counterText(position)) };
+}
+
 /** What the eyebrow says: the year and the subject, as the examples set them ("YEAR 10 · BIOLOGY"). */
 export type DeckContext = { yearGroup?: string | null; subject?: string | null };
 
@@ -366,7 +383,7 @@ export function withDeckChrome(
       });
       tagX = SAFE.x + w + SPACE[2];
     }
-    const counter = `${i + 1} / ${total}`;
+    const counter = counterText({ index: i, total });
     const cw = captionWidth(counter, t);
     added.push({
       id: ids(),

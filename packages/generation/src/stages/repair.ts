@@ -32,6 +32,7 @@ import {
 import {
   type Audience,
   keptDiagram,
+  type PlannedShape,
   plannedShapeOf,
   type RepairInput,
   repairFactPrompt,
@@ -400,12 +401,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           key: target.key,
           index,
           corrections,
-          spec: withDiagramKept(
-            withPlannedShape(
-              lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
-              planned,
-            ).spec,
+          spec: repairedToShape(
+            lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+            planned,
             slide,
+            { logger: deps.logger, index },
           ),
           modelId: call.modelId,
           findings: call.editorialMisses.map((miss) =>
@@ -787,6 +787,34 @@ const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta
   model: modelId,
   at: deps.now().toISOString(),
 });
+
+/**
+ * A repaired slide cut to its planned shape (`withPlannedShape`), with its diagram kept. A content
+ * slide with a plan logs the same "slide shape" metric Generate does, so a repair that drops the
+ * planned compare, steps or points (`filled: false`) or writes another shape's field (`extra`) is
+ * seen rather than lost.
+ */
+export function repairedToShape(
+  output: SlideSpec,
+  planned: PlannedShape | undefined,
+  before: Slide,
+  log: { logger: Pick<PipelineDeps["logger"], "info">; index: number },
+): SlideSpec {
+  const shaped = withPlannedShape(output, planned);
+  if (planned && output.kind === "content") {
+    log.logger.info(
+      {
+        slide: log.index,
+        stage: "repair",
+        shape: planned.shape,
+        filled: shaped.filled,
+        extra: shaped.extra,
+      },
+      "slide shape",
+    );
+  }
+  return withDiagramKept(shaped.spec, before);
+}
 
 /**
  * generate-slide v26: a repaired content slide keeps a typed `diagram` the model returned, else the

@@ -31,10 +31,12 @@ import {
 import {
   applyLook,
   COUNTER_NAME,
+  counted,
   DIAGRAM_NAME,
   EYEBROW_NAME,
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
+  type SlidePosition,
   stripLook,
   withDeckChrome,
   withDiagramSlot,
@@ -222,6 +224,21 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
   const laid = lookAndFit(bare, theme, ids, { terms: markedTerms(words) });
   const had = new Set(chrome.map((e) => e.name));
   return { ...laid, elements: [...laid.elements.filter((e) => !had.has(e.name)), ...chrome] };
+}
+
+/**
+ * A slide as a class sees it, for a renderer that draws `slide.elements` itself (the PPTX export):
+ * the diagram slot laid out away (`withoutDiagramSlot`), and the counter counted from `position`,
+ * or left out when the slide's place is not known. `SlideView` does the same outside the editor.
+ */
+export function presentedSlide(slide: Slide, theme: Theme, position?: SlidePosition): Slide {
+  const shown = withoutDiagramSlot(slide, theme);
+  const elements = shown.elements.flatMap((e) => {
+    if (e.name === DIAGRAM_NAME) return [];
+    if (e.name === COUNTER_NAME) return position ? [counted(e, position)] : [];
+    return [e];
+  });
+  return { ...shown, elements };
 }
 
 /** The key terms a slide's running text picks out (bold), so the relaid words mark them again. */

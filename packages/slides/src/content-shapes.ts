@@ -4,7 +4,8 @@
  * instead of inferring a compare or a sequence from prose (`inferStructure` stays the fallback
  * for stored lessons).
  *
- * - explain:  a lead and a short body, the right panel holding a key term, key idea or diagram.
+ * - explain:  a lead and a short body, the right panel holding a key term, key idea or diagram;
+ *             a body of one sentence with none of those is set as a key-idea card across the measure.
  * - list:     a lead naming a set of parallel things, then 2–4 `points`.
  * - compare:  two labelled sides with 2–3 points each (`compare`).
  * - sequence: a process or method in order, 2–4 `steps`.

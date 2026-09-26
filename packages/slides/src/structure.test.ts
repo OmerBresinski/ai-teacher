@@ -5,6 +5,7 @@ import { SAFE } from "./grid";
 import { docFromNumbered } from "./layouts";
 import { lookAndFitPages, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
+import { HEADING_NAME } from "./reflow";
 import {
   ANSWER_MARK_NAME,
   ANSWERS_NAME,
@@ -352,7 +353,9 @@ describe("key terms", () => {
     const marked = slide.elements.filter(
       (e) => e.type === "text" && JSON.stringify(e.doc).includes('"bold"'),
     );
-    expect(marked.every((e) => (e as TextElement).style.preset === "body")).toBe(true);
+    // A one-sentence body is set as a key-idea card at the display size; its terms are marked
+    // there, and the slide's heading never is.
+    expect(marked.every((e) => e.name !== HEADING_NAME)).toBe(true);
     expect(marked.length).toBeGreaterThan(0);
   });
 });

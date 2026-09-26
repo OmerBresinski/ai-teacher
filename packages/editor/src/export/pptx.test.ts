@@ -8,6 +8,7 @@ import type {
   TextElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { COUNTER_NAME, DIAGRAM_NAME, materialiseSlide } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -785,4 +786,54 @@ describe("the revealed card (TD item 4 leftover; row 4)", () => {
     expect(xml[0]).not.toContain("<a:t>✓</a:t>");
     expect(xml[0]).not.toContain(`<a:srgbClr val="${correct}"`);
   }, 30_000);
+});
+
+describe("a slide exported as the class sees it", () => {
+  const slidesXml = async (blob: Blob): Promise<string[]> => {
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const names = Object.keys(zip.files)
+      .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+      .sort((a, b) => Number(/(\d+)/.exec(a)?.[1]) - Number(/(\d+)/.exec(b)?.[1]));
+    return Promise.all(names.map((name) => zip.file(name)?.async("string") ?? ""));
+  };
+  const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
+  const volcano = materialiseSlide(
+    {
+      kind: "content",
+      factRefs: [],
+      heading: "How a volcano erupts",
+      body: "Magma rises through cracks in the crust. Pressure builds as gas collects in the magma chamber. The crust gives way and lava pours out.",
+      diagram: "Cross-section: magma chamber, vent, crater, ash cloud",
+    },
+    "chalk",
+    meta,
+    undefined,
+    0,
+    { deck: { yearGroup: "Year 8", subject: "Geography" } },
+  );
+  const write = async (slides: Slide[]) =>
+    slidesXml(
+      await exportLessonPptx({ id: "l1", title: "Export test", slides } as Lesson, theme, {
+        includeAnswers: false,
+      }),
+    );
+
+  it("never shows the diagram note to the class, and keeps every word", async () => {
+    expect(volcano.elements.some((e) => e.name === DIAGRAM_NAME)).toBe(true);
+    const [xml] = await write([volcano]);
+    expect(xml).not.toContain("Diagram to add");
+    expect(xml).toContain("Magma rises through cracks in the crust");
+    expect(xml).toContain("The crust gives way and lava pours out");
+  });
+
+  it("counts the slide from its place in the deck, not the stored words", async () => {
+    const stored = volcano.elements.find((e) => e.name === COUNTER_NAME);
+    expect(stored).toBeDefined();
+    const other = { ...volcano, id: "s0" };
+    const xml = await write([other, volcano, { ...volcano, id: "s2" }]);
+    expect(xml[0]).toContain(">1 / 3<");
+    expect(xml[1]).toContain(">2 / 3<");
+    expect(xml[2]).toContain(">3 / 3<");
+    expect(xml.join("")).not.toContain(">1 / 1<");
+  });
 });

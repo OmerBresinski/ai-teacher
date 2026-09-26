@@ -501,6 +501,10 @@ export function ExportControl({
               theme={getTheme(lesson.themeId)}
               mode="capture"
               revealAnswer={answers && !!stagedSlide.question}
+              // A PNG shows the counter as present does, counted from the slide's place.
+              position={
+                staged === null ? undefined : { index: staged, total: lesson.slides.length }
+              }
             />
           </div>
         ) : null}

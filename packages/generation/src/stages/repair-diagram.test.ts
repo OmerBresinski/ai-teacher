@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { materialiseSlide, type SlideSpec } from "@tj/slides";
-import { withDiagramKept } from "./repair";
+import { repairedToShape, withDiagramKept } from "./repair";
 
 const meta = { model: "test", promptVersion: "generate-slide.v26" } as never;
 let n = 0;
@@ -36,5 +36,31 @@ describe("generate-slide v26: a repair keeps the slide's diagram", () => {
       ids,
     );
     expect("diagram" in withDiagramKept(none, plain)).toBe(false);
+  });
+});
+
+describe("a repair logs the slide shape as Generate does", () => {
+  const logged: Array<{ fields: Record<string, unknown>; msg: string }> = [];
+  const logger = {
+    info: (fields: Record<string, unknown>, msg: string) => logged.push({ fields, msg }),
+  };
+  test("a repair that drops the planned compare is logged unfilled, and nothing is logged unplanned", () => {
+    const slide = materialiseSlide(before, "classic", meta, ids);
+    const lost = { ...before, points: ["a", "b"] } as SlideSpec;
+    const out = repairedToShape(lost, { shape: "compare", ideas: 1 }, slide, {
+      logger: logger as never,
+      index: 3,
+    });
+    expect("points" in out).toBe(false);
+    expect(logged).toEqual([
+      {
+        msg: "slide shape",
+        fields: { slide: 3, stage: "repair", shape: "compare", filled: false, extra: ["points"] },
+      },
+    ]);
+    logged.length = 0;
+    const legacy = repairedToShape(lost, undefined, slide, { logger: logger as never, index: 3 });
+    expect(legacy).toMatchObject({ points: ["a", "b"] });
+    expect(logged).toEqual([]);
   });
 });

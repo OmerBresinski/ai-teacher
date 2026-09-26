@@ -17,7 +17,7 @@ const facts = (...keyIdeas: ReturnType<typeof idea>[]) => ({ keyIdeas }) as unkn
 const entry = (kind: string, factRefs: string[]) => ({ id: "e1", kind, factRefs }) as OutlineEntry;
 
 describe("generate-slide v31 planned shape", () => {
-  test("one key idea keeps its shape and visual; two are explain; legacy facts are explain", () => {
+  test("one key idea keeps its shape and visual; two are explain", () => {
     const list = idea("k1", { shape: "list", visual: "Parts: a, b" });
     expect(plannedShapeOf(facts(list), entry("content", ["k1"]))).toEqual({
       shape: "list",
@@ -27,8 +27,29 @@ describe("generate-slide v31 planned shape", () => {
     expect(plannedShapeOf(facts(list, idea("k2")), entry("content", ["k1", "k2"]))?.shape).toBe(
       "explain",
     );
-    expect(plannedShapeOf(facts(idea("k1")), entry("content", ["k1"]))?.shape).toBe("explain");
     expect(plannedShapeOf(facts(list), entry("image-text", ["k1"]))).toBeUndefined();
+  });
+
+  test("legacy facts plan no shape, so the writer's content slide comes through untouched", () => {
+    // AI_LESSON_PLANNER=legacy (the production default) writes key ideas without a shape.
+    const legacy = facts(idea("k1"), idea("k2"));
+    expect(plannedShapeOf(legacy, entry("content", ["k1"]))).toBeUndefined();
+    expect(plannedShapeOf(legacy, entry("content", ["k1", "k2"]))).toBeUndefined();
+    expect(plannedShapeOf(legacy, entry("content", []))).toBeUndefined();
+    const written = {
+      kind: "content",
+      heading: "Types",
+      body: "Lead.",
+      points: ["a b", "c d"],
+      compare: { left: { label: "L", points: ["x"] }, right: { label: "R", points: ["y"] } },
+      steps: ["x", "y"],
+      diagram: "Cycle: a → b",
+      factRefs: [],
+    };
+    // As on master: the spec the writer returned is the spec that is materialised.
+    const shaped = withPlannedShape(written, plannedShapeOf(legacy, entry("content", ["k1"])));
+    expect(shaped.spec).toBe(written);
+    expect(shaped).toMatchObject({ filled: true, extra: [] });
   });
 
   test("each shape's line names only its own field, with the budget's numbers", () => {
