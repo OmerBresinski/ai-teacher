@@ -62,7 +62,52 @@ export type LessonShape = {
   tierWeights: TierWeights;
   /** The open-response stem shape the writers are told (Evaluate only; softened when young). */
   judgementStem: "which … and why" | "which … and one reason" | null;
+  /**
+   * l6f: the teaching extras the objectives call chose (`withFlow`). Absent, the outline runs as
+   * the verb table sets it (round B).
+   */
+  flow?: LessonFlow | undefined;
 };
+
+/*
+ * l6f (rounds D and E judged: a flow that could choose the checks, or priced them against slides,
+ * dropped the mid-lesson checks first and lost on practice, 5-11 and 0-17). The flow now varies
+ * only the teaching extras: how the lesson opens, and whether it has a worked example, a common
+ * mistake slide and a vocabulary slide. The checks after each cycle, the exit quiz and every floor
+ * stay the verb table's, and the outline places an extra only in room those checks leave
+ * (`reserve`), so an extra that does not fit is the one dropped. The flow is a plain explicit
+ * object: a teacher's instruction can set any field over the model's choice before `withFlow`.
+ */
+export const OPENERS = ["hook", "retrieval"] as const;
+export type Opener = (typeof OPENERS)[number];
+
+/** The objectives call's `flow`, as written. */
+export type LessonFlow = {
+  opener: Opener;
+  workedExample: boolean;
+  commonMistake: boolean;
+  vocabulary: boolean;
+};
+
+/**
+ * The shape with the flow's extras in place of the table's: the worked example and vocabulary as
+ * required kinds or not, and the flow kept on the shape for the outline's opener and common
+ * mistake. Nothing else changes: floors, checks, the exit quiz and the misconception check
+ * (`requireMisconceptionConfronted`) are the table's.
+ */
+export function withFlow(shape: LessonShape, flow: LessonFlow): LessonShape {
+  const toggled: SlideKind[] = ["worked-example", "vocabulary"];
+  return {
+    ...shape,
+    requiredKinds: [
+      ...shape.requiredKinds.filter((k) => !toggled.includes(k)),
+      ...(flow.workedExample ? (["worked-example"] as const) : []),
+      ...(flow.vocabulary ? (["vocabulary"] as const) : []),
+    ],
+    requireVocabulary: flow.vocabulary,
+    flow,
+  };
+}
 
 const BASE: Omit<LessonShape, "verb" | "confidence" | "young"> = {
   firstExplainKind: null,

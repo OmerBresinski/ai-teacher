@@ -90,6 +90,12 @@ import {
  * - The exit ticket is short: 3–5 items (`EXIT_MIN`, `EXIT_MAX`), one per objective first; a
  *   ticket the exit questions leave under three is topped up with unused fair questions that can
  *   be asked as a line of it.
+ *
+ * l6f: with a flow (`withFlow`, the objectives call's teaching extras) the opener is the retrieval
+ * set or a hook (pupils say what they think, on the first misconception); P4's spare worked
+ * examples and P7's misconception discussions follow the flow's worked example and common mistake;
+ * a common mistake the flow asks for is placed in P2, in room `reserve` leaves. The checks, the
+ * floors and the exit ticket are as above, flow or none.
  */
 
 /** A question as the outline reads it: the facts' fields plus the optional declarations. */
@@ -201,7 +207,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const count = input.objectives.length;
   const all = Array.from({ length: count }, (_, i) => i);
   const priorKnowledge = input.priorKnowledge?.trim() ?? "";
-  const retrieves = (input.retrieval?.length ?? 0) > 0;
+  // l6f: the flow's opener. A hook asks what pupils already think, on the first misconception, in
+  // the starter's slot; the retrieval set stays off the deck.
+  const hooks = shape.flow?.opener === "hook";
+  const retrieves = (input.retrieval?.length ?? 0) > 0 && !hooks;
   const gaps: string[] = [];
   const gap = (sentence: string) => {
     if (!gaps.includes(sentence)) gaps.push(sentence);
@@ -598,24 +607,30 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * question to ask (the exit quiz follows the last cycle, so its check is kept only when there is
    * room). Never fewer than the one practise slot `practiseReserve` keeps.
    */
+  // Only a check that can be fair is kept: an objective whose key ideas are still being placed
+  // (its questions untested yet) lets teaching go on until one is.
+  const checkable = (o: number) =>
+    !practised(o) &&
+    facts.questions.some(
+      (q, i) =>
+        q.use !== "exit" &&
+        isSlideQuestion(q) &&
+        names(q.objectiveRefs, o) &&
+        !used.questions.has(i) &&
+        fair(i),
+    );
   const reserve = (anyQuestion = false) => {
     const starter = count > 0 && !has("starter") ? 1 : 0;
-    const checks = all.slice(0, -1).filter(
-      (o) =>
-        !practised(o) &&
-        // Only a check that can be fair is kept: an objective whose key ideas are still being
-        // placed (its questions untested yet) lets teaching go on until one is.
-        facts.questions.some(
-          (q, i) =>
-            q.use !== "exit" &&
-            isSlideQuestion(q) &&
-            names(q.objectiveRefs, o) &&
-            !used.questions.has(i) &&
-            fair(i),
-        ),
-    ).length;
+    const checks = all.slice(0, -1).filter(checkable).length;
     return starter + Math.max(checks, practiseReserve(anyQuestion));
   };
+  /**
+   * l6f: the room a flow's extra (worked example, vocabulary, common mistake) must leave: the
+   * reserve and the last cycle's check too, so an extra that does not fit is the one dropped.
+   * Without a flow it is the reserve (round B).
+   */
+  const extrasReserve = () =>
+    reserve() + (shape.flow !== undefined && count > 0 && checkable(count - 1) ? 1 : 0);
 
   // P1: every objective taught, in order, each content slide carrying up to two of its key ideas.
   // (A short deck used to let the required worked example teach its objective in place of a
@@ -666,6 +681,36 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     }
   }
 
+  /** The misconceptions a placed slide already confronts (a starter's hook does not count). */
+  function confrontedMisconceptions(): Set<number> {
+    const confronted = new Set<number>();
+    for (const s of slots) {
+      if (s.misconception !== undefined && s.kind !== "starter") confronted.add(s.misconception);
+      if (s.workedExample !== undefined) {
+        const ref = facts.workedExamples[s.workedExample]?.misconceptionRef;
+        if (ref) confronted.add(ref.index);
+      }
+      // A content slide's watch-out (below) takes its objective's first misconception.
+      if (s.kind === "content") {
+        const first = misconceptionsOf(s.primary).find((m) => !confronted.has(m));
+        if (first !== undefined) confronted.add(first);
+      }
+    }
+    return confronted;
+  }
+  /** A discussion of misconception `i`, after the practice. */
+  function mistakeSlot(i: number): Slot {
+    const refs = facts.misconceptions[i]?.objectiveRefs;
+    return {
+      kind: "discussion",
+      phase: "practise",
+      primary: refs?.[0]?.index ?? 0,
+      objectives: refIndices(refs),
+      misconception: i,
+      rank: [2, count + 1, i],
+    };
+  }
+
   // P2: the shape's required kinds and floors. The worked example before the vocabulary slide: a
   // content slide hands out its objective's unshown terms, nothing else gives the method. Neither
   // takes the slot kept for practice.
@@ -683,12 +728,23 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       if (
         x === undefined ||
         o === undefined ||
-        budget <= reserve() ||
+        budget <= extrasReserve() ||
         !place(workedExampleSlot(o, x))
       ) {
         noRoom("worked-example");
       }
     }
+  }
+  // l6f: the flow's common mistake, a discussion of one misconception in room the checks leave: the
+  // first nothing else confronts, else the reach objective's.
+  if (shape.flow?.commonMistake && facts.misconceptions.length > 0) {
+    const confronted = confrontedMisconceptions();
+    const free = facts.misconceptions.findIndex((_, i) => !confronted.has(i));
+    const m = free >= 0 ? free : (misconceptionsOf(count - 1)[0] ?? 0);
+    if (budget <= extrasReserve() || !place(mistakeSlot(m)))
+      gap(
+        `A ${slideCount}-slide deck has no room for a common mistake slide once the checks are kept.`,
+      );
   }
   if (required.has("vocabulary")) {
     if (!needVocabulary) noMaterial("vocabulary", "vocabulary terms");
@@ -698,7 +754,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         terms.flatMap((i) => refIndices(facts.vocabulary[i]?.objectiveRefs)),
       );
       const placed =
-        budget > reserve() &&
+        budget > extrasReserve() &&
         place({
           kind: "vocabulary",
           phase: "explain",
@@ -829,7 +885,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         objectives: [0],
         ...(retrieves
           ? { retrieval: true }
-          : priorKnowledge === "" && facts.misconceptions.length > 0
+          : (priorKnowledge === "" || hooks) && facts.misconceptions.length > 0
             ? { misconception: 0 }
             : {}),
         rank: [0],
@@ -838,7 +894,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       gap(
         `A ${slideCount}-slide deck has no room for a starter once every objective is taught and practised.`,
       );
-    else if (priorKnowledge === "" && !retrieves) {
+    else if (priorKnowledge === "" && !retrieves && !hooks) {
       gap(
         `The brief declares no prior knowledge, so the starter asks what pupils already think about ${topic} instead of retrieving an earlier idea.`,
       );
@@ -859,7 +915,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       rank: [0],
     });
   }
-  if (!has("starter") && !retrieves && priorKnowledge === "" && count > 0 && budget > 0) {
+  if (!has("starter") && !retrieves && !hooks && priorKnowledge === "" && count > 0 && budget > 0) {
     const easiest = all
       .flatMap((o) => {
         const i = facts.questions
@@ -1007,7 +1063,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
 
   // P4: the remaining worked examples — each is the method or the model answer for its objective,
   // worth more than a starter (Macbeth's three model paragraphs all went unplaced behind one).
-  for (const x of ownedWorkedExamples) {
+  // l6f: a flow without a worked example keeps only the ones P1c placed to model an apply question.
+  for (const x of shape.flow?.workedExample === false ? [] : ownedWorkedExamples) {
     if (budget <= 0) break;
     if (used.workedExamples.has(x)) continue;
     place(workedExampleSlot(ownersOf[x]?.[0] ?? 0, x));
@@ -1022,32 +1079,13 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     place(questionSlot(q.objectiveRefs[0]?.index ?? 0, i));
   });
 
-  // P7: discussions on misconceptions nothing else confronts, then a plenary.
-  if (budget > 0) {
-    const confronted = new Set<number>();
-    for (const s of slots) {
-      if (s.misconception !== undefined && s.kind !== "starter") confronted.add(s.misconception);
-      if (s.workedExample !== undefined) {
-        const ref = facts.workedExamples[s.workedExample]?.misconceptionRef;
-        if (ref) confronted.add(ref.index);
-      }
-      // A content slide's watch-out (below) takes its objective's first misconception.
-      if (s.kind === "content") {
-        const first = misconceptionsOf(s.primary).find((m) => !confronted.has(m));
-        if (first !== undefined) confronted.add(first);
-      }
-    }
-    facts.misconceptions.forEach((m, i) => {
+  // P7: discussions on misconceptions nothing else confronts (l6f: none when the flow has no
+  // common mistake), then a plenary.
+  if (budget > 0 && shape.flow?.commonMistake !== false) {
+    const confronted = confrontedMisconceptions();
+    facts.misconceptions.forEach((_, i) => {
       if (budget <= 0 || confronted.has(i)) return;
-      const o = m.objectiveRefs[0]?.index ?? 0;
-      place({
-        kind: "discussion",
-        phase: "practise",
-        primary: o,
-        objectives: refIndices(m.objectiveRefs),
-        misconception: i,
-        rank: [2, count + 1, i],
-      });
+      place(mistakeSlot(i));
     });
   }
   if (budget > 0 && count > 0) {
@@ -1406,13 +1444,15 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       case "starter": {
         const asked = slot.questions ?? [];
         refs.push(...asked.map((index): OrdinalRef => ({ type: "question", index })));
-        adds = slot.retrieval
-          ? `Retrieval: ${input.retrieval?.length ?? 0} quick questions on earlier lessons pupils answer from memory before the teaching.`
-          : asked.length > 0
-            ? `Retrieval: ${asked.length} quick questions pupils answer from memory before the teaching.`
-            : priorKnowledge === ""
-              ? `Pupils say what they already think about ${topic} before being told.`
-              : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
+        adds = hooks
+          ? `Hook: pupils say what they already think about ${topic} before being told.`
+          : slot.retrieval
+            ? `Retrieval: ${input.retrieval?.length ?? 0} quick questions on earlier lessons pupils answer from memory before the teaching.`
+            : asked.length > 0
+              ? `Retrieval: ${asked.length} quick questions pupils answer from memory before the teaching.`
+              : priorKnowledge === ""
+                ? `Pupils say what they already think about ${topic} before being told.`
+                : `Retrieval: pupils recall what the class has already covered: ${priorKnowledge}`;
         if (slot.misconception !== undefined) {
           refs.push({ type: "misconception", index: slot.misconception });
         }
