@@ -7,9 +7,16 @@ import {
   type RichDoc,
   richDocToPlainText,
   type Slide,
+  walkElements,
   yearNumberOf,
 } from "@tj/domain/documents";
-import { type ImageTextPhoto, PLACEHOLDER_IMAGE } from "@tj/slides";
+import {
+  diagramSpecSchemaFor,
+  figureGroupOf,
+  type ImageTextPhoto,
+  PLACEHOLDER_IMAGE,
+  type SpecSchemaOptions,
+} from "@tj/slides";
 import type { Audience, SlidePhoto } from "../prompts";
 import { type LessonShape, lessonShapeOf } from "../shapes";
 import type { PipelineDeps } from "../types";
@@ -112,6 +119,21 @@ export function slidePhotoOf(slide: Slide, entry: OutlineEntry | undefined): Sli
   };
 }
 
+/**
+ * The spec schema an existing diagram slide is rewritten with (Repair, cascade, regenerate;
+ * TEACH-89): the template stored on its figure group, so the rewrite keeps the template and is
+ * redrawn from the values it returns. A figure the teacher ungrouped has no group, so its outline
+ * entry's `figureBrief` names the template instead.
+ */
+export function storedDiagramSchema(
+  slide: Slide,
+  entry: OutlineEntry | undefined,
+  options: SpecSchemaOptions = {},
+) {
+  const template = figureGroupOf(slide)?.figure.template ?? entry?.figureBrief?.template;
+  return template && diagramSpecSchemaFor(template, options);
+}
+
 /** Text compared case- and whitespace-insensitively, as Evaluate quotes it. */
 export const normaliseText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -123,7 +145,9 @@ export const slideHaystack = (slide: Slide) =>
  * The slide's text as labelled spec fields (TEACH-222): `heading`, `body`, `option A (correct)`,
  * `notes` — never the recipe's fixed captions (`KEY IDEA`, `QUESTION`, `WORKING`), which the model
  * would otherwise copy into `heading`. The label is the element's text preset, which is what the
- * generate prompt's shape names; `small` is the pupils' instruction line.
+ * generate prompt's shape names; `small` is the pupils' instruction line. A diagram (TEACH-89) also
+ * gives its `caption`, which its spec writes, and its `figure`: the template and values stored on
+ * the figure group, as JSON, so Repair keeps the values rather than reading them off the labels.
  */
 export function specFieldsOf(slide: Slide): { field: string; text: string }[] {
   return withSpecNames(slide.kind, presetFieldsOf(slide));
@@ -162,15 +186,18 @@ function withSpecNames(
 
 function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
   const out: { field: string; text: string }[] = [];
+  const figure = figureGroupOf(slide);
   const correct = new Set(
     slide.question?.type === "multiple-choice"
       ? slide.question.options.filter((o) => o.correct).map((o) => o.id)
       : [],
   );
   for (const element of slide.elements) {
-    if (element.type === "text") {
+    if (figure && element === figure) {
+      out.push({ field: "figure", text: JSON.stringify(figure.figure) });
+    } else if (element.type === "text") {
       const preset = element.style?.preset;
-      if (preset === "caption") continue;
+      if (preset === "caption" && slide.kind !== "diagram") continue;
       const text = richDocToPlainText(element.doc).trim();
       if (text) out.push({ field: preset === "small" ? "instruction" : (preset ?? "text"), text });
     } else if (element.type === "option") {
@@ -204,23 +231,32 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
  * True when every line `slideText` would show is also in `specFieldsOf`'s projection — the
  * guarantee Repair relies on to prefer the labelled fields. A kind the projection does not cover
  * (a teacher-added element type, a future kind) fails it, and Repair falls back to the flat text.
+ * A figure's labels (and its "Not drawn to scale" caption) are covered by its `figure` field: the
+ * group is redrawn from the values, never edited label by label.
  */
 export function specFieldsCover(slide: Slide): boolean {
   // Whole lines, not substrings: a one-letter line must not count as covered by a longer field.
   const shown = new Set(specFieldsOf(slide).flatMap((f) => f.text.split("\n").map(normaliseText)));
-  // The recipe's fixed captions are excluded from the fields on purpose.
-  const captions = new Set(
+  // The recipe's fixed captions are excluded from the fields on purpose; a figure's text stands in
+  // its `figure` field.
+  const covered = new Set(
     slide.elements
       .filter((e) => e.type === "text" && e.style?.preset === "caption")
       .map((e) => normaliseText(richDocToPlainText((e as { doc: RichDoc }).doc))),
   );
+  const figure = figureGroupOf(slide);
+  if (figure) {
+    walkElements(figure.children, (e) => {
+      if ("doc" in e && e.doc) covered.add(normaliseText(richDocToPlainText(e.doc as RichDoc)));
+    });
+  }
   return slideText(slide)
     .split("\n")
     .map(normaliseText)
     .filter(
       (line) =>
         line.length > 0 &&
-        !captions.has(line) &&
+        !covered.has(line) &&
         !/^(answer|answers|correct|model answer):/.test(line),
     )
     .every((line) => shown.has(line));

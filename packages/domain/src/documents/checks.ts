@@ -234,7 +234,12 @@ function checkVocabularyInFacts(lesson: Lesson): Finding[] {
 /* ------------------------------------------------------------------ */
 
 /** Outline kinds that teach an objective (ruling 81); vocabulary and practice kinds do not. */
-const TEACHING_KINDS: ReadonlySet<string> = new Set(["content", "image-text", "worked-example"]);
+const TEACHING_KINDS: ReadonlySet<string> = new Set([
+  "content",
+  "image-text",
+  "diagram",
+  "worked-example",
+]);
 
 /**
  * Every objective is named by at least one teaching entry of the outline (ruling 81). The outline

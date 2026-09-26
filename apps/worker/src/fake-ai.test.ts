@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { FIXTURES } from "@tj/generation/testing";
-import { blockSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
+import { blockSpecSchemaFor, diagramSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
 import { generateText } from "ai";
 import {
   createPerJobFakeAi,
@@ -57,16 +57,36 @@ describe("createPerJobFakeAi", () => {
     expect(spec.items[0]).toStartWith(`${FAKE_PROPOSAL_MARK} (Shorter)`);
     // Every generatable slide kind and every fixture block type validates after the mark.
     for (const kind of Object.keys(FIXTURES.slides)) {
-      const answer = proposalAnswer({
+      const answer = JSON.parse(
+        proposalAnswer({
+          index: 0,
+          modelClass: "standard",
+          modelId: "m",
+          usage: {},
+          promptText: `Slide x (kind "${kind}") currently says:`,
+        }),
+      );
+      // A diagram's schema is its template's (TEACH-89): checked explicitly, never skipped.
+      const schema =
+        kind === "diagram"
+          ? diagramSpecSchemaFor(answer.figure.template)
+          : slideSpecSchemaFor(kind as never);
+      expect(schema, kind).toBeDefined();
+      expect(schema?.safeParse(answer).success, kind).toBe(true);
+    }
+    // The diagram's mark lands on its heading, so a test sees the re-derived slide.
+    const diagram = JSON.parse(
+      proposalAnswer({
         index: 0,
         modelClass: "standard",
         modelId: "m",
         usage: {},
-        promptText: `Slide x (kind "${kind}") currently says:`,
-      });
-      const schema = slideSpecSchemaFor(kind as never);
-      if (schema) expect(schema.safeParse(JSON.parse(answer)).success, kind).toBe(true);
-    }
+        promptText: 'Slide x (kind "diagram") currently says:',
+      }),
+    );
+    expect(diagram.heading).toStartWith(FAKE_PROPOSAL_MARK);
+    // The figure is the fixture's own: only its heading is marked.
+    expect(diagram.figure).toEqual((FIXTURES.slides.diagram as { figure: unknown }).figure);
     for (const block of FIXTURES.worksheet.blocks) {
       const answer = proposalAnswer({
         index: 0,

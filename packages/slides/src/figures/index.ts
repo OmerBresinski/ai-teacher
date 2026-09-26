@@ -8,7 +8,13 @@
  * rule after its retry fails the whole Generate stage), and values it cannot draw from get a safe
  * fallback drawing captioned "Not drawn to scale".
  */
-import type { FigureTemplateName, GroupElement, SlideElement, Theme } from "@tj/domain/documents";
+import type {
+  FigureRef,
+  FigureTemplateName,
+  GroupElement,
+  SlideElement,
+  Theme,
+} from "@tj/domain/documents";
 import type { z } from "zod";
 import { uid } from "../factories";
 import { RIGHT_TRIANGLE } from "./right-triangle";
@@ -69,4 +75,21 @@ export function drawFigure(
     alt: drawn.alt,
     figure: { template, values: asRecord(parsed.success ? parsed.data : values) },
   };
+}
+
+/** A group that carries the values its figure was drawn from. */
+export type FigureGroup = GroupElement & { figure: FigureRef };
+
+/**
+ * The top-level group that carries a Figure, on a slide or a recipe's layout (TEACH-89). The one
+ * way to find a slide's figure: the diagram filler replaces the recipe's placeholder with it, and
+ * Repair and cascade read the stored template and values from it. A figure the teacher ungrouped
+ * has no such group.
+ */
+export function figureGroupOf(slide: {
+  elements: readonly SlideElement[];
+}): FigureGroup | undefined {
+  return slide.elements.find(
+    (element): element is FigureGroup => element.type === "group" && element.figure !== undefined,
+  );
 }

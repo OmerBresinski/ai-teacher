@@ -255,6 +255,65 @@ describe("LessonFactsSchema", () => {
     ]);
   });
 
+  test("TEACH-89 row 2: a diagram entry parses with a figureBrief; without one, or a figureBrief on a content entry, is refused", () => {
+    const figureBrief = {
+      template: "right-triangle" as const,
+      purpose: "the triangle for finding the hypotenuse",
+    };
+    const facts = lessonFacts();
+    facts.outline.push({ id: "s9", kind: "diagram", factRefs: ["o1"], figureBrief });
+    expect(LessonFactsSchema.parse(facts).outline.at(-1)?.figureBrief).toEqual(figureBrief);
+
+    const unbriefed = lessonFacts();
+    unbriefed.outline.push({ id: "s9", kind: "diagram", factRefs: ["o1"] });
+    expect(issuesOf(unbriefed)).toContainEqual({
+      path: ["outline", lessonFacts().outline.length, "figureBrief"],
+      message: "diagram entries carry a figureBrief",
+    });
+
+    const misplaced = lessonFacts();
+    const content = misplaced.outline.findIndex((entry) => entry.kind === "content");
+    expect(content).toBeGreaterThan(-1);
+    misplaced.outline[content] = {
+      ...(misplaced.outline[content] as (typeof misplaced.outline)[number]),
+      figureBrief,
+    };
+    expect(issuesOf(misplaced)).toContainEqual({
+      path: ["outline", content, "figureBrief"],
+      message: "figureBrief is only allowed on diagram entries",
+    });
+
+    // Only a template there is a drawing for, and a purpose that says something.
+    const unknown = lessonFacts();
+    unknown.outline.push({
+      id: "s9",
+      kind: "diagram",
+      factRefs: [],
+      figureBrief: { template: "bar-model" as never, purpose: "a bar model" },
+    });
+    expect(issuesOf(unknown).map((issue) => issue.path)).toContainEqual([
+      "outline",
+      lessonFacts().outline.length,
+      "figureBrief",
+      "template",
+    ]);
+    const blank = lessonFacts();
+    blank.outline.push({
+      id: "s9",
+      kind: "diagram",
+      factRefs: [],
+      figureBrief: { ...figureBrief, purpose: " " },
+    });
+    expect(LessonFactsSchema.safeParse(blank).success).toBe(false);
+  });
+
+  test("TEACH-89 row 1: a lesson stored before diagrams (no figureBrief anywhere) parses unchanged", () => {
+    const stored = JSON.parse(JSON.stringify(generatedLesson()));
+    const parsed = parseLesson(stored);
+    expect(parsed).toEqual(stored);
+    expect(parsed.facts?.outline.some((entry) => entry.figureBrief !== undefined)).toBe(false);
+  });
+
   test("an outline entry id is unique too, but factRefs may not point at an outline entry", () => {
     const facts = lessonFacts();
     facts.outline[0] = { ...(facts.outline[0] as (typeof facts.outline)[number]), id: "o1" };
@@ -340,6 +399,7 @@ describe("FactIdSchema", () => {
 describe("generatable kinds (ADR 0025 §8)", () => {
   test("every generatable slide kind is a SlideKind, and image-match/timer/blank are excluded", () => {
     expect(GENERATABLE_SLIDE_KINDS).toContain("image-text");
+    expect(GENERATABLE_SLIDE_KINDS).toContain("diagram");
     for (const kind of GENERATABLE_SLIDE_KINDS) {
       expect(SlideKindSchema.safeParse(kind).success).toBe(true);
     }

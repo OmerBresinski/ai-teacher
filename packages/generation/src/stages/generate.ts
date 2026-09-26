@@ -1,5 +1,6 @@
 import type { Finding, Lesson, LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
 import {
+  diagramSpecSchemaFor,
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
@@ -209,14 +210,17 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       );
       return { slide, misses: [], builtFrom };
     }
-    // `OutlineEntrySchema` only admits generatable kinds, so this never fires; it keeps the type.
+    // `OutlineEntrySchema` only admits generatable kinds and a diagram entry always carries its
+    // figure brief, so the throw below never fires; it keeps the type.
     const specSchema = (soft: boolean) => {
       const base =
         entry.kind === "image-text"
           ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
               soft,
             })
-          : slideSpecSchemaFor(entry.kind, { soft });
+          : entry.kind === "diagram"
+            ? entry.figureBrief && diagramSpecSchemaFor(entry.figureBrief.template, { soft })
+            : slideSpecSchemaFor(entry.kind, { soft });
       return base && (calloutsAssigned ? withAssignedCallout(base, entry.callout, { soft }) : base);
     };
     const schema = specSchema(false);

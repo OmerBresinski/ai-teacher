@@ -360,6 +360,34 @@ describe("checkLesson", () => {
       ).toEqual([]);
     });
 
+    test("TEACH-89 row 7: a diagram entry teaches, and diagrams alone meet the explanation share", () => {
+      const figureBrief = { template: "right-triangle" as const, purpose: "finding x" };
+      const l = withOutline([
+        { id: "s1", kind: "title", factRefs: [] },
+        { id: "s2", kind: "objectives", factRefs: ["o1", "o2"] },
+        { id: "s3", kind: "diagram", factRefs: ["o1", "x1"], figureBrief },
+        { id: "s4", kind: "diagram", factRefs: ["o2", "x1"], figureBrief },
+        { id: "s5", kind: "multiple-choice", factRefs: ["q1"] },
+        { id: "s6", kind: "multiple-choice", factRefs: ["q1"] },
+        { id: "s7", kind: "open-response", factRefs: ["q1"] },
+        { id: "s8", kind: "exit-ticket", factRefs: ["q1"] },
+      ]);
+      // Six slides after title and objectives: floor(6 × 30 %) = 1; two diagrams explain.
+      const findings = checkLesson(l);
+      expect(taught(l)).toEqual([]);
+      expect(findings.filter((f) => f.check === "explanation-share")).toEqual([]);
+      // The same outline with the diagrams as practice falls short, so the kind is what counted.
+      const practice = withOutline(
+        (l.facts?.outline ?? []).map((entry) =>
+          entry.kind === "diagram"
+            ? { id: entry.id, kind: "true-false" as const, factRefs: entry.factRefs }
+            : entry,
+        ),
+      );
+      expect(taught(practice).map((f) => f.target.factId)).toEqual(["o1", "o2"]);
+      expect(checkLesson(practice).filter((f) => f.check === "explanation-share")).toHaveLength(1);
+    });
+
     test("an empty outline is not checked", () => {
       expect(taught(withOutline([]))).toEqual([]);
     });
@@ -402,6 +430,16 @@ describe("checkLesson", () => {
       expect(findings.some((f) => f.target.slideId === "s-mc")).toBe(false);
       // The message carries the measure, never the text.
       for (const f of findings) expect(f.message).not.toContain("invisible vapour");
+    });
+
+    test("TEACH-89: a diagram slide's body is prose, so readability measures it", () => {
+      const l = withPitch(generatedLesson());
+      const slide = contentSlide("s-d", `${twentyWords} ${twentyWords}`);
+      l.slides.push({ ...slide, kind: "diagram" });
+      const findings = of(checkLesson(l), "readability");
+      expect(findings.filter((f) => f.target.slideId === "s-d")).toContainEqual(
+        expect.objectContaining({ severity: "warning", target: { slideId: "s-d" } }),
+      );
     });
 
     test("readability: a body far above the reading age is a warning with the estimated age", () => {

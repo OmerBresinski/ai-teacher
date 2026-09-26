@@ -13,6 +13,7 @@ import type {
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
+import { drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
 import {
   type ContentVariant,
@@ -103,6 +104,8 @@ function fillSlide(
       return fillContent(spec, laid, variantName(spec.kind, variant));
     case "image-text":
       return fillImageText(spec, laid);
+    case "diagram":
+      return fillDiagram(spec, themeId, laid, ids);
     case "worked-example":
       return fillWorkedExample(spec, laid);
     case "discussion":
@@ -299,6 +302,38 @@ function fillImageText(spec: SlideSpecOf<"image-text">, laid: Layout): Layout {
   // The image slot stays as the recipe made it: PLACEHOLDER_IMAGE until `illustrate` places a
   // photograph (or leaves it, with a warning finding, when Pexels has nothing).
   return laid;
+}
+
+/**
+ * The text as `image-text` fills it, and the figure drawn from the spec's values where the
+ * recipe's placeholder figure is (ADR 0032, TEACH-89). The model never places the figure; the
+ * drawing's ids come from the same supplier as the rest of the slide.
+ */
+function fillDiagram(
+  spec: SlideSpecOf<"diagram">,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+): Layout {
+  if (spec.caption) setText(textOf(laid, "caption"), spec.caption);
+  setText(textOf(laid, "heading"), spec.heading);
+  setText(textOf(laid, "body"), spec.body);
+  const placeholder = figureGroupOf(laid);
+  if (!placeholder) throw new Error("recipe has no figure group");
+  const { x, y, w, h } = placeholder;
+  const drawn = drawFigure(spec.figure.template, spec.figure.values, getTheme(themeId), {
+    x,
+    y,
+    w,
+    h,
+  });
+  const [figure] = reid({ elements: [drawn] }, ids).elements;
+  return {
+    ...laid,
+    elements: laid.elements.map((element) =>
+      element === placeholder && figure ? figure : element,
+    ),
+  };
 }
 
 function fillWorkedExample(spec: SlideSpecOf<"worked-example">, laid: Layout): Layout {

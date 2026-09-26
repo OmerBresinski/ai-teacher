@@ -1,11 +1,13 @@
 import {
   type BriefLevel,
+  FIGURE_TEMPLATE_NAMES,
   GENERATABLE_SLIDE_KINDS,
   type SlideCount,
   type SourceLocator,
 } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import type { LessonShape } from "../shapes";
+import { FIGURE_FIT } from "./figures";
 import { shapeBlock } from "./shape";
 import { type Audience, audienceBlock, example, HOUSE_RULES, limitsBlock } from "./shared";
 import { describeRef } from "./source-ref";
@@ -27,6 +29,12 @@ import { describeRef } from "./source-ref";
  * UX ruling 82: no slide carries minutes. The lesson's size is its slide count, the outline is
  * asked for without "minutes", and the Shape block states the explain and practise floors as
  * slides after the title and objectives slides (whole slides when the brief fixes the count).
+ *
+ * v20 (TEACH-89, ADR 0032): `diagram` is generatable. It is an explain slide and a "new to it"
+ * teaching slide; Kind fit says when each Figure template fits (`FIGURE_FIT`) and asks for a
+ * `figureBrief` { template, purpose } on every diagram entry, as `imageBrief` is asked of a picture
+ * slide. The JSON example is unchanged: a diagram suits few topics, and an example with one would
+ * pull every lesson towards it.
  */
 
 export type PlanSkeletonInput = {
@@ -192,7 +200,7 @@ function askBlock(input: PlanSkeletonInput): string[] {
 }
 
 export const planSkeletonPrompt = {
-  version: "plan-skeleton.v19",
+  version: "plan-skeleton.v20",
   system: [
     "You are an experienced UK teacher planning one lesson from a brief.",
     "Produce only the lesson's skeleton: the learning objectives and an outline of slides. The key ideas, vocabulary, worked examples and questions come in a later step, so do not write them here.",
@@ -202,8 +210,8 @@ export const planSkeletonPrompt = {
     `The outline uses only these slide kinds: ${GENERATABLE_SLIDE_KINDS.join(", ")}.`,
     'The outline starts with a "title" slide and then an "objectives" slide. Those two carry no "phase" or "brief". Every slide after them carries both.',
     'Phases, in this order and never going back: "starter" (one short slide that surfaces what pupils already think), "explain" (the teaching — this is most of the lesson), "practise" (pupils answer, with the misconceptions confronted), "check" (an exit-ticket or plenary that covers every objective). A lesson has at least one explain, one practise and one check slide.',
-    'The brief\'s "Shape" block says what a lesson of this kind, for this class, must contain: which slide kinds to include or leave out, what the first explain slide is, how many of the slides after the title and objectives slides are explain slides and practise-phase slides. Every sentence in it is checked, so the outline meets every one. Explain slides are "content", "worked-example", "image-text" and "vocabulary"; only they count as explain slides. When the class is new to the topic, every objective gets its own content or worked-example slide.',
-    'Kind fit: a "content" slide explains exactly one key idea; a "worked-example" slide works through one example step by step; "sort" is only for a genuine sequence (steps that happen in an order), never for classifying; "matching" only when the three right-hand sides are three different things; "true-false" only to confront a misconception; "multiple-choice" for a question with plausible wrong answers; "image-text" only for a real thing a photograph can show — a part must be visible from the outside.',
+    'The brief\'s "Shape" block says what a lesson of this kind, for this class, must contain: which slide kinds to include or leave out, what the first explain slide is, how many of the slides after the title and objectives slides are explain slides and practise-phase slides. Every sentence in it is checked, so the outline meets every one. Explain slides are "content", "worked-example", "image-text", "diagram" and "vocabulary"; only they count as explain slides. When the class is new to the topic, every objective gets its own content, worked-example or diagram slide.',
+    `Kind fit: a "content" slide explains exactly one key idea; a "worked-example" slide works through one example step by step; "sort" is only for a genuine sequence (steps that happen in an order), never for classifying; "matching" only when the three right-hand sides are three different things; "true-false" only to confront a misconception; "multiple-choice" for a question with plausible wrong answers; "image-text" only for a real thing a photograph can show — a part must be visible from the outside; "diagram" draws one figure from a template, beside a heading and a body that may set a task on it, only when a template fits: ${FIGURE_TEMPLATE_NAMES.map((name) => FIGURE_FIT[name]).join("; ")}. Give a diagram slide "figureBrief": { "template", "purpose": one line on what the figure is for, e.g. "the triangle for finding the hypotenuse" }.`,
     '"brief": { "adds": what this slide contributes that no other slide does, in one sentence; "avoids"?: what it must not repeat from a neighbouring slide }. Two slides never add the same thing.',
     'Refer to objectives from the outline by position: { "type": "objective", "index": 0-based }. Only objectives can be referenced here. Every outline slide after the first two names at least one objective.',
     "The brief says how many objectives and outline slides to give. When it fixes the objectives, copy them exactly as written — same text, same order, none added, merged, reworded or dropped.",

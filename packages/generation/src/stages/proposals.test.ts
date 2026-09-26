@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import { ProposalSchema, type ProposalTarget } from "@tj/domain";
-import { type SlideElement, SlideSchema, WorksheetBlockSchema } from "@tj/domain/documents";
+import {
+  type GroupElement,
+  richDocToPlainText,
+  type SlideElement,
+  SlideSchema,
+  WorksheetBlockSchema,
+} from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
-import { materialiseSlide } from "@tj/slides";
+import { type FigureGroup, figureGroupOf, materialiseSlide } from "@tj/slides";
 import { PROMPT_VERSIONS } from "../prompts";
 import { callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
 import { impactSet, MAX_REDO_TARGETS, PROPOSE_CONCURRENCY, proposeFor } from "./proposals";
@@ -346,6 +352,135 @@ describe("proposeFor", () => {
       h: term.h,
     });
     expect(proposals[0]?.element?.id).not.toBe(term.id);
+  });
+});
+
+describe("TEACH-89: a figure group is one cascade target", () => {
+  /** The fixture pair with a diagram slide the recipe laid out from the fixture spec, citing x1. */
+  function withDiagram() {
+    const { lesson } = fixturePair();
+    let n = 0;
+    const slide = {
+      ...materialiseSlide(FIXTURES.slides.diagram, lesson.themeId, META, () => `d${++n}`),
+      id: "s-diagram",
+    };
+    lesson.slides.push(slide);
+    const facts = lesson.facts;
+    if (!facts) throw new Error("fixture has no facts");
+    // The slide's outline entry sits at its index, as a generated lesson's does.
+    const figureBrief = { template: "right-triangle" as const, purpose: "finding x" };
+    facts.outline = [
+      ...facts.outline.slice(0, lesson.slides.length - 1),
+      { id: "s99", kind: "diagram", factRefs: ["x1"], figureBrief },
+    ];
+    return { lesson, slide, figure: figureGroupOf(slide) as FigureGroup };
+  }
+  /** The re-derived answer: the same template, a 6-8-x triangle. */
+  const redone = {
+    ...FIXTURES.slides.diagram,
+    figure: {
+      template: "right-triangle",
+      values: {
+        base: { length: 6, label: "6 cm" },
+        height: { length: 8, label: "8 cm" },
+        hypotenuse: { label: "x" },
+      },
+    },
+  };
+  const text = (element: SlideElement | undefined) =>
+    element && "doc" in element && element.doc ? richDocToPlainText(element.doc) : "";
+
+  test("impactSet names the figure group and the text beside it, never a label inside it", () => {
+    const { lesson, slide, figure } = withDiagram();
+    const redo = impactSet(lesson, undefined, ["x1"]).redo.filter((t) => t.slideId === slide.id);
+    expect(redo.map((t) => t.elementId)).toEqual(slide.elements.map((e) => e.id));
+    expect(redo.map((t) => t.elementId)).toContain(figure.id);
+    for (const child of figure.children) {
+      expect(redo.map((t) => t.elementId)).not.toContain(child.id);
+    }
+  });
+
+  test("row 6: one proposal replaces the figure group whole, redrawn from the re-derived values", async () => {
+    const { lesson, slide, figure } = withDiagram();
+    const targets = impactSet(lesson, undefined, ["x1"]).redo.filter((t) => t.slideId === slide.id);
+    const ai = createFakeAi({ script: [json(redone)], usage });
+    const { proposals } = await proposeFor(
+      targets,
+      { lesson, changedFactIds: ["x1"] },
+      recordingDeps(ai),
+    );
+    expect(ai.calls).toHaveLength(1);
+    // The model is shown the stored values beside the slide's text.
+    expect(ai.calls[0]?.promptText).toContain(`figure: ${JSON.stringify(figure.figure)}`);
+    expect(ai.calls[0]?.promptText).toContain('kind "diagram"');
+    // One proposal per target, in place; exactly one of them is the figure, and it is whole.
+    expect(proposals.map((p) => p.target)).toEqual(targets);
+    const groups = proposals.filter((p) => p.element?.type === "group");
+    expect(groups).toHaveLength(1);
+    const group = groups[0]?.element as GroupElement;
+    expect(groups[0]?.target).toEqual({ slideId: slide.id, elementId: figure.id });
+    expect(group).toMatchObject({
+      x: figure.x,
+      y: figure.y,
+      w: figure.w,
+      h: figure.h,
+      figure: redone.figure,
+      alt: "Right-angled triangle. Base 6 cm, height 8 cm, hypotenuse x.",
+      authoredBy: "ai",
+    });
+    expect(group.children.map(text).filter(Boolean)).toEqual(["6 cm", "8 cm", "x"]);
+    for (const child of group.children) {
+      expect(child).toMatchObject({
+        authoredBy: "ai",
+        generatedFrom: { promptVersion: "cascade.v4" },
+      });
+    }
+    for (const p of proposals) expect(ProposalSchema.safeParse(p).success).toBe(true);
+    expect(text(proposals.find((p) => p.target.elementId === slide.elements[2]?.id)?.element)).toBe(
+      FIXTURES.slides.diagram.kind === "diagram" ? FIXTURES.slides.diagram.heading : "",
+    );
+  });
+
+  test("a figure the teacher moved and resized is redrawn for that box, not squeezed into it", async () => {
+    const { lesson, slide, figure } = withDiagram();
+    const box = { x: 520, y: 60, w: 300, h: 220 };
+    slide.elements = slide.elements.map((e) => (e.id === figure.id ? { ...e, ...box } : e));
+    const ai = createFakeAi({ script: [json(redone)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: slide.id, elementId: figure.id }],
+      { lesson, changedFactIds: ["x1"] },
+      recordingDeps(ai),
+    );
+    expect(proposals).toHaveLength(1);
+    const group = proposals[0]?.element as GroupElement;
+    expect(group).toMatchObject(box);
+    // The children are laid out in the group's local space, inside the new box.
+    for (const child of group.children) {
+      expect(child.x).toBeGreaterThanOrEqual(0);
+      expect(child.y).toBeGreaterThanOrEqual(0);
+      expect(child.x + child.w).toBeLessThanOrEqual(box.w);
+      expect(child.y + child.h).toBeLessThanOrEqual(box.h);
+    }
+  });
+
+  test("a figure the teacher ungrouped is matched child by child, its template read from the outline", async () => {
+    const { lesson, slide, figure } = withDiagram();
+    // Ungroup: the children move to the slide, offset by the group; no group carries `figure`.
+    const loose = figure.children.map((c) => ({ ...c, x: c.x + figure.x, y: c.y + figure.y }));
+    slide.elements = [...loose, ...slide.elements.filter((e) => e.id !== figure.id)];
+    const base = loose.find((c) => text(c) === "3 cm") as SlideElement;
+    const targets = impactSet(lesson, undefined, ["x1"]).redo.filter((t) => t.slideId === slide.id);
+    expect(targets.map((t) => t.elementId)).toContain(base.id);
+    const ai = createFakeAi({ script: [json(redone)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: slide.id, elementId: base.id }],
+      { lesson, changedFactIds: ["x1"] },
+      recordingDeps(ai),
+    );
+    expect(ai.calls[0]?.promptText).not.toContain("figure: {");
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.element).toMatchObject({ type: "text", x: base.x, y: base.y });
+    expect(text(proposals[0]?.element)).toBe("6 cm");
   });
 });
 

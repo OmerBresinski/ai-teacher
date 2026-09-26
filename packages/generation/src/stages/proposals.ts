@@ -1,7 +1,19 @@
 import type { Proposal, ProposalTarget } from "@tj/domain";
-import type { Lesson, SlideElement, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import type {
+  GeneratedFrom,
+  GroupElement,
+  Lesson,
+  SlideElement,
+  Worksheet,
+  WorksheetBlock,
+} from "@tj/domain/documents";
 import {
   blockSpecSchemaFor,
+  drawFigure,
+  type FigureGroup,
+  type FigureRect,
+  figureGroupOf,
+  getTheme,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
@@ -16,7 +28,14 @@ import {
   type StageName,
   throwIfAborted,
 } from "../types";
-import { audienceOf, blockText, runBounded, slideText, withImageCaption } from "./shared";
+import {
+  audienceOf,
+  blockText,
+  runBounded,
+  slideText,
+  storedDiagramSchema,
+  withImageCaption,
+} from "./shared";
 
 /*
  * Proposal stages (ADR 0025 §18): the impact set of a fact change, and the re-derivation of an
@@ -37,8 +56,13 @@ export interface ImpactSet {
 const intersects = (a: readonly string[] | undefined, b: ReadonlySet<string>) =>
   (a ?? []).some((id) => b.has(id));
 
+/** A group that carries a Figure's values (TEACH-89): one unit, matched and replaced whole. */
+const isFigure = (element: SlideElement): element is FigureGroup =>
+  element.type === "group" && element.figure !== undefined;
+
 /**
- * Every element (groups walked) and block whose `generatedFrom.factRefs` names a changed fact:
+ * Every element (groups walked, a figure group as one element) and block whose
+ * `generatedFrom.factRefs` names a changed fact:
  * `redo` when AI-authored, `flagged` (`reason: "teacher"`) otherwise — an element with no
  * `authoredBy` was inserted by hand and counts as the teacher's. Past `MAX_REDO_TARGETS`, the
  * remainder is `flagged` with `reason: "too_many"`.
@@ -70,7 +94,7 @@ export function impactSet(
   for (const slide of lesson.slides) {
     const walk = (elements: SlideElement[]) => {
       for (const element of elements) {
-        if (element.type === "group") {
+        if (element.type === "group" && !isFigure(element)) {
           walk(element.children);
           continue;
         }
@@ -107,17 +131,43 @@ export interface ProposeResult {
 /** One slide's worth of work: every target on that slide shares one model call. */
 type SlideJob = { slideId: string; elementIds: string[] | null };
 
-/** Every element on a slide in depth-first order, groups walked — the order recipes lay out in. */
-function flatten(elements: readonly SlideElement[]): SlideElement[] {
+/**
+ * Every element on a slide in depth-first order, groups walked — the order recipes lay out in. A
+ * figure group is one element when `figuresWhole`; otherwise it is walked like any group.
+ */
+function flatten(elements: readonly SlideElement[], figuresWhole = true): SlideElement[] {
   const out: SlideElement[] = [];
   const walk = (list: readonly SlideElement[]) => {
     for (const element of list) {
-      if (element.type === "group") walk(element.children);
+      if (element.type === "group" && !(figuresWhole && isFigure(element))) walk(element.children);
       else out.push(element);
     }
   };
   walk(elements);
   return out;
+}
+
+/**
+ * The re-derived figure drawn into the original group's box, so a teacher's move or resize holds:
+ * a group's children sit in its local space, and a resize scales them, so the new drawing is laid
+ * out for that box rather than moved into it. Every child carries the proposal's provenance.
+ */
+function figureIn(
+  replacement: FigureGroup,
+  box: FigureRect,
+  themeId: string,
+  generatedFrom: GeneratedFrom,
+  ids: () => string,
+): GroupElement {
+  const { template, values } = replacement.figure;
+  const drawn = drawFigure(template, values, getTheme(themeId), box);
+  const stamp = { generatedFrom, authoredBy: "ai" as const };
+  return {
+    ...drawn,
+    ...stamp,
+    id: replacement.id,
+    children: drawn.children.map((child) => ({ ...child, ...stamp, id: ids() })),
+  };
 }
 
 /**
@@ -181,9 +231,20 @@ export async function proposeFor(
   let stoppedBy: "usd" | "tokens" | undefined;
 
   const doSlide = async (job: SlideJob): Promise<Proposal[]> => {
-    const slide = lesson.slides.find((s) => s.id === job.slideId);
-    const schema = slide ? slideSpecSchemaFor(slide.kind) : undefined;
+    const index = lesson.slides.findIndex((s) => s.id === job.slideId);
+    const slide = lesson.slides[index];
+    // A diagram is re-derived with the template stored on its figure group (TEACH-89).
+    const schema = !slide
+      ? undefined
+      : slide.kind === "diagram"
+        ? storedDiagramSchema(slide, facts.outline[index])
+        : slideSpecSchemaFor(slide.kind);
     if (!slide || !schema) return [];
+    // The figure's values ride with its text, so the rewrite can keep them.
+    const figure = figureGroupOf(slide);
+    const text = figure
+      ? `${slideText(slide)}\nfigure: ${JSON.stringify(figure.figure)}`
+      : slideText(slide);
     const call = await callStructured({
       deps,
       stage,
@@ -191,13 +252,12 @@ export async function proposeFor(
       effort: "low",
       prompt,
       input: proposeInput(
-        { kind: "slide", slideKind: slide.kind, slideId: slide.id, text: slideText(slide) },
+        { kind: "slide", slideKind: slide.kind, slideId: slide.id, text },
         `a "${slide.kind}" slide spec`,
       ),
       schema,
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
-    const index = lesson.slides.findIndex((s) => s.id === job.slideId);
     const fresh = materialiseSlide(
       withImageCaption(call.output, lesson.facts?.outline[index]),
       lesson.themeId,
@@ -223,9 +283,10 @@ export async function proposeFor(
     }
     // Per element: the replacement is the new slide's element in the same role (same position
     // in the recipe's depth-first order), moved to the original's box so the layout the teacher
-    // sees does not jump.
+    // sees does not jump. A figure group is one element, replaced whole (TEACH-89); a figure the
+    // teacher ungrouped is matched child by child against the new drawing's children, as before.
     const originals = flatten(slide.elements);
-    const replacements = flatten(fresh.elements);
+    const replacements = flatten(fresh.elements, originals.some(isFigure));
     const out: Proposal[] = [];
     for (const elementId of job.elementIds) {
       const index = originals.findIndex((e) => e.id === elementId);
@@ -238,9 +299,12 @@ export async function proposeFor(
         );
         continue;
       }
+      const box = { x: original.x, y: original.y, w: original.w, h: original.h };
       out.push({
         target: { slideId: slide.id, elementId },
-        element: { ...replacement, x: original.x, y: original.y, w: original.w, h: original.h },
+        element: isFigure(replacement)
+          ? figureIn(replacement, box, lesson.themeId, generatedFrom, deps.ids)
+          : { ...replacement, ...box },
         generatedFrom,
       });
     }

@@ -2,6 +2,8 @@ import {
   allDistinct,
   CALLOUT_KINDS,
   decodeEntities,
+  FIGURE_TEMPLATE_NAMES,
+  type FigureTemplateName,
   GENERATABLE_BLOCK_TYPES,
   GENERATABLE_SLIDE_KINDS,
   hasLeakedPupilPhrase,
@@ -12,6 +14,10 @@ import {
   sameLeadingToken,
 } from "@tj/domain/documents";
 import { z } from "zod";
+import { EDITORIAL_PARAM, type EditorialIssue, editorialIssue, LOG_PARAM } from "./editorial";
+import { FIGURE_TEMPLATES } from "./figures";
+
+export { EDITORIAL_PARAM, type EditorialIssue, editorialIssue, LOG_PARAM } from "./editorial";
 
 /*
  * Slide and block specs (ADR 0025 §8): what the model produces for one slide or one worksheet
@@ -42,20 +48,6 @@ import { z } from "zod";
 /** The `___` marker a fill-gap sentence uses for each blank. */
 export const GAP_MARKER = "___";
 
-/** The `params` key an editorial issue carries (Zod keeps `params` on custom issues). */
-export const EDITORIAL_PARAM = "editorial";
-
-/** The `params` key carrying the log-safe form of a message that quotes a model value. */
-export const LOG_PARAM = "log";
-
-/** What `editorialIssue` returns: the one object both `.refine(fn, …)` and `ctx.addIssue(…)` take. */
-export type EditorialIssue = {
-  code: "custom";
-  message: string;
-  path?: PropertyKey[] | undefined;
-  params: { [EDITORIAL_PARAM]: true; [LOG_PARAM]?: string };
-};
-
 /** A shape rule's custom issue whose message quotes a model value, with its log-safe form. */
 export type ShapeIssue = {
   code: "custom";
@@ -63,26 +55,6 @@ export type ShapeIssue = {
   path?: PropertyKey[] | undefined;
   params: { [LOG_PARAM]: string };
 };
-
-/**
- * The tag every editorial rule carries. Use it as the second argument of `.refine` or as the
- * argument of `ctx.addIssue` in a `superRefine`; a rule written any other way is a shape rule.
- * `log` is required whenever `message` interpolates a value the model wrote (ADR 0015): it is the
- * same sentence with that value left out, and it is what reaches the log; a message built only
- * from our own words and numbers needs none.
- */
-export function editorialIssue(
-  message: string,
-  path?: PropertyKey[],
-  log?: string,
-): EditorialIssue {
-  return {
-    code: "custom",
-    message,
-    ...(path === undefined ? {} : { path }),
-    params: { [EDITORIAL_PARAM]: true, ...(log === undefined ? {} : { [LOG_PARAM]: log }) },
-  };
-}
 
 /** A shape rule that quotes a model value: untagged, with the log-safe form of its message. */
 export function shapeIssue(message: string, path: PropertyKey[], log: string): ShapeIssue {
@@ -289,6 +261,35 @@ function buildSpecs(soft: boolean) {
     .object({ kind: z.enum(CALLOUT_KINDS), text: line(SPEC_LIMITS.callout) })
     .optional();
 
+  /**
+   * A diagram's figure (ADR 0032, TEACH-89): the template and its values — never geometry;
+   * `drawFigure` draws it. The strict build embeds the template's `values` schema unchanged: its
+   * rules are editorial already, so a miss is retried once and then becomes a finding. The soft
+   * build embeds its `shape`, the same values with no rules, or `callStructured` could not parse
+   * an answer that misses only those rules and Generate would fail the lesson.
+   */
+  const figureOf = (template: FigureTemplateName) =>
+    z.object({
+      template: z.literal(template),
+      values: soft ? FIGURE_TEMPLATES[template].shape : FIGURE_TEMPLATES[template].values,
+    });
+  type FigureSchema = ReturnType<typeof figureOf>;
+  /** A diagram slide's text: `image-text`'s slots beside the figure; the body may set a task on it. */
+  const diagramFields = {
+    kind: z.literal("diagram"),
+    ...specBase,
+    /** The small label over the heading; the recipe's "DIAGRAM" when absent. */
+    caption: line(SPEC_LIMITS.caption).optional(),
+    heading: line(SPEC_LIMITS.heading),
+    body: line(SPEC_LIMITS.body),
+  };
+  /** The spec for one template, as the plain object schema a model is sent. */
+  const diagramOf = (template: FigureTemplateName) =>
+    z.object({ ...diagramFields, figure: figureOf(template) });
+  const diagram = Object.fromEntries(
+    FIGURE_TEMPLATE_NAMES.map((template) => [template, diagramOf(template)]),
+  ) as Record<FigureTemplateName, ReturnType<typeof diagramOf>>;
+
   /* ---------------------------------------------------------------- */
   /* Slide specs                                                       */
   /* ---------------------------------------------------------------- */
@@ -350,6 +351,14 @@ function buildSpecs(soft: boolean) {
       heading: line(SPEC_LIMITS.heading),
       body: line(SPEC_LIMITS.body),
       callout,
+    }),
+    z.object({
+      ...diagramFields,
+      // Never sent to a model (Bedrock refuses `anyOf`): `diagramSpecSchemaFor` asks for one template.
+      figure: z.discriminatedUnion(
+        "template",
+        FIGURE_TEMPLATE_NAMES.map(figureOf) as [FigureSchema, ...FigureSchema[]],
+      ),
     }),
     z.object({
       kind: z.literal("worked-example"),
@@ -582,7 +591,7 @@ function buildSpecs(soft: boolean) {
     }),
   ]);
 
-  return { slide, block };
+  return { slide, block, diagram };
 }
 
 const STRICT = buildSpecs(false);
@@ -608,7 +617,8 @@ void _blockTypes;
 
 /**
  * The spec schema for one slide kind / block type, as a plain object schema, or `undefined` for a
- * kind the pipeline cannot generate (`image-text`, `blank`, `image` blocks …). Structured-output
+ * kind the pipeline cannot generate (`blank`, `image` blocks …) and for `diagram`, whose schema
+ * depends on its template (`diagramSpecSchemaFor`). Structured-output
  * providers (Bedrock's tool-based mode) require the top level to be `type: object`; the unions
  * above serialise as a top-level `anyOf`, which Bedrock rejects with a 400. A per-kind schema is
  * also the tighter ask: the model cannot answer with a different kind.
@@ -620,12 +630,30 @@ export function slideSpecSchemaFor(
   kind: string,
   options: SpecSchemaOptions = {},
 ): z.ZodType<SlideSpec> | undefined {
+  // A diagram is a union member, but its figure's values depend on the template: every stage asks
+  // `diagramSpecSchemaFor` with the template the outline entry or the figure group names.
+  if (kind === "diagram") return undefined;
   const union = options.soft ? SOFT.slide : STRICT.slide;
   const option = union.options.find((o) => o.shape.kind.value === kind);
   if (!option) return undefined;
   // Only an image-text slide has a photograph; every other kind may not refer to one
   // (TEACH-223 — a worked example that said "A photo shows an animal…" beside no photo).
   if (kind === "image-text" || options.soft) return option as unknown as z.ZodType<SlideSpec>;
+  return option.superRefine(noPictureReference) as unknown as z.ZodType<SlideSpec>;
+}
+
+/**
+ * The `diagram` spec schema for one Figure template (ADR 0032, TEACH-89): a plain object schema
+ * whose `figure` is `{ template: <that template>, values: <its values> }`, so no union reaches the
+ * model (Bedrock refuses `anyOf`) and the model cannot switch templates. A diagram has no
+ * photograph, so the text may not refer to a picture; "diagram" and "triangle" are fine.
+ */
+export function diagramSpecSchemaFor(
+  template: FigureTemplateName,
+  options: SpecSchemaOptions = {},
+): z.ZodType<SlideSpec> {
+  const option = (options.soft ? SOFT : STRICT).diagram[template];
+  if (options.soft) return option as unknown as z.ZodType<SlideSpec>;
   return option.superRefine(noPictureReference) as unknown as z.ZodType<SlideSpec>;
 }
 

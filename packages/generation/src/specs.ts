@@ -4,6 +4,7 @@ import {
   type FactArray,
   type FactId,
   FactIdSchema,
+  FIGURE_TEMPLATE_NAMES,
   FindingSeveritySchema,
   FindingTargetSchema,
   GENERATABLE_SLIDE_KINDS,
@@ -52,7 +53,7 @@ export { BlockSpecSchema, SlideSpecSchema };
  * `editorialIssue` / `SpecSchemaOptions`). Here the shape rules are the field types, the non-empty
  * strings, the list floors, every ordinal reference (a dangling id would fail `LessonFactsSchema`
  * in `assignFactIds` with no retry) except a callout's, which the soft build drops instead, and the caps `@tj/domain` re-checks on the stored facts
- * (`PlanImageBriefSchema`). Everything else we ask of the content — text caps, list ceilings,
+ * (`PlanImageBriefSchema`, `planFigureBriefSchema`). Everything else we ask of the content — text caps, list ceilings,
  * counts, coverage, wording, phases, the lesson shape — is editorial: `callStructured` accepts a
  * retry that misses only those and Plan records them as `spec-rule` warnings.
  */
@@ -152,6 +153,19 @@ function planImageBriefSchema(soft: boolean) {
   });
 }
 
+/**
+ * The figure brief as Plan writes it (ADR 0032 amendment item 5, TEACH-89): which Figure template
+ * a diagram slide draws and what for. Both fields are `FigureBriefSchema`'s too (`@tj/domain`), so
+ * they are shape here; whether the brief is on the right entry is editorial (the skeleton's
+ * refinement), as the picture brief's is.
+ */
+function planFigureBriefSchema() {
+  return z.strictObject({
+    template: z.enum(FIGURE_TEMPLATE_NAMES),
+    purpose: hardLine(SPEC_LIMITS.item),
+  });
+}
+
 function outlineEntrySchema(soft: boolean) {
   const line = lineFor(soft);
   return z.strictObject({
@@ -160,6 +174,7 @@ function outlineEntrySchema(soft: boolean) {
     minutes: z.number().int().min(1).optional(),
     factRefs: z.array(OrdinalRefSchema),
     imageBrief: planImageBriefSchema(soft).optional(),
+    figureBrief: planFigureBriefSchema().optional(),
     /** Required from position 2 (checked in the skeleton's refinement, so the message can say so). */
     brief: z
       .strictObject({
@@ -181,6 +196,7 @@ export const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
   "content",
   "worked-example",
   "image-text",
+  "diagram",
   "vocabulary",
 ]);
 /** The kinds a Recall lesson checks with when `open-response` is forbidden (the Shape sentence). */
@@ -358,6 +374,13 @@ export function planSkeletonSchemaFor(
       if (entry.kind !== "image-text" && entry.imageBrief !== undefined) {
         issue("imageBrief is only allowed on image-text entries", ["outline", i, "imageBrief"]);
       }
+      // The figure brief rides exactly on diagram slides: Generate draws the template it names.
+      if (entry.kind === "diagram" && entry.figureBrief === undefined) {
+        issue("diagram entries carry a figureBrief", ["outline", i, "figureBrief"]);
+      }
+      if (entry.kind !== "diagram" && entry.figureBrief !== undefined) {
+        issue("figureBrief is only allowed on diagram entries", ["outline", i, "figureBrief"]);
+      }
       // mustShow lists what must be visible *in* the subject, never the subject itself
       // (TEACH-224: "rodent" cannot be seen or missed; "front teeth" can). Only an item that is
       // the subject's head noun alone — its first content word, the kind of thing — is refused:
@@ -413,7 +436,7 @@ export function planSkeletonSchemaFor(
       phases.add(entry.phase);
       if (entry.phase === "explain" && !EXPLAIN_KINDS.has(entry.kind)) {
         issue(
-          `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example, image-text or vocabulary. Give it the phase it belongs to, or change its kind.`,
+          `Outline position ${i} is a ${entry.kind} slide in the explain phase; explain slides are content, worked-example, image-text, diagram or vocabulary. Give it the phase it belongs to, or change its kind.`,
           ["outline", i, "phase"],
         );
       }
@@ -557,7 +580,7 @@ function refineShape(
   const explainShort = shortBy(explainSlides, shape.explainMinPercent);
   if (explainShort > 0) {
     issue(
-      `${explainSentence(share(shape.explainMinPercent), counted)} This outline has ${explainSlides}. Add ${explainShort} content, worked-example, image-text or vocabulary ${plural(explainShort)} in the explain phase.`,
+      `${explainSentence(share(shape.explainMinPercent), counted)} This outline has ${explainSlides}. Add ${explainShort} content, worked-example, image-text, diagram or vocabulary ${plural(explainShort)} in the explain phase.`,
       ["outline"],
     );
   }
@@ -588,9 +611,9 @@ function refineShape(
   }
   // requireTwoCases is a prompt rule, not a rejection (TEACH-237): two cases can be set against
   // each other on a discussion, content or open-response slide, which a kind check cannot see.
-  // A class new to the topic gets a teaching slide — content, worked-example or image-text (a
-  // content slide with a photograph, TEACH-237) — for every objective (TEACH-211; the confidence
-  // override the shape table keeps).
+  // A class new to the topic gets a teaching slide — content, worked-example, image-text (a
+  // content slide with a photograph, TEACH-237) or diagram (a figure with its text, TEACH-89) —
+  // for every objective (TEACH-211; the confidence override the shape table keeps).
   if (shape.confidence === "New to it") {
     const explained = new Set<number>();
     for (const entry of outline) {
@@ -600,7 +623,7 @@ function refineShape(
     skeleton.learningObjectives.forEach((_, i) => {
       if (!explained.has(i)) {
         issue(
-          `The class is new to this: objective ${i} needs a content, worked-example or image-text slide that names it.`,
+          `The class is new to this: objective ${i} needs a content, worked-example, image-text or diagram slide that names it.`,
           ["outline"],
         );
       }
@@ -967,7 +990,8 @@ export function planFactsSchemaFor(
     // good answer that names the belief in the distractor text without the ref would be sent back.
 
     // Kind fit: a content slide is built from a key idea, a worked-example slide from a worked
-    // example. Both refs may also come from the skeleton, but the skeleton could only name
+    // example, a diagram from a worked example or a question (its figure's numbers come from one,
+    // TEACH-89). The refs may also come from the skeleton, but the skeleton could only name
     // objectives, so they have to be given here.
     const given = new Map<number, Set<FactListType>>();
     for (const entry of facts.outlineFactRefs) {
@@ -976,22 +1000,25 @@ export function planFactsSchemaFor(
       given.set(entry.index, types);
     }
     skeleton.outline.forEach((entry, i) => {
-      const needs: FactListType | undefined =
-        entry.kind === "content"
-          ? "keyIdea"
-          : entry.kind === "worked-example"
-            ? "workedExample"
-            : undefined;
-      if (needs && !given.get(i)?.has(needs)) {
-        issue(
-          `Outline position ${i} is a ${entry.kind} slide and needs at least one ${needs} reference in outlineFactRefs.`,
-          ["outlineFactRefs"],
-        );
-      }
+      const needs = KIND_NEEDS[entry.kind];
+      if (!needs || needs.some((type) => given.get(i)?.has(type))) return;
+      issue(
+        entry.kind === "diagram"
+          ? `Outline position ${i}: a diagram slide needs a worked example or a question in its factRefs, because the figure's numbers come from it.`
+          : `Outline position ${i} is a ${entry.kind} slide and needs at least one ${needs.join(" or ")} reference in outlineFactRefs.`,
+        ["outlineFactRefs"],
+      );
     });
   });
   return soft ? refined.transform(dropMisplacedCallouts) : refined;
 }
+
+/** The fact lists an outline kind is built from: one of them must be referenced (kind fit). */
+const KIND_NEEDS: Partial<Record<(typeof GENERATABLE_SLIDE_KINDS)[number], FactListType[]>> = {
+  content: ["keyIdea"],
+  "worked-example": ["workedExample"],
+  diagram: ["workedExample", "question"],
+};
 
 /** Whether one callout reference cites its kind's list and lands inside it. */
 function calloutRefFits(
@@ -1213,6 +1240,7 @@ export function assignFactIds(
       ...optional("minutes", entry.minutes),
       factRefs: dedupe([...entry.factRefs, ...(added.get(i) ?? [])].map(refId)),
       ...optional("imageBrief", entry.imageBrief),
+      ...optional("figureBrief", entry.figureBrief),
       ...optional("brief", entry.brief),
       ...optional("phase", entry.phase),
       ...optional(

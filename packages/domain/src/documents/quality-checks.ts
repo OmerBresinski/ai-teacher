@@ -41,6 +41,7 @@ export const QUALITY_CHECKS = [
 const PROSE_SLIDE_KINDS: ReadonlySet<string> = new Set([
   "content",
   "image-text",
+  "diagram",
   "starter",
   "instructions",
   "discussion",
@@ -69,6 +70,7 @@ const EXPLAIN_KINDS: ReadonlySet<string> = new Set([
   "content",
   "worked-example",
   "image-text",
+  "diagram",
   "vocabulary",
 ]);
 export const EXPLANATION_SHARE_MIN_PERCENT = 30;
@@ -212,7 +214,7 @@ function checkExplanationShare(lesson: Lesson): Finding[] {
       check: "explanation-share",
       severity: "warning",
       target: {},
-      message: `Only ${explain} of ${taught.length} slides explain (content, worked example, picture, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
+      message: `Only ${explain} of ${taught.length} slides explain (content, worked example, picture, diagram, vocabulary); at least ${EXPLANATION_SHARE_MIN_PERCENT}% should.`,
     },
   ];
 }

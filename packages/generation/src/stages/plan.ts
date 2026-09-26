@@ -363,6 +363,7 @@ function existingSkeleton(
         index: objectiveIndex.get(ref) as number,
       })),
       ...(entry.imageBrief !== undefined ? { imageBrief: entry.imageBrief } : {}),
+      ...(entry.figureBrief !== undefined ? { figureBrief: entry.figureBrief } : {}),
       ...(entry.brief !== undefined ? { brief: entry.brief } : {}),
       ...(entry.phase !== undefined ? { phase: entry.phase } : {}),
     })),

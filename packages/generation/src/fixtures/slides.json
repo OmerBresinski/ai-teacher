@@ -43,6 +43,21 @@
     "body": "Rivers flow to the sea.",
     "factRefs": ["o1"]
   },
+  "diagram": {
+    "kind": "diagram",
+    "heading": "Find the hypotenuse",
+    "body": "The two shorter sides meet at a right angle. They are 3 cm and 4 cm long. Use Pythagoras' theorem to find x.",
+    "figure": {
+      "template": "right-triangle",
+      "values": {
+        "base": { "length": 3, "label": "3 cm" },
+        "height": { "length": 4, "label": "4 cm" },
+        "hypotenuse": { "label": "x" }
+      }
+    },
+    "factRefs": ["x1", "o2"],
+    "notes": "Ask which side is the hypotenuse before anyone calculates: it is opposite the right angle. x = 5 cm."
+  },
   "worked-example": {
     "kind": "worked-example",
     "heading": "Worked example",

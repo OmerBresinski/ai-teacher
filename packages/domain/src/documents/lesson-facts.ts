@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FigureTemplateNameSchema } from "./figure";
 
 /*
  * LessonFacts (ADR 0025 §1; F06; Generation quality §1). The one object every Artefact of a Lesson
@@ -26,7 +27,8 @@ export const FactIdSchema = z.string().regex(FACT_ID_PATTERN, {
 
 /**
  * The slide kinds the pipeline may generate (ADR 0025 §8). `image-match` still waits for an
- * image source; `timer`, `blank` and `embed` have no content spec.
+ * image source; `timer`, `blank` and `embed` have no content spec. `diagram` draws its figure from
+ * the template its outline entry's `figureBrief` names (ADR 0032, TEACH-89).
  */
 export const GENERATABLE_SLIDE_KINDS = [
   "title",
@@ -46,6 +48,7 @@ export const GENERATABLE_SLIDE_KINDS = [
   "exit-ticket",
   "plenary",
   "image-text",
+  "diagram",
 ] as const;
 export type GeneratableSlideKind = (typeof GENERATABLE_SLIDE_KINDS)[number];
 export const GeneratableSlideKindSchema = z.enum(GENERATABLE_SLIDE_KINDS);
@@ -171,6 +174,18 @@ export const ImageBriefSchema = z.strictObject({
 });
 export type ImageBrief = z.infer<typeof ImageBriefSchema>;
 
+/**
+ * Which Figure template a `diagram` slide draws, and what the figure is for (ADR 0032 amendment
+ * item 5, TEACH-89): Plan names the template, as it names a photograph's subject in `imageBrief`,
+ * and Generate fills its values. `purpose` is one line, e.g. "the triangle for finding the
+ * hypotenuse".
+ */
+export const FigureBriefSchema = z.strictObject({
+  template: FigureTemplateNameSchema,
+  purpose: z.string().trim().min(1).max(160),
+});
+export type FigureBrief = z.infer<typeof FigureBriefSchema>;
+
 /** The teaching phase an outline entry belongs to; title and objectives carry none. */
 export const LESSON_PHASES = ["starter", "explain", "practise", "check"] as const;
 export type LessonPhase = (typeof LESSON_PHASES)[number];
@@ -188,6 +203,8 @@ export type OutlineEntry = {
   factRefs: FactId[];
   /** Required exactly on `image-text` entries; forbidden elsewhere (checked below). */
   imageBrief?: ImageBrief;
+  /** Required exactly on `diagram` entries; forbidden elsewhere (checked below). */
+  figureBrief?: FigureBrief;
   /** What this slide adds that no other does, and what it must not repeat from a neighbour. */
   brief?: OutlineBrief;
   /** Starter → explain → practise → check; absent on title/objectives and on older lessons. */
@@ -310,6 +327,7 @@ export const OutlineEntrySchema = z.strictObject({
   minutes: z.number().int().min(1).optional(),
   factRefs: z.array(FactIdSchema),
   imageBrief: ImageBriefSchema.optional(),
+  figureBrief: FigureBriefSchema.optional(),
   brief: OutlineBriefSchema.optional(),
   phase: z.enum(LESSON_PHASES).optional(),
   callout: z
@@ -463,6 +481,21 @@ export const LessonFactsSchema = z
           code: "custom",
           message: `image-text entries carry an imageBrief`,
           path: ["outline", i, "imageBrief"],
+        });
+      }
+      if (entry.kind !== "diagram" && entry.figureBrief !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `figureBrief is only allowed on diagram entries`,
+          path: ["outline", i, "figureBrief"],
+        });
+      }
+      // Without a brief Generate would not know which figure to draw: refuse the facts.
+      if (entry.kind === "diagram" && entry.figureBrief === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `diagram entries carry a figureBrief`,
+          path: ["outline", i, "figureBrief"],
         });
       }
     });

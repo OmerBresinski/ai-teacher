@@ -103,7 +103,7 @@
       }
     },
     {
-      "kind": "multiple-choice",
+      "kind": "diagram",
       "minutes": 12,
       "factRefs": [
         {
@@ -111,10 +111,14 @@
           "index": 2
         }
       ],
+      "figureBrief": {
+        "template": "right-triangle",
+        "purpose": "the triangle pupils find the missing side of"
+      },
       "phase": "practise",
       "brief": {
-        "adds": "Checks which state has particles furthest apart.",
-        "avoids": "Not the true-false statement again."
+        "adds": "Pupils apply the method to a labelled figure and find the missing value.",
+        "avoids": "Not the worked example's numbers again."
       }
     },
     {

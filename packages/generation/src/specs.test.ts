@@ -83,7 +83,7 @@ describe("planSkeletonSchemaFor", () => {
     expect(entries).toHaveLength(16);
     const messages = messagesOf(parse(entries, { shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
-      "outline: At least 4 of the 14 slides after the title and objectives slides are explain slides. This outline has 3. Add 1 content, worked-example, image-text or vocabulary slide in the explain phase.",
+      "outline: At least 4 of the 14 slides after the title and objectives slides are explain slides. This outline has 3. Add 1 content, worked-example, image-text, diagram or vocabulary slide in the explain phase.",
     );
     expect(messages.join("\n")).not.toContain("minute");
     // Without a shape (the structural schema) the share is not checked.
@@ -149,7 +149,7 @@ describe("planSkeletonSchemaFor", () => {
       expect(explainNew(3)).toEqual([]);
       // 40 % of 13 rounds down to 5: one short.
       expect(explainNew(5)).toContainEqual(
-        "outline: At least 5 of the 13 slides after the title and objectives slides are explain slides. This outline has 4. Add 1 content, worked-example, image-text or vocabulary slide in the explain phase.",
+        "outline: At least 5 of the 13 slides after the title and objectives slides are explain slides. This outline has 4. Add 1 content, worked-example, image-text, diagram or vocabulary slide in the explain phase.",
       );
       // Apply's practise share: 40 % of 8 is 3 with two practise slides; one more passes.
       const apply = (n: number) =>
@@ -228,7 +228,7 @@ describe("planSkeletonSchemaFor", () => {
     expect(two.success).toBe(false);
     if (two.success) return;
     expect(two.error.issues.map((i) => i.message)).toEqual([
-      "The class is new to this: objective 1 needs a content, worked-example or image-text slide that names it.",
+      "The class is new to this: objective 1 needs a content, worked-example, image-text or diagram slide that names it.",
     ]);
     // An image-text slide that names the objective teaches it too (TEACH-237).
     const pictured = structuredClone(entries);
@@ -511,6 +511,116 @@ describe("planSkeletonSchemaFor", () => {
     );
   });
 
+  test("TEACH-89 row 2: a diagram needs a figureBrief and only a diagram may carry one; both misses are editorial", () => {
+    const figureBrief = { template: "right-triangle", purpose: "the triangle for finding x" };
+    const missing = outline();
+    missing[5] = { kind: "diagram", factRefs: [O(0)], phase: "explain", brief };
+    const refused = parse(missing);
+    expect(messagesOf(refused)).toContainEqual(
+      "outline.5.figureBrief: diagram entries carry a figureBrief",
+    );
+    expect(refused.error?.issues.every((issue) => isEditorialIssue(issue))).toBe(true);
+    const present = outline();
+    present[5] = { ...missing[5], figureBrief };
+    expect(parse(present).success).toBe(true);
+    const misplaced = outline();
+    misplaced[3] = { ...misplaced[3], figureBrief };
+    expect(messagesOf(parse(misplaced))).toContainEqual(
+      "outline.3.figureBrief: figureBrief is only allowed on diagram entries",
+    );
+    // Editorial: the soft build takes both, so Plan retries once and then records a warning.
+    const soft = planSkeletonSchemaFor({}, { soft: true });
+    for (const entries of [missing, misplaced]) {
+      expect(
+        soft.safeParse({
+          learningObjectives: [{ text: "Describe rivers" }],
+          photographable: NOT_PHOTOGRAPHABLE,
+          outline: entries,
+        }).success,
+      ).toBe(true);
+    }
+    // The template must be one there is a drawing for, and the purpose is not blank: shape.
+    const unknown = outline();
+    unknown[5] = { ...missing[5], figureBrief: { ...figureBrief, template: "bar-model" } };
+    const blank = outline();
+    blank[5] = { ...missing[5], figureBrief: { ...figureBrief, purpose: " " } };
+    for (const entries of [unknown, blank]) {
+      const result = soft.safeParse({ learningObjectives: [{ text: "A" }], outline: entries });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  test("TEACH-89: a diagram explains — in the explain phase, towards its share, and as a new class's teaching slide", () => {
+    const figureBrief = { template: "right-triangle", purpose: "the triangle for finding x" };
+    const entries = (second: Record<string, unknown>) => [
+      { kind: "title", factRefs: [] },
+      { kind: "objectives", factRefs: [O(0), O(1)] },
+      { kind: "starter", factRefs: [O(0)], phase: "starter", brief },
+      { kind: "vocabulary", factRefs: [O(0)], phase: "explain", brief },
+      { kind: "content", factRefs: [O(0)], phase: "explain", brief },
+      { factRefs: [O(1)], phase: "explain", brief, ...second },
+      { kind: "worked-example", factRefs: [O(0)], phase: "explain", brief },
+      { kind: "multiple-choice", factRefs: [O(1)], phase: "practise", brief },
+      { kind: "matching", factRefs: [O(1)], phase: "practise", brief },
+      { kind: "open-response", factRefs: [O(1)], phase: "practise", brief },
+      { kind: "exit-ticket", factRefs: [O(0), O(1)], phase: "check", brief },
+    ];
+    const check = (second: Record<string, unknown>) =>
+      messagesOf(
+        planSkeletonSchemaFor({ shape: shapeOf("Apply", "New to it") }).safeParse({
+          learningObjectives: [
+            { text: "Use Pythagoras' theorem" },
+            { text: "Find a missing side" },
+          ],
+          photographable: NOT_PHOTOGRAPHABLE,
+          outline: entries(second),
+        }),
+      );
+    // Objective 1 is taught by the diagram alone, and the diagram is one of the four explain slides
+    // (nine after title and objectives: the "New to it" floor is 3).
+    expect(check({ kind: "diagram", figureBrief })).toEqual([]);
+    // The same slot as a question slide: in the wrong phase, and objective 1 is untaught.
+    const asQuestion = check({ kind: "true-false" });
+    expect(asQuestion).toContainEqual(
+      "outline.5.phase: Outline position 5 is a true-false slide in the explain phase; explain slides are content, worked-example, image-text, diagram or vocabulary. Give it the phase it belongs to, or change its kind.",
+    );
+    expect(asQuestion).toContainEqual(
+      "outline: The class is new to this: objective 1 needs a content, worked-example, image-text or diagram slide that names it.",
+    );
+    // minContent still counts content and image-text only (TEACH-89 leaves it alone).
+    const noContent = entries({ kind: "diagram", figureBrief }).map((e) =>
+      e.kind === "content" ? { ...e, kind: "diagram", figureBrief } : e,
+    );
+    expect(
+      messagesOf(
+        planSkeletonSchemaFor({ shape: shapeOf("Explain", "Some prior knowledge") }).safeParse({
+          learningObjectives: [{ text: "A" }, { text: "B" }],
+          photographable: NOT_PHOTOGRAPHABLE,
+          outline: noContent,
+        }),
+      ),
+    ).toContainEqual(
+      expect.stringMatching(/^outline: The outline has 0 content or image-text slides\./),
+    );
+  });
+
+  test("TEACH-89: the Apply fixture's diagram passes every Apply cell the eval uses", () => {
+    expect(PLAN_SKELETONS.Apply.outline.filter((e) => e.kind === "diagram")).toHaveLength(1);
+    for (const [confidence, year] of [
+      ["New to it", "Year 3"],
+      ["Some prior knowledge", "Year 7"],
+      ["Some prior knowledge", "Year 8"],
+    ] as const) {
+      const result = planSkeletonSchemaFor({
+        shape: shapeOf("Apply", confidence, year),
+        slideCount: 10,
+      }).safeParse(PLAN_SKELETONS.Apply);
+      expect(result.success, `${confidence} ${year}: ${JSON.stringify(result.error?.issues)}`).toBe(
+        true,
+      );
+    }
+  });
+
   test("PlanSkeletonSchema (no brief context) applies the structural rules only", () => {
     expect(
       PlanSkeletonSchema.safeParse({ learningObjectives: [{ text: "A" }], outline: outline() })
@@ -531,7 +641,7 @@ describe("planSkeletonSchemaFor", () => {
     entries.push({ ...mc }, { ...mc }, { ...mc }, exit ?? {});
     const messages = messagesOf(parse(entries, { shape: EXPLAIN_SOME }));
     expect(messages).toContainEqual(
-      "outline.3.phase: Outline position 3 is a multiple-choice slide in the explain phase; explain slides are content, worked-example, image-text or vocabulary. Give it the phase it belongs to, or change its kind.",
+      "outline.3.phase: Outline position 3 is a multiple-choice slide in the explain phase; explain slides are content, worked-example, image-text, diagram or vocabulary. Give it the phase it belongs to, or change its kind.",
     );
     expect(messages).toContainEqual(
       expect.stringContaining(
@@ -684,6 +794,35 @@ describe("planFactsSchemaFor", () => {
     expect(result.error.issues.map((i) => i.message)).toContainEqual(
       "Outline position 4 is a content slide and needs at least one keyIdea reference in outlineFactRefs.",
     );
+  });
+
+  test("TEACH-89: a diagram entry needs a worked example or a question, because its figure's numbers come from it", () => {
+    const skeleton = PLAN_SKELETONS.Apply;
+    const at = skeleton.outline.findIndex((e) => e.kind === "diagram");
+    const kindFit = (refs: { type: "keyIdea" | "question" | "workedExample"; index: number }[]) => {
+      const f = facts();
+      f.outlineFactRefs = [
+        ...f.outlineFactRefs.filter((e) => e.index !== at),
+        { index: at, factRefs: refs },
+      ];
+      const result = planFactsSchemaFor(
+        skeleton,
+        shapeOf("Apply", "Some prior knowledge"),
+      ).safeParse(f);
+      return result.success
+        ? []
+        : result.error.issues.map((i) => i.message).filter((m) => m.includes("diagram"));
+    };
+    expect(kindFit([{ type: "keyIdea", index: 0 }])).toEqual([
+      `Outline position ${at}: a diagram slide needs a worked example or a question in its factRefs, because the figure's numbers come from it.`,
+    ]);
+    expect(kindFit([{ type: "workedExample", index: 0 }])).toEqual([]);
+    expect(kindFit([{ type: "question", index: 0 }])).toEqual([]);
+    // The fixture pair already fits: position 6 draws on the worked example.
+    expect(
+      planFactsSchemaFor(skeleton, shapeOf("Apply", "Some prior knowledge")).safeParse(facts())
+        .success,
+    ).toBe(true);
   });
 
   test("a fact's own objectiveRefs must land in the skeleton's objectives; a misconceptionRef in this call's list", () => {
@@ -891,6 +1030,24 @@ describe("assignFactIds", () => {
       16,
     );
     expect(facts.outline[2]).toMatchObject({ kind: "image-text", imageBrief: RIVER });
+  });
+
+  test("passes the figure brief through onto the outline (TEACH-89)", () => {
+    const figureBrief = { template: "right-triangle" as const, purpose: "finding x" };
+    const facts = assignFactIds(
+      {
+        learningObjectives: [{ text: "Use Pythagoras' theorem" }],
+        outline: [
+          { kind: "title", factRefs: [] },
+          { kind: "objectives", factRefs: [O(0)] },
+          { kind: "diagram", factRefs: [O(0)], figureBrief },
+        ],
+      },
+      EMPTY_PLAN_FACTS,
+      16,
+    );
+    expect(facts.outline[2]).toMatchObject({ kind: "diagram", figureBrief });
+    expect("figureBrief" in (facts.outline[1] ?? {})).toBe(false);
   });
 
   test("with the empty plan facts: no key ideas, no pitch, an empty misconceptions list", () => {
