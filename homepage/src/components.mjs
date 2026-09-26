@@ -27,9 +27,9 @@ export const escapeHtml = (value = "") =>
 export const arrowIcon = `<svg class="arrow-icon" width="1.15em" height="1.15em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true" focusable="false"><path d="M2 22 22 2M16 2h6v6"/></svg>`;
 // Arrow roles: the diagonal arrow means "into the application", the straight one means "somewhere
 // else on this site". Both are vectors so emoji fonts cannot replace them.
-// The DayBack mark: a yellow sun inside an arrow turning back, the direction of undo. The ring and
+// The DayBack mark: a yellow sun inside an undo arrow, turning back anticlockwise. The ring and
 // the sun are separate so the header can play the rewind on hover.
-export const brandMark = `<svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle class="brand-sun" cx="24" cy="24" r="7.5" fill="#f5c054"/><g class="brand-ring" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M32 10.14A16 16 0 1 0 37.86 32"/><path d="M32.2 34.05 37.86 32l1.04 5.9"/></g></svg>`;
+export const brandMark = `<svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle class="brand-sun" cx="24" cy="25" r="7.5" fill="#f5c054"/><g class="brand-ring" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16.49 10.87A16 16 0 1 0 31.51 10.87" fill="none" stroke-width="4.2"/><path d="M25.07 7.45 35.01 6.84 30.13 16.03Z" fill="currentColor" stroke-width="1.4"/></g></svg>`;
 export const nextIcon = `<svg class="arrow-icon" width="1.15em" height="1.15em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true" focusable="false"><path d="M1 12h21M16 6l6 6-6 6"/></svg>`;
 export const button = (label, route = "/examples/", options = {}) =>
   `<a class="button ${options.secondary ? "button-secondary" : ""}" href="${options.external ? route : href(route)}">${label}<span aria-hidden="true">${options.app ? arrowIcon : nextIcon}</span></a>`;

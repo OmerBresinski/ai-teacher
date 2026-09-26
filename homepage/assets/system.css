@@ -279,7 +279,7 @@ img {
 .brand-ring,
 .brand-sun {
   transform-box: view-box;
-  transform-origin: 24px 24px;
+  transform-origin: 24px 25px;
 }
 /* Hovering the name plays the mark: the arrow turns back once and the sun swells. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
