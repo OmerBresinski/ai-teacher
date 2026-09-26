@@ -53,7 +53,13 @@ describe("a content slide's photo brief (look/image-slot)", () => {
   test("an explain or a list takes it as the photo hint", () => {
     expect(photoStructure(entry, explain, logger, "generate", 3)).toEqual({
       photo: { subject: "Roman fort", mustShow: ["gate"] },
+      slotSide: "left",
     });
+    // Photo slides alternate sides: the second photo entry of the lesson takes the right.
+    const outline = [entry, { ...entry }, entry];
+    expect(photoStructure(outline[1], explain, logger, "generate", 3, outline).slotSide).toBe(
+      "right",
+    );
     expect(
       photoStructure({ ...entry, imageBrief: undefined }, explain, logger, "generate", 3),
     ).toEqual({});

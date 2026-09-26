@@ -22,6 +22,7 @@ import {
   PLACEHOLDER_IMAGE,
   photoDropped,
   type SlideSpec,
+  type SlotSide,
   type SpecSchemaOptions,
   shapeFallback,
 } from "@tj/slides";
@@ -458,7 +459,8 @@ export function photoStructure(
   logger: PipelineDeps["logger"],
   stage: "generate" | "repair",
   index: number,
-): { photo?: PhotoBrief } {
+  outline: readonly OutlineEntry[] = [],
+): { photo?: PhotoBrief; slotSide?: SlotSide } {
   const brief = entry?.kind === "content" ? entry.imageBrief : undefined;
   if (!brief) return {};
   const photo = { subject: brief.subject, mustShow: brief.mustShow };
@@ -470,5 +472,11 @@ export function photoStructure(
     );
     return {};
   }
-  return { photo };
+  // Photo slides alternate sides over the lesson, left first (`@tj/slides` alternateSlotSides):
+  // the side is the count of photo entries before this one, so a rerun or a repair lands the same.
+  const at = entry ? outline.indexOf(entry) : -1;
+  const before = outline
+    .slice(0, Math.max(0, at))
+    .filter((e) => e.kind === "content" && e.imageBrief);
+  return { photo, slotSide: before.length % 2 === 0 ? "left" : "right" };
 }

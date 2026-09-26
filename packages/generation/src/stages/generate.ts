@@ -302,7 +302,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         terms: builtFrom.vocabulary.map((v) => v.term),
         glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
         deck: deckOf(lesson),
-        ...photoStructure(entry, spec, deps.logger, "generate", i),
+        ...photoStructure(entry, spec, deps.logger, "generate", i, builtFrom.outline),
       },
     );
     const slide = slides[0] as Slide;
