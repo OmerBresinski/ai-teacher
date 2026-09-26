@@ -1,0 +1,47 @@
+{
+  "year": "Year 2",
+  "subject": "maths",
+  "title": "Halves and quarters",
+  "brief": "Year 2 maths, halves and quarters",
+  "provisional": true,
+  "slides": [
+    {
+      "src": "slides/01.png",
+      "alt": "Slide 1, title: Halves and quarters. Year 2 maths. How do we share a whole into equal parts? A circle with one quarter shaded labelled one quarter, and a rectangle with one half shaded labelled one half."
+    },
+    {
+      "src": "slides/02.png",
+      "alt": "Slide 2: Equal parts. When we split a whole into fractions, every part must be the same size. A square split down the middle into two equal parts, marked with a tick, and a square split into two different sized parts, marked with a cross."
+    },
+    {
+      "src": "slides/03.png",
+      "alt": "Slide 3: One half. A half is one of two equal parts, written as one over two. A circle and a rectangle, each split into two equal parts with one part shaded."
+    },
+    {
+      "src": "slides/04.png",
+      "alt": "Slide 4: One quarter. A quarter is one of four equal parts, written as one over four. Two quarters make one half and four quarters make one whole. A square and a circle, each split into four equal parts with one part shaded."
+    },
+    {
+      "src": "slides/05.png",
+      "alt": "Slide 5: Halves and quarters of a number. Eight counters shared into two equal groups of four: half of 8 is 4. Eight counters shared into four equal groups of two: a quarter of 8 is 2."
+    },
+    {
+      "src": "slides/06.png",
+      "alt": "Slide 6: Your turn. Which shapes show one half? A circle split down the middle (A), a rectangle split into two unequal parts (B) and a triangle split down the middle (C). What is half of 10? What is a quarter of 12?"
+    }
+  ],
+  "worksheet": {
+    "pages": [
+      {
+        "src": "worksheet/01.png",
+        "alt": "Worksheet for Halves and quarters, with space for name, class and date and four questions: shade one half of a square, a circle and a rectangle; circle the shapes split into quarters; fill in half of 10, half of 6, a quarter of 8 and a quarter of 12; and say whether two pieces of a sandwich are always halves."
+      }
+    ],
+    "answers": [
+      {
+        "src": "answers/01.png",
+        "alt": "Answer key for Halves and quarters: one of two equal parts shaded in each shape; the square and circle split into four equal parts are circled; half of 10 is 5, half of 6 is 3, a quarter of 8 is 2, a quarter of 12 is 3; the pieces are only halves if they are the same size."
+      }
+    ]
+  }
+}

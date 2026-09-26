@@ -137,7 +137,10 @@ img {
 /* Two cream sections in a row are separated by a rule on the grid, not a new colour. */
 .section-ruled > .container {
   border-top: 1px solid var(--line);
-  padding-top: var(--section);
+  padding-top: calc(var(--section) * 0.75);
+}
+.section:has(+ .section-ruled) {
+  padding-bottom: calc(var(--section) * 0.75);
 }
 .section-ruled {
   padding-top: 0;
@@ -344,7 +347,7 @@ img {
 .closing-inner {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 4rem;
 }
 .closing-inner > div:first-child {
@@ -358,7 +361,8 @@ img {
   max-width: 39rem;
 }
 .closing-inner .site-character {
-  flex: 0 0 170px;
+  flex: 0 0 200px;
+  margin-right: clamp(0rem, 6vw, 6rem);
 }
 .site-footer {
   padding: 4rem 0 1.5rem;
@@ -525,9 +529,9 @@ img {
   .closing-inner {
     display: block;
   }
+  /* On a phone the closing block is the words and the button; the character would float alone. */
   .closing-inner .site-character {
-    width: 140px;
-    margin: 1.5rem auto 0;
+    display: none;
   }
   .footer-top {
     grid-template-columns: 1fr 1fr;

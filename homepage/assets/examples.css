@@ -1,183 +1,308 @@
-.ex-lesson-head {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 55px 32px 42px;
-}
-.ex-back {
-  display: inline-block;
-  margin-bottom: 42px;
-  color: inherit;
-  font-size: 16px;
-}
-.ex-lesson-head h1 {
-  font-size: clamp(42px, 6vw, 72px);
-  letter-spacing: -0.045em;
-  line-height: 1.04;
-  margin: 18px 0 24px;
-  max-width: 850px;
-}
-.ex-lesson-head > p:not(.eyebrow) {
-  max-width: 650px;
-  font-size: 21px;
-  line-height: 1.5;
-}
+/* Top lessons: the lesson card grid (index and home) and the lesson page. Lessons are exported
+   images read from a manifest, not authored markup. */
 
-@media (max-width: 650px) {
-  .ex-lesson-head {
-    padding: 32px 20px;
-  }
-  .ex-back {
-    margin-bottom: 28px;
-  }
+/* ---- Lesson cards ---- */
+/* Images inside controls and pages, declared first so later state rules win. */
+.viewer-step > span {
+  display: inline-flex;
 }
-@media print {
-  body.ex-printing > * {
-    display: none !important;
-  }
-  body.ex-printing main {
-    display: block !important;
-  }
-  body.ex-printing main > * {
-    display: none !important;
-  }
-  body.ex-printing .ex-workspace {
-    display: block !important;
-    padding: 0;
-    max-width: none;
-  }
-  body.ex-printing .ex-workspace > * {
-    display: none !important;
-  }
-  body.ex-printing .ex-panel.ex-print-target {
-    display: block !important;
-    padding: 0;
-  }
-  body.ex-printing .ex-print {
-    display: none !important;
-  }
-  body.ex-printing {
-    background: white !important;
-    color: black !important;
-  }
-  body.ex-printing .ex-questions li {
-    break-inside: avoid;
-  }
-  body.ex-printing .ex-answer-key li {
-    break-inside: avoid;
-  }
-  body.ex-printing .ex-panel-heading {
-    font-size: 25px;
-    margin-bottom: 20px;
-  }
-  body.ex-printing .ex-answer-space {
-    height: 65px;
-    border-bottom: 1px solid #aaa;
-    background: none;
-  }
-  body.ex-printing .ex-print-head p {
-    font-size: 17px;
-  }
-  body.ex-printing .ex-questions li,
-  body.ex-printing .ex-answer-key p {
-    font-size: 15px;
-  }
-  body.ex-printing .ex-word-bank {
-    break-inside: avoid;
-  }
-}
-
-/* Example lessons are exported images read from a manifest, not authored markup. */
-.ex-index-head {
-  max-width: 1160px;
-  margin: auto;
-  padding: 74px 32px 0;
-}
-.ex-index-head h1 {
-  font-size: clamp(40px, 5vw, 72px);
-  line-height: 1.04;
-  letter-spacing: -0.035em;
-  margin: 0;
-}
-.ex-index-head .lead {
-  max-width: 640px;
-  margin: 20px 0 0;
-}
-.ex-index-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 46px;
-  max-width: 1160px;
-  margin: auto;
-  padding: 46px 32px 80px;
-}
-.ex-index-card {
-  min-width: 0;
-}
-.ex-index-shot {
-  display: block;
-  border: 1px solid #d5dbce;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--paper, #fffef8);
-}
-.ex-index-shot img {
+.viewer-thumb img {
   display: block;
   width: 100%;
-  height: auto;
 }
-.ex-index-brief {
-  margin: 20px 0 14px;
-  font-size: 19px;
-  line-height: 1.5;
+.paper-page img {
+  display: block;
+  width: 100%;
+  border: 1px solid rgb(41 59 50 / 0.12);
+  border-radius: var(--radius-paper);
+  background: white;
+  box-shadow: 0 20px 40px -26px rgb(41 59 50 / 0.45);
 }
-.ex-index-card h2 {
-  font-size: 27px;
+.lesson-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(2rem, 3vw, 2.5rem) clamp(1.25rem, 2vw, 1.75rem);
+}
+.lesson-card > a {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  text-decoration: none;
+  border-radius: var(--radius-card);
+}
+.lesson-card-cover {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgb(41 59 50 / 0.14);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--paper);
+  transition:
+    transform 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+.lesson-card-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lesson-card-meta {
+  margin-top: 1.1rem;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lesson-card-title {
+  margin-top: 0.4rem;
+  font-size: 1.375rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  margin: 6px 0 8px;
-}
-.ex-index-card h2 a {
-  color: inherit;
-  text-decoration: none;
-}
-.ex-index-card h2 a:hover {
   text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
   text-underline-offset: 5px;
+  transition: text-decoration-color 0.2s;
 }
-.ex-material {
-  max-width: 1160px;
-  margin: auto;
-  padding: 0 32px 56px;
+.lesson-card-materials {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: var(--muted);
 }
-.ex-material > h2 {
-  font-size: 30px;
-  letter-spacing: -0.02em;
-  margin: 0 0 22px;
-  padding-top: 26px;
-  border-top: 2px solid #d5dbce;
+.lesson-card > a:hover .lesson-card-cover,
+.lesson-card > a:focus-visible .lesson-card-cover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px -14px rgb(41 59 50 / 0.45);
 }
-.ex-shots {
-  display: grid;
-  gap: 26px;
-}
-.ex-shots figure {
-  margin: 0;
-  border: 1px solid #d5dbce;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--paper, #fffef8);
-}
-.ex-shots img {
-  display: block;
-  width: 100%;
-  height: auto;
+.lesson-card > a:hover .lesson-card-title,
+.lesson-card > a:focus-visible .lesson-card-title {
+  text-decoration-color: currentColor;
 }
 
-@media (max-width: 720px) {
-  .ex-index-head,
-  .ex-index-grid,
-  .ex-material {
-    padding-left: 22px;
-    padding-right: 22px;
+/* ---- Lesson page ---- */
+.lesson-back {
+  margin-bottom: 1.25rem;
+}
+.lesson-back > span {
+  transform: scaleX(-1);
+}
+.lesson-back:hover > span {
+  transform: scaleX(-1) translateX(3px);
+}
+.lesson-head h1 {
+  font-size: clamp(2.5rem, 4.6vw, 4.25rem);
+  max-width: 20ch;
+}
+.lesson-materials {
+  margin-top: 1.1rem;
+  font-size: var(--text-lead);
+  color: var(--muted);
+}
+.lesson-subhead {
+  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+
+/* Slides. Without JavaScript every slide is visible in a grid. */
+.viewer-slides {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+.viewer-slide img {
+  display: block;
+  width: 100%;
+  border: 1px solid rgb(41 59 50 / 0.14);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+}
+/* With JavaScript: one stage slide and a thumbnail strip. */
+.viewer[data-enhanced] .viewer-slides {
+  display: block;
+}
+.viewer[data-enhanced] .viewer-slide:not(.is-current) {
+  display: none;
+}
+.viewer[data-enhanced] .viewer-slide img {
+  box-shadow: 0 24px 50px -30px rgb(41 59 50 / 0.5);
+}
+.viewer-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin-top: 1.5rem;
+}
+.viewer-status {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.viewer-steps {
+  display: flex;
+  gap: 0.6rem;
+}
+.viewer-step {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--control-border);
+  border-radius: 50%;
+  background: var(--paper);
+  font-size: 1.3rem;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.viewer-step:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+.viewer-flip {
+  transform: scaleX(-1);
+}
+/* The strip pads for the focus ring and pulls back so thumbnails sit on the grid edge. */
+.viewer-thumbs {
+  grid-column: 1 / -1;
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 5 * 0.75rem) / 6);
+  gap: 0.75rem;
+  overflow-x: auto;
+  margin: -9px;
+  padding: 9px;
+  scrollbar-width: thin;
+}
+.viewer-thumb {
+  display: block;
+  padding: 0;
+  border: 1px solid rgb(41 59 50 / 0.14);
+  border-radius: var(--radius);
+  background: var(--paper);
+  overflow: hidden;
+  opacity: 0.62;
+  transition:
+    opacity 0.2s,
+    box-shadow 0.2s;
+}
+.viewer-thumb:hover {
+  opacity: 1;
+}
+.viewer-thumb[aria-current="true"] {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px var(--cream),
+    0 0 0 4px var(--ink);
+}
+
+/* Worksheet and answer key: paper pages side by side. */
+.lesson-papers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(2rem, 4vw, 3.5rem);
+  align-items: start;
+}
+.paper-page {
+  margin: 0;
+}
+.paper-page + .paper-page {
+  margin-top: 1.5rem;
+}
+.lesson-answers > summary {
+  list-style: none;
+}
+.lesson-answers > summary::-webkit-details-marker {
+  display: none;
+}
+/* Closed, the answer key is a covered page the same size as the worksheet beside it. */
+.lesson-answers:not([open]) > summary {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1240 / 1754;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-paper);
+  /* Faint ruled lines: a page turned over, not an empty box. */
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 34px, rgb(41 59 50 / 0.06) 34px 35px),
+    var(--sage);
+  cursor: pointer;
+}
+.lesson-answers-show {
+  display: inline-flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0.9rem 1.5rem;
+  border-radius: 99px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.lesson-answers > summary:hover .lesson-answers-show {
+  background: #405347;
+}
+.lesson-answers-hide {
+  display: none;
+}
+/* Open, "Hide" moves up to the heading line so both pages still start at the same height. */
+.lesson-paper-col {
+  position: relative;
+}
+.lesson-answers[open] > summary {
+  position: absolute;
+  top: -0.35rem;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.lesson-answers[open] > summary > .lesson-answers-show {
+  display: none;
+}
+.lesson-answers[open] .lesson-answers-hide {
+  display: inline;
+}
+
+@media (max-width: 1100px) {
+  .lesson-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .viewer-slides {
+    grid-template-columns: 1fr;
+  }
+  .viewer-thumbs {
+    grid-auto-columns: 30%;
+  }
+  .lesson-papers {
+    grid-template-columns: 1fr;
+  }
+  /* Stacked, a covered full page would only be empty space. */
+  .lesson-answers:not([open]) > summary {
+    aspect-ratio: auto;
+    padding-block: 2.5rem;
+  }
+}
+@media (max-width: 560px) {
+  .lesson-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,10 +1,10 @@
-import { contactEmail, href, legalEntity } from "../components.mjs";
+import { contactEmail, href, legalEntity, pageHero } from "../components.mjs";
 
 const page = (route, title, description, body) => ({ route, title, description, body });
 const mail = `<a href="mailto:${contactEmail}">${contactEmail}</a>`;
 const updated = "13 September 2026";
 const reading = (body) =>
-  `<section class="page-hero container"><div><h1>${body.heading}</h1>${body.lead ? `<p class="lead">${body.lead}</p>` : ""}</div></section><section class="section container reading">${body.content}</section>`;
+  `${pageHero({ title: body.heading, description: body.lead })}<section class="section container reading">${body.content}</section>`;
 const table = (headings, rows) =>
   `<div class="reading-table"><table><thead><tr>${headings.map((h) => `<th scope="col">${h}</th>`).join("")}</tr></thead><tbody>${rows
     .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`)
@@ -99,7 +99,7 @@ ${table(
     ],
     [
       "Amazon Web Services (Amazon Bedrock)",
-      "Runs the AI models that write your lesson. We use OpenAI GPT-5.6 models through Bedrock",
+      "Runs the AI models that write your lesson. We use OpenAI’s GPT models through Bedrock",
       "United States (us-east-1)",
     ],
     ["Resend", "Sends your sign-in link and any service email", "European Union region"],
@@ -224,10 +224,10 @@ const terms = page(
 const cookies = page(
   "/cookies/",
   "Cookie notice | DayBack",
-  "DayBack uses one cookie, the one that keeps you signed in. No analytics cookies, no advertising cookies, no third-party cookies.",
+  "DayBack uses only the cookies that keep you signed in. No analytics cookies, no advertising cookies, no third-party cookies.",
   reading({
     heading: "Cookie notice.",
-    lead: "DayBack uses one cookie. It is the cookie that keeps you signed in.",
+    lead: "DayBack uses two cookies. Both keep you signed in.",
     content: `
 ${table(
   ["Cookie", "Purpose", "Set by", "Lasts"],
@@ -238,12 +238,18 @@ ${table(
       "DayBack",
       "7 days, refreshed while you use DayBack",
     ],
+    [
+      "<code>tj.session_data</code>",
+      "A signed copy of your session, so pages do not look it up on every request",
+      "DayBack",
+      "5 minutes",
+    ],
   ],
 )}
-<p>It is set when you follow your sign-in link, it is marked <code>SameSite=Lax</code> so it is not sent from other websites, and it holds nothing except your session. It is essential to the service, so there is no consent banner to click.</p>
+<p>Both are set when you follow your sign-in link, both are marked <code>SameSite=Lax</code> so they are not sent from other websites, and they hold nothing except your session. They are essential to the service, so there is no consent banner to click.</p>
 <p><strong>No analytics cookies. No advertising cookies. No tracking pixels. No third-party cookies.</strong></p>
 <p>We do measure how quickly pages load, using Vercel Speed Insights. It reports Core Web Vitals: how fast the page appeared, how soon it responded, whether it moved about while loading. <strong>It sets no cookie and does not identify you or follow you between sites.</strong></p>
-<p><strong>To clear the cookie:</strong> sign out, or clear cookies for this site in your browser settings. You will simply need a new sign-in link next time.</p>
+<p><strong>To clear them:</strong> sign out, or clear cookies for this site in your browser settings. You will simply need a new sign-in link next time.</p>
 <p>Questions: ${mail}.</p>
 <p><strong>Last updated: ${updated}</strong></p>`,
   }),

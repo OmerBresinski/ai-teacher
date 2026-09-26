@@ -32,40 +32,54 @@ Ink/cream contrast is approximately 11.28:1; muted/cream 6.32:1. Illustration ac
 - Sections: 64–112px. Main container: 1200px / 88% viewport. Two-column blocks collapse to one column on mobile.
 - Shape roles: paper 3px, control 6px, card 12px, pill actions. Character outline shapes remain original artwork.
 
+## Grid and rhythm
+
+One grid for every page: `.container` is at most 1200px wide with a `--gutter` on each side, so
+the header, every section, every page title and the footer share one left edge. Reading text is
+capped at `--measure` (44rem) on that same edge, never centred in its own column. Sections use
+`.section` for vertical rhythm; `tone-sage` and `tone-sand` are the only band colours, and two
+cream sections in a row are separated by `section-ruled`, a rule on the grid.
+
 ## Components
 
-`button(label, route, {secondary})`: one dark primary action and an understated text secondary action. `appButton(label, path)` is the same control pointing into the application. Creating a lesson is the main action everywhere.
+`sectionHead({id, eyebrow, title, lede})`: how every section opens. Left-aligned, one H2.
 
-`character(kind, {className})`: original Plan (`support` SVG key), Slides, Worksheet (`activity` key), Check (`answers` SVG key). Passive wrappers are hidden from assistive technology; surrounding meaningful links carry names. Hover and keyboard focus trigger signature gestures when interactive.
+`button(label, route, {secondary})`, `appButton(label, path)`, `createButton(home)` and
+`textLink(label, route)`. Creating a lesson is the one primary action. Arrow roles are fixed: the
+diagonal arrow goes into the application, the straight arrow stays on this site.
 
-`pageHero({eyebrow,title,description,character,actions})`: one H1, brief explanation, optional relevant character. No mandatory character on text-heavy or form pages.
+`character(kind, {className})`: original Plan (`support` SVG key), Slides, Worksheet (`activity`
+key), Check (`answers` SVG key). Passive wrappers are hidden from assistive technology.
 
-`split({eyebrow,title,body,visual,reverse,tone})`: one idea with material proof. Alternate direction for reading rhythm; keep images tied to the claim.
+`pageHero({eyebrow,title,description,character,actions})`: one H1, brief explanation, optional
+character. No mandatory character on text-heavy pages.
 
-`cta({title,body,actions})`: warm closing section with one Check character. Title, body and actions are always supplied so the closing action never links to the page it sits on.
+`cta({home, secondary})`: the one closing invitation, identical wherever it appears ("Start with
+the lesson you’re teaching tomorrow."), with the Check character.
 
-Other system parts: mobile disclosure navigation, FAQ details, the hero topic form with its upload link and tooltip, the example image galleries with the answer-key disclosure, reading-column pages and scrolling policy tables.
+`lessonCard` / `lessonGrid` (`src/lesson-card.mjs`): a Top lesson as one link with its cover slide.
 
-## Blocks and composition
+`faqList(items)` and `faqs` (`src/pages/information.mjs`): the one FAQ source. Home shows the
+items marked `home`; /help/ shows all of them.
 
-1. Grounded hero with the original four-character team behind the topic form. The form is a real
-   `GET` into the application, so it works with JavaScript disabled.
-2. Example lessons: one slide image per lesson, its brief and a link to the lesson page. Both the
-   heading and the count come from the manifests the build actually emitted.
-3. Three steps, one line each: say what you are teaching, get the whole lesson checked, make it
-   yours.
-4. Teacher control, then five short FAQ answers with a link to the full set.
-5. Closing invitation back to the topic form.
+## Home composition
 
-The site sells one flow: a brief in, a whole lesson out, edit, present or export. Example lesson
-pages are image galleries read from a manifest, with the answer key behind a disclosure.
-Information and policy pages use the reading layout; wide policy tables scroll inside their own
-column so the page never does.
+1. Hero: the four-character team behind the topic form (a real `GET` into the application).
+2. Proof: one idea travelling from a slide to a worksheet question to its answer, drawn as
+   illustration, not a screenshot. It renders finished; `proof.js` replays it once on scroll.
+3. Top lessons: up to four lesson cards read from the manifests.
+4. How it works: three steps, one line each.
+5. Questions teachers ask: the home FAQ items, heading on the left.
+6. The closing invitation, back to the form.
+
+The one tagline is the hero line, "Outstanding lessons. Without losing your evening." The footer
+repeats it; no other slogans.
 
 ## Motion
 
 The original cast rig supplies independent ambient behaviours and one signature per character.
 Marketing adds a quiet body-life layer and signatures soften it. Offscreen actors stop, and a
-reduced-motion preference suppresses animation. There is no manual pause control. One full team is
+reduced-motion preference suppresses animation. There is no manual pause control. The proof replay is transitions only; with reduced motion or
+without JavaScript the finished state is shown. One full team is
 enough per page; isolated characters accompany specific material context. The hero cast is
 ambient art: plan, slides, worksheet and check.

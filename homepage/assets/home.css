@@ -1,155 +1,307 @@
 @import "./hero.css";
 
-/* DayBack home blocks. Layout and artwork use the shared type/palette system. */
-.hm-hero {
-  max-width: 1280px;
-  margin: auto;
-  padding: 66px 32px 70px;
-  text-align: center;
+/* Home sections below the hero. Grid, section rhythm and headings come from system.css. */
+
+.hm-head-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem 3rem;
+  flex-wrap: wrap;
+  margin-bottom: clamp(2.5rem, 4vw, 3.5rem);
+}
+.hm-head-row .section-head {
+  margin-bottom: 0;
 }
 
-.hm-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 20px;
-  min-height: 48px;
-  text-decoration: underline;
-  text-underline-offset: 6px;
-  font-size: 17px;
-  font-weight: 500;
-}
-.hm-link span {
-  font-size: 23px;
-}
-
-/* Launch home blocks: example lessons, the three steps, teacher control and the short FAQ. */
-.hm-examples,
-.hm-steps,
-.hm-faq {
-  max-width: 1160px;
-  margin: auto;
-  padding: 78px 32px;
-}
-.hm-examples {
-  background: #e9efdf;
-  max-width: none;
-  padding: 78px max(24px, calc((100% - 1160px) / 2));
-}
-.hm-examples-heading h2,
-.hm-steps-heading h2 {
-  font-size: clamp(34px, 4vw, 56px);
-  line-height: 1.06;
-  letter-spacing: -0.03em;
-  margin: 12px 0 0;
-}
-.hm-examples-heading p,
-.hm-steps-heading p {
-  max-width: 620px;
-  margin: 18px 0 0;
-  font-size: 20px;
-  line-height: 1.5;
-  color: var(--muted, #526052);
-}
-.hm-example-list {
+/* Proof: one idea travelling from the slide to the worksheet to the answer key. */
+.proof-stage {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 40px;
-  margin-top: 46px;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: stretch;
 }
-.hm-example-card {
+.proof-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+.proof-links path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.proof-item {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   min-width: 0;
 }
-.hm-example-shot {
+/* All three materials share one height, set by the slide's 16:10 shape. */
+.proof-art {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4.5rem;
+}
+.proof-art > :first-child {
+  flex: 1;
+}
+.proof-character {
+  position: absolute;
+  bottom: -0.35rem;
+  left: -0.75rem;
+  width: 118px;
+  z-index: 3;
+}
+.proof-key .proof-character,
+.proof-sheet .proof-character {
+  left: auto;
+  right: -0.75rem;
+}
+.proof-slide-card {
+  aspect-ratio: 16 / 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  border-top: 8px solid var(--yellow);
+  box-shadow:
+    0 1px 0 rgb(41 59 50 / 0.08),
+    0 18px 40px -24px rgb(41 59 50 / 0.35);
+  text-align: center;
+}
+.proof-paper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.6rem 1.5rem;
+  border-radius: var(--radius-paper);
+  background: var(--paper);
+  box-shadow:
+    0 1px 0 rgb(41 59 50 / 0.08),
+    0 18px 40px -24px rgb(41 59 50 / 0.35);
+}
+.proof-sheet .proof-paper {
+  border-top: 8px solid var(--sage-dark);
+}
+.proof-paper-key {
+  border-top: 8px solid var(--salmon);
+}
+.proof-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.proof-title {
+  font-size: clamp(1.15rem, 1.7vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.proof-diagram {
+  width: min(220px, 80%);
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.proof-desk {
+  fill: var(--sage);
+}
+.proof-ruler {
+  stroke-width: 4;
+}
+.proof-ghost {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+.proof-waves {
+  stroke: #c98a1c;
+}
+.proof-line,
+.proof-question {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.proof-dim {
+  color: var(--muted);
+}
+.proof-write {
   display: block;
-  border: 1px solid #d5dbce;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--paper, #fffef8);
+  height: 1px;
+  margin: -0.2rem 0 0.4rem;
+  background: var(--line);
 }
-.hm-example-shot img {
-  display: block;
-  width: 100%;
-  height: auto;
+.proof-stage mark {
+  color: inherit;
+  padding: 0.05em 0.2em;
+  border-radius: 3px;
+  background: linear-gradient(transparent 12%, rgb(245 192 84 / 0.7) 12% 88%, transparent 88%)
+    no-repeat;
+  background-size: 100% 100%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
-.hm-example-brief {
-  margin: 20px 0 6px;
-  font-size: 19px;
-  line-height: 1.5;
+.proof-item figcaption {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  padding-top: 1.1rem;
+  border-top: 1px solid rgb(41 59 50 / 0.2);
+  font-size: 1.15rem;
+  font-weight: 500;
 }
-.hm-example-caption {
-  margin: 0 0 14px;
-  font-size: 16px;
-  color: var(--muted, #526052);
+.proof-item figcaption span {
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
 }
+.proof-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: clamp(2rem, 4vw, 3rem);
+  padding: 0.7rem 1.2rem 0.7rem 0.8rem;
+  border-radius: 99px;
+  background: var(--paper);
+  font-size: 1rem;
+  font-weight: 500;
+}
+.proof-verdict span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 0.9rem;
+}
+
+/* The replay. Without JavaScript, or with reduced motion, the finished state above is all there is. */
+.proof-armed .proof-item {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s var(--ease),
+    transform 0.6s var(--ease);
+}
+.proof-armed mark {
+  background-size: 0% 100%;
+  transition: background-size 0.7s var(--ease);
+}
+.proof-armed .proof-links path {
+  transition: stroke-dashoffset 0.9s var(--ease);
+}
+/* The verdict is revealed by a wipe, not a fade, so its text never sits at low contrast. */
+.proof-armed + .proof-verdict {
+  clip-path: inset(0 100% 0 0 round 99px);
+  transition: clip-path 0.7s var(--ease);
+}
+.proof-armed .proof-item.is-in {
+  opacity: 1;
+  transform: none;
+}
+.proof-armed mark.is-on {
+  background-size: 100% 100%;
+}
+.proof-armed + .proof-verdict.is-in {
+  clip-path: inset(0 0 0 0 round 99px);
+}
+.proof-character.is-cheering {
+  animation: proof-hop 0.7s var(--ease);
+}
+@keyframes proof-hop {
+  40% {
+    transform: translateY(-12px) rotate(-4deg);
+  }
+  70% {
+    transform: translateY(0) rotate(2deg);
+  }
+}
+
+/* How it works. */
 .hm-step-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-  gap: 40px;
-  margin: 46px 0 0;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1.5rem, 4vw, 4rem);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 .hm-step-list li {
   min-width: 0;
-  padding-top: 22px;
-  border-top: 2px solid #d5dbce;
 }
 .hm-step-number {
   display: block;
-  font-size: 15px;
+  font-size: 0.8rem;
   letter-spacing: 0.12em;
-  color: var(--muted, #526052);
+  color: var(--muted);
 }
 .hm-step-list h3 {
-  font-size: 25px;
-  line-height: 1.2;
+  font-size: 1.5rem;
   letter-spacing: -0.02em;
-  margin: 12px 0 10px;
+  margin: 0.75rem 0 0.6rem;
 }
 .hm-step-list p {
-  margin: 0;
-  font-size: 18px;
+  color: var(--muted);
   line-height: 1.6;
-  color: var(--muted, #526052);
 }
-.hm-control {
-  padding: 70px 32px;
-  background: var(--sage, #e5ecd8);
+
+/* FAQ: heading on the left, answers on the right. */
+.hm-faq-grid {
+  display: grid;
+  grid-template-columns: 5fr 7fr;
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: start;
 }
-.hm-control > div {
-  max-width: 720px;
-  margin: auto;
-  text-align: center;
+.hm-faq-grid .section-head {
+  margin-bottom: 1rem;
 }
-.hm-control h3 {
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  margin: 0 0 18px;
-}
-.hm-control p {
-  margin: 0 0 8px;
-  font-size: 20px;
-  line-height: 1.55;
-}
-.hm-faq h2 {
-  font-size: clamp(30px, 3.4vw, 46px);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-  margin: 0 0 30px;
-}
-.hm-faq .info-faq {
+.hm-faq-grid .info-faq {
   max-width: none;
+  margin: 0;
   padding: 0;
 }
-.hm-faq .hm-link {
-  margin-top: 26px;
+
+@media (max-width: 950px) {
+  .proof-stage {
+    grid-template-columns: 1fr 1fr;
+  }
+  .proof-slide {
+    grid-column: 1 / -1;
+    max-width: 34rem;
+  }
+  .hm-faq-grid {
+    grid-template-columns: 1fr;
+  }
 }
-@media (max-width: 720px) {
-  .hm-examples,
-  .hm-steps,
-  .hm-control,
-  .hm-faq {
-    padding: 52px 22px;
+@media (max-width: 760px) {
+  .proof-stage {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  .proof-character {
+    width: 96px;
+  }
+  .hm-step-list {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }

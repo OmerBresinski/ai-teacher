@@ -1,0 +1,47 @@
+{
+  "year": "Year 8",
+  "subject": "history",
+  "title": "Why did the First World War start?",
+  "brief": "Year 8 history, why did the First World War start?",
+  "provisional": true,
+  "slides": [
+    {
+      "src": "slides/01.png",
+      "alt": "Slide 1, title: Why did the First World War start? Year 8 history. Enquiry: which cause mattered most in the summer of 1914? A row of falling dominoes above the year 1914."
+    },
+    {
+      "src": "slides/02.png",
+      "alt": "Slide 2: Long-term causes, M.A.I.N. Militarism: great powers built up huge armies and navies, and Britain and Germany raced to build battleships. Alliances: Europe split into two armed groups. Imperialism: rivalry for colonies and trade bred distrust. Nationalism: pride in one’s nation, and Slav groups in the Balkans wanting independence."
+    },
+    {
+      "src": "slides/03.png",
+      "alt": "Slide 3: Two alliance systems. The Triple Entente of Britain, France and Russia, and the Triple Alliance of Germany, Austria-Hungary and Italy. Dotted lines link Russia to Serbia, which it saw itself as protecting, and Britain to Belgium, which it had promised in 1839 to protect."
+    },
+    {
+      "src": "slides/04.png",
+      "alt": "Slide 4: The spark, Sarajevo, 28 June 1914. Archduke Franz Ferdinand, heir to the throne of Austria-Hungary, and his wife Sophie were shot dead in Sarajevo, Bosnia, by Gavrilo Princip, a Bosnian Serb nationalist who wanted Bosnia free of Austria-Hungary."
+    },
+    {
+      "src": "slides/05.png",
+      "alt": "Slide 5: Six weeks from assassination to world war. A timeline: 28 June, Franz Ferdinand assassinated; 28 July, Austria-Hungary declares war on Serbia; 30 July, Russia mobilises its army; 1 August, Germany declares war on Russia; 3 August, Germany declares war on France; 4 August, Germany invades Belgium and Britain declares war on Germany."
+    },
+    {
+      "src": "slides/06.png",
+      "alt": "Slide 6: Your judgement. Which cause mattered most? Place militarism, alliances, imperialism, nationalism and the assassination on a line from most to least important, then explain your top choice in a paragraph starting ‘The most important cause was … because …’."
+    }
+  ],
+  "worksheet": {
+    "pages": [
+      {
+        "src": "worksheet/01.png",
+        "alt": "Worksheet for Why did the First World War start?, with space for name, class and date and five questions: what M.A.I.N. stands for; the three countries of the Triple Entente; who was assassinated in Sarajevo and by whom; put four events of July and August 1914 in order; and how far the alliance system explains why a local crisis became a world war."
+      }
+    ],
+    "answers": [
+      {
+        "src": "answers/01.png",
+        "alt": "Answer key for Why did the First World War start?: militarism, alliances, imperialism, nationalism; Britain, France and Russia; Archduke Franz Ferdinand, shot by Gavrilo Princip; the order is Austria-Hungary declares war on Serbia, Russia mobilises, Germany declares war on Russia, Britain declares war; guidance for a supported judgement on the alliance system."
+      }
+    ]
+  }
+}

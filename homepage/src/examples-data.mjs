@@ -69,6 +69,9 @@ for (const slug of slugs) {
   }
   examples.push(manifest);
 }
+// Youngest year group first, so the grid reads as a school does; ties fall back to the title.
+const yearNumber = (example) => Number.parseInt(example.year.replace(/\D+/g, ""), 10) || 0;
+examples.sort((a, b) => yearNumber(a) - yearNumber(b) || a.title.localeCompare(b.title));
 
 const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 export const inWords = (count) => words[count] ?? String(count);

@@ -1,7 +1,8 @@
 # DayBack homepage
 
 The DayBack marketing site: independent static HTML/CSS/JavaScript with no backend calls, built
-from `src/` by a small Node/Bun script. It has eleven routes and sells one flow — a brief goes in,
+from `src/` by a small Node/Bun script. It has ten fixed routes plus one page per Top lesson, and
+sells one flow — a brief goes in,
 a whole lesson comes out — and hands the visitor's topic to the application.
 
 ## Commands
@@ -10,7 +11,7 @@ From the repository root:
 
 ```sh
 bun run homepage:dev    # build, check, then http://localhost:4186/homepage/
-bun run homepage:check  # build 11 pages and validate routes, links, assets, anchors and strings
+bun run homepage:check  # build every page and validate routes, links, assets, anchors and strings
 bun run homepage:lint   # root Biome conventions; vendored GSAP excluded
 bun run homepage:stage  # after a web build: copy homepage output into apps/web/dist/homepage
 ```
@@ -27,7 +28,7 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 
 ## Routes
 
-`/`, `/examples/`, one `/examples/<slug>/` per emitted lesson, `/help/` (nav label "FAQ"),
+`/`, `/examples/` (Top lessons), one `/examples/<slug>/` per emitted lesson, `/help/` (nav label "FAQ"),
 `/about/`, `/trust/`, `/privacy/`, `/terms/`, `/cookies/`, `/accessibility/`, `/404/`.
 `check.mjs` asserts that exact set and fails on any reference to a route the launch cut removed.
 
@@ -36,8 +37,9 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 - `src/components.mjs`: shared navigation, footer, characters and page shell, plus `href()` for
   internal links and `appHref()` for links into the application. Decorative diagonal arrows use
   `arrowIcon` SVG artwork so browser emoji fonts cannot replace them.
+- `src/lesson-card.mjs`: the Top lesson card and grid, shared by home and `/examples/`.
 - `src/pages/{home,examples,information,supporting}.mjs`: page copy and markup. `home.mjs` holds
-  the hero form and the home sections, `examples.mjs` renders the lesson pages from manifests,
+  the hero form, the proof illustration and the home sections, `examples.mjs` renders the lesson pages from manifests,
   `information.mjs` the FAQ, about, "AI and your data" and 404 pages, `supporting.mjs` the privacy,
   terms, cookie and accessibility notices.
 - `src/examples-data.mjs`: reads the example manifests and decides which lessons the build emits.
@@ -51,9 +53,9 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 Gabarito's license is in `assets/gabarito-OFL.txt`. Existing CSS specificity and `!important`
 declarations are retained to preserve rendering (Biome reports warnings).
 
-## The example-lesson pipeline
+## The Top lessons pipeline
 
-An example lesson is data, not code. Each lives in `assets/examples/<slug>/` as exported images
+A Top lesson is data, not code. Each lives in `assets/examples/<slug>/` as exported images
 plus a `manifest.json`:
 
 ```json
