@@ -6,6 +6,7 @@ import {
   ACCENT_BAR_NAME,
   accentTint,
   applyLook,
+  HEADING_DISPLAY,
   HEADING_NAME,
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
@@ -13,6 +14,7 @@ import {
 } from "./look";
 import { materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
+import { BODY_NAME, PANEL_NAME, PANEL_TEXT_NAME } from "./structure";
 import { getTheme, THEMES } from "./themes";
 
 const META = { promptVersion: "test", model: "test", at: "2026-09-26T00:00:00.000Z" };
@@ -51,7 +53,7 @@ describe("the lesson look", () => {
       expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
     });
 
-    test(`${theme.id}: a teaching slide takes a tag, a named heading, a lead, a card and the bar`, () => {
+    test(`${theme.id}: a teaching slide takes a tag, a display heading, the two columns and the bar`, () => {
       const slide = materialiseSlide(
         {
           kind: "content",
@@ -67,11 +69,18 @@ describe("the lesson look", () => {
       expect(tag && plain(tag)).toBe("TEACH");
       expect(tag?.y).toBe(SAFE.y);
       const [heading] = named(slide, HEADING_NAME) as TextElement[];
-      expect(heading?.style.fontSize).toBeUndefined();
+      // A short heading is a display line, a third above the theme's heading size.
+      expect(heading?.style.fontSize).toBe(Math.round(theme.sizes.heading * HEADING_DISPLAY));
       expect(heading && tag && heading.y).toBeGreaterThanOrEqual((tag?.y ?? 0) + (tag?.h ?? 0));
-      const [card] = named(slide, KEY_IDEA_NAME) as TextElement[];
-      expect(card && plain(card)).toBe("Waves force air into cracks and squeeze it.");
-      expect(card?.style.background).toBe(accentTint(theme));
+      // No empty right half: the key idea sits on a tinted panel, the rest down the left.
+      const [panel] = named(slide, PANEL_NAME);
+      expect(panel && panel.type === "shape" && panel.fill).toBe(accentTint(theme));
+      const [idea] = named(slide, PANEL_TEXT_NAME) as TextElement[];
+      expect(idea && plain(idea)).toBe("Hydraulic action is erosion by trapped air.");
+      const [rest] = named(slide, BODY_NAME) as TextElement[];
+      expect(rest && plain(rest)).toBe("Waves force air into cracks and squeeze it.");
+      expect((rest?.x ?? 0) + (rest?.w ?? 0)).toBeLessThanOrEqual(panel?.x ?? 0);
+      expect(named(slide, KEY_IDEA_NAME)).toHaveLength(0);
       const [bar] = named(slide, ACCENT_BAR_NAME);
       expect(bar?.y).toBe(SLIDE_H - (bar?.h ?? 0));
       for (const el of slide.elements) {

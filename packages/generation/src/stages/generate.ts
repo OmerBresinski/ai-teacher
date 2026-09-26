@@ -266,7 +266,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       meta(call.modelId),
       deps.ids,
       0,
-      { terms: builtFrom.vocabulary.map((v) => v.term) },
+      {
+        terms: builtFrom.vocabulary.map((v) => v.term),
+        glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
+      },
     );
     return { slide, misses: call.editorialMisses, builtFrom };
   };

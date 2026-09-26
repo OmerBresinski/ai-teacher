@@ -268,6 +268,117 @@ export function withDiagramSlot(
   };
 }
 
+/**
+ * A short heading is set as a display line, as in the examples ("Limiting factors" at about twice
+ * the body): a third above the theme's heading size and tighter leading, when it still takes one
+ * line of the full measure. A longer heading keeps the theme's size, on tighter leading.
+ */
+export const HEADING_DISPLAY = 1.33;
+function headingDisplay(heading: TextElement, t: Theme): { fontSize?: number; lineHeight: number } {
+  const size = Math.round(t.sizes.heading * HEADING_DISPLAY);
+  const words = plain(heading).trim();
+  const measure = measureHeadless(t);
+  const style = { ...heading.style, fontSize: size, lineHeight: 1.08 };
+  const h = measure({
+    doc: heading.doc,
+    width: SAFE.w,
+    style,
+    preset: "heading",
+    inset: 0,
+    chrome: 0,
+  });
+  const oneLine = h <= size * 1.08 * 1.5;
+  return words.split(/\s+/).length <= 7 && oneLine
+    ? { fontSize: size, lineHeight: 1.08 }
+    : { lineHeight: 1.12 };
+}
+
+/* ---------------------------------------------------------------- deck chrome */
+
+export const EYEBROW_NAME = "Eyebrow";
+export const COUNTER_NAME = "Slide counter";
+
+/** What the eyebrow says: the year and the subject, as the examples set them ("YEAR 10 · BIOLOGY"). */
+export type DeckContext = { yearGroup?: string | null; subject?: string | null };
+
+const captionWidth = (label: string, t: Theme) => Math.ceil(label.length * t.sizes.caption * 0.78);
+
+/**
+ * The examples' top line, across a deck: the year and subject in the accent, the kind tag after
+ * them on the same line, and a quiet "7 / 12" at the right. Only a slide with a kind tag takes it
+ * (its lane is free); the cover and the question slides keep their compositions. Re-run after
+ * slides are added, removed or moved: it replaces what it set before, so the counter stays true.
+ */
+export function withDeckChrome(
+  slides: Slide[],
+  t: Theme,
+  deck: DeckContext,
+  ids: Ids = uid,
+): Slide[] {
+  const eyebrow = [deck.yearGroup, deck.subject].filter(Boolean).join(" · ").toUpperCase();
+  const total = slides.length;
+  return slides.map((slide, i) => {
+    const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
+    const els = slide.elements.filter((e) => e.name !== EYEBROW_NAME && e.name !== COUNTER_NAME);
+    if (!tag) return els.length === slide.elements.length ? slide : { ...slide, elements: els };
+    const lane = { y: tag.y, h: tag.h };
+    const added: SlideElement[] = [];
+    let tagX = SAFE.x;
+    if (eyebrow) {
+      const w = captionWidth(eyebrow, t);
+      added.push({
+        id: ids(),
+        type: "text",
+        x: SAFE.x,
+        ...lane,
+        w,
+        name: EYEBROW_NAME,
+        doc: docFromText(eyebrow),
+        style: {
+          preset: "caption",
+          color: t.colors.accent,
+          fontWeight: 700,
+          padding: TAG_PAD_Y,
+          autoHeight: false,
+        },
+      });
+      tagX = SAFE.x + w + SPACE[2];
+    }
+    const counter = `${i + 1} / ${total}`;
+    const cw = captionWidth(counter, t);
+    added.push({
+      id: ids(),
+      type: "text",
+      x: SAFE.x + SAFE.w - cw,
+      ...lane,
+      w: cw,
+      name: COUNTER_NAME,
+      doc: docFromText(counter),
+      style: {
+        preset: "caption",
+        color: t.colors.muted,
+        align: "right",
+        padding: TAG_PAD_Y,
+        autoHeight: false,
+      },
+    });
+    return {
+      ...slide,
+      elements: [...els.map((e) => (e === tag ? { ...e, x: tagX } : e)), ...added],
+    };
+  });
+}
+
+/**
+ * A stored slide without the look's chrome (kind tag, accent bar, eyebrow, counter), for a newer
+ * look to be applied in its place. The named heading stays and marks the slide as headed.
+ */
+export function stripLook(slide: Slide): Slide {
+  const chrome = new Set([KIND_TAG_NAME, ACCENT_BAR_NAME, EYEBROW_NAME, COUNTER_NAME]);
+  if (!slide.elements.some((e) => chrome.has(e.name ?? ""))) return slide;
+  return { ...slide, elements: slide.elements.filter((e) => !chrome.has(e.name ?? "")) };
+}
+
 /** Tint the worked-example card and colour its label, the examples' "worked" panel. */
 function workedCard(els: SlideElement[], t: Theme): SlideElement[] {
   return els.map((e) => {
@@ -320,12 +431,17 @@ export function applyLook(
   // Only a headed slide takes the tag: its hairline's lane pays for it. A question slide's stem and
   // a statement already open at the top of the safe area, and pushing them down would take room
   // their cards need, so they keep their composition and take the accent bar alone.
-  if (!heading || !hadRule) return { ...slide, elements: [...els, accentBar(ids, t, els)] };
+  if (!heading || !(hadRule || heading.name === HEADING_NAME)) {
+    return { ...slide, elements: [...els, accentBar(ids, t, els)] };
+  }
   {
     // The heading drops into the freed lane under the tag. Whatever sat under the rule moves only
     // if the heading's new foot would reach it.
     const style = { ...heading.style };
     delete style.fontSize;
+    delete style.lineHeight;
+    const display = headingDisplay(heading, t);
+    if (display) Object.assign(style, display);
     const next: TextElement = { ...heading, y: want, name: HEADING_NAME, style };
     const foot = next.y + next.h + SPACE[3];
     const below = els.filter(

@@ -82,7 +82,13 @@ export function materialiseSlide(
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
-  const fitted = lookAndFit(slide, getTheme(themeId), ids, structure);
+  // A content spec's short points (a lead and 2–4 items) set as dot bullets beside the panel.
+  const items = (spec as { items?: unknown }).items;
+  const hints =
+    spec.kind === "content" && !structure.items && Array.isArray(items)
+      ? { ...structure, items: items.filter((x): x is string => typeof x === "string") }
+      : structure;
+  const fitted = lookAndFit(slide, getTheme(themeId), ids, hints);
   return { ...fitted, elements: fitted.elements.map((element) => stampElement(element, stamp)) };
 }
 

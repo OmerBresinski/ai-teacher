@@ -2,11 +2,19 @@ import { describe, expect, test } from "bun:test";
 import type { Slide, SlideElement } from "@tj/domain/documents";
 import { chooseVariant } from "./choose-variant";
 import { fitSlide } from "./fit-slide";
-import { DIAGRAM_NAME } from "./look";
+import { SAFE } from "./grid";
+import {
+  COUNTER_NAME,
+  DIAGRAM_NAME,
+  EYEBROW_NAME,
+  HEADING_DISPLAY,
+  KIND_TAG_NAME,
+  withDeckChrome,
+} from "./look";
 import { lookAndFitPages, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { docPlainText, joinSentences, sentences } from "./sentences";
-import { ANSWERS_NAME } from "./structure";
+import { ANSWERS_NAME, BULLET_NAME, ITEM_NAME, PANEL_NAME, PANEL_TEXT_NAME } from "./structure";
 import { getTheme } from "./themes";
 
 const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
@@ -282,4 +290,86 @@ test("an answers slide's card is measured for its own words, inside the safe are
     if (!panel || panel.revealStep) continue;
     expect(panel.y + panel.h).toBeLessThanOrEqual(SAFE_BOTTOM);
   }
+});
+
+describe("design pass", () => {
+  const t = getTheme("chalk");
+  const slide = (body: string, heading = "Limiting factors") =>
+    materialiseSlide(
+      { kind: "content", factRefs: [], heading, body },
+      "chalk",
+      meta,
+      undefined,
+      0,
+      {
+        terms: ["abrasion", "hydraulic action", "erosion"],
+        glossary: [
+          { term: "abrasion", definition: "Rock worn away by sediment the waves throw at it." },
+        ],
+      },
+    );
+
+  test("the deck chrome: year and subject, the tag after them on one line, and the counter", () => {
+    const s = slide("Waves wear cliffs away. Abrasion scrapes the rock.");
+    const [out] = withDeckChrome([s, s], t, { yearGroup: "Year 10", subject: "Biology" });
+    const eyebrow = named(out?.elements ?? [], EYEBROW_NAME)[0];
+    const tag = named(out?.elements ?? [], KIND_TAG_NAME)[0];
+    const counter = named(out?.elements ?? [], COUNTER_NAME)[0];
+    expect(eyebrow && eyebrow.type === "text" && docPlainText(eyebrow.doc)).toBe(
+      "YEAR 10 · BIOLOGY",
+    );
+    expect(tag?.y).toBe(eyebrow?.y);
+    expect(tag?.x).toBeGreaterThan((eyebrow?.x ?? 0) + (eyebrow?.w ?? 0));
+    expect(counter && counter.type === "text" && docPlainText(counter.doc)).toBe("1 / 2");
+    expect((counter?.x ?? 0) + (counter?.w ?? 0)).toBe(SAFE.x + SAFE.w);
+    // Re-run: replaced, not doubled.
+    const again = withDeckChrome(withDeckChrome([s], t, {}), t, { yearGroup: "Year 9" });
+    expect(named(again[0]?.elements ?? [], COUNTER_NAME)).toHaveLength(1);
+  });
+
+  test("no empty right half: a lesson term the words use fills the panel with its definition", () => {
+    const s = slide(
+      "Waves erode cliffs in two ways. Abrasion scrapes rock with sediment. Hydraulic action forces air into cracks.",
+    );
+    const panelText = named(s.elements, PANEL_TEXT_NAME)[0];
+    expect(panelText && panelText.type === "text" && docPlainText(panelText.doc)).toContain(
+      "Rock worn away",
+    );
+    expect(fitSlide(s, t).overflow).toEqual([]);
+  });
+
+  test("a lead and short points become dot bullets, one dot a point", () => {
+    const s = slide(
+      "The rate is limited by the factor in shortest supply. Light intensity matters. Carbon dioxide matters. Temperature matters.",
+    );
+    expect(named(s.elements, BULLET_NAME)).toHaveLength(3);
+    expect(named(s.elements, ITEM_NAME)).toHaveLength(3);
+    expect(named(s.elements, PANEL_NAME)).toHaveLength(1);
+  });
+
+  test("key terms: the first use only, and at most two a slide, even when styled twice", () => {
+    const s = slide(
+      "Erosion wears cliffs. Abrasion scrapes; abrasion again. Hydraulic action cracks rock. Erosion again.",
+    );
+    const twice = lookAndFitPages(s, t, undefined, {
+      terms: ["abrasion", "hydraulic action", "erosion"],
+    })[0] as Slide;
+    const chips = JSON.stringify(twice).match(/"bold"\},\{"type":"textStyle"/g) ?? [];
+    expect(chips.length).toBeLessThanOrEqual(2);
+  });
+
+  test("a short heading is a display line; a long one keeps the theme size", () => {
+    const short = named(slide("One idea. Two ideas.").elements, "Heading")[0];
+    const long = named(
+      slide(
+        "One idea. Two ideas.",
+        "Sea walls shield the land behind them while groynes trap the beach sediment",
+      ).elements,
+      "Heading",
+    )[0];
+    expect(short?.type === "text" && short.style.fontSize).toBe(
+      Math.round(t.sizes.heading * HEADING_DISPLAY),
+    );
+    expect(long?.type === "text" && long.style.fontSize).toBeFalsy();
+  });
 });

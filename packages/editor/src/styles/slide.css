@@ -67,7 +67,7 @@
   margin-top: 0.35em;
 }
 
-/* Bullets are a small accent square, never a dot and never an emoji. */
+/* Bullets are a small accent dot, as in the example lessons, never an emoji. */
 .td-rt ul > li {
   position: relative;
 }
@@ -76,9 +76,10 @@
   content: "";
   position: absolute;
   left: -0.82em;
-  top: calc(0.5em * var(--td-lh) - 0.14em);
-  width: 0.28em;
-  height: 0.28em;
+  top: calc(0.5em * var(--td-lh) - 0.18em);
+  width: 0.36em;
+  height: 0.36em;
+  border-radius: 50%;
   background: var(--td-accent);
 }
 
@@ -124,10 +125,10 @@
  * The chip's inset is negative margin, so the words measure and wrap as plain bold does.
  */
 .td-rt strong > span[style*="color"] {
-  background: color-mix(in srgb, currentColor 13%, transparent);
-  border-radius: 0.28em;
-  padding: 0.02em 0.2em;
-  margin: 0 -0.2em;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-radius: 0.24em;
+  padding: 0 0.16em;
+  margin: 0 -0.16em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }

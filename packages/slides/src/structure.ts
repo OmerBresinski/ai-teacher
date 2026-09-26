@@ -13,6 +13,7 @@ import type {
 import { docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, snapY } from "./grid";
+import { accentTint } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
@@ -77,6 +78,10 @@ export type SlideStructure = {
   sequence?: string[];
   /** The lesson's vocabulary, picked out in running text. */
   terms?: string[];
+  /** The vocabulary's definitions: a term a teaching slide uses can fill its side panel. */
+  glossary?: { term: string; definition: string }[];
+  /** A teaching slide's short points (2–4), set as dot bullets under its lead. */
+  items?: string[];
 };
 
 /* ---------------------------------------------------------------- text helpers */
@@ -742,6 +747,8 @@ export function markTerms(
   terms: string[],
   t: Theme,
   seen = new Set<string>(),
+  /** No more marks once `seen` holds this many terms. */
+  cap = Number.POSITIVE_INFINITY,
 ): RichDoc {
   const list = [...new Set(terms.map((x) => x.trim()).filter((x) => x.length > 2))].sort(
     (a, b) => b.length - a.length,
@@ -753,7 +760,7 @@ export function markTerms(
     const value = node.text ?? "";
     for (const term of list) {
       const key = term.toLowerCase();
-      if (seen.has(key)) continue;
+      if (seen.has(key) || seen.size >= cap) continue;
       const m = value.match(new RegExp(`\\b${escapeRe(term)}(?:e?s)?\\b`, "i"));
       if (!m || m.index === undefined) continue;
       seen.add(key);
@@ -883,7 +890,7 @@ export function structureSlide(
 ): Slide[] {
   if (
     slide.elements.some((e) =>
-      [OPTION_CHIP_NAME, COMPARE_NAME, STEP_NAME, KEY_CARD_NAME].includes(e.name ?? ""),
+      [OPTION_CHIP_NAME, COMPARE_NAME, STEP_NAME, KEY_CARD_NAME, PANEL_NAME].includes(e.name ?? ""),
     )
   ) {
     // Already structured (a stored slide): only its answers are moved off the questions.
@@ -1134,6 +1141,10 @@ function structureContent(
   const s: SlideStructure = explicit ? hints : (inferred?.structure ?? {});
   const restWords = explicit ? words : (inferred?.rest ?? words);
   const lead = explicit ? "" : (inferred?.lead ?? "");
+  if (!s.compare && !s.sequence) {
+    const split = splitContent(slide, t, bodies, top, words, s, hints, ids);
+    if (split) return [split];
+  }
   if (!s.compare && !s.keyCard && !s.sequence) {
     return paginate ? (splitParagraph(slide, bodies, t, ids, hints.terms) ?? plain) : plain;
   }
@@ -1390,11 +1401,279 @@ export function withTerms(slide: Slide, t: Theme, terms: string[] | undefined): 
   if (!terms?.length) return slide;
   const seen = new Set<string>();
   const running = (e: SlideElement): e is TextElement =>
-    isText(e) && e.style.preset === "body" && e.name !== QUESTION_NAME;
+    isText(e) &&
+    e.style.preset === "body" &&
+    e.name !== QUESTION_NAME &&
+    e.name !== PANEL_TEXT_NAME;
+  // Restraint, as in the examples: the first use of a term on the slide, in reading order, and at
+  // most two terms a slide. Marks from an earlier pass are cleared first, so a slide styled twice
+  // (generated, then restyled) never carries a term twice.
+  const order = slide.elements
+    .filter(running)
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((e) => e.id);
+  const marked = new Map<string, RichDoc>();
+  for (const id of order) {
+    const e = slide.elements.find((x) => x.id === id) as TextElement;
+    const clean = unmarkTerms(e.doc, t);
+    marked.set(id, markTerms(clean, terms, t, seen, MAX_TERMS));
+  }
   return {
     ...slide,
-    elements: slide.elements.map((e) =>
-      running(e) ? { ...e, doc: markTerms(e.doc, terms, t, seen) } : e,
-    ),
+    elements: slide.elements.map((e) => {
+      const doc = marked.get(e.id);
+      return doc && isText(e) ? { ...e, doc } : e;
+    }),
   };
+}
+
+/** Key terms picked out on one slide, at most. */
+export const MAX_TERMS = 2;
+
+/** A doc without the key-term chips `markTerms` set (bold together with the accent colour). */
+export function unmarkTerms(doc: RichDoc, t: Theme): RichDoc {
+  const chip = (n: RichNode) =>
+    n.type === "text" &&
+    n.marks?.length === 2 &&
+    n.marks.some((m) => m.type === "bold") &&
+    n.marks.some((m) => m.type === "textStyle" && m.attrs?.color === t.colors.accent);
+  const walk = (node: RichNode): RichNode => {
+    if (!node.content) return node;
+    const content: RichNode[] = [];
+    for (const c of node.content) {
+      const plainNode = chip(c) ? { type: "text", text: c.text ?? "" } : walk(c);
+      const prev = content[content.length - 1];
+      if (plainNode.type === "text" && !plainNode.marks && prev?.type === "text" && !prev.marks) {
+        content[content.length - 1] = {
+          type: "text",
+          text: `${prev.text ?? ""}${plainNode.text ?? ""}`,
+        };
+      } else content.push(plainNode as RichNode);
+    }
+    return { ...node, content };
+  };
+  return walk(doc as RichNode) as RichDoc;
+}
+
+/* ---------------------------------------------------------------- split composition */
+
+export const PANEL_NAME = "Side panel";
+export const PANEL_LABEL_NAME = "Side panel label";
+export const PANEL_TEXT_NAME = "Side panel text";
+export const LEAD_NAME = "Lead";
+export const BULLET_NAME = "Bullet";
+export const ITEM_NAME = "Point";
+/** A lead and its points stay at most this many words to take the size a step up. */
+const FEW_WORDS = 25;
+/** A sentence longer than this reads as a paragraph, not a bullet. */
+const ITEM_MAX_WORDS = 22;
+
+const wordsIn = (x: string) => x.split(/\s+/).filter(Boolean).length;
+
+/**
+ * A teaching slide in two columns, as the examples set them: the words down the left (a lead,
+ * then its points as accent-dot bullets, or the rest as a paragraph) and a tinted panel on the
+ * right holding what the slide is about: its key card (a word equation, a formula, a defined
+ * term), else the lesson's definition of a term the words use, else the key idea itself. No
+ * right half is left empty. `undefined` when the words do not fit the column even a step down, or
+ * there is nothing to set beside them: the full-width paragraph and its continuation (UX ruling
+ * 91) take over.
+ */
+function splitContent(
+  slide: Slide,
+  t: Theme,
+  bodies: TextElement[],
+  top: number,
+  words: string,
+  s: SlideStructure,
+  hints: SlideStructure,
+  ids: Ids,
+): Slide | undefined {
+  if (top > SAFE.y + SAFE.h * 0.45) return undefined;
+  // A sentence that only repeats the heading is not said twice on the slide.
+  const bare = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const said = bare(docText(headingOf(slide)?.doc ?? docFromText("")));
+  const all = sentences(words).filter((x) => bare(x) !== said);
+  let label: string;
+  let statement: RichDoc;
+  let left: string[];
+  const glossary = hints.glossary?.find((g) =>
+    new RegExp(`\\b${escapeRe(g.term)}`, "i").test(words),
+  );
+  if (s.keyCard) {
+    label = s.keyCard.label;
+    statement = docFromText(s.keyCard.text);
+    left = sentences(words.replace(s.keyCard.text, "").replace(/\s+\./g, ".")).filter(
+      (x) => x.replace(/[^A-Za-z]/g, "").length > 0,
+    );
+    if (left.length === 0) left = all;
+  } else if (glossary) {
+    label = "Key term";
+    statement = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: glossary.term, marks: [{ type: "bold" }] }],
+        },
+        { type: "paragraph", content: [{ type: "text", text: glossary.definition }] },
+      ],
+    };
+    left = all;
+  } else if (all.length >= 2) {
+    label = "Key idea";
+    statement = docFromText(all[0] as string);
+    left = all.slice(1);
+  } else return undefined;
+  // The points: the writer's own items, else the sentences after the lead when each is short.
+  // When the key idea itself went to the panel, every sentence left is a point.
+  const short = (xs: string[]) =>
+    xs.length >= 2 && xs.length <= 4 && xs.every((x) => wordsIn(x) <= ITEM_MAX_WORDS);
+  const ideaInPanel = label === "Key idea";
+  const items =
+    hints.items && hints.items.length >= 2
+      ? hints.items.slice(0, 4)
+      : ideaInPanel && short(left)
+        ? left
+        : !ideaInPanel && short(left.slice(1))
+          ? left.slice(1)
+          : [];
+  const lead = hints.items?.length
+    ? joinSentences(left)
+    : items.length && !ideaInPanel
+      ? (left[0] as string)
+      : "";
+  const rest = items.length ? "" : joinSentences(left);
+
+  const measure = measureHeadless(t);
+  const body = resolveFontSize(t, "body");
+  const few = wordsIn(joinSentences([lead, rest, ...items])) <= FEW_WORDS;
+  const sizes = [...(few ? [Math.round(body * 1.15)] : []), body, floorBelow(t, "body")];
+  const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement));
+  // Half and half first, as in the examples; a longer text takes up to two thirds before it gives up
+  // the panel for the full-width paragraph.
+  const settings = [0.5, 0.6, 0.66].flatMap((share) => sizes.map((size) => ({ share, size })));
+  for (const { share, size } of settings) {
+    const half = Math.floor((SAFE.w - SPACE[5]) * share);
+    const panelX = SAFE.x + half + SPACE[5];
+    const panelW = SAFE.x + SAFE.w - panelX;
+    const els: SlideElement[] = [];
+    let y = top;
+    const lh = t.lineHeights.body;
+    if (lead) {
+      const doc = docFromText(lead);
+      const style = { preset: "body" as const, fontSize: size, fontWeight: 600 };
+      const h = heightOf(measure, doc, half, "body", size, 0, style);
+      els.push(text(ids, { x: SAFE.x, y, w: half, h }, doc, style, { name: LEAD_NAME }));
+      y = snapY(y + h + SPACE[3]);
+    }
+    const dot = Math.round(size * 0.42);
+    const indent = Math.round(size * 1.3);
+    for (const item of items) {
+      const doc = docFromText(item);
+      const h = heightOf(measure, doc, half - indent, "body", size);
+      els.push({
+        id: ids(),
+        type: "shape",
+        shape: "ellipse",
+        x: SAFE.x + Math.round((indent - dot) / 3),
+        y: Math.round(y + (size * lh) / 2 - dot / 2),
+        w: dot,
+        h: dot,
+        fill: t.colors.accent,
+        name: BULLET_NAME,
+      });
+      els.push(
+        text(
+          ids,
+          { x: SAFE.x + indent, y, w: half - indent, h },
+          doc,
+          { preset: "body", fontSize: size },
+          { name: ITEM_NAME },
+        ),
+      );
+      y = snapY(y + h + SPACE[2]);
+    }
+    if (rest) {
+      const doc = docFromText(rest);
+      const h = heightOf(measure, doc, half, "body", size);
+      els.push(
+        text(
+          ids,
+          { x: SAFE.x, y, w: half, h },
+          doc,
+          { preset: "body", fontSize: size },
+          { name: BODY_NAME },
+        ),
+      );
+      y = snapY(y + h + SPACE[3]);
+    }
+    if (!fits(y - SPACE[2])) continue;
+    const panel = sidePanel(label, statement, top, panelX, panelW, t, ids);
+    if (!panel) continue;
+    const next: Slide = { ...slide, elements: [...keep, ...els, ...panel] };
+    if (fitSlide(next, t).overflow.length > 0) continue;
+    return withTerms(next, t, hints.terms);
+  }
+  return undefined;
+}
+
+/**
+ * The right-hand panel: a tinted card from the column's top to the foot of the safe area, its
+ * label in the accent's small capitals and its statement set large, centred in the card.
+ */
+function sidePanel(
+  label: string,
+  statement: RichDoc,
+  top: number,
+  x: number,
+  w: number,
+  t: Theme,
+  ids: Ids,
+): SlideElement[] | undefined {
+  const measure = measureHeadless(t);
+  const pad = w < 360 ? SPACE[3] : SPACE[5];
+  const inner = w - pad * 2;
+  const labelH = Math.ceil(t.sizes.caption * t.lineHeights.caption);
+  const h = SAFE_BOTTOM - top;
+  for (const size of [
+    Math.round(t.sizes.heading * 0.9),
+    resolveFontSize(t, "body"),
+    floorBelow(t, "body"),
+  ]) {
+    const style = { preset: "body" as const, fontSize: size, fontWeight: 600, lineHeight: 1.3 };
+    const sh = heightOf(measure, statement, inner, "body", size, 0, style);
+    const block = labelH + SPACE[2] + sh;
+    if (block > h - pad * 2) continue;
+    const y0 = snapY(top + (h - block) / 2);
+    return [
+      {
+        id: ids(),
+        type: "shape",
+        shape: "rounded",
+        x,
+        y: top,
+        w,
+        h,
+        fill: accentTint(t),
+        radius: t.radius,
+        name: PANEL_NAME,
+      },
+      text(
+        ids,
+        { x: x + pad, y: y0, w: inner, h: labelH },
+        docFromText(label.toUpperCase()),
+        { preset: "caption", color: t.colors.accent, fontWeight: 700, autoHeight: false },
+        { name: PANEL_LABEL_NAME },
+      ),
+      text(
+        ids,
+        { x: x + pad, y: y0 + labelH + SPACE[2], w: inner, h: sh },
+        statement,
+        { ...style, color: t.colors.ink },
+        { name: PANEL_TEXT_NAME },
+      ),
+    ];
+  }
+  return undefined;
 }
