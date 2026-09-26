@@ -723,6 +723,20 @@ const CONTRACT = [
       "Plan's three calls (skeleton, facts, Verify) run on the `frontier` class for a lesson whose year group is this number or above — e.g. `7` routes Year 7+ to Sol and keeps primary on Terra (TEACH-259). Unset: every Plan call is `standard`. Generate never reads it. Not set on Railway until the Sol eval says where the line goes.",
   },
   {
+    name: "AI_REASONING_EFFORT",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["none", "low", "medium", "high", "xhigh"],
+    files: ["worker"],
+    description:
+      "Reasoning effort every model call in the worker runs at (lesson pipeline and worksheet), through `effortFor` (TEACH-72). One of none | low | medium | high | xhigh; anything else stops the worker at boot. Unset: each stage keeps its own effort. Changes no model id. Not set on Railway until a rollout chooses the value.",
+  },
+  {
     name: "AI_MODEL_JUDGE",
     services: ["worker"],
     scope: "config",

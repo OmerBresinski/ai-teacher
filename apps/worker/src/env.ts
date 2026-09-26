@@ -1,4 +1,5 @@
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
+import { REASONING_EFFORTS } from "@tj/generation";
 import { z } from "zod";
 
 /** Empty strings (e.g. a documented secret left blank in `.env`) count as "unset". */
@@ -35,6 +36,8 @@ export const EnvSchema = z
     AI_WORKSHEET_COST_CAP_USD: z.coerce.number().nonnegative().default(0.1),
     /** Plan on the frontier class from this year group up (TEACH-259); unset keeps every Plan call `standard`. */
     AI_PLAN_FRONTIER_FROM_YEAR: z.coerce.number().int().min(1).max(13).optional(),
+    /** Every model call runs at this reasoning effort (TEACH-72); unset keeps each stage's own. */
+    AI_REASONING_EFFORT: optionalString.pipe(z.enum(REASONING_EFFORTS).optional()),
     MASTRA_TELEMETRY_DISABLED: optionalString,
     // --- Images (Pexels, Images project) -------------------------------------------------
     /**

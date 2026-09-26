@@ -61,9 +61,11 @@ export interface StructuredPrompt<I> {
  * which `@ai-sdk/amazon-bedrock` maps to `reasoning.effort` for an OpenAI id and
  * `output_config.effort` for an Anthropic one. `none` is the direct route's "do not reason";
  * Bedrock has no such level, so it is sent `low` there. `minimal` is never offered (the Luna ids
- * refuse it), nor `xhigh` / `max`: nothing in the pipeline needs them.
+ * refuse it), nor `max`. No stage asks for `xhigh`; it exists for the worker's per-environment
+ * override (`AI_REASONING_EFFORT`, TEACH-72), which both OpenAI and Bedrock accept as-is.
  */
-export type ReasoningEffort = "none" | "low" | "medium" | "high";
+export const REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh"] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 export interface CallStructuredOptions<I, T> {
   deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
@@ -569,6 +571,8 @@ export function imageMediaType(url: string): string {
  */
 export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
   if (isAnthropicModelId(modelId)) return {};
+  // The on/off and two-level providers have nothing above `high`.
+  const thinksHard = effort === "high" || effort === "xhigh";
   return {
     providerOptions: {
       bedrock: { reasoningConfig: { maxReasoningEffort: effort === "none" ? "low" : effort } },
@@ -582,9 +586,9 @@ export function providerOptionsFor(modelId: string, effort: ReasoningEffort) {
       },
       // Gemini 3 reads a level, not an effort; Qwen and DeepSeek think or not (smoke-tested
       // 2026-09-17: Gemini at its default spent the whole slide budget thinking, Qwen 3 373 tokens).
-      google: { thinkingConfig: { thinkingLevel: effort === "high" ? "high" : "low" } },
-      alibaba: { enableThinking: effort === "high" },
-      deepseek: { thinking: { type: effort === "high" ? "enabled" : "disabled" } },
+      google: { thinkingConfig: { thinkingLevel: thinksHard ? "high" : "low" } },
+      alibaba: { enableThinking: thinksHard },
+      deepseek: { thinking: { type: thinksHard ? "enabled" : "disabled" } },
       // The Vercel gateway may serve an `openai/` id from its own Bedrock credentials, where the
       // effort is ignored (Sol at "low" reasoned more than at "medium", 2026-09-17): pin the
       // vendor so the setting reaches the model. Read only by the gateway; inert on the direct

@@ -14,6 +14,8 @@ export {
   callStructured,
   type EditorialMiss,
   MAX_OUTPUT_TOKENS,
+  REASONING_EFFORTS,
+  type ReasoningEffort,
   SPEC_RULE_CHECK,
   type StructuredPrompt,
   specRuleFinding,

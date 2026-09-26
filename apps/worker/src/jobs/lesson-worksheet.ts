@@ -29,6 +29,7 @@ import {
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
+import { effortOverride } from "../effort";
 
 /**
  * `lesson.worksheet` — one worksheet beside a confirmed lesson, on its own row, lock and budget
@@ -95,6 +96,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         now: () => new Date(),
         ids: uid,
         context: { lessonId, jobId },
+        ...effortOverride(deps.reasoningEffort),
       };
       const persist = async (worksheet: Worksheet): Promise<string> => {
         const result = await putDocumentAsJob(ws, worksheetId, worksheet, jobId);
