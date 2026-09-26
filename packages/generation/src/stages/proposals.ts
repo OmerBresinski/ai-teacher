@@ -92,20 +92,14 @@ export function impactSet(
     redo.push(target);
   };
   for (const slide of lesson.slides) {
-    const walk = (elements: SlideElement[]) => {
-      for (const element of elements) {
-        if (element.type === "group" && !isFigure(element)) {
-          walk(element.children);
-          continue;
-        }
-        consider(
-          { slideId: slide.id, elementId: element.id },
-          element.authoredBy,
-          element.generatedFrom?.factRefs,
-        );
-      }
-    };
-    walk(slide.elements);
+    // The same depth-first units `proposeFor` matches: groups walked, a figure group whole.
+    for (const element of flatten(slide.elements)) {
+      consider(
+        { slideId: slide.id, elementId: element.id },
+        element.authoredBy,
+        element.generatedFrom?.factRefs,
+      );
+    }
   }
   for (const block of worksheet?.blocks ?? []) {
     consider({ blockId: block.id }, block.authoredBy, block.generatedFrom?.factRefs);
