@@ -214,3 +214,96 @@ describe("the explanation panel", () => {
     expect("explanation" in (read().slides[0]?.question ?? {})).toBe(false);
   });
 });
+
+describe("the slide frame while typing past the bottom edge", () => {
+  /*
+   * Chromium keeps the caret in view by scrolling every scrollable ancestor, and an
+   * `overflow: hidden` box counts. Both clippers round the slide are `clip` instead, and the
+   * canvas snaps either back should an engine still report a scroll (t74-2 §2).
+   */
+  const frameOf = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-slide-clip]") as HTMLElement;
+  const rootOf = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-slide-frame] [data-slide-root]") as HTMLElement;
+
+  const clipping = (el: HTMLElement) => `${el.style.overflowX}/${el.style.overflowY}`;
+
+  test("neither the frame nor the slide root is a scroll container: both clip", () => {
+    const { container } = renderEditor(textLesson());
+    expect(clipping(frameOf(container))).toBe("clip/clip");
+    expect(clipping(rootOf(container))).toBe("clip/clip");
+  });
+
+  test("while a box is being typed into, both let text spill past the bottom edge; Escape clips again", async () => {
+    const { container } = renderEditor(textLesson());
+    const pm = await openEditor(container);
+    expect(clipping(frameOf(container))).toBe("clip/visible");
+    expect(clipping(rootOf(container))).toBe("clip/visible");
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect(clipping(frameOf(container))).toBe("clip/clip");
+    expect(clipping(rootOf(container))).toBe("clip/clip");
+  });
+
+  test("a scroll the frame or the slide root reports is undone at once", async () => {
+    const { container } = renderEditor(textLesson());
+    await openEditor(container);
+    const frame = frameOf(container);
+    const root = rootOf(container);
+    frame.scrollTop = 40;
+    frame.scrollLeft = 3;
+    expect(frame.scrollTop).toBe(40);
+    fireEvent.scroll(frame);
+    expect([frame.scrollTop, frame.scrollLeft]).toEqual([0, 0]);
+    root.scrollTop = 40;
+    fireEvent.scroll(root);
+    expect(root.scrollTop).toBe(0);
+  });
+
+  test("when editing ends the frame is back at the top of the slide", async () => {
+    const { container } = renderEditor(textLesson());
+    const pm = await openEditor(container);
+    const frame = frameOf(container);
+    frame.scrollTop = 40;
+    expect(frame.scrollTop).toBe(40);
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect(frame.scrollTop).toBe(0);
+  });
+});
+
+describe("the canvas scroll region when editing ends", () => {
+  /*
+   * Following the caret is the one scroll the editor makes for the teacher; Escape puts the
+   * region back where it stood when editing began. Nothing is scrolled into view on the editor's
+   * own account, so a zoom and pan set up before editing survive it.
+   */
+  const region = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-canvas-scroller]") as HTMLElement;
+
+  test("a zoom and pan made before editing are back after Escape", async () => {
+    const { container } = renderEditor(textLesson());
+    fireEvent.click(within(container).getByRole("button", { name: "Zoom in" }));
+    const r = region(container);
+    r.scrollTop = 120;
+    r.scrollLeft = 80;
+    const pm = await openEditor(container);
+    // The caret takes the region further down while the teacher types.
+    r.scrollTop = 500;
+    r.scrollLeft = 96;
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect([r.scrollTop, r.scrollLeft]).toEqual([120, 80]);
+  });
+
+  test("a region the caret never moved is left alone", async () => {
+    const { container } = renderEditor(textLesson());
+    const r = region(container);
+    r.scrollTop = 120;
+    r.scrollLeft = 80;
+    const pm = await openEditor(container);
+    fireEvent.keyDown(pm, { key: "Escape" });
+    await waitFor(() => expect(proseMirror(container)).toBeNull());
+    expect([r.scrollTop, r.scrollLeft]).toEqual([120, 80]);
+  });
+});

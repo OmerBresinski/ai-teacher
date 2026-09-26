@@ -1,6 +1,14 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { type CSSProperties, lazy, Suspense, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  lazy,
+  Suspense,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin";
 import { hasExplanationPanel } from "../layout/explanation";
 import { SAFE } from "../model/grid";
@@ -18,6 +26,7 @@ import {
   withAlpha,
 } from "./elements/kit";
 import { OverflowGlyph } from "./elements/TextView";
+import { applySlideClip } from "./slide-clip";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
 
@@ -43,6 +52,12 @@ export type SlideViewProps = {
    */
   transformOverride?: ReadonlyMap<string, ElementTransform>;
   /**
+   * Edit mode: let content past the bottom edge show instead of clipping it. The canvas sets it
+   * while a text box is being typed into, so the teacher sees the lines that run off the slide;
+   * sideways overflow stays clipped. Ignored in every other mode.
+   */
+  spill?: boolean;
+  /**
    * The api origin stored `/files/<key>` pictures are loaded from (TEACH-275). Set by an entry
    * that mounts a slide outside an `ImageOriginProvider` (the export stage); otherwise inherited.
    */
@@ -67,6 +82,7 @@ export function SlideView({
   answerProgress = 0,
   className,
   transformOverride,
+  spill = false,
   imageOrigin,
 }: SlideViewProps) {
   /**
@@ -112,10 +128,18 @@ export function SlideView({
   const panel = revealAnswer && hasExplanationPanel(slide.question);
 
   const bg = slide.background;
+  const root = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (mode === "edit" && root.current) applySlideClip(root.current, spill);
+  }, [mode, spill]);
   const rootStyle: CSSProperties = {
     position: "relative",
     width: SLIDE_W,
     height: SLIDE_H,
+    // In the editor the root must not be a scroll container (`hidden` let Chromium caret-scroll it
+    // while typing past the bottom edge), so edit mode rewrites this to `clip` before paint with
+    // `applySlideClip`, opening the bottom edge while a box is being typed into (`spill`). Every
+    // other mode keeps `hidden`.
     overflow: "hidden",
     background: bg?.color ?? theme.colors.background,
     color: theme.colors.ink,
@@ -143,6 +167,7 @@ export function SlideView({
   return (
     <ImageOriginProvider origin={imageOrigin}>
       <div
+        ref={root}
         data-slide-root
         data-slide-id={slide.id}
         data-slide-mode={mode}
