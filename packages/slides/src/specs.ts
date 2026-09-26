@@ -351,6 +351,15 @@ function buildSpecs(soft: boolean) {
        * under it (`materialise.ts` `fillContent`, `look.ts` `leadAndCard`). Left out otherwise.
        */
       points: items(2, 4).optional(),
+      /** Two things side by side (shape `compare`, `content-shapes.ts`): placed as compare cards. */
+      compare: z
+        .object({
+          left: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
+          right: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
+        })
+        .optional(),
+      /** A process or method in order (shape `sequence`): placed as the steps strip. */
+      steps: items(2, 4).optional(),
       diagram: line(SPEC_LIMITS.diagram).optional(),
       callout,
     }),

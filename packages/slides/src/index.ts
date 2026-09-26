@@ -11,6 +11,7 @@
  */
 
 export * from "./choose-variant";
+export * from "./content-shapes";
 export * from "./demo-lesson";
 export * from "./explanation-metrics";
 export * from "./factories";
