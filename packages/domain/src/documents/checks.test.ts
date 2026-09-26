@@ -835,6 +835,31 @@ describe("questionless: every recorded l6 instance, and stems that really ask no
     ["new verb", "Water the seedlings daily and record their height."],
     ["new verb", "Trace the route the evacuees took."],
     ["new verb", "Water is needed. Rearrange the steps into the right order."],
+    // K18 h arm: a leading frame of any kind, ending in a comma, before the command (l6-k).
+    [
+      "K18",
+      "In a new coastal town, explain how a sea wall and a groyne reduce erosion by different means.",
+    ],
+    [
+      "K18",
+      "In “the silent Iron Man with a cracked helmet”, explain how “silent” and “with a cracked helmet” add different details.",
+    ],
+    [
+      "K18",
+      "In « Elle a chanté », explain how the two parts combine to describe a completed action and why each part is written that way.",
+    ],
+    [
+      "K18",
+      "For the regular verb jouer, explain how to form its past participle and give the result.",
+    ],
+    ["K18", "Besides keeping it firm, name one way water helps a plant."],
+    // Other frames the rule covers without a list of them.
+    ["frame", "In 1940, during the Blitz, explain why children were evacuated."],
+    ["frame", "Having read the extract, identify two ways Prospero shows power."],
+    ["frame", "Briefly, describe the water cycle."],
+    ["frame", "Exit: In your own words, explain what a groyne does."],
+    ["frame", "Using the map, trace the route the evacuees took."],
+    ["frame", "Weigh the bags daily."],
   ];
   test.each(recorded)("%s: %s sets a task", (_round, stem) => {
     expect(questionless(stem)).toBe("ok");
@@ -860,6 +885,18 @@ describe("questionless: every recorded l6 instance, and stems that really ask no
     "Alfred the Great ruled Wessex.",
     "Using the diagram.",
     "If it rains, the ground.",
+    // Frames and appositives the l6-k rule must not mistake for a task.
+    "Prospero the magician rules the island.",
+    "Prospero the magician controls Ariel.",
+    "Ariel the spirit obeyed the command.",
+    "In the Blitz, children carried gas masks, name tags and food.",
+    "Evacuees carried gas masks, name tags and food.",
+    "In a new coastal town, the sea wall protects the houses.",
+    "For the regular verb jouer, the past participle is joué.",
+    "In 1940, when bombs fell, children left the cities.",
+    "If prices rise, is demand elastic.",
+    "In “the silent Iron Man”, the adjective adds detail.",
+    "Suppose Prospero tells a spirit, “Explain yourself.”",
   ];
   test.each(asksNothing)("%s asks nothing", (stem) => {
     expect(questionless(stem)).toBe("no-question");

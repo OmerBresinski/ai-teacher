@@ -417,7 +417,17 @@ function opensImperative(sentence: string): boolean {
     return false;
   }
   if (!OBJECT_OPENER.test(second)) return false;
-  return !(second.toLowerCase() === "the" && /^\p{Lu}/u.test(third));
+  return !(second.toLowerCase() === "the" && (/^\p{Lu}/u.test(third) || namedThenVerb(sentence)));
+}
+/**
+ * "<Name> the <noun> <verb> …": a name with a lower-case appositive, then its finite verb, told by
+ * an "-s"/"-ed" word followed by an object or a name ("Prospero the magician rules the island.",
+ * "… controls Ariel."). An imperative's fourth word is its object's noun or what follows it
+ * ("Water the seedlings daily", "Trace the route the evacuees took").
+ */
+function namedThenVerb(sentence: string): boolean {
+  const [, , , verb = "", next = ""] = sentence.split(/\s+/);
+  return /^\p{Ll}+(?:s|ed)$/u.test(verb) && (OBJECT_OPENER.test(next) || /^\p{Lu}/u.test(next));
 }
 /**
  * What may come before a task's imperative and leave it a task (lab round 2, recorded exit items
@@ -428,18 +438,58 @@ function opensImperative(sentence: string): boolean {
 const TASK_PREFIX =
   /^(?:\p{L}+(?:\s\p{L}+)?:\s*|in (?:one|a|two|three) (?:word|line|sentence|phrase)s?,\s*)+/iu;
 /**
- * A leading condition clause before the imperative (l6-c, l6-d: gpt-6-luna at low, "If one service
- * raises its price, explain why demand … may be responsive.").
+ * The words a leading frame may open with: a preposition, conjunction or adverb ("In a new coastal
+ * town, explain …", "For the regular verb jouer, explain …", "Besides keeping it firm, name …",
+ * "If one service raises its price, explain …"), a scenario verb, a participle of framing
+ * ("Given …", "Using …", "Based on …"), or any "-ing" or "-ly" word ("Having read the extract, …",
+ * "Briefly, …"). A determiner, pronoun or other open-class word opens a subject instead, and a
+ * comma after a subject lists ("Evacuees carried gas masks, name tags and food.").
  */
-const CONDITION_PREFIX = /^(?:if|when|once|after|before|given|using)\b[^,]{1,120},\s*/i;
+const FRAME_OPENER =
+  /^(?:in|on|at|by|for|from|with|without|within|to|of|into|under|over|through|throughout|across|between|among|against|along|around|behind|beyond|despite|inside|outside|near|past|since|until|upon|towards?|about|above|below|beneath|beside|besides|except|like|unlike|as|during|after|before|once|when|while|whilst|although|though|because|if|unless|whereas|also|even|only|then|now|later|often|sometimes|usually|today|meanwhile|instead|otherwise|thus|hence|therefore|however|perhaps|suppose|assume|consider|given|using|based|compared|\p{L}+ing|\p{L}+ly)$/iu;
+/** A comma outside quotation marks, which ends a leading frame ("In “the silent …”, explain …"). */
+function frameEnd(sentence: string): number {
+  let depth = 0;
+  for (let i = 0; i < sentence.length; i++) {
+    const c = sentence[i] as string;
+    if (c === "“" || c === "«") depth++;
+    else if ((c === "”" || c === "»") && depth > 0) depth--;
+    else if (c === '"') depth = depth > 0 ? depth - 1 : depth + 1;
+    else if (c === "," && depth === 0) return i;
+  }
+  return -1;
+}
+/**
+ * The sentence after its leading frames, each a phrase or clause of any kind that opens with a
+ * frame word and ends at a comma ("In 1940, during the Blitz, explain …"). Undefined when there is
+ * no frame.
+ */
+function afterFrames(sentence: string): string | undefined {
+  let rest = sentence;
+  for (;;) {
+    const first = rest.split(/\s+/)[0]?.replace(/[^\p{L}]/gu, "") ?? "";
+    const end = frameEnd(rest);
+    if (!FRAME_OPENER.test(first) || end < 0) break;
+    rest = rest.slice(end + 1).trim();
+  }
+  return rest === sentence ? undefined : rest;
+}
+/** A question or auxiliary word opens a question, which needs its `?`; after a frame it is not a task. */
+const QUESTION_WORD =
+  /^(?:why|how|what|which|when|where|who|is|are|does|do|can|could|should|would|will)\b/i;
 /**
  * The sentence from its task's imperative on: the sentence itself when it opens with one, else the
- * sentence after a label or length frame when that does ("Put these in order: …" stays whole).
+ * sentence after a label or length frame and any leading frames when that does ("Put these in
+ * order: …" stays whole).
  */
 function taskOf(sentence: string): string | undefined {
   if (opensImperative(sentence)) return sentence;
-  const rest = sentence.replace(TASK_PREFIX, "").replace(CONDITION_PREFIX, "");
-  return rest !== sentence && opensImperative(rest) ? rest : undefined;
+  const labelled = sentence.replace(TASK_PREFIX, "");
+  if (labelled !== sentence && opensImperative(labelled)) return labelled;
+  const rest = afterFrames(labelled);
+  return rest !== undefined && !QUESTION_WORD.test(rest) && opensImperative(rest)
+    ? rest
+    : undefined;
 }
 const opensTask = (sentence: string) => taskOf(sentence) !== undefined;
 /** A task that leans on a decision or answer only an earlier question could have set up. */
