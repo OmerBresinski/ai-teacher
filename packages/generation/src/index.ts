@@ -36,7 +36,8 @@ export {
   RULE_FIELDS,
   type RuleField,
 } from "./parse-brief";
-// The objectives-first planner (TEACH-91): exported for TEACH-93 to wire; no job calls it yet.
+// The objectives-first planner (TEACH-91) as the lab runs it; production runs its two steps as
+// workflow steps behind `AI_LESSON_PLANNER` (TEACH-93).
 export {
   MISSING_MATERIAL_CHECK,
   PLANNED_VERSION,
@@ -56,7 +57,29 @@ export * from "./shapes";
 export * from "./specs";
 export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";
+export { type FactsStepReport, facts, runFactsStep } from "./stages/facts";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
+export {
+  MAX_OUTPUT_TOKENS_OBJECTIVES,
+  ObjectivesBlocked,
+  type ObjectivesStepReport,
+  objectives,
+  PLANNER_EFFORT,
+  type PlannerEffortOption,
+  runObjectivesStep,
+} from "./stages/objectives";
+export {
+  isObjectivesFirstStamp,
+  OBJECTIVES_FIRST_CHECKPOINT,
+  OBJECTIVES_FIRST_ORDER,
+  OBJECTIVES_FIRST_VERSION,
+  type ObjectivesFirstStageName,
+  PLANNERS,
+  type Planner,
+  plannerFor,
+  plannerOf,
+  resumeFromObjectivesFirst,
+} from "./stages/objectives-first";
 export { materialiseObjectives, plan } from "./stages/plan";
 export {
   type ImpactSet,
@@ -84,11 +107,13 @@ export {
   evaluateStep,
   generateStep,
   lessonWorkflow,
+  objectivesFirstWorkflow,
   type PipelineInput,
   type PipelineOptions,
   planStep,
   repairStep,
   resumeFrom,
   runLessonPipeline,
+  type StepName,
 } from "./workflow";
 export * from "./worksheet";

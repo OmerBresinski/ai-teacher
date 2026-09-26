@@ -28,7 +28,12 @@ export const lessonPlanJob = defineJob<"lesson.plan", WorkerDeps>("lesson.plan",
   const { stopAfter, pinObjectives } = ctx.payload;
   return runLessonJob(ctx, {
     input: (lesson) => ({ lesson, ...(pinObjectives ? { pinObjectives: true } : {}) }),
-    options: stopAfter !== undefined ? { stopAfter } : {},
+    // The flag picks the planner for a lesson with no checkpoint; a retry of this job resumes on
+    // the planner its checkpoint's stamp names (`plannerFor`, TEACH-93).
+    options: {
+      ...(stopAfter !== undefined ? { stopAfter } : {}),
+      ...(ctx.deps.planner !== undefined ? { planner: ctx.deps.planner } : {}),
+    },
     ...(stopAfter !== undefined
       ? { after: (ws: WorkspaceDb, final: PipelineState) => continueToGenerate(ctx, ws, final) }
       : {}),

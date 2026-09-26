@@ -7,17 +7,11 @@ import {
   type LessonFacts,
   type Worksheet,
 } from "@tj/domain/documents";
-import { materialiseSlide } from "@tj/slides";
 import { callStructured, specRuleFinding } from "../call";
-import { mergeObjectiveFacts, type ObjectiveFactsOutput } from "../merge-objective-facts";
-import { checkObjectives, describeIssues } from "../objectives-check";
-import { type OutlineFromFactsResult, outlineFromFacts } from "../outline-from-facts";
+import type { mergeObjectiveFacts, ObjectiveFactsOutput } from "../merge-objective-facts";
+import type { OutlineFromFactsResult } from "../outline-from-facts";
 import { carriesWorkedExample } from "../prompts/plan-facts-objective";
-import {
-  type PlanRetrievalQuestion,
-  planObjectivesOutputSchemaFor,
-  planObjectivesPrompt,
-} from "../prompts/plan-objectives";
+import type { PlanRetrievalQuestion } from "../prompts/plan-objectives";
 import {
   type PlanQuestionSetOutput,
   planQuestionSetOutputSchemaFor,
@@ -30,44 +24,30 @@ import {
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,
 } from "../prompts/plan-teach-objective";
-import {
-  askableAsStem,
-  assignFactIds,
-  distractorsEchoingAnswer,
-  OUTLINE_FROM_FACTS_VERSION,
-  type PlanFactsLike,
-} from "../specs";
+import { askableAsStem, distractorsEchoingAnswer, type PlanFactsLike } from "../specs";
 import { evaluate } from "../stages/evaluate";
+import { runFactsStep } from "../stages/facts";
 import { generate } from "../stages/generate";
 import { illustrate } from "../stages/illustrate";
-import { materialiseObjectives, TITLE_PROMPT_VERSION } from "../stages/plan";
+import {
+  ObjectivesBlocked,
+  type PlannerEffortOption,
+  runObjectivesStep,
+} from "../stages/objectives";
 import { repair } from "../stages/repair";
-import {
-  audienceOf,
-  BUDGET_FINDING,
-  planClassFor,
-  retrievalInput,
-  shapeOf,
-} from "../stages/shared";
-import { selectSourceTexts } from "../stages/source-texts";
-import { runVerify } from "../stages/verify";
-import {
-  BudgetExceeded,
-  type PipelineDeps,
-  type PipelineState,
-  SOURCE_TEXT_MAX_CHARS,
-  StageFailure,
-  type VerifyResult,
-} from "../types";
+import { type audienceOf, retrievalInput, type shapeOf } from "../stages/shared";
+import { BudgetExceeded, type PipelineDeps, type PipelineState, StageFailure } from "../types";
 import { fitsLine, questionLine, sameQuestion } from "./coded-slides";
 import { type ObjectiveQuestionDemand, questionDemand, sketchTaught } from "./question-demand";
 
 /*
- * The objectives-first planner (quality PRD, lab wf1 → round K, `lab/l6k`; production
- * `stages/plan.ts` stays the default until TEACH-93 switches it): the objectives call first, then
- * per objective a teach call and its question sets in waves (`runWaves`), then the outline written
- * in code — `mergeObjectiveFacts` → `outlineFromFacts` → `assignFactIds` — and the same `planned`
- * checkpoint Plan writes, so Generate, Illustrate, Evaluate and Repair run unchanged after it.
+ * The objectives-first planner (quality PRD, lab wf1 → round K, `lab/l6k`): the objectives call
+ * first (`stages/objectives.ts`), then per objective a teach call and its question sets in waves
+ * (`runWaves`), then the outline written in code — `mergeObjectiveFacts` → `outlineFromFacts` →
+ * `assignFactIds` — and the `planned` checkpoint (`stages/facts.ts`), so Generate, Illustrate,
+ * Evaluate and Repair run unchanged after it. Production runs the two steps as workflow steps
+ * behind `AI_LESSON_PLANNER` (TEACH-93, ADR 0033); `planFromObjectives` runs them back to back for
+ * the lab and adds the report.
  *
  * Verify is started here, exactly as Plan starts it, and handed on as `pendingVerify`: Generate
  * awaits it before its first persist, so the fact check runs alongside the first slide batch and
@@ -77,16 +57,15 @@ import { type ObjectiveQuestionDemand, questionDemand, sketchTaught } from "./qu
  * completes the `planned` stamp with Verify's version in that case — the stamp says "Verify's
  * outcome is on the lesson", which for an empty outcome is true, if trivially.
  *
- * Two persists, not Plan's three: the title slide before any call, and the checkpoint. The
- * objectives slide is built from the final facts (its ids are positional either way), so the
- * planner does not pay for the objectives-only persist a teacher would see in production.
+ * Two persists: the title and objectives slides together after the objectives call (the plan
+ * screen's checkpoint), and the checkpoint with the outline after the facts.
  *
  * Three statuses, never one "ok" (`PlanStatus`): `executed` — the run reached the end; `complete`
  * — every objective is taught and practised or exit-checked by the outline, every facts call
  * returned and the objectives passed their structural check; `accepted` — the judge's verdict,
- * `null` until it is given. An objectives set that fails the structural check BLOCKS the
- * run before any facts call is paid for (`PlanBlocked`): the check is code, so its failure is a
- * defect to read, not a lesson to finish. What the outline could not supply is persisted on the
+ * `null` until it is given. An objectives set that fails the structural check is asked for once
+ * more; a second failure BLOCKS the run before any facts call is paid for (`PlanBlocked`): the
+ * check is code, so its failure is a defect to read, not a lesson to finish. What the outline could not supply is persisted on the
  * lesson as `missing-material` findings, so the record is on the document, not only in the report.
  *
  * Everything a reader needs to judge the plan path that the documents do not carry — the
@@ -98,10 +77,11 @@ export interface PlannerOptions {
   /** Start the Verify call (default `true`). `false`: no call, an empty result handed to Generate. */
   verify?: boolean;
   /**
-   * Reasoning effort for every planner call (default `medium`, as on the lab branch). The measured
-   * runs (E36–E44) set `low` on every call through `deps.effortFor`, which still applies on top.
+   * Reasoning effort for the planner's calls: one for all, or per step (default `PLANNER_EFFORT`,
+   * `medium`, as on the lab branch). The measured runs (E36–E44) set `low` on every call through
+   * `deps.effortFor`, which still applies on top.
    */
-  effort?: "low" | "medium" | "high";
+  effort?: PlannerEffortOption;
 }
 
 /** The three statuses of a planner run. */
@@ -160,14 +140,10 @@ export interface WavesReport {
   setsFailed: string[];
 }
 
+export { MISSING_MATERIAL_CHECK } from "../stages/facts";
+export { MAX_OUTPUT_TOKENS_OBJECTIVES } from "../stages/objectives";
 /** The `promptVersions.planned` stamp this path writes; Generate appends Verify's. */
-export const PLANNED_VERSION = `${planObjectivesPrompt.version}+${planTeachObjectivePrompt.version}+${planQuestionSetPrompt.version}+${OUTLINE_FROM_FACTS_VERSION}`;
-
-/** The finding the planner writes for material the outline could not supply. */
-export const MISSING_MATERIAL_CHECK = "missing-material";
-
-const PROGRESS_STARTING = 2;
-const PROGRESS_PLANNED = 10;
+export { PLANNED_VERSION } from "../stages/objectives-first";
 
 /**
  * Per-prompt output caps, from observed output tokens in the eval results (the budget reserves the
@@ -189,7 +165,6 @@ const PROGRESS_PLANNED = 10;
  *
  * Neither cap admits a run-away answer: a call that reaches it is a schema miss and one retry.
  */
-export const MAX_OUTPUT_TOKENS_OBJECTIVES = 1600;
 /**
  * Lab pw, the split calls. The facts call's answers were ~2.5k output tokens (text ≈ 1.3k, of
  * which questions 51%, plus up to ~2k hidden reasoning at medium, r1: 5 of 36 at the 2 400 cap).
@@ -200,7 +175,7 @@ export const MAX_OUTPUT_TOKENS_OBJECTIVES = 1600;
 export const MAX_OUTPUT_TOKENS_TEACH = 3000;
 export const MAX_OUTPUT_TOKENS_QUESTION_SET = 2400;
 
-/** The objectives failed their structural check: the planner stops before any teach call. */
+/** The objectives failed their structural check twice: the planner stops before any teach call. */
 export class PlanBlocked extends StageFailure {
   constructor(
     readonly issues: string[],
@@ -228,93 +203,19 @@ export async function planFromObjectives(
   deps: PipelineDeps,
   options: PlannerOptions = {},
 ): Promise<PlannedState> {
-  const { generation: _replaced, ...lesson } = state.lesson;
-  const brief = lesson.brief;
-  if (!brief) throw new Error("planFromObjectives: the lesson has no brief");
   const t0 = Date.now();
-  const startedAt = deps.now().toISOString();
-  const effort = options.effort ?? "medium";
-
-  // 1. The title slide from the Brief, persisted before any call (as Plan does).
-  const title =
-    lesson.slides[0]?.kind === "title"
-      ? lesson.slides[0]
-      : materialiseSlide(
-          {
-            kind: "title",
-            title: lesson.title,
-            subtitle: [lesson.yearGroup, lesson.subject].filter(Boolean).join(" · ") || "Lesson",
-            factRefs: [],
-          },
-          lesson.themeId,
-          { promptVersion: TITLE_PROMPT_VERSION, model: "none", at: deps.now().toISOString() },
-          deps.ids,
-        );
-  const withTitle: Lesson = { ...lesson, slides: [title] };
-  const first = await deps.persist(withTitle);
-  await deps.onProgress(PROGRESS_STARTING, "Starting", "plan", first.updatedAt);
-
-  // A teacher's source, when one is attached, reaches both prompts as the curriculum extract.
-  const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
-  const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
-  const curriculum =
-    selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
-
-  const shape = shapeOf(lesson);
-  const audience = audienceOf(lesson);
-  const cls = planClassFor(lesson, deps);
-  const topic = brief.topic;
-  const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
-  const findings: Finding[] = [];
-
-  // 2. The objectives call. A set that fails the structural check blocks the run here: no facts
-  //    call is paid for, the report names the issues, the caller reads them.
-  deps.logger.info({ stage: "plan", call: "objectives", cls, verb: shape.verb }, "plan call");
-  const tObjectives = Date.now();
-  const objectivesCall = await callStructured({
-    deps,
-    stage: "plan",
-    cls,
-    effort,
-    prompt: planObjectivesPrompt,
-    input: {
-      topic,
-      shape,
-      audience,
-      priorKnowledge: brief.classContext?.priorKnowledge,
-      curriculum,
-    },
-    schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
-    maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
-  });
-  const objectivesMs = Date.now() - tObjectives;
-  const objectives = objectivesCall.output.objectives;
-  // Lab r2: prior knowledge for the starter, carried to the outline and onto the facts; never a
-  // fact question, so no check, practise slide or exit quiz can reach it.
-  const retrieval =
-    objectivesCall.output.retrieval && objectivesCall.output.retrieval.length > 0
-      ? objectivesCall.output.retrieval
-      : undefined;
-  const hasSource = curriculum !== undefined;
-  const check = checkObjectives(objectives, shape.verb, { hasSource });
-  // An objective a few words over the cap is editorial, not a broken plan: it is logged and the
-  // lesson goes on (r3, 24 Sept: a 17-word objective against 16 stopped a whole lesson).
-  const objectiveIssues = describeIssues(check.issues.filter((i) => i.kind !== "too-long"));
-  const longObjectives = describeIssues(check.issues.filter((i) => i.kind === "too-long"));
-  if (longObjectives.length > 0)
-    deps.logger.warn(
-      { stage: "plan", call: "objectives", long: longObjectives.length },
-      "objective over the word cap; kept",
-    );
-  deps.logger.info(
-    { stage: "plan", call: "objectives", count: objectives.length, issues: check.issues.length },
-    objectiveIssues.length === 0 ? "objectives accepted" : "objectives blocked by the check",
-  );
-  if (objectiveIssues.length > 0) {
+  const slideCount = state.lesson.brief?.slideCount ?? DEFAULT_SLIDE_COUNT;
+  // 1–2. The objectives step: one call (a second when the check fails the first set), then the
+  //      title and objectives slides together. Two failed checks block the run here: no facts
+  //      call is paid for, the report names the issues, the caller reads them.
+  let first: Awaited<ReturnType<typeof runObjectivesStep>>;
+  try {
+    first = await runObjectivesStep(state, deps, { effort: options.effort });
+  } catch (error) {
+    if (!(error instanceof ObjectivesBlocked)) throw error;
     const report: PlanReport = {
-      objectives,
-      ...(retrieval ? { retrieval } : {}),
-      objectiveIssues,
+      objectives: [],
+      objectiveIssues: error.issues,
       factsFailed: [],
       editorialMisses: 0,
       duplicates: emptyDuplicates(),
@@ -324,173 +225,46 @@ export async function planFromObjectives(
       callouts: 0,
       slideCount,
       verify: "blocked",
-      timings: { objectivesMs, factsWallMs: 0, totalMs: Date.now() - t0 },
+      timings: { objectivesMs: Date.now() - t0, factsWallMs: 0, totalMs: Date.now() - t0 },
       status: {
         executed: false,
         complete: false,
-        incomplete: objectiveIssues.map((issue) => `objectives check: ${issue}`),
+        incomplete: error.issues.map((issue) => `objectives check: ${issue}`),
         accepted: null,
       },
     };
-    throw new PlanBlocked(objectiveIssues, { ...state, lesson: withTitle }, report);
+    throw new PlanBlocked(error.issues, state, report);
   }
-
-  // 3. The waves: per objective a teach call, then its question sets (`runWaves`). A call that
-  //    fails leaves its part out (the merge takes `null`); the lesson fails only when none returned.
-  const factsFailed: number[] = [];
-  const budgetFailed: { target: number; by: "usd" | "tokens" }[] = [];
-  const tFacts = Date.now();
-  const ran = await runWaves(
-    {
-      deps,
-      cls,
-      effort,
-      topic,
-      shape,
-      audience,
-      objectives: objectives.map((o) => ({ text: o.text })),
-      slideCount,
-      priorKnowledge: brief.classContext?.priorKnowledge,
-      curriculum,
-      retrieval,
-    },
-    { findings, factsFailed, budgetFailed },
-  );
-  const { outputs, report: wavesReport, editorialMisses } = ran;
-  factsFailed.sort((a, b) => a - b);
-  // One budget finding naming every objective the cap stopped, not only the first to fail.
-  if (budgetFailed.length > 0) {
-    const by = budgetFailed[0]?.by ?? "usd";
-    const list = budgetFailed
-      .map((f) => f.target + 1)
-      .sort((a, b) => a - b)
-      .join(", ");
-    findings.push(
-      BUDGET_FINDING(by, `the facts for objective${budgetFailed.length === 1 ? "" : "s"} ${list}`),
-    );
-  }
-  const factsWallMs = Date.now() - tFacts;
-  if (outputs.every((o) => o === null)) {
-    throw new StageFailure("plan", "plan: no facts call returned");
-  }
-
-  // 4. Merge, outline in code, ids: the same `LessonFacts` Plan's two calls produce.
-  const { duplicates, ...merged } = mergeObjectiveFacts(outputs);
-  const outline = outlineFromFacts({
-    topic,
-    objectives: objectives.map((o) => ({ text: o.text })),
-    facts: merged,
-    shape,
-    slideCount,
-    priorKnowledge: brief.classContext?.priorKnowledge,
-    retrieval,
+  // 3–5. The facts step: the waves, the outline in code, the checkpoint, Verify started.
+  const second = await runFactsStep(first.state, deps, {
+    effort: options.effort,
+    ...(options.verify === false ? { verify: false } : {}),
   });
-  const planFacts: PlanFactsLike = { ...merged, outlineFactRefs: outline.outlineFactRefs };
-  const assigned = withExitAsPlanned(
-    assignFactIds(outline.skeleton, planFacts, brief.durationMin),
-    outline.outlineFactRefs,
-  );
-  const facts: LessonFacts = retrieval
-    ? { ...assigned, retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
-    : assigned;
-  deps.logger.info(
-    {
-      stage: "plan",
-      call: "outline",
-      slides: facts.outline.length,
-      gaps: outline.gaps.length,
-      duplicates: { ...duplicates, conflicts: duplicates.conflicts.length },
-      unplaced: {
-        keyIdeas: outline.unplaced.keyIdeas.length,
-        workedExamples: outline.unplaced.workedExamples.length,
-        questions: outline.unplaced.questions.length,
-      },
-    },
-    "outline written",
-  );
-
-  // What the outline could not supply, on the lesson: one finding per objective and hole, so the
-  // document says it, not only the report. `complete` is false when any is written.
-  const incomplete: string[] = [];
-  for (const target of factsFailed) {
-    incomplete.push(`objective ${target + 1}: its facts call did not return`);
-  }
-  outline.coverage.forEach((c, o) => {
-    if (c.taught.length === 0) {
-      incomplete.push(`objective ${o + 1}: no slide teaches it`);
-      findings.push({
-        check: MISSING_MATERIAL_CHECK,
-        severity: "warning",
-        target: {},
-        message: `Objective ${o + 1} has no content or worked-example slide that teaches it.`,
-      });
-    }
-    if (c.practised.length === 0 && c.checked.length === 0) {
-      incomplete.push(`objective ${o + 1}: no slide practises or exit-checks it`);
-      findings.push({
-        check: MISSING_MATERIAL_CHECK,
-        severity: "warning",
-        target: {},
-        message: `Objective ${o + 1} has no practise slide and no exit question that checks it.`,
-      });
-    }
-  });
-
-  const objectivesSlide = materialiseObjectives(lesson, facts, deps, {
-    promptVersion: planObjectivesPrompt.version,
-    model: objectivesCall.modelId,
-    at: deps.now().toISOString(),
-  });
-
-  // 5. Verify, started not awaited (TEACH-233); off: a settled empty result, so Generate makes
-  //    no call of its own.
-  let verify: PlanReport["verify"];
-  let pendingVerify: Promise<VerifyResult>;
-  if (options.verify === false) {
-    verify = "off";
-    pendingVerify = Promise.resolve({ facts, applied: [], findings: [] });
-  } else if (facts.questions.length === 0) {
-    verify = "skipped";
-    pendingVerify = Promise.resolve({ facts, applied: [], findings: [] });
-  } else {
-    verify = "started";
-    pendingVerify = runVerify(facts, { topic, audience }, deps, cls);
-  }
-
-  const planned: Lesson = {
-    ...withTitle,
-    slides: [title, objectivesSlide],
-    facts,
-    generation: {
-      jobId: deps.context.jobId,
-      stage: "planned",
-      startedAt,
-      promptVersions: { planned: PLANNED_VERSION },
-      usage: deps.budget.totals(),
-      findings,
-    },
-  };
-  const third = await deps.persist(planned);
-  await deps.onProgress(PROGRESS_PLANNED, "Planned", "plan", third.updatedAt);
-
+  const o = first.report;
+  const f = second.report;
   const planReport: PlanReport = {
-    objectives,
-    ...(retrieval ? { retrieval } : {}),
-    objectiveIssues,
-    factsFailed,
-    editorialMisses,
-    duplicates,
-    gaps: outline.gaps,
-    unplaced: outline.unplaced,
-    coverage: outline.coverage,
-    callouts: Object.keys(outline.callouts).length,
-    slideCount,
-    verify,
-    timings: { objectivesMs, factsWallMs, totalMs: Date.now() - t0 },
-    waves: wavesReport,
-    status: { executed: false, complete: incomplete.length === 0, incomplete, accepted: null },
+    objectives: o.objectives,
+    ...(o.retrieval ? { retrieval: o.retrieval } : {}),
+    objectiveIssues: [],
+    factsFailed: f.factsFailed,
+    editorialMisses: f.editorialMisses,
+    duplicates: f.duplicates,
+    gaps: f.gaps,
+    unplaced: f.unplaced,
+    coverage: f.coverage,
+    callouts: f.callouts,
+    slideCount: f.slideCount,
+    verify: f.verify,
+    timings: { objectivesMs: o.objectivesMs, factsWallMs: f.factsWallMs, totalMs: Date.now() - t0 },
+    waves: f.waves,
+    status: {
+      executed: false,
+      complete: f.incomplete.length === 0,
+      incomplete: f.incomplete,
+      accepted: null,
+    },
   };
-  return { ...state, lesson: planned, pendingVerify, planReport };
+  return { ...second.state, planReport };
 }
 
 /**

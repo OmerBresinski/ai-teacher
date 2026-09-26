@@ -108,6 +108,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
         ? { planFrontierFromYear: deps.planFrontierFromYear }
         : {}),
       ...effortOverride(deps.reasoningEffort),
+      ...(deps.costWarnUsd !== undefined ? { costWarnUsd: deps.costWarnUsd } : {}),
       signal,
       logger: logger.child({
         resumed: priorUsage !== undefined,

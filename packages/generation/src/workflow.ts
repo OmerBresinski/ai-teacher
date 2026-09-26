@@ -1,12 +1,22 @@
 import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { safeError } from "@tj/domain";
-import type { Lesson } from "@tj/domain/documents";
+import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { z } from "zod";
 import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
+import { facts } from "./stages/facts";
 import { generate } from "./stages/generate";
 import { illustrate } from "./stages/illustrate";
+import { objectives } from "./stages/objectives";
+import {
+  OBJECTIVES_FIRST_CHECKPOINT,
+  OBJECTIVES_FIRST_ORDER,
+  type ObjectivesFirstStageName,
+  type Planner,
+  plannerFor,
+  resumeFromObjectivesFirst,
+} from "./stages/objectives-first";
 import { plan } from "./stages/plan";
 import { repair } from "./stages/repair";
 import {
@@ -84,16 +94,39 @@ export function resumeFrom(lesson: Lesson): PipelineStageName | null {
   return STAGE_ORDER[index + 1] ?? null;
 }
 
+/** A step of either workflow: the legacy stages, or the objectives-first ones (TEACH-93). */
+export type StepName = PipelineStageName | ObjectivesFirstStageName;
+
+/** How one workflow orders its steps and finds where a lesson resumes. */
+interface StepOrder<S extends StepName> {
+  order: readonly S[];
+  checkpoint: Record<S, GenerationStage | null>;
+  resume: (lesson: Lesson) => S | null;
+}
+
+const LEGACY: StepOrder<PipelineStageName> = {
+  order: STAGE_ORDER,
+  checkpoint: STAGE_CHECKPOINT,
+  resume: resumeFrom,
+};
+
+const OBJECTIVES_FIRST: StepOrder<ObjectivesFirstStageName> = {
+  order: OBJECTIVES_FIRST_ORDER,
+  checkpoint: OBJECTIVES_FIRST_CHECKPOINT,
+  resume: resumeFromObjectivesFirst,
+};
+
 /** Whether `stage` runs for a lesson resuming at `from` and stopping after `stopAfter`. */
-function shouldRun(
-  stage: PipelineStageName,
-  from: PipelineStageName | null,
-  stopAfter: PipelineStageName | undefined,
+function shouldRun<S extends StepName>(
+  order: readonly S[],
+  stage: S,
+  from: S | null,
+  stopAfter: S | undefined,
 ): boolean {
   if (from === null) return false;
-  const at = STAGE_ORDER.indexOf(stage);
-  if (stopAfter !== undefined && at > STAGE_ORDER.indexOf(stopAfter)) return false;
-  return at >= STAGE_ORDER.indexOf(from);
+  const at = order.indexOf(stage);
+  if (stopAfter !== undefined && at > order.indexOf(stopAfter)) return false;
+  return at >= order.indexOf(from);
 }
 
 /**
@@ -102,9 +135,10 @@ function shouldRun(
  * error stays in-process on the request context so `runLessonPipeline` can rethrow it to the
  * worker's retry classifier. Mastra receives only a safe sentinel: it logs step errors itself.
  */
-function stageStep(
-  stage: PipelineStageName,
+function stageStep<S extends StepName>(
+  stage: S,
   run: (state: PipelineState, deps: PipelineDeps) => Promise<PipelineState>,
+  steps: StepOrder<S>,
 ) {
   return createStep({
     id: stage,
@@ -115,11 +149,11 @@ function stageStep(
       const deps = depsOf({ requestContext, runId });
       // `runLessonPipeline` sets `resumeFrom`; a Studio run has none and resumes from the lesson.
       const from = requestContext.hasRaw(RESUME_KEY)
-        ? (requestContext.getRaw(RESUME_KEY) as PipelineStageName | null)
-        : resumeFrom(inputData.lesson);
-      const stopAfter = requestContext.getRaw(STOP_KEY) as PipelineStageName | undefined;
-      if (!shouldRun(stage, from, stopAfter)) return inputData;
-      const entered = (requestContext.getRaw(ENTERED_KEY) as PipelineStageName[] | undefined) ?? [];
+        ? (requestContext.getRaw(RESUME_KEY) as S | null)
+        : steps.resume(inputData.lesson);
+      const stopAfter = requestContext.getRaw(STOP_KEY) as S | undefined;
+      if (!shouldRun(steps.order, stage, from, stopAfter)) return inputData;
+      const entered = (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [];
       requestContext.setRaw(ENTERED_KEY, [...entered, stage]);
       try {
         const next = await run(inputData, deps);
@@ -136,12 +170,12 @@ function stageStep(
   });
 }
 
-export const checkInputStep = stageStep("check-input", checkInput);
-export const planStep = stageStep("plan", plan);
-export const generateStep = stageStep("generate", generate);
-export const illustrateStep = stageStep("illustrate", illustrate);
-export const evaluateStep = stageStep("evaluate", evaluate);
-export const repairStep = stageStep("repair", repair);
+export const checkInputStep = stageStep("check-input", checkInput, LEGACY);
+export const planStep = stageStep("plan", plan, LEGACY);
+export const generateStep = stageStep("generate", generate, LEGACY);
+export const illustrateStep = stageStep("illustrate", illustrate, LEGACY);
+export const evaluateStep = stageStep("evaluate", evaluate, LEGACY);
+export const repairStep = stageStep("repair", repair, LEGACY);
 
 export const lessonWorkflow = createWorkflow({
   id: "lesson-plan",
@@ -156,6 +190,28 @@ export const lessonWorkflow = createWorkflow({
   .then(illustrateStep)
   .then(evaluateStep)
   .then(repairStep)
+  .commit();
+
+/**
+ * The objectives-first planner (TEACH-93, ADR 0033): the input check, the objectives step (one
+ * call; the plan screen's checkpoint), the facts step (the waves and the outline in code), then
+ * the same four stages. Its steps order and resume on their own table, so the legacy workflow's
+ * `STAGE_ORDER`, `STAGE_CHECKPOINT` and `resumeFrom` are untouched.
+ */
+export const objectivesFirstWorkflow = createWorkflow({
+  id: "lesson-objectives-first",
+  description:
+    "Check input → Objectives → Facts → Generate → Illustrate → Evaluate → Repair for one lesson (ADR 0033)",
+  inputSchema: StateSchema,
+  outputSchema: StateSchema,
+})
+  .then(stageStep("check-input", checkInput, OBJECTIVES_FIRST))
+  .then(stageStep("objectives", objectives, OBJECTIVES_FIRST))
+  .then(stageStep("facts", facts, OBJECTIVES_FIRST))
+  .then(stageStep("generate", generate, OBJECTIVES_FIRST))
+  .then(stageStep("illustrate", illustrate, OBJECTIVES_FIRST))
+  .then(stageStep("evaluate", evaluate, OBJECTIVES_FIRST))
+  .then(stageStep("repair", repair, OBJECTIVES_FIRST))
   .commit();
 
 export interface PipelineInput {
@@ -175,6 +231,12 @@ export interface PipelineOptions {
    * same function without the option and resumes at Generate from the checkpoint.
    */
   stopAfter?: "planned";
+  /**
+   * The planner for a lesson with no checkpoint yet (`AI_LESSON_PLANNER`, TEACH-93). A lesson
+   * with one stays on the planner its `promptVersions.planned` stamp names (`plannerFor`), so a
+   * generate job, or a retry, needs no flag. Absent: `legacy`.
+   */
+  planner?: Planner;
 }
 
 /**
@@ -187,14 +249,34 @@ export async function runLessonPipeline(
   options: PipelineOptions = {},
 ): Promise<PipelineState> {
   const startedAt = Date.now();
-  const from = resumeFrom(input.lesson);
+  const planner = plannerFor(input.lesson, options.planner);
+  const steps: StepOrder<StepName> =
+    planner === "objectives-first"
+      ? (OBJECTIVES_FIRST as StepOrder<StepName>)
+      : (LEGACY as StepOrder<StepName>);
+  const workflow = planner === "objectives-first" ? objectivesFirstWorkflow : lessonWorkflow;
+  const from = steps.resume(input.lesson);
   const requestContext = new RequestContext();
-  requestContext.setRaw(DEPS_KEY, deps);
   requestContext.setRaw(RESUME_KEY, from);
-  // The option names a checkpoint; the steps compare stages, so the key holds the stage that
-  // writes it.
-  const stopStage = STAGE_ORDER.find((stage) => STAGE_CHECKPOINT[stage] === options.stopAfter);
+  // The option names a checkpoint; the steps compare stages, so the key holds the first stage that
+  // writes it (on the objectives-first path both planner steps write `planned`: the objectives
+  // step is the stop, so the teacher confirms the objectives before any facts call).
+  const stopStage = steps.order.find((stage) => steps.checkpoint[stage] === options.stopAfter);
   if (stopStage !== undefined) requestContext.setRaw(STOP_KEY, stopStage);
+  // Readable and checked latency for the summary (FR7): the elapsed time at the last Generate or
+  // Illustrate event, and at the last Evaluate or Repair event. The stages receive the wrapped
+  // deps, so illustrate's counts land on this object too.
+  let readableMs: number | undefined;
+  let checkedMs: number | undefined;
+  const tracked: PipelineDeps = {
+    ...deps,
+    onProgress: (percent, message, stage, documentUpdatedAt) => {
+      if (stage === "generate" || stage === "illustrate") readableMs = Date.now() - startedAt;
+      if (stage === "evaluate" || stage === "repair") checkedMs = Date.now() - startedAt;
+      return deps.onProgress(percent, message, stage, documentUpdatedAt);
+    },
+  };
+  requestContext.setRaw(DEPS_KEY, tracked);
   const state: PipelineState = {
     lesson: input.lesson,
     worksheetId: input.worksheetId,
@@ -206,12 +288,13 @@ export async function runLessonPipeline(
   let final: PipelineState | undefined;
 
   try {
-    const run = await lessonWorkflow.createRun({ runId: deps.context.jobId });
+    const run = await workflow.createRun({ runId: deps.context.jobId });
     const result = await run.start({ inputData: state, requestContext });
     if (result.status !== "success") {
       const stashed = requestContext.getRaw(FAILURE_KEY);
       if (requestContext.hasRaw(FAILURE_KEY)) throw stashed;
-      throw new StageFailure(from ?? "check-input", "The lesson workflow could not finish.");
+      const stage = from === "objectives" || from === "facts" ? "plan" : from;
+      throw new StageFailure(stage ?? "check-input", "The lesson workflow could not finish.");
     }
     final = result.result;
     outcome = "success";
@@ -224,20 +307,41 @@ export async function runLessonPipeline(
       final ?? (requestContext.getRaw(CHECKPOINT_KEY) as PipelineState | undefined);
     const findings = { error: 0, warning: 0 };
     for (const f of checkpoint?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
+    const totals = deps.budget.totals();
     deps.logger.info(
       {
         generation: {
           lessonId: deps.context.lessonId,
           jobId: deps.context.jobId,
           outcome,
-          stages: (requestContext.getRaw(ENTERED_KEY) as PipelineStageName[] | undefined) ?? [],
-          ...deps.budget.totals(),
+          planner,
+          stages: (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [],
+          ...totals,
           findings,
-          images: deps.imageCounts ?? emptyImageCounts(),
+          images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
           durationMs: Date.now() - startedAt,
+          ...(readableMs !== undefined ? { readableMs } : {}),
+          ...(checkedMs !== undefined ? { checkedMs } : {}),
         },
       },
       "generation summary",
     );
+    // FR7: a lesson over the per-lesson cost target is one warn line, never a stop
+    // (`AI_LESSON_COST_WARN_USD`; the cap is `AI_LESSON_COST_CAP_USD`).
+    if (
+      outcome === "success" &&
+      deps.costWarnUsd !== undefined &&
+      (totals.costUsd ?? 0) > deps.costWarnUsd
+    ) {
+      deps.logger.warn(
+        {
+          lessonId: deps.context.lessonId,
+          jobId: deps.context.jobId,
+          costUsd: totals.costUsd,
+          planner,
+        },
+        "lesson cost above target",
+      );
+    }
   }
 }
