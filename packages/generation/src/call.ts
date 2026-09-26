@@ -185,11 +185,13 @@ export const CALL_TIMEOUT_MS = {
   "check-input": 180_000,
   "plan-skeleton": 180_000,
   "plan-facts": 300_000,
-  // Registered but uncalled until the objectives-first Plan (TEACH-88); the old default bound.
-  "plan-objectives": 300_000,
-  "plan-facts-objective": 300_000,
-  "plan-teach-objective": 300_000,
-  "plan-question-set": 300_000,
+  // Only the objectives-first planner calls these (TEACH-93), so they take the fast-route bounds
+  // measured on Luna (`FAST_CALL_TIMEOUT_MS`) whatever the model: a hung question set cost a
+  // browser-checked lesson 300 s under the old default.
+  "plan-objectives": 75_000,
+  "plan-facts-objective": 150_000,
+  "plan-teach-objective": 45_000,
+  "plan-question-set": 60_000,
   "verify-facts": 180_000,
   "generate-slide": 180_000,
   "generate-worksheet": 300_000,
@@ -205,9 +207,45 @@ export const CALL_TIMEOUT_MS = {
   regenerate: 300_000,
 } satisfies Record<PromptName, number>;
 
-export function callTimeoutMs(version: string): number {
+/**
+ * A fast route: Luna on OpenAI, by its gateway-style id (`openai/gpt-6-luna`) or the bare id the
+ * direct provider reports (`gpt-6-luna`), where a call that runs to several times its worst normal
+ * case is lost, not slow. Bedrock ids (Luna on Bedrock included: unmeasured there), Sol, Terra
+ * and the Anthropic ids keep the class table above.
+ */
+export function isFastModelId(modelId: string): boolean {
+  return /^(openai\/)?gpt-[\d.]+-luna$/.test(modelId);
+}
+
+/**
+ * The bounds on a fast route, by prompt (lab/l6k f7fe399): 2–3× the p99 of the successful calls in
+ * the lab's r5, e2, w1 and b1 runs on Luna (24 Sept 2026; n = 9–138 a prompt), rounded up — p99
+ * evaluate 30 s, plan-facts-objective 59 s, plan-objectives 29 s, plan-question-set 20 s,
+ * generate-slide 16 s, plan-teach-objective 15 s, verify-facts 11 s, repair 10 s, repair-fact 6 s.
+ * One retry stays (`callStructured`), so a hung call costs at most two bounds. A prompt with no
+ * row here keeps the class table's bound.
+ */
+export const FAST_CALL_TIMEOUT_MS: Readonly<Partial<Record<PromptName, number>>> = {
+  evaluate: 90_000,
+  "generate-slide": 45_000,
+  "plan-facts-objective": 150_000,
+  "plan-objectives": 75_000,
+  "plan-question-set": 60_000,
+  "plan-teach-objective": 45_000,
+  repair: 30_000,
+  "repair-fact": 30_000,
+  "verify-facts": 30_000,
+};
+
+/** The deadline for a prompt version; with the routed model id, a fast route's own bound. */
+export function callTimeoutMs(version: string, modelId?: string): number {
   const name = version.replace(/\.v\d+$/, "");
-  return Object.hasOwn(CALL_TIMEOUT_MS, name) ? CALL_TIMEOUT_MS[name as PromptName] : 300_000;
+  if (!Object.hasOwn(CALL_TIMEOUT_MS, name)) return 300_000;
+  const fast =
+    modelId !== undefined && isFastModelId(modelId)
+      ? FAST_CALL_TIMEOUT_MS[name as PromptName]
+      : undefined;
+  return fast ?? CALL_TIMEOUT_MS[name as PromptName];
 }
 
 /** The failed answer, sent back so a miss is an edit of it rather than a fresh answer (audit A1). */
@@ -313,7 +351,6 @@ export async function callStructured<I, T>(
   const effort =
     deps.effortFor?.(stage, prompt.version.replace(/\.v\d+$/, ""), options.effort) ??
     options.effort;
-  const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version);
   // Cancel is checked between model calls (ADR 0025 §5); the fake ignores `abortSignal`, so the
   // check is here rather than trusted to the provider.
   throwIfAborted(deps.signal);
@@ -323,6 +360,7 @@ export async function callStructured<I, T>(
   // (the lab's model bench), so the budget prices what was used and the log names it.
   const routed = deps.ai.model(cls, callContext(deps, stage, prompt.version, effort));
   const modelId = typeof routed === "string" ? routed : routed.modelId;
+  const timeoutMs = options.timeoutMs ?? callTimeoutMs(prompt.version, modelId);
   const model = withGenerationBudget(routed, modelId, deps.budget);
   const userText = prompt.user(input);
   const output = repairingObjectOutput(

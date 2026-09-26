@@ -38,6 +38,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0030 | The worksheet is an independent job                               | Accepted |
 | 0031 | AI provider: OpenAI direct as an opt-in route in @tj/ai; Bedrock stays the default | Accepted |
 | 0032 | Figures are drawn by code from named templates, with a `path` element | Accepted |
+| 0033 | Objectives-first planner behind `AI_LESSON_PLANNER`; the stamp decides the path | Accepted |
 
 Template: `0000-template.md`.
 
@@ -76,3 +77,4 @@ Template: `0000-template.md`.
 - 2026-09-16 — ADR 0015 (by reference, file unchanged): the new routes and jobs log ids, revisions, counts and booleans only; `POST /briefs/parse` logs `{ rules, model, dropped, ms }` (ADR 0029 item 15).
 - 2026-09-25 — ADR 0018: Bedrock stays the production provider; ADR 0031 adds an opt-in direct OpenAI route that activates only when `OPENAI_API_KEY` is set and a class is switched to an `openai/` id. See the amendment in `0018-ai-provider.md`.
 - 2026-09-25 — ADR 0016 §1 item 5: unchanged while production is on Bedrock; if a class is switched to an `openai/` id (ADR 0031), inference for it moves to OpenAI's API (US) in flight and OpenAI must be named as a sub-processor of lesson content in the F15-R01 data-flow statement; same revisit date. See the amendment in `0016-prd-deviations.md`.
+- 2026-09-26 — ADR 0025 §5, §21 and ADR 0029 items 1–2: behind `AI_LESSON_PLANNER=objectives-first` the plan job's checkpoint holds the objectives only and the facts move to the generate job; a second in-process workflow runs them; the lesson's `promptVersions.planned` stamp picks the path on resume (ADR 0033).

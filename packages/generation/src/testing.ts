@@ -415,3 +415,5 @@ export function memoryLogger(): { lines: string[]; logger: Logger } {
   });
   return { lines, logger: pino({ level: "info" }, destination) };
 }
+
+export * from "./planner/testing";

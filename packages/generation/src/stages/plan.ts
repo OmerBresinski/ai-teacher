@@ -274,7 +274,7 @@ export async function plan(state: PipelineState, deps: PipelineDeps): Promise<Pi
  * optional) and in the outline's `factRefs` — is renamed in one pass from the minted id to the pinned
  * id at that position.
  */
-function withPinnedIds(
+export function withPinnedIds(
   facts: LessonFacts,
   pinned: { id: string; text: string }[] | undefined,
 ): LessonFacts {
@@ -371,12 +371,12 @@ function existingSkeleton(
 }
 
 /** The title slide an earlier attempt of Plan persisted, when the lesson opens with one. */
-function existingTitle(lesson: Lesson): Slide | undefined {
+export function existingTitle(lesson: Lesson): Slide | undefined {
   const first = lesson.slides[0];
   return first?.kind === "title" ? first : undefined;
 }
 
-function materialiseTitle(lesson: Lesson, deps: PipelineDeps): Slide {
+export function materialiseTitle(lesson: Lesson, deps: PipelineDeps): Slide {
   return materialiseSlide(
     {
       kind: "title",

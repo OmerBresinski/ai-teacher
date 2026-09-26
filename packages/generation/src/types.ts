@@ -160,6 +160,11 @@ export interface PipelineDeps {
    */
   effortFor?: (stage: string, promptName: string, effort: ReasoningEffort) => ReasoningEffort;
   /**
+   * The per-lesson cost target (`AI_LESSON_COST_WARN_USD`, TEACH-93): a run that finishes with the
+   * lesson's cost above it logs one `lesson cost above target` warn line. Unset: no warn.
+   */
+  costWarnUsd?: number;
+  /**
    * Where illustrate reports its counts for the summary line. Stages cannot see the
    * `RequestContext`, so the per-run counts ride here instead (the same shape of channel as
    * `budget`, which stages charge the same way). Created by illustrate when absent.

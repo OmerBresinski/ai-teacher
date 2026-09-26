@@ -22,6 +22,8 @@ describe("worker env", () => {
       AI_LESSON_COST_CAP_USD: 0.5,
       AI_LESSON_TOKEN_CAP: 300_000,
       AI_WORKSHEET_COST_CAP_USD: 0.1,
+      AI_LESSON_PLANNER: "legacy",
+      AI_LESSON_COST_WARN_USD: 0.03,
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
       AI_FAKE_SCRIPT: undefined,
@@ -190,6 +192,43 @@ describe("worker env", () => {
         const message = String(error.mock.calls[0]?.[0]);
         expect(message).toContain("AI_REASONING_EFFORT");
         expect(message).toContain("xhigh");
+      } finally {
+        exit.mockRestore();
+        error.mockRestore();
+      }
+    });
+  });
+
+  describe("AI_LESSON_PLANNER and AI_LESSON_COST_WARN_USD (TEACH-93)", () => {
+    test("unset: the legacy planner and a 0.03 cost target", () => {
+      const env = parseEnv({ DATABASE_URL: DB });
+      expect(env.AI_LESSON_PLANNER).toBe("legacy");
+      expect(env.AI_LESSON_COST_WARN_USD).toBe(0.03);
+    });
+
+    test("accepts objectives-first and a numeric target", () => {
+      const env = parseEnv({
+        DATABASE_URL: DB,
+        AI_LESSON_PLANNER: "objectives-first",
+        AI_LESSON_COST_WARN_USD: "0",
+      });
+      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
+      expect(env.AI_LESSON_COST_WARN_USD).toBe(0);
+    });
+
+    test("another planner stops the worker at boot with one line naming the variable", () => {
+      const exit = spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("exit");
+      }) as never);
+      const error = spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(() => parseEnv({ DATABASE_URL: DB, AI_LESSON_PLANNER: "other" })).toThrow("exit");
+        expect(exit).toHaveBeenCalledWith(1);
+        const lines = String(error.mock.calls[0]?.[0])
+          .split("\n")
+          .filter((l) => l.startsWith("  - "));
+        expect(lines).toHaveLength(1);
+        expect(lines[0]).toContain("AI_LESSON_PLANNER");
       } finally {
         exit.mockRestore();
         error.mockRestore();

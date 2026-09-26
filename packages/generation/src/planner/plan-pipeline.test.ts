@@ -1,13 +1,13 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { type Budget, createBudget, type FakeCall } from "@tj/ai";
-import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
-import { checkLesson, type Lesson } from "@tj/domain/documents";
+import { type Budget, createBudget } from "@tj/ai";
+import { checkLesson } from "@tj/domain/documents";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { planFactsObjectiveOutputSchemaFor } from "../prompts/plan-facts-objective";
 import { type PlanQuestionSetOutput, planQuestionSetPrompt } from "../prompts/plan-question-set";
 import { planTeachObjectivePrompt } from "../prompts/plan-teach-objective";
 import { lessonShapeOf } from "../shapes";
-import { callLimitedBudget, FIXTURES, recordingDeps, sampleBriefLesson } from "../testing";
+import { OBJECTIVES_FIRST_VERSION } from "../stages/objectives-first";
+import { callLimitedBudget, recordingDeps } from "../testing";
 import {
   fitsExitLine,
   MAX_OUTPUT_TOKENS_OBJECTIVES,
@@ -19,6 +19,9 @@ import {
   runPlannedLessonPipeline,
   runStatus,
 } from "./plan-pipeline";
+import { factsAnswerFor, labAi, questionSetAnswer, romansLesson, versionsOf } from "./testing";
+
+const json = (v: unknown) => JSON.stringify(v);
 
 /** A budget that admits everything and records the output cap each call reserved. */
 function reserveRecordingBudget(): Budget & { reservedOutput: number[] } {
@@ -42,60 +45,6 @@ function reserveRecordingBudget(): Budget & { reservedOutput: number[] } {
  * answers the merge takes, so the merged facts are ones the outline step is already measured on.
  */
 
-const json = (v: unknown) => JSON.stringify(v);
-const usage = { inputTokens: 1000, outputTokens: 400 };
-
-function romansLesson(): Lesson {
-  return sampleBriefLesson({
-    title: romans.topic,
-    subject: romans.subject,
-    yearGroup: romans.yearGroup,
-    ageBand: "ks2",
-    brief: { topic: romans.topic, durationMin: romans.durationMin, answers: romans.answers },
-  } as Partial<Lesson>);
-}
-
-type Item = { objectiveRefs?: { type: string; index: number }[]; misconceptionRef?: unknown };
-const has = (x: Item, i: number) => (x.objectiveRefs ?? []).some((r) => r.index === i);
-const strip = <T extends Item>(x: T) => {
-  const { objectiveRefs: _o, misconceptionRef: _m, ...rest } = x as Item & T;
-  return rest;
-};
-
-/**
- * The fixture's merged facts as the answer objective `i` would have given: no objective refs on
- * the lists that never carry them, no misconception ordinals (the merge re-indexes those), and
- * the v9 declarations a call makes — a worked example names its objective, a question declares
- * `demand` and `forms` — filled from the fixture where it has them and by their native form
- * where it does not (a fixture written before v9).
- */
-function factsAnswerFor(i: number) {
-  const f = romans.facts;
-  return {
-    keyIdeas: f.keyIdeas.filter((x) => has(x, i)).map(strip),
-    misconceptions: f.misconceptions.filter((x) => has(x, i)).map(strip),
-    vocabulary: f.vocabulary.filter((x) => has(x, i)).map(strip),
-    // The one worked example goes to the last objective: the reach carries it (v4 of the prompt).
-    workedExamples: (i === romans.objectives.length - 1 ? f.workedExamples : []).map((x) => ({
-      ...strip(x),
-      objectiveRefs: [{ type: "objective" as const, index: i }],
-    })),
-    questions: f.questions
-      .filter((x) => has(x, i))
-      .map((q) => {
-        const declared = q as { demand?: string; forms?: string[] };
-        return {
-          ...strip(q),
-          demand: declared.demand ?? "recall",
-          forms:
-            declared.forms ??
-            ((q.distractors ?? []).length >= 3 ? ["multiple-choice"] : ["open-response"]),
-          distractors: (q.distractors ?? []).map(strip),
-        };
-      }),
-  };
-}
-
 test("the fixture slices pass the per-objective schema (the stubs answer in the real shape)", () => {
   const shape = lessonShapeOf(romans.answers, { yearGroup: romans.yearGroup });
   romans.objectives.forEach((_, target) => {
@@ -109,92 +58,6 @@ test("the fixture slices pass the per-objective schema (the stubs answer in the 
   });
 });
 
-/** A question set as the split call returns one: `count` questions, each on the taught key idea 0. */
-function questionSetAnswer(
-  set: { target: number; use: "slide" | "exit"; count: number },
-  keyIdeaIndex = 0,
-) {
-  return {
-    questions: Array.from({ length: set.count }, (_, n) => ({
-      stem: `${set.use} question ${n + 1} on objective ${set.target + 1}: which is right?`,
-      answer: `Right answer ${n + 1}`,
-      reasoning: "The taught key idea says so.",
-      tier: n === 0 ? "easy" : n === 1 ? "core" : "stretch",
-      use: set.use,
-      demand: "recall",
-      forms: ["multiple-choice", "open-response"],
-      keyIdeaRefs: [{ type: "keyIdea", index: keyIdeaIndex }],
-      distractors: [
-        { text: `Wrong option ${n + 1}a` },
-        { text: `Wrong option ${n + 1}b` },
-        { text: `Wrong option ${n + 1}c` },
-      ],
-    })),
-  };
-}
-
-/** A fake answering by prompt version, whatever the order calls arrive in. */
-function labAi(
-  options: {
-    objectives?: unknown;
-    /** The objectives call's retrieval set (v12); omitted: an answer without one, as v11 gave. */
-    retrieval?: unknown;
-    facts?: (call: FakeCall, target: number) => string | Promise<string>;
-    /** Lab pw: the teach call's answer (default the fixture slice without its questions). */
-    teach?: (call: FakeCall, target: number) => string | Promise<string>;
-    /** Lab pw: a question set's answer (default `count` questions on key idea 0). */
-    questionSet?: (
-      call: FakeCall,
-      set: { target: number; use: "slide" | "exit"; count: number },
-    ) => string | Promise<string>;
-    verify?: unknown;
-    /** The slide answer; default the fixture slide of the entry's kind. */
-    slide?: (call: FakeCall, kind: string) => string;
-    evaluate?: unknown;
-  } = {},
-) {
-  const fallback: FakeScriptEntry = async (call) => {
-    const version = call.context?.promptVersion ?? "";
-    if (version.startsWith("plan-objectives"))
-      return json({
-        objectives: options.objectives ?? romans.objectives,
-        ...(options.retrieval === undefined ? {} : { retrieval: options.retrieval }),
-      });
-    if (version.startsWith("plan-facts-objective")) {
-      // The prompt (v9) lists objectives by 0-based index and names the target the same way.
-      const target = Number(/Write the facts for objective (\d+)/.exec(call.promptText)?.[1]);
-      return options.facts ? options.facts(call, target) : json(factsAnswerFor(target));
-    }
-    if (version.startsWith("plan-teach-objective")) {
-      const target = Number(/for objective (\d+):/.exec(call.promptText)?.[1]);
-      if (options.teach) return options.teach(call, target);
-      const { questions: _questions, ...taught } = factsAnswerFor(target);
-      return json(taught);
-    }
-    if (version.startsWith("plan-question-set")) {
-      const m = /Write (\d+) "(slide|exit)" question/.exec(call.promptText);
-      const count = Number(m?.[1]);
-      const use = m?.[2] as "slide" | "exit";
-      const target = romans.objectives.findIndex((o) => call.promptText.includes(o.text));
-      if (options.questionSet) return options.questionSet(call, { target, use, count });
-      return json(questionSetAnswer({ target, use, count }));
-    }
-    if (version.startsWith("verify-facts")) return json(options.verify ?? { corrections: [] });
-    if (version.startsWith("generate-slide")) {
-      const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
-      if (options.slide) return options.slide(call, kind);
-      return json(FIXTURES.slides[kind as keyof typeof FIXTURES.slides]);
-    }
-    if (version.startsWith("evaluate")) return json(options.evaluate ?? { findings: [] });
-    if (version.startsWith("repair")) return json(FIXTURES.repair);
-    throw new Error(`unexpected call: ${version}`);
-  };
-  return createFakeAi({ fallback, usage });
-}
-
-const versionsOf = (ai: ReturnType<typeof labAi>) =>
-  ai.calls.map((c) => (c.context?.promptVersion ?? "").replace(/\.v\d+$/, ""));
-
 describe("planFromObjectives", () => {
   test("verify off: no verify-facts call anywhere, Generate is handed a settled empty result", async () => {
     const ai = labAi();
@@ -207,7 +70,7 @@ describe("planFromObjectives", () => {
     expect(versionsOf(ai)).not.toContain("verify-facts");
   });
 
-  test("objectives that break the structural check block the run before any facts call", async () => {
+  test("objectives that break the structural check twice block the run before any facts call", async () => {
     const ai = labAi({
       objectives: [{ text: "Understand the Romans" }, { text: "Explain Boudica's revolt" }],
     });
@@ -221,9 +84,11 @@ describe("planFromObjectives", () => {
     }
     expect(blocked).toBeDefined();
     expect(blocked?.issues.join("\n")).toContain('"understand"');
-    // The objectives call, and nothing after it: no facts call was paid for.
-    expect(versionsOf(ai)).toEqual(["plan-objectives"]);
-    expect(deps.persisted).toHaveLength(1);
+    // The objectives call, asked once more, and nothing after it: no facts call was paid for,
+    // and nothing was persisted.
+    expect(versionsOf(ai)).toEqual(["plan-objectives", "plan-objectives"]);
+    expect(deps.persisted).toHaveLength(0);
+    expect(blocked?.reason).toBe("objectives-check");
     expect(blocked?.report.verify).toBe("blocked");
     expect(blocked?.report.status).toEqual({
       executed: false,
@@ -245,7 +110,46 @@ describe("planFromObjectives", () => {
     );
     expect(run.status.executed).toBe(false);
     expect(run.status.complete).toBe(false);
-    expect(run.state.lesson.slides.map((s) => s.kind)).toEqual(["title"]);
+    expect(run.state.lesson.slides).toEqual(romansLesson().slides);
+  });
+
+  test("a set that fails the check once is asked for again; the second set goes on to the facts", async () => {
+    const ai = labAi({
+      objectivesAt: (n) =>
+        n === 1
+          ? [{ text: "Understand the Romans" }, { text: "Explain Boudica's revolt" }]
+          : romans.objectives,
+    });
+    const deps = recordingDeps(ai);
+    const state = await planFromObjectives({ lesson: romansLesson() }, deps, { verify: false });
+    expect(versionsOf(ai).filter((v) => v === "plan-objectives")).toHaveLength(2);
+    expect(versionsOf(ai)).toContain("plan-teach-objective");
+    expect(state.planReport.objectiveIssues).toEqual([]);
+    expect(state.lesson.facts?.objectives.map((o) => o.text)).toEqual(
+      romans.objectives.map((o) => o.text),
+    );
+  });
+
+  test("two persists: title and objectives together first, then the outlined checkpoint", async () => {
+    const deps = recordingDeps(labAi());
+    await planFromObjectives({ lesson: romansLesson() }, deps, { verify: false });
+    expect(deps.persisted).toHaveLength(2);
+    const [first, second] = deps.persisted.map((p) => p.lesson);
+    expect(first?.slides.map((s) => s.kind)).toEqual(["title", "objectives"]);
+    expect(first?.facts?.outline).toEqual([]);
+    expect(first?.generation?.promptVersions.planned).toBe(OBJECTIVES_FIRST_VERSION);
+    expect(second?.facts?.outline.length).toBeGreaterThan(2);
+    expect(second?.generation?.promptVersions.planned).toBe(PLANNED_VERSION);
+    // The objectives slide keeps its id across the two persists.
+    expect(second?.slides[1]?.id).toBe(first?.slides[1]?.id as string);
+    expect(
+      deps.progress.map((p) => [p.percent, p.message, p.documentUpdatedAt !== undefined]),
+    ).toEqual([
+      [2, "Starting", false],
+      [10, "Planned", true],
+      [10, "Planning the slides", false],
+      [10, "Planned", true],
+    ]);
   });
 });
 

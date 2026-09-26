@@ -737,6 +737,33 @@ const CONTRACT = [
       "Reasoning effort every model call in the worker runs at (lesson pipeline and worksheet), through `effortFor` (TEACH-72). One of none | low | medium | high | xhigh; anything else stops the worker at boot. Unset: each stage keeps its own effort. Changes no model id. Not set on Railway until a rollout chooses the value.",
   },
   {
+    name: "AI_LESSON_PLANNER",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["legacy", "objectives-first"],
+    files: ["worker"],
+    description:
+      "Which planner plans a new lesson (TEACH-93, ADR 0033). `legacy` (default): the skeleton and facts calls in `lesson.plan`. `objectives-first`: `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. Anything else stops the worker at boot. Not set on Railway until the blind judging says go; rollback is unsetting it.",
+  },
+  {
+    name: "AI_LESSON_COST_WARN_USD",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "number",
+    files: ["worker"],
+    description:
+      "Per-lesson cost target in USD (TEACH-93, default 0.03): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`.",
+  },
+  {
     name: "AI_MODEL_JUDGE",
     services: ["worker"],
     scope: "config",

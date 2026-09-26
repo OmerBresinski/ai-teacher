@@ -1,7 +1,7 @@
 import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
-import type { ReasoningEffort } from "@tj/generation";
+import type { Planner, ReasoningEffort } from "@tj/generation";
 import { createPexelsClient, type PexelsClient } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { createStorage, type StorageKind } from "@tj/storage";
@@ -32,6 +32,10 @@ export type WorkerDeps = {
   planFrontierFromYear?: number;
   /** `AI_REASONING_EFFORT` (TEACH-72): every call's effort; unset → each stage's own. */
   reasoningEffort?: ReasoningEffort;
+  /** `AI_LESSON_PLANNER` (TEACH-93): the planner a lesson with no checkpoint is planned with. */
+  planner?: Planner;
+  /** `AI_LESSON_COST_WARN_USD` (TEACH-93): the per-lesson cost a finished lesson is warned above. */
+  costWarnUsd?: number;
   storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter };
   jobs?: JobsContext;
@@ -62,6 +66,8 @@ export function createWorkerDeps(
       ? { planFrontierFromYear: env.AI_PLAN_FRONTIER_FROM_YEAR }
       : {}),
     ...(env.AI_REASONING_EFFORT !== undefined ? { reasoningEffort: env.AI_REASONING_EFFORT } : {}),
+    planner: env.AI_LESSON_PLANNER,
+    costWarnUsd: env.AI_LESSON_COST_WARN_USD,
     storage: storage.adapter,
     images: env.PEXELS_API_KEY
       ? {
