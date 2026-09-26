@@ -131,6 +131,19 @@ describe("plan-teach-objective", () => {
     expect(
       workedExampleLine({ ...SAMPLE, shape: lessonShapeOf({ objectiveVerb: "Recall" }, {}) }),
     ).toBeUndefined();
+    // v4: an objective that names a method is floored in code, so its line is "required" (E48).
+    const method = {
+      ...SAMPLE,
+      objectives: [
+        { text: "Explain how to simplify a ratio fully" },
+        ...SAMPLE.objectives.slice(1),
+      ],
+      target: 0,
+    };
+    expect(workedExampleLine(method)).toBe("Worked example: required for this objective.");
+    expect(
+      planTeachObjectiveOutputSchemaFor(method).safeParse(taught({ workedExamples: [] })).success,
+    ).toBe(false);
     // Prior knowledge is rendered once, by the audience block (v2), never under the objectives label.
     const covered = planTeachObjectivePrompt.user({
       ...SAMPLE,

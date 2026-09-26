@@ -214,6 +214,11 @@ import { type Audience, audienceBlock, houseRules } from "./shared";
  * signal), the four-option lists that repeat the answer (w0b schema check already retries), an
  * invention allowance for key-idea examples (Y11-L, one case).
  * Not measured live: the A/B against v13 follows this commit.
+ *
+ * v15 (26 Sept 2026, E48; `quality-prd/lab/DIAG-ratio-checks.md` gap 1): no wording change. The
+ * worked-example decision (`carriesWorkedExample`) also floors an objective whose phrase names a
+ * method after "how/why (to)" (`namesMethod`), so "Explain how to simplify a ratio" before the
+ * reach is "required", not "none". Bumped because the rendered user line changes for such inputs.
  */
 
 export type PlanFactsObjectiveInput = {
@@ -441,24 +446,53 @@ export type PlanFactsObjectivePosition = Pick<
   "shape" | "objectives" | "target"
 >;
 
-/** An objective whose leading verb sits at Apply level ("Calculate…", "Solve…") has a method. */
-function isApplyLevel(objective: { text: string } | undefined): boolean {
-  return objective !== undefined && verbLevel(leadingVerb(objective.text)) === "Apply";
+/** An Apply-level verb in `word`, read through its -s, -es, -ies and -ing forms ("simplifies", "dividing"). */
+function isApplyWord(word: string | undefined): boolean {
+  if (!word) return false;
+  const stems = [word];
+  if (word.endsWith("ies")) stems.push(`${word.slice(0, -3)}y`);
+  if (word.endsWith("es")) stems.push(word.slice(0, -2));
+  if (word.endsWith("s")) stems.push(word.slice(0, -1));
+  if (word.endsWith("ing")) {
+    const base = word.slice(0, -3);
+    stems.push(base, `${base}e`);
+    if (/(.)\1$/.test(base)) stems.push(base.slice(0, -1));
+  }
+  return stems.some((stem) => verbLevel(stem) === "Apply");
+}
+
+/**
+ * v15: whether an objective names a method, read from its words against the objectives check's own
+ * verb table. Either its leading verb is at Apply level ("Calculate…", "Solve…"), or the phrase
+ * after "how" or "why" (optionally "how to") opens on one ("Explain how to simplify…", "Explain
+ * how dividing…", "Explain why adding…"): an Explain objective about carrying out a procedure,
+ * in any subject. "Explain how the Romans used roads" is not: the word after "how" is no verb.
+ */
+export function namesMethod(objective: { text: string } | undefined): boolean {
+  if (objective === undefined) return false;
+  if (isApplyWord(leadingVerb(objective.text))) return true;
+  const words = objective.text.toLowerCase().split(/[^a-z]+/);
+  return words.some((word, i) => {
+    if (word !== "how" && word !== "why") return false;
+    const next = words[i + 1] === "to" ? words[i + 2] : words[i + 1];
+    return isApplyWord(next);
+  });
 }
 
 /**
  * v4: whether THIS call must return a worked example, decided in code from the objective and the
- * shape, never left to the model. Required on (a) an objective whose own leading verb is at Apply
- * level — it teaches a method, and a method is shown worked — and (b) the lesson's last objective
- * (its reach, held at the shape's verb by the objectives check) when the shape needs a
- * `worked-example` slide (Explain and Apply today, read from `requiredKinds`), so the outline can
- * always meet its shape. A Recall "Define…" objective before the reach gets none. The prompt's user
- * turn and the schema both read this, so the line and the floor cannot drift.
+ * shape, never left to the model. Required on (a) an objective that names a method
+ * (`namesMethod`: an Apply-level leading verb, or, since v15, "how/why (to) <method verb>") — a
+ * method is shown worked — and (b) the lesson's last objective (its reach, held at the shape's
+ * verb by the objectives check) when the shape needs a `worked-example` slide (Explain and Apply
+ * today, read from `requiredKinds`), so the outline can always meet its shape. A Recall "Define…"
+ * objective before the reach gets none. The prompt's user turn and the schema both read this, so
+ * the line and the floor cannot drift.
  */
 export function carriesWorkedExample(position: PlanFactsObjectivePosition): boolean {
   const reach = position.target === position.objectives.length - 1;
   return (
-    isApplyLevel(position.objectives[position.target]) ||
+    namesMethod(position.objectives[position.target]) ||
     (reach && position.shape.requiredKinds.includes("worked-example"))
   );
 }
@@ -550,7 +584,7 @@ export const SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}],"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"slide","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
 export const planFactsObjectivePrompt = {
-  version: "plan-facts-objective.v14",
+  version: "plan-facts-objective.v15",
   system: [
     "You are an experienced UK teacher writing one lesson's substance, one objective at a time.",
     "Other calls write the others: do not teach them here.",

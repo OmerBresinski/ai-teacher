@@ -50,6 +50,13 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * v4 (26 Sept 2026, E48): no wording change. E46 production G, Y7 ratio: v3's hedged line did get
+ * o1 a worked example, but its objective ("…keeps it equivalent") named no end state and the
+ * example handed over the factor, so simplest form was never taught. The floor is now code-held
+ * for any objective that names a method after "how/why (to)" (`namesMethod`, plan-facts-objective
+ * v15), so the hedged line reaches only objectives that name none. The finished form itself is
+ * asked for upstream (plan-objectives v19).
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -185,7 +192,7 @@ export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v3",
+  version: "plan-teach-objective.v4",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",

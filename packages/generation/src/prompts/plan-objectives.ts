@@ -223,6 +223,14 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    sentence covers the open and the picking form). The knowledge errors themselves need verify to see the starter
  *    (CHANGES.md change 4: code, not a prompt rule).
  *
+ * v19 (26 Sept 2026, E48; `quality-prd/lab/DIAG-ratio-checks.md` gap 1): "Name the actual methods"
+ *    was read as naming the action, not its goal. Under an Explain reach, Y7 "simplifying and
+ *    sharing in a ratio" came back as "Explain how dividing every part … keeps it equivalent" (E46
+ *    G and 5 of 15 lab decks), which names no end state, so no later call taught simplest form.
+ *    The naming rule now asks for each method with the finished result it produces (+10 words, 353;
+ *    the test alarm moves once). The
+ *    example is from another topic on purpose, so it is not copied into the benched brief.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -353,12 +361,12 @@ const SHAPE_SKETCH =
   '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v18",
+  version: "plan-objectives.v19",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
     OBJECTIVE_HOUSE_RULES,
-    "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods; where it covers several factors, methods or strategies, name them.",
+    "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts, and each method with the finished result it produces (a fully factorised expression); where it covers several factors, methods or strategies, name them.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",

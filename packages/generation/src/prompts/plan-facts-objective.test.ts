@@ -3,6 +3,7 @@ import { isEditorialIssue, SPEC_LIMITS } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
 import {
   carriesWorkedExample,
+  namesMethod,
   PlanFactsObjectiveOutputSchema,
   planFactsObjectiveOutputSchemaFor,
   planFactsObjectivePrompt,
@@ -309,6 +310,45 @@ describe("plan-facts-objective", () => {
       ],
     });
     expect(accepts("Apply", 2, headsOff)).toBe(true);
+  });
+
+  test("an objective that names a method after how/why carries a worked example, in any subject", () => {
+    // v15 (E48): an Explain objective before the reach that is about carrying out a procedure was
+    // told "none" (v14) or left to a hedge the model skipped (teach v3), and lost its method.
+    const method = [
+      "Explain how to simplify a ratio by dividing both parts by a common factor.",
+      "Explain how dividing each part by the same factor simplifies a ratio.",
+      "Explain how adding the ratio parts helps share an amount.",
+      "Explain why multiplying both sides keeps the equation balanced.",
+      "Explain how to balance a symbol equation for a reaction.",
+      "Describe how to use a semicolon between two main clauses.",
+      "Calculate each share of an amount split in a given ratio.",
+    ];
+    const prose = [
+      "Explain how the Romans changed daily life in Britain.",
+      "Explain how plants make food using light.",
+      "Explain why Prospero uses magic to control the island.",
+      "Explain how waves form arches and stacks on headlands.",
+      "Name the two quantities a ratio compares.",
+      "Explain how price elasticity of demand affects total revenue.",
+    ];
+    expect(method.filter((text) => !namesMethod({ text }))).toEqual([]);
+    expect(prose.filter((text) => namesMethod({ text }))).toEqual([]);
+    // Before the reach, under an Explain shape: the method objective is floored, the prose one is not.
+    const lesson = {
+      ...SAMPLE,
+      shape: lessonShapeOf({ objectiveVerb: "Explain" }, { yearGroup: "Year 7" }),
+      objectives: [
+        { text: "Explain how dividing every part by the same factor simplifies a ratio." },
+        { text: "Explain how the Romans changed daily life in Britain." },
+        { text: "Explain how adding the ratio parts helps share an amount." },
+      ],
+    };
+    const at = (target: number) => ({ ...lesson, target });
+    expect([0, 1, 2].map((t) => carriesWorkedExample(at(t)))).toEqual([true, false, true]);
+    const none = facts({ workedExamples: [] });
+    expect(planFactsObjectiveOutputSchemaFor(at(0)).safeParse(none).success).toBe(false);
+    expect(planFactsObjectiveOutputSchemaFor(at(1)).safeParse(none).success).toBe(true);
   });
 
   test("an objective whose own verb is at Apply level carries a worked example, whatever its place", () => {

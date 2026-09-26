@@ -209,15 +209,15 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a582769329a1e3bc2652808dd41c8fc87c8c68e18b1f6b95d8c46407c44253c3",
   },
   "plan-objectives": {
-    version: "plan-objectives.v18",
-    hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
+    version: "plan-objectives.v19",
+    hash: "2409f58f9b4b0c93716f7c412e82ea468b2da87fd5137011f5550693a9c6f15b",
   },
   "plan-facts-objective": {
-    version: "plan-facts-objective.v14",
+    version: "plan-facts-objective.v15",
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v3",
+    version: "plan-teach-objective.v4",
     hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
   },
   "plan-question-set": {
