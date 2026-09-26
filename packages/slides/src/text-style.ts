@@ -99,7 +99,13 @@ export function resolveTextStyle(
         ? "0.08em"
         : "normal",
     textTransform: preset === "caption" ? "uppercase" : "none",
-    color: style?.color ?? (preset === "caption" ? theme.colors.muted : theme.colors.ink),
+    color:
+      style?.color ??
+      (preset === "caption"
+        ? theme.colors.muted
+        : TRACKED.includes(preset)
+          ? (theme.colors.heading ?? theme.colors.ink)
+          : theme.colors.ink),
     align: style?.align ?? "left",
     valign: style?.valign ?? "top",
     padding: style?.padding ?? 0,

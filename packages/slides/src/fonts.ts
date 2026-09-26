@@ -1,6 +1,7 @@
 /*
- * Document theme fonts (ADR 0022 §7). The eleven families TeachDeck loads with
- * `next/font/google` (`lib/fonts.ts:69-100`) are self-hosted here through `@fontsource`;
+ * Document theme fonts (ADR 0022 §7). The eleven families TeachDeck loaded with
+ * `next/font/google` (`lib/fonts.ts:69-100`), plus the five the playful and studio themes added
+ * (Fredoka, Playpen Sans, Baloo 2, Nunito, Outfit; all OFL), are self-hosted through `@fontsource`;
  * `src/styles/fonts.css` defines the `--font-*` variables these stacks read. No Google Fonts
  * requests, CSP unchanged (ADR 0019 §2).
  */
@@ -17,6 +18,11 @@ export const FONT_STACKS = {
   bricolage: 'var(--font-bricolage), "Helvetica Neue", sans-serif',
   instrumentSans: 'var(--font-instrument-sans), "Helvetica Neue", sans-serif',
   atkinson: "var(--font-atkinson), Verdana, sans-serif",
+  fredoka: 'var(--font-fredoka), "Trebuchet MS", sans-serif',
+  playpen: 'var(--font-playpen), "Comic Sans MS", "Trebuchet MS", sans-serif',
+  baloo: 'var(--font-baloo), "Trebuchet MS", sans-serif',
+  nunito: "var(--font-nunito), Verdana, sans-serif",
+  outfit: 'var(--font-outfit), "Helvetica Neue", sans-serif',
   geist: 'var(--font-geist), ui-sans-serif, -apple-system, "Segoe UI", sans-serif',
 } as const;
 
@@ -33,5 +39,10 @@ export const FONT_LABELS: Record<FontKey, string> = {
   bricolage: "Bricolage Grotesque",
   instrumentSans: "Instrument Sans",
   atkinson: "Atkinson Hyperlegible",
+  fredoka: "Fredoka",
+  playpen: "Playpen Sans",
+  baloo: "Baloo 2",
+  nunito: "Nunito",
+  outfit: "Outfit",
   geist: "Geist",
 };

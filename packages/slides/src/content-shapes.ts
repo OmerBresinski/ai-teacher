@@ -46,7 +46,7 @@ export type ShapeComposition = "panel" | "full";
  *
  * Method. A content spec of the shape, with N words of teaching prose (5.2 letters a word; plain
  * English runs about 4.7) in each slot and every list at its most members, goes through
- * `materialiseSlide` on each of the six themes (the full-measure explain through `applyLook` and
+ * `materialiseSlide` on every theme (the full-measure explain through `applyLook` and
  * `fitSlide`, the path a slide takes when no panel is placed). It counts only when it comes out as
  * one slide with no overflow, all running text at the reading size (no step down, so no
  * continuation), a one-line display heading, and the composition measured: `panel` has a right

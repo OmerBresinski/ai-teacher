@@ -406,6 +406,6 @@ describe("LessonBriefPage", () => {
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Blank lesson" })).toBeEnabled();
     // Six theme tiles as a radio group, arrow keys included by the native control.
-    expect(screen.getAllByRole("radio")).toHaveLength(6);
+    expect(screen.getAllByRole("radio")).toHaveLength(10);
   });
 });

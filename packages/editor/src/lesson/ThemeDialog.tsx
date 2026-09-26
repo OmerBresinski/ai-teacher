@@ -31,7 +31,7 @@ const CONTENT_FIRST: Slide["kind"][] = ["objectives", "vocabulary"];
  * The whole dialog is one history transaction: it opens on mount-open, every tile click dispatches
  * `setTheme` inside it (the canvas previews live, nothing is recorded or saved), Done ends it (one
  * undo step, one autosave), and Cancel — button, Esc, backdrop — rolls it back, so a browse through
- * the six themes leaves no trace in the history and costs no save.
+ * the themes leaves no trace in the history and costs no save.
  */
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const lesson = useLesson();
@@ -43,7 +43,7 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
     [tag],
   );
 
-  // A title slide is the one slide on which the six themes look alike, so preview a content slide
+  // A title slide is the one slide on which the themes look most alike, so preview a content slide
   // instead — still the teacher's own, from the same lesson.
   const preview = useMemo(() => {
     if (slide && slide.kind !== "title") return slide;

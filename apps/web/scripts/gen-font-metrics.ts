@@ -18,6 +18,11 @@ const FONTS: Record<string, string> = {
   bricolage: "bricolage-grotesque",
   instrumentSans: "instrument-sans",
   atkinson: "atkinson-hyperlegible-next",
+  fredoka: "fredoka",
+  playpen: "playpen-sans",
+  baloo: "baloo-2",
+  nunito: "nunito",
+  outfit: "outfit",
 };
 const WEIGHTS = [400, 600, 700];
 const CHARS = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join("");
