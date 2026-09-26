@@ -1,7 +1,7 @@
 /**
  * TEACH-164 spike screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-164-screenshots.spec.ts`.
  *
- * Four diagram slides (ADR 0031) on two themes — a right-angled triangle drawn to scale, one
+ * Four diagram slides (ADR 0032) on two themes — a right-angled triangle drawn to scale, one
  * clamped ("Not drawn to scale"), an exothermic and an endothermic energy profile — shot in the
  * editor (with the figure selected as one group) and on the presenter's stage, then exported to
  * PowerPoint so the `.pptx` can be opened in Keynote and PowerPoint.

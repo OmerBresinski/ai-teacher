@@ -8,7 +8,7 @@ const DASH = (kind: PathElement["dash"], w: number): string | undefined => {
   return undefined;
 };
 
-/** A `path` element (ADR 0031): the curve `pathSegments` computes, drawn as one SVG path. */
+/** A `path` element (ADR 0032): the curve `pathSegments` computes, drawn as one SVG path. */
 export function PathView({ element, theme }: ElementViewProps<PathElement>) {
   const w = Math.max(1, element.w);
   const h = Math.max(1, element.h);

@@ -1,5 +1,5 @@
 /**
- * Figure templates (ADR 0031) — TEACH-164 spike prototypes, not production code.
+ * Figure templates (ADR 0032) — TEACH-164 spike prototypes, not production code.
  *
  * A template takes the values and labels a model would supply and draws the geometry itself,
  * returning one `group` of native elements in a rect on the slide. Two templates:
@@ -326,7 +326,7 @@ export function energyProfileFigure(t: Theme, v: EnergyProfileValues, rect: Rect
 }
 
 /* ------------------------------------------------------------------ */
-/* The diagram slide (ADR 0031 item 2)                                 */
+/* The diagram slide (ADR 0032 item 2)                                 */
 /* ------------------------------------------------------------------ */
 
 /** Where a diagram slide puts its figure: the left of the slide, inside the safe area. */

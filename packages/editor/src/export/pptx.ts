@@ -974,7 +974,7 @@ function pptxPoint(s: PathSegment): PptxPoint {
 
 /**
  * A `path` element as PowerPoint custom geometry, from the same segments the editor draws
- * (`pathSegments`, ADR 0031). pptxgenjs 4 writes `custGeom` at runtime but its typings leave the
+ * (`pathSegments`, ADR 0032). pptxgenjs 4 writes `custGeom` at runtime but its typings leave the
  * name out of `SHAPE_NAME`, hence the cast. Point coordinates are inches inside the shape's box:
  * pptxgenjs reads a number under 100 as inches, which every slide coordinate is.
  */

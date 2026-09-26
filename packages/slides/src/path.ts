@@ -1,5 +1,5 @@
 /**
- * The curve of a `path` element (ADR 0031), in the element's own point space. The editor's SVG
+ * The curve of a `path` element (ADR 0032), in the element's own point space. The editor's SVG
  * view and the PPTX exporter both draw these segments, so the screen and PowerPoint show the same
  * curve rather than two approximations of it.
  *

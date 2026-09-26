@@ -236,7 +236,7 @@ export type LineElement = ElementBase & {
 };
 
 /**
- * A polyline or smooth curve (ADR 0031): the curves, arcs and closed polygons a Figure needs.
+ * A polyline or smooth curve (ADR 0032): the curves, arcs and closed polygons a Figure needs.
  * Points are fractions of the bounding box, as on `line`, so the box is the transform target.
  * `smooth` draws cubic Béziers through the points; `smoothPathSegments` in `@tj/slides` is the
  * one place they are computed, for the editor and the PPTX exporter alike.
