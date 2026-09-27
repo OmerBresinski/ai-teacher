@@ -45,6 +45,28 @@ describe("chooseVariant", () => {
     }
   });
 
+  // TEACH-98 row 7: the Figure template, not the deck's rhythm, picks the wide diagram.
+  it("always sets a diagram figure-left, whatever came before", () => {
+    expect(variantsFor("diagram")).toEqual(["figure-left", "figure-wide"]);
+    for (const previousVariant of ["figure-left", "figure-wide", "photo-left", null]) {
+      for (const personality of ["calm", "bold", "playful", undefined] as const) {
+        for (const previousKind of ["diagram", "image-text", null] as const) {
+          expect(
+            chooseVariant("diagram", {
+              index: 4,
+              total: 10,
+              previousVariant,
+              previousKind,
+              personality,
+              hasImage: true,
+              textLength: 60,
+            }),
+          ).toBe("figure-left");
+        }
+      }
+    }
+  });
+
   it("sets a short content body as a statement, unless it is the first idea or follows the objectives", () => {
     const ctx = { index: 4, total: 10, textLength: wordCount(short) };
     expect(chooseVariant("content", { ...ctx, previousKind: "vocabulary" })).toBe("statement");

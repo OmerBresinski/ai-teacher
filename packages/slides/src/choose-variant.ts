@@ -117,7 +117,9 @@ function previousComposition(ctx: VariantContext): string | null {
  * Choose the variant a slide is laid out in. The rules, in order:
  *
  * 1. Kinds with one composition (the question kinds, vocabulary, the picture slides) keep it.
- * 2. The exit ticket is always `numbered`: pupils write from it, so it stays plain.
+ * 2. The exit ticket is always `numbered`: pupils write from it, so it stays plain. A diagram is
+ *    always `figure-left`: its Figure template, not the deck's rhythm, asks for `figure-wide`
+ *    (`diagramVariantFor`, which `materialiseSlide` applies when it is given no variant).
  * 3. A title takes a photograph only when it has one: `split` for a title of up to five
  *    words, `photo-band` for a longer one, `stack` otherwise.
  * 4. A content body under twenty words is a `statement`, unless it is the deck's first content
@@ -133,7 +135,7 @@ function previousComposition(ctx: VariantContext): string | null {
 export function chooseVariant(kind: SlideKind, ctx: VariantContext): VariantName {
   const list: readonly { name: VariantName }[] = LAYOUT_CATALOGUE[kind];
   const first = list[0]?.name ?? "blank";
-  if (list.length <= 1 || kind === "exit-ticket") return first;
+  if (list.length <= 1 || kind === "exit-ticket" || kind === "diagram") return first;
   const previous = previousComposition(ctx);
   const candidates = ranked(kind, ctx);
   return (

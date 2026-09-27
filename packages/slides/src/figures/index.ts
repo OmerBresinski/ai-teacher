@@ -40,12 +40,29 @@ export type FigureTemplate<V = unknown> = {
    * that did not have the template's shape. Pure and deterministic apart from element ids.
    */
   draw(values: V | undefined, theme: Theme, size: { w: number; h: number }): FigureDrawing;
+  /**
+   * The diagram slide's variant this template is drawn in: `figure-wide` for a figure that
+   * carries many labels (ADR 0034 decision 7), `figure-left` when absent.
+   */
+  layout?: FigureLayout;
 };
+
+/** The diagram variants a template can ask for (`DIAGRAM_VARIANT_NAMES` in `../layouts`). */
+export type FigureLayout = "figure-left" | "figure-wide";
 
 export const FIGURE_TEMPLATES: Record<FigureTemplateName, FigureTemplate> = {
   "right-triangle": RIGHT_TRIANGLE,
   "energy-profile": ENERGY_PROFILE,
 };
+
+/**
+ * The diagram variant a template's slide is laid out in when nothing else picks one: what
+ * `materialiseSlide` uses for a diagram spec called without a variant. The template decides,
+ * not the deck's rhythm (`chooseVariant` always gives `figure-left`).
+ */
+export function diagramVariantFor(template: FigureTemplateName): FigureLayout {
+  return FIGURE_TEMPLATES[template].layout ?? "figure-left";
+}
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)

@@ -17,7 +17,7 @@ import { OBJECTIVES_SLIDE_HEADING, SLIDE_H, SLIDE_W } from "@tj/domain/documents
 import { explanationReserve, RESERVED_LINES } from "./explanation-metrics";
 import { docFromBullets, docFromText, newText, uid } from "./factories";
 import { drawFigure } from "./figures";
-import { BASELINE, GUTTER, HALF, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
+import { BASELINE, GUTTER, HALF, lastColLeft, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
 import { fontFloor, getTheme, type TextRole } from "./themes";
 
@@ -481,10 +481,27 @@ function imageTextSlide(t: Theme): Layout {
 export const FIGURE_RECT: Rect = { x: SAFE.x, y: SAFE.y, w: HALF_W, h: SAFE.h };
 
 /**
- * Diagram — a figure down the left where image-text has its photograph, the text beside it
- * (ADR 0032 item 2). The placeholder is a 3-4-x right-angled triangle.
+ * Where a `figure-wide` diagram slide draws its figure (ADR 0034 decision 7): the left seven
+ * columns at full safe height, 485 × 454, for the figures that carry many labels (circle
+ * theorems, solids, graphs). A template asks for it with `FigureTemplate.layout`.
  */
-function diagramSlide(t: Theme): Layout {
+export const FIGURE_RECT_WIDE: Rect = { x: SAFE.x, y: SAFE.y, w: spanWidth(7), h: SAFE.h };
+/** The `figure-wide` text column: the right five columns. */
+const WIDE_TEXT_X = lastColLeft(5); // 561
+const WIDE_TEXT_W = spanWidth(5); // 341
+
+/**
+ * Diagram — a figure down the left where image-text has its photograph, the text beside it
+ * (ADR 0032 item 2), stacked and centred on the slide. The placeholder is a 3-4-x right-angled
+ * triangle. `figure-left` gives the figure the left half; `figure-wide` gives it seven columns
+ * and the text a narrower column with one more body line.
+ */
+function diagramSlide(
+  t: Theme,
+  rect: Rect,
+  column: { x: number; w: number },
+  bodyLines: number,
+): Layout {
   const figure = drawFigure(
     "right-triangle",
     {
@@ -493,35 +510,35 @@ function diagramSlide(t: Theme): Layout {
       hypotenuse: { label: "x" },
     },
     t,
-    FIGURE_RECT,
+    rect,
   );
   const capH = boxH(t, "caption");
   const headH = boxH(t, "heading", 2);
-  const bodyH = boxH(t, "body", 4);
+  const bodyH = boxH(t, "body", bodyLines);
   const top = centreY(capH + 12 + headH + 19 + bodyH);
+  const { x, w } = column;
   return {
     elements: [
       figure,
-      text(
-        "caption",
-        "DIAGRAM",
-        { x: RIGHT_X, y: top, w: HALF_W, h: capH },
-        { color: t.colors.muted },
-      ),
-      text("heading", "What the diagram shows", {
-        x: RIGHT_X,
-        y: top + capH + 12,
-        w: HALF_W,
-        h: headH,
-      }),
+      text("caption", "DIAGRAM", { x, y: top, w, h: capH }, { color: t.colors.muted }),
+      text("heading", "What the diagram shows", { x, y: top + capH + 12, w, h: headH }),
       text("body", "Two or three sentences that link the diagram to the idea.", {
-        x: RIGHT_X,
+        x,
         y: top + capH + 12 + headH + 19,
-        w: HALF_W,
+        w,
         h: bodyH,
       }),
     ],
   };
+}
+
+function diagramVariant(t: Theme, variant: number | string): Layout {
+  switch (variantName("diagram", variant)) {
+    case "figure-wide":
+      return diagramSlide(t, FIGURE_RECT_WIDE, { x: WIDE_TEXT_X, w: WIDE_TEXT_W }, 5);
+    case "figure-left":
+      return diagramSlide(t, FIGURE_RECT, { x: RIGHT_X, w: HALF_W }, 4);
+  }
 }
 
 /** Worked example — the problem left, the teacher's working right on a tinted card. */
@@ -1123,11 +1140,12 @@ function steppedList(t: Theme, kind: ListKind): Layout {
 export const TITLE_VARIANT_NAMES = ["stack", "photo-band", "split"] as const;
 export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
+/** The diagram's compositions: the default, and the wider figure a template may ask for. */
+export const DIAGRAM_VARIANT_NAMES = ["figure-left", "figure-wide"] as const;
 /** The one composition each remaining kind has, named for a picker. */
 const SINGLE_VARIANT_NAMES = [
   "grid",
   "photo-left",
-  "figure-left",
   "working-card",
   "prompt",
   "two-cards",
@@ -1143,8 +1161,14 @@ const SINGLE_VARIANT_NAMES = [
 export type TitleVariant = (typeof TITLE_VARIANT_NAMES)[number];
 export type ContentVariant = (typeof CONTENT_VARIANT_NAMES)[number];
 export type ListVariant = (typeof LIST_VARIANT_NAMES)[number];
+export type DiagramVariant = (typeof DIAGRAM_VARIANT_NAMES)[number];
 type SingleVariant = (typeof SINGLE_VARIANT_NAMES)[number];
-export type VariantName = TitleVariant | ContentVariant | ListVariant | SingleVariant;
+export type VariantName =
+  | TitleVariant
+  | ContentVariant
+  | ListVariant
+  | DiagramVariant
+  | SingleVariant;
 
 /** The variant names a kind can take. */
 export type VariantOf<K extends SlideKind> = K extends "title"
@@ -1153,7 +1177,9 @@ export type VariantOf<K extends SlideKind> = K extends "title"
     ? ContentVariant
     : K extends ListKind
       ? ListVariant
-      : SingleVariant;
+      : K extends "diagram"
+        ? DiagramVariant
+        : SingleVariant;
 
 /** One composition a kind can be laid out in. */
 export type LayoutVariant<N extends VariantName = VariantName> = {
@@ -1235,7 +1261,18 @@ export const LAYOUT_CATALOGUE: {
     },
   ],
   "image-text": one("photo-left", "A picture down the left, the text beside it"),
-  diagram: one("figure-left", "A figure down the left, the text beside it"),
+  diagram: [
+    {
+      name: "figure-left",
+      composition: "figure-left",
+      description: "A figure down the left, the text beside it",
+    },
+    {
+      name: "figure-wide",
+      composition: "figure-wide",
+      description: "A wider figure down the left, the text in a narrower column beside it",
+    },
+  ],
   "worked-example": one("working-card", "The question on top, the working on a card below"),
   instructions: LIST_VARIANTS,
   discussion: one("prompt", "One big prompt"),
@@ -1350,7 +1387,7 @@ export function layoutSlide(
     case "image-text":
       return imageTextSlide(t);
     case "diagram":
-      return diagramSlide(t);
+      return diagramVariant(t, variant);
     case "worked-example":
       return workedExampleSlide(t);
     case "instructions":

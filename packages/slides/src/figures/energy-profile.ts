@@ -11,13 +11,14 @@
  *
  * Load it through `./index` or the package root, never first on its own (see `./right-triangle`).
  */
-import type { LineElement, PathElement, SlideElement, Theme } from "@tj/domain/documents";
+import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
 import type { FigureDrawing, FigureTemplate } from "./index";
 import { type FittedLabel, fitLabel, type LabelFit, labelText, notToScaleCaption } from "./labels";
+import { segment } from "./marks";
 
 /* ------------------------------------------------------------------ */
 /* Values                                                              */
@@ -102,7 +103,6 @@ export function energyProfileAlt(values: EnergyProfileValues | undefined, notToS
 /* ------------------------------------------------------------------ */
 
 type Box = { x: number; y: number; w: number; h: number };
-type Point = { x: number; y: number };
 
 /** Across the plot: the reactants' plateau ends, the peak, the products' plateau starts, ΔH. */
 const CURVE_X = { reactantsEnd: 0.24, peak: 0.45, productsStart: 0.66, change: 0.94 } as const;
@@ -131,8 +131,6 @@ const ARROW_STROKE = 2.5;
 const GUIDE_STROKE = 2;
 /** The reactants' level guide runs this far past the ΔH arrow. */
 const GUIDE_OVERHANG = 14;
-/** A horizontal or vertical line still gets a box this wide to select it by. */
-const LINE_BOX = 16;
 /** Between a level and the name hanging under it or standing on it. */
 const NAME_GAP = 10;
 /** Between an arrow and the label beside it. */
@@ -175,33 +173,6 @@ function shares(
     clamped = true;
   }
   return { levels: levels / (levels + peak), peak: peak / (levels + peak), clamped };
-}
-
-/** A straight line between two group-local points, with arrow ends and colour as given. */
-function line(a: Point, b: Point, props: Partial<LineElement>): LineElement {
-  let x = Math.min(a.x, b.x);
-  let y = Math.min(a.y, b.y);
-  let w = Math.abs(b.x - a.x);
-  let h = Math.abs(b.y - a.y);
-  if (w < LINE_BOX) {
-    x -= (LINE_BOX - w) / 2;
-    w = LINE_BOX;
-  }
-  if (h < LINE_BOX) {
-    y -= (LINE_BOX - h) / 2;
-    h = LINE_BOX;
-  }
-  return {
-    id: uid(),
-    type: "line",
-    x,
-    y,
-    w,
-    h,
-    from: { x: (a.x - x) / w, y: (a.y - y) / h },
-    to: { x: (b.x - x) / w, y: (b.y - y) / h },
-    ...props,
-  };
 }
 
 type LabelKey = "energy" | "progress" | "reactants" | "products" | "activation" | "change";
@@ -392,18 +363,18 @@ function drawEnergyProfile(
   };
   const arrow = { stroke: t.colors.ink, strokeWidth: ARROW_STROKE, arrowEnd: true };
   const children: SlideElement[] = [
-    line(
+    segment(
       { x: AXIS_X, y: axisY },
       { x: AXIS_X, y: labels.energy.h + AXIS_TOP_GAP },
       { ...arrow, name: "Energy axis" },
     ),
-    line(
+    segment(
       { x: AXIS_X, y: axisY },
       { x: size.w - AXIS_END_INSET, y: axisY },
       { ...arrow, name: "Progress axis" },
     ),
     // The reactants' level carried across, for both arrows to start from.
-    line(
+    segment(
       { x: reactantsEnd, y: yR },
       { x: changeX + GUIDE_OVERHANG, y: yR },
       {
@@ -414,8 +385,8 @@ function drawEnergyProfile(
       },
     ),
     curve,
-    line({ x: peakX, y: yR }, { x: peakX, y: plotTop }, { ...arrow, name: "Activation energy" }),
-    line({ x: changeX, y: yR }, { x: changeX, y: yP }, { ...arrow, name: "Energy change" }),
+    segment({ x: peakX, y: yR }, { x: peakX, y: plotTop }, { ...arrow, name: "Activation energy" }),
+    segment({ x: changeX, y: yR }, { x: changeX, y: yP }, { ...arrow, name: "Energy change" }),
     labelText(t, labels.energy.text, placed.energy, "left"),
     labelText(t, labels.progress.text, placed.progress, "center"),
     labelText(t, labels.reactants.text, placed.reactants, "left"),

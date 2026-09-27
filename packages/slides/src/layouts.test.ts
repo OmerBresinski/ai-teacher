@@ -11,11 +11,12 @@ import {
 } from "@tj/domain/documents";
 import defaultRecipes from "./fixtures/default-recipes.json";
 import { normaliseLayout } from "./fixtures/normalise";
-import { SAFE, TRIM } from "./grid";
+import { lastColLeft, SAFE, spanWidth, TRIM } from "./grid";
 import {
   compositionOf,
   derange,
   FIGURE_RECT,
+  FIGURE_RECT_WIDE,
   LAYOUT_CATALOGUE,
   LIST_SLOTS,
   type ListKind,
@@ -275,7 +276,32 @@ describe("layoutSlide", () => {
     for (const kind of ["objectives", "starter", "instructions", "exit-ticket", "plenary"] as const)
       expect(variantsFor(kind), kind).toEqual(["numbered", "cards", "stepped"]);
     expect(compositionOf("content", "headed")).toBe(compositionOf("starter", "numbered"));
+    // TEACH-98 row 3: the default first, so the frozen recipe below is still the default.
+    expect(variantsFor("diagram")).toEqual(["figure-left", "figure-wide"]);
   });
+
+  // TEACH-98 row 1: the per-variant loop below holds the text and floors; this places the figure.
+  for (const theme of THEMES) {
+    it(`diagram/figure-wide on ${theme.id}: the figure in FIGURE_RECT_WIDE, the text in the right five columns`, () => {
+      const { elements } = layoutSlide("diagram", theme.id, "figure-wide");
+      const [figure, caption, heading, body, ...rest] = elements;
+      expect(rest).toHaveLength(0);
+      if (figure?.type !== "group") throw new Error("the figure is not a group");
+      expect(figure.figure?.template).toBe("right-triangle");
+      expect([figure.x, figure.y, figure.w, figure.h]).toEqual([
+        FIGURE_RECT_WIDE.x,
+        FIGURE_RECT_WIDE.y,
+        FIGURE_RECT_WIDE.w,
+        FIGURE_RECT_WIDE.h,
+      ]);
+      expect([FIGURE_RECT_WIDE.w, FIGURE_RECT_WIDE.h]).toEqual([485, 454]);
+      for (const el of [caption, heading, body]) {
+        expect(el?.x, "text right of the figure").toBeGreaterThan(figure.x + figure.w);
+        expect(el?.x).toBe(lastColLeft(5));
+        expect(el?.w).toBe(spanWidth(5));
+      }
+    });
+  }
 
   const stripIds = (els: SlideElement[]) =>
     JSON.parse(

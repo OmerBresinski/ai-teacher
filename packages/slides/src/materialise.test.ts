@@ -15,9 +15,11 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { z } from "zod";
-import { RIGHT_TRIANGLE } from "./figures";
+import { diagramVariantFor, FIGURE_TEMPLATES, RIGHT_TRIANGLE } from "./figures";
+import { lastColLeft, SAFE_RIGHT, spanWidth } from "./grid";
 import {
   FIGURE_RECT,
+  FIGURE_RECT_WIDE,
   LIST_SLOTS,
   LIST_VARIANT_NAMES,
   type ListKind,
@@ -325,6 +327,64 @@ describe("materialiseSlide", () => {
     expect(figure?.children.filter((c) => c.type === "path")).toHaveLength(1);
     expect(figure?.children.map(plain)).toEqual(expect.arrayContaining(["Energy", "Ea", "ΔH"]));
     expect(SlideSchema.safeParse(slide).success).toBe(true);
+  });
+
+  // TEACH-98 row 4.
+  test("TEACH-98: both existing templates are drawn on the figure-left diagram", () => {
+    expect(diagramVariantFor("right-triangle")).toBe("figure-left");
+    expect(diagramVariantFor("energy-profile")).toBe("figure-left");
+  });
+
+  // TEACH-98 row 5: the TEACH-89 test above pins the drawing; this pins the default variant.
+  test("TEACH-98: a diagram spec with no variant is laid out exactly as figure-left and as 0", () => {
+    for (const template of FIGURE_TEMPLATE_NAMES) {
+      const spec = minimalDiagram(template);
+      const plainSlide = materialiseSlide(spec, "chalk", meta, counter());
+      expect(materialiseSlide(spec, "chalk", meta, counter(), 0)).toEqual(plainSlide);
+      expect(materialiseSlide(spec, "chalk", meta, counter(), "figure-left")).toEqual(plainSlide);
+      expect(plainSlide.elements.find((el) => el.type === "group")).toMatchObject(FIGURE_RECT);
+    }
+  });
+
+  // TEACH-98 row 6.
+  test("TEACH-98: figure-wide draws the figure in FIGURE_RECT_WIDE and the text in the right five columns", () => {
+    expect(FIGURE_RECT_WIDE).toEqual({ x: 58, y: 43, w: 485, h: 454 });
+    for (const theme of THEMES) {
+      const spec = SlideSpecSchema.parse(minimalSpec("diagram"));
+      if (spec.kind !== "diagram") throw new Error("fixture");
+      const slide = materialiseSlide(spec, theme.id, meta, counter(), "figure-wide");
+      const figure = slide.elements.find((el): el is GroupElement => el.type === "group");
+      expect(figure, theme.id).toMatchObject({ ...FIGURE_RECT_WIDE, authoredBy: "ai" });
+      expect(figure?.alt).toBe("Right-angled triangle. Base 3 cm, height 4 cm, hypotenuse x.");
+      const texts = slide.elements.filter((el) => el.type === "text");
+      expect(texts.map(plain)).toEqual(["DIAGRAM", "Find the hypotenuse", spec.body]);
+      for (const text of texts) {
+        expect(text.x, theme.id).toBe(lastColLeft(5));
+        expect(text.x + text.w, theme.id).toBeLessThanOrEqual(SAFE_RIGHT);
+        expect(text.w, theme.id).toBe(spanWidth(5));
+      }
+      expect(SlideSchema.safeParse(slide).success).toBe(true);
+    }
+  });
+
+  test("TEACH-98: a template that asks for figure-wide gets it unless the caller names a variant", () => {
+    const template = FIGURE_TEMPLATES["energy-profile"];
+    template.layout = "figure-wide";
+    try {
+      expect(diagramVariantFor("energy-profile")).toBe("figure-wide");
+      const spec = minimalDiagram("energy-profile");
+      const group = (slide: Slide) => slide.elements.find((el) => el.type === "group");
+      expect(group(materialiseSlide(spec, "chalk", meta, counter()))).toMatchObject(
+        FIGURE_RECT_WIDE,
+      );
+      // An explicit variant still wins.
+      expect(group(materialiseSlide(spec, "chalk", meta, counter(), "figure-left"))).toMatchObject(
+        FIGURE_RECT,
+      );
+    } finally {
+      delete template.layout;
+    }
+    expect(diagramVariantFor("energy-profile")).toBe("figure-left");
   });
 
   test("is deterministic for the same spec and id supplier", () => {
