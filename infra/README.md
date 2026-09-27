@@ -32,7 +32,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **Founder's domain, not a product domain** | `app.bresinski.org` / `api.bresinski.org` (TEACH-36) run on Omer's personal domain. | Buy the product domain; swap: two CNAMEs + `mail.<d>` records in Resend, then `WEB_ORIGIN`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `MAIL_FROM` on Railway and `VITE_API_URL` on Vercel. | ADR 0010 amendment (TEACH-36); "Domain" below |
 | **Vercel production is public** | `app.bresinski.org` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
-| **Google sign-in off** | No Google client credentials yet; magic link only. Microsoft stays off by decision (ADR 0008 amendment, 2026-09-27). | Project **Google sign-in**: TEACH-311 drops Google tokens first, then TEACH-312 creates the clients and sets `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, then TEACH-31 adds the button. | "Google sign-in (Google Cloud)" below; ADR 0008 |
+| **Google sign-in has no button** | The api accepts Google sign-in: TEACH-312 set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` on Railway `api` production on 2026-09-27, and `POST /auth/sign-in/social` returns a Google URL. `/sign-in` still offers the magic link only. Microsoft stays off by decision (ADR 0008 amendment, 2026-09-27). | TEACH-31 adds "Continue with Google" to `/sign-in`. | "Google sign-in (Google Cloud)" below; ADR 0008 |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
@@ -258,12 +258,13 @@ stops Google tokens from being stored.
 
 | Item | Value |
 | ---- | ----- |
-| Google Cloud project | `<project-id>` (recorded here by TEACH-312); owner: the founder's Google account; no organisation |
-| Production client | Web application "Teaching Journey (production)"; redirect URI `https://api.bresinski.org/auth/callback/google` |
-| Local client | Web application "Teaching Journey (local)"; redirect URI `http://localhost:3001/auth/callback/google` |
+| Google Cloud project | `teaching-journey-auth` (project number 625858966737, created 2026-09-27 by TEACH-312); owner: the founder's Google account; no organisation. Consent screen: External, published ("In production") |
+| Production client | Web application "Teaching Journey (production)", client id `625858966737-0viaaaop1cge8mbba7k70i7vdb486ak0.apps.googleusercontent.com`; redirect URI `https://api.bresinski.org/auth/callback/google` |
+| Local client | Web application "Teaching Journey (local)", client id `625858966737-8kbn3hatd8j9pfdg6ajr4ghu17qdqvpj.apps.googleusercontent.com`; redirect URI `http://localhost:3001/auth/callback/google` |
 | JavaScript origins | none: the browser never talks to Google directly; the api redirects it |
 | Scopes | better-auth's Google defaults (`openid`, `email`, `profile`): non-sensitive, so the app needs no Google verification |
 | Where the values live | production client: Railway `api` production; local client: each developer's `apps/api/.env`; both client JSON files: the founder's password manager |
+| gcloud on the founder's Mac | Installed with `brew install --cask gcloud-cli` and signed in (`gcloud auth login`) as the founder's Google account, default project `teaching-journey-auth`. It stays signed in on purpose: later agent sessions on that Mac use this login. Do not run `gcloud auth revoke` |
 
 Google has no API or gcloud command for a standard Web OAuth client or for the consent screen; the
 IAP OAuth Admin API behind `gcloud iap oauth-clients` shut down on 2026-03-19. Step 2 is
@@ -274,19 +275,21 @@ therefore console clicks; everything else is a command.
    ```sh
    brew install --cask gcloud-cli                                 # once
    gcloud auth login                                              # opens a browser: sign in as the owner
-   gcloud projects create <project-id> --name="Teaching Journey"  # ids are global: 6-30 chars, lower case
-   gcloud config set project <project-id>
+   gcloud projects create teaching-journey-auth --name="Teaching Journey"  # ids are global
+   gcloud config set project teaching-journey-auth
    ```
 
 2. **Consent screen and clients (console).**
-   1. Branding, `https://console.cloud.google.com/auth/branding?project=<project-id>`: app name
+   1. Branding, `https://console.cloud.google.com/auth/branding?project=teaching-journey-auth`: app name
       "Teaching Journey", user support email and developer contact (the owner's address), home page
       `https://app.bresinski.org`, authorized domain `bresinski.org`. No logo: a logo makes the app
-      need brand verification.
-   2. Audience, `https://console.cloud.google.com/auth/audience?project=<project-id>`: user type
+      need brand verification. The first-run wizard asks only for the name, support email, audience
+      and one contact; the home page and authorized domain are on this page afterwards, and
+      Audience's **Publish app** stays greyed out until they are saved.
+   2. Audience, `https://console.cloud.google.com/auth/audience?project=teaching-journey-auth`: user type
       External, then **Publish app** so the status is "In production". In "Testing" only listed
       test users can sign in.
-   3. Clients, `https://console.cloud.google.com/auth/clients/create?project=<project-id>`: create
+   3. Clients, `https://console.cloud.google.com/auth/clients/create?project=teaching-journey-auth`: create
       the two Web application clients in the table. In each creation dialog **download the JSON**
       before closing it: Google shows a client secret once, then only its last four characters.
 
@@ -294,7 +297,7 @@ therefore console clicks; everything else is a command.
    directory linked to `teaching-journey` / `production` (`railway link`).
 
    ```sh
-   F=~/Downloads/client_secret_<production-client-id>.json
+   F=~/Downloads/client_secret_<production-client-id>.json   # the ids are in the table above
    railway variable set --service api --skip-deploys "GOOGLE_CLIENT_ID=$(jq -r .web.client_id "$F")"
    jq -r .web.client_secret "$F" | railway variable set GOOGLE_CLIENT_SECRET --stdin --service api --skip-deploys
    railway redeploy --service api --yes
