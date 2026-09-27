@@ -105,8 +105,11 @@ const TAG_PAD_X = SPACE[2];
 const TAG_PAD_Y = 3;
 /** Between the kind tag and the heading under it. */
 const TAG_GAP = SPACE[2];
-/** Between a teaching slide's heading and its first words. */
-const HEADING_GAP = SPACE[3];
+/**
+ * Between a teaching slide's heading and its first words, on the first page and a continuation
+ * alike (Greg, 27 Sept 2026: "the padding below the title should be a bit more").
+ */
+export const HEADING_GAP = SPACE[4];
 const CARD_PAD = SPACE[3];
 
 /* ---------------------------------------------------------------- colour */
