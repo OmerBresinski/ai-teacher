@@ -71,7 +71,8 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   text toolbar, shape toolbar + More drawer, theme dialog, export dialog on each tab, import
   dialog, add-image panel on both tabs, the editor's `?` sheet, present mode's timer panel, notes
   panel and shortcuts sheet, the worksheet slash menu, the facts panel and regenerate dialog, the
-  generating view and residual popover; `/sign-in` and `/dev/jobs` once in light), `handoff`
+  generating view and residual popover; `/sign-in` signed out in the three themes, idle, sent and
+  `?error=`; `/dev/jobs` once in light), `handoff`
   (TeachDeck's `MONOREPO-HANDOFF.md` acceptance lines for the editor, TEACH-113: one full pointer
   flow open → edit text → drag → resize → undo/redo → theme → layout → image → present → overview
   → back, one keyboard-only flow with focus restoration and nested Escape, and the 900×700
@@ -83,7 +84,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
   the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
-  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert.
+  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert; `teach-252-sign-in-screenshots` (opt-in) the DayBack `/sign-in` at 1440 in the three themes, a 390 phone, the sent state and `?error=INVALID_TOKEN`. `/sign-in` (TEACH-252) is one page for sign in and sign up: one alert slot (sign-out notice, then send error, then Google start error, then `?error=`), the brand artwork in `components/brand/` (`DaybackMark`, `PlanCharacter`, ports of the homepage SVGs), and its legal links point at `/homepage/terms/` and `/homepage/privacy/`.
   `generation` runs a lesson end to end over the fake
   worker (`playwright.config.ts` sets `AI_FAKE_SCRIPT=pipeline` and `AI_FAKE_DELAY_MS=250` on the
   e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal

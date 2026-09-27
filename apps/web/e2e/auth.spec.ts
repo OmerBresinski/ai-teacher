@@ -12,6 +12,9 @@ import {
   uniqueEmail,
 } from "./fixtures";
 
+/** Plan's wrapper on /sign-in: the element that holds the 300×300 character SVG. */
+const PLAN = '[aria-hidden="true"]:has(> svg[viewBox="0 0 300 300"])';
+
 test.describe("auth", () => {
   test("a protected page redirects to /sign-in and remembers where you were going", async ({
     page,
@@ -20,7 +23,7 @@ test.describe("auth", () => {
     await expect(page).toHaveURL(/\/sign-in\?/);
     const search = new URL(page.url()).searchParams;
     expect(search.get("redirect")).toBe("/dev/jobs");
-    await expect(page.getByText("Sign in to Teaching Journey")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Welcome to DayBack" })).toBeVisible();
 
     // A target with its own query string round-trips whole, not just the path (TEACH-309): the
     // marketing homepage's ?topic= must survive an unsigned visitor's trip through /sign-in.
@@ -72,7 +75,7 @@ test.describe("auth", () => {
   test("keyboard-only sign-in: Tab to the field, type, Enter", async ({ page, request }) => {
     const email = uniqueEmail("kbd");
     await page.goto("/sign-in");
-    await expect(page.getByText("Sign in to Teaching Journey")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Welcome to DayBack" })).toBeVisible();
 
     // Tab from the document until the email field owns focus (no mouse anywhere in this test).
     // "Continue with Google" is one tab stop before it (TEACH-31).
@@ -91,6 +94,43 @@ test.describe("auth", () => {
 
     await page.goto(await lastMagicLink(request, email));
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  });
+
+  test("/sign-in fits a 390 viewport: no sideways scroll, email field and submit on screen", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/sign-in");
+    await expect(page.getByRole("heading", { level: 1, name: "Welcome to DayBack" })).toBeVisible();
+    const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth,
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
+    await expect(page.getByLabel("Email address")).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole("button", { name: "Email me a link" })).toBeInViewport({
+      ratio: 1,
+    });
+    // One column: Plan is desktop artwork (TEACH-252).
+    await expect(page.locator(PLAN)).toBeHidden();
+  });
+
+  test("/sign-in at 1440: Plan and the tagline beside the card, hidden from screen readers", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/sign-in");
+    const plan = page.locator(PLAN);
+    await expect(plan).toBeVisible();
+    await expect(plan).toHaveAttribute("aria-hidden", "true");
+    const card = await page.getByRole("heading", { level: 1 }).boundingBox();
+    const tagline = await page.getByText("Outstanding lessons.").boundingBox();
+    const character = await plan.boundingBox();
+    if (!card || !tagline || !character) throw new Error("layout boxes missing");
+    // Two columns: the decorative column sits to the left of the card, level with it.
+    expect(tagline.x + tagline.width).toBeLessThan(card.x);
+    expect(character.x).toBeLessThan(card.x);
+    expect(Math.abs(tagline.y - card.y)).toBeLessThan(200);
   });
 
   test("Continue with Google says it is not set up when the api has no Google client", async ({

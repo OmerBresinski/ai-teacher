@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -6,7 +6,8 @@ import userEvent from "@testing-library/user-event";
 // `import()` of the page below pulls them in.
 const magicLink = mock();
 const social = mock();
-mock.module("@/lib/auth", () => ({ authClient: { signIn: { magicLink, social } } }));
+const signOut = mock();
+mock.module("@/lib/auth", () => ({ authClient: { signIn: { magicLink, social }, signOut } }));
 
 let search: { redirect?: string; error?: string } = {};
 const actualRouter = await import("@tanstack/react-router");
@@ -15,6 +16,7 @@ mock.module("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => search }),
 }));
 
+const { SIGN_OUT_FAILED, sessionBoundary } = await import("@/lib/session-boundary");
 const {
   SignInPage,
   callbackUrl,
@@ -27,12 +29,20 @@ const {
 const GOOGLE = { name: "Continue with Google" } as const;
 const NOT_SET_UP = "Google sign-in is not set up here. Use the email link below.";
 const INTERRUPTED = "Your Google sign-in took too long or was interrupted. Try again.";
+const EXPIRED = "That sign-in link has expired or was already used. Request a new one below.";
 
 describe("SignInPage", () => {
   beforeEach(() => {
     magicLink.mockReset();
     social.mockReset();
+    signOut.mockReset();
     search = {};
+  });
+
+  afterEach(() => {
+    // The boundary is a module singleton: a notice left behind would leak into the next case. It
+    // runs before Testing Library unmounts the page, so the reset re-renders it inside act.
+    if (sessionBoundary.getSnapshot().notice) act(() => sessionBoundary.reset());
   });
 
   it("normalises the email and sends a magic link with a same-origin callback", async () => {
@@ -49,8 +59,10 @@ describe("SignInPage", () => {
       callbackURL: `${window.location.origin}/dev/jobs?jobId=1`,
       errorCallbackURL: `${window.location.origin}/sign-in?redirect=%2Fdev%2Fjobs%3FjobId%3D1`,
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Check your inbox (or the api console in development).",
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/^Check your inbox/);
+    expect(status).toHaveTextContent(
+      "We sent a sign-in link to ada@example.com. It works once and expires in 5 minutes.",
     );
   });
 
@@ -265,6 +277,129 @@ describe("SignInPage", () => {
       window.dispatchEvent(pageshow);
     });
     expect(screen.getByRole("button", GOOGLE)).toBeEnabled();
+  });
+
+  it("says DayBack: one h1, the brand lockup with its mark, never Teaching Journey", () => {
+    const { container } = render(<SignInPage />);
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Welcome to DayBack");
+    // The lockup is a word, not a link: it adds no tab stop before the email field.
+    const lockup = screen.getByText("DayBack", { exact: true });
+    expect(lockup.closest("a")).toBeNull();
+    expect(lockup.querySelector('svg[viewBox="0 0 48 48"]')).toHaveAttribute("aria-hidden", "true");
+    expect(container.textContent).not.toContain("Teaching Journey");
+  });
+
+  it("says the same steps sign in or create an account", () => {
+    render(<SignInPage />);
+    expect(
+      screen.getByText("New to DayBack? The same steps create your account."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the card in order: heading, copy, Google, or, email, submit, then the legal links", () => {
+    render(<SignInPage />);
+    const order = [
+      screen.getByRole("heading", { level: 1 }),
+      screen.getByText("Continue with Google, or we will email you a link. No password needed."),
+      screen.getByText("New to DayBack? The same steps create your account."),
+      screen.getByRole("button", GOOGLE),
+      screen.getByText("or"),
+      screen.getByLabelText("Email address"),
+      screen.getByRole("button", { name: "Email me a link" }),
+      screen.getByRole("link", { name: "Terms" }),
+      screen.getByRole("link", { name: "Privacy notice" }),
+    ];
+    order.reduce((before, node) => {
+      expect(before.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      return node;
+    });
+  });
+
+  it("links the homepage's terms and privacy notice on the same origin", () => {
+    render(<SignInPage />);
+    const terms = screen.getByRole("link", { name: "Terms" });
+    const privacy = screen.getByRole("link", { name: "Privacy notice" });
+    expect(terms).toHaveAttribute("href", "/homepage/terms/");
+    expect(privacy).toHaveAttribute("href", "/homepage/privacy/");
+    expect(terms).not.toHaveAttribute("target");
+    expect(privacy).not.toHaveAttribute("target");
+    expect(terms.closest("p")).toHaveTextContent(
+      "By continuing you agree to the Terms and have read the Privacy notice.",
+    );
+  });
+
+  it("hides every piece of artwork from assistive technology", () => {
+    const { container } = render(<SignInPage />);
+    // Plan's wrapper, and each SVG on the page (mark, character, Google's G).
+    const plan = container.querySelector('svg[viewBox="0 0 300 300"]');
+    expect(plan?.parentElement).toHaveAttribute("aria-hidden", "true");
+    const svgs = container.querySelectorAll("svg");
+    expect(svgs.length).toBeGreaterThanOrEqual(3);
+    for (const svg of svgs) expect(svg.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("sent: shows the address, drops Google and the form, and no dev hint outside vite dev", async () => {
+    magicLink.mockResolvedValue({ data: { status: true }, error: null });
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "  Ada@Example.COM ");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+
+    expect(await screen.findAllByRole("status")).toHaveLength(1);
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    expect(screen.queryByRole("button", GOOGLE)).toBeNull();
+    expect(screen.queryByLabelText("Email address")).toBeNull();
+    // `import.meta.env.DEV` is unset under bun test, as in a build.
+    expect(screen.queryByText(/api console/)).toBeNull();
+  });
+
+  it("sent: Use a different email brings the form back with the address and focus in the field", async () => {
+    magicLink.mockResolvedValue({ data: { status: true }, error: null });
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    await user.click(await screen.findByRole("button", { name: "Use a different email" }));
+
+    const field = screen.getByLabelText("Email address");
+    expect(field).toHaveValue("ada@example.com");
+    expect(field).toHaveFocus();
+    expect(screen.getByRole("button", GOOGLE)).toBeEnabled();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("the sign-out notice outranks every other alert and keeps Retry sign out", async () => {
+    sessionBoundary.reset(null, true, SIGN_OUT_FAILED);
+    signOut.mockResolvedValue({ data: { success: true }, error: null });
+    search = { error: "INVALID_TOKEN" };
+    const user = userEvent.setup();
+    render(<SignInPage />);
+
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Sign-out could not be confirmed");
+    expect(screen.queryByText(EXPIRED)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Retry sign out" }));
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("the send error outranks the ?error= message in the one alert slot", async () => {
+    magicLink.mockResolvedValue({ data: null, error: { status: 500, message: "nope" } });
+    search = { error: "INVALID_TOKEN" };
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    expect(screen.getByRole("alert")).toHaveTextContent(EXPIRED);
+
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    await screen.findByText(/We could not send the link/);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    // The slot sits above the Google button, not under the field.
+    expect(
+      screen.getByRole("alert").compareDocumentPosition(screen.getByRole("button", GOOGLE)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("helpers: googleStartError reads 404 or PROVIDER_NOT_FOUND as not set up", () => {

@@ -1,16 +1,10 @@
 import { getRouteApi } from "@tanstack/react-router";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  Input,
-  Separator,
-} from "@tj/ui";
-import { type FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { Button, cn, Display, Input, Label, Separator } from "@tj/ui";
+import { CircleAlert, MailCheck } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
+import { DaybackMark } from "@/components/brand/dayback-mark";
+import { PlanCharacter } from "@/components/brand/plan-character";
 import { GoogleLogo } from "@/components/google-logo";
 import { authClient } from "@/lib/auth";
 import { sanitiseRedirectPath } from "@/lib/auth-redirect";
@@ -79,7 +73,13 @@ export function googleStartError(error: { status?: number; code?: string }): Goo
   return error.status === 404 || error.code === "PROVIDER_NOT_FOUND" ? "not-set-up" : "unreachable";
 }
 
-type Status = { kind: "idle" } | { kind: "sending" } | { kind: "sent" } | { kind: "error" };
+const SEND_ERROR = "We could not send the link. Please check the address and try again.";
+
+type Status =
+  | { kind: "idle" }
+  | { kind: "sending" }
+  | { kind: "sent"; email: string }
+  | { kind: "error" };
 
 /** "Continue with Google" has its own status: it never shares a state with the magic link. */
 type GoogleStatus = "idle" | "opening" | GoogleStartError;
@@ -90,6 +90,7 @@ export function SignInPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [google, setGoogle] = useState<GoogleStatus>("idle");
+  const emailField = useRef<HTMLInputElement>(null);
 
   // Back from Google's page can restore this page from the back/forward cache with the button
   // still "Opening Google…"; a restored page starts over.
@@ -131,7 +132,7 @@ export function SignInPage() {
         callbackURL: callbackUrl(window.location.origin, redirect),
         errorCallbackURL: errorCallbackUrl(window.location.origin, redirect),
       });
-      setStatus(error ? { kind: "error" } : { kind: "sent" });
+      setStatus(error ? { kind: "error" } : { kind: "sent", email: address });
     } catch {
       // A network failure rejects instead of resolving with `error`. Left in "sending", the page
       // would disable both ways in for good.
@@ -139,98 +140,238 @@ export function SignInPage() {
     }
   }
 
-  // One alert at a time (TEACH-31): the newest failure wins. The send error
-  // keeps its place under the email field; the others share the slot above the Google button.
+  // "Use a different email" unmounts the button that had focus; the field it returns to takes it.
+  function onUseDifferentEmail() {
+    flushSync(() => setStatus({ kind: "idle" }));
+    emailField.current?.focus();
+  }
+
   const googleError =
     google === "idle" || google === "opening" ? null : GOOGLE_START_ERRORS[google];
   // Only one way in at a time: while one request is in flight the other control is disabled, so a
   // Google redirect cannot fire in the middle of sending a link (or the other way round).
   const sending = status.kind === "sending";
   const opening = google === "opening";
-  const alertMessage =
-    status.kind === "error"
-      ? null
-      : (googleError ?? (errorCode ? signInErrorMessage(errorCode) : null));
+  const alertMessage = oneAlert({ notice, status, googleError, errorCode });
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign in to Teaching Journey</CardTitle>
-          <CardDescription>
-            Continue with Google, or we will email you a link. No password needed.
-          </CardDescription>
-        </CardHeader>
-        {notice ? (
-          <CardContent>
-            <p role="alert" className="text-sm text-destructive">
-              {notice}
-            </p>
-            <Button
-              type="button"
-              onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
-            >
-              Retry sign out
-            </Button>
-          </CardContent>
-        ) : null}
-        {status.kind === "sent" ? (
-          <CardContent>
-            <p role="status">Check your inbox (or the api console in development).</p>
-          </CardContent>
-        ) : (
-          <>
-            <CardContent className="flex flex-col gap-4">
-              {alertMessage ? (
-                <p role="alert" className="text-sm text-destructive">
-                  {alertMessage}
-                </p>
-              ) : null}
-              <Button
-                type="button"
-                variant="default"
-                className="w-full"
-                disabled={opening || sending}
-                onClick={() => void onContinueWithGoogle()}
-              >
-                <GoogleLogo />
-                {opening ? "Opening Google…" : "Continue with Google"}
-              </Button>
-              <div className="flex items-center gap-3">
-                <Separator className="flex-1" />
-                <span className="text-sm text-muted-foreground">or</span>
-                <Separator className="flex-1" />
-              </div>
-            </CardContent>
-            <form onSubmit={onSubmit}>
-              <CardContent className="flex flex-col gap-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email address
-                </label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                {status.kind === "error" ? (
-                  <p role="alert" className="text-sm text-destructive">
-                    We could not send the link. Please check the address and try again.
-                  </p>
-                ) : null}
-              </CardContent>
-              <CardFooter>
-                <Button variant="primary" type="submit" disabled={sending || opening}>
-                  {sending ? "Sending…" : "Email me a link"}
-                </Button>
-              </CardFooter>
-            </form>
-          </>
+    <main className="relative isolate flex min-h-svh flex-col overflow-x-clip bg-background">
+      {PAPER_GLOW}
+      <div className={cn(GRID_WIDTH, "pt-5 lg:pt-8")}>{LOCKUP}</div>
+      <div
+        className={cn(
+          GRID_WIDTH,
+          "grid flex-1 content-center items-center gap-8 pt-6 pb-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16 lg:py-10",
         )}
-      </Card>
+      >
+        <div className="flex w-full max-w-[460px] flex-col gap-5 justify-self-center lg:col-start-2 lg:row-start-1">
+          <div className="relative isolate">
+            {PAPER_SHEET}
+            <div className="flex flex-col gap-6 rounded-card border border-border bg-card p-6 shadow-2 sm:p-8">
+              <div className="flex flex-col gap-2">
+                <Display as="h1" size="xl">
+                  Welcome to DayBack
+                </Display>
+                <p className="text-body text-ink-2">
+                  Continue with Google, or we will email you a link. No password needed.
+                </p>
+                <p className="text-body text-ink-2">
+                  New to DayBack? The same steps create your account.
+                </p>
+              </div>
+              {alertMessage ? (
+                <div className="flex flex-col items-start gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground">
+                  <div className="flex gap-2.5">
+                    {ALERT_ICON}
+                    <p role="alert">{alertMessage}</p>
+                  </div>
+                  {notice ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
+                    >
+                      Retry sign out
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+              {status.kind === "sent" ? (
+                <div className="flex flex-col items-start gap-4">
+                  {SENT_BADGE}
+                  <div role="status" className="flex flex-col gap-1">
+                    <p className="text-title font-semibold text-foreground">Check your inbox</p>
+                    <p className="text-body text-ink-2">
+                      We sent a sign-in link to{" "}
+                      <strong className="font-semibold break-words text-foreground">
+                        {status.email}
+                      </strong>
+                      . It works once and expires in 5 minutes.
+                    </p>
+                  </div>
+                  {DEV_HINT}
+                  <Button variant="ghost" className="-ml-4" onClick={onUseDifferentEmail}>
+                    Use a different email
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="w-full"
+                    disabled={opening || sending}
+                    onClick={() => void onContinueWithGoogle()}
+                  >
+                    <GoogleLogo />
+                    {opening ? "Opening Google…" : "Continue with Google"}
+                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <span className="text-meta text-ink-3">or</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <form onSubmit={onSubmit} className="flex flex-col gap-2">
+                    <Label htmlFor="email">Email address</Label>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Input
+                        ref={emailField}
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                      <Button
+                        variant="primary"
+                        type="submit"
+                        className="sm:min-w-38"
+                        disabled={sending || opening}
+                      >
+                        {sending ? "Sending…" : "Email me a link"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+          {LEGAL}
+        </div>
+        {TAGLINE_PANEL}
+      </div>
     </main>
   );
 }
+
+/** One grid for the page, the homepage's: 1200px on a gutter of clamp(22px, 6vw, 48px). */
+const GRID_WIDTH = "mx-auto w-full max-w-[1296px] px-4 sm:px-[clamp(22px,6vw,48px)]";
+
+/**
+ * The one alert on screen (TEACH-252), highest priority first: the sign-out notice (shown with its
+ * Retry button), the send error, the Google start error, then the `?error=` a failed round trip came
+ * back with. The handlers clear each other's failures, so the newest wins among the last three.
+ * Once a link is sent only the notice can show.
+ */
+function oneAlert({
+  notice,
+  status,
+  googleError,
+  errorCode,
+}: {
+  notice: string | null;
+  status: Status;
+  googleError: string | null;
+  errorCode: string | undefined;
+}): string | null {
+  if (notice) return notice;
+  if (status.kind === "sent") return null;
+  if (status.kind === "error") return SEND_ERROR;
+  return googleError ?? (errorCode ? signInErrorMessage(errorCode) : null);
+}
+
+// Static JSX hoisted so a state change never rebuilds it (rendering-hoist-jsx).
+const ALERT_ICON = (
+  <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+);
+
+/** The homepage hero's paper glow (homepage/assets/hero.css `.hm-hero-band`), on tokens. */
+const PAPER_GLOW = (
+  <div
+    aria-hidden="true"
+    className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_60%_50%,var(--card)_0,transparent_65%)]"
+  />
+);
+
+/** A sage sheet under the card, the homepage's tilted papers (homepage/assets/proof.css). */
+const PAPER_SHEET = (
+  <div
+    aria-hidden="true"
+    className="absolute inset-0 -z-10 hidden translate-x-3 translate-y-2 rotate-[2.5deg] rounded-card border border-brand-tint-line bg-brand-tint sm:block"
+  />
+);
+
+/** The brand lockup: not a link, so it adds no tab stop before the email field. */
+const LOCKUP = (
+  <Display as="span" size="md" className="inline-flex items-center gap-[0.2em] whitespace-nowrap">
+    <span className="inline-flex origin-[50%_52%] motion-safe:animate-dayback-rewind">
+      <DaybackMark />
+    </span>
+    DayBack
+  </Display>
+);
+
+const SENT_BADGE = (
+  <span
+    aria-hidden="true"
+    className="grid size-12 place-items-center rounded-full bg-brand-tint text-foreground"
+  >
+    <MailCheck className="size-6" strokeWidth={1.5} />
+  </span>
+);
+
+/** Only `vite dev` prints the link in the api console; a build must not say so (TEACH-252). */
+const DEV_HINT = import.meta.env.DEV ? (
+  <p className="text-meta text-ink-3">In development the link is printed in the api console.</p>
+) : null;
+
+const LEGAL_LINK =
+  "rounded-chip text-foreground underline underline-offset-4 outline-none hover:decoration-2 focus-visible:shadow-focus";
+
+/** The homepage's legal pages, served under /homepage/ by the same Vercel project. */
+const LEGAL = (
+  <p className="text-center text-meta text-ink-3">
+    By continuing you agree to the{" "}
+    <a href="/homepage/terms/" className={LEGAL_LINK}>
+      Terms
+    </a>{" "}
+    and have read the{" "}
+    <a href="/homepage/privacy/" className={LEGAL_LINK}>
+      Privacy notice
+    </a>
+    .
+  </p>
+);
+
+/**
+ * The one tagline (homepage/DESIGN-SYSTEM.md) and Plan. From `lg` it is the left column; below it,
+ * where the character is hidden, the tagline follows the form. It comes after the form in the DOM,
+ * so a screen reader meets the heading and the form first.
+ */
+const TAGLINE_PANEL = (
+  <div className="flex flex-col items-center gap-8 lg:col-start-1 lg:row-start-1 lg:items-start lg:justify-between lg:self-stretch lg:py-4">
+    <p className="text-center text-[22px] leading-7 font-semibold tracking-[-0.03em] text-foreground lg:text-left lg:text-[clamp(2.5rem,3.5vw,3.25rem)] lg:leading-[1.04] lg:font-[750]">
+      <span className="block">Outstanding lessons.</span>
+      <span className="block text-ink-2">Without losing your evening.</span>
+    </p>
+    <div className="relative hidden lg:-mr-16 lg:block lg:self-end">
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-4 bottom-0 h-6 bg-[radial-gradient(closest-side,var(--scrim),transparent)] opacity-60"
+      />
+      <PlanCharacter className="relative" />
+    </div>
+  </div>
+);
