@@ -242,7 +242,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v30 (look/pr2-generation) brings the look branch's system text and shape line (look v26–v35
     // on that branch: the copy-down lead, the label heading, the planned shape's fields, master
     // v25's build-up body, and the half-column target beside a planned photo or diagram).
-    version: "generate-slide.v30",
+    // v31: the callout's room in the half-column line (user turn only).
+    version: "generate-slide.v31",
     hash: "777da3fd84e1cf8e75f2db14354ea663219f8a51d9bb3fc82afaabb79bcbc866",
   },
   "generate-worksheet": {
@@ -274,7 +275,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
     // v17 (look/pr2-generation; look v17–v21 on that branch) changes only the user turn: the
     // planned shape line it copies from generate-slide, the `points` and compare field labels.
-    version: "repair.v17",
+    // v18: generate-slide v31's line (user turn only).
+    version: "repair.v18",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {

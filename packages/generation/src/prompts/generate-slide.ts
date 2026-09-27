@@ -5,7 +5,13 @@ import type {
   LessonPhase,
   OutlineEntry,
 } from "@tj/domain/documents";
-import { COMPOSITION_BUDGETS, CONTENT_SHAPES, type ContentShape, SPEC_LIMITS } from "@tj/slides";
+import {
+  CALLOUT_BUDGETS,
+  COMPOSITION_BUDGETS,
+  CONTENT_SHAPES,
+  type ContentShape,
+  SPEC_LIMITS,
+} from "@tj/slides";
 import { figureBlock, figureShownBlock } from "./figures";
 import {
   type Audience,
@@ -190,6 +196,13 @@ import {
  * are the content slide's shape line and the system text. A content slide whose planned `visual`
  * one of the Figure templates draws is planned as a `diagram` slide instead (`outline-from-facts`
  * `figureBriefOf`), so a slide gets either a figure block or a drawing instruction, never both.
+ *
+ * v31 (27 Sept 2026, look/pr2-generation): an explain beside a photograph or diagram whose entry
+ * plans a callout gets the half-column line with the numbers of the room the callout's card leaves
+ * (`CALLOUT_BUDGETS.explain.panel`, `@tj/slides`, measured): the PR 2 smoke dropped 13 of 16
+ * planned callouts, every one on a slide whose words filled the page. Wording and system text are
+ * unchanged, so the pinned hash did not move. Full-width slides and lists are not changed here:
+ * their lines carry no word numbers (`quality-prd/look/PR2-READY.md`, prompt-engineer items).
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -295,6 +308,8 @@ export type PlannedShape = {
   visual?: string | undefined;
   /** v34: what takes the right half beside the words (an explain or a list only). */
   beside?: "photograph" | "diagram" | undefined;
+  /** v31: the entry plans a callout, whose card takes room under the words. */
+  callout?: boolean | undefined;
 };
 
 /** v34: the shapes that keep the right half for a slot; compare and sequence drop it. */
@@ -326,6 +341,7 @@ export function plannedShapeOf(
     ideas: ideas.length,
     ...(visual ? { visual } : {}),
     ...(beside && SLOTTED.has(shape) ? { beside } : {}),
+    ...(entry.callout ? { callout: true } : {}),
   };
 }
 
@@ -344,7 +360,7 @@ const SHAPE_FIELDS = ["points", "compare", "steps"] as const;
  * ceiling; the counts are the schema's (`specs.ts` content `points`, `compare`, `steps`).
  */
 export function shapeLine(planned: PlannedShape): string {
-  if (planned.beside) return besideLine(planned.shape, planned.beside);
+  if (planned.beside) return besideLine(planned.shape, planned.beside, planned.callout === true);
   const fields = (() => {
     switch (planned.shape) {
       case "list":
@@ -365,8 +381,16 @@ export function shapeLine(planned: PlannedShape): string {
  * the renderer's half-column budget (`COMPOSITION_BUDGETS[shape].panel`). An explain's range runs
  * from two thirds of lead + body up to it (32 + 13: about 30–45).
  */
-function besideLine(shape: ContentShape, beside: "photograph" | "diagram"): string {
-  const panel = COMPOSITION_BUDGETS[shape].panel;
+function besideLine(
+  shape: ContentShape,
+  beside: "photograph" | "diagram",
+  callout = false,
+): string {
+  // v31: an explain that plans a callout is written to the room its card leaves (`CALLOUT_BUDGETS`).
+  const panel =
+    callout && shape === "explain"
+      ? CALLOUT_BUDGETS.explain.panel
+      : COMPOSITION_BUDGETS[shape].panel;
   if (!panel) throw new Error(`generate-slide: no half-column budget for "${shape}"`);
   const opening = `A ${beside} takes the right half of this slide, so the words sit in the left half: write for that half, not the 40–60 words of a full-width slide.`;
   const closing =
@@ -474,7 +498,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",

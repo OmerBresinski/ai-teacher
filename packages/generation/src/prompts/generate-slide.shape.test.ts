@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry } from "@tj/domain/documents";
-import { COMPOSITION_BUDGETS, CONTENT_SHAPES } from "@tj/slides";
+import { CALLOUT_BUDGETS, COMPOSITION_BUDGETS, CONTENT_SHAPES } from "@tj/slides";
 import { plannedShapeOf, shapeLine, withPlannedShape } from "./generate-slide";
 
 /* v31: the planned shape reaches the slide line; v33: as a layout hint, with no word budgets. */
@@ -121,5 +121,22 @@ describe("generate-slide v33 planned shape", () => {
     });
     expect(compare?.beside).toBeUndefined();
     expect(shapeLine({ shape: "explain", ideas: 1 })).not.toContain("right half");
+  });
+
+  test("v31: an explain beside a photograph that plans a callout is written to the room its card leaves", () => {
+    const planned = plannedShapeOf(facts(idea("k1", { shape: "explain" })), {
+      ...entry("content", ["k1"], {
+        imageBrief: { subject: "Roman road", purpose: "context" },
+        callout: { kind: "watch-out", factRefs: ["m1"] },
+      }),
+    });
+    expect(planned?.callout).toBe(true);
+    const room = CALLOUT_BUDGETS.explain.panel;
+    const most = room.lead.max + (room.body?.max ?? 0);
+    expect(shapeLine(planned as NonNullable<typeof planned>)).toContain(`–${most} words, no more`);
+    // A list's line is unchanged: no card fits under points beside a photograph.
+    expect(shapeLine({ shape: "list", ideas: 1, beside: "photograph", callout: true })).toBe(
+      shapeLine({ shape: "list", ideas: 1, beside: "photograph" }),
+    );
   });
 });
