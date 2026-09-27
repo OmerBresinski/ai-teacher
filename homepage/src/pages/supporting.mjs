@@ -2,7 +2,7 @@ import { contactEmail, href, legalEntity, pageHero } from "../components.mjs";
 
 const page = (route, title, description, body) => ({ route, title, description, body });
 const mail = `<a href="mailto:${contactEmail}">${contactEmail}</a>`;
-const updated = "13 September 2026";
+const updated = "27 September 2026";
 const reading = (body) =>
   `${pageHero({ title: body.heading, description: body.lead })}<section class="section container reading">${body.content}</section>`;
 const table = (headings, rows) =>
@@ -36,7 +36,8 @@ const privacy = page(
 <p>If you have a question about your data, or you want to use any of the rights below, email ${mail}. A person reads that address.</p>
 
 <h2>What we collect</h2>
-<p><strong>Your email address.</strong> You sign in with a link we email you, so your email address is your account. There is no password.</p>
+<p><strong>Your email address.</strong> Your email address is your account. You sign in with a link we email you, or with your Google account. There is no password.</p>
+<p><strong>If you sign in with Google.</strong> Google tells us your email address, your name, a link to your Google profile photo and an identifier for your Google account, so we recognise you next time. We ask Google for nothing else: not your contacts, your files or your calendar. We do not keep the access keys Google issues when you sign in, so DayBack cannot act in your Google account.</p>
 <p><strong>What you make in DayBack.</strong> The briefs you write (topic, subject, year group, duration, and the optional class context), any files you upload as starting material, and the lessons, slides and worksheets DayBack produces for you. This is your work, and we treat it as yours.</p>
 <p><strong>Technical logs, without your content.</strong> Our servers keep structured logs so we can find and fix faults: timestamps, error codes, and the identifiers of a request, job or lesson. <strong>Your briefs, your uploads, the prompts we send to the AI model and the lessons it writes back are never written to our logs.</strong> When we record an AI call we record the model, how long it took, how many tokens it used and what it cost, never the text.</p>
 <p><strong>Nothing about your pupils.</strong> See “Pupils” below.</p>
@@ -48,8 +49,8 @@ ${table(
   ["What we use", "Why", "Lawful basis"],
   [
     [
-      "Your email address",
-      "To sign you in by emailed link, to keep you signed in, and to email you about your account or a fault that affects you",
+      "Your email address, and if you sign in with Google your name, profile photo link and Google account identifier",
+      "To sign you in by emailed link or with Google, to keep you signed in, and to email you about your account or a fault that affects you",
       "<strong>Contract</strong> (Article 6(1)(b)). We cannot give you an account without it",
     ],
     [
@@ -110,6 +111,7 @@ ${table(
     ],
   ],
 )}
+<p><strong>Signing in with Google.</strong> If you choose it, Google confirms who you are. For that step Google is a separate controller acting under its own <a href="https://policies.google.com/privacy">privacy policy</a>, not a processor of ours. We receive only the details listed under “What we collect”.</p>
 
 <h2>International transfers</h2>
 <p>Everything we store stays in the European Economic Area: our database, our file storage and our email provider all run in the EU.</p>
@@ -140,7 +142,7 @@ ${table(
   ["What", "How long"],
   [
     [
-      "Your account and email address",
+      "Your account, email address, name and profile photo link",
       "While your account is open, then 12 months after you last sign in, then deleted",
     ],
     [
@@ -173,7 +175,7 @@ const terms = page(
 <p>DayBack is for teachers and other educators, and you must be 18 or over. It is a tool for preparing lessons. It is not for pupils, and pupils should not have accounts.</p>
 
 <h2>Your account</h2>
-<p>You sign in with a link we email you. That link is how we know you are you, so treat it like a password: do not forward it, and tell us at ${mail} if you think someone else has used your account. One account is for one person. You are responsible for what happens under your account.</p>
+<p>You sign in with a link we email you, or with your Google account. Either is how we know you are you, so treat it like a password: do not forward a sign-in link, keep your Google account secure, and tell us at ${mail} if you think someone else has used your account. One account is for one person. You are responsible for what happens under your account.</p>
 
 <h2>Your content, and what you let us do with it</h2>
 <p>The briefs you write, the files you upload and the lessons you produce are yours. We claim no ownership of them.</p>
@@ -224,10 +226,10 @@ const terms = page(
 const cookies = page(
   "/cookies/",
   "Cookie notice | DayBack",
-  "DayBack uses only the cookies that keep you signed in. No analytics cookies, no advertising cookies, no third-party cookies.",
+  "DayBack uses only the cookies that sign you in and keep you signed in. No analytics cookies, no advertising cookies, no third-party cookies.",
   reading({
     heading: "Cookie notice.",
-    lead: "DayBack uses two cookies. Both keep you signed in.",
+    lead: "DayBack uses three cookies. All of them are for signing in.",
     content: `
 ${table(
   ["Cookie", "Purpose", "Set by", "Lasts"],
@@ -244,12 +246,19 @@ ${table(
       "DayBack",
       "5 minutes",
     ],
+    [
+      "<code>tj.state</code>",
+      "Set only when you sign in with Google. Checks that the reply from Google belongs to the sign-in you started",
+      "DayBack",
+      "5 minutes",
+    ],
   ],
 )}
-<p>Both are set when you follow your sign-in link, both are marked <code>SameSite=Lax</code> so they are not sent from other websites, and they hold nothing except your session. They are essential to the service, so there is no consent banner to click.</p>
+<p>They are set when you sign in, all are marked <code>SameSite=Lax</code> so they are not sent from other websites, and they hold nothing except your sign-in. They are essential to the service, so there is no consent banner to click.</p>
+<p>If you sign in with Google, Google’s own sign-in pages use Google’s cookies, under Google’s policy. DayBack does not see them.</p>
 <p><strong>No analytics cookies. No advertising cookies. No tracking pixels. No third-party cookies.</strong></p>
 <p>We do measure how quickly pages load, using Vercel Speed Insights. It reports Core Web Vitals: how fast the page appeared, how soon it responded, whether it moved about while loading. <strong>It sets no cookie and does not identify you or follow you between sites.</strong></p>
-<p><strong>To clear them:</strong> sign out, or clear cookies for this site in your browser settings. You will simply need a new sign-in link next time.</p>
+<p><strong>To clear them:</strong> sign out, or clear cookies for this site in your browser settings. You will simply need to sign in again next time.</p>
 <p>Questions: ${mail}.</p>
 <p><strong>Last updated: ${updated}</strong></p>`,
   }),

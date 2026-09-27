@@ -74,7 +74,7 @@ test.describe("lesson editor", () => {
     await page.getByRole("link", { name: "Open The water cycle" }).click();
     await expect(page).toHaveURL(new RegExp(`${EDITOR(paths)}$`));
     await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
-    await expect(page).toHaveTitle("The water cycle · Teaching Journey");
+    await expect(page).toHaveTitle("The water cycle · DayBack");
 
     const count = await rows(page).count();
     expect(count).toBe(7);

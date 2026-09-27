@@ -10,7 +10,7 @@ test.describe("lesson viewer", () => {
     // The card's Open goes to the editor; the read-only viewer lives on `/view` (TEACH-103).
     await page.goto(paths.lesson("demo-water-cycle", "/view"));
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle", "/view")}$`));
-    await expect(page).toHaveTitle("The water cycle · Teaching Journey");
+    await expect(page).toHaveTitle("The water cycle · DayBack");
     await expect(page.getByText("The water cycle").first()).toBeVisible();
 
     const rail = page.getByRole("navigation", { name: "Slides" });

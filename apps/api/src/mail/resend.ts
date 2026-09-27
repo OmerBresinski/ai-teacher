@@ -12,7 +12,7 @@ export const RESEND_EMAILS_URL = "https://api.resend.com/emails";
 
 export interface ResendMailSenderOptions {
   apiKey: string;
-  /** RFC 5322 sender, e.g. `Teaching Journey <sign-in@mail.example.org>`. */
+  /** RFC 5322 sender, e.g. `DayBack <sign-in@mail.example.org>`. */
   from: string;
   /** Injected in tests; defaults to the global `fetch`. */
   fetch?: typeof fetch;

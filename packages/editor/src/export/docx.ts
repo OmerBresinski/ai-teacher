@@ -762,7 +762,7 @@ export async function buildWorksheetDocx(
   };
 
   return new Document({
-    creator: "Teaching Journey",
+    creator: "DayBack",
     title: worksheet.header.title || worksheet.title,
     numbering: {
       config: [{ reference: ORDERED_LIST, levels: orderedLevels }],

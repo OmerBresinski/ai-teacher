@@ -1248,7 +1248,7 @@ export async function exportLessonPptx(
   pptx.layout = LAYOUT_NAME;
   pptx.title = lesson.title;
   pptx.subject = lesson.subject ?? "";
-  pptx.author = "Teaching Journey";
+  pptx.author = "DayBack";
   const revealAnswers = options.includeAnswers === true;
 
   const background = hexColor(theme.colors.background) ?? "FFFFFF";

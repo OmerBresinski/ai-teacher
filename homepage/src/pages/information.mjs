@@ -77,7 +77,7 @@ export const faqs = [
     id: "sign-in",
     question: "How do I sign in?",
     answer:
-      "With your email address. DayBack emails you a link, you click it, and you’re in. There is no password.",
+      "With your email address or your Google account. DayBack emails you a link, you click it, and you’re in; or choose Continue with Google. There is no password.",
   },
 ];
 
@@ -113,7 +113,7 @@ const trustSections = [
   ],
   [
     "Sign-in and email",
-    "<p>Sign-in is a link sent to your email address through Resend, in the EU. There is no password.</p>",
+    "<p>Sign-in is a link sent to your email address through Resend, in the EU, or your Google account. We keep your name, email and profile photo link from Google, never Google’s access keys. There is no password.</p>",
   ],
   [
     "Cookies",

@@ -18,7 +18,7 @@ test.describe("series detail", () => {
     await page.goto("/series");
     await page.getByRole("link", { name: "Open The Romans" }).click();
     await expect(page).toHaveURL(new RegExp(`${paths.series("series-romans")}$`));
-    await expect(page).toHaveTitle("The Romans · Teaching Journey");
+    await expect(page).toHaveTitle("The Romans · DayBack");
     await expect(page.getByRole("heading", { name: "The Romans" })).toBeVisible();
     await expect(page.getByText(/3 lessons · \d+ slides/)).toBeVisible();
     // Series rows and the sheet stack render real slides (TEACH-99).

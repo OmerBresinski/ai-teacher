@@ -125,7 +125,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     );
   }
   return betterAuth({
-    appName: "Teaching Journey",
+    appName: "DayBack",
     baseURL: env.BETTER_AUTH_URL,
     basePath: AUTH_BASE_PATH,
     secret: env.BETTER_AUTH_SECRET,

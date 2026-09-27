@@ -175,7 +175,7 @@ export function Content() {
         ).map(([size, label]) => (
           <Variant key={size} label={label}>
             <Display as="h3" size={size}>
-              Teaching Journey
+              DayBack
             </Display>
           </Variant>
         ))}

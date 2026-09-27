@@ -34,7 +34,7 @@ describe("KitPage", () => {
     ]) {
       expect(screen.getByRole("heading", { level: 2, name: section })).toBeVisible();
     }
-    expect(document.title).toBe("Kit · Teaching Journey");
+    expect(document.title).toBe("Kit · DayBack");
   });
 
   test("theme tabs update the shared theme", async () => {

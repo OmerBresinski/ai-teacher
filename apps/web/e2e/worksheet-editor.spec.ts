@@ -23,7 +23,7 @@ test.describe("worksheet editor", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(EDITOR(paths));
-    await expect(page).toHaveTitle("Fractions practice · Teaching Journey");
+    await expect(page).toHaveTitle("Fractions practice · DayBack");
     // The chrome's h1 and the sheet's own title both read "Fractions practice" (TEACH-186).
     await expect(
       page.getByRole("heading", { level: 1, name: "Fractions practice" }).first(),

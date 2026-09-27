@@ -17,7 +17,7 @@ const TERRACOTTA = "#d2644b";
 const FONT =
   "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-export const MAGIC_LINK_SUBJECT = "Sign in to Teaching Journey";
+export const MAGIC_LINK_SUBJECT = "Sign in to DayBack";
 
 function escapeHtml(value: string): string {
   return value
@@ -29,7 +29,7 @@ function escapeHtml(value: string): string {
 
 export function magicLinkText(url: string): string {
   return [
-    "Teaching Journey",
+    "DayBack",
     "",
     "Here is your sign-in link. It expires in 5 minutes.",
     "",
@@ -88,7 +88,7 @@ export function magicLinkHtml(url: string, assetOrigin: string): string {
                   <a href="${href}" style="display:block;padding:16px 26px 16px 28px;border-radius:999px;text-decoration:none;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td style="font-family:${FONT};font-size:16px;line-height:24px;font-weight:600;color:#ffffff;white-space:nowrap;">Sign in to Teaching Journey</td>
+                        <td style="font-family:${FONT};font-size:16px;line-height:24px;font-weight:600;color:#ffffff;white-space:nowrap;">Sign in to DayBack</td>
                         <td width="28" style="width:28px;font-size:0;line-height:0;">&nbsp;</td>
                         <td width="24" style="width:24px;vertical-align:middle;"><img src="${arrow}" width="24" height="24" alt="&#8599;" style="display:block;width:24px;height:24px;border:0;"></td>
                       </tr>

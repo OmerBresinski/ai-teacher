@@ -62,7 +62,7 @@ export type MailProvider = (typeof MAIL_PROVIDERS)[number];
 const RESEND_NEEDS: Record<"RESEND_API_KEY" | "MAIL_FROM", string> = {
   RESEND_API_KEY: "required when MAIL_PROVIDER=resend (send-only key from resend.com)",
   MAIL_FROM:
-    "required when MAIL_PROVIDER=resend, e.g. `Teaching Journey <sign-in@mail.example.org>` on a verified Resend domain",
+    "required when MAIL_PROVIDER=resend, e.g. `DayBack <sign-in@mail.example.org>` on a verified Resend domain",
 };
 
 export const EnvSchema = z
@@ -111,7 +111,7 @@ export const EnvSchema = z
     MAIL_PROVIDER: z.enum(MAIL_PROVIDERS).default("console"),
     /** Resend send-only API key. Required when `MAIL_PROVIDER=resend`. */
     RESEND_API_KEY: optionalString,
-    /** Sender address, e.g. `Teaching Journey <sign-in@mail.example.org>`. Required for `resend`. */
+    /** Sender address, e.g. `DayBack <sign-in@mail.example.org>`. Required for `resend`. */
     MAIL_FROM: optionalString,
     GOOGLE_CLIENT_ID: optionalString,
     GOOGLE_CLIENT_SECRET: optionalString,

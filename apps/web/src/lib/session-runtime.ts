@@ -38,7 +38,7 @@ export function startSessionRuntime(): () => void {
     const previousHref = sessionRouter.latestLocation.href;
     sessionRouter = createSessionRouter(state.client);
     toast.dismiss(); // Remove old Undo/View callbacks and any content-bearing proposal copy.
-    document.title = "Teaching Journey";
+    document.title = "DayBack";
     try {
       localStorage.removeItem("tj:brief:last-class");
     } catch {

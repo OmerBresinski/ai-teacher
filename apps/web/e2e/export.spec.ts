@@ -37,7 +37,7 @@ test.describe("lesson print route", () => {
     });
     const count = water().slides.length;
     await page.goto(`${paths.lesson("demo-water-cycle", "/print")}?auto=1&notes=1`);
-    await expect(page).toHaveTitle("The water cycle · Teaching Journey");
+    await expect(page).toHaveTitle("The water cycle · DayBack");
     const pages = page.locator(".td-print .td-handout-page");
     await expect(pages).toHaveCount(count);
     await expect(pages.first().getByText(`The water cycle · Slide 1 of ${count}`)).toBeVisible();
