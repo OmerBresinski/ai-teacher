@@ -239,7 +239,7 @@ test.describe("present mode", () => {
     await expect(page).toHaveURL(/present\?(from=view&slide=2|slide=2&from=view)$/);
     await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 2 of");
-    await page.keyboard.press("Escape");
+    await escapePresent(page);
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle", "/view")}$`));
   });
 
@@ -250,7 +250,7 @@ test.describe("present mode", () => {
     await page.getByRole("button", { name: "Present" }).click();
     await expect(page).toHaveURL(/present\?slide=1&from=edit$/);
     await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
-    await page.keyboard.press("Escape");
+    await escapePresent(page);
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
     await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
   });
