@@ -222,6 +222,11 @@ import {
  * Compare, sequence and the legacy planner's shapeless content slide get no callout room: none is
  * measured. A list beside a photograph with a callout has none either; that is the planner's choice
  * (photo or callout), in code, not here.
+ *
+ * v33 (same day, after the v32 smoke): v32's watch-outs named the mistake (7 of 7) but stated it
+ * plainly ("Roman changes affected everyone equally."), which reads as true off the card; the line
+ * now asks for it negated with "not". A point's word count includes its label: a 10-word point
+ * against a 9-word target dropped the Romans card.
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -424,7 +429,7 @@ function explainTarget(room: Budget, space: string, callout: boolean): string {
 function listTarget(room: Budget): string {
   const [min, max] = room.points?.count ?? [2, 3];
   const count = min === max ? `exactly ${min} strings` : `${min}–${max} strings`;
-  return `"body" is one sentence introducing the set, up to ${room.lead.max} words; "points" holds its members, ${count}, each "Label: short sentence" of up to ${room.points?.max} words in all ("Shield volcano: runny lava spreads far.").`;
+  return `"body" is one sentence introducing the set, up to ${room.lead.max} words; "points" holds its members, ${count}, each "Label: short sentence" of up to ${room.points?.max} words, the label included ("Shield volcano: runny lava spreads far.").`;
 }
 
 /**
@@ -544,7 +549,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v32",
+  version: "generate-slide.v33",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -629,7 +634,7 @@ export const generateSlidePrompt = {
     if (input.entry.callout) {
       const { kind, factRefs } = input.entry.callout;
       parts.push(
-        `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils of up to ${CALLOUT_TEXT_WORDS} words, from ${factRefs.join(", ")} only.${kind === "watch-out" ? ` Its card is labelled "${CALLOUT_LABELS[kind]}", so \`text\` is the wrong idea pupils hold, stated as wrong ("Evaporation is not the same as boiling."), not the correct fact on its own.` : ""}`,
+        `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils of up to ${CALLOUT_TEXT_WORDS} words, from ${factRefs.join(", ")} only.${kind === "watch-out" ? ` Its card is labelled "${CALLOUT_LABELS[kind]}", so \`text\` is the wrong idea pupils hold, negated with "not" so it cannot be copied down as true ("Evaporation is not the same as boiling."), not the correct fact on its own.` : ""}`,
       );
     }
     const planned = plannedShapeOf(input.referenced, input.entry);

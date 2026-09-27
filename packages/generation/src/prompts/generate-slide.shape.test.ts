@@ -115,7 +115,9 @@ describe("generate-slide v33 planned shape", () => {
     expect(line).toContain(`–${most} words, no more`);
     expect(line).toContain("full sentences");
     const list = shapeLine({ shape: "list", ideas: 1, beside: "photograph" });
-    expect(list).toContain(`up to ${COMPOSITION_BUDGETS.list.panel?.points?.max} words in all`);
+    expect(list).toContain(
+      `up to ${COMPOSITION_BUDGETS.list.panel?.points?.max} words, the label included`,
+    );
     // v32: two points beside a photograph, re-measured with real words.
     expect(list).toContain("exactly 2 strings");
     // Compare and sequence drop the slot, so they keep the full-width line.
