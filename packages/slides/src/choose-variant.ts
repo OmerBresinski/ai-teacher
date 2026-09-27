@@ -40,6 +40,11 @@ export type VariantContext = {
    * (research §3.5): the first idea needs a heading to anchor it, so it is never a statement.
    */
   firstContent?: boolean;
+  /**
+   * Whether the slide carries a callout (UX ruling 84): a content slide with one is never a
+   * `statement`, which has no column under a body for the card to sit in.
+   */
+  hasCallout?: boolean;
   personality?: Personality;
 };
 
@@ -47,6 +52,13 @@ export type VariantContext = {
 export const STATEMENT_MAX_WORDS = 20;
 /** Bodies longer than this are split into two columns. */
 export const TWO_COLUMN_MIN_WORDS = 40;
+/**
+ * With a callout under it (UX ruling 84), bodies longer than this are split into two columns.
+ * Measured with the fit engine's ruler over every theme (`callout-fit.test.ts`): under a card
+ * holding the 120-character callout, a headed body keeps its full size to 24 words and runs off
+ * the slide at 28; two columns hold 32 at full size and 36 one stop down, and run off at 38.
+ */
+export const CALLOUT_TWO_COLUMN_MIN_WORDS = 24;
 /** Lists longer than this, in words, do not go on cards: three cards across are narrow. */
 export const CARDS_MAX_WORDS = 45;
 /** Titles up to this many words sit beside a half-slide photograph; longer ones take the band. */
@@ -77,9 +89,13 @@ function ranked(kind: SlideKind, ctx: VariantContext): VariantName[] {
       // content slide directly after the objectives); and a body over twenty words runs past
       // three lines at subtitle size.
       const statement =
-        words < STATEMENT_MAX_WORDS && !ctx.firstContent && ctx.previousKind !== "objectives";
+        words < STATEMENT_MAX_WORDS &&
+        !ctx.firstContent &&
+        !ctx.hasCallout &&
+        ctx.previousKind !== "objectives";
       if (statement) return ["statement", "headed"];
-      return words > TWO_COLUMN_MIN_WORDS ? ["two-column", "headed"] : ["headed", "two-column"];
+      const twoColumnFrom = ctx.hasCallout ? CALLOUT_TWO_COLUMN_MIN_WORDS : TWO_COLUMN_MIN_WORDS;
+      return words > twoColumnFrom ? ["two-column", "headed"] : ["headed", "two-column"];
     }
     case "objectives":
     case "starter":
@@ -123,7 +139,8 @@ function previousComposition(ctx: VariantContext): string | null {
  * 3. A title takes a photograph only when it has one: `split` for a title of up to five
  *    words, `photo-band` for a longer one, `stack` otherwise.
  * 4. A content body under twenty words is a `statement`, unless it is the deck's first content
- *    slide or follows the objectives directly; over forty words it is `two-column`; between,
+ *    slide, follows the objectives directly or carries a callout; over forty words it is
+ *    `two-column` (over twenty-four with a callout, which takes the foot of the slide); between,
  *    `headed`.
  * 5. A headed list is `numbered`, then `stepped`, then `cards` when the lesson is calm or
  *    has no personality; `cards` first when playful, `stepped` first when bold. A list over

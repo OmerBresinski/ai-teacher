@@ -8,8 +8,10 @@ import type {
   TextPreset,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
+import { applyCallout } from "@tj/slides";
 import { docFromBullets, docFromText, newLesson, newSlide, now } from "./factories";
 import { docFromNumbered } from "./layouts";
+import { getTheme } from "./themes";
 
 /**
  * Seeded lessons: the "Starter lesson" template offered by the library (SPEC §11)
@@ -205,6 +207,20 @@ function waterCycle(): Lesson {
     "The sun heats water in rivers and seas until it evaporates into water vapour. High in the sky it cools, condenses into droplets, and forms clouds.",
   ]);
   withNotes(content, "Draw the arrows on the board as you say each stage.");
+  // The demo's misconception as a callout under the body (UX ruling 84, TEACH-75), laid by the
+  // same rule `materialiseSlide` uses, so the hand-placed demo and a generated slide agree.
+  if (content) {
+    content.elements = applyCallout(
+      { elements: content.elements },
+      getTheme(themeId),
+      "content",
+      "headed",
+      {
+        kind: "watch-out",
+        text: "Clouds are tiny drops of liquid water, not water vapour; vapour is invisible.",
+      },
+    ).elements;
+  }
 
   fill(check, "heading", ["Clouds are made of water vapour."]);
   if (check?.question?.type === "true-false") {
@@ -311,8 +327,10 @@ function fractionsOfAmounts(): Lesson {
  * 1 — the demo as it shipped.
  * 2 — wave 4 floors, 4 Sept 2026: the recipes now lay the vocabulary slide out against
  *     the raised projector floors, so the stored version has to be replaced.
+ * 3 — slide callouts, 23 Sept 2026 (TEACH-75): the water cycle's content slide carries a tinted
+ *     "COMMON MISTAKE" card with its warning icon under its body.
  */
-export const DEMO_CONTENT_VERSION = 2;
+export const DEMO_CONTENT_VERSION = 3;
 
 /** The ids the demo owns. A lesson under one of these was written by us, not a teacher. */
 export const DEMO_IDS: readonly string[] = ["demo-water-cycle", "demo-fractions"];

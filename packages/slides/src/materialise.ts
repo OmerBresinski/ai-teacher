@@ -12,6 +12,7 @@ import type {
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
+import { applyCallout, isCalloutElement } from "./callout";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
@@ -58,7 +59,8 @@ const provenance = (factRefs: string[], meta: MaterialiseMeta): Provenance => ({
  * `variant` picks a composition from `LAYOUT_CATALOGUE[spec.kind]` by index or name (see
  * `layoutSlide`); left out, the kind's default, or for a diagram its Figure template's
  * (`defaultVariant`). The fillers below find a variant's slots by `name` where its presets differ
- * from the default recipe's.
+ * from the default recipe's. `report`, when given, hears about a callout left off because it
+ * does not fit its card even one stop down (the caller logs it).
  */
 export function materialiseSlide(
   spec: SlideSpec,
@@ -66,10 +68,23 @@ export function materialiseSlide(
   meta: MaterialiseMeta,
   ids: IdSupplier = uid,
   variant?: number | string,
+  report?: (note: string) => void,
 ): Slide {
   const chosen = variant ?? defaultVariant(spec);
   const laid = reid(layoutSlide(spec.kind, themeId, chosen), ids);
   const filled = fillSlide(spec, themeId, laid, ids, chosen);
+  // A callout too long for its card even one stop down is left off, never clipped (rulings 91,
+  // 102); the worked example's is left off by design (`applyCallout`) and is not reported.
+  if (
+    report &&
+    (spec.kind === "content" || spec.kind === "image-text") &&
+    spec.callout &&
+    !filled.elements.some(isCalloutElement)
+  ) {
+    report(
+      `callout dropped: ${spec.callout.text.length} characters of ${spec.callout.kind} do not fit the ${spec.kind} card at the small floor`,
+    );
+  }
   const stamp = provenance(spec.factRefs, meta);
   const slide: Slide = {
     id: ids(),
@@ -111,13 +126,13 @@ function fillSlide(
     case "vocabulary":
       return fillVocabulary(spec, themeId, laid);
     case "content":
-      return fillContent(spec, laid, variantName(spec.kind, variant));
+      return fillContent(spec, themeId, laid, ids, variantName(spec.kind, variant));
     case "image-text":
-      return fillImageText(spec, laid);
+      return fillImageText(spec, themeId, laid, ids);
     case "diagram":
       return fillDiagram(spec, themeId, laid, ids);
     case "worked-example":
-      return fillWorkedExample(spec, laid);
+      return fillWorkedExample(spec, themeId, laid, ids);
     case "discussion":
       return fillDiscussion(spec, laid);
     case "true-false":
@@ -271,12 +286,18 @@ function fillVocabulary(spec: SlideSpecOf<"vocabulary">, themeId: string, laid: 
   return { ...laid, elements: kept };
 }
 
-function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: ContentVariant): Layout {
+function fillContent(
+  spec: SlideSpecOf<"content">,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+  variant: ContentVariant,
+): Layout {
   if (variant === "statement") {
     // No heading on a statement: the heading becomes the eyebrow over the sentence.
     setText(slot(laid, "Eyebrow"), spec.heading);
     setText(slot(laid, "Statement"), spec.body);
-    return laid;
+    return withCallout(spec, themeId, laid, ids, variant);
   }
   setText(textOf(laid, "heading"), spec.heading);
   if (variant === "two-column") {
@@ -285,13 +306,42 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
     const rightSlot = slot(laid, "Body right");
     if (right) {
       setText(rightSlot, right);
-      return laid;
+      return withCallout(spec, themeId, laid, ids, variant);
     }
     // One sentence with no full stop to split at: the left column carries it all.
-    return { ...laid, elements: laid.elements.filter((element) => element !== rightSlot) };
+    return withCallout(
+      spec,
+      themeId,
+      { ...laid, elements: laid.elements.filter((element) => element !== rightSlot) },
+      ids,
+      variant,
+    );
   }
   setText(textOf(laid, "body"), spec.body);
-  return laid;
+  return withCallout(spec, themeId, laid, ids, variant);
+}
+
+/**
+ * The labelled card under the body (UX ruling 84, TEACH-75) when the spec carries one; a spec
+ * without one leaves the recipe untouched, so every layout snapshot holds. The four are minted
+ * after `reid`, so its ids come from `ids` here for the same determinism as the recipe's.
+ */
+function withCallout(
+  spec: SlideSpecOf<"content" | "image-text" | "worked-example">,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+  variant = "",
+): Layout {
+  if (!spec.callout) return laid;
+  const before = new Set(laid.elements);
+  const withCard = applyCallout(laid, getTheme(themeId), spec.kind, variant, spec.callout);
+  return {
+    ...withCard,
+    elements: withCard.elements.map((element) =>
+      before.has(element) ? element : { ...element, id: ids() },
+    ),
+  };
 }
 
 /**
@@ -304,14 +354,19 @@ export function splitAtFullStop(body: string): [string, string] {
   return [body.slice(0, at + 1).trim(), body.slice(at + 1).trim()];
 }
 
-function fillImageText(spec: SlideSpecOf<"image-text">, laid: Layout): Layout {
+function fillImageText(
+  spec: SlideSpecOf<"image-text">,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+): Layout {
   // The recipe's caption is "KEY IDEA"; a picture slide that asks pupils to look says so (TEACH-243).
   if (spec.caption) setText(textOf(laid, "caption"), spec.caption);
   setText(textOf(laid, "heading"), spec.heading);
   setText(textOf(laid, "body"), spec.body);
   // The image slot stays as the recipe made it: PLACEHOLDER_IMAGE until `illustrate` places a
   // photograph (or leaves it, with a warning finding, when Pexels has nothing).
-  return laid;
+  return withCallout(spec, themeId, laid, ids);
 }
 
 /**
@@ -346,12 +401,17 @@ function fillDiagram(
   };
 }
 
-function fillWorkedExample(spec: SlideSpecOf<"worked-example">, laid: Layout): Layout {
+function fillWorkedExample(
+  spec: SlideSpecOf<"worked-example">,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+): Layout {
   if (spec.heading) setText(textOf(laid, "heading"), spec.heading);
   const [question, working] = textsOf(laid, "body");
   setText(question, spec.question);
   setDoc(working, docFromNumbered(spec.steps));
-  return laid;
+  return withCallout(spec, themeId, laid, ids);
 }
 
 function fillDiscussion(spec: SlideSpecOf<"discussion">, laid: Layout): Layout {

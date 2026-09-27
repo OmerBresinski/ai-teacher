@@ -83,6 +83,31 @@ describe("chooseVariant", () => {
     ).toBe("statement");
   });
 
+  it("never sets a content slide with a callout as a statement (UX ruling 84)", () => {
+    const ctx = { index: 4, total: 10, textLength: 12, previousKind: "vocabulary" as const };
+    expect(chooseVariant("content", ctx)).toBe("statement");
+    expect(chooseVariant("content", { ...ctx, hasCallout: true })).toBe("headed");
+    expect(chooseVariant("content", { ...ctx, hasCallout: false })).toBe("statement");
+    // A long body with a callout still splits into two columns.
+    expect(chooseVariant("content", { ...ctx, hasCallout: true, textLength: 45 })).toBe(
+      "two-column",
+    );
+  });
+
+  it("splits a body over twenty-four words into two columns when a callout takes the foot", () => {
+    const ctx = { index: 4, total: 10, previousKind: "vocabulary" as const };
+    // Measured (`callout-fit.test.ts`): under the card a headed body runs off the slide at 28 words.
+    expect(chooseVariant("content", { ...ctx, hasCallout: true, textLength: 24 })).toBe("headed");
+    expect(chooseVariant("content", { ...ctx, hasCallout: true, textLength: 25 })).toBe(
+      "two-column",
+    );
+    expect(chooseVariant("content", { ...ctx, hasCallout: true, textLength: 30 })).toBe(
+      "two-column",
+    );
+    // Without a callout the recipe's four-line body holds thirty words: headed as today.
+    expect(chooseVariant("content", { ...ctx, textLength: 30 })).toBe("headed");
+  });
+
   it("splits a body over forty words into two columns and keeps the middle headed", () => {
     expect(chooseVariant("content", { index: 4, total: 10, textLength: wordCount(long) })).toBe(
       "two-column",
