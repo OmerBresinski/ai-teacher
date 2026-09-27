@@ -15,6 +15,33 @@ const mouthOf = (page: Page, kind: string) =>
 /** The control point's y: larger is a deeper smile. */
 const smileDepth = (d: string | null) => Number(d?.split("Q")[1]?.trim().split(" ")[1]);
 
+/**
+ * Records one number per animation frame for `selector`, from the page's first frame (an init
+ * script, so a fast arrival cannot finish before sampling starts) and for 8 s: Slides' vertical
+ * offset, or an arm's rotation. A slow `expect.poll` can miss a moment that lasts under a second.
+ */
+async function recordEveryFrame(page: Page, selector: string, read: "offsetY" | "rotation") {
+  await page.addInitScript(
+    ({ selector, read }) => {
+      const seen: number[] = [];
+      (window as unknown as { recorded: number[] }).recorded = seen;
+      const started = performance.now();
+      const step = () => {
+        const element = document.querySelector(selector);
+        if (element && read === "offsetY") {
+          seen.push(new DOMMatrixReadOnly(getComputedStyle(element).transform).m42);
+        }
+        const angle = element?.getAttribute("transform")?.match(/rotate\(([-\d.]+)/)?.[1];
+        if (read === "rotation" && angle) seen.push(Math.abs(Number(angle)));
+        if (performance.now() - started < 8000) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    },
+    { selector, read },
+  );
+  return () => page.evaluate(() => (window as unknown as { recorded: number[] }).recorded);
+}
+
 test("the cast arrives from behind the card and keeps moving", async ({ page }) => {
   const gsap = page.waitForResponse(async (response) =>
     response.request().resourceType() === "script"
@@ -32,25 +59,11 @@ test("the cast arrives from behind the card and keeps moving", async ({ page }) 
 });
 
 test("Slides climbs out from behind the card instead of popping in", async ({ page }) => {
-  // Record Slides' vertical offset on every frame from the first one, before the page even loads,
-  // so a fast arrival cannot finish before the sampling starts.
-  await page.addInitScript(() => {
-    const seen: number[] = [];
-    (window as unknown as { slidesOffsets: number[] }).slidesOffsets = seen;
-    const step = () => {
-      const host = document.querySelector('[data-cast="slides"]');
-      if (host) seen.push(new DOMMatrixReadOnly(getComputedStyle(host).transform).m42);
-      requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  });
+  const offsets = await recordEveryFrame(page, '[data-cast="slides"]', "offsetY");
   await page.goto("/sign-in");
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
   await page.waitForTimeout(2000);
-  const offsets = await page.evaluate(
-    () => (window as unknown as { slidesOffsets: number[] }).slidesOffsets,
-  );
-  const moving = offsets.filter((y) => y !== 0);
+  const moving = (await offsets()).filter((y) => y !== 0);
   expect(Math.max(...moving)).toBeGreaterThan(100); // it started below the card's top edge
   // ...and was nearly home before GSAP let go, not still hidden (the 27 Sep bug: ~180px, then a snap).
   expect(Math.abs(moving.at(-1) ?? 0)).toBeLessThan(20);
@@ -58,26 +71,12 @@ test("Slides climbs out from behind the card instead of popping in", async ({ pa
 });
 
 test("the cast says hello on arrival", async ({ page }) => {
-  // Plan's hello opens its arms (its homepage gesture) for under a second; the ambient sway alone
-  // stays under 1°. Record the arm every frame so a slow poll cannot miss it.
-  await page.addInitScript(() => {
-    const seen: number[] = [];
-    (window as unknown as { armAngles: number[] }).armAngles = seen;
-    const step = () => {
-      const arm = document.querySelector('[data-cast="support"] .arm-left');
-      const angle = arm?.getAttribute("transform")?.match(/rotate\(([-\d.]+)/)?.[1];
-      if (angle) seen.push(Math.abs(Number(angle)));
-      requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  });
+  // Plan's hello opens its arms (its homepage gesture); the ambient sway alone stays under 1°.
+  const angles = await recordEveryFrame(page, '[data-cast="support"] .arm-left', "rotation");
   await page.goto("/sign-in");
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
   await page.waitForTimeout(3500);
-  const angles = await page.evaluate(
-    () => (window as unknown as { armAngles: number[] }).armAngles,
-  );
-  expect(Math.max(...angles)).toBeGreaterThan(8);
+  expect(Math.max(...(await angles()))).toBeGreaterThan(8);
 });
 
 test("the cast reads along while you type and celebrates when the link is sent", async ({
