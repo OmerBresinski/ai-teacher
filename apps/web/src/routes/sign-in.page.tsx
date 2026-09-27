@@ -1,10 +1,10 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Button, cn, Display, Input, Label, Separator } from "@tj/ui";
+import { Button, Display, Input, Label, Separator } from "@tj/ui";
 import { CircleAlert, MailCheck } from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { DaybackMark } from "@/components/brand/dayback-mark";
-import { PlanCharacter } from "@/components/brand/plan-character";
+import { type CastMood, type CastTargets, SignInCast } from "@/components/brand/sign-in-cast";
 import { GoogleLogo } from "@/components/google-logo";
 import { authClient } from "@/lib/auth";
 import { sanitiseRedirectPath } from "@/lib/auth-redirect";
@@ -90,7 +90,23 @@ export function SignInPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [google, setGoogle] = useState<GoogleStatus>("idle");
+  const [emailFocused, setEmailFocused] = useState(false);
   const emailField = useRef<HTMLInputElement>(null);
+  const googleButton = useRef<HTMLButtonElement>(null);
+  const submitButton = useRef<HTMLButtonElement>(null);
+  const alertBox = useRef<HTMLDivElement>(null);
+  const sentMessage = useRef<HTMLDivElement>(null);
+  // What the characters look at in each mood (`sign-in-cast.tsx`). Refs are stable, so is this.
+  const castTargets = useMemo<CastTargets>(
+    () => ({
+      typing: emailField,
+      sending: submitButton,
+      sent: sentMessage,
+      error: alertBox,
+      leaving: googleButton,
+    }),
+    [],
+  );
 
   // Back from Google's page can restore this page from the back/forward cache with the button
   // still "Opening Google…"; a restored page starts over.
@@ -154,120 +170,123 @@ export function SignInPage() {
   const opening = google === "opening";
   const alertMessage = oneAlert({ notice, status, googleError, errorCode });
 
+  const castMood: CastMood =
+    status.kind === "sent"
+      ? "sent"
+      : alertMessage
+        ? "error"
+        : sending
+          ? "sending"
+          : opening
+            ? "leaving"
+            : emailFocused
+              ? "typing"
+              : "idle";
+
   return (
     <main className="relative isolate flex min-h-svh flex-col overflow-x-clip bg-background">
       {PAPER_GLOW}
-      <div className={cn(GRID_WIDTH, "pt-5 lg:pt-8")}>{LOCKUP}</div>
-      <div
-        className={cn(
-          GRID_WIDTH,
-          "grid flex-1 content-center items-center gap-8 pt-6 pb-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16 lg:py-10",
-        )}
-      >
-        <div className="flex w-full max-w-[460px] flex-col gap-5 justify-self-center lg:col-start-2 lg:row-start-1">
-          <div className="relative isolate">
-            {PAPER_SHEET}
-            <div className="flex flex-col gap-6 rounded-card border border-border bg-card p-6 shadow-2 sm:p-8">
-              <div className="flex flex-col gap-2">
-                <Display as="h1" size="xl">
-                  Welcome to DayBack
-                </Display>
-                <p className="text-body text-ink-2">
-                  Continue with Google, or we will email you a link. No password needed.
-                </p>
-                <p className="text-body text-ink-2">
-                  New to DayBack? The same steps create your account.
-                </p>
-              </div>
-              {alertMessage ? (
-                <div className="flex flex-col items-start gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground">
-                  <div className="flex gap-2.5">
-                    {ALERT_ICON}
-                    <p role="alert">{alertMessage}</p>
-                  </div>
-                  {notice ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
-                    >
-                      Retry sign out
-                    </Button>
-                  ) : null}
+      <div className="mx-auto w-full max-w-[1296px] px-4 pt-5 sm:px-[clamp(22px,6vw,48px)] lg:pt-8">
+        {LOCKUP}
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center px-4 pt-6 pb-10 sm:px-6">
+        {HEADLINE}
+        <div className="relative mt-24 w-full max-w-[520px] sm:mt-32">
+          <SignInCast mood={castMood} targets={castTargets} />
+          <div className="relative z-10 flex flex-col gap-5 rounded-card border border-border bg-card p-5 shadow-2 sm:p-7">
+            {alertMessage ? (
+              <div
+                ref={alertBox}
+                className="flex flex-col items-start gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground"
+              >
+                <div className="flex gap-2.5">
+                  {ALERT_ICON}
+                  <p role="alert">{alertMessage}</p>
                 </div>
-              ) : null}
-              {status.kind === "sent" ? (
-                <div className="flex flex-col items-start gap-4">
-                  {SENT_BADGE}
-                  <div role="status" className="flex flex-col gap-1">
-                    <p className="text-title font-semibold text-foreground">Check your inbox</p>
-                    <p className="text-body text-ink-2">
-                      We sent a sign-in link to{" "}
-                      <strong className="font-semibold break-words text-foreground">
-                        {status.email}
-                      </strong>
-                      . It works once and expires in 5 minutes.
-                    </p>
-                  </div>
-                  {DEV_HINT}
-                  <Button variant="ghost" className="-ml-4" onClick={onUseDifferentEmail}>
-                    Use a different email
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-5">
+                {notice ? (
                   <Button
                     type="button"
-                    variant="default"
-                    className="w-full"
-                    disabled={opening || sending}
-                    onClick={() => void onContinueWithGoogle()}
+                    size="sm"
+                    onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
                   >
-                    <GoogleLogo />
-                    {opening ? "Opening Google…" : "Continue with Google"}
+                    Retry sign out
                   </Button>
-                  <div className="flex items-center gap-3">
-                    <Separator className="flex-1" />
-                    <span className="text-meta text-ink-3">or</span>
-                    <Separator className="flex-1" />
-                  </div>
-                  <form onSubmit={onSubmit} className="flex flex-col gap-2">
-                    <Label htmlFor="email">Email address</Label>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <Input
-                        ref={emailField}
-                        id="email"
-                        name="email"
-                        type="email"
-                        autoComplete="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                      <Button
-                        variant="primary"
-                        type="submit"
-                        className="sm:min-w-38"
-                        disabled={sending || opening}
-                      >
-                        {sending ? "Sending…" : "Email me a link"}
-                      </Button>
-                    </div>
-                  </form>
+                ) : null}
+              </div>
+            ) : null}
+            {status.kind === "sent" ? (
+              <div ref={sentMessage} className="flex flex-col items-start gap-4">
+                {SENT_BADGE}
+                <div role="status" className="flex flex-col gap-1">
+                  <p className="text-title font-semibold text-foreground">Check your inbox</p>
+                  <p className="text-body text-ink-2">
+                    We sent a sign-in link to{" "}
+                    <strong className="font-semibold break-words text-foreground">
+                      {status.email}
+                    </strong>
+                    . It works once and expires in 5 minutes.
+                  </p>
                 </div>
-              )}
-            </div>
+                {DEV_HINT}
+                <Button variant="ghost" className="-ml-4" onClick={onUseDifferentEmail}>
+                  Use a different email
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button
+                  ref={googleButton}
+                  type="button"
+                  variant="default"
+                  className="h-12 w-full"
+                  disabled={opening || sending}
+                  onClick={() => void onContinueWithGoogle()}
+                >
+                  <GoogleLogo />
+                  {opening ? "Opening Google…" : "Continue with Google"}
+                </Button>
+                <div className="flex items-center gap-3">
+                  <Separator className="flex-1" />
+                  <span className="text-meta text-ink-3">or</span>
+                  <Separator className="flex-1" />
+                </div>
+                <form onSubmit={onSubmit} className="flex flex-col gap-2">
+                  <Label htmlFor="email">Email address</Label>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Input
+                      ref={emailField}
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      className="h-12"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
+                    />
+                    <Button
+                      ref={submitButton}
+                      variant="primary"
+                      type="submit"
+                      className="h-12 sm:min-w-40"
+                      disabled={sending || opening}
+                    >
+                      {sending ? "Sending…" : "Email me a link"}
+                    </Button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
-          {LEGAL}
         </div>
-        {TAGLINE_PANEL}
+        {TAGLINE}
+        {LEGAL}
       </div>
     </main>
   );
 }
-
-/** One grid for the page, the homepage's: 1200px on a gutter of clamp(22px, 6vw, 48px). */
-const GRID_WIDTH = "mx-auto w-full max-w-[1296px] px-4 sm:px-[clamp(22px,6vw,48px)]";
 
 /**
  * The one alert on screen (TEACH-252), highest priority first: the sign-out notice (shown with its
@@ -305,14 +324,6 @@ const PAPER_GLOW = (
   />
 );
 
-/** A sage sheet under the card, the homepage's tilted papers (homepage/assets/proof.css). */
-const PAPER_SHEET = (
-  <div
-    aria-hidden="true"
-    className="absolute inset-0 -z-10 hidden translate-x-3 translate-y-2 rotate-[2.5deg] rounded-card border border-brand-tint-line bg-brand-tint sm:block"
-  />
-);
-
 /** The brand lockup: not a link, so it adds no tab stop before the email field. */
 const LOCKUP = (
   <Display as="span" size="md" className="inline-flex items-center gap-[0.2em] whitespace-nowrap">
@@ -342,7 +353,7 @@ const LEGAL_LINK =
 
 /** The homepage's legal pages, served under /homepage/ by the same Vercel project. */
 const LEGAL = (
-  <p className="text-center text-meta text-ink-3">
+  <p className="mt-3 max-w-[22rem] text-center text-meta text-ink-3 sm:max-w-none">
     By continuing you agree to the{" "}
     <a href="/homepage/terms/" className={LEGAL_LINK}>
       Terms
@@ -356,22 +367,18 @@ const LEGAL = (
 );
 
 /**
- * The one tagline (homepage/DESIGN-SYSTEM.md) and Plan. From `lg` it is the left column; below it,
- * where the character is hidden, the tagline follows the form. It comes after the form in the DOM,
- * so a screen reader meets the heading and the form first.
+ * The page's one heading, set like the homepage hero's (homepage/assets/hero.css `.hm-hero-intro
+ * h1`): the UI face at 750, tight tracking, centred over the card and its cast.
  */
-const TAGLINE_PANEL = (
-  <div className="flex flex-col items-center gap-8 lg:col-start-1 lg:row-start-1 lg:items-start lg:justify-between lg:self-stretch lg:py-4">
-    <p className="text-center text-[22px] leading-7 font-semibold tracking-[-0.03em] text-foreground lg:text-left lg:text-[clamp(2.5rem,3.5vw,3.25rem)] lg:leading-[1.04] lg:font-[750]">
-      <span className="block">Outstanding lessons.</span>
-      <span className="block text-ink-2">Without losing your evening.</span>
-    </p>
-    <div className="relative hidden lg:-mr-16 lg:block lg:self-end">
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-4 bottom-0 h-6 bg-[radial-gradient(closest-side,var(--scrim),transparent)] opacity-60"
-      />
-      <PlanCharacter className="relative" />
-    </div>
-  </div>
+const HEADLINE = (
+  <h1 className="max-w-[11ch] text-center text-[clamp(2.5rem,5.4vw,4.25rem)] leading-[1.02] font-[750] tracking-[-0.042em] text-balance text-foreground sm:max-w-none">
+    Welcome to DayBack
+  </h1>
+);
+
+/** The one tagline (homepage/DESIGN-SYSTEM.md), where the homepage hero puts its grounded line. */
+const TAGLINE = (
+  <p className="mt-10 max-w-[20rem] text-center text-lead text-ink-2 sm:max-w-none lg:mt-12 lg:text-[22px] lg:leading-8">
+    Outstanding lessons. Without losing your evening.
+  </p>
 );

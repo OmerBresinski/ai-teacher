@@ -12,8 +12,8 @@ import {
   uniqueEmail,
 } from "./fixtures";
 
-/** Plan's wrapper on /sign-in: the element that holds the 300×300 character SVG. */
-const PLAN = '[aria-hidden="true"]:has(> svg[viewBox="0 0 300 300"])';
+/** One character of the /sign-in cast (TEACH-252). */
+const cast = (kind: "slides" | "activity" | "support" | "answers") => `[data-cast="${kind}"]`;
 
 test.describe("auth", () => {
   test("a protected page redirects to /sign-in and remembers where you were going", async ({
@@ -111,26 +111,53 @@ test.describe("auth", () => {
     await expect(page.getByRole("button", { name: "Email me a link" })).toBeInViewport({
       ratio: 1,
     });
-    // One column: Plan is desktop artwork (TEACH-252).
-    await expect(page.locator(PLAN)).toBeHidden();
+    // On a phone only Slides and Worksheet peek over the card; Plan and Check are desktop artwork.
+    await expect(page.locator(cast("slides"))).toBeVisible();
+    await expect(page.locator(cast("support"))).toBeHidden();
+    await expect(page.locator(cast("answers"))).toBeHidden();
   });
 
-  test("/sign-in at 1440: Plan and the tagline beside the card, hidden from screen readers", async ({
+  test("/sign-in at 1440: the cast stands around the card, hidden from screen readers", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/sign-in");
-    const plan = page.locator(PLAN);
-    await expect(plan).toBeVisible();
-    await expect(plan).toHaveAttribute("aria-hidden", "true");
-    const card = await page.getByRole("heading", { level: 1 }).boundingBox();
-    const tagline = await page.getByText("Outstanding lessons.").boundingBox();
-    const character = await plan.boundingBox();
-    if (!card || !tagline || !character) throw new Error("layout boxes missing");
-    // Two columns: the decorative column sits to the left of the card, level with it.
-    expect(tagline.x + tagline.width).toBeLessThan(card.x);
-    expect(character.x).toBeLessThan(card.x);
-    expect(Math.abs(tagline.y - card.y)).toBeLessThan(200);
+    // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts);
+    // measure once they are up.
+    const googleButton = page.getByRole("button", { name: "Continue with Google" });
+    await expect
+      .poll(async () => {
+        const [peeker, button] = [
+          await page.locator(cast("slides")).boundingBox(),
+          await googleButton.boundingBox(),
+        ];
+        return peeker && button ? peeker.y < button.y : false;
+      })
+      .toBe(true);
+    const google = await googleButton.boundingBox();
+    const heading = await page.getByRole("heading", { level: 1 }).boundingBox();
+    const box = async (kind: Parameters<typeof cast>[0]) => {
+      const character = page.locator(cast(kind));
+      await expect(character).toBeVisible();
+      const found = await character.boundingBox();
+      if (!found) throw new Error(`${kind} has no box`);
+      return found;
+    };
+    const [slides, activity, support, answers] = [
+      await box("slides"),
+      await box("activity"),
+      await box("support"),
+      await box("answers"),
+    ];
+    if (!google || !heading) throw new Error("layout boxes missing");
+    // Slides and Worksheet peek over the card, under the heading; Plan and Check flank it.
+    for (const peeker of [slides, activity]) {
+      expect(peeker.y).toBeGreaterThan(heading.y + heading.height);
+      expect(peeker.y).toBeLessThan(google.y);
+    }
+    expect(support.x + support.width / 2).toBeLessThan(google.x);
+    expect(answers.x + answers.width / 2).toBeGreaterThan(google.x + google.width);
+    await expect(page.locator("[data-cast-stage]")).toHaveAttribute("aria-hidden", "true");
   });
 
   test("Continue with Google says it is not set up when the api has no Google client", async ({

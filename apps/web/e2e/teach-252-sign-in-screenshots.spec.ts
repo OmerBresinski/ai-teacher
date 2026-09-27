@@ -17,9 +17,11 @@ async function open(page: Page, theme: string, path = "/sign-in") {
   await expect(page.getByRole("heading", { level: 1, name: "Welcome to DayBack" })).toBeVisible();
 }
 
-// The mark's rewind plays once on arrival; shoot the page at rest.
+// The mark's rewind (CSS) and the cast's arrival and hello (GSAP, about 2.5 s) play once; shoot the
+// page after both. The cast keeps breathing, so no two shots are pixel-identical.
 async function shoot(page: Page, name: string) {
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+  await page.waitForTimeout(3000);
   await page.screenshot({ path: `/tmp/teach-252-sign-in-${name}.png` });
 }
 
