@@ -1,7 +1,8 @@
-import { appHref, arrowIcon, character, cta, sectionHead, textLink } from "../components.mjs";
+import { appHref, arrowIcon, cta, sectionHead, textLink } from "../components.mjs";
 import { examples } from "../examples-data.mjs";
 import { heroCharacter } from "../hero-artwork.mjs";
 import { lessonGrid } from "../lesson-card.mjs";
+import { lessonProof } from "../lesson-proof.mjs";
 import { faqList, faqs } from "./information.mjs";
 
 const uploadIcon = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>`;
@@ -22,60 +23,6 @@ const hero = `
       </div>
     </form>
     <p class="hm-grounded-subtitle">Your topic or materials. A complete lesson, ready to edit.</p>
-  </div>
-</section>`;
-
-// The proof is an illustration of one idea travelling through a lesson, not a screenshot of a
-// real one. It renders in its finished state; proof.js only replays it when it scrolls into view.
-const proof = `
-<section class="section tone-sage hm-proof" aria-labelledby="proof-title">
-  <div class="container">
-    ${sectionHead({
-      id: "proof-title",
-      title: "Every part of the lesson agrees.",
-      lede: "The slide teaches it, the worksheet practises it and the answer key marks it. DayBack checks all three against each other before you open them.",
-    })}
-    <div class="proof-stage" data-proof>
-      <svg class="proof-links" aria-hidden="true" focusable="false"><path data-proof-link="0"/><path data-proof-link="1"/></svg>
-      <figure class="proof-item proof-slide" data-proof-step="0">
-        <div class="proof-art">
-          <div class="proof-slide-card">
-            <p class="proof-kicker">Year 4 science</p>
-            <p class="proof-title">Sound starts with a vibration</p>
-            <svg class="proof-diagram" viewBox="0 0 220 76" aria-hidden="true" focusable="false"><rect x="8" y="42" width="78" height="26" rx="3" class="proof-desk"/><path d="M28 42h96" class="proof-ruler"/><path d="M86 42l37-9M86 42l37 9" class="proof-ghost"/><path d="M142 26q10 16 0 32M158 18q16 24 0 48M174 10q22 32 0 64" class="proof-waves"/></svg>
-            <p class="proof-line"><mark data-proof-anchor="0">Every sound starts with something vibrating.</mark></p>
-          </div>
-          ${character("slides", { className: "proof-character" })}
-        </div>
-        <figcaption><span>01</span>The slide teaches it.</figcaption>
-      </figure>
-      <figure class="proof-item proof-sheet" data-proof-step="1">
-        <div class="proof-art">
-          <div class="proof-paper">
-            <p class="proof-kicker">Worksheet</p>
-            <p class="proof-question proof-dim">1. Name two things that make a sound.</p>
-            <p class="proof-question"><mark data-proof-anchor="1">2. What makes a sound start?</mark></p>
-            <span class="proof-write" aria-hidden="true"></span>
-            <p class="proof-question proof-dim">3. Why can’t sound travel in space?</p>
-          </div>
-          ${character("activity", { className: "proof-character" })}
-        </div>
-        <figcaption><span>02</span>The worksheet practises it.</figcaption>
-      </figure>
-      <figure class="proof-item proof-key" data-proof-step="2">
-        <div class="proof-art">
-          <div class="proof-paper proof-paper-key">
-            <p class="proof-kicker">Answer key</p>
-            <p class="proof-question proof-dim">1. Any two, e.g. a drum, a voice.</p>
-            <p class="proof-question"><mark data-proof-anchor="2">2. Something vibrates.</mark></p>
-            <p class="proof-question proof-dim">3. Space has hardly any particles to pass it on.</p>
-          </div>
-          ${character("answers", { className: "proof-character" })}
-        </div>
-        <figcaption><span>03</span>The answer key marks it.</figcaption>
-      </figure>
-    </div>
-    <p class="proof-verdict" data-proof-verdict><span aria-hidden="true">✓</span> Checked together. Anything left for you to check is flagged where it sits.</p>
   </div>
 </section>`;
 
@@ -141,7 +88,7 @@ const home = {
   description:
     "Type what you’re teaching. DayBack writes the slides, the worksheet and the answer key, checks they agree with each other, then hands them to you.",
   scripts: ["/assets/hero-motion.js", "/assets/proof.js"],
-  body: hero + proof + topLessons + howItWorks + faq + cta({ home: true }),
+  body: hero + lessonProof + topLessons + howItWorks + faq + cta({ home: true }),
 };
 
 export default [home];
