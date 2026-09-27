@@ -47,6 +47,7 @@
 
 .td-rt ol {
   list-style: decimal outside;
+  padding-left: 1.45em;
 }
 
 .td-rt li {
@@ -85,9 +86,9 @@
 
 /*
  * Numbers sit in a filled accent disc (the lesson look, quality PRD "look", 26 Sept 2026), drawn in
- * the list's own 1.2em indent so the text measures and wraps exactly as it did with a plain marker.
- * The disc is 0.86em, leaving a 0.34em gap before the words (Greg, 27 Sept 2026: the number sat
- * too close to its text). `counter(list-item)` honours the list's `start`, so a continuation slide
+ * the list's own indent. The disc is 0.86em in a 1.45em indent (the headless ruler's
+ * `ORDERED_INDENT_EM`), leaving a 0.59em gap before the words (Greg, 27 Sept 2026, twice: the
+ * number sat too close to its text). `counter(list-item)` honours the list's `start`, so a continuation slide
  * keeps counting.
  */
 .td-rt ol > li {
@@ -100,7 +101,7 @@
   position: absolute;
   /* In the disc's own em (0.54 of the item's): a 0.86em disc at the indent's left edge. */
   font-size: 0.54em;
-  left: -2.222em;
+  left: -2.685em;
   top: calc((0.5em * var(--td-lh) - 0.43em) / 0.54);
   width: 1.593em;
   height: 1.593em;
