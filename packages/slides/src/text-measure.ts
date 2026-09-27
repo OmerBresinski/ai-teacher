@@ -114,14 +114,18 @@ export function lineWidth(text: string, preset: TextPreset, theme: Theme, weight
 /*
  * The headless ruler (TEACH-28): the `Measurer` the fitting engine (`./reflow.ts`) takes, built
  * on `linesIn` instead of the DOM, so `materialiseSlide` can fit a slide before anything renders
- * it. It follows `slide.css` for a rich doc: blocks and list items 0.35em apart, lists indented
- * 1.2em. Line counts err one line long, never short (see `WRAP_SLACK`), so a box it sizes may
+ * it. It follows `slide.css` for a rich doc: blocks and list items 0.35em apart, dot lists indented
+ * 1.2em and numbered lists 1.45em. Line counts err one line long, never short (see `WRAP_SLACK`), so a box it sizes may
  * carry one empty line; the editor's DOM ruler tightens it the next time the slide is tidied.
  */
 
-/** `slide.css`: `.td-rt p, li, ul, ol { margin-bottom: 0.35em }`, `ul, ol { padding-left: 1.2em }`. */
+/**
+ * `slide.css`: `.td-rt p, li, ul, ol { margin-bottom: 0.35em }`, `ul { padding-left: 1.2em }`,
+ * `ol { padding-left: 1.45em }` (the number's disc and a clear gap before the words).
+ */
 const BLOCK_GAP_EM = 0.35;
 const LIST_INDENT_EM = 1.2;
+const ORDERED_INDENT_EM = 1.45;
 
 function plainText(node: RichNode): string {
   if (node.type === "text") return node.text ?? "";
@@ -140,7 +144,8 @@ function blocksOf(
   nodes.forEach((node, i) => {
     if (i > 0) gaps += 1;
     if (node.type === "bulletList" || node.type === "orderedList") {
-      const inner = room - LIST_INDENT_EM * type.fontSize;
+      const indent = node.type === "orderedList" ? ORDERED_INDENT_EM : LIST_INDENT_EM;
+      const inner = room - indent * type.fontSize;
       const items = node.content ?? [];
       items.forEach((item, j) => {
         if (j > 0) gaps += 1;
