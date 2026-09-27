@@ -3,6 +3,7 @@ import type {
   RichDoc,
   RichNode,
   ShapeElement,
+  ShapeKind,
   Slide,
   SlideElement,
   TextElement,
@@ -22,6 +23,7 @@ import {
   PHOTO_NAME,
   PHOTO_TEXT_SHARE,
   type PhotoBrief,
+  panelFill,
 } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
@@ -2099,6 +2101,33 @@ export const PANEL_TEXT_NAME = "Side panel text";
 export const PANEL_DEFINITION_NAME = "Side panel definition";
 export const LEAD_NAME = "Lead";
 export const BULLET_NAME = "Bullet";
+
+/**
+ * A point's bullet as a shape, drawn the theme's way (`Theme.ornament.marker`, the same marks
+ * `slide.css` draws in a list's indent). Centred on the dot's place, so the text never moves.
+ */
+export function bulletMark(
+  t: Theme,
+  dot: number,
+): { shape: ShapeKind; w: number; h: number; rotation?: number } {
+  switch (t.ornament?.marker) {
+    case "star":
+      return { shape: "star", w: Math.round(dot * 1.6), h: Math.round(dot * 1.6) };
+    case "dash":
+      return { shape: "pill", w: Math.round(dot * 1.4), h: Math.round(dot * 0.55), rotation: -10 };
+    case "diamond":
+      return { shape: "diamond", w: Math.round(dot * 1.25), h: Math.round(dot * 1.25) };
+    case "leaf":
+      return {
+        shape: "ellipse",
+        w: Math.round(dot * 1.5),
+        h: Math.round(dot * 0.8),
+        rotation: -35,
+      };
+    default:
+      return { shape: "ellipse", w: dot, h: dot };
+  }
+}
 export const ITEM_NAME = "Point";
 /** A sentence longer than this reads as a paragraph, not a bullet. */
 const ITEM_MAX_WORDS = 22;
@@ -2266,14 +2295,16 @@ function splitContent(
     for (const item of items) {
       const doc = docFromText(item);
       const h = heightOf(measure, doc, half - indent, "body", size, 0, { lineHeight: leading });
+      const mark = bulletMark(t, dot);
       els.push({
         id: ids(),
         type: "shape",
-        shape: "ellipse",
-        x: SAFE.x + Math.round((indent - dot) / 3),
-        y: Math.round(y + (size * lh) / 2 - dot / 2),
-        w: dot,
-        h: dot,
+        shape: mark.shape,
+        x: SAFE.x + Math.round((indent - dot) / 3) + Math.round((dot - mark.w) / 2),
+        y: Math.round(y + (size * lh) / 2 - mark.h / 2),
+        w: mark.w,
+        h: mark.h,
+        ...(mark.rotation ? { rotation: mark.rotation } : {}),
         fill: t.colors.accent,
         name: BULLET_NAME,
       });
@@ -2436,7 +2467,7 @@ function sidePanel(
         y: top,
         w,
         h,
-        fill: accentTint(t),
+        fill: panelFill(t),
         radius: t.radius,
         name: PANEL_NAME,
       },
