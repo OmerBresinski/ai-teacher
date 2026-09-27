@@ -26,9 +26,9 @@ import {
   alternateSlotSides,
   docLines,
   ITEM_NAME,
+  slotSide,
   slotSideOf,
   slotSideOnDrop,
-  swapSlotSide,
 } from "./structure";
 import { floorBelow, readingSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
@@ -375,7 +375,7 @@ describe("the slot takes either side (look/slides-layout)", () => {
         const pages = materialiseSlides(spec, t.id, meta, undefined, 0, { photo });
         const left = pages[0] as Slide;
         expect(slotSideOf(left)).toBe("left");
-        const right = swapSlotSide(left);
+        const right = slotSide(left, "right");
         expect(slotSideOf(right)).toBe("right");
         // Same boxes, moved: the budgets measured with the slot on one side hold on the other.
         expect(right.elements.map(box)).toEqual(left.elements.map(box));
@@ -385,7 +385,7 @@ describe("the slot takes either side (look/slides-layout)", () => {
         for (const e of bodyText(right))
           expect(e.x + e.w).toBeLessThanOrEqual(img.x - SPACE[5] + 1);
         // Swapping back is the slide as it was.
-        expect(swapSlotSide(right).elements).toEqual(left.elements);
+        expect(slotSide(right, "left").elements).toEqual(left.elements);
       }
     });
   }
@@ -465,13 +465,13 @@ describe("review fixes (look/slides-layout)", () => {
     const right0 = Math.max(...words0.map((e) => e.x + e.w));
     const gap = left0 - (slot0.x + slot0.w);
     expect(gap).toBe(SPACE[5] + 40);
-    const swapped = swapSlotSide(stored);
+    const swapped = slotSide(stored, "right");
     const moved = bodyText(swapped);
     const img = slot(swapped);
     expect(Math.min(...moved.map((e) => e.x))).toBe(slot0.x);
     expect(img.x - Math.max(...moved.map((e) => e.x + e.w))).toBe(gap);
     expect(img.x + img.w).toBe(right0);
-    expect(swapSlotSide(swapped).elements).toEqual(stored.elements);
+    expect(slotSide(swapped, "left").elements).toEqual(stored.elements);
   });
 });
 
@@ -485,18 +485,28 @@ describe("dropping the photo over the midline (R2)", () => {
     const toMid = mid - (img.x + img.w / 2);
     expect(slotSideOnDrop(s, img.id, toMid + 1)).toBe("right");
     expect(slotSideOnDrop(s, img.id, toMid - 1)).toBeUndefined();
-    const right = swapSlotSide(s);
+    const right = slotSide(s, "right");
     const back = slot(right);
     const toMidR = mid - (back.x + back.w / 2);
     expect(slotSideOnDrop(right, back.id, toMidR - 1)).toBe("left");
     expect(slotSideOnDrop(right, back.id, 60)).toBeUndefined();
   });
 
-  test("only the photo swaps: the words, and a slide without a slot, move as they are", () => {
+  test("only the slot swaps: the words, and a slide without a slot, move as they are", () => {
     const s = left as Slide;
     const words = bodyText(s)[0];
     expect(slotSideOnDrop(s, words?.id ?? "", 600)).toBeUndefined();
     const plain = { ...s, elements: s.elements.filter((e) => e.name !== PHOTO_NAME) };
     expect(slotSideOnDrop(plain, slot(s).id, 600)).toBeUndefined();
+  });
+
+  test("a diagram zone swaps as the photo does", () => {
+    const d = materialiseSlide({ ...why, diagram: "Map: Rome, Gaul and Britain" }, "chalk", meta);
+    const zone = (d as Slide).elements.find((e) => e.name === DIAGRAM_NAME);
+    if (!zone) throw new Error("no diagram zone");
+    expect(slotSideOf(d as Slide)).toBe("left");
+    const toMid = mid - (zone.x + zone.w / 2);
+    expect(slotSideOnDrop(d as Slide, zone.id, toMid + 1)).toBe("right");
+    expect(slotSideOnDrop(d as Slide, zone.id, toMid - 1)).toBeUndefined();
   });
 });

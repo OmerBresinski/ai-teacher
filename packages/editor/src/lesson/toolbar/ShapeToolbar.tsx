@@ -7,6 +7,7 @@ import { docFromText } from "../../model/factories";
 import { shapeRadius } from "../../slide/elements/ShapeView";
 import { LabelTextControls } from "./LabelTextControls";
 import { MoreDrawer } from "./MoreDrawer";
+import { SlotSideControl, type SlotSideProps } from "./SlotSideControl";
 import {
   BarButton,
   BorderWidthMenu,
@@ -28,10 +29,13 @@ export const ShapeToolbar = memo(function ShapeToolbar({
   element,
   theme,
   slideId,
+  slot,
 }: {
   element: ShapeElement;
   theme: Theme;
   slideId: string;
+  /** Set when this element is its slide\'s slot (a diagram zone or its figure). */
+  slot?: SlotSideProps;
 }) {
   const { update, scrub, end } = useElementWrites(slideId);
   const palette = useThemePalette(theme);
@@ -43,6 +47,7 @@ export const ShapeToolbar = memo(function ShapeToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Shape" data-shape-toolbar>
+      {slot ? <SlotSideControl slideId={slideId} {...slot} /> : null}
       <ColorPicker
         label="Fill"
         swatch="circle"

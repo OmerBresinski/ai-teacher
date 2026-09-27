@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
-import { materialiseSlides, PHOTO_NAME, slotSideOf } from "@tj/slides";
+import {
+  DIAGRAM_NAME,
+  materialiseSlide,
+  materialiseSlides,
+  PHOTO_NAME,
+  slotSideOf,
+} from "@tj/slides";
 import { catcher, nextFrame, pointer, renderEditor, seededLesson } from "../test-harness";
 
 /*
@@ -106,5 +112,43 @@ describe("the picture's side (R2)", () => {
     expect(slotSideOf(read().slides[0] as never)).toBe("left");
     // Where the pointer left it, give or take a snap.
     expect(photoOf(read()).x).toBeGreaterThan(before.x + 20);
+  });
+
+  test("a diagram zone takes a side the same way: Diagram: Left | Right, and a drag across", async () => {
+    const diagram = materialiseSlide(
+      {
+        kind: "content",
+        heading: "How a volcano erupts",
+        body: "Magma rises through cracks in the crust. Pressure builds as gas collects.",
+        diagram: "Cross-section: magma chamber, vent, crater",
+        factRefs: [],
+      },
+      "chalk",
+      { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" },
+    );
+    const seeded = seededLesson();
+    const { container, read } = renderEditor({
+      ...seeded,
+      themeId: "chalk",
+      slides: [diagram, ...seeded.slides],
+    });
+    const zone = () => {
+      const z = read().slides[0]?.elements.find((e) => e.name === DIAGRAM_NAME);
+      if (!z) throw new Error("no diagram zone");
+      return z;
+    };
+    const start = slotSideOf(read().slides[0] as never);
+    expect(start).toBe("left");
+    const [x, y] = centreOf(zone());
+    fireEvent.pointerDown(catcher(container), pointer(x, y));
+    fireEvent.pointerUp(window, pointer(x, y));
+    fireEvent.click(screen.getByRole("radio", { name: "Right" }));
+    expect(screen.getByRole("radiogroup", { name: "Diagram side" })).toBeDefined();
+    expect(slotSideOf(read().slides[0] as never)).toBe("right");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(slotSideOf(read().slides[0] as never)).toBe("left");
+    await drag(catcher(container), centreOf(zone()), [560, y + 20]);
+    expect(slotSideOf(read().slides[0] as never)).toBe("right");
   });
 });
