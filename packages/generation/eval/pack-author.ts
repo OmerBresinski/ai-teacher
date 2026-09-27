@@ -693,7 +693,11 @@ export async function recallPack(
 
 /* ----------------------------------------------------------------------------------------- */
 
-const EnvSchema = z.object({ AI_GATEWAY_API_KEY: z.string().optional() });
+const EnvSchema = z.object({
+  AI_GATEWAY_API_KEY: z.string().optional(),
+  // Direct OpenAI (ADR 0031) for `openai/<model>` ids; lab l6kp2 builds packs this way.
+  OPENAI_API_KEY: z.string().optional(),
+});
 
 /**
  * `--topics <file>`: a JSON array of topics in the np1 topic shape, read instead of np1's own (W7
@@ -761,13 +765,14 @@ export function depsFor(
 }
 
 export function routedAi(
-  env: { AI_GATEWAY_API_KEY?: string },
+  env: { AI_GATEWAY_API_KEY?: string | undefined; OPENAI_API_KEY?: string | undefined },
   id: string,
   ledger: Ledger,
   record: string,
 ): CreatedAi {
   const created = createAi(env, { route: () => id });
-  if (created.kind === "unconfigured") throw new Error("set AI_GATEWAY_API_KEY (railway run --)");
+  if (created.kind === "unconfigured")
+    throw new Error("set AI_GATEWAY_API_KEY (railway run --) or OPENAI_API_KEY");
   const metered = meteringAi(created, ledger);
   return {
     ...metered,
