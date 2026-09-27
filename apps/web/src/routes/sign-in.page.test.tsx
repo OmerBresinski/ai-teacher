@@ -17,6 +17,7 @@ mock.module("@tanstack/react-router", () => ({
 }));
 
 const { SIGN_OUT_FAILED, sessionBoundary } = await import("@/lib/session-boundary");
+const { POSES, mouthPath } = await import("@/components/brand/cast-rig");
 const {
   SignInPage,
   callbackUrl,
@@ -122,12 +123,10 @@ describe("SignInPage", () => {
     render(<SignInPage />);
     const google = screen.getByRole("button", GOOGLE);
     const email = screen.getByLabelText("Email address");
-    const description = screen.getByText(
-      "Continue with Google, or we will email you a link. No password needed.",
-    );
+    const heading = screen.getByRole("heading", { level: 1 });
     const follows = (a: Node, b: Node) =>
       Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(follows(description, google)).toBe(true);
+    expect(follows(heading, google)).toBe(true);
     expect(follows(google, email)).toBe(true);
     expect(google).toHaveAttribute("type", "button");
     expect(screen.getAllByText("or")).toHaveLength(1);
@@ -290,19 +289,10 @@ describe("SignInPage", () => {
     expect(container.textContent).not.toContain("Teaching Journey");
   });
 
-  it("says the same steps sign in or create an account", () => {
-    render(<SignInPage />);
-    expect(
-      screen.getByText("New to DayBack? The same steps create your account."),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps the card in order: heading, copy, Google, or, email, submit, then the legal links", () => {
+  it("keeps the order: heading, Google, or, email, submit, then the legal links", () => {
     render(<SignInPage />);
     const order = [
       screen.getByRole("heading", { level: 1 }),
-      screen.getByText("Continue with Google, or we will email you a link. No password needed."),
-      screen.getByText("New to DayBack? The same steps create your account."),
       screen.getByRole("button", GOOGLE),
       screen.getByText("or"),
       screen.getByLabelText("Email address"),
@@ -314,6 +304,8 @@ describe("SignInPage", () => {
       expect(before.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       return node;
     });
+    // The two lines under the heading are gone: the buttons say what happens.
+    expect(screen.queryByText(/No password needed|The same steps create your account/)).toBeNull();
   });
 
   it("links the homepage's terms and privacy notice on the same origin", () => {
@@ -331,13 +323,49 @@ describe("SignInPage", () => {
 
   it("hides every piece of artwork from assistive technology", () => {
     const { container } = render(<SignInPage />);
-    // Plan's wrapper, and each SVG on the page (mark, character, Google's G).
-    const plan = container.querySelector('svg[viewBox="0 0 300 300"]');
-    expect(plan?.parentElement).toHaveAttribute("aria-hidden", "true");
+    // The cast: Slides, Worksheet, Plan and Check, inside one hidden stage.
+    const cast = [...container.querySelectorAll("[data-cast]")].map((el) =>
+      el.getAttribute("data-cast"),
+    );
+    expect(cast.toSorted()).toEqual(["activity", "answers", "slides", "support"]);
     const svgs = container.querySelectorAll("svg");
-    expect(svgs.length).toBeGreaterThanOrEqual(3);
+    expect(svgs.length).toBeGreaterThanOrEqual(6);
     for (const svg of svgs) expect(svg.closest('[aria-hidden="true"]')).not.toBeNull();
   });
+
+  it("with reduced motion the cast stays still and only its faces follow the page", async () => {
+    // ADR 0028: reduced motion means no motion, so GSAP is never loaded and only faces change.
+    const realMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      await facesFollowThePage();
+    } finally {
+      window.matchMedia = realMatchMedia;
+    }
+  });
+
+  async function facesFollowThePage() {
+    magicLink.mockResolvedValue({ data: { status: true }, error: null });
+    search = { error: "INVALID_TOKEN" };
+    const user = userEvent.setup();
+    const { container } = render(<SignInPage />);
+    const mouth = () => container.querySelector('[data-cast="support"] .mouth')?.getAttribute("d");
+    expect(mouth()).toBe(mouthPath(POSES.support.face, -0.35));
+
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    await screen.findByRole("status");
+    expect(mouth()).toBe(mouthPath(POSES.support.face, 0.8));
+    expect(container.querySelector("[data-cast-stage]")).toHaveAttribute(
+      "data-cast-stage",
+      "still",
+    );
+  }
 
   it("sent: shows the address, drops Google and the form, and no dev hint outside vite dev", async () => {
     magicLink.mockResolvedValue({ data: { status: true }, error: null });
