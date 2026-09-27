@@ -57,6 +57,13 @@
       "when": 1789592631018,
       "tag": "0007_documents_lesson_link",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790535390099,
+      "tag": "0008_accounts_issuer",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,8 @@
 /**
- * better-auth instance for `@tj/api` (ADR 0008). Magic link only for now; Google and Microsoft
- * OAuth are wired but gated on their credentials being present in the environment.
+ * better-auth instance for `@tj/api` (ADR 0008). Email magic link, plus Google when
+ * `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 0008 amendment of 2026-09-27).
+ * Microsoft is wired and gated the same way but stays off by decision: its credentials are not
+ * set until it has its own linking review (amendment item 1).
  *
  * Mounted at `/auth/*` by `app.ts` (`basePath: "/auth"`), so the browser-facing endpoints are
  * `POST /auth/sign-in/magic-link`, `GET /auth/magic-link/verify`, `GET /auth/get-session`,
@@ -103,6 +105,17 @@ export function effectiveCookieDomain(
   return undefined;
 }
 
+/**
+ * Merged into every `accounts` write (`databaseHooks.account` `create.before` and
+ * `update.before`): sign-in needs the provider's identity only, so its tokens are never stored
+ * (ADR 0008 amendment item 3). better-auth writes `null` and skips only `undefined`.
+ */
+export const DROPPED_OAUTH_TOKENS = {
+  accessToken: null,
+  refreshToken: null,
+  idToken: null,
+} as const;
+
 export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
   const cookieDomain = effectiveCookieDomain(env, logger);
   if (env.COOKIE_SAMESITE === "none") {
@@ -131,6 +144,13 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     session: {
       cookieCache: { enabled: true, maxAge: 300 },
     },
+    account: {
+      // A sign-in with an already linked account rewrites nothing (amendment item 3).
+      updateAccountOnSignIn: false,
+      // Linking Google to a magic-link user copies its name and photo URL once; later sign-ins
+      // leave them alone because `overrideUserInfoOnSignIn` stays off (amendment item 4).
+      accountLinking: { updateUserInfoOnLink: true },
+    },
     advanced: {
       cookiePrefix: "tj",
       crossSubDomainCookies: cookieDomain
@@ -147,11 +167,17 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
           },
         },
       },
+      account: {
+        create: { before: async () => ({ data: DROPPED_OAUTH_TOKENS }) },
+        update: { before: async () => ({ data: DROPPED_OAUTH_TOKENS }) },
+      },
     },
     telemetry: { enabled: false },
     // Better Call otherwise console.error()s unexpected failures after Better Auth's logger.
     // Rethrow to Hono's safe onError; Better Call still handles its typed APIError responses.
-    onAPIError: { throw: true },
+    // OAuth failures that have no errorCallbackURL (missing or unknown state, database errors)
+    // redirect to the web's /sign-in instead of better-auth's page on this host (item 6).
+    onAPIError: { throw: true, errorURL: new URL("/sign-in", env.WEB_ORIGIN[0]).toString() },
     // Library messages/args may include tokens, SQL parameters or provider response bodies.
     logger: {
       disableColors: true,
