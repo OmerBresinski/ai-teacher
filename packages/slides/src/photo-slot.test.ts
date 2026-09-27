@@ -433,7 +433,10 @@ describe("review fixes (look/slides-layout)", () => {
       ...stored,
       elements: stored.elements.filter((e) => e.name !== "Heading"),
     };
-    expect(words([withoutDiagramSlot(headless, t)])).toBe(words([headless]));
+    const shown = withoutDiagramSlot(headless, t);
+    expect(words([shown])).toBe(words([headless]));
+    // Present draws the slide as it is handed: the open slot is gone, so no placeholder box.
+    expect(shown.elements.some(isOpenPhotoSlot)).toBe(false);
     const out = presentedSlide(headless, t, { index: 0, total: 2 });
     expect(words([out])).toBe(words([headless]));
     expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
@@ -462,6 +465,7 @@ describe("review fixes (look/slides-layout)", () => {
               : e,
         ),
     };
+    expect(withoutDiagramSlot(stored, t).elements.some(isOpenPhotoSlot)).toBe(false);
     const out = presentedSlide(stored, t, { index: 3, total: 13 });
     expect(words([out])).toContain("valuable resources, such as metals");
     expect(words([out])).toContain("wealth and glory");

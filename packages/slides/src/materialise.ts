@@ -270,7 +270,12 @@ export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
   ) {
     return slide;
   }
-  return relaid(slide, theme, (bare) => bare);
+  // Should the words not lay out again, they stay as stored and only the slot is taken away.
+  const unslotted = {
+    ...slide,
+    elements: slide.elements.filter((e) => !isDiagramMark(e) && !isOpenPhotoSlot(e)),
+  };
+  return relaid(slide, theme, (bare) => bare, unslotted);
 }
 
 /**
@@ -287,8 +292,11 @@ export function withSlotsShown(slide: Slide, theme: Theme): Slide {
   const hasSlot = slide.elements.some((e) => e.name === DIAGRAM_NAME || e.name === PHOTO_NAME);
   let shown = slide;
   if (slide.kind === "content" && instruction && !hasSlot) {
-    shown = relaid(slide, theme, (bare, ids) =>
-      withDiagramSlot(bare, theme, instruction, ids, `Diagram: ${instruction}`),
+    shown = relaid(
+      slide,
+      theme,
+      (bare, ids) => withDiagramSlot(bare, theme, instruction, ids, `Diagram: ${instruction}`),
+      slide,
     );
   }
   return shown;
@@ -299,7 +307,12 @@ export function withSlotsShown(slide: Slide, theme: Theme): Slide {
  * and their dots taken away, `shape` given the bare slide (to add a slot back, or not), then the
  * look and the fit. The top line and counter are kept as they were.
  */
-function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier) => Slide): Slide {
+function relaid(
+  slide: Slide,
+  theme: Theme,
+  shape: (bare: Slide, ids: IdSupplier) => Slide,
+  fallback: Slide,
+): Slide {
   const heading = slide.elements.find((e) => e.name === HEADING_NAME);
   const column = new Set([LEAD_NAME, ITEM_NAME, BODY_NAME, KEY_IDEA_NAME]);
   const words = slide.elements
@@ -332,9 +345,9 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
       dropped.add(e);
     }
   }
-  // Nothing to lay out again (no heading, or no words under it): the slide as it was, never one
-  // with its words taken away and none put back.
-  if (!heading || !first) return slide;
+  // Nothing to lay out again (no heading, or no words under it): the caller's fallback, the slide
+  // with its words as stored, never one with its words taken away and none put back.
+  if (!heading || !first) return fallback;
   const kept = slide.elements.filter((e) => !dropped.has(e));
   // One body again, as the writer gave it: the paragraphs, then the points as a bullet list.
   const content: RichNode[] = [];
@@ -367,8 +380,8 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
   const bare = stripLook({ ...slide, elements: [...kept, body] });
   const laid = lookAndFit(shape(bare, ids), theme, ids, { terms: markedTerms(words) });
   // Every word the slide said must still be said: a relayout that would drop one (a lone point
-  // carried to a page this view does not draw) gives way to the slide as stored.
-  if (!says(laid.elements, words)) return slide;
+  // carried to a page this view does not draw) gives way to the caller's fallback.
+  if (!says(laid.elements, words)) return fallback;
   const had = new Set(chrome.map((e) => e.name));
   return { ...laid, elements: [...laid.elements.filter((e) => !had.has(e.name)), ...chrome] };
 }
