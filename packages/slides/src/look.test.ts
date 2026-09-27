@@ -149,3 +149,33 @@ describe("the lesson look", () => {
     expect(applyLook(slide, theme)).toBe(slide);
   });
 });
+
+describe("one heading size across a deck (P19-14)", () => {
+  const meta = { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" };
+  const headingSize = (spec: Parameters<typeof materialiseSlide>[0]) =>
+    (
+      materialiseSlide(spec, "chalk", meta).elements.find((e) => e.name === HEADING_NAME) as
+        | TextElement
+        | undefined
+    )?.style.fontSize;
+
+  test("a teaching slide and a one-line activity heading share the display size", () => {
+    const display = Math.round(getTheme("chalk").sizes.heading * HEADING_DISPLAY);
+    expect(
+      headingSize({
+        kind: "content",
+        heading: "Why the Romans invaded",
+        body: "Rome wanted metals.",
+        factRefs: [],
+      }),
+    ).toBe(display);
+    expect(
+      headingSize({
+        kind: "starter",
+        heading: "Do now",
+        items: ["What is an empire?", "What is an invasion?"],
+        factRefs: [],
+      } as never),
+    ).toBe(display);
+  });
+});

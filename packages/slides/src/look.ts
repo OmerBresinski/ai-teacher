@@ -468,25 +468,35 @@ export function applyLook(
     const style = { ...heading.style };
     delete style.fontSize;
     delete style.lineHeight;
-    // Teaching slides share one display size; an activity keeps the theme's size, so its
-    // cards keep their room (a two-line display heading pushed a worked example's card off).
-    const display = label ? { lineHeight: 1.12 } : headingDisplay(heading, t);
-    if (display) Object.assign(style, display);
+    // Every headed slide shares one display size (Greg, 27 Sept 2026: heading sizes differed
+    // across the deck). An activity takes it, set solid, only where it stays one line and clear of
+    // what the recipe put under it, so its cards keep their room (a two-line display heading
+    // pushed a worked example's card off); otherwise it keeps the theme's size.
+    const measureHeading = (s: TextElement["style"]) =>
+      measureHeadless(t)({
+        doc: heading.doc,
+        width: heading.w,
+        style: s,
+        preset: "heading",
+        inset: 0,
+        chrome: 0,
+      });
     const below = els.filter(
       (e) => e !== heading && !isBackdrop(e) && e.y >= heading.y + heading.h,
     );
     const firstBelow = Math.min(...below.map((e) => e.y), Number.POSITIVE_INFINITY);
+    const shown = headingDisplay(heading, t);
+    const solid = { ...shown, lineHeight: 1 };
+    const solidH = label ? measureHeading({ ...style, ...solid }) : 0;
+    const display = !label
+      ? shown
+      : solidH <= (solid.fontSize ?? t.sizes.heading) * 1.5 &&
+          want + solidH + SPACE[2] <= firstBelow
+        ? solid
+        : { lineHeight: 1.12 };
+    Object.assign(style, display);
     // The heading's height at its new size, measured: the words are placed from its last line.
-    const h = Math.ceil(
-      measureHeadless(t)({
-        doc: heading.doc,
-        width: heading.w,
-        style,
-        preset: "heading",
-        inset: 0,
-        chrome: 0,
-      }),
-    );
+    const h = Math.ceil(measureHeading(style));
     const next: TextElement = { ...heading, y: want, h, name: HEADING_NAME, style };
     let shift = 0;
     if (label) {
