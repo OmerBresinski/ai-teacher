@@ -104,6 +104,11 @@ export type SlideStructure = {
   photo?: PhotoBrief;
   /** The vocabulary's definitions: a term a teaching slide uses can fill its side panel. */
   glossary?: { term: string; definition: string }[];
+  /**
+   * A callout goes under the last page's words (`lookAndFitPages`), so a continuation that holds
+   * one item is not left alone: the card comes with it.
+   */
+  callout?: boolean;
 };
 
 /* ---------------------------------------------------------------- text helpers */
@@ -1854,9 +1859,11 @@ function composeBesideSlot(
  * A teaching slide's words as the fewest slides, the first filled first (look/image-slot): the
  * lead and as many items (dot points, or sentences as one paragraph) as fit the first column at
  * the body size, beside `slot` when there is one; the rest across the full measure on
- * "(continued)" slides, each as full as fits. A continuation does not hold one item alone: the
- * first slide takes it a step down (never below the floor), else gives it one of its own while
- * it keeps at least one; a first slide with room for only one item keeps it (one each).
+ * "(continued)" slides, each as full as fits. One or two items left over go on the first slide a
+ * step down (never below the floor) when they fit there. A continuation does not hold one item
+ * alone: the first slide gives it one of its own while it keeps at least one, unless a callout
+ * follows onto that page (`SlideStructure.callout`); a first slide with room for only one item
+ * keeps it (one each).
  * `undefined` when an item does not fit a slide on its own.
  */
 function greedyPages(
@@ -1898,12 +1905,14 @@ function greedyPages(
     const els = first(n);
     return els ? [page(els)] : undefined;
   }
-  if (n - k === 1) {
+  // One or two items left over go on the first slide a step down when they fit there.
+  if (n - k <= 2) {
     const down = first(n, floor);
     if (down) return [page(down)];
-    // Else the first slide gives one of its own, while it keeps at least one beside the lead.
-    if (k >= 2) k -= 1;
   }
+  // Else a last item alone gets one of the first slide's, which keeps at least one beside the
+  // lead; not when a callout follows it onto that page.
+  if (n - k === 1 && k >= 2 && !hints.callout) k -= 1;
   if (k === 0 && !lead) return undefined;
   const firstEls = first(k);
   if (!firstEls) return undefined;
@@ -1922,7 +1931,7 @@ function greedyPages(
       groups.push({ items: rest, size: floor });
       break;
     }
-    if (rest.length - m === 1 && m >= 3) m -= 1;
+    if (rest.length - m === 1 && m >= 3 && !hints.callout) m -= 1;
     groups.push({ items: rest.slice(0, m), size: body });
     rest = rest.slice(m);
   }

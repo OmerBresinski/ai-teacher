@@ -33,6 +33,7 @@ import {
   type IdSupplier,
   materialiseBlock,
   materialiseSlide,
+  materialiseSlides,
   shapeFallbackPoints,
   splitAtFullStop,
   vocabularySlots,
@@ -49,6 +50,7 @@ import {
   SlideSpecSchema,
   slideSpecSchemaFor,
 } from "./specs";
+import { ITEM_NAME } from "./structure";
 import { THEMES } from "./themes";
 
 const meta = {
@@ -1150,5 +1152,64 @@ describe("shapeFallbackPoints", () => {
     expect(
       shapeFallbackPoints(compare(["hopes for freedom", "serves willingly"], ["fear"])),
     ).toEqual(["Ariel: hopes for freedom; serves willingly", "Caliban: fear"]);
+  });
+});
+
+describe("a list beside a photo, over pages (PR 2 smoke)", () => {
+  const meta = { model: "m", promptVersion: "p", generatedAt: new Date(0).toISOString() } as never;
+  const points = (slide: { elements: { name?: string }[] }) =>
+    slide.elements.filter((e) => e.name === ITEM_NAME).length;
+  const hasCallout = (slide: { elements: { name?: string }[] }) =>
+    slide.elements.some((e) => e.name === CALLOUT_NAMES.card);
+  // Romans slide 6 of the PR 2 smoke run: lead + three points beside the photo, a watch-out planned.
+  const romans = {
+    kind: "content",
+    heading: "Roman roads",
+    body: "Roman roads made journeys easier and helped Roman rule reach further.",
+    points: [
+      "Before: Journeys could be slow and difficult.",
+      "Roads: Strong, direct routes helped soldiers move and traders carry goods.",
+      "Example: Watling Street was a Roman road through Britain.",
+    ],
+    callout: { kind: "watch-out", text: "Baths were places to meet, not only to wash." },
+    factRefs: [],
+  } as SlideSpec;
+  const photo = { photo: { subject: "Roman road remains" } };
+
+  test("Romans on chalk: the photo page keeps two points and the callout takes the last one on", () => {
+    // Measured: the three points need 504pt one step down against 487 (two fit at the body size),
+    // so the words continue; the last point is not alone, the callout comes with it.
+    const pages = materialiseSlides(romans, "chalk", meta, undefined, undefined, photo);
+    expect(pages.map(points)).toEqual([2, 1]);
+    expect(pages.map(hasCallout)).toEqual([false, true]);
+  });
+
+  test("Romans where the column holds all three one step down is one page", () => {
+    for (const theme of ["reading-room", "exam-hall", "night-lab"]) {
+      const pages = materialiseSlides(romans, theme, meta, undefined, undefined, photo);
+      expect(pages.map(points)).toEqual([3]);
+    }
+  });
+
+  test("two points left over go on the photo page a step down when they fit there", () => {
+    const pages = materialiseSlides(
+      {
+        kind: "content",
+        heading: "The water cycle",
+        body: "Water moves between the sea, the air and the land in a cycle that never stops.",
+        points: [
+          "Evaporation: the sun heats the sea and water rises as vapour.",
+          "Condensation: the vapour cools high up and forms clouds.",
+          "Precipitation: water falls back to the ground as rain.",
+        ],
+        factRefs: [],
+      } as SlideSpec,
+      "chalk",
+      meta,
+      undefined,
+      undefined,
+      photo,
+    );
+    expect(pages.map(points)).toEqual([3]);
   });
 });

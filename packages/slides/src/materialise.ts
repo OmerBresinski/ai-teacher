@@ -220,7 +220,13 @@ export function lookAndFitPages(
   if (slide.kind === "content") {
     const detached = detachCallout(slide);
     if (detached.callout) {
-      const pages = lookAndFitPages(detached.slide, theme, ids, structure, options);
+      const pages = lookAndFitPages(
+        detached.slide,
+        theme,
+        ids,
+        { ...structure, callout: true },
+        options,
+      );
       const at = pages.length - 1;
       const last = pages[at] as Slide;
       const placed = placeCallout(last, theme, detached.callout, ids);
