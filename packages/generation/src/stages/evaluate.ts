@@ -1,5 +1,6 @@
 import { checkLesson, FACT_ARRAYS, type Finding, type LessonFacts } from "@tj/domain/documents";
 import { callStructured, MAX_OUTPUT_TOKENS, SPEC_RULE_CHECK } from "../call";
+import { FIGURE_MESSAGE, figureAnswerMismatches, figureEvidence } from "../figure-check";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import { isCodeBuilt, isRetrievalStarter } from "../planner/coded-slides";
 import { evaluatePrompt } from "../prompts";
@@ -95,8 +96,40 @@ function imageFitAsError(finding: Finding, state: PipelineState): Finding {
 export function numericAsErrors(state: PipelineState): Finding[] {
   const facts = state.lesson.facts;
   if (!facts) return [];
+  return mismatchesAsErrors(
+    state,
+    facts,
+    numericFactMismatches(facts).map((m) => ({ factId: m.factId, evidence: m.text })),
+    NUMERIC_MESSAGE,
+  );
+}
+
+/**
+ * Figure mismatches as errors Repair acts on (TEACH-253), as `numericAsErrors` does: each answer
+ * in the current facts that disagrees with its figure's unknown becomes a `fact-consistency` error
+ * on every slide citing the fact, so Repair patches the answer or the figure through `repair-fact`
+ * and regenerates the slide from it. Verify's figure warnings are replaced by these.
+ */
+export function figureAsErrors(state: PipelineState): Finding[] {
+  const facts = state.lesson.facts;
+  if (!facts) return [];
+  return mismatchesAsErrors(
+    state,
+    facts,
+    figureAnswerMismatches(facts).map((m) => ({ factId: m.factId, evidence: figureEvidence(m) })),
+    FIGURE_MESSAGE,
+  );
+}
+
+/** One error per citing slide for each mismatch, or one warning on the fact when none cites it. */
+function mismatchesAsErrors(
+  state: PipelineState,
+  facts: LessonFacts,
+  mismatches: { factId: string; evidence: string }[],
+  message: string,
+): Finding[] {
   const out: Finding[] = [];
-  for (const m of numericFactMismatches(facts)) {
+  for (const m of mismatches) {
     // Lab r4: the retrieval starter carries its entry's refs but prints none of them.
     const citing = state.lesson.slides.filter(
       (slide, i) =>
@@ -109,8 +142,8 @@ export function numericAsErrors(state: PipelineState): Finding[] {
         check: "fact-verify",
         severity: "warning",
         target: { factId: m.factId },
-        message: NUMERIC_MESSAGE,
-        evidence: m.text,
+        message,
+        evidence: m.evidence,
       });
       continue;
     }
@@ -119,8 +152,8 @@ export function numericAsErrors(state: PipelineState): Finding[] {
         check: "fact-consistency",
         severity: "error",
         target: { slideId: slide.id, factId: m.factId },
-        message: NUMERIC_MESSAGE,
-        evidence: m.text,
+        message,
+        evidence: m.evidence,
       });
   }
   return out;
@@ -195,9 +228,10 @@ export async function evaluate(state: PipelineState, deps: PipelineDeps): Promis
   // Findings Generate recorded (a budget stop) survive, as do illustrate's image warnings and
   // Verify's fact corrections — none is recomputable here; everything else is recomputed below.
   const carried = generation.findings.filter(
-    (f) => CARRIED_CHECKS.has(f.check) && f.message !== NUMERIC_MESSAGE,
+    (f) =>
+      CARRIED_CHECKS.has(f.check) && f.message !== NUMERIC_MESSAGE && f.message !== FIGURE_MESSAGE,
   );
-  const numeric = numericAsErrors(state);
+  const numeric = [...numericAsErrors(state), ...figureAsErrors(state)];
   const schema = checkLesson(lesson, worksheet);
 
   // Photographed slides (TEACH-220): each placed image-text slide's thumbnail — the picture the

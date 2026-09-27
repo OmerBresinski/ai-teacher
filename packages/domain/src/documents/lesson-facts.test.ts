@@ -314,6 +314,27 @@ describe("LessonFactsSchema", () => {
     expect(parsed.facts?.outline.some((entry) => entry.figureBrief !== undefined)).toBe(false);
   });
 
+  test("TEACH-253 row 1: a stored lesson with no figure parses unchanged; a worked example and a question may carry one", () => {
+    const stored = JSON.parse(JSON.stringify(generatedLesson()));
+    expect(parseLesson(stored)).toEqual(stored);
+    const figure = {
+      template: "triangle" as const,
+      values: { sides: { a: { value: 5 }, b: { value: 12 } }, rightAngleAt: "C", unknown: "c" },
+    };
+    const facts = lessonFacts();
+    const withFigures: LessonFacts = {
+      ...facts,
+      workedExamples: facts.workedExamples.map((x) => ({ ...x, figure })),
+      questions: facts.questions.map((q) => ({ ...q, figure })),
+    };
+    expect(LessonFactsSchema.parse(withFigures)).toEqual(withFigures);
+    const unknownTemplate = {
+      ...facts,
+      questions: facts.questions.map((q) => ({ ...q, figure: { template: "circle", values: {} } })),
+    };
+    expect(LessonFactsSchema.safeParse(unknownTemplate).success).toBe(false);
+  });
+
   test("an outline entry id is unique too, but factRefs may not point at an outline entry", () => {
     const facts = lessonFacts();
     facts.outline[0] = { ...(facts.outline[0] as (typeof facts.outline)[number]), id: "o1" };

@@ -27,6 +27,10 @@ import { type Audience, audienceBlock, example, factsBlock, houseRules } from ".
  * v6 (l6c, luna-direct change 4): the user turn lists the starter's retrieval set as `r1`–`rN`
  * lines when there is one (9 of 38 false claims came from the starter). The field map names their
  * fields; the existing checks cover the faults, and an off-topic correction on one is dropped in code.
+ *
+ * v7 (TEACH-253, ADR 0034 decision 5): a worked example or question may carry a figure, rendered
+ * as a `Figure (<template>): <values as JSON>` line; its values are corrected with the field
+ * `figure` and the full values as JSON (`applyVerifyPatch` checks them against the template).
  */
 
 export type VerifyFactsInput = {
@@ -49,13 +53,14 @@ const EXAMPLE = {
 };
 
 export const verifyFactsPrompt = {
-  version: "verify-facts.v6",
+  version: "verify-facts.v7",
   system: [
     "You are a subject specialist checking a lesson plan's facts before it is taught. You are given every fact with its id; return only the corrections that are needed.",
     "",
     "Rules:",
     houseRules("british", "names"),
     "Check for: a term that is not the accepted term for this subject at this year group; a name, event, entity or quantity that does not exist or is invented; an answer that is wrong, or could be read two ways; a distractor that is also right; arithmetic or logic in a worked example's steps that does not follow; a key-idea statement that is false or overgeneralised for this level; a misconception whose correction is itself wrong; anything outside the topic.",
+    'A figure that disagrees with its worked example or question is wrong too: correct its values with the field "figure" and the full corrected values as JSON in "value", keeping the template.',
     "Do not make stylistic edits, add facts or reorder anything. Return an empty list only when every answer and step checks out.",
     "Field map: a key idea reads `statement — explanation`, a misconception `believes <belief>; correct: <correction>`, vocabulary `term — definition`, a worked example `problem` then its steps (step 1 is index 0), a question `stem`, then its distractors (the first is index 0), a starter question `question — answer` (fields stem, answer); every other field is labelled.",
     `Each correction names the fact by its id, the field (${VERIFY_FIELDS.join(", ")}; for a step or a distractor also give the 0-based "index"), the corrected value, and the reason (${VERIFY_REASONS.join(", ")}). At most 12 corrections; give the most important first.`,

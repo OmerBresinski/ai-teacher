@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FigureTemplateNameSchema } from "./figure";
+import { type FigureRef, FigureRefSchema, FigureTemplateNameSchema } from "./figure";
 
 /*
  * LessonFacts (ADR 0025 §1; F06; Generation quality §1). The one object every Artefact of a Lesson
@@ -109,6 +109,11 @@ export type WorkedExample = {
   misconceptionRef?: FactId;
   /** Which objectives the example serves; written since the per-objective facts calls, optional before. */
   objectiveRefs?: FactId[];
+  /**
+   * The figure the example is about (ADR 0034 decision 5, TEACH-253): written by Plan's facts call,
+   * patched by Verify, and drawn by every slide that cites the example.
+   */
+  figure?: FigureRef;
 };
 
 /** Where a question may be used, so the same stem is not on a slide, the sheet and the exit ticket. */
@@ -135,6 +140,8 @@ export type FactQuestion = {
    * when the facts call does not declare them (the monolithic plan-facts call).
    */
   keyIdeaRefs?: FactId[];
+  /** The figure the question is about (ADR 0034 decision 5, TEACH-253), as on a worked example. */
+  figure?: FigureRef;
 };
 
 /** What pupils at this level typically get wrong, and the correction. */
@@ -284,6 +291,7 @@ export const WorkedExampleSchema = z.strictObject({
   misconceptionRef: FactIdSchema.optional(),
   /** Which objectives the example serves; written since the per-objective facts calls, optional before. */
   objectiveRefs: ObjectiveRefsSchema.optional(),
+  figure: FigureRefSchema.optional(),
 });
 
 export const DistractorSchema = z.strictObject({
@@ -301,6 +309,7 @@ export const FactQuestionSchema = z.strictObject({
   use: z.enum(QUESTION_USES).optional(),
   tier: z.enum(QUESTION_TIERS).optional(),
   keyIdeaRefs: z.array(FactIdSchema).optional(),
+  figure: FigureRefSchema.optional(),
 });
 
 export const MisconceptionSchema = z.strictObject({

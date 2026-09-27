@@ -5,6 +5,8 @@ import {
   type FactId,
   FactIdSchema,
   FIGURE_TEMPLATE_NAMES,
+  type FigureRef,
+  type FigureTemplateName,
   FindingSeveritySchema,
   FindingTargetSchema,
   GENERATABLE_SLIDE_KINDS,
@@ -22,6 +24,7 @@ import {
   BlockSpecSchema,
   blockSpecUnion,
   editorialIssue,
+  FIGURE_TEMPLATES,
   noPictureReference,
   type SlideSpec,
   SlideSpecSchema,
@@ -812,7 +815,52 @@ function planFactsShape(soft: boolean) {
   });
 }
 const PlanFactsShape = planFactsShape(false);
-export type PlanFacts = z.infer<typeof PlanFactsShape>;
+
+/**
+ * The figures the facts call writes (ADR 0034 decision 5, TEACH-253), keyed by the outline
+ * position of the diagram slide that draws each one (`"6"`). `assignFactIds` moves each onto the
+ * worked example or question that slide cites; the stored facts have no `figures`.
+ */
+export type PlanFigures = Partial<
+  Record<string, { template: FigureTemplateName; values: Record<string, unknown> }>
+>;
+export type PlanFacts = z.infer<typeof PlanFactsShape> & { figures?: PlanFigures | undefined };
+
+/** A skeleton's diagram entries that name a template: the keys of the facts call's `figures`. */
+function diagramFiguresOf(
+  skeleton: PlanSkeleton,
+): { position: number; template: FigureTemplateName }[] {
+  return skeleton.outline.flatMap((entry, position) =>
+    entry.kind === "diagram" && entry.figureBrief
+      ? [{ position, template: entry.figureBrief.template }]
+      : [],
+  );
+}
+
+/**
+ * `figures` for one skeleton: one optional key per diagram entry, each with its own template, so no
+ * union reaches the model (Bedrock refuses `anyOf`). The values are the template's, strict or soft
+ * as `figureOf` in `@tj/slides` builds them. `undefined` when the skeleton has no diagram.
+ */
+function planFiguresSchema(skeleton: PlanSkeleton, soft: boolean) {
+  const diagrams = diagramFiguresOf(skeleton);
+  if (diagrams.length === 0) return undefined;
+  return z
+    .object(
+      Object.fromEntries(
+        diagrams.map(({ position, template }) => [
+          String(position),
+          z
+            .object({
+              template: z.literal(template),
+              values: soft ? FIGURE_TEMPLATES[template].shape : FIGURE_TEMPLATES[template].values,
+            })
+            .optional(),
+        ]),
+      ),
+    )
+    .optional();
+}
 
 /** What the intermediate persist after the skeleton call carries: the lists still to come. */
 /**
@@ -856,7 +904,10 @@ export function planFactsSchemaFor(
 ): z.ZodType<PlanFacts> {
   const soft = options.soft === true;
   const minimums = tierMinimumsOf(shape.tierWeights);
-  const refined = planFactsShape(soft).superRefine((facts, ctx) => {
+  const figures = planFiguresSchema(skeleton, soft);
+  const base = planFactsShape(soft);
+  const shaped = (figures ? base.extend({ figures }) : base) as unknown as z.ZodType<PlanFacts>;
+  const refined = shaped.superRefine((facts, ctx) => {
     // The ordinal references (below, `refineRef`) are shape; everything written with `issue` —
     // coverage, self-containment, the pitch's own words, the tier floors, kind fit — is editorial
     // and left out of the soft build.
@@ -1009,6 +1060,16 @@ export function planFactsSchemaFor(
         ["outlineFactRefs"],
       );
     });
+    // Each diagram slide's figure is the fact's (TEACH-253): without it the slide call writes the
+    // values itself, as before, so a missing one is editorial.
+    for (const { position } of diagramFiguresOf(skeleton)) {
+      if (facts.figures?.[String(position)] === undefined) {
+        issue(
+          `Give the figure for the diagram slide at position ${position} in figures["${position}"], with the numbers of the worked example or question it covers.`,
+          ["figures", String(position)],
+        );
+      }
+    }
   });
   return soft ? refined.transform(dropMisplacedCallouts) : refined;
 }
@@ -1150,6 +1211,24 @@ export function assignFactIds(
   // check-phase slide (TEACH-244): otherwise its writer never sees it and reaches for a worksheet
   // question instead. Deterministic — no schema issue, no retry. Only a question `askableAsStem`:
   // a check slide prints stems only, and `outlineFromFacts` leaves any other off on purpose.
+  // Each figure goes onto the fact its diagram entry cites (TEACH-253): the entry's first worked
+  // example, else its first question. One whose entry cites neither is dropped (kind fit reports
+  // that entry); the first figure given for a fact is the one kept.
+  const figureOf = {
+    workedExample: new Map<number, FigureRef>(),
+    question: new Map<number, FigureRef>(),
+  };
+  for (const [key, figure] of Object.entries(facts.figures ?? {})) {
+    const position = Number(key);
+    if (figure === undefined || !Number.isInteger(position)) continue;
+    const refs = [...(skeleton.outline[position]?.factRefs ?? []), ...(added.get(position) ?? [])];
+    const cited =
+      refs.find((ref) => ref.type === "workedExample" && ref.index < facts.workedExamples.length) ??
+      refs.find((ref) => ref.type === "question" && ref.index < facts.questions.length);
+    if (cited?.type !== "workedExample" && cited?.type !== "question") continue;
+    const byIndex = figureOf[cited.type];
+    if (!byIndex.has(cited.index)) byIndex.set(cited.index, figure);
+  }
   const check = skeleton.outline.findIndex((entry) => entry.phase === "check");
   if (check !== -1) {
     const claimed = new Set(
@@ -1189,6 +1268,7 @@ export function assignFactIds(
         ...x,
         ...misconceptionRef(ref),
         ...objectiveRefs(refs),
+        ...optional("figure", figureOf.workedExample.get(i)),
       }),
     ),
     questions: facts.questions.map((question, i) => {
@@ -1225,6 +1305,7 @@ export function assignFactIds(
         ),
         ...optional("use", use),
         ...optional("tier", tier),
+        ...optional("figure", figureOf.question.get(i)),
       };
     }),
     misconceptions: facts.misconceptions.map((m, i) => ({
@@ -1412,6 +1493,8 @@ export const VERIFY_FIELDS = [
   "analogy",
   "belief",
   "correction",
+  /** A worked example's or question's figure values, as JSON text (TEACH-253). */
+  "figure",
 ] as const;
 export type VerifyField = (typeof VERIFY_FIELDS)[number];
 
@@ -1433,8 +1516,8 @@ export const VERIFY_FIELDS_BY_ARRAY: Record<
 > = {
   keyIdeas: ["statement", "explanation", "example", "analogy"],
   vocabulary: ["term", "definition"],
-  workedExamples: ["problem", "steps", "answer"],
-  questions: ["stem", "answer", "reasoning", "distractors"],
+  workedExamples: ["problem", "steps", "answer", "figure"],
+  questions: ["stem", "answer", "reasoning", "distractors", "figure"],
   misconceptions: ["belief", "correction"],
 };
 
@@ -1454,6 +1537,7 @@ export const VERIFY_LIMITS: Record<VerifyField, number> = {
   analogy: SPEC_LIMITS.item,
   belief: SPEC_LIMITS.item,
   correction: SPEC_LIMITS.body,
+  figure: SPEC_LIMITS.body,
 };
 
 export const VerifyCorrectionSchema = z.strictObject({

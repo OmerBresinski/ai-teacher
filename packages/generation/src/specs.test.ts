@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { LessonFactsSchema } from "@tj/domain/documents";
 import { isEditorialIssue, slideSpecSchemaFor } from "@tj/slides";
+import { z } from "zod";
 import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   askableAsStem,
@@ -433,15 +434,18 @@ describe("planSkeletonSchemaFor", () => {
           });
         }
       }
-      // Every fixture parses structurally, and the facts fixture fits each one.
+      // Every fixture parses structurally, and the facts fixture fits each one. It has no figures
+      // (TEACH-253), so the Apply diagram's missing figure is its one editorial issue.
       for (const verb of OBJECTIVE_VERBS) {
         expect(PlanSkeletonSchema.safeParse(PLAN_SKELETONS[verb]).success).toBe(true);
         for (const confidence of PRIOR_CONFIDENCES) {
           const facts = planFactsSchemaFor(PLAN_SKELETONS[verb], shapeOf(verb, confidence));
-          expect({ verb, confidence, ok: facts.safeParse(FIXTURES.planFacts).success }).toEqual({
+          const result = facts.safeParse(FIXTURES.planFacts);
+          const issues = result.success ? [] : result.error.issues.map((i) => i.path.join("."));
+          expect({ verb, confidence, issues }).toEqual({
             verb,
             confidence,
-            ok: true,
+            issues: verb === "Apply" ? ["figures.6"] : [],
           });
         }
       }
@@ -811,18 +815,126 @@ describe("planFactsSchemaFor", () => {
       ).safeParse(f);
       return result.success
         ? []
-        : result.error.issues.map((i) => i.message).filter((m) => m.includes("diagram"));
+        : result.error.issues
+            .filter((i) => i.path[0] !== "figures")
+            .map((i) => i.message)
+            .filter((m) => m.includes("diagram"));
     };
     expect(kindFit([{ type: "keyIdea", index: 0 }])).toEqual([
       `Outline position ${at}: a diagram slide needs a worked example or a question in its factRefs, because the figure's numbers come from it.`,
     ]);
     expect(kindFit([{ type: "workedExample", index: 0 }])).toEqual([]);
     expect(kindFit([{ type: "question", index: 0 }])).toEqual([]);
-    // The fixture pair already fits: position 6 draws on the worked example.
-    expect(
-      planFactsSchemaFor(skeleton, shapeOf("Apply", "Some prior knowledge")).safeParse(facts())
-        .success,
-    ).toBe(true);
+    // The fixture pair fits the kind: position 6 draws on the worked example. Its only miss is the
+    // figure (TEACH-253).
+    const result = planFactsSchemaFor(skeleton, shapeOf("Apply", "Some prior knowledge")).safeParse(
+      facts(),
+    );
+    expect(result.error?.issues.map((i) => i.path)).toEqual([["figures", "6"]]);
+  });
+
+  /* ---- TEACH-253: figures written by the facts call ------------------- */
+
+  /** The Apply skeleton with its diagram drawing a `triangle` (the shared fixture's is `right-triangle`). */
+  const triangleApply = () => {
+    const skeleton = structuredClone(PLAN_SKELETONS.Apply);
+    const at = skeleton.outline.findIndex((e) => e.kind === "diagram");
+    const entry = skeleton.outline[at];
+    if (!entry?.figureBrief) throw new Error("the Apply fixture has no diagram");
+    entry.figureBrief = { ...entry.figureBrief, template: "triangle" };
+    return { skeleton, at };
+  };
+  const LEGS = {
+    sides: { a: { value: 5 }, b: { value: 12 }, c: { value: 13, label: "x" } },
+    rightAngleAt: "C" as const,
+    unknown: "c" as const,
+  };
+  const APPLY = shapeOf("Apply", "Some prior knowledge");
+
+  test("TEACH-253 row 2: figures has one key per diagram entry with its template's literal; no union; none without a diagram", () => {
+    const { skeleton, at } = triangleApply();
+    expect(at).toBe(6);
+    for (const soft of [false, true]) {
+      const json = z.toJSONSchema(planFactsSchemaFor(skeleton, APPLY, { soft }) as z.ZodType, {
+        io: "input",
+      }) as { properties: Record<string, { properties?: Record<string, unknown> }> };
+      const figures = json.properties.figures;
+      expect(Object.keys(figures?.properties ?? {})).toEqual(["6"]);
+      expect(JSON.stringify(figures?.properties?.["6"])).toContain('"const":"triangle"');
+      expect(JSON.stringify(json)).not.toContain("anyOf");
+      expect(JSON.stringify(json)).not.toContain("oneOf");
+    }
+    const explain = z.toJSONSchema(
+      planFactsSchemaFor(PLAN_SKELETONS.Explain, EXPLAIN_SOME) as z.ZodType,
+      {
+        io: "input",
+      },
+    ) as { properties: Record<string, unknown> };
+    expect("figures" in explain.properties).toBe(false);
+  });
+
+  test("TEACH-253 row 3: a diagram entry with no figure is editorial at figures.N; the soft build accepts it", () => {
+    const { skeleton, at } = triangleApply();
+    const strict = planFactsSchemaFor(skeleton, APPLY).safeParse(facts());
+    expect(strict.success).toBe(false);
+    expect(strict.error?.issues.map((i) => i.path)).toEqual([["figures", String(at)]]);
+    expect(strict.error?.issues.every(isEditorialIssue)).toBe(true);
+    expect(strict.error?.issues[0]?.message).toStartWith(
+      `Give the figure for the diagram slide at position ${at}`,
+    );
+    expect(planFactsSchemaFor(skeleton, APPLY, { soft: true }).safeParse(facts()).success).toBe(
+      true,
+    );
+    // The template's own rules are editorial too: a hypotenuse shorter than a leg.
+    const wrong = {
+      ...facts(),
+      figures: {
+        [at]: {
+          template: "triangle",
+          values: { ...LEGS, sides: { a: { value: 5 }, b: { value: 12 }, c: { value: 4 } } },
+        },
+      },
+    };
+    const ruled = planFactsSchemaFor(skeleton, APPLY).safeParse(wrong);
+    expect(ruled.error?.issues.length).toBeGreaterThan(0);
+    expect(ruled.error?.issues.every(isEditorialIssue)).toBe(true);
+    expect(planFactsSchemaFor(skeleton, APPLY, { soft: true }).safeParse(wrong).success).toBe(true);
+    // Another template at that key is a shape error.
+    const other = { ...facts(), figures: { [at]: { template: "right-triangle", values: {} } } };
+    const shaped = planFactsSchemaFor(skeleton, APPLY, { soft: true }).safeParse(other);
+    expect(shaped.success).toBe(false);
+  });
+
+  test("TEACH-253 row 4: assignFactIds moves figures[N] onto the fact entry N cites and stores no figures", () => {
+    const { skeleton, at } = triangleApply();
+    const answer = {
+      ...facts(),
+      figures: { [at]: { template: "triangle" as const, values: LEGS } },
+    };
+    const parsed = planFactsSchemaFor(skeleton, APPLY).parse(answer);
+    const stored = assignFactIds(skeleton, parsed, 60);
+    expect(stored.workedExamples[0]?.figure).toEqual({ template: "triangle", values: LEGS });
+    expect("figures" in stored).toBe(false);
+    expect(stored.questions.some((q) => q.figure !== undefined)).toBe(false);
+    // Entry N cites a question and no worked example: the figure goes on that question.
+    const onQuestion = {
+      ...parsed,
+      outlineFactRefs: parsed.outlineFactRefs.map((e) =>
+        e.index === at ? { ...e, factRefs: [{ type: "question" as const, index: 2 }] } : e,
+      ),
+    };
+    const byQuestion = assignFactIds(skeleton, onQuestion, 60);
+    expect(byQuestion.questions[2]?.figure).toEqual({ template: "triangle", values: LEGS });
+    expect(byQuestion.workedExamples[0]?.figure).toBeUndefined();
+    // Entry N cites neither: the figure is dropped.
+    const onKeyIdea = {
+      ...parsed,
+      outlineFactRefs: parsed.outlineFactRefs.map((e) =>
+        e.index === at ? { ...e, factRefs: [{ type: "keyIdea" as const, index: 0 }] } : e,
+      ),
+    };
+    const dropped = assignFactIds(skeleton, onKeyIdea, 60);
+    expect([...dropped.workedExamples, ...dropped.questions].some((f) => f.figure)).toBe(false);
   });
 
   test("a fact's own objectiveRefs must land in the skeleton's objectives; a misconceptionRef in this call's list", () => {

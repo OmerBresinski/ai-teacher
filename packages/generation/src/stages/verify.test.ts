@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { FIGURE_MESSAGE } from "../figure-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import { assignFactIds, type VerifyCorrection, verifyOutputSchemaFor } from "../specs";
 import { answeringAi, callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
@@ -115,6 +116,65 @@ describe("applyVerifyPatch", () => {
   });
 });
 
+describe("applyVerifyPatch: a figure (TEACH-253 row 5)", () => {
+  const FIGURE = {
+    template: "triangle" as const,
+    values: {
+      sides: { a: { value: 5 }, b: { value: 12 }, c: { label: "x" } },
+      rightAngleAt: "C",
+      unknown: "c",
+    },
+  };
+  const withFigure = () => {
+    const f = facts();
+    return {
+      ...f,
+      workedExamples: f.workedExamples.map((x) => ({ ...x, figure: structuredClone(FIGURE) })),
+    };
+  };
+  const corrected = {
+    ...FIGURE.values,
+    sides: { a: { value: 9 }, b: { value: 12 }, c: { label: "x" } },
+  };
+  const figure = (value: string) =>
+    c({ factId: "x1", field: "figure", value, reason: "wrong-answer" });
+
+  test("valid JSON of the template's shape replaces the values, keeps the template, and is a fact-verify finding", () => {
+    const before = withFigure();
+    const { facts: after, applied } = applyVerifyPatch(before, [figure(JSON.stringify(corrected))]);
+    expect(after.workedExamples[0]?.figure).toEqual({ template: "triangle", values: corrected });
+    expect(before.workedExamples[0]?.figure).toEqual(FIGURE);
+    expect(applied).toHaveLength(1);
+    expect(applied.map(verifyFinding)).toEqual([
+      {
+        check: "fact-verify",
+        severity: "warning",
+        target: { factId: "x1" },
+        message: "Worked example figure corrected: the answer was wrong.",
+      },
+    ]);
+  });
+
+  test("invalid JSON, values of the wrong shape, or a fact with no figure are skipped", () => {
+    const before = withFigure();
+    const { facts: after, applied } = applyVerifyPatch(before, [
+      figure("{ sides: a = 9 }"),
+      figure(JSON.stringify({ sides: { a: { value: "nine" } } })),
+      figure(JSON.stringify([1, 2, 3])),
+      // Over the 400-character cap (`SPEC_LIMITS.body`).
+      figure(JSON.stringify({ ...corrected, vertices: { A: "P".repeat(400) } })),
+    ]);
+    expect(after).toEqual(before);
+    expect(applied).toEqual([]);
+    const plain = facts();
+    expect(applyVerifyPatch(plain, [figure(JSON.stringify(corrected))]).applied).toEqual([]);
+    // Only worked examples and questions have a figure field.
+    expect(
+      applyVerifyPatch(plain, [c({ factId: "v1", field: "figure", value: "{}" })]).applied,
+    ).toEqual([]);
+  });
+});
+
 describe("verifyFinding", () => {
   test("names the kind, the field and the reason; never the value", () => {
     expect(verifyFinding(c({}))).toEqual({
@@ -153,6 +213,58 @@ describe("runVerify: the numeric check", () => {
       target: { factId: q.id },
       evidence: "sin(40°) = 6 cm ÷ 10 cm",
     });
+  });
+});
+
+describe("runVerify: the figure check (TEACH-253)", () => {
+  test("an answer that disagrees with its figure is a warning after the call, and when the call is refused", async () => {
+    const before = facts();
+    const q = before.questions[0];
+    if (!q) throw new Error("fixture has no question");
+    q.answer = "12 cm";
+    q.figure = {
+      template: "triangle",
+      values: {
+        sides: { a: { value: 5 }, b: { value: 12 }, c: { label: "x" } },
+        rightAngleAt: "C",
+        unknown: "c",
+      },
+    };
+    const audience = { yearGroup: "Year 10", subject: "Maths" } as never;
+    const refused = await runVerify(
+      before,
+      { topic: "Pythagoras", audience },
+      recordingDeps(answeringAi([]), { budget: callLimitedBudget(0) }),
+      "standard",
+    );
+    expect(refused.findings.map((f) => f.check)).toEqual(["budget", "fact-verify"]);
+    expect(refused.findings[1]).toMatchObject({
+      target: { factId: q.id },
+      message: FIGURE_MESSAGE,
+    });
+    const answered = await runVerify(
+      before,
+      { topic: "Pythagoras", audience },
+      recordingDeps(answeringAi([JSON.stringify({ corrections: [] })])),
+      "standard",
+    );
+    expect(answered.findings).toEqual([
+      expect.objectContaining({ target: { factId: q.id }, message: FIGURE_MESSAGE }),
+    ]);
+  });
+
+  test("the verify prompt shows the figure under its fact and says how to correct it", () => {
+    const f = facts();
+    const x = f.workedExamples[0];
+    if (!x) throw new Error("fixture has no worked example");
+    x.figure = { template: "triangle", values: { sides: { a: { value: 5 } } } };
+    const text = verifyFactsPrompt.user({
+      audience: { yearGroup: "Year 10", subject: "Maths" } as Audience,
+      topic: "Pythagoras",
+      facts: f,
+    });
+    expect(text).toContain('    Figure (triangle): {"sides":{"a":{"value":5}}}');
+    expect(verifyFactsPrompt.system).toContain('the field "figure"');
   });
 });
 

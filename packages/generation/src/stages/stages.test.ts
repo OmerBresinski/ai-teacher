@@ -2,15 +2,26 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import {
   checkLesson,
+  type FigureTemplateName,
   type Finding,
   type Lesson,
   type LessonFacts,
+  type RichDoc,
+  richDocToPlainText,
   type Slide,
+  type SlideElement,
   SlideSchema,
 } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { PexelsError } from "@tj/images";
-import { figureGroupOf, materialiseSlide, type SlideSpecOf } from "@tj/slides";
+import {
+  FIGURE_RECT_WIDE,
+  type FigureGroup,
+  figureGroupOf,
+  materialiseSlide,
+  type SlideSpecOf,
+} from "@tj/slides";
+import { FIGURE_MESSAGE, figureAnswerMismatches } from "../figure-check";
 import { NUMERIC_MESSAGE, numericFactMismatches } from "../numeric-check";
 import {
   CODE_MODEL,
@@ -28,7 +39,13 @@ import {
   VERB_WRITING,
 } from "../prompts";
 import { lessonShapeOf } from "../shapes";
-import { assignFactIds, OUTLINE_FROM_FACTS_VERSION, planFactsSchemaFor } from "../specs";
+import {
+  assignFactIds,
+  OUTLINE_FROM_FACTS_VERSION,
+  type PlanFacts,
+  type PlanSkeleton,
+  planFactsSchemaFor,
+} from "../specs";
 import {
   callLimitedBudget,
   FIXTURES,
@@ -49,6 +66,7 @@ import { GENERATE_CONCURRENCY, generate, PLANNED_SLIDES } from "./generate";
 const FOUR_CALLS = 4;
 
 import { plan, TITLE_PROMPT_VERSION } from "./plan";
+import { impactSet, proposeFor } from "./proposals";
 import {
   MAX_TARGETS,
   MAX_WARNING_TARGETS,
@@ -84,6 +102,49 @@ const planScript = () => [
 const fullFacts = () => assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60);
 const PLAN_STAMP = `${PROMPT_VERSIONS["plan-skeleton"]}+${PROMPT_VERSIONS["plan-facts"]}`;
 const VERIFIED_STAMP = `${PLAN_STAMP}+${PROMPT_VERSIONS["verify-facts"]}`;
+/**
+ * The facts call's answers for `skeleton`: `facts`, and `facts` again for the retry when the
+ * skeleton has a diagram the answer gives no figure for ("give the figure …" is editorial,
+ * TEACH-253). The shared fixture has no figures.
+ */
+const factsAnswers = (skeleton: PlanSkeleton, facts: PlanFacts = FIXTURES.planFacts) => {
+  const missing = skeleton.outline.some(
+    (e, i) => e.kind === "diagram" && facts.figures?.[String(i)] === undefined,
+  );
+  return missing ? [json(facts), json(facts)] : [json(facts)];
+};
+/** A worked example the Apply fixture's diagram (position 6) can draw: numbers, and an answer. */
+const PYTHAGORAS = {
+  problem: "A right-angled triangle has shorter sides of 5 cm and 12 cm. Find the hypotenuse, x.",
+  steps: [
+    "Square the two shorter sides: 25 and 144.",
+    "Add them: 25 + 144 = 169.",
+    "Take the square root: √169 = 13.",
+  ],
+  answer: "x = 13 cm",
+};
+const PYTHAGORAS_FIGURE = {
+  template: "right-triangle" as const,
+  values: {
+    base: { length: 5, label: "5 cm" },
+    height: { length: 12, label: "12 cm" },
+    hypotenuse: { label: "x" },
+  },
+};
+/**
+ * A test-local facts answer (TEACH-253): the shared fixture, whose `x1` is about melting ice, with
+ * `x1` rewritten to `example` and the Apply diagram's figure in `figures["6"]`. The shared fixture
+ * itself stays as it is.
+ */
+const factsWithFigure = (
+  figure: { template: FigureTemplateName; values: Record<string, unknown> } = PYTHAGORAS_FIGURE,
+  example: { problem: string; steps: string[]; answer: string } = PYTHAGORAS,
+): PlanFacts => {
+  const facts = structuredClone(FIXTURES.planFacts);
+  const [x1, ...rest] = facts.workedExamples;
+  if (!x1) throw new Error("the facts fixture has no worked example");
+  return { ...facts, workedExamples: [{ ...x1, ...example }, ...rest], figures: { "6": figure } };
+};
 /** Plan, then wait for the Verify call it started (TEACH-233) so every scripted call is recorded. */
 async function planVerified(...args: Parameters<typeof plan>) {
   const state = await plan(...args);
@@ -2036,7 +2097,7 @@ describe("repair", () => {
     const setupAi = createFakeAi({
       script: routed([
         json(skeleton),
-        json(FIXTURES.planFacts),
+        ...factsAnswers(skeleton, factsWithFigure()),
         json(FIXTURES.verify),
         ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
       ]),
@@ -2153,7 +2214,7 @@ describe("repair", () => {
     const setupAi = createFakeAi({
       script: routed([
         json(skeleton),
-        json(FIXTURES.planFacts),
+        ...factsAnswers(skeleton, factsWithFigure()),
         json(FIXTURES.verify),
         ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
       ]),
@@ -2609,25 +2670,45 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
       (c) => c.context?.stage === "generate" && c.promptText.includes('kind "diagram"'),
     );
 
-  /** Plan, then Generate, on the Apply skeleton; `answers` reply to the diagram's slide call(s). */
-  async function generatedDiagram(answers: string[] = [json(DIAGRAM)]) {
+  /**
+   * The shared fixture's one Plan finding on the Apply skeleton: its facts answer has no figures
+   * (TEACH-253), so the facts call misses the diagram's and the slide call writes the values.
+   */
+  const NO_FIGURE: Finding = {
+    check: "spec-rule",
+    severity: "warning",
+    target: {},
+    message:
+      'figures.6: Give the figure for the diagram slide at position 6 in figures["6"], with the numbers of the worked example or question it covers.',
+  };
+
+  /**
+   * Plan, then Generate, on the Apply skeleton (or `skeleton`); `answers` reply to the diagram's
+   * slide call(s), `facts` to the facts call (the shared fixture, with no figures, by default).
+   */
+  async function generatedDiagram(
+    answers: string[] = [json(DIAGRAM)],
+    facts: PlanFacts = FIXTURES.planFacts,
+    skeleton: PlanSkeleton = APPLY,
+    deps: (ai: ReturnType<typeof createFakeAi>) => ReturnType<typeof recordingDeps> = recordingDeps,
+  ) {
     const ai = createFakeAi({
       script: routed([
-        json(APPLY),
-        json(FIXTURES.planFacts),
+        json(skeleton),
+        ...factsAnswers(skeleton, facts),
         json(FIXTURES.verify),
-        ...APPLY.outline
+        ...skeleton.outline
           .slice(PLANNED_SLIDES)
           .flatMap((e) => (e.kind === "diagram" ? answers : [json(FIXTURES.slides[e.kind])])),
       ]),
       usage,
     });
-    const deps = recordingDeps(ai);
-    const state = await generate(await plan(initialState(applyLesson()), deps), deps);
+    const recorded = deps(ai);
+    const state = await generate(await plan(initialState(applyLesson()), recorded), recorded);
     const index = state.lesson.slides.findIndex((s) => s.kind === "diagram");
     const slide = state.lesson.slides[index];
     if (!slide) throw new Error("no diagram slide");
-    return { state, ai, index, slide };
+    return { state, ai, index, slide, deps: recorded };
   }
 
   /** The state Repair starts from, with `findings` as the review left them. */
@@ -2646,7 +2727,7 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     },
   });
 
-  test("row 3: Plan names the template, Generate fills it, the slide carries the figure group, its alt text and the spec's text", async () => {
+  test("row 3, and TEACH-253 rows 3 and 9: with no figure on the fact, Plan records one spec-rule warning, Generate fills the template, the slide carries the figure group, its alt text and the spec's text", async () => {
     const { state, ai, index, slide } = await generatedDiagram();
     expect(index).toBe(6);
     expect(state.lesson.facts?.outline[index]).toMatchObject({
@@ -2668,7 +2749,8 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     expect(figure?.generatedFrom?.promptVersion).toBe(PROMPT_VERSIONS["generate-slide"]);
     expect(slideText(slide)).toContain(DIAGRAM.heading);
     expect(slideText(slide)).toContain(DIAGRAM.body);
-    expect(state.lesson.generation?.findings).toEqual([]);
+    expect(state.lesson.generation?.findings).toEqual([NO_FIGURE]);
+    expect(state.lesson.facts?.workedExamples.some((x) => x.figure)).toBe(false);
     expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
   });
 
@@ -2685,7 +2767,10 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     expect(
       figure?.children.some((c) => slideText({ ...slide, elements: [c] }) === "Not drawn to scale"),
     ).toBe(true);
-    const misses = state.lesson.generation?.findings ?? [];
+    const misses = (state.lesson.generation?.findings ?? []).filter(
+      (f) => f.target.slideId !== undefined,
+    );
+    expect(state.lesson.generation?.findings).toContainEqual(NO_FIGURE);
     expect(misses).toEqual([
       expect.objectContaining({
         check: "spec-rule",
@@ -2752,6 +2837,7 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
   test("TEACH-94 row 9: a diagram entry naming energy-profile is generated and materialised with the figure and its alt text", async () => {
     // A test-local skeleton: the shared Apply fixture with its diagram entry naming the energy
     // profile. The fixture itself, and `FIXTURES.slides.diagram` (a triangle), stay as they are.
+    // Since TEACH-253 the figure is the worked example's, from a test-local facts answer.
     const skeleton = structuredClone(APPLY);
     const entry = skeleton.outline[6];
     if (entry?.kind !== "diagram") throw new Error("Apply position 6 is not a diagram");
@@ -2769,14 +2855,26 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
       kind: "diagram",
       heading: "Burning methane releases energy",
       body: "The products end lower than the reactants, so energy is given out. Label the activation energy on the diagram.",
-      figure: { template: "energy-profile", values },
       factRefs: ["x1", "o2"],
       notes: "Ask where the energy goes before anyone labels the arrows.",
     };
+    const facts = factsWithFigure(
+      { template: "energy-profile", values },
+      {
+        problem:
+          "Burning methane needs 50 kJ to start and gives out 90 kJ overall. Sketch its profile.",
+        steps: [
+          "Draw the reactants' level.",
+          "Draw the products 90 kJ lower.",
+          "Draw a peak 50 kJ above the reactants.",
+        ],
+        answer: "An exothermic profile: activation energy 50 kJ, energy change −90 kJ.",
+      },
+    );
     const ai = createFakeAi({
       script: routed([
         json(skeleton),
-        json(FIXTURES.planFacts),
+        ...factsAnswers(skeleton, facts),
         json(FIXTURES.verify),
         ...skeleton.outline
           .slice(PLANNED_SLIDES)
@@ -2790,7 +2888,7 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     const calls = diagramCalls(ai);
     expect(calls).toHaveLength(1);
     expect(calls[0]?.promptText).toContain(
-      'This slide draws a "energy-profile" figure for the reaction profile for burning methane.',
+      'This slide shows the "energy-profile" figure of the worked example or question it covers',
     );
     const slide = state.lesson.slides[6];
     if (slide?.kind !== "diagram") throw new Error("no diagram slide");
@@ -2811,6 +2909,7 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
   test("TEACH-221 row 14: a diagram entry naming triangle is generated and materialised with the figure and its alt text", async () => {
     // A test-local skeleton, as in TEACH-94 row 9: the shared Apply fixture with its diagram entry
     // naming the triangle. The fixture itself and `FIXTURES.slides.diagram` stay as they are.
+    // Since TEACH-253 the figure is the worked example's, from a test-local facts answer.
     const skeleton = structuredClone(APPLY);
     const entry = skeleton.outline[6];
     if (entry?.kind !== "diagram") throw new Error("Apply position 6 is not a diagram");
@@ -2825,14 +2924,22 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
       kind: "diagram",
       heading: "Two sides and the angle between them",
       body: "Two sides meet at the marked angle. Use the cosine rule to find the side opposite it, x.",
-      figure: { template: "triangle", values },
       factRefs: ["x1", "o2"],
       notes: "Ask which angle is between the two known sides before anyone substitutes.",
     };
+    const facts = factsWithFigure(
+      { template: "triangle", values },
+      {
+        problem:
+          "Two sides of a triangle are 5 cm and 7 cm with 120° between them. Find the third side, x.",
+        steps: ["x² = 5² + 7² − 2 × 5 × 7 × cos 120°", "x² = 25 + 49 + 35 = 109", "x = √109"],
+        answer: "x = 10.4 cm",
+      },
+    );
     const ai = createFakeAi({
       script: routed([
         json(skeleton),
-        json(FIXTURES.planFacts),
+        ...factsAnswers(skeleton, facts),
         json(FIXTURES.verify),
         ...skeleton.outline
           .slice(PLANNED_SLIDES)
@@ -2846,7 +2953,7 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     const calls = diagramCalls(ai);
     expect(calls).toHaveLength(1);
     expect(calls[0]?.promptText).toContain(
-      'This slide draws a "triangle" figure for the triangle for the cosine rule.',
+      'This slide shows the "triangle" figure of the worked example or question it covers',
     );
     const slide = state.lesson.slides[6];
     if (slide?.kind !== "diagram") throw new Error("no diagram slide");
@@ -2865,7 +2972,7 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
   test("Plan resumed after the skeleton persist keeps the diagram entry's figureBrief", async () => {
     const first = recordingDeps(
       createFakeAi({
-        script: routed([json(APPLY), json(FIXTURES.planFacts), json(FIXTURES.verify)]),
+        script: routed([json(APPLY), ...factsAnswers(APPLY), json(FIXTURES.verify)]),
         usage,
       }),
     );
@@ -2873,14 +2980,229 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     const afterSkeleton = first.persisted[1]?.lesson;
     if (!afterSkeleton?.facts) throw new Error("no skeleton persist");
     const ai = createFakeAi({
-      script: routed([json(FIXTURES.planFacts), json(FIXTURES.verify)]),
+      script: routed([...factsAnswers(APPLY), json(FIXTURES.verify)]),
       usage,
     });
     const { state } = await planVerified(initialState(afterSkeleton), recordingDeps(ai));
-    // The skeleton call was skipped: the rebuilt skeleton, figure brief included, passed.
-    expect(ai.calls).toHaveLength(2);
+    // The skeleton call was skipped: the rebuilt skeleton, figure brief included, passed. The
+    // facts call is retried once for the missing figure (TEACH-253).
+    expect(ai.calls).toHaveLength(3);
     expect(state.lesson.facts?.outline[6]?.figureBrief).toEqual(APPLY.outline[6]?.figureBrief);
     expect(state.lesson.facts).toEqual(assignFactIds(APPLY, FIXTURES.planFacts, 60));
+  });
+
+  /* ---- TEACH-253: the figure lives on the fact ---------------------- */
+
+  /** The Apply skeleton with its diagram drawing a `triangle`, so the answer check applies. */
+  const TRIANGLE_APPLY = (() => {
+    const skeleton = structuredClone(APPLY);
+    const entry = skeleton.outline[6];
+    if (entry?.kind !== "diagram" || !entry.figureBrief) throw new Error("Apply position 6");
+    entry.figureBrief = { template: "triangle", purpose: "the triangle pupils find x in" };
+    return skeleton;
+  })();
+  /** Legs 5 and 12 at a right angle, the hypotenuse x: the figure gives 13. */
+  const LEGS = (b = 12) => ({
+    template: "triangle" as const,
+    values: {
+      sides: {
+        a: { value: 5, label: "5 cm" },
+        b: { value: b, label: `${b} cm` },
+        c: { label: "x" },
+      },
+      rightAngleAt: "C",
+      unknown: "c",
+    },
+  });
+  /** The diagram's text answer: no figure, since the fact carries it. */
+  const { figure: _drawn, ...DIAGRAM_TEXT } = DIAGRAM;
+  const printed = (group: { children: readonly SlideElement[] } | undefined) =>
+    (group?.children ?? []).flatMap((c) =>
+      "doc" in c && c.doc ? [richDocToPlainText(c.doc as RichDoc)] : [],
+    );
+
+  test("TEACH-253 row 8: with the figure on the fact, the diagram call writes text only, its prompt shows the figure, and the slide draws the fact's figure", async () => {
+    const figure = LEGS();
+    // The slide call answers with a figure of its own (the fixture's 3, 4, x): the text-only
+    // schema has no `figure` field, so it is stripped, never retried and never drawn.
+    const { state, ai, slide } = await generatedDiagram(
+      [json(DIAGRAM)],
+      factsWithFigure(figure),
+      TRIANGLE_APPLY,
+    );
+    expect(state.lesson.facts?.workedExamples[0]?.figure).toEqual(figure);
+    const calls = diagramCalls(ai);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.promptText).toContain(
+      'This slide shows the "triangle" figure of the worked example or question it covers',
+    );
+    expect(calls[0]?.promptText).not.toContain("This slide draws");
+    const group = figureGroupOf(slide);
+    expect(group?.figure).toEqual(figure);
+    expect(group?.generatedFrom?.promptVersion).toBe(PROMPT_VERSIONS["generate-slide"]);
+    expect(slideText(slide)).toContain(DIAGRAM.heading);
+    expect(state.lesson.generation?.findings).toEqual([]);
+    // The unknown is drawn and spoken as its label, never as its value (13).
+    expect(printed(group)).toContain("x");
+    expect(printed(group).join(" ")).not.toContain("13");
+    expect(group?.alt).not.toContain("13");
+  });
+
+  test("TEACH-253: a fact's triangle with a pair is drawn figure-wide on the fact path", async () => {
+    const paired = {
+      ...LEGS(),
+      values: { ...LEGS().values, pair: { scale: 2, vertices: { A: "P", B: "Q", C: "R" } } },
+    };
+    const { slide } = await generatedDiagram(
+      [json(DIAGRAM_TEXT)],
+      factsWithFigure(paired),
+      TRIANGLE_APPLY,
+    );
+    const group = figureGroupOf(slide);
+    expect(group?.figure).toEqual(paired);
+    expect({ x: group?.x, w: group?.w }).toEqual({ x: FIGURE_RECT_WIDE.x, w: FIGURE_RECT_WIDE.w });
+  });
+
+  test("TEACH-253 rows 7, 10 and 13: a stated answer the figure disagrees with is an error on the citing slides; Repair corrects the fact's figure and redraws the diagram from it; no log line carries the numbers", async () => {
+    // x1 says 13 cm, but its figure's legs are 5 and 9: the figure gives 10.3.
+    const wrong = LEGS(9);
+    const { lines, logger } = memoryLogger();
+    const withLogger = (ai: ReturnType<typeof createFakeAi>) => recordingDeps(ai, { logger });
+    const { state, index, slide } = await generatedDiagram(
+      [json(DIAGRAM_TEXT)],
+      factsWithFigure(wrong),
+      TRIANGLE_APPLY,
+      withLogger,
+    );
+    const x1 = state.lesson.facts?.workedExamples[0];
+    if (!x1) throw new Error("no worked example");
+    // Verify recorded the mismatch as a warning on the fact.
+    const warning = state.lesson.generation?.findings.find((f) => f.message === FIGURE_MESSAGE);
+    expect(warning).toMatchObject({
+      check: "fact-verify",
+      severity: "warning",
+      target: { factId: x1.id },
+    });
+
+    // Row 7: Evaluate turns it into a fact-consistency error on the diagram slide, and drops
+    // Verify's warning rather than carrying both.
+    const evaluated = await evaluate(
+      state,
+      withLogger(createFakeAi({ script: [json({ findings: [] })], usage })),
+    );
+    const found = evaluated.lesson.generation?.findings ?? [];
+    expect(found).toContainEqual({
+      check: "fact-consistency",
+      severity: "error",
+      target: { slideId: slide.id, factId: x1.id },
+      message: FIGURE_MESSAGE,
+      evidence: "The answer states 13; the figure gives 10.3.",
+    });
+    expect(found.some((f) => f.check === "fact-verify" && f.message === FIGURE_MESSAGE)).toBe(
+      false,
+    );
+
+    // Row 10: every citing slide's target patches the fact's figure first, then is rewritten; the
+    // diagram draws the corrected figure.
+    const corrected = LEGS();
+    const answer = (call: { context?: { promptVersion?: string }; promptText: string }) => {
+      if (call.context?.promptVersion?.startsWith("repair-fact"))
+        return json({
+          corrections: [
+            {
+              factId: x1.id,
+              field: "figure",
+              value: JSON.stringify(corrected.values),
+              reason: "wrong-answer",
+            },
+          ],
+        });
+      const kind = /a "([a-z-]+)" slide spec/.exec(call.promptText)?.[1] ?? "";
+      return json(
+        kind === "diagram" ? DIAGRAM_TEXT : FIXTURES.slides[kind as keyof typeof FIXTURES.slides],
+      );
+    };
+    const fixer = createFakeAi({ script: Array.from({ length: 30 }, () => answer), usage });
+    const repaired = await repair(evaluated, withLogger(fixer));
+    const repairFacts = fixer.calls.filter((c) =>
+      c.context?.promptVersion?.startsWith("repair-fact"),
+    );
+    expect(repairFacts.length).toBeGreaterThan(0);
+    expect(repairFacts[0]?.promptText).toContain(
+      `    Figure (triangle): ${JSON.stringify(wrong.values)}`,
+    );
+    expect(repairFacts[0]?.promptText).toContain(
+      `Fields you may correct on ${x1.id}: problem, steps, answer, figure.`,
+    );
+    expect(repaired.lesson.facts?.workedExamples[0]?.figure).toEqual(corrected);
+    expect(figureAnswerMismatches(repaired.lesson.facts as LessonFacts)).toEqual([]);
+    const after = repaired.lesson.slides[index] as Slide;
+    expect(figureGroupOf(after)?.figure).toEqual(corrected);
+    expect(repaired.lesson.generation?.findings.some((f) => f.check === "fact-consistency")).toBe(
+      false,
+    );
+
+    // Row 13: ids, counts and check names only; never a value, the answer or the evidence.
+    const log = lines.join("\n");
+    expect(lines.length).toBeGreaterThan(0);
+    for (const secret of [
+      JSON.stringify(wrong.values),
+      JSON.stringify(corrected.values),
+      '"value":9',
+      PYTHAGORAS.answer,
+      "The answer states",
+      "10.3",
+    ])
+      expect(log).not.toContain(secret);
+  });
+
+  test("TEACH-253 row 11: a cascade after the fact's figure changes proposes the diagram drawn from the new figure", async () => {
+    const { state, slide } = await generatedDiagram(
+      [json(DIAGRAM_TEXT)],
+      factsWithFigure(LEGS()),
+      TRIANGLE_APPLY,
+    );
+    const facts = state.lesson.facts as LessonFacts;
+    const x1 = facts.workedExamples[0];
+    if (!x1) throw new Error("no worked example");
+    // The teacher (or Verify) changes the figure: legs 6 and 8.
+    const changed = {
+      template: "triangle" as const,
+      values: {
+        sides: {
+          a: { value: 6, label: "6 cm" },
+          b: { value: 8, label: "8 cm" },
+          c: { label: "x" },
+        },
+        rightAngleAt: "C",
+        unknown: "c",
+      },
+    };
+    const lesson = {
+      ...state.lesson,
+      facts: {
+        ...facts,
+        workedExamples: facts.workedExamples.map((x) =>
+          x.id === x1.id ? { ...x, figure: changed, answer: "x = 10 cm" } : x,
+        ),
+      },
+    };
+    const targets = impactSet(lesson, undefined, [x1.id]).redo.filter(
+      (t) => t.slideId === slide.id,
+    );
+    const figure = figureGroupOf(slide);
+    expect(targets.map((t) => t.elementId)).toContain(figure?.id);
+    // The re-derived answer carries the old figure: it is the fact's that is drawn.
+    const ai = createFakeAi({ script: [json(DIAGRAM)], usage });
+    const { proposals } = await proposeFor(
+      targets,
+      { lesson, changedFactIds: [x1.id] },
+      recordingDeps(ai),
+    );
+    const group = proposals.find((p) => p.target.elementId === figure?.id)?.element;
+    expect(group?.type).toBe("group");
+    expect((group as FigureGroup).figure).toEqual(changed);
+    expect((group as FigureGroup).alt).not.toContain("10");
   });
 });
 
@@ -2904,7 +3226,7 @@ describe("specFieldsOf (TEACH-222)", () => {
         createFakeAi({
           script: routed([
             json(skeleton),
-            json(FIXTURES.planFacts),
+            ...factsAnswers(skeleton),
             json(FIXTURES.verify),
             ...skeleton.outline.slice(PLANNED_SLIDES).map((e) => json(FIXTURES.slides[e.kind])),
           ]),

@@ -3,8 +3,8 @@ import { blockSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
 import { assignFactIds, PITCH_BOUNDS, WorksheetSpecSchema } from "../specs";
 import { audienceOf } from "../stages/shared";
-import { FIXTURES, sampleBriefLesson } from "../testing";
-import { FIGURE_FIT, FIGURE_VALUES } from "./figures";
+import { FIXTURES, PLAN_SKELETONS, sampleBriefLesson } from "../testing";
+import { FIGURE_FIT, FIGURE_NUMBERS, FIGURE_UNKNOWN, FIGURE_VALUES } from "./figures";
 import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
 import { promptHash } from "./hash";
@@ -25,6 +25,7 @@ import {
   PLAN_TEACH_OBJECTIVE_SAMPLE,
 } from "./plan-samples";
 import { planSkeletonPrompt, SOURCE_INSTRUCTION } from "./plan-skeleton";
+import { repairFactPrompt } from "./repair-fact";
 import { verifyFactsPrompt } from "./verify-facts";
 
 /*
@@ -206,8 +207,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e09795d1fecebda44a4681060bcc47e5cb3f5c06f57f8cdb19e908da44425ebb",
   },
   "plan-facts": {
-    version: "plan-facts.v12",
-    hash: "bb091639d1fd76a9b06bab04e09c875d44968ed160abf8006a194e6ef30e6669",
+    version: "plan-facts.v13",
+    hash: "804ff4e8f733039e062563fa220d0134ac39b344aa5e168238b13d1c6feb1be0",
   },
   "plan-objectives": {
     version: "plan-objectives.v18",
@@ -226,14 +227,15 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "5cf0f133c71c328ce0c72ceb9be2e3b4a93cbc81fb4be0234d9b068c9dce8e64",
   },
   "verify-facts": {
-    version: "verify-facts.v6",
-    hash: "e80585b89cd1ea9fc83f21b6f193109e72d5e022bef4407ea26ffd6061183e22",
+    version: "verify-facts.v7",
+    hash: "298b50d977ea10a676cd7bb5152d2a1b2bdf79ae08dc86096d445464b31199a3",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render, and so
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
-    // energy-profile figure block, TEACH-94) and v28 (the triangle figure block, TEACH-221).
-    version: "generate-slide.v28",
+    // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
+    // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
+    version: "generate-slide.v29",
     hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
   },
   "generate-worksheet": {
@@ -257,23 +259,27 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "5d38c9bafd55fa9938b767a885661963f6e0416bbc571642829eb5735726520f",
   },
   evaluate: {
-    version: "evaluate.v8",
+    // v9 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
+    version: "evaluate.v9",
     hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
   },
   repair: {
-    version: "repair.v15",
+    // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
+    version: "repair.v16",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
-    version: "repair-fact.v5",
-    hash: "c4eb2f681babc21303581384470cbff4e89adb4e06b6d908fa2c2a91e34b14e7",
+    version: "repair-fact.v6",
+    hash: "6da1bda26c3c5110e0241d1aa997e0e284ffa9e21bc0391043d44ee68c42a404",
   },
   cascade: {
-    version: "cascade.v4",
+    // v5 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
+    version: "cascade.v5",
     hash: "2ac2c429f2b3dc487829d322366acd6de3a88bc9d96d3e9b503f982fc27766d0",
   },
   regenerate: {
-    version: "regenerate.v4",
+    // v5 (TEACH-253), as cascade.
+    version: "regenerate.v5",
     hash: "decd8c0815c63c391acb2023b23a89aae83d1e2a886167ca0f238cac03bd5102",
   },
 };
@@ -693,6 +699,77 @@ describe("prompt versions", () => {
     // U+20D7 draws as a missing glyph on every theme: no prompt line asks for it.
     expect(triangle).not.toContain("\u20D7");
     expect(triangle).not.toContain("right-triangle");
+  });
+
+  test("TEACH-253 row 12: a diagram call whose fact carries the figure shows it, never asks for values, and never shows the answer", () => {
+    const sample = SAMPLE_INPUTS["generate-slide"] as Parameters<
+      typeof generateSlidePrompt.user
+    >[0];
+    const figure = {
+      template: "triangle" as const,
+      values: {
+        sides: {
+          a: { value: 5, label: "5 cm" },
+          b: { value: 12, label: "12 cm" },
+          c: { value: 13, label: "x" },
+        },
+        rightAngleAt: "C",
+        unknown: "c",
+      },
+    };
+    const entry = {
+      id: "s7",
+      kind: "diagram" as const,
+      factRefs: ["x1", "o2"],
+      figureBrief: { template: "triangle" as const, purpose: "the triangle for Pythagoras" },
+    };
+    const shown = generateSlidePrompt.user({ ...sample, entry, figure });
+    expect(shown).toContain(
+      'This slide shows the "triangle" figure of the worked example or question it covers: {"sides":{"a":{"value":5,"label":"5 cm"},"b":{"value":12,"label":"12 cm"},"c":{"label":"x"}},"rightAngleAt":"C","unknown":"c"}. Write the heading and body about it.',
+    );
+    expect(shown).toContain(
+      'Answer { "kind": "diagram", "caption"?, "heading", "body" (≤ 40 words), "factRefs", "notes"? }',
+    );
+    expect(shown).toContain("never gives the answer");
+    // The values block is not there, and the unknown's value (13) is not shown beside the figure.
+    expect(shown).not.toContain("This slide draws");
+    expect(shown).not.toContain(FIGURE_VALUES.triangle);
+    expect(shown).not.toContain('"value":13');
+    // Without the fact's figure the call is unchanged.
+    expect(generateSlidePrompt.user({ ...sample, entry })).toContain(
+      'This slide draws a "triangle" figure for the triangle for Pythagoras.',
+    );
+  });
+
+  test("TEACH-253 row 12: plan-facts asks for each diagram's figure under its position; verify and repair-fact say how to correct one", () => {
+    expect(planFactsPrompt.system).toContain('then "figures" when the outline has a diagram slide');
+    expect(planFactsPrompt.system).toContain(
+      'Each diagram slide\'s figure is written in "figures", under the slide\'s outline position as a string ("6")',
+    );
+    const apply = structuredClone(PLAN_SKELETONS.Apply);
+    const at = apply.outline.findIndex((e) => e.kind === "diagram");
+    const user = planFactsPrompt.user({ ...brief, skeleton: apply });
+    expect(user).toContain(
+      `Figure for the diagram slide at position ${at}: "figures": { "${at}": { "template": "right-triangle", ${FIGURE_VALUES["right-triangle"]} } }`,
+    );
+    expect(user).toContain(
+      `${FIGURE_NUMBERS["right-triangle"]} ${FIGURE_UNKNOWN["right-triangle"]}`,
+    );
+    // A triangle's block asks for "unknown" on every figure, or nothing is checked.
+    const entry = apply.outline[at];
+    if (!entry?.figureBrief) throw new Error("the Apply fixture has no diagram");
+    entry.figureBrief = { ...entry.figureBrief, template: "triangle" };
+    expect(planFactsPrompt.user({ ...brief, skeleton: apply })).toContain(
+      'Always set "unknown" to the side or angle the worked example or question finds',
+    );
+    // A skeleton with no diagram prints no figure block.
+    expect(planFactsPrompt.user({ ...brief, skeleton: FIXTURES.planSkeleton })).not.toContain(
+      "Figure for the diagram slide",
+    );
+    expect(verifyFactsPrompt.system).toContain('correct its values with the field "figure"');
+    expect(repairFactPrompt.system).toContain(
+      'A figure\'s values may be corrected with the field "figure" and the full corrected values as JSON',
+    );
   });
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {

@@ -54,6 +54,7 @@ import { BUDGET_FINDING, withUsage } from "./generate";
 import {
   audienceOf,
   blockText,
+  figureOfEntry,
   generationOf,
   imageTextPhotoOf,
   normaliseText,
@@ -65,6 +66,7 @@ import {
   specFieldsCover,
   specFieldsOf,
   storedDiagramSchema,
+  withFactFigure,
   withImageCaption,
 } from "./shared";
 import { applyVerifyPatch, verifyFinding } from "./verify";
@@ -340,7 +342,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         const slide = base.slides[index];
         // A kind the pipeline cannot generate (an image slide the teacher added) cannot be repaired.
         // An image-text slide keeps its photograph: its text is re-checked against the same evidence.
-        // A diagram keeps its template and is redrawn from the values the rewrite returns.
+        // A diagram keeps its template and is redrawn from the values the rewrite returns, or, when
+        // its fact carries the figure (TEACH-253), from that fact's figure as this target's patch
+        // left it.
+        const factFigure =
+          slide?.kind === "diagram" ? figureOfEntry(staged, base.facts?.outline[index]) : undefined;
         const specSchema = (soft: boolean) =>
           !slide
             ? undefined
@@ -349,7 +355,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
                   soft,
                 })
               : slide.kind === "diagram"
-                ? storedDiagramSchema(slide, base.facts?.outline[index], { soft })
+                ? storedDiagramSchema(slide, base.facts?.outline[index], staged, { soft })
                 : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) return;
@@ -393,7 +399,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           key: target.key,
           index,
           corrections,
-          spec: lab ? withShuffledOptions(call.output, `${base.id}:${index}`) : call.output,
+          spec: lab
+            ? withShuffledOptions(withFactFigure(call.output, factFigure), `${base.id}:${index}`)
+            : withFactFigure(call.output, factFigure),
           modelId: call.modelId,
           findings: call.editorialMisses.map((miss) =>
             specRuleFinding(miss, { slideId: slide.id }, "warning"),
@@ -633,7 +641,7 @@ async function repairFact(
       audience,
       facts: factsAround(facts, factId),
       factId,
-      fields: fieldsOf(factId),
+      fields: fieldsOf(facts, factId),
       findings: about,
     },
     schema: verifyOutputSchemaFor(facts),
@@ -646,10 +654,16 @@ async function repairFact(
   );
 }
 
-/** The fields the fact's array allows a correction on, as `verifyOutputSchemaFor` enforces. */
-function fieldsOf(factId: string): readonly string[] {
+/**
+ * The fields the fact's array allows a correction on, as `verifyOutputSchemaFor` enforces; `figure`
+ * only when the fact has one (TEACH-253), since `applyVerifyPatch` skips it otherwise.
+ */
+function fieldsOf(facts: LessonFacts, factId: string): readonly string[] {
   const array = verifiableArrayOf(factId as Parameters<typeof verifiableArrayOf>[0]);
-  return array ? VERIFY_FIELDS_BY_ARRAY[array] : [];
+  if (!array) return [];
+  const fact = (facts[array] ?? []).find((f) => f.id === factId);
+  const hasFigure = fact !== undefined && "figure" in fact && fact.figure !== undefined;
+  return VERIFY_FIELDS_BY_ARRAY[array].filter((field) => field !== "figure" || hasFigure);
 }
 
 /** The fact in question with the objectives and misconceptions it links to; nothing else. */

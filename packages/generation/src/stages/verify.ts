@@ -1,6 +1,8 @@
-import type { Finding, LessonFacts } from "@tj/domain/documents";
+import type { FigureRef, Finding, LessonFacts } from "@tj/domain/documents";
 import { LessonFactsSchema } from "@tj/domain/documents";
+import { FIGURE_TEMPLATES } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { figureFindings } from "../figure-check";
 import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
@@ -33,7 +35,8 @@ export type { VerifyResult };
  * with the facts untouched and no finding — the stage awaiting it checks the signal itself. One
  * `fact-verify` warning per applied correction, content-free. Then the numeric check (code,
  * `numeric-check.ts`) over the facts it hands on, whatever the call did: one `fact-verify` warning
- * per equality whose sides disagree, with the equality as evidence. Logged under `stage: "plan"`:
+ * per equality whose sides disagree, with the equality as evidence; and the figure check
+ * (`figure-check.ts`): one per answer that disagrees with its figure, with the two numbers. Logged under `stage: "plan"`:
  * it is Plan's third call whichever stage awaits it.
  */
 export async function runVerify(
@@ -70,14 +73,14 @@ export async function runVerify(
     return {
       facts: verified,
       applied: patched.applied,
-      findings: [...patched.applied.map(verifyFinding), ...numericFindings(verified)],
+      findings: [...patched.applied.map(verifyFinding), ...codeFindings(verified)],
     };
   } catch (error) {
     if (error instanceof BudgetExceeded) {
       return {
         facts,
         applied: [],
-        findings: [BUDGET_FINDING(error.by, "fact verification"), ...numericFindings(facts)],
+        findings: [BUDGET_FINDING(error.by, "fact verification"), ...codeFindings(facts)],
       };
     }
     if (error instanceof Error && error.name === "AbortError") {
@@ -87,8 +90,16 @@ export async function runVerify(
       { stage: "plan", call: "verify", err: error instanceof StageFailure ? undefined : error },
       "fact verification failed; facts kept",
     );
-    return { facts, applied: [], findings: [VERIFY_FAILED_FINDING, ...numericFindings(facts)] };
+    return { facts, applied: [], findings: [VERIFY_FAILED_FINDING, ...codeFindings(facts)] };
   }
+}
+
+/**
+ * The code checks over the facts Verify hands on, whatever the call did: the numeric check and the
+ * figure check (TEACH-253, `figure-check.ts`: an answer that disagrees with its figure's unknown).
+ */
+function codeFindings(facts: LessonFacts): Finding[] {
+  return [...numericFindings(facts), ...figureFindings(facts)];
 }
 
 /** What the residual badge says for each reason; never the corrected text (ADR 0015). */
@@ -126,6 +137,7 @@ const FIELD_LABEL: Record<VerifyField, string> = {
   analogy: "analogy",
   belief: "belief",
   correction: "correction",
+  figure: "figure",
 };
 
 /** The content-free finding one applied correction leaves on the lesson. */
@@ -156,6 +168,28 @@ export const VERIFY_FAILED_FINDING: Finding = {
   target: {},
   message: "Fact verification could not be completed.",
 };
+
+/**
+ * A `figure` correction's values (TEACH-253): its JSON text parsed and checked against the fact's
+ * own template's shape, which never changes. `undefined` when the fact has no figure or the text
+ * is not JSON of that shape, so the correction is skipped like any invalid one. The template's
+ * editorial rules are not applied: a figure that breaks one is the answer check's to report.
+ */
+function figureValuesOf(
+  figure: FigureRef | undefined,
+  text: string,
+): Record<string, unknown> | undefined {
+  if (!figure) return undefined;
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  const parsed = FIGURE_TEMPLATES[figure.template].shape.safeParse(json);
+  if (!parsed.success || typeof parsed.data !== "object" || parsed.data === null) return undefined;
+  return parsed.data as Record<string, unknown>;
+}
 
 /**
  * Apply the corrections in order. Every correction is first checked against the facts with the same
@@ -198,6 +232,10 @@ export function applyVerifyPatch(
       const distractor = c.index === undefined ? undefined : distractors?.[c.index];
       if (!distractor) continue;
       distractor.text = c.value;
+    } else if (c.field === "figure") {
+      const values = figureValuesOf(fact.figure as FigureRef | undefined, c.value);
+      if (!values) continue;
+      (fact.figure as FigureRef).values = values;
     } else {
       if (!(c.field in fact) && c.field !== "analogy") continue;
       fact[c.field] = c.value;

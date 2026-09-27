@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { createBudget } from "@tj/ai";
-import { FIXTURES, PLAN_INDEX, pipelineScript, scriptedPipelineAi } from "../src/testing";
+import { objectiveVerbOf } from "../src/shapes";
+import {
+  FIXTURES,
+  PLAN_INDEX,
+  PLAN_SKELETONS,
+  pipelineScript,
+  scriptedPipelineAi,
+} from "../src/testing";
 import { StageFailure } from "../src/types";
 import { evalBriefs } from "./briefs";
 import { runBrief } from "./run-brief";
@@ -50,7 +57,9 @@ describe("eval:schema", () => {
     const rows = await runSchemaEval([brief], () => ai);
     expect(rows[0]?.result.scores?.rubric).toBeNull();
     expect(rows[0]?.result.judge).toBeNull();
-    expect(ai.calls.length).toBeLessThanOrEqual(pipelineScript().length);
+    // The brief's own script: an Apply brief's facts call is retried once for the missing figure.
+    const skeleton = PLAN_SKELETONS[objectiveVerbOf(brief.input.brief.answers)];
+    expect(ai.calls.length).toBeLessThanOrEqual(pipelineScript({ skeleton }).length);
     expect(ai.calls.some((c) => c.modelClass === "frontier")).toBe(false);
   });
 

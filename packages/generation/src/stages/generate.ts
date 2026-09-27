@@ -1,14 +1,18 @@
 import type { Finding, Lesson, LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
 import {
+  type DiagramTextSpec,
   diagramSpecSchemaFor,
+  diagramTextSpecSchemaFor,
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
+  type SlideSpec,
   slideSpecSchemaFor,
   vocabularySlots,
 } from "@tj/slides";
+import type { z } from "zod";
 import { callStructured, type EditorialMiss, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import {
   CODE_MODEL,
@@ -43,10 +47,12 @@ import { stemPlan } from "./question-pool";
 import {
   audienceOf,
   BUDGET_FINDING,
+  figureOfEntry,
   generationOf,
   planClassFor,
   runBounded,
   shapeOf,
+  withFactFigure,
   withImageCaption,
 } from "./shared";
 import { runVerify } from "./verify";
@@ -210,9 +216,14 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       );
       return { slide, misses: [], builtFrom };
     }
+    // A diagram whose fact carries the figure (TEACH-253) is written as text around that figure;
+    // without one (a lesson planned before, or a facts call that missed it) the call writes the
+    // values from the entry's figure brief, as before.
+    const factFigure = entry.kind === "diagram" ? figureOfEntry(builtFrom, entry) : undefined;
     // `OutlineEntrySchema` only admits generatable kinds and a diagram entry always carries its
     // figure brief, so the throw below never fires; it keeps the type.
-    const specSchema = (soft: boolean) => {
+    const specSchema = (soft: boolean): z.ZodType<SlideSpec | DiagramTextSpec> | undefined => {
+      if (factFigure) return diagramTextSpecSchemaFor({ soft });
       const base =
         entry.kind === "image-text"
           ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
@@ -248,6 +259,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         phase: entry.phase,
         ...(photo !== undefined ? { photo } : {}),
         ...(laterQuestions ? { laterQuestions } : {}),
+        ...(factFigure ? { figure: factFigure } : {}),
         audience,
         vocabularySlots: vocabularySlots(lesson.themeId),
         lessonTitle: lesson.title,
@@ -257,9 +269,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
-    const spec = calloutsAssigned
-      ? withShuffledOptions(call.output, `${lesson.id}:${i}`)
-      : call.output;
+    const answer = withFactFigure(call.output, factFigure);
+    const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
     const slide = materialiseSlide(
       withImageCaption(spec, entry),
       lesson.themeId,

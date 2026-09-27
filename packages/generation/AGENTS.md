@@ -74,6 +74,7 @@ src/
   objectives-check.ts       checkObjectives: the structural block on the objectives call
   outline-feasibility.ts    outlineFeasibility: can the slide count hold every objective's floor
   numeric-check.ts          numericMismatches / numericFindings: numbers that disagree with facts
+  figure-check.ts           figureAnswerMismatches / figureFindings: answers that disagree with their figure
   planner/        plan-pipeline (the entry points), coded-slides (starter, quick checks, exit ticket printed from facts, seeded
                   option order), question-demand (counts read off the outline), later-questions
   fixtures/       plan-skeleton.<verb>.json (one per verb, same positions 0–6), plan-facts.json,

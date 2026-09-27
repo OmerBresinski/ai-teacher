@@ -39,6 +39,7 @@ import {
   BlockSpecSchema,
   blockSpecSchemaFor,
   diagramSpecSchemaFor,
+  diagramTextSpecSchemaFor,
   isEditorialIssue,
   PICTURE_NONE_ANY,
   type SlideSpec,
@@ -767,6 +768,26 @@ describe("per-kind spec schemas (structured-output providers need a top-level ob
     const other = { ...spec, figure: { template: "bar-model", values: TRIANGLE_345 } };
     expect(diagramSpecSchemaFor("right-triangle").safeParse(other).success).toBe(false);
     expect(RIGHT_TRIANGLE.shape.safeParse(TRIANGLE_345).success).toBe(true);
+  });
+
+  test("TEACH-253: the diagram text schema has no figure, no union, and the same picture rule", () => {
+    const { figure: _figure, ...text } = minimalDiagram("triangle") as Record<string, unknown>;
+    for (const soft of [false, true]) {
+      const schema = diagramTextSpecSchemaFor({ soft });
+      const json = z.toJSONSchema(schema as z.ZodType) as { type: string; properties: object };
+      expect(json.type).toBe("object");
+      expect(Object.keys(json.properties)).not.toContain("figure");
+      expect(JSON.stringify(json)).not.toContain("anyOf");
+      expect(JSON.stringify(json)).not.toContain("oneOf");
+      expect(schema.safeParse(text).success).toBe(true);
+      // A figure the model adds is stripped, never kept.
+      expect(schema.parse(minimalDiagram("triangle"))).not.toHaveProperty("figure");
+    }
+    const pictured = { ...text, body: "The picture shows a triangle." };
+    expect(diagramTextSpecSchemaFor().safeParse(pictured).error?.issues).toEqual([
+      expect.objectContaining({ path: ["body"], message: PICTURE_NONE_ANY }),
+    ]);
+    expect(diagramTextSpecSchemaFor({ soft: true }).safeParse(pictured).success).toBe(true);
   });
 
   test("TEACH-89: a diagram's text may say diagram or triangle, never photo, picture or image", () => {
