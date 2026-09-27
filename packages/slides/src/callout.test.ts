@@ -109,6 +109,20 @@ const inside = (el: SlideElement, r: { x: number; y: number; w: number; h: numbe
 const trim = { x: TRIM, y: TRIM, w: SLIDE_W - 2 * TRIM, h: SLIDE_H - 2 * TRIM };
 const plain = (el: TextElement) => richDocToPlainText(el.doc);
 
+/**
+ * The recipe with the callout laid in, before `materialiseSlide` fits it (TEACH-28). The geometry
+ * below is `applyCallout`'s: the fit then sets each text box to its measured height, which the
+ * "after the fit" block holds separately.
+ */
+const laidWith = (spec: SlideSpec, theme: ReturnType<typeof getTheme>, variant = ""): Slide => {
+  if (spec.kind !== "content" && spec.kind !== "image-text") throw new Error("not a callout host");
+  const laid = layoutSlide(spec.kind, theme.id, variant || undefined);
+  const withCard = spec.callout
+    ? applyCallout(laid, theme, spec.kind, variant, spec.callout)
+    : laid;
+  return { id: "s", kind: spec.kind, elements: withCard.elements };
+};
+
 describe("callout labels and colours", () => {
   it("carries a frozen uppercase label per kind, no emoji", () => {
     expect(CALLOUT_LABELS).toEqual({
@@ -197,7 +211,9 @@ describe("callout on a content slide", () => {
           expect(new Set(slide.elements.map((el) => el.id)).size).toBe(slide.elements.length);
           for (const el of added) expect(el.authoredBy).toBe("ai");
 
-          const { card, label, text: textEl } = trio(slide);
+          const laid = laidWith(spec, theme, variant);
+          const laidWithout = laidWith(content(), theme, variant);
+          const { card, label, text: textEl } = trio(laid);
           expect(inside(card, trim)).toBe(true);
           expect(inside(label, SAFE)).toBe(true);
           expect(inside(textEl, SAFE)).toBe(true);
@@ -213,7 +229,7 @@ describe("callout on a content slide", () => {
 
           // Every body box ends a gap above the card, never taller than the recipe left it, and
           // keeps at least two lines of body at the theme's stop.
-          const bodies = slide.elements.filter(
+          const bodies = laid.elements.filter(
             (el): el is TextElement =>
               el.type === "text" &&
               (variant === "two-column"
@@ -223,7 +239,7 @@ describe("callout on a content slide", () => {
           );
           expect(bodies.length).toBe(variant === "two-column" ? 2 : 1);
           for (const body of bodies) {
-            const before = without.elements.find(
+            const before = laidWithout.elements.find(
               (el) => el.type === "text" && el.x === body.x && el.y === body.y,
             );
             if (!before) throw new Error("the recipe's body is missing");
@@ -251,12 +267,7 @@ describe("callout on an image-text slide", () => {
   for (const theme of THEMES) {
     for (const { label: length, text, column } of LENGTHS) {
       it(`${theme.id}/${length}: the card is in the text column, never over the picture, ${column} line(s) tall, and the body keeps two lines`, () => {
-        const slide = materialiseSlide(
-          imageText({ kind: "key-words", text }),
-          theme.id,
-          meta,
-          counter(),
-        );
+        const slide = laidWith(imageText({ kind: "key-words", text }), theme);
         const { card, label, text: textEl } = trio(slide);
         const image = slide.elements.find((el) => el.type === "image");
         if (!image) throw new Error("no image");
@@ -316,9 +327,9 @@ describe("callout geometry sweep", () => {
       for (const { label: length, text } of LENGTHS) {
         it(`${theme.id}/${kind}/${length}: every element inside its bounds on both hosts`, () => {
           const slides = [
-            materialiseSlide(content({ kind, text }), theme.id, meta, counter(), "headed"),
-            materialiseSlide(content({ kind, text }), theme.id, meta, counter(), "two-column"),
-            materialiseSlide(imageText({ kind, text }), theme.id, meta, counter()),
+            laidWith(content({ kind, text }), theme, "headed"),
+            laidWith(content({ kind, text }), theme, "two-column"),
+            laidWith(imageText({ kind, text }), theme),
           ];
           for (const slide of slides) {
             const { card, icon, label, text: textEl } = trio(slide);
@@ -341,5 +352,49 @@ describe("callout geometry sweep", () => {
         });
       }
     }
+  }
+});
+
+/*
+ * After the fit (TEACH-28): `materialiseSlide` sets every text box to its measured height. Prose
+ * the card was sized for stays inside it, and the card itself does not move. The ceiling's run of
+ * x's is not prose (the ruler sets an x wider than the estimate's 0.5em), and a column callout
+ * past about eighty characters runs past its box by design (`CALLOUT_LINES`), so both stay out.
+ */
+describe("callout after the fit", () => {
+  const FULL_PROSE =
+    "Clouds are tiny drops of liquid water, not water vapour; the vapour itself is invisible, so what we see is condensation.";
+  const FULL_CEILING_PROSE =
+    "Clouds are tiny drops of liquid water, not water vapour; the vapour itself is invisible, so what we see in the sky is condensation that has formed around specks of dust and salt.";
+  const COLUMN_PROSE =
+    "Clouds are tiny drops of liquid water, not water vapour, which is invisible.";
+  it("the prose fixtures are within the spec's ceiling", () => {
+    expect(FULL_PROSE.length).toBeLessThanOrEqual(ceilingOf(SPEC_LIMITS.callout));
+    expect(FULL_CEILING_PROSE.length).toBeLessThanOrEqual(ceilingOf(SPEC_LIMITS.callout));
+    expect(FULL_CEILING_PROSE.length).toBeGreaterThan(ceilingOf(SPEC_LIMITS.callout) - 10);
+  });
+  for (const theme of THEMES) {
+    it(`${theme.id}: the measured text stays in its card and the card stays where it was laid`, () => {
+      const cases = [
+        ...[SHORT, FULL_PROSE, FULL_CEILING_PROSE].flatMap((text) =>
+          (["headed", "two-column"] as const).map(
+            (variant) => [content({ kind: "watch-out", text }), variant] as const,
+          ),
+        ),
+        ...[SHORT, COLUMN_PROSE].map((text) => [imageText({ kind: "example", text }), ""] as const),
+      ];
+      for (const [spec, variant] of cases) {
+        const fitted = trio(
+          materialiseSlide(spec, theme.id, meta, counter(), variant || undefined),
+        );
+        const laid = trio(laidWith(spec, theme, variant));
+        const where = `${spec.kind}/${variant}/${plain(fitted.text).length}`;
+        const rect = ({ x, y, w, h }: SlideElement) => ({ x, y, w, h });
+        expect(rect(fitted.card), where).toEqual(rect(laid.card));
+        expect(inside(fitted.label, fitted.card), where).toBe(true);
+        expect(inside(fitted.text, fitted.card), where).toBe(true);
+        expect(inside(fitted.text, SAFE), where).toBe(true);
+      }
+    });
   }
 });

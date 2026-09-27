@@ -116,8 +116,8 @@ export type CalloutSpec = { kind: CalloutKind; text: string };
 
 /**
  * Lines of `small` a callout's text takes across a card `width` wide, one to `max`. A pure
- * estimate from the character count at the preset's resolved size (the recipes cannot measure);
- * the editor's ruler then fits the real text into the box the estimate sized.
+ * estimate from the character count at the preset's resolved size; `materialiseSlide`'s fit
+ * (TEACH-28) then sets the text box to its measured height inside the card the estimate sized.
  */
 export function calloutLines(t: Theme, text: string, width: number, max: number): number {
   const size = resolveFontSize(t, "small");
