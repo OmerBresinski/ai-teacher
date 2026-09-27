@@ -136,4 +136,61 @@ describeDb("migrations", () => {
     expect(ids.map((id) => byId.get(id))).toEqual([lessonId, null, null, null]);
     await sql`delete from documents where id in ${sql(ids)}`;
   });
+
+  describe("0008 accounts.issuer (TEACH-311)", () => {
+    const statements = readFileSync(
+      new URL("../drizzle/0008_accounts_issuer.sql", import.meta.url).pathname,
+      "utf8",
+    )
+      .split("--> statement-breakpoint")
+      .map((part) => part.replace(/^--.*$/gm, "").trim())
+      .filter((part) => part.length > 0);
+
+    /**
+     * Put `accounts` back in its pre-0008 shape, seed one row for `providerId`, run every 0008
+     * statement and read the row back. Everything happens in one transaction that is always
+     * rolled back, so the migrated schema is untouched.
+     */
+    async function migrateAccountRow(providerId: string): Promise<string | null> {
+      const rollback = new Error("rollback");
+      let issuer: string | null = null;
+      await sql
+        .begin(async (tx) => {
+          await tx`drop index accounts_issuer_account_id_idx`;
+          await tx`alter table accounts drop column issuer`;
+          await tx`insert into users (id, name, email, email_verified, created_at, updated_at)
+            values ('u-0008', 'Pre 0008', 'pre-0008@example.test', true, now(), now())`;
+          await tx`insert into accounts (id, account_id, provider_id, user_id, created_at, updated_at)
+            values ('a-0008', 'sub-1', ${providerId}, 'u-0008', now(), now())`;
+          for (const statement of statements) await tx.unsafe(statement);
+          const [row] = await tx<{ issuer: string | null }[]>`
+            select issuer from accounts where id = 'a-0008'`;
+          issuer = row?.issuer ?? null;
+          throw rollback;
+        })
+        .catch((err: unknown) => {
+          if (err !== rollback) throw err;
+        });
+      return issuer;
+    }
+
+    test("a Google row written before 0008 gets Google's issuer", async () => {
+      expect(await migrateAccountRow("google")).toBe("https://accounts.google.com");
+    });
+
+    test("any other provider's row makes the migration fail instead of guessing", async () => {
+      await expect(migrateAccountRow("microsoft")).rejects.toThrow(/issuer.*null/i);
+    });
+
+    test("the migrated table requires issuer and keys accounts on (issuer, account_id)", async () => {
+      const [column] = await sql<{ is_nullable: string }[]>`
+        select is_nullable from information_schema.columns
+        where table_name = 'accounts' and column_name = 'issuer'`;
+      expect(column?.is_nullable).toBe("NO");
+      const [index] = await sql<{ indexdef: string }[]>`
+        select indexdef from pg_indexes where indexname = 'accounts_issuer_account_id_idx'`;
+      expect(index?.indexdef).toStartWith("CREATE UNIQUE INDEX");
+      expect(index?.indexdef).toEndWith("USING btree (issuer, account_id)");
+    });
+  });
 });

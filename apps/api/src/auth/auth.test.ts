@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { effectiveCookieDomain, sessionCookieAttributes } from "./auth";
+import { DROPPED_OAUTH_TOKENS, effectiveCookieDomain, sessionCookieAttributes } from "./auth";
 
 describe("sessionCookieAttributes", () => {
   test("default: Lax, Secure only in production", () => {
@@ -80,5 +80,15 @@ describe("effectiveCookieDomain", () => {
       ),
     ).toBeUndefined();
     expect(warnings).toHaveLength(0);
+  });
+});
+
+describe("DROPPED_OAUTH_TOKENS", () => {
+  test("nulls exactly the three provider tokens on every accounts write (ADR 0008 item 3)", () => {
+    expect(DROPPED_OAUTH_TOKENS).toStrictEqual({
+      accessToken: null,
+      refreshToken: null,
+      idToken: null,
+    });
   });
 });

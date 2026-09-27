@@ -245,8 +245,28 @@ server ends up in a browser bundle). See `packages/api-client/README.md`.
 ## Auth
 
 Identity is **better-auth 1.7.2** (pinned exactly; ADR 0008) running inside this app with the
-Drizzle adapter over `@tj/db`. Only the email magic link is enabled; Google and Microsoft OAuth
-are wired in `src/auth/auth.ts` and switch on when their credentials are present.
+Drizzle adapter over `@tj/db`. The email magic link is always on. Google is on when
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 0008 amendment of 2026-09-27).
+Microsoft is wired in `src/auth/auth.ts` the same way but stays off by decision: its credentials are
+not set until it has its own linking review.
+
+### Google sign-in (TEACH-311)
+
+- **No provider tokens are stored.** `databaseHooks.account` `create.before` and `update.before`
+  merge `DROPPED_OAUTH_TOKENS` (access, refresh and id token all `null`) into every `accounts`
+  write, and `account.updateAccountOnSignIn: false` stops later sign-ins from rewriting the row.
+- **Accounts are keyed on `(issuer, account_id)`**, as better-auth 1.7.2 requires; Google's issuer
+  is `https://accounts.google.com` and `account_id` is the id token's `sub` (migration `0008`).
+- **Linking.** A Google sign-in whose verified email matches an existing user links to that user
+  and its Workspace (better-auth's default); an unverified Google email is refused with
+  `error=account_not_linked`. Linking copies Google's name and photo URL onto the user once
+  (`accountLinking.updateUserInfoOnLink`); later sign-ins leave them alone.
+- **Errors land on the web.** Failures with an `errorCallbackURL` (a cancelled consent, an unlinked
+  account) go there; the rest (missing or unknown state, database errors) go to
+  `<WEB_ORIGIN[0]>/sign-in?error=…` through `onAPIError.errorURL`.
+- Without credentials `POST /auth/sign-in/social` answers `404` with code `PROVIDER_NOT_FOUND`.
+- Tests: `src/auth-google.db.test.ts` stubs `globalThis.fetch` for Google's token endpoint and
+  hands back an unsigned id token, so no credentials or network are needed.
 
 ### Environment
 

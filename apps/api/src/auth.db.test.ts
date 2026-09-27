@@ -383,8 +383,9 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
         body: JSON.stringify({ provider: "google", callbackURL: `${WEB}/` }),
       },
     );
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(res.status).toBeLessThan(500);
+    // The web shows "Google sign-in is not available" on exactly this answer (ADR 0008 item 6).
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { code?: string }).code).toBe("PROVIDER_NOT_FOUND");
   });
 
   test("createPersonalWorkspace is idempotent; logUsersWithoutWorkspace counts and heals", async () => {
