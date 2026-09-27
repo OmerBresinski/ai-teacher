@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
-import { LessonViewer } from "@tj/editor/present";
+import { LessonViewer, useFittedLesson } from "@tj/editor/present";
 import { IconButton, toast } from "@tj/ui";
 import { ArrowLeft } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -26,11 +26,15 @@ export function LessonViewerPage() {
   const shellReturn = useShellReturn();
   const { data } = useQuery(libraryQueries.document(lessonId, queryClient));
   const { mutateAsync: duplicate } = useMutation(libraryMutations.duplicateDocument(queryClient));
+  const lesson = data && isFullDocument(data) && "slides" in data ? data : null;
+  // Drawn and exported re-fitted when stored under older floors; nothing is saved from here.
+  const fitted = useFittedLesson(lesson);
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
   }
+  if (!fitted) return <RoutePendingPage />;
 
   const onDuplicate = async () => {
     const copy = await duplicate([lessonId]);
@@ -44,14 +48,18 @@ export function LessonViewerPage() {
 
   return (
     <LessonViewer
-      lesson={data}
+      lesson={fitted}
       leading={
         <IconButton label="Back to the library" onClick={() => void navigate({ to: shellReturn })}>
           <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
         </IconButton>
       }
       exportSlot={
-        <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
+        <ExportControl
+          document={fitted}
+          imageOrigin={env.VITE_API_URL}
+          onOpenPrint={openPrintTab}
+        />
       }
       onPresent={(slide) =>
         void navigate({
