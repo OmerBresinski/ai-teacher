@@ -1898,7 +1898,8 @@ function greedyPages(
   if (!firstEls) return undefined;
   const shell = fitSlide(continued(slide, chromeOf(slide), [], ids), t).slide;
   const head = headingOf(shell);
-  const top2 = Math.max(top, head ? snapY(head.y + head.h + SPACE[4]) : top);
+  // The continuation's words start where the first page's do: one gap under the heading (`look.ts`).
+  const top2 = Math.max(top, head ? snapY(head.y + head.h + SPACE[3]) : top);
   const groups: { items: string[]; size: number }[] = [];
   let rest = items.slice(k);
   while (rest.length) {
