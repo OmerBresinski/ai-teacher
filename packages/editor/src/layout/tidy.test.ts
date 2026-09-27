@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
   type Lesson,
   parseLesson,
@@ -8,7 +9,7 @@ import {
   type TextElement,
 } from "@tj/domain/documents";
 import { generatedFrom } from "@tj/domain/documents/fixtures";
-import { BODY_Y, materialiseSlide } from "@tj/slides";
+import { BODY_Y, materialiseSlide, measureHeadless, SAFE_BOTTOM } from "@tj/slides";
 import { docFromText, newLesson, newSlide } from "../model/factories";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
@@ -642,5 +643,62 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(tidyMessage(out.outcome)).toContain(
       '1 box will not fit at the smallest readable size ("and then another thing happened\u2026")',
     );
+  });
+
+  test("a stored worked example whose steps run off their card continues with the card (Freud, slide 9)", () => {
+    // As generated (E49, Y13 psychology): four steps at the 26pt body floor, three of them two
+    // lines long, drawn 309 tall from y 308 on a 540 slide; the card stops at 515.
+    const fixture = JSON.parse(
+      readFileSync(new URL("./fixtures/freud-worked-example.slide.json", import.meta.url), "utf8"),
+    ) as { themeId: string; slide: Slide };
+    const lesson = newLesson("Freud", fixture.themeId);
+    lesson.slides = [fixture.slide];
+    const freud = parseLesson(lesson);
+    const source = freud.slides[0] as Slide;
+    const measure = measureHeadless(getTheme(freud.themeId));
+    const card = source.elements.find((e) => e.type === "shape" && e.name === "Working card");
+    const steps = source.elements.find((e) => e.type === "text" && e.revealStep === 1);
+    const question = source.elements.find(
+      (e) => e.type === "text" && e.style.preset === "body" && e.revealStep === undefined,
+    );
+    if (!card || steps?.type !== "text" || !question) throw new Error("fixture");
+
+    // The engine names the card first (it overflows too, and sits above the steps): the split has
+    // to look past it to the steps laid on it.
+    const reflowed = reflowSlide(source, getTheme(freud.themeId), measure);
+    expect(source.elements[reflowed.splitAt ?? -1]?.id).toBe(card.id);
+    expect(reflowed.overflow).toContain(steps.id);
+
+    const out = tidySlide(freud, source.id, measure);
+    expect(out.outcome.continued).toBe(1);
+    expect(out.outcome.overflow).toEqual([]);
+    expect(tidyMessage(out.outcome)).toContain("list continued on a new slide");
+    const [head, cont] = out.lesson.slides;
+    if (!head || !cont) throw new Error("slides");
+
+    // The head keeps the question and the first steps on its card, all inside the safe area.
+    const headSteps = byId(head, steps.id);
+    expect(byId(head, question.id)).toBeDefined();
+    expect(headSteps?.type === "text" ? docLineCount(headSteps.doc) : 0).toBe(2);
+    for (const el of head.elements) expect(el.y + el.h).toBeLessThanOrEqual(SAFE_BOTTOM + 0.5);
+
+    // The continuation is a worked example with the card, its caption and steps 3 and 4 numbered
+    // on, the reveal kept; no question on it.
+    expect(cont.kind).toBe("worked-example");
+    expect(cont.elements.some((e) => e.type === "shape" && e.name === "Working card")).toBe(true);
+    expect(
+      cont.elements.some((e) => e.type === "text" && docToPlainText(e.doc) === "WORKING"),
+    ).toBe(true);
+    const texts = cont.elements.flatMap((e) => (e.type === "text" ? [docToPlainText(e.doc)] : []));
+    expect(texts.some((t) => t.includes("explain this avoidance?"))).toBe(false);
+    const carried = cont.elements.find((e) => e.type === "text" && e.revealStep === 1);
+    if (carried?.type !== "text") throw new Error("carried steps");
+    const list = carried.doc.content?.[0];
+    expect(list?.type).toBe("orderedList");
+    expect(list?.attrs?.start).toBe(3);
+    expect(docLineCount(carried.doc)).toBe(2);
+    expect(carried.reveal).toBe("rise");
+    expect(headingOf(cont)).toContain("(continued)");
+    expect(reflowSlide(cont, getTheme(freud.themeId), measure).overflow).toEqual([]);
   });
 });
