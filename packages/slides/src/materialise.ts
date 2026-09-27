@@ -14,7 +14,16 @@ import type {
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj/domain/documents";
-import { applyCallout, isCalloutElement } from "./callout";
+import {
+  applyCallout,
+  calloutColumn,
+  calloutFitBottom,
+  type DetachedCallout,
+  detachCallout,
+  fitCallout,
+  isCalloutElement,
+  placeCallout,
+} from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
@@ -159,18 +168,6 @@ function materialisePages(
   }
   const laid = reid(layoutSlide(spec.kind, themeId, chosen), ids);
   const filled = fillSlide(spec, themeId, laid, ids, chosen);
-  // A callout too long for its card even one stop down is left off, never clipped (rulings 91,
-  // 102); the worked example's is left off by design (`applyCallout`) and is not reported.
-  if (
-    report &&
-    (spec.kind === "content" || spec.kind === "image-text") &&
-    spec.callout &&
-    !filled.elements.some(isCalloutElement)
-  ) {
-    report(
-      `callout dropped: ${spec.callout.text.length} characters of ${spec.callout.kind} do not fit the ${spec.kind} card at the small floor`,
-    );
-  }
   const stamp = provenance(spec.factRefs, meta);
   let slide: Slide = { id: ids(), kind: spec.kind, elements: filled.elements };
   const diagram = spec.kind === "content" ? diagramOf(spec) : undefined;
@@ -194,6 +191,19 @@ function materialisePages(
       ? fitted.map((page, i) => (i === 0 ? { ...page, diagram: { instruction: diagram } } : page))
       : fitted;
   const out = pages ? noted : noted.slice(0, 1);
+  // A callout too long for its card even one stop down, or with no room left under the words
+  // beside a slot, is left off, never clipped (rulings 91, 102); the worked example's is left
+  // off by design (`applyCallout`) and is not reported.
+  if (
+    report &&
+    (spec.kind === "content" || spec.kind === "image-text") &&
+    spec.callout &&
+    !out.some((page) => page.elements.some(isCalloutElement))
+  ) {
+    report(
+      `callout dropped: ${spec.callout.text.length} characters of ${spec.callout.kind} do not fit the room the ${spec.kind} slide leaves at the small floor`,
+    );
+  }
   return out.map((page) => ({
     ...page,
     elements: page.elements.map((element) => stampElement(element, stamp)),
@@ -214,6 +224,27 @@ export function lookAndFitPages(
   structure: SlideStructure = {},
   options: { pages?: boolean } = { pages: true },
 ): Slide[] {
+  // A teaching slide's callout sits out the look and the structure pass, which re-lay the words
+  // from the top and know nothing of a card at the foot; it goes back under the words after.
+  if (slide.kind === "content") {
+    const detached = detachCallout(slide);
+    if (detached.callout) {
+      const pages = lookAndFitPages(detached.slide, theme, ids, structure, options);
+      const at = pages.length - 1;
+      const last = pages[at] as Slide;
+      const placed = placeCallout(last, theme, detached.callout, ids);
+      if (placed) return pages.map((page, i) => (i === at ? placed : page));
+      // No room under the words as the look set them. On one slide, the words are set as one
+      // paragraph instead (the key idea's side panel and the lead's card give way: the warning
+      // matters more to the class), first as they are, then stepped down to clear the card, as
+      // the fit steps a body for a card without the look. Past that the callout is left off.
+      if (pages.length === 1) {
+        const again = paragraphWithCallout(detached, theme, ids, structure);
+        if (again) return [again];
+      }
+      return pages;
+    }
+  }
   // The structure pass places its components under the heading as the fit sets it, so it runs on
   // the fitted look.
   const looked = fitSlide(applyLook(slide, theme, ids), theme).slide;
@@ -234,6 +265,45 @@ export function lookAndFitPages(
         );
   });
   return done;
+}
+
+/**
+ * A teaching slide as one paragraph under its heading (`applyLook` without the lead) with its
+ * callout under the words: fitted as it is, else with the words stepped down (never under the
+ * body floor) to clear a card at the column's width. `undefined` when neither leaves the card
+ * room or the words would overrun.
+ */
+function paragraphWithCallout(
+  detached: { slide: Slide; callout?: DetachedCallout },
+  theme: Theme,
+  ids: IdSupplier,
+  structure: SlideStructure,
+): Slide | undefined {
+  const callout = detached.callout;
+  if (!callout) return undefined;
+  const paragraph = withTerms(
+    applyLook(detached.slide, theme, ids, { lead: false }),
+    theme,
+    structure.terms,
+  );
+  const plain = fitSlide(paragraph, theme);
+  const first =
+    plain.overflow.length === 0 ? placeCallout(plain.slide, theme, callout, ids) : undefined;
+  if (first) return first;
+  const { w, beside } = calloutColumn(paragraph);
+  const need = fitCallout(theme, callout.spec.text, w, Number.POSITIVE_INFINITY);
+  if (!need) return undefined;
+  // The slot or panel beside the words reaches the foot by design: it sits out the fit.
+  const aside = new Set(beside);
+  const stepped = fitSlide(
+    { ...paragraph, elements: paragraph.elements.filter((e) => !aside.has(e)) },
+    theme,
+    calloutFitBottom(need.height),
+  );
+  if (stepped.overflow.length > 0) return undefined;
+  const byId = new Map(stepped.slide.elements.map((e) => [e.id, e]));
+  const elements = paragraph.elements.map((e) => (aside.has(e) ? e : (byId.get(e.id) ?? e)));
+  return placeCallout({ ...stepped.slide, elements }, theme, callout, ids);
 }
 
 /**

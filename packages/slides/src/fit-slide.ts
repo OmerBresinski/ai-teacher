@@ -50,13 +50,23 @@ export type FitResult = {
   overflow: Id[];
 };
 
-export function fitSlide(slide: Slide, theme: Theme): FitResult {
+export function fitSlide(
+  slide: Slide,
+  theme: Theme,
+  /**
+   * A raised floor the words step down to clear, for room owed to something laid after the fit
+   * (a teaching slide's callout card, `materialise.ts`); `reflowSlide`'s `fitBottom`.
+   */
+  fitBottom?: number,
+): FitResult {
   const measure = measureHeadless(theme);
   const panel = slide.question && hasExplanationPanel(slide.question) ? slide.question : undefined;
   const lane =
     panel?.type === "true-false" || panel?.type === "multiple-choice"
       ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, RESERVED_LINES[panel.type]) }
-      : {};
+      : fitBottom === undefined
+        ? {}
+        : { fitBottom };
   let start = slide.kind === "worked-example" ? raiseCard(slide, theme, measure) : slide;
   const options = { ...lane, keep: stemOf(start) };
   let result = reflowSlide(start, theme, measure, options);
