@@ -1,4 +1,5 @@
 import type { Id, Slide, Theme } from "@tj/domain/documents";
+import { slotSideOnDrop } from "@tj/slides";
 import {
   type CSSProperties,
   type MutableRefObject,
@@ -144,6 +145,9 @@ export function SelectionLayer({
   scaleRef.current = scale;
 
   const history = useHistory();
+  /** The slide as it stood when the gesture began: pointer moves never write it. */
+  const slideRef = useRef(slide);
+  slideRef.current = slide;
   const selection = useSelection();
   const { editingTextId, editingExplanation, showGuides, crop } = useSessionUi();
   const actions = useSessionActions();
@@ -399,7 +403,16 @@ export function SelectionLayer({
     (g: Gesture) => {
       const shown = previewRef.current;
       if (g.kind === "drag" && g.started) {
-        if (g.applied.x || g.applied.y) {
+        // A teaching slide's photo dropped with its centre over the midline takes the other side,
+        // the words with it (R2), in the drag's own transaction: one undo step.
+        const [only] = g.ids;
+        const side =
+          g.ids.length === 1 && only && !g.duplicate
+            ? slotSideOnDrop(slideRef.current, only, g.applied.x)
+            : undefined;
+        if (side) {
+          history.dispatch(reducers.setSlotSide, slide.id, side);
+        } else if (g.applied.x || g.applied.y) {
           history.dispatch(reducers.transformElements, slide.id, g.ids, {
             dx: g.applied.x,
             dy: g.applied.y,
