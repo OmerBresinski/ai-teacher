@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Slide, SlideArt, SlideKind, Theme } from "@tj/domain/documents";
+import type { Slide, SlideKind, Theme } from "@tj/domain/documents";
 import {
   artChoices,
   artCollisions,
@@ -147,7 +147,7 @@ describe("theme art per slide role (UX ruling 107)", () => {
   });
 
   test("forced variants: what the menu offers fits whole, and nothing forced ever collides", () => {
-    const forced: SlideArt[] = ["title", "content", "picture", "plain"];
+    const forced = ["title", "content", "picture", "plain"] as const;
     for (const theme of THEMES) {
       for (const { name, slide } of everyLayout(theme)) {
         const offered = artChoices(theme, slide);

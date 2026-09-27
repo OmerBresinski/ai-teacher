@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ImageElement, Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
-import { docFromText } from "../../model/factories";
+import { docFromText, newSlide } from "../../model/factories";
 import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model/insert";
 import { getTheme } from "../../model/themes";
 import { docHasMark } from "../../text/doc-marks";
@@ -221,6 +221,44 @@ describe("ShapeToolbar (row 1)", () => {
 
 // TeachDeck `chrome.test.tsx` "DropTrigger chevrons": exactly one chevron by default, none on
 // opt-out, and the accessible name carries the label and the visible value.
+describe("SlideToolbar background art (UX ruling 107)", () => {
+  /** A playground lesson whose first slide is a laid-out content slide with no override. */
+  function artLesson(): Lesson {
+    const lesson = seededLesson();
+    lesson.themeId = "playground";
+    const content = { ...newSlide("content", "playground"), id: "art-slide" };
+    lesson.slides = [content, ...lesson.slides.slice(1)];
+    return lesson;
+  }
+  const art = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>("[data-slide-root] > div[aria-hidden]")?.dataset.themeArt;
+
+  test("a pick changes the render, undo restores it, and no pick leaves the slide alone", async () => {
+    const { read, container } = renderEditor(artLesson());
+    expect(read().slides[0]?.background).toBeUndefined();
+    const before = art(container);
+    expect(before).toBe("content");
+    openMenu(within(toolbar("Slide")).getByRole("button", { name: /Background art/ }));
+    const items = await screen.findAllByRole("menuitemradio");
+    expect(items.map((i) => i.textContent)).toContain("Plain");
+    expect(items[0]?.textContent).toBe("Auto (margin art)");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Picture motif" }));
+    expect(read().slides[0]?.background).toEqual({ art: "picture" });
+    await waitFor(() => expect(art(container)).toBe("picture"));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(read().slides[0]?.background).toBeUndefined();
+    await waitFor(() => expect(art(container)).toBe(before));
+  });
+
+  test("hidden when the slide has its own colour", () => {
+    const lesson = artLesson();
+    const slide = lesson.slides[0];
+    if (slide) slide.background = { color: "#123456" };
+    renderEditor(lesson);
+    expect(within(toolbar("Slide")).queryByRole("button", { name: /Background art/ })).toBeNull();
+  });
+});
+
 describe("DropTrigger", () => {
   const chevrons = (root: HTMLElement) => root.querySelectorAll("svg.lucide-chevron-down").length;
 

@@ -25,6 +25,7 @@ import { useHistory } from "../document-context";
 import { useProposals } from "../proposals-context";
 import { useSessionActions } from "../use-editor-session";
 import { AnswerDrawer } from "./AnswerDrawer";
+import { SlideArtMenu } from "./SlideArtMenu";
 import { BarButton, DropTrigger, ICON, useThemePalette } from "./shared";
 
 const TRANSITIONS: { value: TransitionId; label: string }[] = [
@@ -95,6 +96,7 @@ export const SlideToolbar = memo(function SlideToolbar({
           history.dispatch(reducers.setSlideBackground, slide.id, { ...slide.background, color })
         }
       />
+      <SlideArtMenu slide={slide} theme={theme} />
       <Tooltip label="Background images arrive with a later release">
         <span className="inline-flex">
           <IconButton
