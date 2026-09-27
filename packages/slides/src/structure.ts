@@ -16,7 +16,6 @@ import { SAFE, SPACE, snapY } from "./grid";
 import {
   ACCENT_BAR_NAME,
   accentTint,
-  COUNTER_NAME,
   DIAGRAM_NAME,
   KIND_TAG_NAME,
   PHOTO_NAME,
@@ -97,8 +96,6 @@ export type SlideStructure = {
   points?: string[];
   /** The lesson's vocabulary, picked out in running text. */
   terms?: string[];
-  /** The deck is known: the top line carries the slide counter (`withDeckChrome`). */
-  deck?: { yearGroup?: string | null; subject?: string | null };
   /**
    * The photograph the plan asked for (a key idea's `photo`, carried on its outline entry as the
    * image brief): an explain or a list keeps the right half for it (`withPhotoSlot`).
@@ -1677,7 +1674,6 @@ export function slotSide(slide: Slide, side: SlotSide): Slide {
     e !== slot &&
     !isBackdrop(e) &&
     e.name !== ACCENT_BAR_NAME &&
-    e.name !== COUNTER_NAME &&
     e.name !== KIND_TAG_NAME &&
     e.w < SAFE.w - 1 &&
     e.y < slot.y + slot.h &&

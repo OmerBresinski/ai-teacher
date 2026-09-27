@@ -14,11 +14,9 @@ import {
 } from "@tj/domain/documents";
 import {
   COMPARE_NAME,
-  COUNTER_NAME,
   type DiagramTextSpec,
   diagramSpecSchemaFor,
   diagramTextSpecSchemaFor,
-  EYEBROW_NAME,
   figureGroupOf,
   type ImageTextPhoto,
   KIND_TAG_NAME,
@@ -230,8 +228,6 @@ function withSpecNames(
   });
 }
 
-const LOOK_CHROME = new Set([COUNTER_NAME, EYEBROW_NAME, KIND_TAG_NAME]);
-
 function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
   const out: { field: string; text: string }[] = [];
   const figure = figureGroupOf(slide);
@@ -274,8 +270,8 @@ function presetFieldsOf(slide: Slide): { field: string; text: string }[] {
     if (element.type === "text") {
       const preset = element.style?.preset;
       if (preset === "caption" && slide.kind !== "diagram") continue;
-      // The look's chrome (`@tj/slides` look.ts) is drawn from the deck, not a spec field.
-      if (element.name !== undefined && LOOK_CHROME.has(element.name)) continue;
+      // The look's kind tag (`@tj/slides` look.ts) is chrome, not a spec field.
+      if (element.name === KIND_TAG_NAME) continue;
       const text = richDocToPlainText(element.doc).trim();
       // A worked example's working laid as a steps strip (`@tj/slides` structure.ts): one card
       // per step, named "Step n", and a continuation slide numbers on.

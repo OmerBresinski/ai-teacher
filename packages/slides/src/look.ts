@@ -373,101 +373,12 @@ function headingDisplay(
   return { fontSize: Math.round(t.sizes.heading * HEADING_DISPLAY), lineHeight: 1.08 };
 }
 
-/* ---------------------------------------------------------------- deck chrome */
-
-export const EYEBROW_NAME = "Deck line";
-export const COUNTER_NAME = "Slide counter";
-
-/** A slide's place in its deck, from which a counter is drawn. */
-export type SlidePosition = { index: number; total: number };
-
-/** The counter's words for a place in the deck: "7 / 12". */
-export const counterText = (position: SlidePosition): string =>
-  `${position.index + 1} / ${position.total}`;
-
-const captionWidth = (label: string, t: Theme) => Math.ceil(label.length * t.sizes.caption * 0.78);
 /**
- * The room a heading leaves the counter at the right of the top lane: "88 / 88" and its gap. The
- * content budgets are measured with the heading at this width. A deck of 100 slides or more draws
- * its counter wider than this (`counted` sizes the box from its words, so it never clips); a
- * lesson deck is a tenth of that.
- */
-export const counterRoom = (t: Theme): number => captionWidth("88 / 88", t) + SPACE[3];
-
-/**
- * A slide counter with its words set from the slide's place in the deck, so it stays true after a
- * reorder, insert or delete; any other element comes back as it is. Its box is drawn from those
- * words too, set against the right margin, so a counter stored in a box sized for a shorter count
- * ("1 / 1") never clips ("10 /"). Every renderer (SlideView, the PPTX export) counts through this,
- * never from the stored words or box.
- */
-export function counted(el: SlideElement, position: SlidePosition, t: Theme): SlideElement {
-  if (el.name !== COUNTER_NAME || el.type !== "text") return el;
-  const text = counterText(position);
-  const w = captionWidth(text, t);
-  return { ...el, x: SAFE.x + SAFE.w - w, w, doc: docFromText(text) };
-}
-
-/**
- * The top line across a deck: the kind tag at the left and a quiet "7 / 12" at the right. The
- * year-and-subject line the examples set before the tag is not drawn: said on every slide it is
- * noise (Greg, 26 Sept 2026), and one written before is taken off. Only a slide with a kind tag
- * takes the counter (its lane is free); the cover and the question slides keep their compositions.
- * Re-run after slides are added, removed or moved: it replaces what it set before, so the counter
- * stays true.
- */
-export function withDeckChrome(slides: Slide[], t: Theme, ids: Ids = uid): Slide[] {
-  const total = slides.length;
-  return slides.map((slide, i) => {
-    const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
-    const els = slide.elements.filter((e) => e.name !== EYEBROW_NAME && e.name !== COUNTER_NAME);
-    const counter = counterText({ index: i, total });
-    // Wide enough for any count: the words are set again at render time ("10 / 13" was clipped
-    // in a box sized for the "1 / 1" a slide was materialised with).
-    const cw = captionWidth("88 / 88", t);
-    const lane = tag ? { y: tag.y, h: tag.h } : { y: SAFE.y, h: tagHeight(t) };
-    const at = { x: SAFE.x + SAFE.w - cw, ...lane, w: cw };
-    // Every slide takes the counter at the top right, the cover aside, where the corner is free
-    // (an untagged heading leaves it, `applyLook`); a slide whose own content fills it goes without.
-    const clash = els.some(
-      (e) =>
-        !isBackdrop(e) &&
-        e.name !== ACCENT_BAR_NAME &&
-        e.x < at.x + at.w &&
-        e.x + e.w > at.x &&
-        e.y < at.y + at.h &&
-        e.y + e.h > at.y,
-    );
-    if (slide.kind === "title" || (!tag && clash)) {
-      return els.length === slide.elements.length ? slide : { ...slide, elements: els };
-    }
-    const added: SlideElement = {
-      id: ids(),
-      type: "text",
-      ...at,
-      name: COUNTER_NAME,
-      doc: docFromText(counter),
-      style: {
-        preset: "caption",
-        color: t.colors.muted,
-        align: "right",
-        padding: TAG_PAD_Y,
-        autoHeight: false,
-      },
-    };
-    return {
-      ...slide,
-      elements: [...els.map((e) => (tag && e === tag ? { ...e, x: SAFE.x } : e)), added],
-    };
-  });
-}
-
-/**
- * A stored slide without the look's chrome (kind tag, accent bar, eyebrow, counter), for a newer
- * look to be applied in its place. The named heading stays and marks the slide as headed.
+ * A stored slide without the look's chrome (kind tag, accent bar), for a newer look to be applied
+ * in its place. The named heading stays and marks the slide as headed.
  */
 export function stripLook(slide: Slide): Slide {
-  const chrome = new Set([KIND_TAG_NAME, ACCENT_BAR_NAME, EYEBROW_NAME, COUNTER_NAME]);
+  const chrome = new Set([KIND_TAG_NAME, ACCENT_BAR_NAME]);
   if (!slide.elements.some((e) => chrome.has(e.name ?? ""))) return slide;
   return { ...slide, elements: slide.elements.filter((e) => !chrome.has(e.name ?? "")) };
 }
@@ -537,9 +448,7 @@ export function applyLook(
     // cards keep their room (a two-line display heading pushed a worked example's card off).
     const display = label ? { lineHeight: 1.12 } : headingDisplay(heading, t);
     if (display) Object.assign(style, display);
-    // Untagged, the heading shares its lane with the slide counter at the right (`withDeckChrome`).
-    const w = label ? heading.w : Math.min(heading.w, SAFE.w - counterRoom(t));
-    const next: TextElement = { ...heading, y: want, w, name: HEADING_NAME, style };
+    const next: TextElement = { ...heading, y: want, name: HEADING_NAME, style };
     const foot = next.y + next.h + SPACE[3];
     const below = els.filter(
       (e) => e !== heading && !isBackdrop(e) && e.y >= heading.y + heading.h,

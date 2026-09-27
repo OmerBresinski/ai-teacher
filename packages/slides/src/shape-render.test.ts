@@ -3,7 +3,7 @@ import type { Slide, TextElement } from "@tj/domain/documents";
 import { CONTENT_BUDGETS } from "./content-shapes";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
-import { COUNTER_NAME, DIAGRAM_NAME, EYEBROW_NAME, KIND_TAG_NAME } from "./look";
+import { DIAGRAM_NAME, KIND_TAG_NAME } from "./look";
 import { materialiseSlide, shapeFallback, withoutDiagramSlot, withShapeHints } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { isEditorialIssue, type SlideSpecOf, SPEC_LIMITS, slideSpecSchemaFor } from "./specs";
@@ -268,7 +268,7 @@ describe("a diagram instruction with no drawing, outside the editor", () => {
       const all = texts(shown).join(" ");
       for (const s of volcano.body.split(". ")) expect(all).toContain(s.replace(/\.$/, ""));
       expect(fitSlide(shown, t).overflow).toEqual([]);
-      // The key term keeps its mark; the top line and counter come back.
+      // The key term keeps its mark.
       expect(JSON.stringify(shown.elements)).toContain('"bold"');
     });
   }
@@ -276,14 +276,9 @@ describe("a diagram instruction with no drawing, outside the editor", () => {
     const slide = materialiseSlide(cycle, "chalk", meta);
     expect(withoutDiagramSlot(slide, getTheme("chalk"))).toBe(slide);
   });
-  test("the counter and kind tag survive the relayout; no deck line is drawn", () => {
-    const stored = materialiseSlide(volcano, "chalk", meta, undefined, 0, {
-      deck: { yearGroup: "Year 8", subject: "Geography" },
-    });
+  test("the kind tag survives the relayout", () => {
+    const stored = materialiseSlide(volcano, "chalk", meta);
     const shown = withoutDiagramSlot(stored, getTheme("chalk"));
-    expect(named(stored, EYEBROW_NAME)).toHaveLength(0);
-    expect(named(shown, EYEBROW_NAME)).toHaveLength(0);
-    expect(named(shown, COUNTER_NAME)).toEqual(named(stored, COUNTER_NAME));
     expect(named(shown, KIND_TAG_NAME)).toEqual(named(stored, KIND_TAG_NAME));
   });
 });
