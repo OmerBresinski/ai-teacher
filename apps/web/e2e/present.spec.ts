@@ -4,6 +4,16 @@ import { expect, type SeededPaths, seedCreditedLesson, test } from "./fixtures";
 const PRESENT = (paths: SeededPaths) => paths.lesson("demo-water-cycle", "/present");
 const status = (page: import("@playwright/test").Page) => page.getByRole("status").first();
 
+/**
+ * A Present button asks for fullscreen in its click (ruling 104). Chromium may keep an Escape for
+ * itself to leave fullscreen, or pass it on as well, so press until the deck has gone (at most two).
+ */
+async function escapePresent(page: import("@playwright/test").Page): Promise<void> {
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(250);
+  if (page.url().includes("/present")) await page.keyboard.press("Escape");
+}
+
 test.describe("present mode", () => {
   test("stays on the stage palette in every app theme and letterboxes the slide", async ({
     signedInPage: { page, paths },
@@ -25,7 +35,7 @@ test.describe("present mode", () => {
       expect(tokens.card, theme).toBe("#1f1d1b");
       expect(tokens.paint, theme).toBe("rgb(20, 19, 18)");
     }
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     const slide = page.locator('[data-slide-mode="present"]');
     await expect(slide).toHaveCount(1);
     const box = await slide.boundingBox();
@@ -41,7 +51,7 @@ test.describe("present mode", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(PRESENT(paths));
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 1 of");
     await page.keyboard.press("Space");
     await expect(status(page)).toContainText("Slide 2 of");
@@ -77,7 +87,7 @@ test.describe("present mode", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(PRESENT(paths));
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 1 of");
     await page.keyboard.press("p");
     await expect(page.getByRole("button", { name: "Pen", exact: true })).toHaveAttribute(
@@ -127,7 +137,7 @@ test.describe("present mode", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(PRESENT(paths));
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await page.keyboard.press("t");
     const panel = page.getByRole("radiogroup", { name: "Timer mode" });
     await expect(panel).toBeVisible();
@@ -143,7 +153,7 @@ test.describe("present mode", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(PRESENT(paths));
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 1 of");
     const pressed = (name: string) =>
       page.getByRole("button", { name, exact: true }).getAttribute("aria-pressed");
@@ -205,7 +215,7 @@ test.describe("present mode", () => {
     await expect(page).toHaveURL(
       new RegExp(`${paths.lesson("roman-roads", "/present")}\\?series=${romans}$`),
     );
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await page.keyboard.press("End");
     await page.keyboard.press("Space");
     await expect(page.getByRole("heading", { name: "End of lesson" })).toBeVisible();
@@ -214,8 +224,8 @@ test.describe("present mode", () => {
     await expect(page).toHaveURL(
       new RegExp(`${paths.lesson("demo-fractions", "/present")}\\?series=${romans}$`),
     );
-    await page.getByRole("button", { name: "Stay in this window" }).click();
-    await page.keyboard.press("Escape");
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
+    await escapePresent(page);
     await expect(page).toHaveURL(new RegExp(`${paths.series("series-romans")}$`));
   });
 
@@ -227,7 +237,7 @@ test.describe("present mode", () => {
     await page.keyboard.press("ArrowRight");
     await page.getByRole("button", { name: "Present" }).click();
     await expect(page).toHaveURL(/present\?(from=view&slide=2|slide=2&from=view)$/);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 2 of");
     await page.keyboard.press("Escape");
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle", "/view")}$`));
@@ -238,8 +248,8 @@ test.describe("present mode", () => {
   }) => {
     await page.goto(paths.lesson("demo-water-cycle"));
     await page.getByRole("button", { name: "Present" }).click();
-    await expect(page).toHaveURL(/present\?from=edit$/);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page).toHaveURL(/present\?slide=1&from=edit$/);
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await page.keyboard.press("Escape");
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
     await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
@@ -251,7 +261,7 @@ test.describe("present mode", () => {
   }) => {
     const id = await seedCreditedLesson(page);
     await page.goto(`/l/${id}/present`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 1 of 4");
     await page.keyboard.press("End");
     await expect(status(page)).toContainText("Slide 4 of 4");

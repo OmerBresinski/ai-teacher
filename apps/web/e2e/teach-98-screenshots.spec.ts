@@ -109,7 +109,6 @@ test("captures figure-left and figure-wide diagrams, and Unicode labels on all s
 
   const stage = async (id: string | undefined, slide: number, file: string) => {
     await page.goto(`/l/${id}/present?slide=${slide}`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(page.getByRole("status").first()).toContainText(`Slide ${slide} of`);
     await page.waitForTimeout(600);
