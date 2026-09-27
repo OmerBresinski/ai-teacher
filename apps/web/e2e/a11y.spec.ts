@@ -18,7 +18,7 @@ import {
   newSlide,
 } from "@tj/editor/starter";
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test } from "./fixtures";
+import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test, uniqueEmail } from "./fixtures";
 
 // axe reads contrast through the arrival fade: wait for animations, not a fixed delay.
 async function settled(page: Page) {
@@ -29,12 +29,6 @@ async function settled(page: Page) {
 }
 
 test.describe("accessibility (axe)", () => {
-  test("/sign-in has no serious or critical violations", async ({ page }) => {
-    await page.goto("/sign-in");
-    await expect(page.getByText("Sign in to Teaching Journey")).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "/sign-in");
-  });
-
   test("/ (signed in) has no serious or critical violations", async ({
     signedInPage: { page },
   }) => {
@@ -56,6 +50,29 @@ test.describe("accessibility (axe)", () => {
   });
 
   const THEMES = ["light", "dark", "high-contrast"] as const;
+
+  // /sign-in (TEACH-252), signed out, in each theme: the idle form, the sent state and a failed
+  // round trip's alert.
+  for (const theme of THEMES) {
+    test(`/sign-in is clean in the ${theme} theme: idle, sent and ?error=`, async ({ page }) => {
+      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
+      await page.goto("/sign-in");
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Welcome to DayBack" }),
+      ).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await expectNoSeriousA11yViolations(page, `/sign-in (${theme})`);
+
+      await page.getByLabel("Email address").fill(uniqueEmail("a11y"));
+      await page.getByRole("button", { name: "Email me a link" }).click();
+      await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+      await expectNoSeriousA11yViolations(page, `/sign-in sent (${theme})`);
+
+      await page.goto("/sign-in?error=INVALID_TOKEN");
+      await expect(page.getByRole("alert")).toBeVisible();
+      await expectNoSeriousA11yViolations(page, `/sign-in?error=INVALID_TOKEN (${theme})`);
+    });
+  }
   const ROUTES = (paths: SeededPaths): { path: string; ready: RegExp | string }[] => [
     { path: "/", ready: "Home" },
     { path: "/lessons", ready: "Lessons" },

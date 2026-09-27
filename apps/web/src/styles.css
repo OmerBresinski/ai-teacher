@@ -3,3 +3,18 @@
 @source "../../../packages/ui/src";
 /* @tj/editor components use Tailwind utilities on the same tokens (ADR 0022); scan them too. */
 @source "../../../packages/editor/src";
+
+/*
+ * /sign-in plays the DayBack mark once as it opens (TEACH-252): the homepage's hover rewind
+ * (homepage/assets/system.css `brand-rewind`), the ring turning back round the sun. Used only
+ * behind `motion-safe:`, so a reduced-motion preference never sees it.
+ */
+@theme {
+  --animate-dayback-rewind: dayback-rewind 1.1s cubic-bezier(0.6, 0, 0.2, 1) 0.3s both;
+
+  @keyframes dayback-rewind {
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+}
