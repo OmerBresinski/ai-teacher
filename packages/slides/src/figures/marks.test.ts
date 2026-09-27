@@ -127,6 +127,14 @@ describe("angleArc", () => {
     }
   });
 
+  it("draws no arc between equal angles, and the full circle a whole turn apart", () => {
+    const v = { x: 100, y: 100 };
+    expect(angleArc(v, 40, 40, 20, t, { count: 2 })).toHaveLength(0);
+    const [full] = angleArc(v, 0, 360, 20, t);
+    expect(full?.w).toBeCloseTo(40, 6);
+    expect(full?.h).toBeCloseTo(40, 6);
+  });
+
   it("draws one arc by default, in ink", () => {
     const arcs = angleArc({ x: 0, y: 0 }, 0, 90, 20, t);
     expect(arcs).toHaveLength(1);
@@ -236,6 +244,23 @@ describe("northLine and pointMark", () => {
     expect(dotMark.fill).toBe(t.colors.ink);
     expect(dotMark.x + dotMark.w / 2).toBe(p.x);
     expect(dotMark.y + dotMark.h / 2).toBe(p.y);
+  });
+});
+
+describe("degenerate sides", () => {
+  it("collapses a mark on a side whose ends meet to a point, with no NaN and no throw", () => {
+    const p = { x: 30, y: 40 };
+    const els: SlideElement[] = [
+      rightAngleMark(p, p, p, 12, t),
+      ...equalTicks(p, p, 2, t),
+      ...parallelArrows(p, p, 1, t),
+      midArrow(p, p, t),
+    ];
+    for (const el of els) {
+      for (const n of [el.x, el.y, el.w, el.h]) expect(Number.isFinite(n), el.name).toBe(true);
+      if (el.type === "path")
+        for (const q of el.points) expect(Number.isFinite(q.x + q.y)).toBe(true);
+    }
   });
 });
 

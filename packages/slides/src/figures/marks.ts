@@ -55,6 +55,10 @@ const CROSS_REACH = 5;
 const sub = (a: Point, b: Point): Point => ({ x: a.x - b.x, y: a.y - b.y });
 const add = (a: Point, b: Point): Point => ({ x: a.x + b.x, y: a.y + b.y });
 const scale = (a: Point, k: number): Point => ({ x: a.x * k, y: a.y * k });
+/**
+ * `v` scaled to length 1. A zero-length vector stays zero, so a mark on a side whose ends meet
+ * collapses to a point rather than throwing or writing NaN: drawing never throws (see `./index`).
+ */
 const unit = (v: Point): Point => {
   const length = Math.hypot(v.x, v.y) || 1;
   return { x: v.x / length, y: v.y / length };
@@ -152,7 +156,8 @@ export function rightAngleMark(
  * up, whatever the slide's downward y axis), and the arc always runs counter-clockwise from
  * `fromDeg` to `toDeg`, so the angle between a side at 20° and one at 80° is `angleArc(v, 20, 80,
  * …)`. Each arc is an open smooth `path` through a point every `ARC_STEP_DEG` or less; `count`
- * concentric arcs `ARC_GAP` apart, the first at `radius`, mark equal angles.
+ * concentric arcs `ARC_GAP` apart, the first at `radius`, mark equal angles. Equal angles give
+ * no arc (there is no angle to mark); a whole turn apart (0 to 360) gives the full circle.
  */
 export function angleArc(
   vertex: Point,
@@ -162,6 +167,7 @@ export function angleArc(
   theme: Theme,
   { count = 1, color = theme.colors.ink }: MarkStyle & { count?: 1 | 2 | 3 } = {},
 ): PathElement[] {
+  if (toDeg === fromDeg) return [];
   const span = (((toDeg - fromDeg) % 360) + 360) % 360 || 360;
   const steps = Math.max(2, Math.ceil(span / ARC_STEP_DEG));
   return Array.from({ length: count }, (_, i) => {
