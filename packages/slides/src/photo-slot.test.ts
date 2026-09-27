@@ -5,6 +5,7 @@ import {
   type Slide,
   type TextElement,
 } from "@tj/domain/documents";
+import { docFromBullets, docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
 import { PLACEHOLDER_IMAGE } from "./layouts";
@@ -435,6 +436,35 @@ describe("review fixes (look/slides-layout)", () => {
     expect(words([withoutDiagramSlot(headless, t)])).toBe(words([headless]));
     const out = presentedSlide(headless, t, { index: 0, total: 2 });
     expect(words([out])).toBe(words([headless]));
+    expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
+  });
+
+  test("a lead and one long point beside an open slot keep every word in present", () => {
+    // As the Romans lesson stored it (look branch 3f39835b): the other point had continued.
+    const laid = materialiseSlides(reasons, "chalk", meta, undefined, 0, { photo })[0] as Slide;
+    const [one, ...rest] = laid.elements.filter((e) => e.name === ITEM_NAME) as TextElement[];
+    const point =
+      "Wealth: Britain had valuable resources, such as metals, that the Romans could take and use to bring wealth to Rome.";
+    const stored: Slide = {
+      ...laid,
+      elements: laid.elements
+        .filter((e) => !rest.includes(e as TextElement))
+        .map((e) =>
+          e === one
+            ? { ...one, doc: docFromBullets([point]) }
+            : e.name === "Lead" && e.type === "text"
+              ? {
+                  ...e,
+                  doc: docFromText(
+                    "Britain offered the Romans ways to gain both wealth and glory.",
+                  ),
+                }
+              : e,
+        ),
+    };
+    const out = presentedSlide(stored, t, { index: 3, total: 13 });
+    expect(words([out])).toContain("valuable resources, such as metals");
+    expect(words([out])).toContain("wealth and glory");
     expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
   });
 
