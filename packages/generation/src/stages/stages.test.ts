@@ -2808,6 +2808,60 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
     expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
   });
 
+  test("TEACH-221 row 14: a diagram entry naming triangle is generated and materialised with the figure and its alt text", async () => {
+    // A test-local skeleton, as in TEACH-94 row 9: the shared Apply fixture with its diagram entry
+    // naming the triangle. The fixture itself and `FIXTURES.slides.diagram` stay as they are.
+    const skeleton = structuredClone(APPLY);
+    const entry = skeleton.outline[6];
+    if (entry?.kind !== "diagram") throw new Error("Apply position 6 is not a diagram");
+    entry.figureBrief = { template: "triangle", purpose: "the triangle for the cosine rule" };
+    const values = {
+      vertices: { A: "A", B: "B", C: "C" },
+      sides: { a: { value: 5, label: "5 cm" }, b: { value: 7, label: "7 cm" }, c: { label: "x" } },
+      angles: { C: { value: 120, label: "120°" } },
+      unknown: "c",
+    };
+    const answer = {
+      kind: "diagram",
+      heading: "Two sides and the angle between them",
+      body: "Two sides meet at the marked angle. Use the cosine rule to find the side opposite it, x.",
+      figure: { template: "triangle", values },
+      factRefs: ["x1", "o2"],
+      notes: "Ask which angle is between the two known sides before anyone substitutes.",
+    };
+    const ai = createFakeAi({
+      script: routed([
+        json(skeleton),
+        json(FIXTURES.planFacts),
+        json(FIXTURES.verify),
+        ...skeleton.outline
+          .slice(PLANNED_SLIDES)
+          .map((e) => json(e.kind === "diagram" ? answer : FIXTURES.slides[e.kind])),
+      ]),
+      usage,
+    });
+    const deps = recordingDeps(ai);
+    const state = await generate(await plan(initialState(applyLesson()), deps), deps);
+    expect(state.lesson.facts?.outline[6]?.figureBrief).toEqual(entry.figureBrief);
+    const calls = diagramCalls(ai);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.promptText).toContain(
+      'This slide draws a "triangle" figure for the triangle for the cosine rule.',
+    );
+    const slide = state.lesson.slides[6];
+    if (slide?.kind !== "diagram") throw new Error("no diagram slide");
+    expect(SlideSchema.safeParse(slide).success).toBe(true);
+    const figure = figureGroupOf(slide);
+    expect(figure?.name).toBe("Triangle");
+    expect(figure?.figure).toEqual({ template: "triangle", values });
+    expect(figure?.alt).toBe("Triangle ABC. AB x, BC 5 cm, CA 7 cm, angle C 120°.");
+    expect(figure?.children.some((c) => c.type === "path" && c.closed)).toBe(true);
+    expect(figure?.generatedFrom?.promptVersion).toBe(PROMPT_VERSIONS["generate-slide"]);
+    expect(slideText(slide)).toContain(answer.heading);
+    expect(state.lesson.generation?.findings).toEqual([]);
+    expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
+  });
+
   test("Plan resumed after the skeleton persist keeps the diagram entry's figureBrief", async () => {
     const first = recordingDeps(
       createFakeAi({

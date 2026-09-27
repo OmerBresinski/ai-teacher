@@ -14,7 +14,7 @@ import { z } from "zod";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
-import type { FigureDrawing, FigureTemplate } from "./index";
+import type { FigureDrawing, FigureTemplate, FigureUnknown } from "./index";
 import { type FittedLabel, fitLabel, labelText, notToScaleCaption } from "./labels";
 import { rightAngleMark } from "./marks";
 
@@ -103,6 +103,23 @@ export function rightTriangleLegs(
   if (b !== undefined && c !== undefined && c > b)
     return { base: Math.sqrt(c * c - b * b), height: b, exact: true };
   return undefined;
+}
+
+/**
+ * The length of the side that has a label and no length (TEACH-221), from the other two; the
+ * answer the figure's question asks for. `undefined` unless exactly one side lacks a length and
+ * the other two give the legs.
+ */
+export function rightTriangleUnknown(v: RightTriangleValues): FigureUnknown | undefined {
+  const missing = SIDES.filter(
+    (name) => v[name].label.trim() !== "" && given(v[name]) === undefined,
+  );
+  const [name] = missing;
+  if (missing.length !== 1 || !name) return undefined;
+  const legs = rightTriangleLegs(v);
+  if (!legs) return undefined;
+  const value = name === "hypotenuse" ? Math.hypot(legs.base, legs.height) : legs[name];
+  return { value, unit: "length" };
 }
 
 /**
@@ -269,4 +286,5 @@ export const RIGHT_TRIANGLE: FigureTemplate<RightTriangleValues> = {
   shape: rightTriangleShape,
   values: rightTriangleValuesSchema,
   draw: drawRightTriangle,
+  unknown: rightTriangleUnknown,
 };

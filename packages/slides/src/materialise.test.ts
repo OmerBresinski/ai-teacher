@@ -153,10 +153,19 @@ const METHANE_PROFILE = {
   energyChange: -90,
 };
 
+/** The cosine rule (TEACH-221): two sides and the angle between them, the third side to find. */
+const COSINE_TRIANGLE = {
+  vertices: { A: "A", B: "B", C: "C" },
+  sides: { a: { value: 5, label: "5 cm" }, b: { value: 7, label: "7 cm" }, c: { label: "x" } },
+  angles: { C: { value: 120, label: "120°" } },
+  unknown: "c",
+};
+
 /** A diagram spec for each Figure template, so a new template needs one here to compile. */
 const DIAGRAM_VALUES: Record<FigureTemplateName, Record<string, unknown>> = {
   "right-triangle": TRIANGLE_345,
   "energy-profile": METHANE_PROFILE,
+  triangle: COSINE_TRIANGLE,
 };
 const minimalDiagram = (template: FigureTemplateName): SlideSpec =>
   ({
@@ -327,6 +336,39 @@ describe("materialiseSlide", () => {
     expect(figure?.children.filter((c) => c.type === "path")).toHaveLength(1);
     expect(figure?.children.map(plain)).toEqual(expect.arrayContaining(["Energy", "Ea", "ΔH"]));
     expect(SlideSchema.safeParse(slide).success).toBe(true);
+  });
+
+  test("TEACH-221: diagram draws a triangle from the spec's values, with its alt text", () => {
+    const spec = diagramSpecSchemaFor("triangle").parse(minimalDiagram("triangle"));
+    const slide = materialiseSlide(spec, "chalk", meta, counter());
+    const figure = slide.elements.find((el): el is GroupElement => el.type === "group");
+    expect(figure).toMatchObject({ ...FIGURE_RECT, name: "Triangle", authoredBy: "ai" });
+    expect(figure?.figure).toEqual({ template: "triangle", values: COSINE_TRIANGLE });
+    expect(figure?.alt).toBe("Triangle ABC. AB x, BC 5 cm, CA 7 cm, angle C 120°.");
+    expect(figure?.children.filter((c) => c.type === "path" && c.closed)).toHaveLength(1);
+    expect(figure?.children.map(plain)).toEqual(
+      expect.arrayContaining(["A", "B", "C", "5 cm", "7 cm", "x", "120°"]),
+    );
+    expect(SlideSchema.safeParse(slide).success).toBe(true);
+  });
+
+  test("TEACH-221: a triangle with a pair is laid out figure-wide unless the caller names a variant", () => {
+    const values = {
+      ...COSINE_TRIANGLE,
+      pair: { scale: 2, vertices: { A: "P", B: "Q", C: "R" } },
+    };
+    expect(diagramVariantFor("triangle", values)).toBe("figure-wide");
+    const spec = {
+      ...minimalSpec("diagram"),
+      figure: { template: "triangle", values },
+    } as SlideSpec;
+    const group = (slide: Slide) => slide.elements.find((el) => el.type === "group");
+    expect(group(materialiseSlide(spec, "chalk", meta, counter()))).toMatchObject(FIGURE_RECT_WIDE);
+    expect(group(materialiseSlide(spec, "chalk", meta, counter(), "figure-left"))).toMatchObject(
+      FIGURE_RECT,
+    );
+    // Values the template cannot read give the default.
+    expect(diagramVariantFor("triangle", { pair: "yes" })).toBe("figure-left");
   });
 
   // TEACH-98 row 4.

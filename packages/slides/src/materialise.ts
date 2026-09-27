@@ -87,7 +87,7 @@ export function materialiseSlide(
  * diagram, whose Figure template picks it (`diagramVariantFor`, ADR 0034 decision 7).
  */
 function defaultVariant(spec: SlideSpec): number | string {
-  return spec.kind === "diagram" ? diagramVariantFor(spec.figure.template) : 0;
+  return spec.kind === "diagram" ? diagramVariantFor(spec.figure.template, spec.figure.values) : 0;
 }
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };

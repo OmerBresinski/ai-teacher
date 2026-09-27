@@ -19,9 +19,11 @@ import type { z } from "zod";
 import { uid } from "../factories";
 import { ENERGY_PROFILE } from "./energy-profile";
 import { RIGHT_TRIANGLE } from "./right-triangle";
+import { TRIANGLE } from "./triangle";
 
 export * from "./energy-profile";
 export * from "./right-triangle";
+export * from "./triangle";
 
 export type FigureRect = { x: number; y: number; w: number; h: number };
 
@@ -42,26 +44,47 @@ export type FigureTemplate<V = unknown> = {
   draw(values: V | undefined, theme: Theme, size: { w: number; h: number }): FigureDrawing;
   /**
    * The diagram slide's variant this template is drawn in: `figure-wide` for a figure that
-   * carries many labels (ADR 0034 decision 7), `figure-left` when absent.
+   * carries many labels (ADR 0034 decision 7), `figure-left` when absent. A function picks it
+   * from the values (`undefined` when they do not have the template's shape).
    */
-  layout?: FigureLayout;
+  layout?: FigureLayout | LayoutOf<V>;
+  /**
+   * The value of what the figure's question asks for (TEACH-221), worked out from the other
+   * values, for the answer check (TEACH-253). `undefined` when the values name no unknown or
+   * cannot give it.
+   */
+  unknown?(values: V): FigureUnknown | undefined;
 };
 
 /** The diagram variants a template can ask for (`DIAGRAM_VARIANT_NAMES` in `../layouts`). */
 export type FigureLayout = "figure-left" | "figure-wide";
 
+/**
+ * A layout picked from the values. Written as a method's type so a template's own values type
+ * still fits `FigureTemplate<unknown>` in the registry, as `draw` does.
+ */
+type LayoutOf<V> = { pick(values: V | undefined): FigureLayout }["pick"];
+
+/** An unknown's value: a length in the values' units, or an angle in degrees. */
+export type FigureUnknown = { value: number; unit: "length" | "degrees" };
+
 export const FIGURE_TEMPLATES: Record<FigureTemplateName, FigureTemplate> = {
   "right-triangle": RIGHT_TRIANGLE,
   "energy-profile": ENERGY_PROFILE,
+  triangle: TRIANGLE,
 };
 
 /**
  * The diagram variant a template's slide is laid out in when nothing else picks one: what
  * `materialiseSlide` uses for a diagram spec called without a variant. The template decides,
- * not the deck's rhythm (`chooseVariant` always gives `figure-left`).
+ * not the deck's rhythm (`chooseVariant` always gives `figure-left`). A template whose layout
+ * depends on its values (a `triangle` with a `pair`) reads them, parsed against its shape.
  */
-export function diagramVariantFor(template: FigureTemplateName): FigureLayout {
-  return FIGURE_TEMPLATES[template].layout ?? "figure-left";
+export function diagramVariantFor(template: FigureTemplateName, values?: unknown): FigureLayout {
+  const { layout, shape } = FIGURE_TEMPLATES[template];
+  if (typeof layout !== "function") return layout ?? "figure-left";
+  const parsed = shape.safeParse(values);
+  return layout(parsed.success ? parsed.data : undefined);
 }
 
 const asRecord = (value: unknown): Record<string, unknown> =>

@@ -720,6 +720,35 @@ describe("exportLessonPptx", () => {
     expect(xml).not.toMatch(/ rot="/);
     expect(xml).not.toContain(figure.alt ?? "no alt");
   }, 30_000);
+
+  // TEACH-221 row 13: the triangle, its right-angle square and its arcs are custom geometry, the
+  // equal-side ticks lines, the labels text boxes, and nothing is rotated.
+  it("exports a triangle's outline, marks and arcs as custom geometry, no text box rotated", async () => {
+    const values = {
+      vertices: { A: "A", B: "B", C: "C" },
+      rightAngleAt: "C",
+      sides: { a: { value: 5, label: "5 cm" }, b: { value: 5, label: "5 cm" }, c: { label: "x" } },
+      angles: { A: { value: 45, label: "45°" } },
+      equalSides: ["a", "b"],
+      equalAngles: ["A", "B"],
+      unknown: "c",
+    };
+    const figure = drawFigure("triangle", values, theme, FIGURE_RECT);
+    const xml = await slideXml([figure]);
+    // The closed outline, the open right-angle square, and two double arcs (at A and at B).
+    expect(xml.split("<a:custGeom>").length - 1).toBe(6);
+    expect(xml.split(/<a:close ?\/>/).length - 1).toBe(1);
+    // The arcs are smooth: cubic Béziers, never a polygon of straight steps.
+    expect(xml.split("<a:cubicBezTo>").length - 1).toBeGreaterThan(0);
+    // The two equal-side ticks are lines.
+    expect(xml.split('prst="line"').length - 1).toBe(2);
+    for (const label of ["A", "B", "C", "5 cm", "x", "45°"])
+      expect(xml).toContain(`<a:t>${label}</a:t>`);
+    // Names A, B, C; sides a, b, c; the angle at A.
+    expect(xml.split("<p:txBody>").length - 1).toBe(7);
+    expect(xml).not.toMatch(/ rot="/);
+    expect(xml).not.toContain(figure.alt ?? "no alt");
+  }, 30_000);
 });
 
 /* ------------------------------------------------------------------ */

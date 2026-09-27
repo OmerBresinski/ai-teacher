@@ -202,8 +202,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "a4f3ff2d86262252006017bc4176e8d7a384fdeeaa87982b32c66a6044c8db69",
   },
   "plan-skeleton": {
-    version: "plan-skeleton.v21",
-    hash: "c8f59db9619789216686b892e11fecd5d0788766bc3fe6290461fb05cab99345",
+    version: "plan-skeleton.v22",
+    hash: "e09795d1fecebda44a4681060bcc47e5cb3f5c06f57f8cdb19e908da44425ebb",
   },
   "plan-facts": {
     version: "plan-facts.v12",
@@ -231,9 +231,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render, and so
-    // did v26 (the figure block, diagram entries only; pinned by its own test below) and v27 (the
-    // energy-profile figure block, TEACH-94).
-    version: "generate-slide.v27",
+    // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
+    // energy-profile figure block, TEACH-94) and v28 (the triangle figure block, TEACH-221).
+    version: "generate-slide.v28",
     hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
   },
   "generate-worksheet": {
@@ -601,6 +601,15 @@ describe("prompt versions", () => {
     expect(system).toContain(
       '"energy-profile" — a reaction profile (energy level diagram), for exothermic and endothermic reactions or activation energy',
     );
+    // TEACH-221: the triangle fits any triangle given by its sides and angles; right-triangle is
+    // narrowed to Pythagoras, so Plan can tell them apart.
+    expect(system).toContain(
+      '"triangle" — any triangle given by its sides and angles, for the sine and cosine rules, ½ab sin C, angle facts, isosceles and equilateral triangles, similar or congruent triangles, and right-angled trigonometry when an angle is given or asked for',
+    );
+    expect(system).toContain(
+      '"right-triangle" — a right-angled triangle for Pythagoras, with two known sides and the third to find',
+    );
+    expect(system).not.toContain("for Pythagoras or right-angled trigonometry");
     expect(system).toContain('"figureBrief": { "template", "purpose"');
     // The photographable test already says a diagram is not photographable.
     expect(system).toContain("a diagram, map, chart, process or abstract idea is not");
@@ -658,6 +667,32 @@ describe("prompt versions", () => {
     expect(profile).toContain("the labels name the substances and carry no numbers");
     expect(profile).not.toContain("The labels carry the numbers");
     expect(profile).not.toContain("right-triangle");
+
+    // TEACH-221: a triangle's block names its fields, the side-naming convention, the letter
+    // label on the unknown and the Unicode forms; its numbers are the true values.
+    const triangle = generateSlidePrompt.user({
+      ...sample,
+      entry: {
+        id: "s7",
+        kind: "diagram",
+        factRefs: ["x1", "o2"],
+        figureBrief: { template: "triangle", purpose: "the triangle for the cosine rule" },
+      },
+    });
+    expect(triangle).toContain(
+      'This slide draws a "triangle" figure for the triangle for the cosine rule.',
+    );
+    expect(triangle).toContain(`"figure": { "template": "triangle", ${FIGURE_VALUES.triangle} }`);
+    for (const field of ["vertices", "sides", "angles", "rightAngleAt", "unknown", "pair"])
+      expect(FIGURE_VALUES.triangle).toContain(`"${field}"`);
+    expect(triangle).toContain("Side a is opposite angle A (a is BC, b is CA, c is AB)");
+    expect(triangle).toContain('The unknown has a letter label ("x", "θ")');
+    expect(triangle).toContain('Labels are Unicode: "40°", "√3", "2π", "A′"');
+    expect(triangle).toContain('every "value" is the true number, even behind a letter');
+    expect(triangle).toContain("the unknown may leave its value out");
+    // U+20D7 draws as a missing glyph on every theme: no prompt line asks for it.
+    expect(triangle).not.toContain("\u20D7");
+    expect(triangle).not.toContain("right-triangle");
   });
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
