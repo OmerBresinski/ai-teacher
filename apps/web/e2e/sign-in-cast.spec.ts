@@ -31,20 +31,53 @@ test("the cast arrives from behind the card and keeps moving", async ({ page }) 
   expect(await bodyOf(page, "support")).not.toBe(first);
 });
 
-test("the cast says hello on arrival", async ({ page }) => {
+test("Slides climbs out from behind the card instead of popping in", async ({ page }) => {
+  // Record Slides' vertical offset on every frame from the first one, before the page even loads,
+  // so a fast arrival cannot finish before the sampling starts.
+  await page.addInitScript(() => {
+    const seen: number[] = [];
+    (window as unknown as { slidesOffsets: number[] }).slidesOffsets = seen;
+    const step = () => {
+      const host = document.querySelector('[data-cast="slides"]');
+      if (host) seen.push(new DOMMatrixReadOnly(getComputedStyle(host).transform).m42);
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
   await page.goto("/sign-in");
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
-  // Plan's hello opens its arms (its homepage gesture); the ambient sway alone stays under 1°.
-  const leftArm = page.locator('[data-cast="support"] .arm-left');
-  await expect
-    .poll(
-      async () =>
-        Math.abs(
-          Number((await leftArm.getAttribute("transform"))?.match(/rotate\(([-\d.]+)/)?.[1] ?? 0),
-        ),
-      { timeout: 5000 },
-    )
-    .toBeGreaterThan(8);
+  await page.waitForTimeout(2000);
+  const offsets = await page.evaluate(
+    () => (window as unknown as { slidesOffsets: number[] }).slidesOffsets,
+  );
+  const moving = offsets.filter((y) => y !== 0);
+  expect(Math.max(...moving)).toBeGreaterThan(100); // it started below the card's top edge
+  // ...and was nearly home before GSAP let go, not still hidden (the 27 Sep bug: ~180px, then a snap).
+  expect(Math.abs(moving.at(-1) ?? 0)).toBeLessThan(20);
+  expect(moving.filter((y) => y > 20 && y < 100).length).toBeGreaterThanOrEqual(3);
+});
+
+test("the cast says hello on arrival", async ({ page }) => {
+  // Plan's hello opens its arms (its homepage gesture) for under a second; the ambient sway alone
+  // stays under 1°. Record the arm every frame so a slow poll cannot miss it.
+  await page.addInitScript(() => {
+    const seen: number[] = [];
+    (window as unknown as { armAngles: number[] }).armAngles = seen;
+    const step = () => {
+      const arm = document.querySelector('[data-cast="support"] .arm-left');
+      const angle = arm?.getAttribute("transform")?.match(/rotate\(([-\d.]+)/)?.[1];
+      if (angle) seen.push(Math.abs(Number(angle)));
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+  await page.goto("/sign-in");
+  await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
+  await page.waitForTimeout(3500);
+  const angles = await page.evaluate(
+    () => (window as unknown as { armAngles: number[] }).armAngles,
+  );
+  expect(Math.max(...angles)).toBeGreaterThan(8);
 });
 
 test("the cast reads along while you type and celebrates when the link is sent", async ({
