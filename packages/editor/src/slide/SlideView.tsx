@@ -1,6 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { COUNTER_NAME, DIAGRAM_NAME, withoutDiagramSlot } from "@tj/slides";
+import { COUNTER_NAME, DIAGRAM_NAME, slideBackground, withoutDiagramSlot } from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -193,7 +193,7 @@ export function SlideView({
         className={rootClass}
         style={rootStyle}
       >
-        <SlideBackground theme={theme} background={bg} />
+        <SlideBackground theme={theme} slide={slide} />
 
         {slide.elements.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
@@ -258,11 +258,12 @@ export function SlideView({
 /* Background                                                          */
 /* ------------------------------------------------------------------ */
 
-function SlideBackground({ theme, background }: { theme: Theme; background: Slide["background"] }) {
+function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
+  const background = slide.background;
   const image = useResolvedImageSrc(background?.image ?? "") || undefined;
-  // A slide's own background wins outright: theme art must never paint over a colour
-  // the teacher chose, or there would be no way to switch it off.
-  const themeImage = background?.color || image ? undefined : theme.backgroundImage;
+  // `slideBackground` is the one rule the PowerPoint export reads too (UX ruling 107): the theme's
+  // art for the slide's role, clear of its elements; none under a colour or image the teacher chose.
+  const themeImage = image ? undefined : slideBackground(theme, slide);
   if (!image && !themeImage) return null;
   return (
     <div

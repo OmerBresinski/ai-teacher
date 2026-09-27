@@ -10,6 +10,7 @@
  * `bundle.test.ts` holds the line.
  */
 
+export * from "./background";
 export * from "./choose-variant";
 export * from "./content-shapes";
 export * from "./demo-lesson";

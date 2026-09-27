@@ -72,10 +72,35 @@ export type Theme = {
    */
   backgroundImage?: string;
   /**
+   * Art per slide role (UX ruling 107): the title slide's fullest art, a lighter `content` variant
+   * kept to the margins, and a `picture` motif for slides with a photo or diagram, drawn for a
+   * picture on the left and mirrored for one on the right. A role left out is the plain ground.
+   * When present it replaces `backgroundImage`, which stays the art for themes without variants.
+   * Resolved by `slideBackground` in `@tj/slides`.
+   */
+  backgrounds?: Partial<Record<ThemeArtRole, ThemeArtLayer[]>>;
+  /**
    * How the look draws its small chrome, so two themes with the same layouts do not read alike.
    * Absent parts are the defaults: a tinted pill tag and a round dot bullet.
    */
   ornament?: ThemeOrnament;
+};
+
+export type ThemeArtRole = "title" | "content" | "picture";
+
+/**
+ * One piece of theme art, drawn once at its box in slide points (960x540). The box is what the
+ * no-overlap check reads, so a layer's image must stay inside it.
+ */
+export type ThemeArtLayer = {
+  /** A CSS image: an inline SVG `url()` or a gradient. */
+  image: string;
+  /** The same art drawn left-right mirrored, for the picture variant's other side. */
+  flipped?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 };
 
 export type ThemeOrnament = {

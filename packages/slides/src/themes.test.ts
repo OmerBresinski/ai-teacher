@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseLesson, type TextPreset } from "@tj/domain/documents";
+import { parseLesson, type TextPreset, type Theme } from "@tj/domain/documents";
 import { newLesson, newSlide } from "./factories";
 import {
   DEFAULT_THEME_ID,
@@ -10,6 +10,15 @@ import {
   THEME_TAG_LABELS,
   THEMES,
 } from "./themes";
+
+/** Every piece of a theme's art, per role and mirrored, and its single background, as one string. */
+const artOf = (t: Theme) =>
+  [
+    t.backgroundImage ?? "",
+    ...Object.values(t.backgrounds ?? {}).flatMap((layers) =>
+      (layers ?? []).flatMap((l) => [l.image, l.flipped ?? ""]),
+    ),
+  ].join(" ");
 
 describe("theme catalogue", () => {
   test("ten themes; the six older ids still resolve; an unknown id falls back to chalk", () => {
@@ -56,7 +65,7 @@ describe("theme catalogue", () => {
         c.background,
         c.surface,
         ...(c.panel ? [c.panel] : []),
-        ...(decodeURIComponent(t.backgroundImage ?? "").match(/#[0-9a-f]{6}/gi) ?? []),
+        ...(decodeURIComponent(artOf(t)).match(/#[0-9a-f]{6}/gi) ?? []),
       ];
       for (const ground of grounds) {
         for (const [name, fg] of Object.entries({
@@ -125,6 +134,6 @@ describe("theme catalogue", () => {
     expect(distinct((t) => t.colors.panel)).toBe(4);
     expect(distinct((t) => t.radius)).toBe(4);
     // No theme's art is the old corner blob any more.
-    for (const t of playful) expect(t.backgroundImage).not.toContain("radial-gradient(circle");
+    for (const t of playful) expect(artOf(t)).not.toContain("radial-gradient(circle");
   });
 });

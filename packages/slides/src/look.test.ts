@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
+import { slideBackground } from "./background";
 import { SAFE } from "./grid";
+import { layoutSlide } from "./layouts";
 import {
   ACCENT_BAR_NAME,
   accentTint,
@@ -45,19 +47,31 @@ describe("the lesson look", () => {
     expect(accentTint(chalk)).not.toBe(chalk.colors.accent);
   });
 
+  test("a theme without title art keeps the cover on the accent, its text in the accent's ink", () => {
+    const bare = { ...getTheme("studio"), backgrounds: undefined };
+    const laid = layoutSlide("title", "studio");
+    const slide = applyLook({ id: "t", kind: "title", elements: laid.elements }, bare);
+    expect(slide.background?.color).toBe(bare.colors.accent);
+    const title = slide.elements.find(
+      (e): e is TextElement => e.type === "text" && e.style.preset === "title",
+    );
+    expect(title?.style.color).toBe(bare.colors.onAccent);
+  });
+
   for (const theme of THEMES) {
-    test(`${theme.id}: the title is a cover on the accent, its text in the accent's ink`, () => {
+    test(`${theme.id}: the title is a cover on the ground under the theme's title art (ruling 107)`, () => {
       const slide = materialiseSlide(
         { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },
         theme.id,
         META,
         counter(),
       );
-      expect(slide.background?.color).toBe(theme.colors.accent);
+      expect(slide.background?.color).toBeUndefined();
+      expect(slideBackground(theme, slide)).toBeTruthy();
       const title = slide.elements.find(
         (e): e is TextElement => e.type === "text" && e.style.preset === "title",
       );
-      expect(title?.style.color).toBe(theme.colors.onAccent);
+      expect(title?.style.color).toBeUndefined();
       expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
     });
 

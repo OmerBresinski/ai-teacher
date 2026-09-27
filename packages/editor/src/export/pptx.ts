@@ -49,7 +49,7 @@ import type {
   TimerElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { type PathSegment, pathSegments } from "@tj/slides";
+import { type PathSegment, pathSegments, slideBackground } from "@tj/slides";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -1285,7 +1285,7 @@ export async function exportLessonPptx(
       // A slide's own background wins outright, as in `SlideView`: theme art must
       // never paint over a colour the teacher chose, or there is no way off it.
       const own = slide.background;
-      const image = own?.image ?? (own?.color ? undefined : theme.backgroundImage);
+      const image = own?.image ?? slideBackground(theme, slide);
       // Theme art is CSS (gradients, an inline SVG with its size and repeat): not a picture file.
       const art = !own?.image && /gradient\(|url\(/.test(image ?? "");
       if (image && !art) {

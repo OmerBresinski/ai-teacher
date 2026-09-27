@@ -157,6 +157,21 @@ function accentBar(ids: Ids, t: Theme, els: SlideElement[]): SlideElement {
 function cover(slide: Slide, t: Theme): Slide {
   // A title set beside a photograph keeps its own composition; the cover is the typographic one.
   if (slide.elements.some((e) => e.type === "image")) return slide;
+  // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
+  // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
+  if (t.backgrounds?.title?.length) {
+    const elements = slide.elements.map((el): SlideElement => {
+      if (el.type === "shape")
+        return el.name === "Accent rule" ? { ...el, fill: t.colors.accent } : el;
+      if (el.type !== "text") return el;
+      if (el.style.preset === "caption")
+        return { ...el, style: { ...el.style, color: t.colors.accent, fontWeight: 700 } };
+      if (el.style.preset === "subtitle")
+        return { ...el, style: { ...el.style, color: t.colors.muted } };
+      return el;
+    });
+    return { ...slide, elements };
+  }
   const ink = t.colors.onAccent;
   const soft = mix(ink, t.colors.accent, 0.8);
   const elements = slide.elements.map((el): SlideElement => {
