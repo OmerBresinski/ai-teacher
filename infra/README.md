@@ -281,11 +281,17 @@ therefore console clicks; everything else is a command.
 
 2. **Consent screen and clients (console).**
    1. Branding, `https://console.cloud.google.com/auth/branding?project=teaching-journey-auth`: app name
-      "Teaching Journey", user support email and developer contact (the owner's address), home page
-      `https://app.bresinski.org`, authorized domain `bresinski.org`. No logo: a logo makes the app
-      need brand verification. The first-run wizard asks only for the name, support email, audience
-      and one contact; the home page and authorized domain are on this page afterwards, and
-      Audience's **Publish app** stays greyed out until they are saved.
+      "DayBack" (was "Teaching Journey" until 2026-09-27, TEACH-20), user support email and developer
+      contact (the owner's address), home page `https://app.bresinski.org`, privacy policy
+      `https://app.bresinski.org/homepage/privacy` and terms of service
+      `https://app.bresinski.org/homepage/terms/` (both added 2026-09-27; the privacy URL serves the
+      notice with or without the trailing slash), authorized domain `bresinski.org`. No logo: a logo
+      makes the app need brand verification. Until the brand is verified Google shows the domain,
+      not the app name: the account chooser reads "to continue to bresinski.org" and links
+      "bresinski.org's Privacy Policy and Terms of Service" (checked 2026-09-27). The first-run
+      wizard asks only for the name, support email, audience and one contact; the home page and
+      authorized domain are on this page afterwards, and Audience's **Publish app** stays greyed out
+      until they are saved.
    2. Audience, `https://console.cloud.google.com/auth/audience?project=teaching-journey-auth`: user type
       External, then **Publish app** so the status is "In production". In "Testing" only listed
       test users can sign in.
