@@ -81,9 +81,10 @@ export const COMPOSITION_BUDGETS: Record<
     full: { heading: { max: 4 }, lead: { max: 18 }, body: { max: 32 } },
   },
   list: {
-    // Beside a photograph at `PHOTO_TEXT_SHARE` (look/image-slot, 27 Sept 2026): "Label:
-    // sentence" points, not fragments (6 words at the half split lost E49).
-    panel: { heading: { max: 4 }, lead: { max: 13 }, points: { max: 13, count: [2, 3] } },
+    // Beside a photograph at `PHOTO_TEXT_SHARE` (look/image-slot, 27 Sept 2026; 0.55 since Greg's
+    // P19 review: 13 → 11 a point): "Label: sentence" points, not fragments (6 words at the half
+    // split lost E49).
+    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 11, count: [2, 3] } },
     full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 16, count: [2, 3] } },
   },
   compare: {

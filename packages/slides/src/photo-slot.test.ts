@@ -75,9 +75,9 @@ describe("a photo brief keeps the left of an explain or a list", () => {
       expect(img.alt).toBe("Roman legionaries — shields, armour");
       expect(img.fit).toBe("cover");
       expect(img.radius).toBe(t.radius);
-      // About 38% of the width (a real photo, not a thumbnail), to the foot of the safe area.
-      expect(img.w / SAFE.w).toBeGreaterThan(0.35);
-      expect(img.w / SAFE.w).toBeLessThan(0.42);
+      // About 43% of the width (a picture the back row can read), to the foot of the safe area.
+      expect(img.w / SAFE.w).toBeGreaterThan(0.4);
+      expect(img.w / SAFE.w).toBeLessThan(0.46);
       const half = Math.floor((SAFE.w - SPACE[5]) * PHOTO_TEXT_SHARE);
       expect(Math.abs(img.w - (SAFE.w - half - SPACE[5]))).toBeLessThanOrEqual(1);
       expect(img.x).toBe(SAFE.x);

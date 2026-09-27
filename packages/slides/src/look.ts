@@ -62,11 +62,12 @@ export const isDiagramMark = (el: { name?: string }): boolean => el.name === DIA
  */
 export const PHOTO_NAME = "Photo slot";
 /**
- * The text column's share beside a photograph (the photo takes the rest, about 38%): wide enough
- * for "Label: sentence" points of 10–12 words at the body size, the photo still a real picture,
- * not a thumbnail. A diagram keeps the half.
+ * The text column's share beside a photograph (the photo takes the rest, about 43% of the safe
+ * width): wide enough for "Label: sentence" points of 11 words at the body size
+ * (`COMPOSITION_BUDGETS.list.panel`), the photo a picture a class can read from the back (Greg,
+ * 27 Sept 2026: "the pic could be a bit larger"; it was 38% at 0.62). A diagram keeps the half.
  */
-export const PHOTO_TEXT_SHARE = 0.62;
+export const PHOTO_TEXT_SHARE = 0.55;
 /** What a slide's photograph should be: `ImageBrief`'s subject and the things it must show. */
 export type PhotoBrief = { subject: string; mustShow?: readonly string[] | undefined };
 /** The brief as one line, the placeholder's words: "Roman legionaries — shields, armour". */
@@ -102,7 +103,10 @@ export const KIND_TAGS: Partial<Record<SlideKind, string>> = {
 export const ACCENT_BAR_H = 9;
 const TAG_PAD_X = SPACE[2];
 const TAG_PAD_Y = 3;
-const TAG_GAP = SPACE[0];
+/** Between the kind tag and the heading under it. */
+const TAG_GAP = SPACE[2];
+/** Between a teaching slide's heading and its first words. */
+const HEADING_GAP = SPACE[3];
 const CARD_PAD = SPACE[3];
 
 /* ---------------------------------------------------------------- colour */
@@ -361,11 +365,13 @@ export function withPhotoSlot(slide: Slide, t: Theme, brief: PhotoBrief, ids: Id
 }
 
 /**
- * A heading is set as a display line, as in the examples ("Limiting factors" at about twice the
- * body): a third above the theme's heading size, on tighter leading. One size across the deck:
- * a heading too long for one line wraps to two at the same size rather than shrinking.
+ * A heading is set as a display line: a step above the theme's heading size, on tighter leading
+ * (chalk 41 on a 540 slide, 7.6% of its height; Chalkie's headings measure 6.7–7.9%). A third
+ * above (48) wrapped a typical heading at 1440 (Greg, 27 Sept 2026: "title seems too large").
+ * One size across the deck: a heading too long for one line wraps to two at the same size
+ * rather than shrinking, balanced by the renderer.
  */
-export const HEADING_DISPLAY = 1.33;
+export const HEADING_DISPLAY = 1.15;
 function headingDisplay(
   _heading: TextElement,
   t: Theme,
@@ -381,6 +387,21 @@ export function stripLook(slide: Slide): Slide {
   const chrome = new Set([KIND_TAG_NAME, ACCENT_BAR_NAME]);
   if (!slide.elements.some((e) => chrome.has(e.name ?? ""))) return slide;
   return { ...slide, elements: slide.elements.filter((e) => !chrome.has(e.name ?? "")) };
+}
+
+/**
+ * The leading of an activity's numbered list: each question or task on its own line with air
+ * around it, so a class reads them as separate items from the back (Greg, 27 Sept 2026: the
+ * numbered items sat "line on line"). The theme's body leading is 1.45–1.55.
+ */
+export const ACTIVITY_LIST_LEADING = 1.75;
+
+/** A numbered list on an activity slide, set on `ACTIVITY_LIST_LEADING`. */
+function roomyList(e: SlideElement, t: Theme): SlideElement {
+  if (e.type !== "text" || e.style.preset !== "body") return e;
+  if (!e.doc.content?.some((n) => n.type === "orderedList")) return e;
+  const leading = Math.max(e.style.lineHeight ?? t.lineHeights.body, ACTIVITY_LIST_LEADING);
+  return { ...e, style: { ...e.style, lineHeight: leading } };
 }
 
 /** Tint the worked-example card and colour its label, the examples' "worked" panel. */
@@ -448,22 +469,41 @@ export function applyLook(
     // cards keep their room (a two-line display heading pushed a worked example's card off).
     const display = label ? { lineHeight: 1.12 } : headingDisplay(heading, t);
     if (display) Object.assign(style, display);
-    const next: TextElement = { ...heading, y: want, name: HEADING_NAME, style };
-    const foot = next.y + next.h + SPACE[3];
     const below = els.filter(
       (e) => e !== heading && !isBackdrop(e) && e.y >= heading.y + heading.h,
     );
-    // Untagged, the heading rises into the tag's lane and what sits under it rises with it.
-    const lift = label ? 0 : Math.min(0, want - heading.y);
-    const firstBelow = Math.min(...below.map((e) => e.y + lift), Number.POSITIVE_INFINITY);
-    const push = Number.isFinite(firstBelow) ? Math.max(0, foot - firstBelow) : 0;
-    els = els.map((e) =>
-      e === heading ? next : below.includes(e) ? { ...e, y: e.y + lift + push } : e,
+    const firstBelow = Math.min(...below.map((e) => e.y), Number.POSITIVE_INFINITY);
+    // The heading's height at its new size, measured: the words are placed from its last line.
+    const h = Math.ceil(
+      measureHeadless(t)({
+        doc: heading.doc,
+        width: heading.w,
+        style,
+        preset: "heading",
+        inset: 0,
+        chrome: 0,
+      }),
     );
+    const next: TextElement = { ...heading, y: want, h, name: HEADING_NAME, style };
+    let shift = 0;
+    if (label) {
+      // An activity: whatever sat under the rule moves only if the heading's new foot reaches it,
+      // so its cards keep the room the recipe gave them.
+      const foot = next.y + h + SPACE[2];
+      shift = Number.isFinite(firstBelow) ? Math.max(0, foot - firstBelow) : 0;
+    } else if (Number.isFinite(firstBelow)) {
+      // A teaching slide: the words start one gap under the heading's last line, however many
+      // lines it takes, so no empty band is left under a one-line heading (Greg, 27 Sept 2026:
+      // "the content seems too far to bottom").
+      shift = snapY(next.y + h + HEADING_GAP) - firstBelow;
+    }
+    els = els.map((e) => (e === heading ? next : below.includes(e) ? { ...e, y: e.y + shift } : e));
   }
 
   if (slide.kind === "content" && options.lead !== false) els = leadAndCard(els, t, ids);
   if (slide.kind === "worked-example") els = workedCard(els, t);
+  // A worked example's working keeps its card's leading: the card is sized for it.
+  if (label && slide.kind !== "worked-example") els = els.map((e) => roomyList(e, t));
 
   return {
     ...slide,
