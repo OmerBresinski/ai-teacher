@@ -87,7 +87,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v16",
+  version: "repair.v17",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",

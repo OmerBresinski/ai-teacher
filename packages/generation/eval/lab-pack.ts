@@ -27,7 +27,7 @@ type Fact = any;
 export interface RecallPack {
   id: string;
   yearGroup: string;
-  sections: { id: string; outcome: string; facts: Record<FactType, Fact[]> }[];
+  sections: { id: string; title?: string; outcome: string; facts: Record<FactType, Fact[]> }[];
 }
 
 export function loadRecallPack(
@@ -63,6 +63,11 @@ export function loadRecallPack(
   return { pack: { ...pack, sections }, dropped };
 }
 
+/**
+ * l6kp (retired by l6kp2 plan A, 27 Sept 2026): the outcomes as a "unit" in the curriculum slot.
+ * Under `CURRICULUM_USE`'s "span its arc" the objectives mapped one to one onto the sections.
+ * `packSections` replaces it; see `lab/l6-kpack/HANDOFF-CODE.md`.
+ */
 export function outcomesText(pack: RecallPack): string {
   return [
     "Unit outcomes (one per section):",
@@ -70,17 +75,52 @@ export function outcomesText(pack: RecallPack): string {
   ].join("\n");
 }
 
+/** The pack as the objectives call's menu (`PlanObjectivesInput.pack`, plan-objectives v19). */
+export function packSections(pack: RecallPack): { title?: string; outcome: string }[] {
+  return pack.sections.map((s) =>
+    s.title ? { title: s.title, outcome: s.outcome } : { outcome: s.outcome },
+  );
+}
+
+/**
+ * One sentence per line. A stop may be followed by a closing quote; the next sentence opens
+ * with a capital, a bracket or an opening quote, so a quotation's own stops do not split it.
+ */
+const SENTENCE_BREAK = /(?<=[.!?]['’”"]?)\s+(?=[A-Z(‘“"'])/;
+const QUOTED = /[‘“"]/;
+
+/**
+ * A pack section as a pool of facts for one teach call (plan A, 27 Sept 2026; FIX-PLAN cause 2).
+ * Plain lines, one claim each, in no order the call is asked to keep: a key idea's statement,
+ * explanation and example are split into sentences; a misconception is the belief then the
+ * correction; a term is `term: definition`; a worked example is one line. Pack questions have no
+ * reader (the question call is not shown the pack), and vocabulary `sense` and `band` are
+ * dropped. A fact's `locator`, where a pack carries one, follows each of its quoted sentences in
+ * brackets, which is what `REFERENCE_INSTRUCTION`'s "with their locator where one is given" reads.
+ * No "Key idea:" / "Misconception:" labels: rendered in the teach call's own output shape, the
+ * section was paraphrased back whole (EXPERT-PROMPTS T1).
+ */
 export function referenceText(section: RecallPack["sections"][number]): string {
   const f = section.facts;
   const L: string[] = [];
-  for (const k of f.keyIdeas)
-    L.push(`- Key idea: ${k.statement} ${k.explanation} Example: ${k.example}`);
+  const locate = (sentence: string, locator?: string) =>
+    locator && QUOTED.test(sentence) ? `${sentence} (${locator})` : sentence;
+  const add = (text: string | undefined, locator?: string) => {
+    for (const s of (text ?? "").split(SENTENCE_BREAK)) {
+      const t = s.trim();
+      if (t) L.push(`- ${locate(t, locator)}`);
+    }
+  };
+  for (const k of f.keyIdeas) {
+    add(k.statement, k.locator);
+    add(k.explanation, k.locator);
+    add(k.example, k.locator);
+  }
   for (const m of f.misconceptions)
-    L.push(`- Misconception: pupils think ${m.belief}; in fact ${m.correction}`);
-  for (const v of f.vocabulary) L.push(`- Term: ${v.term} — ${v.definition}`);
+    L.push(`- ${locate(`Pupils may think: ${m.belief} In fact: ${m.correction}`, m.locator)}`);
+  for (const v of f.vocabulary) L.push(`- ${v.term}: ${v.definition}`);
   for (const x of f.workedExamples)
-    L.push(`- Worked example: ${x.problem} Steps: ${x.steps.join(" ")} Answer: ${x.answer}`);
-  for (const q of f.questions) L.push(`- Question: ${q.stem} Answer: ${q.answer}`);
+    L.push(`- ${locate(`${x.problem} ${x.steps.join(" ")} ${x.answer}`, x.locator)}`);
   return L.join("\n");
 }
 

@@ -223,6 +223,19 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    sentence covers the open and the picking form). The knowledge errors themselves need verify to see the starter
  *    (CHANGES.md change 4: code, not a prompt rule).
  *
+ * v19 (27 Sept 2026, l6-kpack FIX-PLAN cause 1; lab only, gated on `pack`): the lab had sent a
+ *    topic pack's section outcomes in the curriculum slot, so `CURRICULUM_USE`'s "span its arc"
+ *    made the objectives map one to one onto the pack's sections (3,2,3,3,3,3 with a pack against
+ *    3,2,2,2,3,2 without): a Y12 demand lesson gained tax incidence, a Y7 ratio lesson three
+ *    methods in ten slides. A pack now has its own input and two lines: the sections as a menu of
+ *    what the pack has facts for, with the brief named as what sets scope, and a per-objective
+ *    join key ("packSection", the index shown, or null) that replaces the lab's pack-select call,
+ *    which re-decided the match this call had just made (15 of 17 "full"). Same pattern as the
+ *    anchor: the lines travel beside the input and the field exists in the schema only when a pack
+ *    does. With no pack the system text and user turn are byte-identical to v18; the version moves
+ *    for the shared audience block's school-terms line (`shared.ts`), which this call needs too
+ *    (a Year 7 starter asked for the "greatest common factor").
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -241,6 +254,12 @@ export type PlanObjectivesInput = {
    * (several lessons' outcomes, key learning points, keywords, misconceptions). Optional.
    */
   curriculum?: { text: string } | undefined;
+  /**
+   * A topic pack's sections (v19, lab only): what the pack has facts for, rendered as a menu by
+   * index. Never the curriculum slot: an outcome list under `CURRICULUM_USE` set the lesson's
+   * scope. Optional; when set, every objective carries a `packSection`.
+   */
+  pack?: { sections: { title?: string | undefined; outcome: string }[] } | undefined;
 };
 
 /** What the model is told when a curriculum unit is retrieved. Never `SOURCE_INSTRUCTION`. */
@@ -263,8 +282,28 @@ export const PRIOR_KNOWLEDGE_USE =
 export const CURRICULUM_USE =
   'Where the topic spans this unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".';
 
+/**
+ * How a topic pack's sections are introduced (v19): what they are and what they are not. The
+ * "not" clause is load-bearing, as it is in `CURRICULUM_INSTRUCTION`: under a header that read
+ * as a unit, the outcomes became the objectives.
+ */
+export const PACK_INSTRUCTION =
+  "Topic pack for this brief: the sections it has facts for, by index. The brief sets this lesson's scope, not the pack.";
+
+/** What this call does with the pack (v19): the join key, sent after the sections. */
+export const PACK_USE =
+  'Give each objective the index of the section it draws on in "packSection", or null where none does.';
+
 const objectiveText = z.string().min(8).max(120);
 const curriculumAnchor = z.string().max(160);
+/** The pack section an objective draws on: an index the user turn shows, or null (v19). */
+const packSectionFor = (sections: number) =>
+  z
+    .number()
+    .int()
+    .min(0)
+    .max(Math.max(sections - 1, 0))
+    .nullable();
 
 /**
  * One retrieval question for the starter, with its answer (v12). A prerequisite one of the
@@ -308,25 +347,51 @@ const UnanchoredOutputSchema = z.strictObject({
   retrieval,
 });
 
-export type PlanObjectivesSchema = typeof AnchoredOutputSchema | typeof UnanchoredOutputSchema;
+/**
+ * With a pack (v19): the objective carries `packSection` as well, bounded to the sections shown.
+ * Strictness follows the anchor case above, so a stray anchor is still stripped, not retried.
+ */
+function packedOutputSchema(hasCurriculum: boolean, sections: number) {
+  const packSection = packSectionFor(sections);
+  const objective = hasCurriculum
+    ? z.strictObject({ text: objectiveText, curriculumAnchor, packSection })
+    : z.object({ text: objectiveText, packSection });
+  return z.strictObject({ objectives: z.array(objective).min(1).max(4), retrieval });
+}
+
+export type PlanObjectivesSchema =
+  | typeof AnchoredOutputSchema
+  | typeof UnanchoredOutputSchema
+  | ReturnType<typeof packedOutputSchema>;
 
 /**
- * The schema for one call. The anchor is a question only where an extract was given: a field that
- * exists gets filled, whatever the prose says, so the no-source case removes it rather than asking
- * for it back.
+ * The schema for one call. The anchor is a question only where an extract was given, and the pack
+ * section only where a pack was (`packSections`, its section count): a field that exists gets
+ * filled, whatever the prose says, so each no-input case removes it rather than asking for it back.
  */
-export function planObjectivesOutputSchemaFor(hasCurriculum: boolean): PlanObjectivesSchema {
+export function planObjectivesOutputSchemaFor(
+  hasCurriculum: boolean,
+  packSections?: number,
+): PlanObjectivesSchema {
+  if (packSections !== undefined) return packedOutputSchema(hasCurriculum, packSections);
   return hasCurriculum ? AnchoredOutputSchema : UnanchoredOutputSchema;
 }
 
 /**
  * What the objectives call may return (ADR 0025 §8: content only, no ids). The permissive form,
- * accepting an anchor or none: kept for callers and the bench that parse a set without knowing
- * whether an extract was retrieved. A live call should use `planObjectivesOutputSchemaFor`.
+ * accepting an anchor or a pack section or neither: kept for callers and the bench that parse a
+ * set without knowing what the call was given. A live call should use
+ * `planObjectivesOutputSchemaFor`.
  */
 export const PlanObjectivesOutputSchema = z.strictObject({
   objectives: z
-    .array(z.strictObject({ text: objectiveText, curriculumAnchor: curriculumAnchor.optional() }))
+    .array(
+      z.strictObject({
+        text: objectiveText,
+        curriculumAnchor: curriculumAnchor.optional(),
+        packSection: z.number().int().nonnegative().nullable().optional(),
+      }),
+    )
     .min(1)
     .max(4),
   retrieval,
@@ -353,7 +418,7 @@ const SHAPE_SKETCH =
   '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v18",
+  version: "plan-objectives.v19",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
@@ -376,6 +441,17 @@ export const planObjectivesPrompt = {
     parts.push(`Lesson shape: ${shapeLine}`);
     if (input.curriculum) {
       parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text, "", CURRICULUM_USE);
+    }
+    if (input.pack) {
+      parts.push(
+        "",
+        PACK_INSTRUCTION,
+        ...input.pack.sections.map(
+          (s, i) => `  ${i}: ${s.title ? `${s.title}: ` : ""}${s.outcome}`,
+        ),
+        "",
+        PACK_USE,
+      );
     }
     return parts.join("\n");
   },

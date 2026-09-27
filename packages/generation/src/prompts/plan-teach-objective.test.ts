@@ -53,13 +53,18 @@ describe("plan-teach-objective", () => {
     // v14's teach rules, byte for byte where the sentence concerns only these fields.
     for (const kept of [
       "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers)",
-      "a key idea's date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.",
       "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
       "A quotation is one line, cut with an ellipsis.",
     ]) {
       expect(v14).toContain(kept);
       expect(system).toContain(kept);
     }
+    // v4 (l6-kpack): the realness rule names "the material given", not the curriculum extract,
+    // which under a pack holds no facts; the reference slot does.
+    expect(system).toContain(
+      "a key idea's date, figure or case is real, from the material given or checkable by the class, and an uncertain figure is left out, never estimated.",
+    );
+    expect(system).not.toContain("from the curriculum extract");
     // v3 (l6j): the worked-example rule departs from v14 by "taken to its finished form".
     expect(system).toContain(
       'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
@@ -156,7 +161,13 @@ describe("plan-teach-objective", () => {
       reference: undefined,
     });
     expect(bare).not.toContain(CURRICULUM_INSTRUCTION);
-    expect(bare).not.toContain("Reference facts");
+    expect(bare).not.toContain(REFERENCE_INSTRUCTION);
+    expect(bare).not.toContain("topic pack");
+    // l6-kpack (27 Sept 2026): the reference is a pool, not a scope and not "already checked";
+    // quotations are carved out of "in your own words".
+    expect(REFERENCE_INSTRUCTION).toContain("not a list to cover");
+    expect(REFERENCE_INSTRUCTION).toContain("Quotations stay word for word");
+    expect(REFERENCE_INSTRUCTION).not.toContain("already checked");
   });
 
   test("the schema is v14's four lists with v14's counts and caps", () => {

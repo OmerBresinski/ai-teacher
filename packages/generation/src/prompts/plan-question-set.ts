@@ -304,8 +304,16 @@ export const EXIT_LINE = `Each is one line of the exit quiz: either multiple cho
  * items (the objectives call writes them; plan-objectives v21) or one-offs with no shared shape, so
  * nothing else is added here.
  */
+/*
+ * v8 (27 Sept 2026, l6-kpack ROOT-CAUSE #2): a Y11 Exposure question asked what "the phrase
+ * ‘soaking them’ suggests"; the taught text had paraphrased the poem's "rain soaks" and the
+ * question put quotation marks round the paraphrase. "Answerable from the taught text" holds for
+ * such a question, so the rule that fits is about the marks themselves: they go only round words
+ * the taught text itself quotes (+13 words). The system text is otherwise v7's; the user turn
+ * also carries the shared audience block's new terms line.
+ */
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v7",
+  version: "plan-question-set.v8",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -314,6 +322,7 @@ export const planQuestionSetPrompt = {
     "Pitch the language, numbers and problem steps at the year group and reading level given.",
     'Write as many questions as the brief\'s "Write" line says, all for the use it names, and set "use" to that use.',
     'A judge reads each question beside the taught text and nothing else. What matters, in order: every question is answerable from the taught text alone, the fact, reason, method or quotation its answer needs being stated there; each takes a case of its own rather than repeating any example in the taught text, and may invent its scenario and numbers, saying so ("a shop", "suppose").',
+    "Quotation marks go only around words the taught text itself has in quotation marks.",
     "Follow the brief's tier line.",
     "Every quantity carries its unit, in the answer and each option as well as the stem: 5 stickers, not 5. A ratio's parts carry none: 2:3, not 2 cm:3 cm.",
     'Each question has one right answer: where a pupil could stop part way, the stem asks for the finished form ("simplest form"); where several are right ("name one…"), "answer" lists each.',

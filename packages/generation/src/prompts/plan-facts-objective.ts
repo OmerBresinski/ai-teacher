@@ -230,22 +230,25 @@ export type PlanFactsObjectiveInput = {
   /** The curriculum extract retrieved for this brief: a unit, not this lesson's plan. Optional. */
   curriculum?: { text: string } | undefined;
   /**
-   * Checked reference facts for THIS objective (v10): a topic pack section's facts, plain lines
-   * with no ids. The grounded arm and the fill call (`eval/pack-arms.ts`) set it; production does
-   * not. Optional; rendered after the curriculum extract under `REFERENCE_INSTRUCTION`.
+   * Reference facts for THIS objective (v10): a topic pack section's facts as plain lines with no
+   * ids (`eval/lab-pack.ts` `referenceText`). The lab's pack arm sets it; production does not.
+   * Optional; rendered after the curriculum extract under `REFERENCE_INSTRUCTION`.
    */
   reference?: { text: string } | undefined;
 };
 
 /**
- * How the reference facts are introduced (v10; v12 replaced "where they fit … keeping their terms"
- * with the year-group filter). One line: what they are (checked, for this objective), how to use
- * them (the ones pitched for the class, in the call's own words; the rest left out). The
- * curriculum slot used to carry them under `CURRICULUM_INSTRUCTION`, which describes a unit
- * extract and says "anchor each objective", neither true of reference facts (harness.md spec 8).
+ * How the reference facts are introduced (v10; v12 added the year-group filter, measured once:
+ * above-band terms 27 -> 18). Rewritten 27 Sept 2026 (l6-kpack FIX-PLAN cause 2): "already
+ * checked" was false of recall packs; nothing said whether the lines were a scope to cover or a
+ * pool to pick from (the teach call rewrote the whole section); and "in your own words" covered
+ * the quotations the facts carry, so a teach call paraphrased 'rain soaks' into 'soaking them'
+ * and the question call then quoted the paraphrase. One line, still rendered only when a
+ * reference is present: what the lines are, how much of them to use, and the copy rule split
+ * between quotations (verbatim, with the locator) and everything else (own words).
  */
 export const REFERENCE_INSTRUCTION =
-  "Reference facts for this objective, already checked: use those right for this year group, in your own words, and leave out any fact or term pitched above it.";
+  "Facts from a topic pack, to draw on for this objective; not a list to cover. Use those right for this year group. Quotations stay word for word, with their locator where one is given; everything else is in your own words.";
 
 /**
  * A text slot, exactly as `specs.ts` builds one (`lineFor`): non-empty (shape), and in the strict
@@ -550,7 +553,7 @@ export const SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}],"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"slide","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
 export const planFactsObjectivePrompt = {
-  version: "plan-facts-objective.v14",
+  version: "plan-facts-objective.v15",
   system: [
     "You are an experienced UK teacher writing one lesson's substance, one objective at a time.",
     "Other calls write the others: do not teach them here.",

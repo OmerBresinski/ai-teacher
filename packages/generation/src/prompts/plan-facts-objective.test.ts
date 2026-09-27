@@ -55,10 +55,15 @@ describe("plan-facts-objective", () => {
     const refAt = withRef.indexOf(REFERENCE_INSTRUCTION);
     expect(refAt).toBeGreaterThan(withRef.indexOf(CURRICULUM_INSTRUCTION));
     expect(withRef.slice(refAt)).toContain("- Term: villa");
-    expect(withRef).toContain("already checked");
+    // l6-kpack (27 Sept 2026): a pool to draw on, never "already checked" (recall packs are not),
+    // with quotations carved out of "in your own words".
+    expect(REFERENCE_INSTRUCTION).not.toContain("already checked");
+    expect(REFERENCE_INSTRUCTION).toContain("not a list to cover");
+    expect(REFERENCE_INSTRUCTION).toContain("Quotations stay word for word");
     const { reference: _r, ...noRef } = SAMPLE;
     const without = planFactsObjectivePrompt.user(noRef);
-    expect(without).not.toContain("Reference facts");
+    expect(without).not.toContain(REFERENCE_INSTRUCTION);
+    expect(without).not.toContain("topic pack");
     // The system text says nothing about references: the line travels with the input.
     expect(planFactsObjectivePrompt.system).not.toContain("eference");
   });

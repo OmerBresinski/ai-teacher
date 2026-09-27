@@ -35,7 +35,12 @@ describe("plan-question-set", () => {
     // v4: 361. v5: 376, the one-right-answer sentence (7 "anotherCorrect" on gpt-6-luna low).
     // v6: 392, the part-way clause (both round-B question-set faults were a part-way answer the stem allowed).
     // v7 (l6e): 402, the ratio exception to the unit rule (two round-D keyWrong flags).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(410);
+    // v8 (l6-kpack): 416, quotation marks only round words the taught text quotes (a question
+    // quoted a paraphrase of the poem).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(420);
+    expect(system).toContain(
+      "Quotation marks go only around words the taught text itself has in quotation marks.",
+    );
     expect(system).toContain("A ratio's parts carry none: 2:3, not 2 cm:3 cm.");
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");

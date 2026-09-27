@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   CURRICULUM_INSTRUCTION,
   CURRICULUM_USE,
+  PACK_INSTRUCTION,
+  PACK_USE,
   PlanObjectivesOutputSchema,
   PRIOR_KNOWLEDGE_LABEL,
   PRIOR_KNOWLEDGE_USE,
@@ -90,6 +92,51 @@ describe("plan-objectives", () => {
     expect(system).not.toMatch(/minutes/);
     // A single objective must not be told to open below the reach (the check needs it AT the reach).
     expect(system).toContain("start one level below the reach unless there is only one objective");
+  });
+
+  test("v19: a topic pack is a menu with a join key, never the curriculum slot", () => {
+    const pack = {
+      sections: [
+        { outcome: "I can explain how Owen presents the cold as an enemy." },
+        { title: "Form", outcome: "I can analyse the refrain and half-rhyme." },
+      ],
+    };
+    const withPack = planObjectivesPrompt.user({
+      ...PLAN_OBJECTIVES_SAMPLE,
+      curriculum: undefined,
+      pack,
+    });
+    // The system text says nothing about a pack: a brief without one is not steered by it.
+    expect(planObjectivesPrompt.system).not.toMatch(/pack|packSection/);
+    expect(withPack).toContain(
+      `${PACK_INSTRUCTION}\n  0: I can explain how Owen presents the cold as an enemy.\n  1: Form: I can analyse the refrain and half-rhyme.\n\n${PACK_USE}`,
+    );
+    expect(PACK_INSTRUCTION).toContain("The brief sets this lesson's scope, not the pack.");
+    expect(PACK_USE).toContain('"packSection"');
+    // The outcomes never arrive under the unit instruction or its "span its arc" clause.
+    expect(withPack).not.toContain(CURRICULUM_INSTRUCTION);
+    expect(withPack).not.toContain(CURRICULUM_USE);
+    expect(withPack).not.toContain("Unit outcomes");
+    // No pack: byte-identical to v18's user turn.
+    expect(planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE)).not.toMatch(/pack/i);
+    // The join key exists only with a pack, bounded to the sections shown, null allowed.
+    const parse = (packSections: number | undefined, objective: Record<string, unknown>) =>
+      planObjectivesOutputSchemaFor(false, packSections).safeParse({ objectives: [objective] })
+        .success;
+    const text = "Explain how Owen presents the cold as an enemy";
+    expect(parse(2, { text, packSection: 1 })).toBe(true);
+    expect(parse(2, { text, packSection: null })).toBe(true);
+    expect(parse(2, { text, packSection: 2 })).toBe(false);
+    expect(parse(2, { text })).toBe(false);
+    expect(parse(undefined, { text })).toBe(true);
+    expect(
+      planObjectivesOutputSchemaFor(true, 2).safeParse({
+        objectives: [{ text, curriculumAnchor: "the poem", packSection: 0 }],
+      }).success,
+    ).toBe(true);
+    expect(
+      PlanObjectivesOutputSchema.safeParse({ objectives: [{ text, packSection: 0 }] }).success,
+    ).toBe(true);
   });
 
   test("the user turn carries no slide count and no count line", () => {

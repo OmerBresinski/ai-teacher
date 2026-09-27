@@ -104,10 +104,20 @@ export type Audience = {
   classContext?: Brief["classContext"] | undefined;
 };
 
+/**
+ * The school terms line (27 Sept 2026, l6-kpack ROOT-CAUSE #5 and #7): the `british` house rule
+ * covers spelling only, and the objectives and teach calls wrote "greatest common factor" and
+ * "3 counters:5 counters" for Year 7. One line beside the year group, which every call renders,
+ * so the term and the year level travel together. Production-wide.
+ */
+const TERMS_LINE =
+  "Terms: as used in English schools (HCF, not GCF; BIDMAS; a ratio's parts carry no units).";
+
 export function audienceBlock(a: Audience): string {
   const lines = [
     `Subject: ${a.subject ?? "not given"}`,
     `Year group: ${a.yearGroup ?? "not given"}${a.ageBand ? ` (${a.ageBand})` : ""}`,
+    TERMS_LINE,
     `Reading level: ${a.readingLevel ?? a.yearGroup ?? "the year group"}`,
     `Language: ${a.language ?? "en-GB"}`,
   ];

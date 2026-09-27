@@ -186,7 +186,7 @@ describe("proposeFor", () => {
         authoredBy: "ai",
       });
       expect(p.element?.id).not.toBe(original.id);
-      expect(p.generatedFrom.promptVersion).toBe("cascade.v5");
+      expect(p.generatedFrom.promptVersion).toBe("cascade.v6");
     }
     const blockProposal = proposals.find((p) => p.block);
     expect(blockProposal?.target).toEqual({ blockId: "wb3" });
@@ -216,7 +216,7 @@ describe("proposeFor", () => {
         (p) => p.target.slideId === "s-mc" && p.target.elementId === undefined && p.element,
       ),
     ).toBe(true);
-    expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v5")).toBe(true);
+    expect(proposals.every((p) => p.generatedFrom.promptVersion === "regenerate.v6")).toBe(true);
     // Every proposal of the slide carries the same fresh question and notes, and together they
     // form a valid slide whose answer data names the new element ids.
     const question = proposals[0]?.question;
@@ -432,7 +432,7 @@ describe("TEACH-89: a figure group is one cascade target", () => {
     for (const child of group.children) {
       expect(child).toMatchObject({
         authoredBy: "ai",
-        generatedFrom: { promptVersion: "cascade.v5" },
+        generatedFrom: { promptVersion: "cascade.v6" },
       });
     }
     for (const p of proposals) expect(ProposalSchema.safeParse(p).success).toBe(true);
