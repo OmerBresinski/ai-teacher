@@ -115,8 +115,9 @@ describe("a callout in the image-text column", () => {
       expect(out.overlaps).toEqual([]);
     });
 
-    test(`${theme.id}: the ceiling runs past the column card and is reported, not hidden`, () => {
-      // The column has three lines to give (`CALLOUT_LINES.column`); the badge names the text.
+    test(`${theme.id}: the ceiling is held whole by a grown card or left off, never run past the card`, () => {
+      // Rulings 91 and 102: the card grows into the column, then the text steps down one stop,
+      // then the callout is left off; the text never overflows its box.
       const out = fit(
         {
           kind: "image-text",
@@ -127,8 +128,10 @@ describe("a callout in the image-text column", () => {
         },
         theme.id,
       );
-      expect(out.overflow).toContain(CALLOUT_NAMES.text);
-      expect(out.slide.elements.filter(isCalloutElement)).toHaveLength(4);
+      expect(out.overflow).not.toContain(CALLOUT_NAMES.text);
+      expect(out.lintOverflow).toEqual([]);
+      expect(out.overlaps).toEqual([]);
+      expect([0, 4]).toContain(out.slide.elements.filter(isCalloutElement).length);
     });
   }
 });

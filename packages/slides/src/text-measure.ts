@@ -79,7 +79,8 @@ function linesIn(text: string, type: LineType, room: number): number {
 
 /**
  * How many lines `text` takes in a `preset` box `width` points wide, in `theme`. `weight`, when
- * given, overrides the preset's (a bold label is measured at 700).
+ * given, overrides the preset's (a bold label is measured at 700); `fontSize` likewise (a text
+ * stepped down one stop).
  */
 export function countLines(
   text: string,
@@ -87,9 +88,14 @@ export function countLines(
   theme: Theme,
   width: number,
   weight?: number,
+  fontSize?: number,
 ): number {
   const r = resolveTextStyle({ preset }, theme);
-  const type = weight === undefined ? r : { ...r, fontWeight: weight };
+  const type = {
+    ...r,
+    ...(weight === undefined ? {} : { fontWeight: weight }),
+    ...(fontSize === undefined ? {} : { fontSize }),
+  };
   return linesIn(text, type, width - 2 * r.padding);
 }
 

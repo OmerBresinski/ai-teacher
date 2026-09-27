@@ -6,7 +6,8 @@
  *
  * The seeded demo's content slide with its "COMMON MISTAKE" card in the editor, in present and as the
  * navigator thumbnail; then a fixture deck through `chooseVariant` carrying every callout kind on
- * a content slide (headed and two-column) and an image-text slide, and a worked example that
+ * a content slide (headed and two-column) and an image-text slide, a long image-text callout whose
+ * card grows to hold it, and a worked example that
  * goes without (measured: no room under the working card), on Chalk, Exam Hall and Night Lab.
  */
 import type { Lesson } from "@tj/domain/documents";
@@ -98,6 +99,20 @@ const FIXTURE: { spec: SlideSpec; file: string }[] = [
       callout: { kind: "key-words", text: "collection, run-off, river" },
     },
     file: "image-text-key-words",
+  },
+  {
+    // A long callout (about 115 characters): the column card grows to hold it (rulings 91, 102).
+    spec: {
+      kind: "image-text",
+      factRefs: ["o2"],
+      heading: "Inside a cloud",
+      body: "Rising air cools and its vapour condenses.",
+      callout: {
+        kind: "watch-out",
+        text: "Clouds are tiny drops of liquid water, not water vapour. Vapour is invisible; the white is water that has condensed.",
+      },
+    },
+    file: "image-text-long-watch-out",
   },
   {
     spec: {

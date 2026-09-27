@@ -12,7 +12,7 @@ import type {
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
-import { applyCallout } from "./callout";
+import { applyCallout, isCalloutElement } from "./callout";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
@@ -59,7 +59,8 @@ const provenance = (factRefs: string[], meta: MaterialiseMeta): Provenance => ({
  * `variant` picks a composition from `LAYOUT_CATALOGUE[spec.kind]` by index or name (see
  * `layoutSlide`); left out, the kind's default, or for a diagram its Figure template's
  * (`defaultVariant`). The fillers below find a variant's slots by `name` where its presets differ
- * from the default recipe's.
+ * from the default recipe's. `report`, when given, hears about a callout left off because it
+ * does not fit its card even one stop down (the caller logs it).
  */
 export function materialiseSlide(
   spec: SlideSpec,
@@ -67,10 +68,23 @@ export function materialiseSlide(
   meta: MaterialiseMeta,
   ids: IdSupplier = uid,
   variant?: number | string,
+  report?: (note: string) => void,
 ): Slide {
   const chosen = variant ?? defaultVariant(spec);
   const laid = reid(layoutSlide(spec.kind, themeId, chosen), ids);
   const filled = fillSlide(spec, themeId, laid, ids, chosen);
+  // A callout too long for its card even one stop down is left off, never clipped (rulings 91,
+  // 102); the worked example's is left off by design (`applyCallout`) and is not reported.
+  if (
+    report &&
+    (spec.kind === "content" || spec.kind === "image-text") &&
+    spec.callout &&
+    !filled.elements.some(isCalloutElement)
+  ) {
+    report(
+      `callout dropped: ${spec.callout.text.length} characters of ${spec.callout.kind} do not fit the ${spec.kind} card at the small floor`,
+    );
+  }
   const stamp = provenance(spec.factRefs, meta);
   const slide: Slide = {
     id: ids(),

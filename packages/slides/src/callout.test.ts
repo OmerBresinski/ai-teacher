@@ -15,18 +15,20 @@ import {
   CALLOUT_ICON,
   CALLOUT_ICONS,
   CALLOUT_LABELS,
-  CALLOUT_LINES,
   CALLOUT_NAMES,
   type CalloutSpec,
   calloutHeight,
   calloutLines,
+  fitCallout,
   isCalloutElement,
   workedExampleCalloutRoom,
 } from "./callout";
+import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, TRIM } from "./grid";
 import { boxH, CARD_PAD, FULL, IMAGE_TEXT_COLUMN, layoutSlide } from "./layouts";
 import { type IdSupplier, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
+import { stepDownSize } from "./reflow";
 import { ceilingOf, type SlideSpec, SPEC_LIMITS } from "./specs";
 import { CALLOUT_TONES, calloutTone, calloutTones, fontFloor, getTheme, THEMES } from "./themes";
 
@@ -43,23 +45,23 @@ const counter = (): IdSupplier => {
 };
 const CARD_BOTTOM = SAFE_BOTTOM - SPACE[1];
 
-/**
- * Three lengths and the lines the estimate gives them on every theme: twenty characters is one
- * line across either width; a hundred is two across the full width (sixty-two to sixty-seven
- * characters a line at the `small` stop) and past the column's three (twenty-nine to thirty-two);
- * the ceiling is three across the full width and past three in the column, so the cap holds.
- */
+/** Prose of `n` characters, cut at the end: what a writer's callout looks like, not a run of x's. */
+const prose = (n: number) => {
+  let out = "";
+  while (out.length < n) out += "clouds are tiny drops of liquid water not vapour ";
+  return out.slice(0, n).trim();
+};
 const SHORT = "Vapour is invisible.";
 const MID =
   "Clouds are tiny drops of liquid water, not water vapour; the vapour itself is invisible.".padEnd(
     100,
     ".",
   );
-const CEILING = "x".repeat(ceilingOf(SPEC_LIMITS.callout));
+const CEILING = prose(ceilingOf(SPEC_LIMITS.callout));
 const LENGTHS = [
-  { label: "short", text: SHORT, full: 1, column: 1 },
-  { label: "mid", text: MID, full: 2, column: CALLOUT_LINES.column },
-  { label: "ceiling", text: CEILING, full: CALLOUT_LINES.full, column: CALLOUT_LINES.column },
+  { label: "short", text: SHORT },
+  { label: "mid", text: MID },
+  { label: "ceiling", text: CEILING },
 ] as const;
 
 const content = (callout?: CalloutSpec): SlideSpec => ({
@@ -179,14 +181,36 @@ describe("callout labels and colours", () => {
   });
 });
 
-describe("the card is sized to its text", () => {
+describe("the card hugs its text", () => {
   for (const theme of THEMES) {
-    it(`${theme.id}: one line for a short callout, the cap for the ceiling, never more`, () => {
-      for (const { text, full, column } of LENGTHS) {
-        expect(calloutLines(theme, text, FULL, CALLOUT_LINES.full)).toBe(full);
-        expect(calloutLines(theme, text, IMAGE_TEXT_COLUMN.w, CALLOUT_LINES.column)).toBe(column);
+    it(`${theme.id}: the card holds exactly the lines the ruler measures, no empty line under them`, () => {
+      expect(calloutLines(theme, SHORT, FULL)).toBe(1);
+      expect(calloutLines(theme, SHORT, IMAGE_TEXT_COLUMN.w)).toBe(1);
+      expect(calloutLines(theme, "", FULL)).toBe(1);
+      // The demo's misconception: one line across the full width on some themes, two on others;
+      // either way the fitted text box is the box the card was sized for.
+      const demo = "Clouds are tiny drops of liquid water, not water vapour; vapour is invisible.";
+      for (const [spec, variant] of [
+        [content({ kind: "watch-out", text: demo }), "headed"],
+        [imageText({ kind: "watch-out", text: demo }), ""],
+      ] as const) {
+        const laid = trio(laidWith(spec, theme, variant));
+        const fitted = trio(
+          materialiseSlide(spec, theme.id, meta, counter(), variant || undefined),
+        );
+        // No empty line under the text: the fitted box is within a point of the one the card was
+        // sized for, or (image-text on Playground and Beacon, where master's fit steps every
+        // image-text slide down one stop because it counts the half-bleed picture as overflow)
+        // the same number of lines one stop smaller.
+        const size = fitted.text.style.fontSize ?? theme.sizes.small;
+        const line = size * theme.lineHeights.small;
+        const lines = (h: number, at: number) => Math.round(h / (at * theme.lineHeights.small));
+        expect(lines(fitted.text.h, size), `${spec.kind} lines`).toBe(
+          lines(laid.text.h, laid.text.style.fontSize ?? Math.max(theme.sizes.small, 24)),
+        );
+        expect(laid.text.h - fitted.text.h, `${spec.kind} slack`).toBeLessThan(line);
+        expect(fitted.card.h).toBe(laid.card.h);
       }
-      expect(calloutLines(theme, "", FULL, CALLOUT_LINES.full)).toBe(1);
     });
   }
 });
@@ -194,8 +218,8 @@ describe("the card is sized to its text", () => {
 describe("callout on a content slide", () => {
   for (const theme of THEMES) {
     for (const variant of ["headed", "two-column"] as const) {
-      for (const { label: length, text, full } of LENGTHS) {
-        it(`${theme.id}/${variant}/${length}: the trio sits under the body, inside the safe area, ${full} line(s) tall`, () => {
+      for (const { label: length, text } of LENGTHS) {
+        it(`${theme.id}/${variant}/${length}: the trio sits under the body, inside the safe area, as tall as its text`, () => {
           const spec = content({ kind: "watch-out", text });
           const without = materialiseSlide(content(), theme.id, meta, counter(), variant);
           const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
@@ -222,9 +246,10 @@ describe("callout on a content slide", () => {
           expect(card.y + card.h).toBe(CARD_BOTTOM);
           // On the rhythm, so the card is at most a baseline taller than its text needs.
           expect(card.y % 7).toBe(0);
-          expect(card.h).toBeGreaterThanOrEqual(calloutHeight(theme, full));
-          expect(card.h).toBeLessThan(calloutHeight(theme, full) + 7);
-          expect(textEl.h).toBeGreaterThanOrEqual(boxH(theme, "small", full));
+          const size = textEl.style.fontSize;
+          const lines = calloutLines(theme, text, FULL, size);
+          expect(card.h).toBeGreaterThanOrEqual(calloutHeight(theme, lines, size));
+          expect(card.h).toBeLessThan(calloutHeight(theme, lines, size) + 7);
           expect(textEl.y).toBeGreaterThan(label.y + label.h);
 
           // Every body box ends a gap above the card, never taller than the recipe left it, and
@@ -265,8 +290,8 @@ describe("callout on a content slide", () => {
 
 describe("callout on an image-text slide", () => {
   for (const theme of THEMES) {
-    for (const { label: length, text, column } of LENGTHS) {
-      it(`${theme.id}/${length}: the card is in the text column, never over the picture, ${column} line(s) tall, and the body keeps two lines`, () => {
+    for (const { label: length, text } of LENGTHS.filter((l) => l.label !== "ceiling")) {
+      it(`${theme.id}/${length}: the card is in the text column, never over the picture, as tall as its text, and the body keeps two lines`, () => {
         const slide = laidWith(imageText({ kind: "key-words", text }), theme);
         const { card, label, text: textEl } = trio(slide);
         const image = slide.elements.find((el) => el.type === "image");
@@ -276,10 +301,10 @@ describe("callout on an image-text slide", () => {
         expect(card.x).toBeGreaterThanOrEqual(image.x + image.w);
         expect(card.x + card.w).toBeLessThanOrEqual(SAFE.x + SAFE.w);
         expect(card.y + card.h).toBeLessThanOrEqual(CARD_BOTTOM);
-        expect(card.h).toBe(calloutHeight(theme, column));
+        const size = textEl.style.fontSize;
+        expect(card.h).toBe(calloutHeight(theme, calloutLines(theme, text, card.w, size), size));
         expect(inside(label, SAFE)).toBe(true);
         expect(inside(textEl, SAFE)).toBe(true);
-        expect(textEl.h).toBeGreaterThanOrEqual(boxH(theme, "small", column));
 
         const texts = slide.elements.filter(
           (el): el is TextElement => el.type === "text" && !isCalloutElement(el),
@@ -332,6 +357,14 @@ describe("callout geometry sweep", () => {
             laidWith(imageText({ kind, text }), theme),
           ];
           for (const slide of slides) {
+            // A callout that does not fit even one stop down is left off, never clipped.
+            if (!slide.elements.some(isCalloutElement)) {
+              const w = slide.elements.some((el) => el.type === "image")
+                ? IMAGE_TEXT_COLUMN.w
+                : FULL;
+              expect(fitCallout(theme, text, w, SLIDE_H)).toBeDefined();
+              continue;
+            }
             const { card, icon, label, text: textEl } = trio(slide);
             expect(inside(card, trim)).toBe(true);
             expect(inside(icon, card)).toBe(true);
@@ -357,9 +390,8 @@ describe("callout geometry sweep", () => {
 
 /*
  * After the fit (TEACH-28): `materialiseSlide` sets every text box to its measured height. Prose
- * the card was sized for stays inside it, and the card itself does not move. The ceiling's run of
- * x's is not prose (the ruler sets an x wider than the estimate's 0.5em), and a column callout
- * past about eighty characters runs past its box by design (`CALLOUT_LINES`), so both stay out.
+ * the card was sized for stays inside it, and the card itself does not move. Long column callouts
+ * have their own block below.
  */
 describe("callout after the fit", () => {
   const FULL_PROSE =
@@ -397,4 +429,74 @@ describe("callout after the fit", () => {
       }
     });
   }
+});
+
+/*
+ * A long callout in the image-text column (rulings 91 and 102): the card grows to hold it and the
+ * body above gives up room; past that the text steps down one stop, never under the 24pt floor;
+ * past that the callout is left off and reported. It is never clipped and never runs off its card.
+ */
+describe("a long callout in the image-text column", () => {
+  for (const themeId of ["chalk", "exam-hall", "night-lab"] as const) {
+    const theme = getTheme(themeId);
+    for (const n of [80, 120, 160]) {
+      it(`${themeId}/${n} characters: held whole by a card that fits, or left off and reported`, () => {
+        const text = prose(n);
+        const notes: string[] = [];
+        const spec = imageText({ kind: "watch-out", text });
+        const slide = materialiseSlide(spec, theme.id, meta, counter(), undefined, (note) =>
+          notes.push(note),
+        );
+        if (!slide.elements.some(isCalloutElement)) {
+          expect(notes).toHaveLength(1);
+          expect(notes[0]).toContain("callout dropped");
+          return;
+        }
+        expect(notes).toEqual([]);
+        const { card, label, text: textEl } = trio(slide);
+        expect(plain(textEl)).toBe(text);
+        expect(card.x).toBe(IMAGE_TEXT_COLUMN.x);
+        expect(card.w).toBe(IMAGE_TEXT_COLUMN.w);
+        expect(card.y + card.h).toBeLessThanOrEqual(CARD_BOTTOM);
+        expect(inside(label, card)).toBe(true);
+        expect(inside(textEl, card)).toBe(true);
+        expect(inside(textEl, SAFE)).toBe(true);
+        // At most one stop down, never under the floor.
+        const full = theme.sizes.small;
+        const size = textEl.style.fontSize ?? full;
+        expect(size).toBeGreaterThanOrEqual(fontFloor("small"));
+        expect(size).toBeGreaterThanOrEqual(
+          stepDownSize(theme, "small", Math.max(full, fontFloor("small"))),
+        );
+        // The fitted slide has nothing past the safe area but the full-bleed picture.
+        const again = fitSlide(slide, theme);
+        const image = slide.elements.find((el) => el.type === "image");
+        expect(again.overflow.filter((id) => id !== image?.id)).toEqual([]);
+      });
+    }
+  }
+
+  it("grows the card for 120 characters on chalk rather than running past it", () => {
+    const text = prose(120);
+    const laid = trio(laidWith(imageText({ kind: "example", text }), getTheme("chalk")));
+    expect(laid.card.h).toBeGreaterThan(calloutHeight(getTheme("chalk"), 3));
+  });
+
+  it("leaves a callout off when even one stop down it cannot fit the room", () => {
+    const theme = getTheme("chalk");
+    expect(fitCallout(theme, prose(160), IMAGE_TEXT_COLUMN.w, 60)).toBeUndefined();
+    const notes: string[] = [];
+    const huge = {
+      kind: "image-text",
+      factRefs: ["o3"],
+      heading: "Clouds",
+      body: "Warm air rises.",
+      callout: { kind: "example", text: prose(900) },
+    } as SlideSpec;
+    const slide = materialiseSlide(huge, theme.id, meta, counter(), undefined, (n) =>
+      notes.push(n),
+    );
+    expect(slide.elements.some(isCalloutElement)).toBe(false);
+    expect(notes).toHaveLength(1);
+  });
 });

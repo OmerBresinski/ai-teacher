@@ -1,10 +1,11 @@
-import type {
-  CalloutKind,
-  IconElement,
-  ShapeElement,
-  SlideElement,
-  TextElement,
-  Theme,
+import {
+  type CalloutKind,
+  type IconElement,
+  richDocToPlainText,
+  type ShapeElement,
+  type SlideElement,
+  type TextElement,
+  type Theme,
 } from "@tj/domain/documents";
 import { uid } from "./factories";
 import type { Rect } from "./geometry";
@@ -22,6 +23,8 @@ import {
   text,
 } from "./layouts";
 import { SAFE_BOTTOM } from "./metrics";
+import { stepDownSize } from "./reflow";
+import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";
 import { calloutTone } from "./themes";
 
@@ -71,28 +74,6 @@ export const CALLOUT_NAMES = {
   text: "Callout text",
 } as const;
 
-/**
- * The most lines of `small` a card holds. Measured, not assumed (`callout.test.ts` and the
- * editor's `layout/callout-fit` test hold them over every theme): across the full content width
- * three lines hold the 180-character ceiling of `SPEC_LIMITS.callout`; across the image-text
- * column three lines hold about eighty characters and the column has no fourth to give, because
- * the body above keeps two lines of its own, the least a picture slide's sentence needs. A longer
- * callout there runs past its box and the residual badge reports it (the writer trims, as for
- * every text between its aim and its ceiling). `small` is at or one step above its 24pt floor, so
- * the fit engine cannot step it down instead.
- */
-export const CALLOUT_LINES = { full: 3, column: 3 } as const;
-
-/**
- * Average advance the line estimate assumes, in ems: the 0.5 the fit engine's ruler, the "Why?"
- * panel's `reservedLines` and the test ruler all take, so the box holds every line the engine
- * counts. Measured on the TEACH-75 screenshots, Lexend (Chalk) and Inter (Night Lab) set running
- * text at 0.46 to 0.48em at the `small` stop, so a real line holds a little more than the estimate
- * and the card is never short of a line for prose; an unusual string of wide letters that needs
- * one more is what the residual badge reports.
- */
-const ADVANCE = 0.5;
-
 /** Gap between the label row and the text, the working card's `capH + 12` tightened one step. */
 const LABEL_GAP = 8;
 
@@ -115,19 +96,46 @@ const labelRowH = (t: Theme): number => Math.max(CALLOUT_ICON, boxH(t, "caption"
 export type CalloutSpec = { kind: CalloutKind; text: string };
 
 /**
- * Lines of `small` a callout's text takes across a card `width` wide, one to `max`. A pure
- * estimate from the character count at the preset's resolved size; `materialiseSlide`'s fit
- * (TEACH-28) then sets the text box to its measured height inside the card the estimate sized.
+ * Lines of `small` a callout's text takes across a card `width` wide, measured with the headless
+ * ruler (`countLines`, the fit engine's own), at `size` when the text has been stepped down. The
+ * card hugs this count, so it is never a line taller than its text on any theme.
  */
-export function calloutLines(t: Theme, text: string, width: number, max: number): number {
-  const size = resolveFontSize(t, "small");
-  const perLine = Math.max(1, Math.floor((width - 2 * CARD_PAD) / (size * ADVANCE)));
-  return Math.min(max, Math.max(1, Math.ceil(text.trim().length / perLine)));
+export function calloutLines(t: Theme, text: string, width: number, size?: number): number {
+  return countLines(text.trim(), "small", t, width - 2 * CARD_PAD, undefined, size);
 }
 
+/** Height of the callout's text box: `lines` lines of `small`, at `size` when stepped down. */
+const calloutTextH = (t: Theme, lines: number, size?: number): number =>
+  size === undefined ? boxH(t, "small", lines) : Math.ceil(size * t.lineHeights.small * lines);
+
 /** Height of a callout card holding `lines` lines of `small` under its label. */
-export function calloutHeight(t: Theme, lines: number): number {
-  return CARD_PAD + labelRowH(t) + LABEL_GAP + boxH(t, "small", lines) + CARD_PAD;
+export function calloutHeight(t: Theme, lines: number, size?: number): number {
+  return CARD_PAD + labelRowH(t) + LABEL_GAP + calloutTextH(t, lines, size) + CARD_PAD;
+}
+
+/** How a callout's text is set in its card: lines, card height and, when stepped, the size. */
+export type CalloutFit = { lines: number; height: number; size?: number };
+
+/**
+ * The card for `text` across `width`, no taller than `room` (UX rulings 91 and 102): at the
+ * theme's `small` if it fits, else one stop down (`stepDownSize`, never below the 24pt floor),
+ * else nothing, and the caller drops the callout rather than clip it.
+ */
+export function fitCallout(
+  t: Theme,
+  text: string,
+  width: number,
+  room: number,
+): CalloutFit | undefined {
+  const full = resolveFontSize(t, "small");
+  const lines = calloutLines(t, text, width);
+  const height = calloutHeight(t, lines);
+  if (height <= room) return { lines, height };
+  const size = stepDownSize(t, "small", full);
+  if (size >= full) return undefined;
+  const stepped = calloutLines(t, text, width, size);
+  const steppedH = calloutHeight(t, stepped, size);
+  return steppedH <= room ? { lines: stepped, height: steppedH, size } : undefined;
 }
 
 /** Where every card's bottom edge sits: short of the safe edge by the working card's margin. */
@@ -145,6 +153,7 @@ export function calloutElements(
   t: Theme,
   callout: CalloutSpec,
   rect: Rect,
+  size?: number,
 ): [ShapeElement, IconElement, TextElement, TextElement] {
   const tone = calloutTone(t, callout.kind);
   const capH = boxH(t, "caption");
@@ -185,7 +194,7 @@ export function calloutElements(
       "small",
       callout.text,
       { x: rect.x + CARD_PAD, y: textY, w: inner, h: rect.y + rect.h - CARD_PAD - textY },
-      { color: tone.ink },
+      size === undefined ? { color: tone.ink } : { color: tone.ink, fontSize: size },
       { name: CALLOUT_NAMES.text },
     ),
   ];
@@ -203,6 +212,10 @@ export type CalloutHost = "content" | "image-text" | "worked-example";
  * - Image-text: the card in the text column under the body, sized to its text; the column's stack
  *   is re-centred with the card counted, and the body keeps what is left above the cards' common
  *   bottom edge.
+ * - Either host: the card grows to hold every line the ruler measures, down to two lines of body
+ *   above it; past that the text steps down one stop (`fitCallout`); past that the callout is
+ *   left off and the layout returned unchanged, never clipped (rulings 91 and 102).
+ *   `materialiseSlide` reports the drop to its caller, which logs it.
  * - Worked example: unchanged, the callout dropped. The working card already runs to the foot and
  *   four one-line steps fill it on every theme (TEACH-247); `workedExampleCalloutRoom` measures
  *   what a card would leave the working, and even a one-line card leaves less than two body lines
@@ -244,16 +257,20 @@ function applyToContent(
   if (variant === "statement") {
     throw new Error("a content statement has no column for a callout; choose headed or two-column");
   }
-  const lines = calloutLines(t, callout.text, FULL, CALLOUT_LINES.full);
-  const y = bottomAnchoredY(calloutHeight(t, lines));
-  const rect = { x: SAFE.x, y, w: FULL, h: CARD_BOTTOM - y };
   const bodies = texts(laid, (el) =>
     variant === "two-column"
       ? el.name === "Body left" || el.name === "Body right"
       : el.style.preset === "body",
   );
+  // The body keeps two lines of its own; the card may take everything under them.
+  const bodyTop = Math.max(...bodies.map((body) => body.y));
+  const room = CARD_BOTTOM - (bodyTop + boxH(t, "body", 2) + SPACE[2]);
+  const fit = fitCallout(t, callout.text, FULL, room);
+  if (!fit) return laid;
+  const y = Math.max(bottomAnchoredY(fit.height), CARD_BOTTOM - room);
+  const rect = { x: SAFE.x, y, w: FULL, h: CARD_BOTTOM - y };
   for (const body of bodies) body.h = Math.min(body.h, y - SPACE[2] - body.y);
-  return { ...laid, elements: [...laid.elements, ...calloutElements(t, callout, rect)] };
+  return { ...laid, elements: [...laid.elements, ...calloutElements(t, callout, rect, fit.size)] };
 }
 
 function applyToImageText(laid: Layout, t: Theme, callout: CalloutSpec): Layout {
@@ -261,11 +278,16 @@ function applyToImageText(laid: Layout, t: Theme, callout: CalloutSpec): Layout 
   const [heading] = texts(laid, (el) => el.style.preset === "heading");
   const [body] = texts(laid, (el) => el.style.preset === "body");
   if (!caption || !heading || !body) throw new Error("image-text recipe is missing a text slot");
-  const lines = calloutLines(t, callout.text, IMAGE_TEXT_COLUMN.w, CALLOUT_LINES.column);
-  const cardH = calloutHeight(t, lines);
-  // The recipe's stack: caption, 12, heading, 19, body. The card joins it after `SPACE[2]`; the
-  // body keeps what the column has left above the cards' common bottom edge.
+  // The recipe's stack: caption, 12, heading, 19, body. The heading's box is the recipe's two
+  // lines; it takes the lines its text measures (as the fit would), so the column's room is real.
+  // The card joins after `SPACE[2]`; the body keeps up to two lines, the card may take the rest.
+  heading.h = Math.min(heading.h, boxH(t, "heading", measured(t, heading)));
   const above = caption.h + 12 + heading.h + 19;
+  const bodyFloor = boxH(t, "body", Math.min(2, measured(t, body)));
+  const room = CARD_BOTTOM - SAFE.y - above - bodyFloor - SPACE[2];
+  const fit = fitCallout(t, callout.text, IMAGE_TEXT_COLUMN.w, room);
+  if (!fit) return laid;
+  const cardH = fit.height;
   const bodyH = Math.min(body.h, CARD_BOTTOM - SAFE.y - above - SPACE[2] - cardH);
   const top = Math.max(SAFE.y, centreY(above + bodyH + SPACE[2] + cardH));
   caption.y = top;
@@ -278,7 +300,7 @@ function applyToImageText(laid: Layout, t: Theme, callout: CalloutSpec): Layout 
     w: IMAGE_TEXT_COLUMN.w,
     h: cardH,
   };
-  return { ...laid, elements: [...laid.elements, ...calloutElements(t, callout, rect)] };
+  return { ...laid, elements: [...laid.elements, ...calloutElements(t, callout, rect, fit.size)] };
 }
 
 /**
@@ -289,13 +311,17 @@ function applyToImageText(laid: Layout, t: Theme, callout: CalloutSpec): Layout 
  * up past the working's first line. This is the measurement behind the worked example going
  * without a callout; `callout.test.ts` holds it, so a recipe change that frees the room shows up.
  */
-export function workedExampleCalloutRoom(t: Theme, lines: number = CALLOUT_LINES.full): number {
+export function workedExampleCalloutRoom(t: Theme, lines = 3): number {
   const cardTop = bottomAnchoredY(calloutHeight(t, lines));
   const questionH = boxH(t, "body", 2);
   const workingCardY = Math.round((BODY_Y + questionH + SPACE[2]) / BASELINE) * BASELINE;
   const workingY = workingCardY + CARD_PAD + boxH(t, "caption") + 12;
   return cardTop - SPACE[2] - CARD_PAD - workingY;
 }
+
+/** Lines a filled text box's own words take at its preset, by the headless ruler. */
+const measured = (t: Theme, el: TextElement): number =>
+  countLines(richDocToPlainText(el.doc), el.style.preset, t, el.w);
 
 function texts(laid: Layout, where: (el: TextElement) => boolean): TextElement[] {
   return laid.elements.filter((el): el is TextElement => el.type === "text" && where(el));
