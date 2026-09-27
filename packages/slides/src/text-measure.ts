@@ -77,18 +77,31 @@ function linesIn(text: string, type: LineType, room: number): number {
   return Math.max(1, lines);
 }
 
-/** How many lines `text` takes in a `preset` box `width` points wide, in `theme`. */
-export function countLines(text: string, preset: TextPreset, theme: Theme, width: number): number {
+/**
+ * How many lines `text` takes in a `preset` box `width` points wide, in `theme`. `weight`, when
+ * given, overrides the preset's (a bold label is measured at 700).
+ */
+export function countLines(
+  text: string,
+  preset: TextPreset,
+  theme: Theme,
+  width: number,
+  weight?: number,
+): number {
   const r = resolveTextStyle({ preset }, theme);
-  return linesIn(text, r, width - 2 * r.padding);
+  const type = weight === undefined ? r : { ...r, fontWeight: weight };
+  return linesIn(text, type, width - 2 * r.padding);
 }
 
-/** How wide `text` is on one line in a `preset` box, in `theme`: a label's box, before any slack. */
-export function lineWidth(text: string, preset: TextPreset, theme: Theme): number {
+/**
+ * How wide `text` is on one line in a `preset` box, in `theme`: a label's box, before any slack.
+ * `weight`, when given, overrides the preset's.
+ */
+export function lineWidth(text: string, preset: TextPreset, theme: Theme, weight?: number): number {
   const r = resolveTextStyle({ preset }, theme);
   const tracking = r.letterSpacing.endsWith("em") ? Number.parseFloat(r.letterSpacing) : 0;
   const shown = r.textTransform === "uppercase" ? text.toUpperCase() : text;
-  const advances = advancesFor(r.fontFamily, r.fontWeight);
+  const advances = advancesFor(r.fontFamily, weight ?? r.fontWeight);
   return emWidth(shown, advances, tracking) * r.fontSize + 2 * r.padding;
 }
 

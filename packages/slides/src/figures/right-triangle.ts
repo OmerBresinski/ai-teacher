@@ -16,6 +16,7 @@ import { uid } from "../factories";
 import { boxH } from "../layouts";
 import type { FigureDrawing, FigureTemplate } from "./index";
 import { type FittedLabel, fitLabel, labelText, notToScaleCaption } from "./labels";
+import { rightAngleMark } from "./marks";
 
 /* ------------------------------------------------------------------ */
 /* Values                                                              */
@@ -128,7 +129,6 @@ export const RIGHT_TRIANGLE_RATIO = { min: 0.4, max: 2.5 } as const;
 /** The schematic triangle drawn when the values cannot give two legs: base 3, height 4. */
 const SCHEMATIC_RATIO = 4 / 3;
 const STROKE = 3;
-const MARK_STROKE = 2;
 /** Between a side and the nearest edge of its label's box. */
 const GAP = 12;
 /** Between the drawing and its box, so the round joins of the stroke stay inside. */
@@ -251,22 +251,8 @@ function drawRightTriangle(
     name: "Triangle",
   };
   const m = Math.round(clamp(Math.min(W, H) * 0.12, 14, 24));
-  const mark: PathElement = {
-    id: uid(),
-    type: "path",
-    x: A.x,
-    y: A.y - m,
-    w: m,
-    h: m,
-    points: [
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-      { x: 1, y: 1 },
-    ],
-    stroke: t.colors.ink,
-    strokeWidth: MARK_STROKE,
-    name: "Right angle",
-  };
+  // Up the height and along the base from the right angle, `m` along each.
+  const mark = rightAngleMark(A, { x: A.x, y: A.y - H }, { x: A.x + W, y: A.y }, m, t);
   const children = [
     triangle,
     mark,

@@ -13,7 +13,7 @@ import type {
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
-import { drawFigure, figureGroupOf } from "./figures";
+import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
 import {
   type ContentVariant,
@@ -56,18 +56,20 @@ const provenance = (factRefs: string[], meta: MaterialiseMeta): Provenance => ({
 
 /**
  * `variant` picks a composition from `LAYOUT_CATALOGUE[spec.kind]` by index or name (see
- * `layoutSlide`); left out, the kind's default. The fillers below find a variant's slots by
- * `name` where its presets differ from the default recipe's.
+ * `layoutSlide`); left out, the kind's default, or for a diagram its Figure template's
+ * (`defaultVariant`). The fillers below find a variant's slots by `name` where its presets differ
+ * from the default recipe's.
  */
 export function materialiseSlide(
   spec: SlideSpec,
   themeId: string,
   meta: MaterialiseMeta,
   ids: IdSupplier = uid,
-  variant: number | string = 0,
+  variant?: number | string,
 ): Slide {
-  const laid = reid(layoutSlide(spec.kind, themeId, variant), ids);
-  const filled = fillSlide(spec, themeId, laid, ids, variant);
+  const chosen = variant ?? defaultVariant(spec);
+  const laid = reid(layoutSlide(spec.kind, themeId, chosen), ids);
+  const filled = fillSlide(spec, themeId, laid, ids, chosen);
   const stamp = provenance(spec.factRefs, meta);
   const slide: Slide = {
     id: ids(),
@@ -78,6 +80,14 @@ export function materialiseSlide(
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
   return fitSlide(slide, getTheme(themeId)).slide;
+}
+
+/**
+ * The variant a spec is laid out in when the caller gives none: the kind's default, except a
+ * diagram, whose Figure template picks it (`diagramVariantFor`, ADR 0034 decision 7).
+ */
+function defaultVariant(spec: SlideSpec): number | string {
+  return spec.kind === "diagram" ? diagramVariantFor(spec.figure.template) : 0;
 }
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };
