@@ -13,7 +13,7 @@ import type {
   Theme,
   WorksheetBlock,
 } from "@tj/domain/documents";
-import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
+import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj/domain/documents";
 import { applyCallout, isCalloutElement } from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
 import { docFromBullets, docFromText, uid } from "./factories";
@@ -366,8 +366,31 @@ function relaid(slide: Slide, theme: Theme, shape: (bare: Slide, ids: IdSupplier
   const chrome = slide.elements.filter((e) => top.has(e.name ?? ""));
   const bare = stripLook({ ...slide, elements: [...kept, body] });
   const laid = lookAndFit(shape(bare, ids), theme, ids, { terms: markedTerms(words) });
+  // Every word the slide said must still be said: a relayout that would drop one (a lone point
+  // carried to a page this view does not draw) gives way to the slide as stored.
+  if (!says(laid.elements, words)) return slide;
   const had = new Set(chrome.map((e) => e.name));
   return { ...laid, elements: [...laid.elements.filter((e) => !had.has(e.name)), ...chrome] };
+}
+
+/** The words of `els`, as a count per lower-cased word. */
+function wordCounts(els: readonly SlideElement[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const e of els) {
+    if (e.type !== "text") continue;
+    for (const w of richDocToPlainText(e.doc)
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu) ?? [])
+      counts.set(w, (counts.get(w) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Whether `laid` says every word of `words`, as often as they do. */
+function says(laid: readonly SlideElement[], words: readonly SlideElement[]): boolean {
+  const have = wordCounts(laid);
+  for (const [w, n] of wordCounts(words)) if ((have.get(w) ?? 0) < n) return false;
+  return true;
 }
 
 /**
