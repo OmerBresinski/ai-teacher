@@ -1,4 +1,5 @@
 import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
+import { THEME_ART } from "./art";
 import { FONT_STACKS } from "./fonts";
 
 /**
@@ -6,7 +7,7 @@ import { FONT_STACKS } from "./fonts";
  * Beacon), four playful (Playground, Crayon Box, Splash, Treehouse) and two between (Chalk & Cream,
  * Reading Room). Type stops are defined at 800x450 (docs/research/04-visual-direction.md) and
  * scaled by 1.2 to our 960x540 space. Every ink/muted/accent pair is WCAG AA or better on the
- * background, the surface and any `backgroundImage` colour (`themes.test.ts`). A new theme's
+ * background, the surface and every colour in the theme's art (`themes.test.ts`). A new theme's
  * type must not narrow the content budgets (`content-shapes.test.ts`): set it no wider than Chalk.
  *
  * Preset mapping: title = research "display", subtitle = research "title",
@@ -29,77 +30,7 @@ function type(stops: Stops) {
   return { sizes, lineHeights };
 }
 
-/** Inline SVG theme art, as a CSS `url()` for `Theme.backgroundImage`. */
-const svg = (w: number, h: number, body: string) =>
-  `url("data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'>${body}</svg>`,
-  )}")`;
-
-/** Playground: a sun with twelve rounded rays. */
-const SUN = svg(
-  240,
-  240,
-  `<g fill='#FFE4A0'>${Array.from(
-    { length: 12 },
-    (_, i) =>
-      `<rect x='113' y='12' width='14' height='44' rx='7' transform='rotate(${i * 30} 120 120)'/>`,
-  ).join("")}</g><circle cx='120' cy='120' r='48' fill='#FFD97A'/>`,
-);
-
-/** Playground: a pastel rainbow rising from the bottom-left corner. */
-const RAINBOW = svg(
-  200,
-  110,
-  [
-    ["#FFCFCF", 88],
-    ["#FFE2A0", 74],
-    ["#CFEBC2", 60],
-    ["#CFE0FF", 46],
-  ]
-    .map(
-      ([c, r]) =>
-        `<path d='M${100 - Number(r)} 110 A${r} ${r} 0 0 1 ${100 + Number(r)} 110' fill='none' stroke='${c}' stroke-width='14'/>`,
-    )
-    .join(""),
-);
-
-/** Crayon Box: a crayon zigzag and star, drawn with round-ended strokes, for the page's foot. */
-const DOODLE = svg(
-  132,
-  36,
-  `<path d='M4 28 L18 14 L32 28 L46 14 L60 28 L74 14' fill='none' stroke='#D2E3F9' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/><path d='M110 3 L115 13 L127 14 L118 21 L121 33 L110 26 L99 33 L102 21 L93 14 L105 13 Z' fill='none' stroke='#FBE29C' stroke-width='4' stroke-linejoin='round'/>`,
-);
-
-/** Splash: one wave, repeated along the foot of the slide. */
-const wave = (fill: string) =>
-  svg(160, 40, `<path d='M0 18 Q20 6 40 18 T80 18 T120 18 T160 18 V40 H0 Z' fill='${fill}'/>`);
-
-/** Splash: bubbles as rings, rising up the right margin, clear of the text. */
-const BUBBLES = svg(
-  48,
-  220,
-  `<g fill='none' stroke='#B9DDEE' stroke-width='3'><circle cx='26' cy='18' r='14'/><circle cx='16' cy='70' r='9'/><circle cx='30' cy='124' r='6'/><circle cx='18' cy='176' r='4'/></g>`,
-);
-
-/** Treehouse: a vine with leaves hanging down the right margin, below the counter. */
-const VINE = svg(
-  72,
-  380,
-  `<path d='M62 -2 C44 70 22 120 36 190 S54 300 30 378' fill='none' stroke='#BFDCA3' stroke-width='5' stroke-linecap='round'/>${[
-    [46, 96, 200, "#C2DEA8"],
-    [34, 150, -20, "#D3E8BF"],
-    [38, 212, 195, "#C2DEA8"],
-    [46, 268, -25, "#D3E8BF"],
-    [40, 326, 200, "#C2DEA8"],
-  ]
-    .map(
-      ([x, y, a, c]) =>
-        `<path d='M0 0 Q18 -15 40 0 Q18 15 0 0 Z' fill='${c}' transform='translate(${x} ${y}) rotate(${a})'/>`,
-    )
-    .join("")}`,
-);
-
-export const THEMES: Theme[] = [
+const BASE: Theme[] = [
   {
     id: "chalk",
     name: "Chalk & Cream",
@@ -163,8 +94,6 @@ export const THEMES: Theme[] = [
     weights: { title: 700, heading: 700, body: 400 },
     titleTracking: "-0.015em",
     radius: 22,
-    // A sun with rays behind the counter, a rainbow in the bottom-left corner.
-    backgroundImage: `${SUN} right -72px top -108px / 240px 240px no-repeat, ${RAINBOW} left -34px bottom -12px / 200px 110px no-repeat`,
     ornament: { tag: "solid", marker: "star" },
   },
   {
@@ -200,8 +129,6 @@ export const THEMES: Theme[] = [
     weights: { title: 700, heading: 700, body: 400 },
     titleTracking: "-0.005em",
     radius: 6,
-    // Ruled lines and a red margin, with a crayon zigzag and star at the foot of the page.
-    backgroundImage: `${DOODLE} right 30px bottom 11px / 132px 36px no-repeat, linear-gradient(to right, transparent 0 36px, #F6C4CB 36px 39px, transparent 39px), repeating-linear-gradient(to bottom, transparent 0 34px, #DCE8F8 34px 36px)`,
     ornament: { tag: "tint", tagRadius: 4, marker: "dash" },
   },
   {
@@ -235,8 +162,6 @@ export const THEMES: Theme[] = [
     weights: { title: 600, heading: 600, body: 400 },
     titleTracking: "0em",
     radius: 26,
-    // Two waves along the foot (below the content area) and rings of bubbles up the right margin.
-    backgroundImage: `${BUBBLES} right 4px top 96px / 48px 220px no-repeat, ${wave("#CFEAF6")} left bottom / 160px 38px repeat-x, ${wave("#E2F3FA")} left 80px bottom 12px / 160px 38px repeat-x`,
     ornament: { tag: "tint", marker: "diamond" },
   },
   {
@@ -272,8 +197,6 @@ export const THEMES: Theme[] = [
     weights: { title: 700, heading: 700, body: 400 },
     titleTracking: "-0.01em",
     radius: 10,
-    // A vine with leaves hanging down the right margin.
-    backgroundImage: `${VINE} right top / 72px 380px no-repeat`,
     ornament: { tag: "solid", tagRadius: 6, marker: "leaf" },
   },
   {
@@ -429,6 +352,9 @@ export const THEMES: Theme[] = [
     radius: 6,
   },
 ];
+
+/** Every theme with its art per slide role (`art.ts`, UX ruling 107). */
+export const THEMES: Theme[] = BASE.map((t) => ({ ...t, backgrounds: THEME_ART[t.id] }));
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
