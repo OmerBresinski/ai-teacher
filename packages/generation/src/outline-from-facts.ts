@@ -1062,6 +1062,43 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     place(questionSlot(q.objectiveRefs[0]?.index ?? 0, i));
   });
 
+  // A content slide's watch-out is the misconception of its objective that is about its own key
+  // ideas (PR 2 smoke: the baths misconception sat on the roads slide, its objective's first).
+  // The facts link a misconception to an objective only, so "about" is the words they share. One
+  // that a later content slide of the same objective shares more words with waits for that slide,
+  // and one that shares no word with this slide's key ideas is not put on it.
+  const ideaWords = (s: Slot) =>
+    contentWords(
+      (s.keyIdeas ?? [])
+        .map((k) => {
+          const idea = facts.keyIdeas[k];
+          return idea ? `${idea.statement} ${idea.explanation} ${idea.example}` : "";
+        })
+        .join(" "),
+    );
+  const watchOutFor = (i: number, used: ReadonlySet<number>): number | undefined => {
+    const slot = slots[i] as Slot;
+    const later = slots.filter(
+      (s, j) => j > i && s.kind === "content" && s.primary === slot.primary,
+    );
+    const here = ideaWords(slot);
+    const scored = misconceptionsOf(slot.primary)
+      .filter((m) => !used.has(m))
+      .map((m) => {
+        const mc = facts.misconceptions[m];
+        const words = contentWords(mc ? `${mc.belief} ${mc.correction}` : "");
+        const score = (set: Set<string>) => [...words].filter((w) => set.has(w)).length;
+        return {
+          m,
+          here: score(here),
+          later: Math.max(0, ...later.map((s) => score(ideaWords(s)))),
+        };
+      })
+      .filter((c) => c.here > 0 && c.here >= c.later)
+      .sort((a, b) => b.here - a.here);
+    return scored[0]?.m;
+  };
+
   // P7: discussions on misconceptions nothing else confronts, then a plenary.
   if (budget > 0) {
     const confronted = new Set<number>();
@@ -1071,10 +1108,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const ref = facts.workedExamples[s.workedExample]?.misconceptionRef;
         if (ref) confronted.add(ref.index);
       }
-      // A content slide's watch-out (below) takes its objective's first misconception.
+      // A content slide's watch-out (below): its objective's misconception about its key ideas.
       if (s.kind === "content") {
-        const first = misconceptionsOf(s.primary).find((m) => !confronted.has(m));
-        if (first !== undefined) confronted.add(first);
+        const watch = watchOutFor(slots.indexOf(s), confronted);
+        if (watch !== undefined) confronted.add(watch);
       }
     }
     facts.misconceptions.forEach((m, i) => {
@@ -1489,7 +1526,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
-        const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
+        const watch = watchOutFor(i, usedMisconceptions);
         if (watch !== undefined) {
           usedMisconceptions.add(watch);
           callouts[position] = {
@@ -1700,4 +1737,18 @@ function distinctBrief(adds: string, seen: Set<string>): string {
 
 function dedupe<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
+}
+
+/** The words a text is about: lower case, no short or common words, a plural's "s" dropped. */
+const COMMON_WORDS = new Set(
+  "about after also because been before being between both could does each from have into just made make many more most much only other over same some such than that their them then there these they this those through very were what when where which while with would your".split(
+    " ",
+  ),
+);
+export function contentWords(text: string): Set<string> {
+  return new Set(
+    (text.toLowerCase().match(/[a-z]+/g) ?? [])
+      .filter((w) => w.length > 3 && !COMMON_WORDS.has(w))
+      .map((w) => (w.length > 4 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w)),
+  );
 }

@@ -482,6 +482,52 @@ describe("outlineFromFacts: callouts", () => {
     expect(r.result.callouts[positions[1] ?? -1]?.kind).toBe("example");
   });
 
+  test("the watch-out goes on the content slide its misconception is about, not the objective's first (PR 2 smoke, Romans)", () => {
+    const facts = factsFor(1, { keyIdeasPer: 2, vocabulary: false });
+    facts.keyIdeas[0] = {
+      statement: "Roman roads made it easier to travel between places in Britain.",
+      explanation: "Straight, paved roads let soldiers and traders move quickly.",
+      example: "Watling Street ran from Dover towards Wroxeter.",
+      objectiveRefs: [obj(0)],
+    };
+    facts.keyIdeas[1] = {
+      statement: "Roman towns and baths gave people new places to work, meet and wash.",
+      explanation: "Bathhouses were busy public buildings where people met.",
+      example: "The baths at Bath were a meeting place as well as a place to wash.",
+      objectiveRefs: [obj(0)],
+    };
+    facts.misconceptions[0] = {
+      belief: "Roman baths were only places where people went to wash.",
+      correction:
+        "People washed there, but baths were also places to meet and spend time together.",
+      objectiveRefs: [obj(0)],
+    };
+    const r = run({ n: 1, slideCount: 8, facts });
+    const content = r.result.skeleton.outline
+      .map((e, i) => (e.kind === "content" ? i : -1))
+      .filter((i) => i >= 0);
+    const baths = content.find((i) =>
+      refsAt(r, i).some((x) => x.type === "keyIdea" && x.index === 1),
+    );
+    const roads = content.find((i) =>
+      refsAt(r, i).some((x) => x.type === "keyIdea" && x.index === 0),
+    );
+    expect(r.result.callouts[baths ?? -1]?.kind).toBe("watch-out");
+    expect(r.result.callouts[roads ?? -1]?.kind).not.toBe("watch-out");
+  });
+
+  test("a misconception sharing no word with a slide's key ideas is not its watch-out", () => {
+    const facts = factsFor(1, { keyIdeasPer: 1, vocabulary: false });
+    facts.misconceptions[0] = {
+      belief: "Volcanoes erupt every year.",
+      correction: "Eruptions are rare and irregular.",
+      objectiveRefs: [obj(0)],
+    };
+    const r = run({ n: 1, slideCount: 8, facts });
+    const at = kinds(r).indexOf("content");
+    expect(r.result.callouts[at]?.kind).not.toBe("watch-out");
+  });
+
   test("terms no vocabulary slide shows ride on the content slide as key-words", () => {
     const r = run({
       n: 1,
