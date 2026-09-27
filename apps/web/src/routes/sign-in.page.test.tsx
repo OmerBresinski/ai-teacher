@@ -206,6 +206,30 @@ describe("SignInPage", () => {
     expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 
+  it("runs one sign-in at a time: each button waits while the other request is in flight", async () => {
+    let finishSend: (value: unknown) => void = () => {};
+    magicLink.mockReturnValue(new Promise((resolve) => (finishSend = resolve)));
+    social.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    const { unmount } = render(<SignInPage />);
+
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    expect(screen.getByRole("button", { name: "Sending…" })).toBeDisabled();
+    expect(screen.getByRole("button", GOOGLE)).toBeDisabled();
+    await act(async () => finishSend({ data: null, error: { status: 500 } }));
+    expect(screen.getByRole("button", GOOGLE)).toBeEnabled();
+    unmount();
+
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", GOOGLE));
+    expect(screen.getByRole("button", { name: "Email me a link" })).toBeDisabled();
+    // Enter in the field is implicit submission, which a disabled submit button blocks.
+    await user.type(screen.getByLabelText("Email address"), "{Enter}");
+    expect(magicLink).toHaveBeenCalledTimes(1);
+  });
+
   it("hides Continue with Google once the magic link is sent", async () => {
     magicLink.mockResolvedValue({ data: { status: true }, error: null });
     const user = userEvent.setup();

@@ -137,6 +137,10 @@ export function SignInPage() {
   // keeps its place under the email field; the others share the slot above the Google button.
   const googleError =
     google === "idle" || google === "opening" ? null : GOOGLE_START_ERRORS[google];
+  // Only one way in at a time: while one request is in flight the other control is disabled, so a
+  // Google redirect cannot fire in the middle of sending a link (or the other way round).
+  const sending = status.kind === "sending";
+  const opening = google === "opening";
   const alertMessage =
     status.kind === "error"
       ? null
@@ -180,11 +184,11 @@ export function SignInPage() {
                 type="button"
                 variant="default"
                 className="w-full"
-                disabled={google === "opening"}
+                disabled={opening || sending}
                 onClick={() => void onContinueWithGoogle()}
               >
                 <GoogleLogo />
-                {google === "opening" ? "Opening Google…" : "Continue with Google"}
+                {opening ? "Opening Google…" : "Continue with Google"}
               </Button>
               <div className="flex items-center gap-3">
                 <Separator className="flex-1" />
@@ -213,8 +217,8 @@ export function SignInPage() {
                 ) : null}
               </CardContent>
               <CardFooter>
-                <Button variant="primary" type="submit" disabled={status.kind === "sending"}>
-                  {status.kind === "sending" ? "Sending…" : "Email me a link"}
+                <Button variant="primary" type="submit" disabled={sending || opening}>
+                  {sending ? "Sending…" : "Email me a link"}
                 </Button>
               </CardFooter>
             </form>
