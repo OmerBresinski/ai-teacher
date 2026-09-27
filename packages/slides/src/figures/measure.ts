@@ -7,10 +7,12 @@
  *
  * `editorialIssue` comes from `../editorial`, never `../specs`: `specs.ts` imports `./index`, so
  * reading it from there would put `specs.ts` in the layouts ↔ figures cycle (see `./right-triangle`).
+ * `unicodeLabel` comes from `./unicode`, not `./labels` (which reads `../layouts`), for the same
+ * reason: a template reads `measureShape` when it loads, so this module must load on its own.
  */
 import { z } from "zod";
 import { editorialIssue } from "../editorial";
-import { unicodeLabel } from "./labels";
+import { unicodeLabel } from "./unicode";
 
 export const measureShape = z.object({
   value: z.number().optional(),
