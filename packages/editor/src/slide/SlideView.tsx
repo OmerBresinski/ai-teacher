@@ -1,12 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import {
-  COUNTER_NAME,
-  counted,
-  isDiagramMark,
-  withoutDiagramSlot,
-  withSlotsShown,
-} from "@tj/slides";
+import { isDiagramMark, withoutDiagramSlot, withSlotsShown } from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -54,12 +48,6 @@ export type SlideViewProps = {
   answerProgress?: number;
   className?: string;
   /**
-   * The slide's place in the deck. A slide counter ("7 / 12", `@tj/slides` `withDeckChrome`) is
-   * drawn from it at render time, so it stays true after a reorder, insert or delete; without a
-   * position (the editor, thumbnails) the counter is not drawn.
-   */
-  position?: { index: number; total: number };
-  /**
    * Edit mode: geometry to paint for elements mid-gesture, keyed by element id. The transform layer
    * previews a drag here and dispatches one reducer on release (ADR 0022 §4), so the cache — and
    * every other subscriber — is untouched while the pointer moves.
@@ -98,7 +86,6 @@ export function SlideView({
   transformOverride,
   spill = false,
   imageOrigin,
-  position,
 }: SlideViewProps) {
   /**
    * A diagram instruction with no drawing is a note the editor alone draws: everywhere else the
@@ -213,13 +200,11 @@ export function SlideView({
 
         {slide.elements.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
-          // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`). A slide counter is
-          // drawn only where the slide's place in the deck is known.
-          (isDiagramMark(el) && mode !== "edit" && !demo) ||
-          (el.name === COUNTER_NAME && !position) ? null : (
+          // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`).
+          isDiagramMark(el) && mode !== "edit" && !demo ? null : (
             <ElementFrame
               key={el.id}
-              element={position ? counted(el, position, theme) : el}
+              element={el}
               theme={theme}
               mode={mode}
               slideId={slide.id}

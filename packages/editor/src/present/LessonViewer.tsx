@@ -229,7 +229,6 @@ export function LessonViewer({
                     slide={slide}
                     theme={theme}
                     mode="view"
-                    position={{ index, total: lesson.slides.length }}
                     step={showAnswer ? total : step}
                     revealAnswer={showAnswer}
                   />

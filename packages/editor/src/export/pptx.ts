@@ -1254,11 +1254,10 @@ export async function exportLessonPptx(
   const background = hexColor(theme.colors.background) ?? "FFFFFF";
 
   try {
-    const total = lesson.slides.length;
     for (const build of buildSlidePlan(lesson)) {
       const { step, steps } = build;
-      // Laid out as present shows it: no diagram note to the class, the counter from its place.
-      const slide = presentedSlide(build.slide, theme, { index: build.index, total });
+      // Laid out as present shows it: no diagram note or open slot to the class.
+      const slide = presentedSlide(build.slide, theme);
       const pptxSlide = pptx.addSlide();
       pptxSlide.background = { color: hexColor(slide.background?.color) ?? background };
 

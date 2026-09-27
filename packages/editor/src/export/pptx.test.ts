@@ -9,7 +9,7 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { COUNTER_NAME, DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
+import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -1007,9 +1007,6 @@ describe("a slide exported as the class sees it", () => {
     },
     "chalk",
     meta,
-    undefined,
-    0,
-    { deck: { yearGroup: "Year 8", subject: "Geography" } },
   );
   const write = async (slides: Slide[]) =>
     slidesXml(
@@ -1024,36 +1021,5 @@ describe("a slide exported as the class sees it", () => {
     expect(xml).not.toContain("Diagram to add");
     expect(xml).toContain("Magma rises through cracks in the crust");
     expect(xml).toContain("The crust gives way and lava pours out");
-  });
-
-  it("counts the slide from its place in the deck, not the stored words", async () => {
-    // A teaching slide takes no counter since the TEACH tag went; an activity slide's counter,
-    // stored with the words "1 / 1", is counted again.
-    const withCounter: Slide = {
-      ...volcano,
-      elements: [
-        ...volcano.elements,
-        {
-          id: "counter",
-          type: "text",
-          x: 800,
-          y: 43,
-          w: 60,
-          h: 28,
-          name: COUNTER_NAME,
-          doc: {
-            type: "doc",
-            content: [{ type: "paragraph", content: [{ type: "text", text: "1 / 1" }] }],
-          },
-          style: { preset: "caption" },
-        },
-      ],
-    };
-    const other = { ...withCounter, id: "s0" };
-    const xml = await write([other, withCounter, { ...withCounter, id: "s2" }]);
-    expect(xml[0]).toContain(">1 / 3<");
-    expect(xml[1]).toContain(">2 / 3<");
-    expect(xml[2]).toContain(">3 / 3<");
-    expect(xml.join("")).not.toContain(">1 / 1<");
   });
 });

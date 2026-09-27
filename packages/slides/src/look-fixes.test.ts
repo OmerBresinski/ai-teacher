@@ -3,17 +3,7 @@ import type { Slide, SlideElement } from "@tj/domain/documents";
 import { chooseVariant } from "./choose-variant";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
-import {
-  applyLook,
-  COUNTER_NAME,
-  counterRoom,
-  DIAGRAM_NAME,
-  EYEBROW_NAME,
-  HEADING_DISPLAY,
-  KIND_TAG_NAME,
-  stripLook,
-  withDeckChrome,
-} from "./look";
+import { applyLook, DIAGRAM_NAME, HEADING_DISPLAY, KIND_TAG_NAME, stripLook } from "./look";
 import { lookAndFitPages, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { docPlainText, joinSentences, sentences } from "./sentences";
@@ -320,56 +310,6 @@ describe("design pass", () => {
       },
     );
 
-  /** An activity slide's top line: a kind tag in the lane above the heading. */
-  const tagged = (s: Slide): Slide => ({
-    ...s,
-    elements: [
-      ...s.elements,
-      {
-        id: "tag",
-        type: "text",
-        x: SAFE.x + 40,
-        y: SAFE.y,
-        w: 95,
-        h: 28,
-        name: KIND_TAG_NAME,
-        doc: { type: "doc", content: [] },
-        style: { preset: "caption" },
-      },
-    ],
-  });
-
-  test("the deck chrome: the tag at the left, the counter at the right, no year and subject", () => {
-    const s = tagged(slide("Waves wear cliffs away. Abrasion scrapes the rock."));
-    const [out] = withDeckChrome([s, s], t);
-    const tag = named(out?.elements ?? [], KIND_TAG_NAME)[0];
-    const counter = named(out?.elements ?? [], COUNTER_NAME)[0];
-    expect(named(out?.elements ?? [], EYEBROW_NAME)).toHaveLength(0);
-    expect(tag?.x).toBe(SAFE.x);
-    expect(counter?.y).toBe(tag?.y);
-    expect(counter && counter.type === "text" && docPlainText(counter.doc)).toBe("1 / 2");
-    expect((counter?.x ?? 0) + (counter?.w ?? 0)).toBe(SAFE.x + SAFE.w);
-    // Re-run: replaced, not doubled.
-    const again = withDeckChrome(withDeckChrome([s], t), t);
-    expect(named(again[0]?.elements ?? [], COUNTER_NAME)).toHaveLength(1);
-  });
-
-  test("a stored deck line is taken off and the tag moves back to the margin", () => {
-    const s = tagged(slide("Waves wear cliffs away. Abrasion scrapes the rock."));
-    const [once] = withDeckChrome([s], t);
-    const tag = named(once?.elements ?? [], KIND_TAG_NAME)[0];
-    const old = {
-      ...(once as Slide),
-      elements: [
-        ...(once?.elements ?? []).map((e) => (e === tag ? { ...e, x: SAFE.x + 180 } : e)),
-        { ...(tag as SlideElement), id: "old-eyebrow", name: EYEBROW_NAME },
-      ],
-    };
-    const [out] = withDeckChrome([old], t);
-    expect(named(out?.elements ?? [], EYEBROW_NAME)).toHaveLength(0);
-    expect(named(out?.elements ?? [], KIND_TAG_NAME)[0]?.x).toBe(SAFE.x);
-  });
-
   test("no empty right half: a lesson term the words use fills the panel with its definition", () => {
     const s = slide(
       "Waves erode cliffs in two ways. Abrasion scrapes rock with sediment. Hydraulic action forces air into cracks.",
@@ -417,12 +357,10 @@ describe("design pass", () => {
       Math.round(t.sizes.heading * HEADING_DISPLAY),
     );
     expect(long?.h).toBeGreaterThan((short?.h ?? 0) * 1.5);
-    // It leaves the top-right corner to the counter.
-    expect((long?.x ?? 0) + (long?.w ?? 0)).toBeLessThanOrEqual(SAFE.x + SAFE.w - counterRoom(t));
   });
 });
 
-describe("merged: points, the diagram panel, the definition said once, the deck line", () => {
+describe("merged: points, the diagram panel, the definition said once", () => {
   const t = getTheme("chalk");
   test("a content spec's points are dot bullets under the lead, beside the panel", () => {
     const s = materialiseSlide(
@@ -477,7 +415,7 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
     ).toEqual(["Chlorophyll absorbs light energy.", "This powers photosynthesis."]);
   });
 
-  test("a teaching slide takes no tag but keeps the counter; a stored TEACH tag goes on restyle", () => {
+  test("a teaching slide takes no tag; a stored TEACH tag goes on restyle", () => {
     const t = getTheme("chalk");
     const s = materialiseSlide(
       {
@@ -491,12 +429,6 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
     );
     expect(named(s.elements, KIND_TAG_NAME)).toHaveLength(0);
     expect(named(s.elements, "Heading")[0]?.y).toBe(SAFE.y);
-    const [out] = withDeckChrome([s], t);
-    const counter = named(out?.elements ?? [], COUNTER_NAME)[0];
-    expect(counter?.y).toBe(SAFE.y);
-    expect((counter?.x ?? 0) + (counter?.w ?? 0)).toBe(SAFE.x + SAFE.w);
-    const head = named(s.elements, "Heading")[0];
-    expect((head?.x ?? 0) + (head?.w ?? 0)).toBeLessThanOrEqual(counter?.x ?? 0);
     // A slide stored with the old tag: the heading under it, the words under that.
     const heading = named(s.elements, "Heading")[0] as SlideElement;
     const drop = 34;
@@ -527,19 +459,5 @@ describe("merged: points, the diagram panel, the definition said once, the deck 
         ...x.elements.filter((e) => e.type === "text" && e.style.preset === "body").map((e) => e.y),
       );
     expect(firstBody(restyled)).toBe(firstBody(s));
-  });
-
-  test("with the deck known, a generated slide carries the counter and no year and subject line", () => {
-    const s = materialiseSlide(
-      { kind: "content", factRefs: [], heading: "Erosion", body: "Waves wear cliffs. Rock falls." },
-      "chalk",
-      meta,
-      undefined,
-      0,
-      { deck: { yearGroup: "Year 9", subject: "Geography" } },
-    );
-    expect(named(s.elements, EYEBROW_NAME)).toHaveLength(0);
-    // Untagged, the counter still sits at the top right (the heading leaves it the corner).
-    expect(named(s.elements, COUNTER_NAME)).toHaveLength(1);
   });
 });

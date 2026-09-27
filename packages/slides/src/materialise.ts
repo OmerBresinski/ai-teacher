@@ -32,18 +32,13 @@ import {
 } from "./layouts";
 import {
   applyLook,
-  COUNTER_NAME,
-  counted,
   DIAGRAM_NAME,
-  EYEBROW_NAME,
   isDiagramMark,
   isOpenPhotoSlot,
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
   PHOTO_NAME,
-  type SlidePosition,
   stripLook,
-  withDeckChrome,
   withDiagramSlot,
   withPhotoSlot,
 } from "./look";
@@ -238,8 +233,7 @@ export function lookAndFitPages(
           (p) => fitSlide(p, theme).slide,
         );
   });
-  // The top line (the counter, drawn at render time) when the deck is known.
-  return structure.deck ? withDeckChrome(done, theme, ids) : done;
+  return done;
 }
 
 /**
@@ -374,9 +368,8 @@ function relaid(
     doc: { type: "doc", content },
     style: { preset: "body" },
   };
-  // The top line as it was: the kind tag keeps its place beside the counter.
-  const top = new Set([EYEBROW_NAME, COUNTER_NAME, KIND_TAG_NAME]);
-  const chrome = slide.elements.filter((e) => top.has(e.name ?? ""));
+  // The kind tag as it was.
+  const chrome = slide.elements.filter((e) => e.name === KIND_TAG_NAME);
   const bare = stripLook({ ...slide, elements: [...kept, body] });
   const laid = lookAndFit(shape(bare, ids), theme, ids, { terms: markedTerms(words) });
   // Every word the slide said must still be said: a relayout that would drop one (a lone point
@@ -408,16 +401,12 @@ function says(laid: readonly SlideElement[], words: readonly SlideElement[]): bo
 
 /**
  * A slide as a class sees it, for a renderer that draws `slide.elements` itself (the PPTX export):
- * the diagram slot laid out away (`withoutDiagramSlot`), and the counter counted from `position`,
- * or left out when the slide's place is not known. `SlideView` does the same outside the editor.
+ * the diagram slot laid out away (`withoutDiagramSlot`). `SlideView` does the same outside the
+ * editor.
  */
-export function presentedSlide(slide: Slide, theme: Theme, position?: SlidePosition): Slide {
+export function presentedSlide(slide: Slide, theme: Theme): Slide {
   const shown = withoutDiagramSlot(slide, theme);
-  const elements = shown.elements.flatMap((e) => {
-    if (isDiagramMark(e) || isOpenPhotoSlot(e)) return [];
-    if (e.name === COUNTER_NAME) return position ? [counted(e, position, theme)] : [];
-    return [e];
-  });
+  const elements = shown.elements.filter((e) => !isDiagramMark(e) && !isOpenPhotoSlot(e));
   return { ...shown, elements };
 }
 

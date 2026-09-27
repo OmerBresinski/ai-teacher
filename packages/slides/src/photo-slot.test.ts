@@ -1,19 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import {
-  DECK_CHROME_NAMES,
-  type ImageElement,
-  type Slide,
-  type TextElement,
-} from "@tj/domain/documents";
+import type { ImageElement, Slide, TextElement } from "@tj/domain/documents";
 import { docFromBullets, docFromText } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
 import { PLACEHOLDER_IMAGE } from "./layouts";
 import {
-  COUNTER_NAME,
-  counted,
   DIAGRAM_NAME,
-  EYEBROW_NAME,
   isOpenPhotoSlot,
   KIND_TAG_NAME,
   PHOTO_NAME,
@@ -195,11 +187,7 @@ describe("a photo brief keeps the left of an explain or a list", () => {
 
 describe("no photograph found: present and export never show an empty box", () => {
   const t = getTheme("chalk");
-  const stored = () =>
-    materialiseSlides(why, "chalk", meta, undefined, 0, {
-      photo,
-      deck: { yearGroup: "Year 4", subject: "History" },
-    })[0] as Slide;
+  const stored = () => materialiseSlides(why, "chalk", meta, undefined, 0, { photo })[0] as Slide;
 
   test("an open slot is laid out away: the words take the full measure", () => {
     const before = stored();
@@ -214,14 +202,13 @@ describe("no photograph found: present and export never show an empty box", () =
     expect(sorted(words([shown]))).toBe(sorted(words([before])));
     const right = Math.max(...bodyText(shown).map((e) => e.x + e.w));
     expect(right).toBeGreaterThan(SAFE.x + SAFE.w / 2 + SPACE[5]);
-    // The top line as it was.
+    // The kind tag as it was.
     const named = (s: Slide, n: string) => s.elements.filter((e) => e.name === n);
     expect(named(shown, KIND_TAG_NAME)).toEqual(named(before, KIND_TAG_NAME));
-    expect(named(shown, COUNTER_NAME)).toEqual(named(before, COUNTER_NAME));
   });
 
   test("the export view (presentedSlide) carries no open slot", () => {
-    const out = presentedSlide(stored(), t, { index: 0, total: 3 });
+    const out = presentedSlide(stored(), t);
     expect(out.elements.some((e) => e.name === PHOTO_NAME)).toBe(false);
   });
 
@@ -364,25 +351,13 @@ test("tempest 06: a written list too long for one slide stays dots across the fu
       "Example: Prospero warns Ariel, “I will rend an oak”; the threatened punishment shows how his words can pressure Ariel to obey.",
     ],
   };
-  const pages = materialiseSlides(spec, "chalk", meta, undefined, 0, { deck: {} });
+  const pages = materialiseSlides(spec, "chalk", meta);
   expect(pages.flatMap((p) => p.elements.filter((e) => e.name === ITEM_NAME))).toHaveLength(3);
   for (const p of pages) {
     expect(fitSlide(p, t).overflow).toHaveLength(0);
     const items = p.elements.filter((e) => e.name === ITEM_NAME);
     for (const e of items) expect(e.x + e.w).toBeGreaterThanOrEqual(SAFE.x + SAFE.w - 2);
   }
-});
-
-test("the counter's box holds a two-digit count", async () => {
-  const { withDeckChrome, COUNTER_NAME: C } = await import("./look");
-  const t = getTheme("chalk");
-  const s = materialiseSlide(why, "chalk", meta);
-  const deck = withDeckChrome(
-    Array.from({ length: 12 }, () => s),
-    t,
-  );
-  const box = deck[10]?.elements.find((e) => e.name === C);
-  expect(box?.w ?? 0).toBeGreaterThanOrEqual(Math.ceil("88 / 88".length * t.sizes.caption * 0.78));
 });
 
 describe("the slot takes either side (look/slides-layout)", () => {
@@ -424,8 +399,6 @@ describe("the slot takes either side (look/slides-layout)", () => {
 
 describe("review fixes (look/slides-layout)", () => {
   const t = getTheme("chalk");
-  const right = SAFE.x + SAFE.w;
-  const width = (label: string) => Math.ceil(label.length * t.sizes.caption * 0.78);
 
   test("an open slot on a slide with no heading keeps its words in present and export", () => {
     const stored = materialiseSlides(why, "chalk", meta, undefined, 0, { photo })[0] as Slide;
@@ -437,7 +410,7 @@ describe("review fixes (look/slides-layout)", () => {
     expect(words([shown])).toBe(words([headless]));
     // Present draws the slide as it is handed: the open slot is gone, so no placeholder box.
     expect(shown.elements.some(isOpenPhotoSlot)).toBe(false);
-    const out = presentedSlide(headless, t, { index: 0, total: 2 });
+    const out = presentedSlide(headless, t);
     expect(words([out])).toBe(words([headless]));
     expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
   });
@@ -466,34 +439,10 @@ describe("review fixes (look/slides-layout)", () => {
         ),
     };
     expect(withoutDiagramSlot(stored, t).elements.some(isOpenPhotoSlot)).toBe(false);
-    const out = presentedSlide(stored, t, { index: 3, total: 13 });
+    const out = presentedSlide(stored, t);
     expect(words([out])).toContain("valuable resources, such as metals");
     expect(words([out])).toContain("wealth and glory");
     expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
-  });
-
-  test("a counter stored in a box sized for '1 / 1' is drawn wide enough for its count", () => {
-    const w = width("1 / 1");
-    const stored = {
-      id: "c",
-      type: "text",
-      name: COUNTER_NAME,
-      x: right - w,
-      y: SAFE.y,
-      w,
-      h: 24,
-      doc: { type: "doc", content: [] },
-      style: { preset: "caption", align: "right" },
-    } as unknown as TextElement;
-    for (const [index, total, label] of [
-      [9, 12, "10 / 12"],
-      [119, 120, "120 / 120"],
-    ] as const) {
-      const c = counted(stored, { index, total }, t) as TextElement;
-      expect(docLines(c.doc).join("")).toBe(label);
-      expect(c.w).toBeGreaterThanOrEqual(width(label));
-      expect(c.x + c.w).toBe(right);
-    }
   });
 
   test("the swap mirrors the slide's stored geometry: words and slot trade places, the gap kept", () => {
@@ -516,9 +465,5 @@ describe("review fixes (look/slides-layout)", () => {
     expect(img.x - Math.max(...moved.map((e) => e.x + e.w))).toBe(gap);
     expect(img.x + img.w).toBe(right0);
     expect(swapSlotSide(swapped).elements).toEqual(stored.elements);
-  });
-
-  test("the domain's deck chrome names are the look's", () => {
-    expect([...DECK_CHROME_NAMES].sort()).toEqual([COUNTER_NAME, EYEBROW_NAME].sort());
   });
 });

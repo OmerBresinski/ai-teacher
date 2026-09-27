@@ -19,11 +19,11 @@ describe("a lesson stored before the look renders as stored", () => {
   const t = getTheme(lesson.themeId);
 
   test("every slide comes back unchanged from present, the slot relayout and the demo view", () => {
-    lesson.slides.forEach((slide, index) => {
+    lesson.slides.forEach((slide) => {
       expect(withoutDiagramSlot(slide, t)).toBe(slide);
       expect(withSlotsShown(slide, t)).toBe(slide);
       expect(slotSide(slide, "left")).toBe(slide);
-      const shown = presentedSlide(slide, t, { index, total: lesson.slides.length });
+      const shown = presentedSlide(slide, t);
       expect(shown.elements).toEqual(slide.elements);
     });
   });
@@ -31,7 +31,7 @@ describe("a lesson stored before the look renders as stored", () => {
   test("a diagram slide keeps its figure at the left, as drawn", () => {
     const laid = layoutSlide("diagram", "chalk");
     const slide: Slide = { id: "d1", kind: "diagram", elements: laid.elements };
-    const shown = presentedSlide(slide, getTheme("chalk"), { index: 3, total: 10 });
+    const shown = presentedSlide(slide, getTheme("chalk"));
     expect(shown.elements).toEqual(slide.elements);
     const figure = figureGroupOf(shown);
     expect(figure && { x: figure.x, y: figure.y, w: figure.w, h: figure.h }).toEqual(FIGURE_RECT);
@@ -61,8 +61,7 @@ describe("stored master lessons fit as they did on master", () => {
           kind: slide.kind,
           fit: digest({ e: fit.slide.elements, o: fit.overflow }),
         }).toEqual({ kind: slide.kind, fit: lesson.masterFit[index] as string });
-        const position = { index, total: lesson.slides.length };
-        expect(presentedSlide(slide, t, position).elements).toEqual(slide.elements);
+        expect(presentedSlide(slide, t).elements).toEqual(slide.elements);
       });
     });
   }
