@@ -63,6 +63,9 @@ import {
  * it met master; their text is look v21's. System text unchanged.
  *
  * v18 (same day): the line it copies is generate-slide v31's (a callout's room beside a slot).
+ *
+ * v19 (same day): the line it copies is generate-slide v32's (the callout's room across the
+ * measure, two points beside a photograph, no side named). System text unchanged.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -121,7 +124,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v18",
+  version: "repair.v19",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",

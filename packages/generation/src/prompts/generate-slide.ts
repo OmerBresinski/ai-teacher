@@ -7,6 +7,8 @@ import type {
 } from "@tj/domain/documents";
 import {
   CALLOUT_BUDGETS,
+  CALLOUT_LABELS,
+  CALLOUT_TEXT_WORDS,
   COMPOSITION_BUDGETS,
   CONTENT_SHAPES,
   type ContentShape,
@@ -203,6 +205,23 @@ import {
  * planned callouts, every one on a slide whose words filled the page. Wording and system text are
  * unchanged, so the pinned hash did not move. Full-width slides and lists are not changed here:
  * their lines carry no word numbers (`quality-prd/look/PR2-READY.md`, prompt-engineer items).
+ *
+ * v32 (27 Sept 2026, look/pr2-generation; user turn only, the pinned hash stays): v31 kept 3 of 18
+ * planned callouts (0 of 6 full width). The drop log showed two causes: words written to the plain
+ * targets, and callout text of 45–102 characters where the room is measured for about 55.
+ * - The callout line caps `text` at `CALLOUT_TEXT_WORDS` (9) words, and a watch-out's text names
+ *   the wrong idea as the mistake: v31 wrote the correction ("A barrier reduces flood risk; it
+ *   cannot stop every flood.") under the COMMON MISTAKE label.
+ * - A full-width explain or list with a callout gets a line with the card's room
+ *   (`CALLOUT_BUDGETS.explain.full`, `.list.full`: 30 words; a 10-word lead and two 9-word points).
+ * - Beside a slot, the line no longer names a side or a half (the slot alternates sides and takes
+ *   45%), and an explain with a callout is asked for an opening sentence then one on its example:
+ *   v31's "21 words, no more" came back as one semicolon-chained sentence.
+ * - A list beside a photograph is written as exactly two points (`COMPOSITION_BUDGETS.list.panel`,
+ *   re-measured with real words): a third point went to a continuation and left the photo page thin.
+ * Compare, sequence and the legacy planner's shapeless content slide get no callout room: none is
+ * measured. A list beside a photograph with a callout has none either; that is the planner's choice
+ * (photo or callout), in code, not here.
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -361,6 +380,14 @@ const SHAPE_FIELDS = ["points", "compare", "steps"] as const;
  */
 export function shapeLine(planned: PlannedShape): string {
   if (planned.beside) return besideLine(planned.shape, planned.beside, planned.callout === true);
+  if (planned.callout && planned.shape === "explain") {
+    const room = CALLOUT_BUDGETS.explain.full;
+    return `Layout: explain. The callout's card sits under the words, so write for the room it leaves, not the 40–60 words of a slide without one: ${explainTarget(room, "the slide", true)} ${FEWER}`;
+  }
+  if (planned.callout && planned.shape === "list") {
+    const room = CALLOUT_BUDGETS.list.full;
+    return `Layout: list. The callout's card sits under the points, so write for the room it leaves, not the 40–60 words of a slide without one: ${listTarget(room)} ${FEWER}`;
+  }
   const fields = (() => {
     switch (planned.shape) {
       case "list":
@@ -376,32 +403,51 @@ export function shapeLine(planned: PlannedShape): string {
   return `Layout: ${planned.shape}. ${fields}`;
 }
 
+type Budget = (typeof COMPOSITION_BUDGETS)["list"]["full"] & {};
+
+const FEWER = "Say less rather than write fragments, and put the rest in `notes`.";
+
+/**
+ * An explain's target: from two thirds of lead + body up to it, "no more" with the physical reason.
+ * With a callout (v32), an opening sentence then one on its example, so a short total is not
+ * written as one chained sentence.
+ */
+function explainTarget(room: Budget, space: string, callout: boolean): string {
+  const most = room.lead.max + (room.body?.max ?? 0);
+  const least = Math.round((most * 2) / 3 / 5) * 5;
+  return callout
+    ? `"body" is ${least}–${most} words, no more (${space} holds ${most} with the card under it): an opening sentence of up to ${room.lead.max} words giving the idea, then one on its example.`
+    : `"body" carries the whole explanation in ${least}–${most} words, no more (${space} holds ${most}), its opening sentence up to ${room.lead.max} words.`;
+}
+
+/** A list's target: the lead, then the members as the budget counts them. */
+function listTarget(room: Budget): string {
+  const [min, max] = room.points?.count ?? [2, 3];
+  const count = min === max ? `exactly ${min} strings` : `${min}–${max} strings`;
+  return `"body" is one sentence introducing the set, up to ${room.lead.max} words; "points" holds its members, ${count}, each "Label: short sentence" of up to ${room.points?.max} words in all ("Shield volcano: runny lava spreads far.").`;
+}
+
 /**
  * v34: the slide line for an explain or a list beside a photograph or diagram, its word targets
  * the renderer's half-column budget (`COMPOSITION_BUDGETS[shape].panel`). An explain's range runs
- * from two thirds of lead + body up to it (32 + 13: about 30–45).
+ * from two thirds of lead + body up to it (32 + 13: about 30–45). v31: an explain that plans a
+ * callout is written to the room its card leaves (`CALLOUT_BUDGETS.explain.panel`); a list beside
+ * a photograph keeps no card, so its line is the same with or without one.
  */
 function besideLine(
   shape: ContentShape,
   beside: "photograph" | "diagram",
   callout = false,
 ): string {
-  // v31: an explain that plans a callout is written to the room its card leaves (`CALLOUT_BUDGETS`).
-  const panel =
-    callout && shape === "explain"
-      ? CALLOUT_BUDGETS.explain.panel
-      : COMPOSITION_BUDGETS[shape].panel;
+  const withCard = callout && shape === "explain";
+  const panel = withCard ? CALLOUT_BUDGETS.explain.panel : COMPOSITION_BUDGETS[shape].panel;
   if (!panel) throw new Error(`generate-slide: no half-column budget for "${shape}"`);
-  const opening = `A ${beside} takes the right half of this slide, so the words sit in the left half: write for that half, not the 40–60 words of a full-width slide.`;
-  const closing =
-    "Still one idea explained with its example, in full sentences: say less rather than write fragments, and put the rest in `notes`.";
+  const opening = `A ${beside} takes one side of this slide, so the words sit in the narrower column beside it: write for that column, not the 40–60 words of a full-width slide.`;
+  const closing = `Still one idea explained with its example, in full sentences. ${FEWER}`;
   if (shape === "list" && panel.points) {
-    const [min, max] = panel.points.count ?? [2, 3];
-    return `Layout: list. ${opening} "body" is one sentence introducing the set, up to ${panel.lead.max} words; "points" holds its members, ${min}–${max} strings, each "Label: short sentence" of up to ${panel.points.max} words in all ("Shield volcano: runny lava spreads far."). ${closing}`;
+    return `Layout: list. ${opening} ${listTarget(panel)} ${closing}`;
   }
-  const most = panel.lead.max + (panel.body?.max ?? 0);
-  const least = Math.round((most * 2) / 3 / 5) * 5;
-  return `Layout: explain. ${opening} "body" carries the whole explanation in ${least}–${most} words, no more (the column holds ${most}), its opening sentence up to ${panel.lead.max} words. ${closing}`;
+  return `Layout: explain. ${opening} ${explainTarget(panel, "the column", withCard)} ${closing}`;
 }
 
 /**
@@ -498,7 +544,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v31",
+  version: "generate-slide.v32",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -583,7 +629,7 @@ export const generateSlidePrompt = {
     if (input.entry.callout) {
       const { kind, factRefs } = input.entry.callout;
       parts.push(
-        `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
+        `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils of up to ${CALLOUT_TEXT_WORDS} words, from ${factRefs.join(", ")} only.${kind === "watch-out" ? ` Its card is labelled "${CALLOUT_LABELS[kind]}", so \`text\` is the wrong idea pupils hold, stated as wrong ("Evaporation is not the same as boiling."), not the correct fact on its own.` : ""}`,
       );
     }
     const planned = plannedShapeOf(input.referenced, input.entry);

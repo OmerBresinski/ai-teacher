@@ -243,7 +243,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // on that branch: the copy-down lead, the label heading, the planned shape's fields, master
     // v25's build-up body, and the half-column target beside a planned photo or diagram).
     // v31: the callout's room in the half-column line (user turn only).
-    version: "generate-slide.v31",
+    // v32: the callout's room across the measure, a 9-word callout, the watch-out names the
+    // mistake, two points beside a photograph (user turn only).
+    version: "generate-slide.v32",
     hash: "777da3fd84e1cf8e75f2db14354ea663219f8a51d9bb3fc82afaabb79bcbc866",
   },
   "generate-worksheet": {
@@ -276,7 +278,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v17 (look/pr2-generation; look v17–v21 on that branch) changes only the user turn: the
     // planned shape line it copies from generate-slide, the `points` and compare field labels.
     // v18: generate-slide v31's line (user turn only).
-    version: "repair.v18",
+    // v19: generate-slide v32's line (user turn only).
+    version: "repair.v19",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {
@@ -906,8 +909,15 @@ describe("prompt versions", () => {
       },
     } as never);
     expect(withBox).toContain(
-      'This slide carries a "watch-out" callout: set `callout` to kind "watch-out" with `text` one line for pupils, from m1 only.',
+      'This slide carries a "watch-out" callout: set `callout` to kind "watch-out" with `text` one line for pupils of up to 9 words, from m1 only.',
     );
+    // v32: the COMMON MISTAKE card names the wrong idea, not the correction.
+    expect(withBox).toContain('labelled "COMMON MISTAKE", so `text` is the wrong idea pupils hold');
+    const example = PROMPTS["generate-slide"].user({
+      ...base,
+      entry: { kind: "content", factRefs: ["k1"], callout: { kind: "example", factRefs: ["k1"] } },
+    } as never);
+    expect(example).not.toContain("COMMON MISTAKE");
     const without = PROMPTS["generate-slide"].user({
       ...base,
       entry: { kind: "content", factRefs: ["k1"] },
