@@ -31,6 +31,22 @@ test("the cast arrives from behind the card and keeps moving", async ({ page }) 
   expect(await bodyOf(page, "support")).not.toBe(first);
 });
 
+test("the cast says hello on arrival", async ({ page }) => {
+  await page.goto("/sign-in");
+  await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
+  // Plan's hello opens its arms (its homepage gesture); the ambient sway alone stays under 1°.
+  const leftArm = page.locator('[data-cast="support"] .arm-left');
+  await expect
+    .poll(
+      async () =>
+        Math.abs(
+          Number((await leftArm.getAttribute("transform"))?.match(/rotate\(([-\d.]+)/)?.[1] ?? 0),
+        ),
+      { timeout: 5000 },
+    )
+    .toBeGreaterThan(8);
+});
+
 test("the cast reads along while you type and celebrates when the link is sent", async ({
   page,
 }) => {

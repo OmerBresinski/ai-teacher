@@ -470,14 +470,21 @@ function livingCast(actors: Actor[], gsap: Gsap): Cast {
   document.documentElement.addEventListener("pointerleave", onPointerLeave);
 
   // Hovering a character plays its gesture, as on the homepage, while nothing else is going on.
+  // A new hover restarts the gesture instead of racing the last one (hero-motion.js kills first
+  // too); the gaze tweens are left alone.
   const hovers = actors.map((a) => {
+    let wave: Timeline | null = null;
     const onEnter = (event: PointerEvent) => {
       if (mood !== "idle" || event.pointerType === "touch" || !a.visible) return;
-      const t = gsap.timeline();
-      gesture(t, a, 0);
+      wave?.kill();
+      wave = gsap.timeline();
+      gesture(wave, a, 0);
     };
     a.host.addEventListener("pointerenter", onEnter);
-    return () => a.host.removeEventListener("pointerenter", onEnter);
+    return () => {
+      wave?.kill();
+      a.host.removeEventListener("pointerenter", onEnter);
+    };
   });
 
   return {

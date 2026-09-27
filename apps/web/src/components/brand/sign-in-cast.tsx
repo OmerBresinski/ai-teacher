@@ -42,8 +42,9 @@ export function SignInCast({ mood, targets }: { mood: CastMood; targets: CastTar
       live = createCast(hosts, gsap);
       cast.current = live;
       const { mood: now, targets: where } = latest.current;
-      live.enter(root, now === "idle");
+      // Mood first: every mood starts a scene, and the hello `enter` plays is a scene too.
       live.setMood(now, where[now]?.current ?? null);
+      live.enter(root, now === "idle");
     };
     // No IntersectionObserver (the unit-test DOM): nothing could tell the rig what is on screen.
     if (reduced || typeof IntersectionObserver === "undefined") start(null);
