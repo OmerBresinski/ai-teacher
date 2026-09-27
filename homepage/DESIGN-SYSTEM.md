@@ -80,7 +80,7 @@ repeats it; no other slogans.
 The original cast rig supplies independent ambient behaviours and one signature per character.
 Marketing adds a quiet body-life layer and signatures soften it. Offscreen actors stop, and a
 reduced-motion preference suppresses animation. There is no manual pause control. The proof papers enter once on scroll, followed by a drum flourish and a quiet tapping loop.
-A local pause control stops this motion; offscreen and hidden-tab motion pauses too. With reduced
+Offscreen and hidden-tab motion pauses automatically. With reduced
 motion or without JavaScript the finished state is shown. One full team is
 enough per page; isolated characters accompany specific material context. The hero cast is
 ambient art: plan, slides, worksheet and check.

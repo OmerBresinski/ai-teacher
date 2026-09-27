@@ -27,6 +27,5 @@ export const lessonProof = `
     </div>
 
   </div>
-    <div class="materials-controls"><button type="button" data-proof-pause hidden>Pause motion</button></div>
   </div>
 </section>`;
