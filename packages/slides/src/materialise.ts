@@ -14,16 +14,7 @@ import type {
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj/domain/documents";
-import {
-  applyCallout,
-  calloutColumn,
-  calloutFitBottom,
-  type DetachedCallout,
-  detachCallout,
-  fitCallout,
-  isCalloutElement,
-  placeCallout,
-} from "./callout";
+import { applyCallout, detachCallout, isCalloutElement, placeCallout } from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
@@ -234,14 +225,8 @@ export function lookAndFitPages(
       const last = pages[at] as Slide;
       const placed = placeCallout(last, theme, detached.callout, ids);
       if (placed) return pages.map((page, i) => (i === at ? placed : page));
-      // No room under the words as the look set them. On one slide, the words are set as one
-      // paragraph instead (the key idea's side panel and the lead's card give way: the warning
-      // matters more to the class), first as they are, then stepped down to clear the card, as
-      // the fit steps a body for a card without the look. Past that the callout is left off.
-      if (pages.length === 1) {
-        const again = paragraphWithCallout(detached, theme, ids, structure);
-        if (again) return [again];
-      }
+      // The callout is secondary (rulings 102, 106): the words keep the size and shape they
+      // have without it, and a card with no room even one stop down is left off and reported.
       return pages;
     }
   }
@@ -265,45 +250,6 @@ export function lookAndFitPages(
         );
   });
   return done;
-}
-
-/**
- * A teaching slide as one paragraph under its heading (`applyLook` without the lead) with its
- * callout under the words: fitted as it is, else with the words stepped down (never under the
- * body floor) to clear a card at the column's width. `undefined` when neither leaves the card
- * room or the words would overrun.
- */
-function paragraphWithCallout(
-  detached: { slide: Slide; callout?: DetachedCallout },
-  theme: Theme,
-  ids: IdSupplier,
-  structure: SlideStructure,
-): Slide | undefined {
-  const callout = detached.callout;
-  if (!callout) return undefined;
-  const paragraph = withTerms(
-    applyLook(detached.slide, theme, ids, { lead: false }),
-    theme,
-    structure.terms,
-  );
-  const plain = fitSlide(paragraph, theme);
-  const first =
-    plain.overflow.length === 0 ? placeCallout(plain.slide, theme, callout, ids) : undefined;
-  if (first) return first;
-  const { w, beside } = calloutColumn(paragraph);
-  const need = fitCallout(theme, callout.spec.text, w, Number.POSITIVE_INFINITY);
-  if (!need) return undefined;
-  // The slot or panel beside the words reaches the foot by design: it sits out the fit.
-  const aside = new Set(beside);
-  const stepped = fitSlide(
-    { ...paragraph, elements: paragraph.elements.filter((e) => !aside.has(e)) },
-    theme,
-    calloutFitBottom(need.height),
-  );
-  if (stepped.overflow.length > 0) return undefined;
-  const byId = new Map(stepped.slide.elements.map((e) => [e.id, e]));
-  const elements = paragraph.elements.map((e) => (aside.has(e) ? e : (byId.get(e.id) ?? e)));
-  return placeCallout({ ...stepped.slide, elements }, theme, callout, ids);
 }
 
 /**

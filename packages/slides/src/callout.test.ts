@@ -232,7 +232,17 @@ describe("callout on a content slide", () => {
       for (const { label: length, text } of LENGTHS) {
         it(`${theme.id}/${variant}/${length}: the trio sits under the body, inside the safe area, as tall as its text`, () => {
           const spec = content({ kind: "watch-out", text });
-          const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
+          const notes: string[] = [];
+          const slide = materialiseSlide(spec, theme.id, meta, counter(), variant, {}, (n) =>
+            notes.push(n),
+          );
+          // The callout gives way first (rulings 102, 106): with no room under the words as the
+          // look sets them (the key idea's side panel takes the other half), it is left off and
+          // reported, and the words are untouched.
+          if (!slide.elements.some(isCalloutElement)) {
+            expect(notes).toHaveLength(1);
+            return;
+          }
           // Appended last, card first, after the look has laid the words (TEACH-19).
           const added = slide.elements.slice(-4);
           expect(added.map((el) => el.name)).toEqual([
@@ -427,6 +437,8 @@ describe("callout after the fit", () => {
       ];
       for (const [spec, variant] of cases) {
         const slide = materialiseSlide(spec, theme.id, meta, counter(), variant || undefined);
+        // A content card with no room under the words is left off (rulings 102, 106).
+        if (spec.kind === "content" && !slide.elements.some(isCalloutElement)) continue;
         const fitted = trio(slide);
         const where = `${spec.kind}/${variant}/${plain(fitted.text).length}`;
         if (spec.kind === "content") {
@@ -648,4 +660,58 @@ describe("a callout beside a photo slot", () => {
       expect(slide.elements.filter(isCalloutElement)).toHaveLength(4);
     }
   });
+});
+
+/*
+ * The callout is secondary (rulings 102, 106): the words keep exactly the size and shape they
+ * have without it. A list is never flattened and type never steps down to make room for the card.
+ */
+describe("the words are the same with or without a callout", () => {
+  const bodyOf = (slide: Slide) =>
+    slide.elements
+      .filter((el): el is TextElement => el.type === "text" && !isCalloutElement(el))
+      .map((el) => ({
+        name: el.name,
+        x: el.x,
+        y: el.y,
+        w: el.w,
+        h: el.h,
+        size: el.style.fontSize,
+        text: plain(el),
+      }));
+  const specs = {
+    paragraph: content(),
+    long: {
+      ...content(),
+      body: "The sun heats water in seas, lakes and puddles until it evaporates into the air. The warm vapour rises, cools high up and condenses around specks of dust into tiny drops. Billions of drops together make a cloud, and when they join into bigger drops they fall as rain.",
+    },
+    points: {
+      ...content(),
+      points: ["Heat makes water evaporate.", "Vapour cools and condenses.", "Drops fall as rain."],
+    },
+  } as Record<string, SlideSpec>;
+  for (const theme of THEMES) {
+    for (const [name, spec] of Object.entries(specs)) {
+      for (const { label: length, text } of LENGTHS) {
+        for (const structure of [{}, { photo: { subject: "Clouds" } }]) {
+          const where = `${theme.id}/${name}/${length}/${"photo" in structure ? "photo" : "plain"}`;
+          it(`${where}: identical body size, shape and element count`, () => {
+            const without = materialiseSlide(spec, theme.id, meta, counter(), undefined, structure);
+            const withCard = materialiseSlide(
+              { ...spec, callout: { kind: "watch-out", text } } as SlideSpec,
+              theme.id,
+              meta,
+              counter(),
+              undefined,
+              structure,
+            );
+            const rest = withCard.elements.filter((el) => !isCalloutElement(el));
+            expect(rest.length).toBe(without.elements.length);
+            expect(rest.map((el) => el.type)).toEqual(without.elements.map((el) => el.type));
+            expect(bodyOf(withCard)).toEqual(bodyOf(without));
+          });
+        }
+      }
+    }
+  }
 });
