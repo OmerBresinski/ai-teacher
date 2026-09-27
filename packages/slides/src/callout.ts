@@ -391,9 +391,6 @@ export function calloutColumn(slide: Slide): { x: number; w: number; beside: Sli
   return { x, w: right - x, beside };
 }
 
-/** The foot a teaching slide's words must clear for a callout card of `height` under them. */
-export const calloutFitBottom = (height: number): number => CARD_BOTTOM - height - SPACE[2];
-
 /**
  * Put a callout back on a laid-out, fitted slide: across the text column, under the lowest
  * thing in it, bottom-anchored as `applyCallout` sets it. The text column is the safe width less
