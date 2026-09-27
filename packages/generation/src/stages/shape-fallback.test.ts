@@ -135,7 +135,10 @@ test("a slide keeps room for a photo in a repair only where it still has a slot"
 
 describe("withBudgetedCallout (PR 2): a callout longer than its card's room is never cut", () => {
   const lines: Record<string, unknown>[] = [];
-  const logger = { warn: (o: Record<string, unknown>) => lines.push(o) } as never;
+  const logger = {
+    warn: (o: Record<string, unknown>) => lines.push(o),
+    info: (o: Record<string, unknown>) => lines.push(o),
+  } as never;
   const longText =
     "Stagecraft means the ways a play uses sound, lighting, scenery and movement to create effects for an audience.";
   const spec = (text: string) =>
@@ -160,5 +163,13 @@ describe("withBudgetedCallout (PR 2): a callout longer than its card's room is n
       ["callout-too-long", "previous"],
       ["callout-too-long", "none"],
     ]);
+  });
+
+  test("a rewrite that leaves the card off keeps the slide's callout", () => {
+    const before = { kind: "example" as const, text: "Tewkesbury flooded in 2007." };
+    const { callout: _gone, ...bare } = spec("x") as SlideSpec & { callout?: unknown };
+    const kept = withBudgetedCallout(bare as SlideSpec, "chalk", true, logger, "repair", 6, before);
+    expect(kept.kind === "content" && kept.callout).toEqual(before);
+    expect(lines.at(-1)?.metric).toBe("callout-kept");
   });
 });

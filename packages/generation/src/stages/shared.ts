@@ -525,7 +525,8 @@ export const calloutStructure = (spec: SlideSpec): { sidePanel?: false } =>
  * A content slide's callout as the card the budgets kept room for (PR 2): a text longer than
  * `calloutWithinBudget` allows, at the small size or one stop down, is never cut. It gives way to
  * `fallback` (the callout a repaired slide already showed) when that one fits, else the slide goes
- * without; either way it is logged (`metric: "callout-too-long"`), not silent.
+ * without; either way it is logged (`metric: "callout-too-long"`), not silent. A rewrite with no
+ * callout at all keeps `fallback` (`metric: "callout-kept"`).
  */
 export function withBudgetedCallout(
   spec: SlideSpec,
@@ -536,8 +537,15 @@ export function withBudgetedCallout(
   index: number,
   fallback?: { kind: string; text: string },
 ): SlideSpec {
-  if (spec.kind !== "content" || !spec.callout) return spec;
+  if (spec.kind !== "content") return spec;
   const t = getTheme(themeId);
+  if (!spec.callout) {
+    // A repair's rewrite that leaves the planned card off keeps the one the slide showed (run 6:
+    // both callouts lost that run were lost to repairs, whose prompt has no callout line).
+    if (!fallback || !calloutWithinBudget(t, fallback.text, photo)) return spec;
+    logger.info({ stage, metric: "callout-kept", index }, "rewrite kept the slide's callout");
+    return { ...spec, callout: fallback as NonNullable<typeof spec.callout> };
+  }
   if (calloutWithinBudget(t, spec.callout.text, photo)) return spec;
   const kept =
     fallback && calloutWithinBudget(t, fallback.text, photo)

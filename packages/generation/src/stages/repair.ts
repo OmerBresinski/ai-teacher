@@ -529,7 +529,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         deps.logger,
         "repair",
         outcome.index,
-        detachCallout(original).callout?.spec,
+        keptCallout(original, modelFindings),
       );
       // A rewrite too long for one slide continues on the next (UX ruling 91), as in Generate.
       const [first, ...rest] = materialiseSlides(
@@ -937,4 +937,24 @@ export function withDiagramKept(spec: SlideSpec, before: Slide): SlideSpec {
   const text = placeholder ? slideText({ ...before, elements: [placeholder] }) : "";
   const diagram = text.replace(/^\s*Diagram to add:\s*/, "").trim();
   return diagram ? keptDiagram({ ...kept, diagram }) : kept;
+}
+
+/**
+ * The callout a repaired slide showed, for `withBudgetedCallout` to keep when the rewrite leaves
+ * it off or writes one too long; none when a finding on the slide quotes the callout's words
+ * (the repair was about the card itself).
+ */
+function keptCallout(
+  slide: Slide,
+  findings: Finding[],
+): { kind: string; text: string } | undefined {
+  const callout = detachCallout(slide).callout?.spec;
+  if (!callout) return undefined;
+  const text = callout.text.toLowerCase();
+  const challenged = findings.some(
+    (f) =>
+      f.target.slideId === slide.id &&
+      (f.evidence ?? "").toLowerCase().includes(text.slice(0, Math.min(text.length, 24))),
+  );
+  return challenged ? undefined : callout;
 }
