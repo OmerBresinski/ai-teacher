@@ -34,6 +34,16 @@ export type Generation = {
   promptVersions: Partial<Record<GenerationStage, string>>;
   usage: GenerationUsage;
   findings: Finding[];
+  /** Lab only (l6kp2): the topic pack a lab run planned with. Never set in production. */
+  labPack?: GenerationLabPack;
+};
+
+export type GenerationLabPack = {
+  id: string;
+  /** Fact ids dropped from the pack before the run (`secN.fK`). */
+  dropped: string[];
+  /** Per objective, in order: the pack section it drew on, or `null`. */
+  packSections: (number | null)[];
 };
 
 export const GenerationStageSchema = z.enum(GENERATION_STAGES);
@@ -58,4 +68,11 @@ export const GenerationSchema = z.strictObject({
   promptVersions: z.partialRecord(GenerationStageSchema, z.string()),
   usage: GenerationUsageSchema,
   findings: z.array(FindingSchema),
+  labPack: z
+    .strictObject({
+      id: z.string(),
+      dropped: z.array(z.string()),
+      packSections: z.array(z.number().int().nonnegative().nullable()),
+    })
+    .optional(),
 });

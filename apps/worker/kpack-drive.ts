@@ -1,5 +1,6 @@
 // l6kp2 driver (lab/l6kp2): E50's e50-drive.ts with a knowledge-pack arm. Both arms per brief run side by side (2 at a time), same settings.
-// KP = deps.labPack from a Sol recall pack minus its session drop list; KN = no pack. Stops starting jobs past --limit USD.
+// KP = deps.labPack (plan A: the sections as the objectives call's menu, each objective's packSection as its teach reference, no select call)
+// from a Sol recall pack minus its session drop list; KN = no pack. Stops starting jobs past --limit USD.
 // stopAfter planned) -> confirm (plan.state confirmed, objectives unchanged, as the API does) ->
 // generate (resume, withObjectivesSlide). gpt-6-luna on every class, effort low, images off.
 // Usage: bun kpack-drive.ts <outDir> <limitUsd> <briefId>=<packJson>[,<dropFile>] ...   Never prints the key.
@@ -10,11 +11,7 @@ import { createAi, createBudget } from "@tj/ai";
 import { type Lesson, lessonFromBrief } from "@tj/domain/documents";
 import { noSources, type PipelineDeps, runLessonPipeline } from "@tj/generation";
 import pino from "pino";
-import {
-  labPackFor,
-  loadRecallPack,
-  type Selection,
-} from "../../packages/generation/eval/lab-pack";
+import { labPackOf, loadRecallPack } from "../../packages/generation/eval/lab-pack";
 import { withObjectivesSlide } from "./src/jobs/lesson-generate";
 
 const [outDir, limitArg, ...specs] = process.argv.slice(2);
@@ -43,7 +40,8 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
   let lesson: Lesson = lessonFromBrief(raw, `kp-${label}`, new Date());
   const [packPath, dropPath] = packSpec.split(",");
   const loaded = arm === "KP" ? loadRecallPack(packPath as string, dropPath) : undefined;
-  const selections: Selection[] = [];
+  const labPack = loaded ? labPackOf(loaded) : undefined;
+  let exitHeld: number | null = null;
   const summaries: Record<string, unknown>[] = [];
   const fallbacks: Record<string, unknown>[] = [];
   const continued: Record<string, unknown>[] = [];
@@ -63,6 +61,8 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
             for (const line of chunk.toString().split("\n").filter(Boolean)) {
               const r = JSON.parse(line);
               if (r.msg === "generation summary") summaries.push({ phase, ...r.generation });
+              if (r.msg === "outline written" && typeof r.exitHeld === "number")
+                exitHeld = r.exitHeld;
               if (r.msg === "slide continued")
                 continued.push({ phase, slide: r.slide, slides: r.slides });
               if (r.metric === "shape-fallback")
@@ -83,14 +83,8 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
       },
       onProgress: async () => undefined,
       context: { lessonId: lesson.id, jobId: `${label}-${phase}` },
+      ...(labPack ? { labPack } : {}),
     } as PipelineDeps;
-    if (loaded)
-      d.labPack = labPackFor(
-        loaded.pack,
-        { subject: raw.subject, yearGroup: raw.yearGroup },
-        () => d,
-        selections,
-      );
     return d;
   };
   const t0 = Date.now();
@@ -139,7 +133,10 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
     readableS: typeof g.readableMs === "number" ? g.readableMs / 1000 : null,
     checkedS: typeof g.checkedMs === "number" ? g.checkedMs / 1000 : null,
     totalS,
-    pack: loaded ? { id: loaded.pack.id, dropped: loaded.dropped, selections } : null,
+    pack: lesson.generation?.labPack ?? null,
+    packSections: facts?.objectives.map((o) => o.packSection ?? null) ?? [],
+    exitHeld,
+    exitMisconceptions: exitMisconceptionLines(lesson),
     cost: lesson.generation?.usage?.costUsd ?? null,
     slides: lesson.slides.length,
     stage: lesson.generation?.stage,
@@ -164,6 +161,13 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
   spent += typeof row.cost === "number" ? row.cost : 0;
   appendFileSync(`${outDir}/rows.jsonl`, `${JSON.stringify(row)}\n`);
   console.log(JSON.stringify({ ...row, promptVersions: undefined }));
+}
+
+/** Misconception refs on the exit ticket's outline entry (the true/false lines printed in code). */
+function exitMisconceptionLines(l: Lesson): number {
+  const exit = l.facts?.outline.find((e) => e.kind === "exit-ticket");
+  return (exit?.factRefs ?? []).filter((r) => l.facts?.misconceptions.some((m) => m.id === r))
+    .length;
 }
 
 const jobs: [string, "KP" | "KN", string, string][] = [];

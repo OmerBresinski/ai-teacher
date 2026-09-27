@@ -1175,6 +1175,38 @@ describe("lab r1 structure: sets, cycle checks, starter, exit quiz", () => {
     ).toBeGreaterThanOrEqual(EXIT_MIN);
   });
 
+  test("l6kp2: a misconception line joins the exit quiz only when a slide corrects it", () => {
+    // Two objectives, no exit questions: the quiz tops up with misconception lines. Each
+    // objective's own misconception is confronted (a worked example names it); a second one on
+    // objective 2 is not, and a six-slide deck has no room for a discussion to confront it.
+    const facts = factsFor(2, { exit: false });
+    facts.misconceptions.push({
+      belief: "A belief no slide corrects",
+      correction: "Its correction, never taught.",
+      objectiveRefs: [obj(1)],
+    });
+    const unconfronted = facts.misconceptions.length - 1;
+    const r = run({ n: 2, slideCount: 6, facts });
+    const onQuiz = refsAt(r, exitAt(r)).flatMap((f) =>
+      f.type === "misconception" ? [f.index] : [],
+    );
+    // Corrected on a slide: a slide's misconception ref, or a content slide's watch-out callout.
+    const onSlides = [
+      ...r.result.outlineFactRefs
+        .filter((e) => e.index !== exitAt(r))
+        .flatMap((e) => e.factRefs.flatMap((f) => (f.type === "misconception" ? [f.index] : []))),
+      ...Object.values(r.result.callouts).flatMap((c) =>
+        c.ref?.type === "misconception" ? [c.ref.index] : [],
+      ),
+    ];
+    expect(onSlides).not.toContain(unconfronted);
+    expect(onQuiz).not.toContain(unconfronted);
+    for (const m of onQuiz) expect(onSlides).toContain(m);
+    expect(onQuiz.length).toBeGreaterThan(0);
+    expect(r.result.exitHeld).toEqual([unconfronted]);
+    expect(r.result.gaps.some((g) => g.includes("no slide corrects it"))).toBe(true);
+  });
+
   test("pw prompts-2: an exit question that rewords one already on the quiz stays off it", () => {
     const facts = factsFor(3);
     const reworded = facts.questions

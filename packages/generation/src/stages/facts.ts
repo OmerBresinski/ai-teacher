@@ -16,7 +16,7 @@ import {
   StageFailure,
   type VerifyResult,
 } from "../types";
-import { keepId, type PlannerEffortOption, plannerEffort } from "./objectives";
+import { keepId, labPackRecord, type PlannerEffortOption, plannerEffort } from "./objectives";
 import { PLANNED_VERSION } from "./objectives-first";
 import { existingTitle, materialiseObjectives, materialiseTitle, withPinnedIds } from "./plan";
 import { audienceOf, BUDGET_FINDING, planClassFor, shapeOf } from "./shared";
@@ -79,9 +79,7 @@ export async function runFactsStep(
   const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
   const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
   const curriculum =
-    selected.length > 0
-      ? { text: selected.map((s) => s.text).join("\n\n") }
-      : deps.labPack?.curriculum;
+    selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
   const shape = shapeOf(lesson);
   const audience = audienceOf(lesson);
   const cls = planClassFor(lesson, deps);
@@ -97,8 +95,16 @@ export async function runFactsStep(
   const factsFailed: number[] = [];
   const budgetFailed: { target: number; by: "usd" | "tokens" }[] = [];
   const tFacts = Date.now();
-  // Lab only (l6kp2): one pack select call per objective before the waves, as on lab/l6kp.
-  const references = deps.labPack ? await deps.labPack.referencesFor(objectives) : undefined;
+  // Lab only (l6kp2 plan A): each objective's chosen pack section, as its teach call's reference.
+  // No call: the objectives call named the section (`packSection`) and it is stored on the lesson.
+  const labPack = deps.labPack;
+  const references = labPack
+    ? confirmed.map((o) =>
+        o.packSection == null || o.packSection >= labPack.sections.length
+          ? undefined
+          : labPack.referenceFor(o.packSection),
+      )
+    : undefined;
   const ran = await runWaves(
     {
       deps,
@@ -167,6 +173,7 @@ export async function runFactsStep(
       call: "outline",
       slides: facts.outline.length,
       gaps: outline.gaps.length,
+      exitHeld: outline.exitHeld.length,
       duplicates: { ...duplicates, conflicts: duplicates.conflicts.length },
       unplaced: {
         keyIdeas: outline.unplaced.keyIdeas.length,
@@ -240,6 +247,7 @@ export async function runFactsStep(
       promptVersions: { planned: PLANNED_VERSION },
       usage: deps.budget.totals(),
       findings,
+      ...labPackRecord(deps, confirmed),
     },
   };
   const { updatedAt } = await deps.persist(planned);

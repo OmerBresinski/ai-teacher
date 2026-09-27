@@ -71,7 +71,12 @@ export class ObjectivesBlocked extends StageFailure {
 }
 
 export interface ObjectivesStepReport {
-  objectives: { text: string; curriculumAnchor?: string | undefined }[];
+  objectives: {
+    text: string;
+    curriculumAnchor?: string | undefined;
+    /** Lab only (l6kp2): the pack section the objective draws on, or null. */
+    packSection?: number | null | undefined;
+  }[];
   retrieval?: PlanRetrievalQuestion[] | undefined;
   /** Calls made: 0 when pinned, 2 when the first set failed the check. */
   calls: number;
@@ -103,7 +108,9 @@ export async function runObjectivesStep(
     if (pinned.length === 0) {
       throw new Error("objectives: pinObjectives is set but the lesson has no objectives");
     }
-    objectives = pinned.map((o) => ({ text: o.text }));
+    objectives = pinned.map((o) =>
+      o.packSection === undefined ? { text: o.text } : { text: o.text, packSection: o.packSection },
+    );
     const kept = lesson.facts?.retrieval;
     retrieval = kept && kept.length > 0 ? kept : undefined;
     deps.logger.info(
@@ -114,9 +121,11 @@ export async function runObjectivesStep(
     const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
     const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
     const curriculum =
-      selected.length > 0
-        ? { text: selected.map((s) => s.text).join("\n\n") }
-        : deps.labPack?.curriculum;
+      selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
+    // Lab only (l6kp2 plan A): a pack is a menu for this call, never the curriculum, and only when
+    // the lesson has no source.
+    const pack =
+      deps.labPack && curriculum === undefined ? { sections: deps.labPack.sections } : undefined;
     const shape = shapeOf(lesson);
     const cls = planClassFor(lesson, deps);
     const effort = plannerEffort(options.effort, "objectives");
@@ -139,8 +148,9 @@ export async function runObjectivesStep(
           audience: audienceOf(lesson),
           priorKnowledge: brief.classContext?.priorKnowledge,
           curriculum,
+          ...(pack ? { pack } : {}),
         },
-        schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
+        schema: planObjectivesOutputSchemaFor(curriculum !== undefined, pack?.sections.length),
         maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
       });
       const check = checkObjectives(call.output.objectives, shape.verb, {
@@ -183,8 +193,16 @@ export async function runObjectivesStep(
     EMPTY_PLAN_FACTS,
     brief.durationMin,
   );
+  // Lab only (l6kp2): each objective keeps the pack section it chose, for the facts step.
+  const withPackSections = deps.labPack
+    ? skeletonFacts.objectives.map((o, i) => ({
+        ...o,
+        packSection: objectives[i]?.packSection ?? null,
+      }))
+    : undefined;
   const facts: LessonFacts = {
     ...skeletonFacts,
+    ...(withPackSections ? { objectives: withPackSections } : {}),
     ...(pinned ? { objectives: pinned } : {}),
     ...(retrieval
       ? { retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
@@ -210,6 +228,7 @@ export async function runObjectivesStep(
       promptVersions: { planned: OBJECTIVES_FIRST_VERSION },
       usage: deps.budget.totals(),
       findings: [],
+      ...labPackRecord(deps, facts.objectives),
     },
   };
   const { updatedAt } = await deps.persist(planned);
@@ -228,4 +247,22 @@ export async function objectives(state: PipelineState, deps: PipelineDeps): Prom
 /** A rebuilt objectives slide under the id of the one it replaces, so the editor keeps it. */
 export function keepId(slide: Slide, current: Slide | undefined): Slide {
   return current?.kind === "objectives" ? { ...slide, id: current.id } : slide;
+}
+
+/**
+ * Lab only (l6kp2, EXPERT-ARCH item 5): the pack a run planned with, on `lesson.generation`, so a
+ * stored lesson says which pack and which sections it drew on. Empty without a pack.
+ */
+export function labPackRecord(
+  deps: PipelineDeps,
+  objectives: readonly { packSection?: number | null | undefined }[],
+): { labPack?: NonNullable<Lesson["generation"]>["labPack"] } {
+  if (!deps.labPack) return {};
+  return {
+    labPack: {
+      id: deps.labPack.id,
+      dropped: deps.labPack.dropped,
+      packSections: objectives.map((o) => o.packSection ?? null),
+    },
+  };
 }

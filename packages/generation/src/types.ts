@@ -118,11 +118,19 @@ export function emptyImageCounts(): ImageCounts {
   return { photographable: null, requested: 0, placed: 0, empty: 0, failed: 0 };
 }
 
-/** A topic pack as the planner reads it (lab only, see `PipelineDeps.labPack`). */
+/**
+ * A topic pack as the planner reads it (lab only, see `PipelineDeps.labPack`; l6kp2 plan A). The
+ * sections go to the objectives call as a menu (`PlanObjectivesInput.pack`), never as curriculum;
+ * each objective names the section it draws on (`packSection`), and that section's facts go to the
+ * objective's teach call as its reference, built here with no call.
+ */
 export interface LabPack {
-  curriculum: { text: string };
-  /** One entry per objective: the matched section's facts as plain lines, or `undefined`. */
-  referencesFor: (objectives: { text: string }[]) => Promise<(string | undefined)[]>;
+  id: string;
+  /** Fact ids the session check dropped from the pack (`secN.fK`), recorded on the lesson. */
+  dropped: string[];
+  sections: { title?: string | undefined; outcome: string }[];
+  /** Section `index` as the teach call's reference text (plain one-claim lines). */
+  referenceFor: (index: number) => string;
 }
 
 export interface PipelineDeps {
@@ -137,9 +145,9 @@ export interface PipelineDeps {
   ids: () => string;
   sources: SourceLoader;
   /**
-   * Lab only (l6kp2, knowledge packs): a topic pack's outcomes as the curriculum extract when the
-   * lesson has no source, and per objective the pack section's facts as the teach call's reference
-   * text (`plan-teach-objective`'s own slot). Production never sets it.
+   * Lab only (l6kp2, knowledge packs): with no source, the pack's sections as the objectives call's
+   * menu, and per objective its chosen section's facts as the teach call's reference text
+   * (`plan-teach-objective`'s own slot). Production never sets it.
    */
   labPack?: LabPack | undefined;
   /**

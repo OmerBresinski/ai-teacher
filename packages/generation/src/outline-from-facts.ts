@@ -143,6 +143,8 @@ export type OutlineFromFactsResult = {
   gaps: string[];
   /** The learning cycles in running order: outline positions of the teaching slides, then of the checks after them. */
   cycles: { teach: number[]; check: number[] }[];
+  /** Misconceptions of taught objectives the exit quiz could not take: no slide corrects them. */
+  exitHeld: number[];
 };
 
 /** The brief's `adds` / `avoids` cap (`SPEC_LIMITS.item`), restated so this module has no `@tj/slides` import. */
@@ -1032,7 +1034,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   });
 
   // P7: discussions on misconceptions nothing else confronts, then a plenary.
-  if (budget > 0) {
+  /**
+   * The misconceptions a slide corrects: a true/false or discussion slide on it, a worked example
+   * that names it, or a content slide's watch-out (below), which takes its objective's first
+   * misconception not yet confronted. A starter only asks what pupils think, so it corrects none.
+   */
+  const confrontedOnSlides = () => {
     const confronted = new Set<number>();
     for (const s of slots) {
       if (s.misconception !== undefined && s.kind !== "starter") confronted.add(s.misconception);
@@ -1040,12 +1047,15 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const ref = facts.workedExamples[s.workedExample]?.misconceptionRef;
         if (ref) confronted.add(ref.index);
       }
-      // A content slide's watch-out (below) takes its objective's first misconception.
       if (s.kind === "content") {
         const first = misconceptionsOf(s.primary).find((m) => !confronted.has(m));
         if (first !== undefined) confronted.add(first);
       }
     }
+    return confronted;
+  };
+  if (budget > 0) {
+    const confronted = confrontedOnSlides();
     facts.misconceptions.forEach((m, i) => {
       if (budget <= 0 || confronted.has(i)) return;
       const o = m.objectiveRefs[0]?.index ?? 0;
@@ -1081,6 +1091,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const firstObjectiveOf = (i: number) => refIndices(facts.questions[i]?.objectiveRefs)[0];
   type ExitItem = { type: "question" | "misconception"; index: number; line: Line };
   const exitItems: ExitItem[] = [];
+  /** Misconceptions of taught objectives kept off the exit quiz: no slide corrects them. */
+  const exitHeld: number[] = [];
   const itemObjectives = (it: ExitItem) =>
     refIndices(
       it.type === "question"
@@ -1173,15 +1185,26 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         x.kind === "true-false" && x.misconception !== undefined ? [x.misconception] : [],
       ),
     );
-    topUp(
-      facts.misconceptions.flatMap((m, i) =>
-        !onSlide.has(i) &&
-        m.objectiveRefs.length > 0 &&
-        refIndices(m.objectiveRefs).every((o) => taught(o))
-          ? [{ type: "misconception" as const, index: i, line: misconceptionLine(m) }]
-          : [],
-      ),
+    // l6kp2 (FIX-PLAN cause 4): a misconception line only where a slide corrects it. An objective
+    // being taught is not enough: the E51 demand exit ticket asked about tax incidence, whose
+    // correction no slide carried.
+    const corrected = confrontedOnSlides();
+    const eligible = facts.misconceptions.flatMap((m, i) =>
+      !onSlide.has(i) &&
+      m.objectiveRefs.length > 0 &&
+      refIndices(m.objectiveRefs).every((o) => taught(o))
+        ? [{ type: "misconception" as const, index: i, line: misconceptionLine(m) }]
+        : [],
     );
+    topUp(eligible.filter((it) => corrected.has(it.index)));
+    // Held only where the quiz still had room: those are the lines the old rule would have printed.
+    if (exitItems.length < EXIT_QUIZ_MIN) {
+      for (const it of eligible) {
+        if (corrected.has(it.index)) continue;
+        exitHeld.push(it.index);
+        gap(`Misconception ${it.index + 1} is left off the exit quiz: no slide corrects it.`);
+      }
+    }
     if (exitItems.length < EXIT_QUIZ_MIN) {
       gap(
         `The exit quiz has ${exitItems.length} item${exitItems.length === 1 ? "" : "s"}: the facts have no other question or misconception that can be a line of it.`,
@@ -1634,6 +1657,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     unplaced,
     gaps,
     cycles,
+    exitHeld,
   };
 }
 

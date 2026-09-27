@@ -78,7 +78,17 @@ export type CurriculumRef = {
   status: "inferred" | "confirmed";
 };
 
-export type Objective = { id: FactId; text: string; curriculumRef?: CurriculumRef };
+export type Objective = {
+  id: FactId;
+  text: string;
+  curriculumRef?: CurriculumRef;
+  /**
+   * Lab only (l6kp2, knowledge packs): the index of the topic-pack section this objective draws
+   * on, or `null` where none does. Written by the objectives call when a lab pack is set; never in
+   * production.
+   */
+  packSection?: number | null;
+};
 
 /**
  * A teaching point: what a pupil must understand, explained, with one concrete example and an
@@ -263,6 +273,7 @@ export const ObjectiveSchema = z.strictObject({
   id: FactIdSchema,
   text: z.string(),
   curriculumRef: CurriculumRefSchema.optional(),
+  packSection: z.number().int().nonnegative().nullable().optional(),
 });
 
 const ObjectiveRefsSchema = z.array(FactIdSchema);
