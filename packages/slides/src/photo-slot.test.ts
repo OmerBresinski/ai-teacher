@@ -22,7 +22,14 @@ import {
 } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import type { SlideSpecOf } from "./specs";
-import { alternateSlotSides, docLines, ITEM_NAME, slotSideOf, swapSlotSide } from "./structure";
+import {
+  alternateSlotSides,
+  docLines,
+  ITEM_NAME,
+  slotSideOf,
+  slotSideOnDrop,
+  swapSlotSide,
+} from "./structure";
 import { floorBelow, readingSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
 
@@ -465,5 +472,31 @@ describe("review fixes (look/slides-layout)", () => {
     expect(img.x - Math.max(...moved.map((e) => e.x + e.w))).toBe(gap);
     expect(img.x + img.w).toBe(right0);
     expect(swapSlotSide(swapped).elements).toEqual(stored.elements);
+  });
+});
+
+describe("dropping the photo over the midline (R2)", () => {
+  const [left] = materialiseSlides(why, "chalk", meta, undefined, 0, { photo });
+  const mid = SAFE.x + SAFE.w / 2;
+
+  test("its centre past the middle takes the other side; short of it, an ordinary move", () => {
+    const s = left as Slide;
+    const img = slot(s);
+    const toMid = mid - (img.x + img.w / 2);
+    expect(slotSideOnDrop(s, img.id, toMid + 1)).toBe("right");
+    expect(slotSideOnDrop(s, img.id, toMid - 1)).toBeUndefined();
+    const right = swapSlotSide(s);
+    const back = slot(right);
+    const toMidR = mid - (back.x + back.w / 2);
+    expect(slotSideOnDrop(right, back.id, toMidR - 1)).toBe("left");
+    expect(slotSideOnDrop(right, back.id, 60)).toBeUndefined();
+  });
+
+  test("only the photo swaps: the words, and a slide without a slot, move as they are", () => {
+    const s = left as Slide;
+    const words = bodyText(s)[0];
+    expect(slotSideOnDrop(s, words?.id ?? "", 600)).toBeUndefined();
+    const plain = { ...s, elements: s.elements.filter((e) => e.name !== PHOTO_NAME) };
+    expect(slotSideOnDrop(plain, slot(s).id, 600)).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 /** Slide-list reducers: add, insert, duplicate, delete, move, patch. */
 
 import type { Id, Lesson, Slide, SlideKind } from "@tj/domain/documents";
-import { swapSlotSide as swapSlotSideOf } from "@tj/slides";
+import { type SlotSide, slotSide as slotSideOf } from "@tj/slides";
 import { cloneSlide, newSlide } from "../factories";
 import { layoutSlide } from "../layouts";
 import { edit, editSlide, type WithId } from "./core";
@@ -106,10 +106,13 @@ export const nudgeSlides = (lesson: Lesson, ids: Id[], dir: -1 | 1): Lesson => {
   });
 };
 
-/** A teaching slide's photo or diagram slot moved to the other side, the words with it. */
-export const swapSlotSide = (lesson: Lesson, id: Id): Lesson => {
+/**
+ * A teaching slide's photo or diagram slot moved to one side, the words to the other (R2: the
+ * picture toolbar's Left | Right, and a drag across the midline). Already there: no change.
+ */
+export const setSlotSide = (lesson: Lesson, id: Id, side: SlotSide): Lesson => {
   const slide = lesson.slides.find((s) => s.id === id);
-  const next = slide ? swapSlotSideOf(slide) : undefined;
+  const next = slide ? slotSideOf(slide, side) : undefined;
   if (!next || next === slide) return lesson;
   return edit(lesson, (l) => {
     l.slides = l.slides.map((s) => (s.id === id ? next : s));

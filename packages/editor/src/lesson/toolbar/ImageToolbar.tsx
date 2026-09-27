@@ -1,10 +1,13 @@
 import type { ImageElement } from "@tj/domain/documents";
+import type { SlotSide } from "@tj/slides";
 import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Crop, Replace } from "lucide-react";
 import { memo, useId } from "react";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { Segmented } from "../../kit/Segmented";
+import * as reducers from "../../model/reducers";
 import { normaliseHref } from "../../text/links";
+import { useHistory } from "../document-context";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
 import { BarButton, CornersMenu, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
@@ -12,16 +15,21 @@ import { BarButton, CornersMenu, ICON, ICON_SM, OpacityControl, useElementWrites
 /**
  * Replace, fit, crop, corners, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
  * the Add image panel in replace mode (TEACH-107); Crop enters crop mode on the slide (TEACH-153),
- * where `CropToolbar` takes this bar's place.
+ * where `CropToolbar` takes this bar's place. A teaching slide's photo, open or placed, also picks
+ * its side of the words (`slotSide`, R2): one write, one undo step.
  */
 export const ImageToolbar = memo(function ImageToolbar({
   element,
   slideId,
+  slotSide,
 }: {
   element: ImageElement;
   slideId: string;
+  /** The side the slide's photo slot is on, when this image is that photo. */
+  slotSide?: SlotSide;
 }) {
   const { update, scrub, end } = useElementWrites(slideId);
+  const history = useHistory();
   const { openImagePanel, enterCrop } = useSessionActions();
   const altId = useId();
   // An imported lesson is untrusted JSON and could carry `javascript:` here, so the address goes
@@ -31,6 +39,23 @@ export const ImageToolbar = memo(function ImageToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Image" data-image-toolbar>
+      {slotSide ? (
+        <>
+          <span className="px-1 text-ink-3 text-meta" aria-hidden>
+            Picture
+          </span>
+          <Segmented
+            aria-label="Picture side"
+            value={slotSide}
+            onChange={(side) => history.dispatch(reducers.setSlotSide, slideId, side)}
+            options={[
+              { value: "left", label: "Left" },
+              { value: "right", label: "Right" },
+            ]}
+          />
+          <PanelSeparator />
+        </>
+      ) : null}
       <BarButton onClick={() => openImagePanel({ elementId: element.id })}>
         <Replace aria-hidden {...ICON_SM} />
         Replace

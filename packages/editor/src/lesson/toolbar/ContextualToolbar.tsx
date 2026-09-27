@@ -1,4 +1,5 @@
 import { SLIDE_W, type Slide, type Theme } from "@tj/domain/documents";
+import { PHOTO_NAME, slotSideOf } from "@tj/slides";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Settings2 } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -156,7 +157,11 @@ export function ContextualToolbar({
     ) : only.type === "image" && crop?.id === only.id ? (
       <CropToolbar element={only} />
     ) : only.type === "image" ? (
-      <ImageToolbar element={only} slideId={slide.id} />
+      <ImageToolbar
+        element={only}
+        slideId={slide.id}
+        slotSide={only.name === PHOTO_NAME ? slotSideOf(slide) : undefined}
+      />
     ) : only.type === "shape" ? (
       <ShapeToolbar element={only} theme={theme} slideId={slide.id} />
     ) : only.type === "line" ? (

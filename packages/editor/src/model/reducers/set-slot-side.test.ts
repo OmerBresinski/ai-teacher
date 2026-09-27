@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { materialiseSlides, slotSideOf } from "@tj/slides";
-import { swapSlotSide } from "./slides";
+import { setSlotSide } from "./slides";
 
-describe("swapSlotSide (look/slides-layout)", () => {
+describe("setSlotSide (look/slides-layout, R2)", () => {
   const [slide] = materialiseSlides(
     {
       kind: "content",
@@ -20,17 +20,20 @@ describe("swapSlotSide (look/slides-layout)", () => {
   );
   const lesson = (): Lesson => ({ ...generatedLesson(), slides: slide ? [slide] : [] });
 
-  test("moves the slot to the other side and back", () => {
+  test("moves the slot to the side asked for and back; the side it is on is no change", () => {
     if (!slide) throw new Error("no slide");
-    const once = swapSlotSide(lesson(), slide.id);
+    const start = lesson();
+    expect(setSlotSide(start, slide.id, "left")).toBe(start);
+    const once = setSlotSide(start, slide.id, "right");
     expect(slotSideOf(once.slides[0] as never)).toBe("right");
-    const twice = swapSlotSide(once, slide.id);
+    expect(setSlotSide(once, slide.id, "right")).toBe(once);
+    const twice = setSlotSide(once, slide.id, "left");
     expect(twice.slides[0]?.elements).toEqual(slide.elements);
   });
 
   test("a slide without a slot, or an unknown id, leaves the lesson as it is", () => {
     const plain = generatedLesson();
-    expect(swapSlotSide(plain, plain.slides[1]?.id ?? "")).toBe(plain);
-    expect(swapSlotSide(plain, "nope")).toBe(plain);
+    expect(setSlotSide(plain, plain.slides[1]?.id ?? "", "right")).toBe(plain);
+    expect(setSlotSide(plain, "nope", "right")).toBe(plain);
   });
 });
