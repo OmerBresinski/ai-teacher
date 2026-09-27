@@ -94,6 +94,11 @@ function requested(slide: Slide): { role: ThemeArtRole; side?: ArtSide } | null 
   return { role: choice, side: choice === "picture" ? (auto.side ?? "left") : undefined };
 }
 
+/** The variant a slide wears once its choice is resolved: a role, or plain. */
+export function slideArtVariant(slide: Slide): ThemeArtRole | "plain" {
+  return requested(slide)?.role ?? "plain";
+}
+
 /** The layers a slide draws: its chosen role's art, less any layer that would meet an element. */
 export function slideArtLayers(theme: Theme, slide: Slide): ThemeArtLayer[] {
   const want = requested(slide);

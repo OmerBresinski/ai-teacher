@@ -1,6 +1,12 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { COUNTER_NAME, DIAGRAM_NAME, slideBackground, withoutDiagramSlot } from "@tj/slides";
+import {
+  COUNTER_NAME,
+  DIAGRAM_NAME,
+  slideArtVariant,
+  slideBackground,
+  withoutDiagramSlot,
+} from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -271,6 +277,8 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
       // The export paint gate (`waitForSlidePaint`) cannot see a CSS background through `<img>`
       // queries; it reads this attribute and preloads the picture before printing or capturing.
       data-background-image={image}
+      // Which theme art variant is drawn (UX ruling 107), for tests and the export's paint gate.
+      data-theme-art={themeImage ? slideArtVariant(slide) : undefined}
       style={{
         position: "absolute",
         inset: 0,
