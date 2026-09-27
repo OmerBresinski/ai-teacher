@@ -38,4 +38,23 @@ describe("referenceText with Oak-pack fact fields", () => {
       "- Ratios can be expressed as fractions.",
     );
   });
+
+  test("an Oak misconception is one labelled line after the facts; a recall pack's are dropped", () => {
+    const s = section([{ statement: "Evacuation began on 1 September 1939." }]);
+    s.facts.misconceptions = [
+      {
+        kind: "misconception",
+        belief: "Only British people fought for Britain during the Second World War.",
+        correction:
+          "Highlight how millions of men and women from around the world helped the British armed forces.",
+        source: "oak",
+      },
+      { belief: "Siblings were always kept together.", correction: "Many were split up." },
+      { belief: "Evacuation was compulsory.", correction: "It was voluntary.", source: "model" },
+    ];
+    expect(referenceText(s).split("\n")).toEqual([
+      "- Evacuation began on 1 September 1939.",
+      "- Misconception: Only British people fought for Britain during the Second World War. Response: Highlight how millions of men and women from around the world helped the British armed forces.",
+    ]);
+  });
 });

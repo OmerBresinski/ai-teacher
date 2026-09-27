@@ -101,14 +101,15 @@ const QUOTED = /[‘“"]/;
  * Plain lines, one claim each, in no order the call is asked to keep: a key idea's statement,
  * explanation and example are split into sentences; a term is `term: definition`; a worked
  * example is one line. Pack questions have no reader (the question call is not shown the pack),
- * and vocabulary `sense` and `band` are dropped. Pack misconceptions are dropped too until the
- * packs are rebuilt (plan C): the subject expert judged about half of them invented
- * (EXPERT-SUBJECT.md), the teach call writes exactly one misconception of its own in any case,
- * and verify never sees the pack, so an invented one shown as "pupils think" would pass
- * unchecked; the true facts their corrections carry are already in the key ideas. A fact's `locator`, where a pack carries one, follows each of its quoted sentences in
- * brackets, which is what `REFERENCE_INSTRUCTION`'s "with their locator where one is given" reads.
- * No "Key idea:" / "Misconception:" labels: rendered in the teach call's own output shape, the
- * section was paraphrased back whole (EXPERT-PROMPTS T1).
+ * and vocabulary `sense` and `band` are dropped. A misconception is rendered only when its
+ * `source` is `oak` (28 Sept 2026, the Oak packs): Oak's are documented, and they go last, one
+ * line each, labelled so the teach call reads the belief as false. A recall pack's own
+ * misconceptions (no `source`, or `model`) stay dropped: the subject expert judged about half of
+ * them invented (EXPERT-SUBJECT.md), and verify never sees the pack, so an invented one shown as
+ * "pupils think" would pass unchecked. A fact's `locator`, where a pack carries one, follows each
+ * of its quoted sentences in brackets, which is what `REFERENCE_INSTRUCTION`'s "with their locator
+ * where one is given" reads. No "Key idea:" label on the fact lines: rendered in the teach call's
+ * own output shape, the section was paraphrased back whole (EXPERT-PROMPTS T1).
  */
 export function referenceText(section: RecallPack["sections"][number]): string {
   const f = section.facts;
@@ -129,6 +130,8 @@ export function referenceText(section: RecallPack["sections"][number]): string {
   for (const v of f.vocabulary) L.push(`- ${v.term}: ${v.definition}`);
   for (const x of f.workedExamples)
     L.push(`- ${locate(`${x.problem} ${x.steps.join(" ")} ${x.answer}`, x.locator)}`);
+  for (const m of f.misconceptions)
+    if (m.source === "oak") L.push(`- Misconception: ${m.belief} Response: ${m.correction}`);
   return L.join("\n");
 }
 
