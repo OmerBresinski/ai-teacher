@@ -474,7 +474,6 @@ export function Canvas({
           </>
         ) : null}
       </div>
-      <DiagramNote slide={slide} />
       <CanvasFooter scale={scale} steps={steps} />
       <ElementContextMenu
         slide={slide}
@@ -516,31 +515,6 @@ function zoomAbout(el: HTMLElement, from: number, to: number, clientX: number, c
  */
 export const stepZoom = (current: number, dir: 1 | -1): number =>
   nextStep(ZOOM_STEPS, current, dir);
-
-/* ------------------------------------------------------------------ */
-/* Diagram note                                                        */
-/* ------------------------------------------------------------------ */
-
-/**
- * A diagram the slide should have and does not yet (`slide.diagram`, written by generation): its
- * instruction as a slim note under the slide, outside the canvas, so it never covers the words.
- * The slide itself takes no space for it, and present and export never show it. TODO(diagram PR):
- * dismiss and draw actions here.
- */
-function DiagramNote({ slide }: { slide: Slide }) {
-  const instruction = slide.diagram?.instruction;
-  if (!instruction) return null;
-  return (
-    <div
-      data-diagram-note
-      title={`Diagram to add: ${instruction}`}
-      className="pointer-events-auto absolute bottom-4 left-4 flex h-8 max-w-[min(56%,640px)] items-center gap-1.5 rounded-control bg-card px-3 text-ink-2 text-meta shadow-[inset_0_0_0_1px_var(--border-control)]"
-    >
-      <span className="shrink-0 font-medium text-ink">Diagram to add:</span>
-      <span className="truncate">{instruction}</span>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Footer                                                              */
