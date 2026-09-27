@@ -4,9 +4,9 @@ import type { LabPack } from "../src/types";
 /*
  * Lab l6kp2: a Sol recall pack (packs2 format, `<topic>.sol-recall-selfchecklist.json`) minus the
  * facts the in-session check dropped (`drop-<topic>.txt`, ids `secN.fK`, K the 0-based flat
- * position across the fact types in order) becomes `deps.labPack` (plan A, 27 Sept 2026): the
- * sections as the objectives call's menu, and each objective's chosen section (`packSection`) as
- * its teach call's reference text (`referenceText`). No select call; every fact is written live.
+ * position across the fact types in order) becomes `deps.labPack` (plan A, E53): no planner call
+ * sees the sections; each objective is matched to one in code (`stages/pack-map.ts`) and that
+ * section goes to its teach call as reference text (`referenceText`). Every fact is written live.
  */
 
 export const FACT_TYPES = [
@@ -115,7 +115,11 @@ export function labPackOf(loaded: { pack: RecallPack; dropped: string[] }): LabP
   return {
     id: pack.id,
     dropped,
-    sections: packSections(pack),
+    sections: pack.sections.map((s) => ({
+      ...(s.title ? { title: s.title } : {}),
+      outcome: s.outcome,
+      text: referenceText(s),
+    })),
     referenceFor: (index) => {
       const section = pack.sections[index];
       if (!section) throw new Error(`lab pack ${pack.id}: no section ${index}`);

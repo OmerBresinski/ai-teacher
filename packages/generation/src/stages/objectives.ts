@@ -14,6 +14,7 @@ import {
   StageFailure,
 } from "../types";
 import { OBJECTIVES_FIRST_VERSION } from "./objectives-first";
+import { matchPackSections, PACK_MATCH_THRESHOLD } from "./pack-map";
 import { existingTitle, materialiseObjectives, materialiseTitle } from "./plan";
 import { audienceOf, planClassFor, shapeOf } from "./shared";
 import { selectSourceTexts } from "./source-texts";
@@ -122,10 +123,6 @@ export async function runObjectivesStep(
     const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
     const curriculum =
       selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
-    // Lab only (l6kp2 plan A): a pack is a menu for this call, never the curriculum, and only when
-    // the lesson has no source.
-    const pack =
-      deps.labPack && curriculum === undefined ? { sections: deps.labPack.sections } : undefined;
     const shape = shapeOf(lesson);
     const cls = planClassFor(lesson, deps);
     const effort = plannerEffort(options.effort, "objectives");
@@ -148,9 +145,8 @@ export async function runObjectivesStep(
           audience: audienceOf(lesson),
           priorKnowledge: brief.classContext?.priorKnowledge,
           curriculum,
-          ...(pack ? { pack } : {}),
         },
-        schema: planObjectivesOutputSchemaFor(curriculum !== undefined, pack?.sections.length),
+        schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
         maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
       });
       const check = checkObjectives(call.output.objectives, shape.verb, {
@@ -193,17 +189,20 @@ export async function runObjectivesStep(
     EMPTY_PLAN_FACTS,
     brief.durationMin,
   );
-  // Lab only (l6kp2): each objective keeps the pack section it chose, for the facts step.
+  // Lab only (l6kp2, E53): the objectives call never sees the pack; each objective's section is
+  // chosen here by content-word overlap (`matchPackSections`), no call. A pinned objective keeps
+  // the section it was stored with.
+  const baseObjectives = pinned ?? skeletonFacts.objectives;
   const withPackSections = deps.labPack
-    ? skeletonFacts.objectives.map((o, i) => ({
-        ...o,
-        packSection: objectives[i]?.packSection ?? null,
+    ? packSectionsFor(deps, objectives).map((packSection, i) => ({
+        ...(baseObjectives[i] as LessonFacts["objectives"][number]),
+        packSection,
       }))
     : undefined;
   const facts: LessonFacts = {
     ...skeletonFacts,
     ...(withPackSections ? { objectives: withPackSections } : {}),
-    ...(pinned ? { objectives: pinned } : {}),
+    ...(pinned ? { objectives: withPackSections ?? pinned } : {}),
     ...(retrieval
       ? { retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
       : {}),
@@ -265,4 +264,26 @@ export function labPackRecord(
       packSections: objectives.map((o) => o.packSection ?? null),
     },
   };
+}
+
+/** Lab only (l6kp2, E53): each objective's pack section, kept where stored, else matched in code. */
+function packSectionsFor(
+  deps: PipelineDeps,
+  objectives: readonly { text: string; packSection?: number | null | undefined }[],
+): (number | null)[] {
+  const pack = deps.labPack;
+  if (!pack) return objectives.map(() => null);
+  const matches = matchPackSections(objectives, pack.sections);
+  deps.logger.info(
+    {
+      stage: "plan",
+      call: "pack-map",
+      threshold: PACK_MATCH_THRESHOLD,
+      matches: matches.map((m) => ({ section: m.section, scores: m.scores })),
+    },
+    "pack sections matched",
+  );
+  return objectives.map((o, i) =>
+    o.packSection !== undefined ? o.packSection : (matches[i]?.section ?? null),
+  );
 }

@@ -12,6 +12,7 @@ import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 import type { ReasoningEffort } from "./call";
 import type { VerifyCorrection } from "./specs";
+import type { PackSectionText } from "./stages/pack-map";
 
 /*
  * The pipeline's contract with its host (ADR 0025 §17): everything the stages need arrives in
@@ -119,16 +120,17 @@ export function emptyImageCounts(): ImageCounts {
 }
 
 /**
- * A topic pack as the planner reads it (lab only, see `PipelineDeps.labPack`; l6kp2 plan A). The
- * sections go to the objectives call as a menu (`PlanObjectivesInput.pack`), never as curriculum;
- * each objective names the section it draws on (`packSection`), and that section's facts go to the
- * objective's teach call as its reference, built here with no call.
+ * A topic pack as the planner reads it (lab only, see `PipelineDeps.labPack`; l6kp2 plan A, E53).
+ * No planner call sees the sections: each objective is matched to one in code (`packSection`,
+ * `stages/pack-map.ts`), and that section's facts go to the objective's teach call as its
+ * reference, built here with no call.
  */
 export interface LabPack {
   id: string;
   /** Fact ids the session check dropped from the pack (`secN.fK`), recorded on the lesson. */
   dropped: string[];
-  sections: { title?: string | undefined; outcome: string }[];
+  /** Per section: title, outcome and its facts as text, for `matchPackSections`. */
+  sections: PackSectionText[];
   /** Section `index` as the teach call's reference text (plain one-claim lines). */
   referenceFor: (index: number) => string;
 }
@@ -145,9 +147,9 @@ export interface PipelineDeps {
   ids: () => string;
   sources: SourceLoader;
   /**
-   * Lab only (l6kp2, knowledge packs): with no source, the pack's sections as the objectives call's
-   * menu, and per objective its chosen section's facts as the teach call's reference text
-   * (`plan-teach-objective`'s own slot). Production never sets it.
+   * Lab only (l6kp2, knowledge packs): per objective, the pack section matched to it in code, whose
+   * facts go to its teach call as reference text (`plan-teach-objective`'s own slot). Production
+   * never sets it.
    */
   labPack?: LabPack | undefined;
   /**

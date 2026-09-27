@@ -9,35 +9,36 @@ import type { LabPack } from "../types";
 import { runLessonPipeline } from "../workflow";
 
 /*
- * Lab l6kp2 plan A (knowledge packs on the objectives-first planner): `deps.labPack` is a menu for
- * the objectives call, never the curriculum; each objective names the section it draws on
- * (`packSection`), and that section's reference reaches that objective's teach call only, with no
- * select call. Without a pack every user turn is pinned by hash (CORE 2026-09-26: the unassigned
- * bytes at pipeline level, not only the template hash).
+ * Lab l6kp2 plan A, E53 (knowledge packs on the objectives-first planner): no planner call sees the
+ * pack. The objectives call is byte-identical to a no-pack run; each objective is matched to a
+ * section in code (`matchPackSections`), and that section's reference reaches that objective's
+ * teach call only. Without a pack every user turn is pinned by hash (CORE 2026-09-26: the
+ * unassigned bytes at pipeline level, not only the template hash).
  */
 
 const promptOf = (c: { promptText: string }) => c.promptText;
 const version = (c: { context?: { promptVersion?: string } }) => c.context?.promptVersion ?? "";
 
+// Romans objectives: 0 invasion (no section), 1 Boudica (section 0), 2 settlements (section 1).
 const PACK: LabPack = {
   id: "pack-test",
   dropped: ["sec0.f1"],
-  sections: [{ title: "PACK-TITLE-0", outcome: "PACK-OUTCOME-0" }, { outcome: "PACK-OUTCOME-1" }],
+  sections: [
+    {
+      outcome: "I can explain why Boudica and the Iceni rebelled against Roman control.",
+      text: "- Boudica led the Iceni in a rebellion in AD 60.\n- The rebellion burned Roman towns.",
+    },
+    {
+      outcome: "I can describe how Roman settlements, roads and towns changed everyday life.",
+      text: "- Settlements had baths, markets and straight roads.\n- Everyday life changed in towns.",
+    },
+  ],
   referenceFor: (i) => `- PACK-REF-MARKER-${i}`,
 };
+const EXPECTED_SECTIONS = [null, 0, 1];
 
 async function run(withPack: boolean) {
-  // Objective 0 draws on no section, objective 1 on section 1, the rest on section 0.
-  const ai = labAi(
-    withPack
-      ? {
-          objectives: romans.objectives.map((o, i) => ({
-            ...o,
-            packSection: i === 0 ? null : i === 1 ? 1 : 0,
-          })),
-        }
-      : {},
-  );
+  const ai = labAi({});
   const deps = { ...recordingDeps(ai), ...(withPack ? { labPack: PACK } : {}) };
   const planned = await runLessonPipeline({ lesson: romansLesson() }, deps, {
     stopAfter: "planned",
@@ -51,20 +52,26 @@ async function run(withPack: boolean) {
   return { ai, planned: planned.lesson, lesson: done.lesson };
 }
 
+const objectivesTurns = (ai: {
+  calls: { promptText: string; context?: { promptVersion?: string } }[];
+}) => ai.calls.filter((c) => version(c).startsWith("plan-objectives")).map(promptOf);
+
 describe("labPack on the objectives-first planner (plan A)", () => {
-  test("the pack is a menu for the objectives call, not a curriculum", async () => {
+  test("the objectives call is byte-identical with and without a pack", async () => {
+    const withPack = objectivesTurns((await run(true)).ai);
+    const without = objectivesTurns((await run(false)).ai);
+    expect(withPack.length).toBeGreaterThan(0);
+    expect(withPack).toEqual(without);
+    expect(withPack.some((t) => t.includes(PACK_INSTRUCTION) || t.includes("PACK-"))).toBe(false);
+  });
+
+  test("no call but the matched teach calls sees pack text, and no select call runs", async () => {
     const { ai } = await run(true);
-    const objectives = ai.calls.filter((c) => version(c).startsWith("plan-objectives"));
-    expect(objectives.length).toBeGreaterThan(0);
-    for (const c of objectives) {
-      expect(promptOf(c)).toContain(PACK_INSTRUCTION);
-      expect(promptOf(c)).toContain("PACK-OUTCOME-1");
-      expect(promptOf(c)).not.toContain(CURRICULUM_INSTRUCTION);
-      expect(promptOf(c)).not.toContain("Unit outcomes");
-    }
-    // No pack text reaches any call as curriculum, and no select call runs.
-    const others = ai.calls.filter((c) => !version(c).startsWith("plan-objectives"));
-    expect(others.some((c) => promptOf(c).includes("PACK-OUTCOME"))).toBe(false);
+    const teach = (c: { context?: { promptVersion?: string } }) =>
+      version(c).startsWith("plan-teach-objective");
+    expect(ai.calls.filter((c) => !teach(c)).some((c) => promptOf(c).includes("PACK-"))).toBe(
+      false,
+    );
     expect(ai.calls.some((c) => version(c).startsWith("pack-select"))).toBe(false);
   });
 
@@ -78,12 +85,12 @@ describe("labPack on the objectives-first planner (plan A)", () => {
       const t = target(c);
       expect(promptOf(c)).not.toContain("Unit outcomes");
       expect(promptOf(c)).not.toContain(CURRICULUM_INSTRUCTION);
-      if (t === 0) {
+      if (EXPECTED_SECTIONS[t] === null) {
         expect(promptOf(c)).not.toContain("PACK-REF-MARKER");
         expect(promptOf(c)).not.toContain(REFERENCE_INSTRUCTION);
       } else {
         expect(promptOf(c)).toContain(REFERENCE_INSTRUCTION);
-        expect(promptOf(c)).toContain(`PACK-REF-MARKER-${t === 1 ? 1 : 0}`);
+        expect(promptOf(c)).toContain(`PACK-REF-MARKER-${EXPECTED_SECTIONS[t]}`);
       }
     }
     const sets = ai.calls.filter((c) => version(c).startsWith("plan-question-set"));
@@ -92,7 +99,7 @@ describe("labPack on the objectives-first planner (plan A)", () => {
 
   test("the stored lesson records each objective's section and the pack", async () => {
     const { planned, lesson } = await run(true);
-    const expected = romans.objectives.map((_, i) => (i === 0 ? null : i === 1 ? 1 : 0));
+    const expected = EXPECTED_SECTIONS;
     for (const l of [planned, lesson]) {
       expect(l.facts?.objectives.map((o) => o.packSection)).toEqual(expected);
       expect(l.generation?.labPack).toEqual({

@@ -1,5 +1,5 @@
 // l6kp2 driver (lab/l6kp2): E50's e50-drive.ts with a knowledge-pack arm. Both arms per brief run side by side (2 at a time), same settings.
-// KP = deps.labPack (plan A: the sections as the objectives call's menu, each objective's packSection as its teach reference, no select call)
+// KP = deps.labPack (plan A, E53: no call sees the pack; each objective matched to a section in code, that section as its teach reference)
 // from a Sol recall pack minus its session drop list; KN = no pack. Stops starting jobs past --limit USD.
 // stopAfter planned) -> confirm (plan.state confirmed, objectives unchanged, as the API does) ->
 // generate (resume, withObjectivesSlide). gpt-6-luna on every class, effort low, images off.
@@ -42,6 +42,7 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
   const loaded = arm === "KP" ? loadRecallPack(packPath as string, dropPath) : undefined;
   const labPack = loaded ? labPackOf(loaded) : undefined;
   let exitHeld: number | null = null;
+  let packScores: unknown = null;
   const summaries: Record<string, unknown>[] = [];
   const fallbacks: Record<string, unknown>[] = [];
   const continued: Record<string, unknown>[] = [];
@@ -61,6 +62,7 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
             for (const line of chunk.toString().split("\n").filter(Boolean)) {
               const r = JSON.parse(line);
               if (r.msg === "generation summary") summaries.push({ phase, ...r.generation });
+              if (r.msg === "pack sections matched") packScores = r.matches;
               if (r.msg === "outline written" && typeof r.exitHeld === "number")
                 exitHeld = r.exitHeld;
               if (r.msg === "slide continued")
@@ -135,6 +137,7 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
     totalS,
     pack: lesson.generation?.labPack ?? null,
     packSections: facts?.objectives.map((o) => o.packSection ?? null) ?? [],
+    packScores,
     exitHeld,
     exitMisconceptions: exitMisconceptionLines(lesson),
     cost: lesson.generation?.usage?.costUsd ?? null,
@@ -173,7 +176,7 @@ function exitMisconceptionLines(l: Lesson): number {
 const jobs: [string, "KP" | "KN", string, string][] = [];
 for (const spec of specs) {
   const [id, pack] = spec.split("=");
-  for (const arm of ["KP", "KN"] as const)
+  for (const arm of (process.env.ARMS?.split(",") ?? ["KP", "KN"]) as ("KP" | "KN")[])
     jobs.push([id as string, arm, pack as string, `${arm}-${id}-p1`]);
 }
 // Two at a time (WORKER_CONCURRENCY=2): each brief's pack and no-pack lessons run side by side.
