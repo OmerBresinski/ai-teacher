@@ -3,6 +3,7 @@ import type { Theme } from "@tj/domain/documents";
 import { CALLOUT_NAMES } from "./callout";
 import {
   CALLOUT_BUDGETS,
+  CALLOUT_TEXT_WORDS,
   COMPOSITION_BUDGETS,
   CONTENT_BUDGETS,
   CONTENT_SHAPES,
@@ -118,7 +119,7 @@ describe("CALLOUT_BUDGETS: an explain keeps a one-line callout under its words",
     return `${w.charAt(0).toUpperCase()}${w.slice(1)}.`;
   };
   // One line for pupils, as generate-slide asks: 55 characters.
-  const callout = { kind: "watch-out" as const, text: sentence(9, 3) };
+  const callout = { kind: "watch-out" as const, text: sentence(CALLOUT_TEXT_WORDS, 3) };
   const keeps = (t: Theme, lead: number, body: number, photo: boolean) => {
     const pages = materialiseSlides(
       {
@@ -155,4 +156,59 @@ describe("CALLOUT_BUDGETS: an explain keeps a one-line callout under its words",
       expect(Math.min(...measured)).toBe(budget.body?.max as number);
     });
   }
+
+  const listKeeps = (t: Theme, points: number, words: number) => {
+    const pages = materialiseSlides(
+      {
+        kind: "content",
+        heading: "Water cycle",
+        body: sentence(CALLOUT_BUDGETS.list.full.lead.max),
+        points: Array.from({ length: points }, (_, i) => sentence(words, 5 + i * 11)),
+        callout,
+        factRefs: [],
+      },
+      t.id,
+      meta,
+    );
+    return (
+      pages.length === 1 && pages[0]?.elements.some((e) => e.name === CALLOUT_NAMES.card) === true
+    );
+  };
+
+  test("list, full: two points at the budget keep the card on every theme; a third loses it", () => {
+    const points = CALLOUT_BUDGETS.list.full.points;
+    const [, most] = points?.count ?? [2, 2];
+    const words = points?.max as number;
+    for (const t of THEMES) expect(listKeeps(t, most, words), `${t.id} at the budget`).toBe(true);
+    expect(THEMES.every((t) => listKeeps(t, most + 1, words))).toBe(false);
+  });
+});
+
+describe("a list beside a photograph", () => {
+  // Real teaching words, not the filler: the filler's even word lengths fit three points where
+  // real ones wrap to a third line (PR 2 smoke, rivers and Romans).
+  const meta = { model: "m", promptVersion: "p", generatedAt: new Date(0).toISOString() } as never;
+  const lead = "Rainfall and land shape can combine to raise flood risk in valleys.";
+  const real = [
+    "Rainfall: Prolonged rain may exceed absorption, sending more runoff into rivers.",
+    "Relief: Steep slopes speed runoff, leaving rivers less time to carry it away.",
+    "Together: Prolonged rain on steep slopes can send water into rivers quickly.",
+  ];
+  const pages = (t: Theme, points: string[]) =>
+    materialiseSlides(
+      { kind: "content", heading: "Rainfall and relief", body: lead, points, factRefs: [] },
+      t.id,
+      meta,
+      undefined,
+      undefined,
+      { photo: { subject: "A photograph" } },
+    ).length;
+  test("the budget's two points stay on the photo page; a third goes to a continuation", () => {
+    const budget = COMPOSITION_BUDGETS.list.panel;
+    expect(budget?.points?.count).toEqual([2, 2]);
+    for (const t of THEMES) {
+      expect(pages(t, real.slice(0, 2)), `${t.id} with two points`).toBe(1);
+      expect(pages(t, real), `${t.id} with three points`).toBe(2);
+    }
+  });
 });

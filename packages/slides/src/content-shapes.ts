@@ -43,15 +43,27 @@ type ShapeBudget = { heading: SlotBudget; lead: SlotBudget } & Partial<
  * (`lookAndFitPages`), so words written to the plain budgets leave it no room. Measured through
  * `materialiseSlides` with the pages the writer's slide becomes, the least over the six themes
  * (content-shapes.test re-measures it): a 12-word lead, then 18 more words across the measure,
- * or 9 more beside a photograph. A list beside a photograph never keeps a card under its points,
- * so it has no entry: its callout rides the continuation, or is left off.
+ * or 9 more beside a photograph. A list across the measure keeps the card with a 10-word lead and
+ * exactly two points of 10 words, written to 9 (a 12-word lead leaves 8; a third point that long
+ * loses it). A list beside a photograph
+ * never keeps a card under its points, so it has no entry: its callout rides the continuation,
+ * or is left off.
  */
-export const CALLOUT_BUDGETS: { explain: Record<ShapeComposition, ShapeBudget> } = {
+export const CALLOUT_BUDGETS: {
+  explain: Record<ShapeComposition, ShapeBudget>;
+  list: { full: ShapeBudget };
+} = {
   explain: {
     full: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 18 } },
     panel: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 9 } },
   },
+  list: {
+    full: { heading: { max: 4 }, lead: { max: 10 }, points: { max: 9, count: [2, 2] } },
+  },
 };
+
+/** The callout text `CALLOUT_BUDGETS` was measured with: one line of about 55 characters, 9 words. */
+export const CALLOUT_TEXT_WORDS = 9;
 
 /** Where a shape's words sit: beside the right panel (key term, key idea, diagram) or across. */
 export type ShapeComposition = "panel" | "full";
@@ -99,8 +111,11 @@ export const COMPOSITION_BUDGETS: Record<
   list: {
     // Beside a photograph at `PHOTO_TEXT_SHARE` (look/image-slot, 27 Sept 2026; 0.55 since Greg's
     // P19 review: 13 → 11 a point): "Label: sentence" points, not fragments (6 words at the half
-    // split lost E49).
-    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 11, count: [2, 3] } },
+    // split lost E49). Two points, not three (PR 2, 27 Sept 2026): with real words (4.7–6 letters)
+    // and a 12-word lead, three points fit one page beside the photograph only at 7 words or
+    // fewer, so the third went to a continuation and left the photo page thin; two of 13 words
+    // fit on every theme (content-shapes.test, "a list beside a photograph").
+    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 11, count: [2, 2] } },
     full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 16, count: [2, 3] } },
   },
   compare: {
