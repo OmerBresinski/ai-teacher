@@ -3117,7 +3117,9 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
             },
           ],
         });
-      const kind = /a "([a-z-]+)" slide spec/.exec(call.promptText)?.[1] ?? "";
+      // A kind with a Generate shape line names it as `{ "kind": "…"`; the rest as a "…" slide spec.
+      const shape = /a "([a-z-]+)" slide spec|\{ "kind": "([a-z-]+)"/.exec(call.promptText);
+      const kind = shape?.[1] ?? shape?.[2] ?? "";
       return json(
         kind === "diagram" ? DIAGRAM_TEXT : FIXTURES.slides[kind as keyof typeof FIXTURES.slides],
       );
@@ -3207,6 +3209,28 @@ describe("TEACH-89: diagram slides through Plan, Generate, Repair", () => {
 });
 
 describe("specFieldsOf (TEACH-222)", () => {
+  test("look/headings: a content slide's points reach Repair labelled points, apart from its body", () => {
+    const slide = materialiseSlide(
+      {
+        kind: "content",
+        heading: "Types of volcano",
+        body: "Volcanoes are grouped by the shape their lava builds.",
+        points: ["shield: runny lava", "composite: ash and lava"],
+        factRefs: ["k1"],
+      },
+      "chalk",
+      { promptVersion: "t", model: "t", at: "2026-09-26T00:00:00.000Z" },
+    );
+    const fields = specFieldsOf(slide);
+    expect(fields.find((f) => f.field === "points")?.text).toBe(
+      "shield: runny lava\ncomposite: ash and lava",
+    );
+    expect(fields.filter((f) => f.field === "body").map((f) => f.text)).toEqual([
+      "Volcanoes are grouped by the shape their lava builds.",
+    ]);
+    expect(specFieldsCover(slide)).toBe(true);
+  });
+
   test("covers every generatable kind's text: nothing slideText shows is missing from the fields, and captions are excluded", async () => {
     // The default lesson, and an Apply one: its skeleton carries the diagram (TEACH-89).
     const apply = sampleBriefLesson({

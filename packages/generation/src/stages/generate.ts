@@ -23,9 +23,12 @@ import {
 import { laterQuestionsFor } from "../planner/later-questions";
 import {
   generateSlidePrompt,
+  keptDiagram,
   pickOrRequeryPrompt,
+  plannedShapeOf,
   type SlidePhoto,
   verifyFactsPrompt,
+  withPlannedShape,
 } from "../prompts";
 import {
   isOutlineFromFacts,
@@ -47,8 +50,10 @@ import { stemPlan } from "./question-pool";
 import {
   audienceOf,
   BUDGET_FINDING,
+  deckOf,
   figureOfEntry,
   generationOf,
+  logShapeFallback,
   planClassFor,
   runBounded,
   shapeOf,
@@ -212,7 +217,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       : undefined;
     if (coded) {
       const slide = withAnswersReveal(
-        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
+        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids, 0, {
+          quiz: coded.quiz,
+          deck: deckOf(lesson),
+        }),
       );
       return { slide, misses: [], builtFrom };
     }
@@ -270,13 +278,31 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
     const answer = withFactFigure(call.output, factFigure);
-    const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
+    const shuffled = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
+    // v31: a content slide keeps its planned shape's fields and the plan's drawing.
+    const planned = plannedShapeOf(builtFrom, entry);
+    const shaped = withPlannedShape(shuffled, planned);
+    if (planned) {
+      deps.logger.info(
+        { slide: i, shape: planned.shape, filled: shaped.filled, extra: shaped.extra },
+        "slide shape",
+      );
+    }
+    const spec = shaped.spec;
+    // The lesson's vocabulary is picked out in the slide's running text (structure.ts key terms).
     const slide = materialiseSlide(
-      withImageCaption(spec, entry),
+      withImageCaption(keptDiagram(spec), entry),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
+      undefined,
+      {
+        terms: builtFrom.vocabulary.map((v) => v.term),
+        glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
+        deck: deckOf(lesson),
+      },
     );
+    logShapeFallback(deps.logger, "generate", i, spec, slide);
     return { slide, misses: call.editorialMisses, builtFrom };
   };
 

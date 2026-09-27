@@ -1,5 +1,6 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { COUNTER_NAME, DIAGRAM_NAME, withoutDiagramSlot } from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -46,6 +47,12 @@ export type SlideViewProps = {
   answerProgress?: number;
   className?: string;
   /**
+   * The slide's place in the deck. A slide counter ("7 / 12", `@tj/slides` `withDeckChrome`) is
+   * drawn from it at render time, so it stays true after a reorder, insert or delete; without a
+   * position (the editor, thumbnails) the counter is not drawn.
+   */
+  position?: { index: number; total: number };
+  /**
    * Edit mode: geometry to paint for elements mid-gesture, keyed by element id. The transform layer
    * previews a drag here and dispatches one reducer on release (ADR 0022 §4), so the cache — and
    * every other subscriber — is untouched while the pointer moves.
@@ -74,7 +81,7 @@ const ALL = Number.POSITIVE_INFINITY;
  * layer, never DOM inside here.
  */
 export function SlideView({
-  slide,
+  slide: given,
   theme,
   mode,
   step,
@@ -84,7 +91,17 @@ export function SlideView({
   transformOverride,
   spill = false,
   imageOrigin,
+  position,
 }: SlideViewProps) {
+  /**
+   * A diagram instruction with no drawing is a note the editor alone draws: everywhere else the
+   * words are laid out as if the slide had no slot, so the right half is never left empty
+   * (`@tj/slides` `withoutDiagramSlot`). The editor keeps the placeholder.
+   */
+  const slide = useMemo(
+    () => (mode === "edit" ? given : withoutDiagramSlot(given, theme)),
+    [given, theme, mode],
+  );
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
    * viewer want. In the editor, previewStep 0 also means all visible (SPEC §4); a
@@ -151,6 +168,7 @@ export function SlideView({
     ["--td-muted" as string]: theme.colors.muted,
     ["--td-accent" as string]: theme.colors.accent,
     ["--td-accent2" as string]: theme.colors.accent2,
+    ["--td-on-accent" as string]: theme.colors.onAccent,
     ["--td-accent-soft" as string]: withAlpha(theme.colors.accent, 0.18),
     ["--td-line" as string]: theme.colors.line,
     ["--td-surface" as string]: theme.colors.surface,
@@ -176,25 +194,31 @@ export function SlideView({
       >
         <SlideBackground theme={theme} background={bg} />
 
-        {slide.elements.map((el, i) => (
-          <ElementFrame
-            key={el.id}
-            element={el}
-            theme={theme}
-            mode={mode}
-            slideId={slide.id}
-            step={effectiveStep}
-            revealAnswer={revealAnswer}
-            answerProgress={answerProgress}
-            question={slide.question}
-            zIndex={i + 1}
-            staggerIndex={stagger.get(el.id)}
-            sortIndex={sortIndex.get(el.id)}
-            optionIndex={optionIndex.get(el.id)}
-            animateReveals={forward}
-            override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
-          />
-        ))}
+        {slide.elements.map((el, i) =>
+          // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
+          // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`). A slide counter is
+          // drawn only where the slide's place in the deck is known.
+          (el.name === DIAGRAM_NAME && mode !== "edit") ||
+          (el.name === COUNTER_NAME && !position) ? null : (
+            <ElementFrame
+              key={el.id}
+              element={counted(el, position)}
+              theme={theme}
+              mode={mode}
+              slideId={slide.id}
+              step={effectiveStep}
+              revealAnswer={revealAnswer}
+              answerProgress={answerProgress}
+              question={slide.question}
+              zIndex={i + 1}
+              staggerIndex={stagger.get(el.id)}
+              sortIndex={sortIndex.get(el.id)}
+              optionIndex={optionIndex.get(el.id)}
+              animateReveals={forward}
+              override={mode === "edit" ? transformOverride?.get(el.id) : undefined}
+            />
+          ),
+        )}
 
         {revealAnswer && slide.question?.type === "matching" ? (
           <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />
@@ -558,4 +582,17 @@ function ImageMatchAnswers({
       ))}
     </>
   );
+}
+
+/** A slide counter element with its words set from the slide's place in the deck. */
+function counted(el: SlideElement, position: SlideViewProps["position"]): SlideElement {
+  if (el.name !== COUNTER_NAME || el.type !== "text" || !position) return el;
+  const words = `${position.index + 1} / ${position.total}`;
+  return {
+    ...el,
+    doc: {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: words }] }],
+    },
+  };
 }

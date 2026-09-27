@@ -40,6 +40,8 @@ export type VariantContext = {
    * (research §3.5): the first idea needs a heading to anchor it, so it is never a statement.
    */
   firstContent?: boolean;
+  /** Whether the slide carries a diagram instruction: it keeps the right half for the slot. */
+  hasDiagram?: boolean;
   personality?: Personality;
 };
 
@@ -128,7 +130,9 @@ function previousComposition(ctx: VariantContext): string | null {
  * 5. A headed list is `numbered`, then `stepped`, then `cards` when the lesson is calm or
  *    has no personality; `cards` first when playful, `stepped` first when bold. A list over
  *    forty-five words never goes on cards.
- * 6. No two adjacent slides share a composition: the first choice whose composition differs
+ * 6. A content slide with a diagram instruction is always `headed`, whatever its neighbours: only
+ *    that composition keeps the right half for the diagram slot.
+ * 7. No two adjacent slides share a composition: the first choice whose composition differs
  *    from the previous slide's wins. A content `headed` paragraph and a list's `numbered`
  *    body are the same composition. When every choice would repeat it, the first stands.
  */
@@ -136,6 +140,7 @@ export function chooseVariant(kind: SlideKind, ctx: VariantContext): VariantName
   const list: readonly { name: VariantName }[] = LAYOUT_CATALOGUE[kind];
   const first = list[0]?.name ?? "blank";
   if (list.length <= 1 || kind === "exit-ticket" || kind === "diagram") return first;
+  if (kind === "content" && ctx.hasDiagram) return "headed" as VariantName;
   const previous = previousComposition(ctx);
   const candidates = ranked(kind, ctx);
   return (

@@ -18,6 +18,7 @@ const KEY_IDEA = {
   statement: "Roman roads let soldiers and goods move quickly between new towns.",
   explanation: "Straight, paved roads meant an army could march to trouble in days, not weeks.",
   example: "Watling Street ran from Dover to Wroxeter, about 250 miles.",
+  shape: "explain" as const,
 };
 const MISCONCEPTION = {
   belief: "The Romans left no trace in Britain.",
@@ -42,8 +43,9 @@ describe("plan-teach-objective", () => {
   test("the system text is v14's teach rules and nothing about questions", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
-    // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    // v14 is 487 words; the questions took their rules with them. The alarm follows the count
+    // (v4 adds the slide shape and visual rules, about 140 words with the example cycle).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(470);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -98,11 +100,14 @@ describe("plan-teach-objective", () => {
       expect(system.toLowerCase()).not.toContain(gone);
     }
     expect(system).toContain(
-      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
+      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; visual ${SPEC_LIMITS.diagram}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
     );
     // The sketch is v14's without its `questions` list; `misconceptionRef` stays out of it (v7).
     expect(TEACH_SHAPE_SKETCH).not.toContain("questions");
     expect(TEACH_SHAPE_SKETCH).not.toContain("misconceptionRef");
+    // v4: `shape` is in the sketch (required); `visual` is not, so it is not filled every time.
+    expect(TEACH_SHAPE_SKETCH).toContain('"shape":"…"');
+    expect(TEACH_SHAPE_SKETCH).not.toContain("visual");
     expect(system).toContain(TEACH_SHAPE_SKETCH);
     expect(system.split("objectiveRefs").length - 1).toBe(2);
   });

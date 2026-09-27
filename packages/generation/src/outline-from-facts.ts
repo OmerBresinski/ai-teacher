@@ -26,6 +26,7 @@ import {
   askableAsStem,
   distractorsEchoingAnswer,
   EXPLAIN_KINDS,
+  type KeyIdeaLayout,
   type OrdinalRef,
   type PlanFactsLike,
   type PlanSkeleton,
@@ -539,12 +540,26 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     if (o === undefined) return undefined;
     return [o, unusedKeyIdeas(o).slice(0, single ? 1 : KEY_IDEAS_PER_CONTENT)];
   };
-  /** A content slide carrying two key ideas, the objective with the fewest content slides first. */
+  /**
+   * A content slide carrying two key ideas: first one holding an idea the plan set out as a list,
+   * comparison or sequence (a paired slide is written as explain, so splitting it lets that idea
+   * keep its shape), then the objective with the fewest content slides.
+   */
+  const shaped = (s: Slot) =>
+    (s.keyIdeas ?? []).some((k) => {
+      const shape = (facts.keyIdeas[k] as KeyIdeaLayout | undefined)?.shape;
+      return shape !== undefined && shape !== "explain";
+    })
+      ? 0
+      : 1;
   const pairedSlot = () =>
     slots
       .filter((s) => s.kind === "content" && (s.keyIdeas?.length ?? 0) > 1)
       .sort(
-        (a, b) => contentSlidesOf(a.primary) - contentSlidesOf(b.primary) || a.primary - b.primary,
+        (a, b) =>
+          shaped(a) - shaped(b) ||
+          contentSlidesOf(a.primary) - contentSlidesOf(b.primary) ||
+          a.primary - b.primary,
       )[0];
   /**
    * One more teaching slide: an unplaced key idea on a slide of its own, else a paired content

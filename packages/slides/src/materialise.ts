@@ -5,16 +5,20 @@ import type {
   OptionElement,
   QuestionData,
   RichDoc,
+  RichNode,
   Slide,
   SlideElement,
   TextElement,
   TextPreset,
+  Theme,
   WorksheetBlock,
 } from "@tj/domain/documents";
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine } from "@tj/domain/documents";
+import { type ContentShape, shapeOf } from "./content-shapes";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
+import { SAFE } from "./grid";
 import {
   type ContentVariant,
   docFromNumbered,
@@ -25,7 +29,30 @@ import {
   variantName,
   vocabularyGrid,
 } from "./layouts";
+import {
+  applyLook,
+  COUNTER_NAME,
+  DIAGRAM_NAME,
+  EYEBROW_NAME,
+  KEY_IDEA_NAME,
+  KIND_TAG_NAME,
+  stripLook,
+  withDeckChrome,
+  withDiagramSlot,
+} from "./look";
+import { HEADING_NAME } from "./reflow";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
+import {
+  BODY_NAME,
+  BULLET_NAME,
+  COMPARE_NAME,
+  ITEM_NAME,
+  LEAD_NAME,
+  type SlideStructure,
+  STEP_NAME,
+  structureSlide,
+  withTerms,
+} from "./structure";
 import { getTheme } from "./themes";
 
 /*
@@ -66,20 +93,153 @@ export function materialiseSlide(
   meta: MaterialiseMeta,
   ids: IdSupplier = uid,
   variant?: number | string,
+  structure: SlideStructure = {},
 ): Slide {
-  const chosen = variant ?? defaultVariant(spec);
+  // The shape the writer filled wins over what the words suggest (`content-shapes.ts`).
+  structure = withShapeHints(spec, structure);
+  let chosen = variant ?? defaultVariant(spec);
+  // A slide with a diagram instruction is always laid out `headed`: the slot takes the right half,
+  // which a two-column body or a statement would leave no room for (GENERATION-RESULTS finding 3).
+  // A compare or a sequence takes the full measure, so it has no half to give a diagram. A shape
+  // the writer filled (compare, steps, points) is placed under the heading too.
+  if (spec.kind === "content" && (diagramOf(spec) || shapeOf(spec) !== "explain")) {
+    chosen = "headed";
+  }
   const laid = reid(layoutSlide(spec.kind, themeId, chosen), ids);
   const filled = fillSlide(spec, themeId, laid, ids, chosen);
   const stamp = provenance(spec.factRefs, meta);
-  const slide: Slide = {
-    id: ids(),
-    kind: spec.kind,
-    elements: filled.elements.map((element) => stampElement(element, stamp)),
-  };
+  let slide: Slide = { id: ids(), kind: spec.kind, elements: filled.elements };
+  const diagram = spec.kind === "content" ? diagramOf(spec) : undefined;
+  if (diagram && variantName(spec.kind, chosen) === "headed") {
+    slide = withDiagramSlot(slide, getTheme(themeId), diagram, ids);
+  }
   if (filled.question) slide.question = filled.question;
   if (spec.notes) slide.notes = spec.notes;
   // The recipe is sized for its placeholder copy; fit it to the real copy before it is stored.
-  return fitSlide(slide, getTheme(themeId)).slide;
+  const fitted = lookAndFit(slide, getTheme(themeId), ids, structure);
+  return { ...fitted, elements: fitted.elements.map((element) => stampElement(element, stamp)) };
+}
+
+/**
+ * The lesson look (`look.ts`), the structured components (`structure.ts`), then the fit, as every
+ * page the slide needs: a question set too long for one slide at the body size continues on the
+ * next (UX ruling 91). A teaching slide whose lead and card still overrun at the floor is set as
+ * one paragraph instead, which keeps the room the card's inset would take; whatever overruns then
+ * is the fit engine's to report or carry over.
+ */
+export function lookAndFitPages(
+  slide: Slide,
+  theme: Theme,
+  ids: IdSupplier = uid,
+  structure: SlideStructure = {},
+  options: { pages?: boolean } = { pages: true },
+): Slide[] {
+  // The structure pass places its components under the heading as the fit sets it, so it runs on
+  // the fitted look.
+  const looked = fitSlide(applyLook(slide, theme, ids), theme).slide;
+  const pages = structureSlide(looked, theme, structure, ids, options);
+  const done = pages.map((page) => {
+    const looked = fitSlide(page, theme);
+    const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
+    if (!split || looked.overflow.length === 0) return looked.slide;
+    return fitSlide(
+      withTerms(applyLook(slide, theme, ids, { lead: false }), theme, structure.terms),
+      theme,
+    ).slide;
+  });
+  // The top line (year, subject, the counter drawn at render time) when the deck is known.
+  return structure.deck ? withDeckChrome(done, theme, structure.deck, ids) : done;
+}
+
+/**
+ * `lookAndFitPages` for one slide (a generated slide is one slide): a set that would need a second
+ * keeps its list, its answers on the panel, for the editor's Tidy to continue (UX ruling 91).
+ */
+export function lookAndFit(
+  slide: Slide,
+  theme: Theme,
+  ids: IdSupplier = uid,
+  structure: SlideStructure = {},
+): Slide {
+  return lookAndFitPages(slide, theme, ids, structure, { pages: false })[0] as Slide;
+}
+
+/**
+ * A teaching slide with a diagram instruction and no drawing, as a class sees it (present, the
+ * viewer, export, print). The slot is a note to the teacher that only the editor draws, so there
+ * it would leave the right half empty: the words are laid out again as if the slide had no slot,
+ * a key idea on the right panel when they carry one, else across the full measure. The top line
+ * and counter are kept as they were. A slide without a slot comes back as it is (same object).
+ */
+export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
+  if (slide.kind !== "content" || !slide.elements.some((e) => e.name === DIAGRAM_NAME)) {
+    return slide;
+  }
+  const heading = slide.elements.find((e) => e.name === HEADING_NAME);
+  const column = new Set([LEAD_NAME, ITEM_NAME, BODY_NAME, KEY_IDEA_NAME]);
+  const words = slide.elements
+    .filter(
+      (e): e is TextElement =>
+        e.type === "text" &&
+        e.style.preset === "body" &&
+        (!e.name || column.has(e.name)) &&
+        e.y >= (heading ? heading.y + heading.h : 0),
+    )
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+  const first = words[0];
+  const dropped = new Set<SlideElement>(words);
+  for (const e of slide.elements) {
+    if (e.name === DIAGRAM_NAME || e.name === BULLET_NAME) dropped.add(e);
+  }
+  const kept = slide.elements.filter((e) => !dropped.has(e));
+  if (!heading || !first) return { ...slide, elements: kept };
+  // One body again, as the writer gave it: the paragraphs, then the points as a bullet list.
+  const content: RichNode[] = [];
+  let list: RichNode | undefined;
+  for (const e of words) {
+    if (e.name === ITEM_NAME) {
+      list ??= { type: "bulletList", content: [] };
+      list.content?.push({ type: "listItem", content: e.doc.content ?? [] });
+      continue;
+    }
+    if (list) content.push(list);
+    list = undefined;
+    content.push(...(e.doc.content ?? []));
+  }
+  if (list) content.push(list);
+  let n = 0;
+  const ids = () => `${slide.id}~${++n}`;
+  const { name: _name, ...rest } = first;
+  const body: TextElement = {
+    ...rest,
+    id: ids(),
+    x: SAFE.x,
+    w: SAFE.w,
+    doc: { type: "doc", content },
+    style: { preset: "body" },
+  };
+  // The top line as it was: the kind tag keeps its place beside the deck line.
+  const top = new Set([EYEBROW_NAME, COUNTER_NAME, KIND_TAG_NAME]);
+  const chrome = slide.elements.filter((e) => top.has(e.name ?? ""));
+  const bare = stripLook({ ...slide, elements: [...kept, body] });
+  const laid = lookAndFit(bare, theme, ids, { terms: markedTerms(words) });
+  const had = new Set(chrome.map((e) => e.name));
+  return { ...laid, elements: [...laid.elements.filter((e) => !had.has(e.name)), ...chrome] };
+}
+
+/** The key terms a slide's running text picks out (bold), so the relaid words mark them again. */
+function markedTerms(els: TextElement[]): string[] {
+  const out = new Set<string>();
+  const walk = (nodes: RichNode[] | undefined) => {
+    for (const node of nodes ?? []) {
+      if (node.type === "text" && node.marks?.some((m) => m.type === "bold") && node.text) {
+        out.add(node.text.trim());
+      }
+      walk(node.content);
+    }
+  };
+  for (const e of els) walk(e.doc.content);
+  return [...out].filter(Boolean);
 }
 
 /**
@@ -91,6 +251,67 @@ function defaultVariant(spec: SlideSpec): number | string {
 }
 
 type Layout = { elements: SlideElement[]; question?: QuestionData };
+
+type ContentSpec = SlideSpecOf<"content">;
+
+/** The diagram a content slide keeps room for: none beside a compare or a sequence. */
+const diagramOf = (spec: ContentSpec) =>
+  spec.compare || spec.steps?.length ? undefined : spec.diagram;
+
+/**
+ * A content spec's explicit shape fields as structure hints (`content-shapes.ts`): `compare` is
+ * the compare cards, `steps` the steps strip, `points` a lead with dot points under it. A field
+ * always wins over what the words suggest and over a hint the caller inferred; a spec without
+ * one keeps `inferStructure` as its fallback, as a stored lesson does.
+ */
+export function withShapeHints(spec: SlideSpec, structure: SlideStructure = {}): SlideStructure {
+  if (spec.kind !== "content") return structure;
+  const { compare: _c, sequence: _s, keyCard: _k, points: _p, ...rest } = structure;
+  if (spec.compare) {
+    const { left, right } = spec.compare;
+    return {
+      ...rest,
+      compare: {
+        left: { label: left.label, points: left.points },
+        right: { label: right.label, points: right.points },
+      },
+    };
+  }
+  if (spec.steps?.length) return { ...rest, sequence: spec.steps };
+  if (spec.points?.length) return { ...rest, points: spec.points };
+  return structure;
+}
+
+/**
+ * The shape a content spec was written in when the slide could not place it as written: a compare
+ * without its cards, a sequence without its strip, a list without its dot points. The slide then
+ * reads as the lead plus points (`shapeFallbackPoints`), or the fit carries it on (UX ruling 91).
+ * `undefined` when the shape was placed, or the spec names none. A word budget missed this way
+ * is a metric, not a retry: Generate logs it (`shape fallback`) by shape.
+ */
+export function shapeFallback(spec: SlideSpec, slide: Slide): ContentShape | undefined {
+  if (spec.kind !== "content") return undefined;
+  const shape = shapeOf(spec);
+  const has = (name: string) => slide.elements.some((e) => e.name === name);
+  if (shape === "compare" && !has(COMPARE_NAME)) return shape;
+  if (shape === "sequence" && !has(STEP_NAME)) return shape;
+  if (shape === "list" && !has(ITEM_NAME)) return shape;
+  return undefined;
+}
+
+/**
+ * What a compare or a sequence reads as when its cards cannot be placed: the lead plus dot points
+ * (`structure.ts` falls back to it), so no line of the spec is lost with the component.
+ */
+export function shapeFallbackPoints(spec: ContentSpec): string[] | undefined {
+  if (spec.compare) {
+    return [spec.compare.left, spec.compare.right].map(
+      (side) => `${side.label}: ${side.points.join("; ")}`,
+    );
+  }
+  if (spec.steps?.length) return spec.steps;
+  return spec.points;
+}
 
 function fillSlide(
   spec: SlideSpec,
@@ -271,11 +492,12 @@ function fillVocabulary(spec: SlideSpecOf<"vocabulary">, themeId: string, laid: 
   return { ...laid, elements: kept };
 }
 
-function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: ContentVariant): Layout {
+function fillContent(spec: ContentSpec, laid: Layout, variant: ContentVariant): Layout {
+  const points = shapeFallbackPoints(spec);
   if (variant === "statement") {
     // No heading on a statement: the heading becomes the eyebrow over the sentence.
     setText(slot(laid, "Eyebrow"), spec.heading);
-    setText(slot(laid, "Statement"), spec.body);
+    setDoc(slot(laid, "Statement"), bodyWithPoints(spec.body, points));
     return laid;
   }
   setText(textOf(laid, "heading"), spec.heading);
@@ -283,15 +505,26 @@ function fillContent(spec: SlideSpecOf<"content">, laid: Layout, variant: Conten
     const [left, right] = splitAtFullStop(spec.body);
     setText(slot(laid, "Body left"), left);
     const rightSlot = slot(laid, "Body right");
-    if (right) {
-      setText(rightSlot, right);
+    if (right || points?.length) {
+      setDoc(rightSlot, bodyWithPoints(right, points));
       return laid;
     }
     // One sentence with no full stop to split at: the left column carries it all.
     return { ...laid, elements: laid.elements.filter((element) => element !== rightSlot) };
   }
-  setText(textOf(laid, "body"), spec.body);
+  setDoc(textOf(laid, "body"), bodyWithPoints(spec.body, points));
   return laid;
+}
+
+/**
+ * A content body and its optional `points`: the body's paragraphs, then the points as one bullet
+ * list. The look (`leadAndCard`) keeps the first sentence as the lead and puts the rest, list
+ * included, under it.
+ */
+export function bodyWithPoints(body: string, points: string[] | undefined): RichDoc {
+  if (!points?.length) return docFromText(body);
+  const text = body.trim() ? (docFromText(body).content ?? []) : [];
+  return { type: "doc", content: [...text, ...(docFromBullets(points).content ?? [])] };
 }
 
 /**

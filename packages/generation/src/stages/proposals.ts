@@ -31,6 +31,7 @@ import {
 import {
   audienceOf,
   blockText,
+  deckOf,
   figureOfEntry,
   runBounded,
   slideText,
@@ -262,6 +263,8 @@ export async function proposeFor(
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
+      undefined,
+      { deck: deckOf(lesson) },
     );
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     if (job.elementIds === null) {

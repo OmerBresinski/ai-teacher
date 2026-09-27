@@ -14,7 +14,14 @@ export type { QuestionDemand, QuestionForm } from "./prompts/plan-facts-objectiv
  * never infers either from a question's text or its distractors.
  */
 export type ObjectiveFactsOutput = {
-  keyIdeas: { statement: string; explanation: string; example: string; analogy?: string }[];
+  keyIdeas: {
+    statement: string;
+    explanation: string;
+    example: string;
+    analogy?: string;
+    shape?: string;
+    visual?: string;
+  }[];
   misconceptions: { belief: string; correction: string }[];
   vocabulary: { term: string; definition: string }[];
   workedExamples: {

@@ -12,6 +12,7 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
+  DIAGRAM_NAME,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
@@ -30,10 +31,15 @@ import {
 } from "../planner/coded-slides";
 import {
   type Audience,
+  keptDiagram,
+  plannedShapeOf,
   type RepairInput,
   repairFactPrompt,
   repairPrompt,
+  shapeLine,
+  slideShapeOf,
   type WritingShape,
+  withPlannedShape,
 } from "../prompts";
 import type { RepairContextSlide } from "../prompts/repair";
 import {
@@ -54,9 +60,11 @@ import { BUDGET_FINDING, withUsage } from "./generate";
 import {
   audienceOf,
   blockText,
+  deckOf,
   figureOfEntry,
   generationOf,
   imageTextPhotoOf,
+  logShapeFallback,
   normaliseText,
   runBounded,
   shapeOf,
@@ -359,6 +367,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
                 : slideSpecSchemaFor(slide.kind, { soft });
         const schema = specSchema(false);
         if (!slide || !schema) return;
+        // generate-slide v31: a content slide keeps its planned shape through a repair.
+        const entry = base.facts?.outline[index];
+        const planned =
+          base.facts && entry && slide.kind === "content"
+            ? plannedShapeOf(base.facts, entry)
+            : undefined;
         // The slides around it, read-only (lab round 1), rendered by `repair.v14`.
         const input: RepairInput = {
           facts: staged,
@@ -379,7 +393,9 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           // cites now, so a warning fix keeps every planned fact (the coasts groyne bug).
           ...repairPlanOf(slide, base.facts?.outline[index]),
           findings: target.findings,
-          shape: `a "${slide.kind}" slide spec`,
+          shape: planned
+            ? `${slideShapeOf(slide.kind)} ${shapeLine(planned)}`
+            : (slideShapeOf(slide.kind) ?? `a "${slide.kind}" slide spec`),
           context: { slides: repairContext(base, index, target.findings) },
         };
         const call = await callStructured({
@@ -399,9 +415,18 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           key: target.key,
           index,
           corrections,
-          spec: lab
-            ? withShuffledOptions(withFactFigure(call.output, factFigure), `${base.id}:${index}`)
-            : withFactFigure(call.output, factFigure),
+          spec: withDiagramKept(
+            withPlannedShape(
+              lab
+                ? withShuffledOptions(
+                    withFactFigure(call.output, factFigure),
+                    `${base.id}:${index}`,
+                  )
+                : withFactFigure(call.output, factFigure),
+              planned,
+            ).spec,
+            slide,
+          ),
           modelId: call.modelId,
           findings: call.editorialMisses.map((miss) =>
             specRuleFinding(miss, { slideId: slide.id }, "warning"),
@@ -485,9 +510,19 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           lesson.themeId,
           meta(outcome.modelId, deps),
           deps.ids,
+          undefined,
+          {
+            terms: (lesson.facts?.vocabulary ?? []).map((v) => v.term),
+            glossary: (lesson.facts?.vocabulary ?? []).map((v) => ({
+              term: v.term,
+              definition: v.definition,
+            })),
+            deck: deckOf(lesson),
+          },
         ),
         id: original.id,
       });
+      logShapeFallback(deps.logger, "repair", outcome.index, outcome.spec, fresh);
       lesson = {
         ...lesson,
         slides: lesson.slides.map((s, i) => (i === outcome.index ? fresh : s)),
@@ -760,7 +795,14 @@ export function reprintPatchedSets(
     const entry = facts.outline[i];
     const coded = entry ? codedSetSpec(entry, facts, `${lesson.id}:${i}`) : undefined;
     if (!coded) return slide;
-    const fresh = materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL, deps), deps.ids);
+    const fresh = materialiseSlide(
+      coded.spec,
+      lesson.themeId,
+      meta(CODE_MODEL, deps),
+      deps.ids,
+      0,
+      { quiz: coded.quiz, deck: deckOf(lesson) },
+    );
     return { ...withAnswersReveal(fresh), id: slide.id };
   });
   return { ...lesson, slides };
@@ -771,3 +813,16 @@ const meta = (modelId: string, deps: Pick<PipelineDeps, "now">): MaterialiseMeta
   model: modelId,
   at: deps.now().toISOString(),
 });
+
+/**
+ * generate-slide v26: a repaired content slide keeps a typed `diagram` the model returned, else the
+ * one its diagram placeholder carried before the repair ("Diagram to add: <instruction>").
+ */
+export function withDiagramKept(spec: SlideSpec, before: Slide): SlideSpec {
+  const kept = keptDiagram(spec);
+  if (kept.kind !== "content" || kept.diagram) return kept;
+  const placeholder = before.elements.find((e) => e.name === DIAGRAM_NAME);
+  const text = placeholder ? slideText({ ...before, elements: [placeholder] }) : "";
+  const diagram = text.replace(/^\s*Diagram to add:\s*/, "").trim();
+  return diagram ? keptDiagram({ ...kept, diagram }) : kept;
+}
