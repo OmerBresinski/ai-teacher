@@ -26,7 +26,7 @@ import { SAFE_BOTTOM } from "./metrics";
 import { stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";
-import { calloutTone } from "./themes";
+import { calloutTone, fontFloor } from "./themes";
 
 /*
  * The slide callout (UX ruling 84, TEACH-75): Chalkie's labelled card under the body, refined to
@@ -280,10 +280,14 @@ function applyToImageText(laid: Layout, t: Theme, callout: CalloutSpec): Layout 
   if (!caption || !heading || !body) throw new Error("image-text recipe is missing a text slot");
   // The recipe's stack: caption, 12, heading, 19, body. The heading's box is the recipe's two
   // lines; it takes the lines its text measures (as the fit would), so the column's room is real.
-  // The card joins after `SPACE[2]`; the body keeps up to two lines, the card may take the rest.
+  // The card joins after `SPACE[2]`. The body keeps every line it measures at the body floor,
+  // the size the fit steps it to when the column is full, so the fit never has to push the card
+  // off the slide (rulings 91 and 102); the card may take the rest.
   heading.h = Math.min(heading.h, boxH(t, "heading", measured(t, heading)));
   const above = caption.h + 12 + heading.h + 19;
-  const bodyFloor = boxH(t, "body", Math.min(2, measured(t, body)));
+  const floor = fontFloor("body");
+  const bodyLines = countLines(richDocToPlainText(body.doc), "body", t, body.w, undefined, floor);
+  const bodyFloor = Math.ceil(floor * t.lineHeights.body * bodyLines);
   const room = CARD_BOTTOM - SAFE.y - above - bodyFloor - SPACE[2];
   const fit = fitCallout(t, callout.text, IMAGE_TEXT_COLUMN.w, room);
   if (!fit) return laid;

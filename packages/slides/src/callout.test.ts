@@ -500,3 +500,56 @@ describe("a long callout in the image-text column", () => {
     expect(notes).toHaveLength(1);
   });
 });
+
+/*
+ * A long body beside the card: `applyToImageText` reserves the body two lines, so a body that
+ * measures three or four has to be re-fitted by `fitSlide` inside `materialiseSlide`. The stored
+ * slide must still hold every text in its box and keep the callout whole or leave it off.
+ */
+describe("a long body over an image-text callout", () => {
+  const BODIES = {
+    three:
+      "Warm air rises from the sea carrying water vapour, then cools as it climbs over the land.",
+    four: "Warm air rises from the sea carrying water vapour, then cools as it climbs over the hills, and the vapour condenses into the grey cloud that brings the rain.",
+  };
+  for (const themeId of ["chalk", "exam-hall", "night-lab"] as const) {
+    const theme = getTheme(themeId);
+    for (const [label, body] of Object.entries(BODIES)) {
+      for (const n of [80, 120]) {
+        it(`${themeId}/${label}-line body/${n}-character callout: nothing outside its box, the callout held or left off`, () => {
+          const notes: string[] = [];
+          const spec: SlideSpec = {
+            kind: "image-text",
+            factRefs: ["o3"],
+            heading: "Clouds over the sea",
+            body,
+            callout: { kind: "watch-out", text: prose(n) },
+          };
+          const slide = materialiseSlide(spec, theme.id, meta, counter(), undefined, (note) =>
+            notes.push(note),
+          );
+          const image = slide.elements.find((el) => el.type === "image");
+          // Re-fitting the stored slide finds nothing past the safe area but the picture.
+          expect(fitSlide(slide, theme).overflow.filter((id) => id !== image?.id)).toEqual([]);
+          const texts = slide.elements.filter((el): el is TextElement => el.type === "text");
+          for (const el of texts)
+            expect(inside(el, SAFE), `${el.name ?? el.style.preset}`).toBe(true);
+          if (!slide.elements.some(isCalloutElement)) {
+            expect(notes).toHaveLength(1);
+            return;
+          }
+          expect(notes).toEqual([]);
+          const { card, label: cardLabel, text } = trio(slide);
+          expect(plain(text)).toBe(prose(n));
+          expect(inside(cardLabel, card)).toBe(true);
+          expect(inside(text, card)).toBe(true);
+          for (const el of texts) {
+            if (isCalloutElement(el)) continue;
+            const clear = el.y + el.h <= card.y || el.x + el.w <= card.x || el.x >= card.x + card.w;
+            expect(clear, `${el.style.preset} clear of the card`).toBe(true);
+          }
+        });
+      }
+    }
+  }
+});
