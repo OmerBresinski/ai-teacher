@@ -189,6 +189,7 @@ export function SlideView({
         data-slide-root
         data-slide-id={slide.id}
         data-slide-mode={mode}
+        data-marker={theme.ornament?.marker}
         className={rootClass}
         style={rootStyle}
       >

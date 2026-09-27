@@ -5191,7 +5191,7 @@
         "y": 111,
         "w": 67,
         "h": 4,
-        "fill": "#C0283A",
+        "fill": "#A31F2E",
         "name": "Accent rule"
       },
       {
@@ -5582,7 +5582,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#C0283A",
+          "color": "#A31F2E",
           "fontWeight": 600
         }
       },
@@ -5648,7 +5648,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#C0283A",
+          "color": "#A31F2E",
           "fontWeight": 600
         }
       },
@@ -5703,7 +5703,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#C0283A",
+          "color": "#A31F2E",
           "fontWeight": 600
         }
       },
@@ -5769,7 +5769,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#C0283A",
+          "color": "#A31F2E",
           "fontWeight": 600
         }
       },
@@ -6038,7 +6038,7 @@
         "w": 844,
         "h": 249,
         "fill": "#FFFFFF",
-        "radius": 16,
+        "radius": 6,
         "name": "Working card"
       },
       {
@@ -6821,7 +6821,7 @@
         "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
         "alt": "Describe this picture for pupils using a screen reader",
         "fit": "cover",
-        "radius": 16,
+        "radius": 6,
         "name": "Picture 1"
       },
       {
@@ -6834,7 +6834,7 @@
         "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
         "alt": "Describe this picture for pupils using a screen reader",
         "fit": "cover",
-        "radius": 16,
+        "radius": 6,
         "name": "Picture 2"
       },
       {
@@ -6847,7 +6847,7 @@
         "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
         "alt": "Describe this picture for pupils using a screen reader",
         "fit": "cover",
-        "radius": 16,
+        "radius": 6,
         "name": "Picture 3"
       },
       {
@@ -7191,7 +7191,7 @@
         "fill": "#FFFFFF",
         "stroke": "#F5C9CF",
         "strokeWidth": 1,
-        "radius": 16,
+        "radius": 6,
         "name": "Answer space"
       },
       {
@@ -9866,17 +9866,17 @@
         "type": "shape",
         "shape": "rect",
         "x": 58,
-        "y": 104,
+        "y": 111,
         "w": 67,
         "h": 4,
-        "fill": "#2D7331",
+        "fill": "#245F28",
         "name": "Accent rule"
       },
       {
         "id": "_2",
         "type": "text",
         "x": 58,
-        "y": 133,
+        "y": 140,
         "w": 844,
         "h": 23,
         "doc": {
@@ -9903,9 +9903,9 @@
         "id": "_3",
         "type": "text",
         "x": 58,
-        "y": 168,
+        "y": 175,
         "w": 773,
-        "h": 140,
+        "h": 134,
         "doc": {
           "type": "doc",
           "content": [
@@ -9929,9 +9929,9 @@
         "id": "_4",
         "type": "text",
         "x": 58,
-        "y": 325,
+        "y": 326,
         "w": 629,
-        "h": 63,
+        "h": 60,
         "doc": {
           "type": "doc",
           "content": [
@@ -9962,7 +9962,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -10070,7 +10070,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -10205,7 +10205,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -10260,7 +10260,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2D7331",
+          "color": "#245F28",
           "fontWeight": 600
         }
       },
@@ -10326,7 +10326,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2D7331",
+          "color": "#245F28",
           "fontWeight": 600
         }
       },
@@ -10381,7 +10381,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2D7331",
+          "color": "#245F28",
           "fontWeight": 600
         }
       },
@@ -10447,7 +10447,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2D7331",
+          "color": "#245F28",
           "fontWeight": 600
         }
       },
@@ -10488,7 +10488,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -10594,7 +10594,7 @@
         "x": 480,
         "y": 133,
         "w": 422,
-        "h": 89,
+        "h": 85,
         "doc": {
           "type": "doc",
           "content": [
@@ -10618,7 +10618,7 @@
         "id": "_4",
         "type": "text",
         "x": 480,
-        "y": 241,
+        "y": 237,
         "w": 422,
         "h": 186,
         "doc": {
@@ -10650,7 +10650,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -10716,7 +10716,7 @@
         "w": 844,
         "h": 242,
         "fill": "#FFFFFF",
-        "radius": 20,
+        "radius": 10,
         "name": "Working card"
       },
       {
@@ -10825,7 +10825,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -10974,7 +10974,7 @@
         "x": 58,
         "y": 168,
         "w": 701,
-        "h": 188,
+        "h": 179,
         "doc": {
           "type": "doc",
           "content": [
@@ -11031,7 +11031,7 @@
         "x": 58,
         "y": 58,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11057,7 +11057,7 @@
         "x": 58,
         "y": 175,
         "w": 413,
-        "h": 134,
+        "h": 136,
         "doc": {
           "type": "doc",
           "content": [
@@ -11080,7 +11080,7 @@
         "x": 489,
         "y": 175,
         "w": 413,
-        "h": 134,
+        "h": 136,
         "doc": {
           "type": "doc",
           "content": [
@@ -11111,7 +11111,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11137,7 +11137,7 @@
         "x": 58,
         "y": 147,
         "w": 413,
-        "h": 97,
+        "h": 98,
         "doc": {
           "type": "doc",
           "content": [
@@ -11160,7 +11160,7 @@
         "x": 489,
         "y": 147,
         "w": 413,
-        "h": 97,
+        "h": 98,
         "doc": {
           "type": "doc",
           "content": [
@@ -11181,9 +11181,9 @@
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 258,
+        "y": 259,
         "w": 413,
-        "h": 97,
+        "h": 98,
         "doc": {
           "type": "doc",
           "content": [
@@ -11204,9 +11204,9 @@
         "id": "_5",
         "type": "option",
         "x": 489,
-        "y": 258,
+        "y": 259,
         "w": 413,
-        "h": 97,
+        "h": 98,
         "doc": {
           "type": "doc",
           "content": [
@@ -11254,7 +11254,7 @@
         "x": 58,
         "y": 58,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11469,7 +11469,7 @@
         "x": 58,
         "y": 58,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11499,7 +11499,7 @@
         "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
         "alt": "Describe this picture for pupils using a screen reader",
         "fit": "cover",
-        "radius": 20,
+        "radius": 10,
         "name": "Picture 1"
       },
       {
@@ -11512,7 +11512,7 @@
         "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
         "alt": "Describe this picture for pupils using a screen reader",
         "fit": "cover",
-        "radius": 20,
+        "radius": 10,
         "name": "Picture 2"
       },
       {
@@ -11525,7 +11525,7 @@
         "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
         "alt": "Describe this picture for pupils using a screen reader",
         "fit": "cover",
-        "radius": 20,
+        "radius": 10,
         "name": "Picture 3"
       },
       {
@@ -11642,7 +11642,7 @@
         "x": 58,
         "y": 58,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11668,7 +11668,7 @@
         "x": 58,
         "y": 190,
         "w": 701,
-        "h": 188,
+        "h": 179,
         "doc": {
           "type": "doc",
           "content": [
@@ -11712,7 +11712,7 @@
         "x": 58,
         "y": 58,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11736,7 +11736,7 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 231,
+        "y": 238,
         "w": 413,
         "h": 93,
         "doc": {
@@ -11759,7 +11759,7 @@
         "id": "_3",
         "type": "option",
         "x": 489,
-        "y": 231,
+        "y": 238,
         "w": 413,
         "h": 93,
         "doc": {
@@ -11782,7 +11782,7 @@
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 343,
+        "y": 350,
         "w": 413,
         "h": 93,
         "doc": {
@@ -11805,7 +11805,7 @@
         "id": "_5",
         "type": "option",
         "x": 489,
-        "y": 343,
+        "y": 350,
         "w": 413,
         "h": 93,
         "doc": {
@@ -11838,7 +11838,7 @@
         "x": 58,
         "y": 58,
         "w": 844,
-        "h": 89,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11869,7 +11869,7 @@
         "fill": "#FFFFFF",
         "stroke": "#CBE0BA",
         "strokeWidth": 1,
-        "radius": 20,
+        "radius": 10,
         "name": "Answer space"
       },
       {
@@ -11912,7 +11912,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -12047,7 +12047,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -12098,7 +12098,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 43,
         "doc": {
           "type": "doc",
           "content": [
@@ -25609,7 +25609,7 @@
         "x": 489,
         "y": 133,
         "w": 413,
-        "h": 89,
+        "h": 85,
         "doc": {
           "type": "doc",
           "content": [
@@ -25633,7 +25633,7 @@
         "id": "_9",
         "type": "text",
         "x": 489,
-        "y": 241,
+        "y": 237,
         "w": 413,
         "h": 186,
         "doc": {

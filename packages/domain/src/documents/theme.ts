@@ -43,6 +43,12 @@ export type Theme = {
     accent: string;
     accent2: string;
     onAccent: string;
+    /**
+     * The fill of the look's panels (the key-idea card, the key-term panel, the worked card) when
+     * it is not the accent tint: a playful theme's white card on a coloured ground, or its sticky
+     * note. AA for `ink` and `accent` like the ground.
+     */
+    panel?: string;
     /** Hairline / rule colour. */
     line: string;
     /** Correct / incorrect for question reveals. */
@@ -60,6 +66,23 @@ export type Theme = {
   weights: { title: number; heading: number; body: number };
   titleTracking: string;
   radius: number;
-  /** Optional background image or gradient. */
+  /**
+   * Optional background art: a CSS `background` value (gradients or an inline SVG `url()`, with
+   * position, size and repeat). PPTX leaves theme art out and keeps the flat ground.
+   */
   backgroundImage?: string;
+  /**
+   * How the look draws its small chrome, so two themes with the same layouts do not read alike.
+   * Absent parts are the defaults: a tinted pill tag and a round dot bullet.
+   */
+  ornament?: ThemeOrnament;
+};
+
+export type ThemeOrnament = {
+  /** The kind tag's fill: the accent tint with accent text (default), or solid accent. */
+  tag?: "tint" | "solid";
+  /** The kind tag's corner radius; a pill (99) by default. */
+  tagRadius?: number;
+  /** The bullet drawn in a list's indent. Drawn outside the text, so it never changes the measure. */
+  marker?: "dot" | "star" | "dash" | "diamond" | "leaf";
 };

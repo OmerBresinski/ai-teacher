@@ -50,11 +50,13 @@ describe("theme catalogue", () => {
     };
     for (const t of THEMES) {
       const c = t.colors;
-      // The ground, the cards, and every colour the theme's background art paints.
+      // The ground, the cards, the panels, and every colour the theme's background art paints
+      // (an inline SVG's colours are URI-encoded).
       const grounds = [
         c.background,
         c.surface,
-        ...(t.backgroundImage?.match(/#[0-9a-f]{6}/gi) ?? []),
+        ...(c.panel ? [c.panel] : []),
+        ...(decodeURIComponent(t.backgroundImage ?? "").match(/#[0-9a-f]{6}/gi) ?? []),
       ];
       for (const ground of grounds) {
         for (const [name, fg] of Object.entries({
@@ -111,5 +113,18 @@ describe("theme catalogue", () => {
       ].map((kind) => newSlide(kind as Parameters<typeof newSlide>[0], theme.id));
       expect(() => parseLesson(JSON.parse(JSON.stringify(lesson)))).not.toThrow();
     }
+  });
+
+  test("themes-v2: the four playful themes differ in more than colour (Greg: the accent circles were too alike)", () => {
+    const playful = ["playground", "crayon", "splash", "treehouse"].map((id) => getTheme(id));
+    const distinct = (pick: (t: (typeof playful)[number]) => unknown) =>
+      new Set(playful.map((t) => JSON.stringify(pick(t)))).size;
+    expect(distinct((t) => t.ornament?.marker)).toBe(4);
+    expect(distinct((t) => t.fonts.title)).toBe(4);
+    expect(distinct((t) => [t.ornament?.tag, t.ornament?.tagRadius])).toBe(4);
+    expect(distinct((t) => t.colors.panel)).toBe(4);
+    expect(distinct((t) => t.radius)).toBe(4);
+    // No theme's art is the old corner blob any more.
+    for (const t of playful) expect(t.backgroundImage).not.toContain("radial-gradient(circle");
   });
 });
