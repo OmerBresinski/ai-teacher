@@ -1,6 +1,6 @@
 // Material excerpts: one idea, its practice question and its matching answer.
 export const lessonProof = `
-<section class="section hm-proof" aria-labelledby="proof-title">
+<section class="section tone-sage hm-proof" aria-labelledby="proof-title">
   <div class="container">
     <header class="materials-intro">
       <h2 id="proof-title">Teach it. Practise it.<br><span>Bring it together.</span></h2>

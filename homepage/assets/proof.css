@@ -25,10 +25,7 @@
   height: 480px;
   position: relative;
   isolation: isolate;
-  background: var(--sage);
-  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #d8e0ca;
 }
 .materials-paper {
   background: var(--paper);
