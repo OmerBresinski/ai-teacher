@@ -76,7 +76,11 @@ const PLAYGROUND: Art = {
     svg(812, 410, 76, 40, cloudBody, [100, 52]),
   ],
   // A quarter of the sun peeking in above the counter.
-  content: [svg(890, -84, 124, 124, sunBody("#FFE4A0", "#FFD97A"), [240, 240])],
+  content: [
+    svg(890, -84, 124, 124, sunBody("#FFE4A0", "#FFD97A"), [240, 240]),
+    // A small rainbow rising from the bottom-left corner, in the margin above the accent bar.
+    svg(-22, 488, 76, 42, rainbowBody, [200, 110]),
+  ],
   picture: [svg(904, -62, 96, 96, sunBody("#FFE4A0", "#FFD97A"), [240, 240])],
 };
 
@@ -88,7 +92,6 @@ const starBody = (stroke: string) =>
   `<path d='M20 3 L25 14 L37 15 L28 23 L31 35 L20 28 L9 35 L12 23 L3 15 L15 14 Z' fill='none' stroke='${stroke}' stroke-width='3.5' stroke-linejoin='round'/>`;
 const zigzag = (n: number, stroke: string) =>
   `<path d='M4 28 ${Array.from({ length: n }, (_, i) => `L${18 + i * 28} 10 L${32 + i * 28} 28`).join(" ")}' fill='none' stroke='${stroke}' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>`;
-const spiralBody = `<path d='M55 55 m0 -6 a6 6 0 1 1 -6 6 a12 12 0 1 1 12 12 a20 20 0 1 1 -20 -20 a28 28 0 1 1 28 28 a36 36 0 1 1 -36 -36' fill='none' stroke='#FBD7A0' stroke-width='4' stroke-linecap='round'/>`;
 const ruled = (y: number, h: number) =>
   svg(
     0,
@@ -103,7 +106,8 @@ const ruled = (y: number, h: number) =>
 
 const CRAYON: Art = {
   title: [
-    svg(808, 8, 110, 110, spiralBody),
+    svg(820, 14, 64, 60, starBody("#C9DCF6"), [40, 38]),
+    svg(866, 70, 38, 36, starBody("#FBE29C"), [40, 38]),
     svg(92, 452, 262, 38, zigzag(9, "#C9DCF6")),
     svg(770, 418, 96, 96, starBody("#FBE29C"), [40, 38]),
     block(40, 0, 3, 540, MARGIN),
@@ -112,7 +116,7 @@ const CRAYON: Art = {
   content: [svg(912, 4, 36, 34, starBody("#FBE29C"), [40, 38]), block(40, 0, 3, 531, MARGIN)],
   picture: [
     svg(912, 4, 36, 34, starBody("#FBE29C"), [40, 38]),
-    svg(918, 436, 26, 88, `<g transform='rotate(90 13 13)'>${zigzag(3, "#C9DCF6")}</g>`, [26, 88]),
+    svg(914, 486, 32, 30, starBody("#C9DCF6"), [40, 38]),
   ],
 };
 
@@ -191,7 +195,7 @@ const STEM = "#BFDCA3";
 
 const vineBody = (h: number, leaves: [number, number][]) =>
   `<path d='M44 -2 C30 ${h * 0.2} 14 ${h * 0.35} 26 ${h * 0.5} S40 ${h * 0.8} 22 ${h - 4}' fill='none' stroke='${STEM}' stroke-width='5' stroke-linecap='round'/>${leaves
-    .map(([y, a], i) => leaf(i % 2 ? 22 : 30, y, a, i % 2 ? LEAF_B : LEAF_A, 0.9))
+    .map(([y, a], i) => leaf(i % 2 ? 26 : 32, y, a, i % 2 ? LEAF_B : LEAF_A, 0.7))
     .join("")}`;
 
 const branchBody = `<path d='M540 6 C420 30 300 18 180 40 S40 60 -4 52' fill='none' stroke='${STEM}' stroke-width='6' stroke-linecap='round'/>${[
@@ -247,7 +251,7 @@ const TREEHOUSE: Art = {
 
 const CHALK: Art = { title: [block(0, 458, 960, 82, "#F2E8D2")] };
 const READING_ROOM: Art = {
-  title: [block(0, 0, 22, 540, "#DDE6E1"), block(28, 0, 2, 540, "#DDE6E1")],
+  title: [block(0, 0, 30, 540, "#CCDAD2"), block(36, 0, 3, 540, "#CCDAD2")],
 };
 const STUDIO: Art = {
   title: [
@@ -264,7 +268,7 @@ const STUDIO: Art = {
     ),
   ],
 };
-const EXAM_HALL: Art = { title: [block(0, 0, 960, 18, "#E3E8F1")] };
+const EXAM_HALL: Art = { title: [block(0, 0, 960, 28, "#DCE3EF")] };
 const NIGHT_LAB: Art = {
   title: [
     svg(
@@ -272,7 +276,7 @@ const NIGHT_LAB: Art = {
       404,
       360,
       136,
-      `<g stroke='#252A33' stroke-width='1'>${Array.from(
+      `<g stroke='#2A303A' stroke-width='1'>${Array.from(
         { length: 16 },
         (_, i) => `<line x1='${i * 24 + 0.5}' y1='0' x2='${i * 24 + 0.5}' y2='136'/>`,
       ).join("")}${Array.from(
@@ -282,7 +286,7 @@ const NIGHT_LAB: Art = {
     ),
   ],
 };
-const BEACON: Art = { title: [block(0, 482, 960, 58, "#E6EDFB")] };
+const BEACON: Art = { title: [block(0, 456, 960, 84, "#DCE6FA")] };
 
 export const THEME_ART: Record<string, Art> = {
   chalk: CHALK,
