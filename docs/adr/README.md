@@ -13,7 +13,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0005 | Hono on Bun with Hono RPC as the API contract      | Accepted |
 | 0006 | Postgres + Drizzle; pg-boss for jobs               | Accepted |
 | 0007 | Workspace tenancy via workspace_id and scoped DB   | Accepted |
-| 0008 | better-auth for identity                           | Accepted |
+| 0008 | better-auth for identity                           | Accepted (amended 2026-09-27) |
 | 0009 | Tailwind + shadcn/ui as the design-system base     | Accepted (amended 2026-09-05) |
 | 0010 | Hosting: Vercel (web) + Railway (api, worker, PG)  | Accepted |
 | 0011 | Vercel Blob for object storage                     | Superseded by 0026 (2026-09-07) |
@@ -21,7 +21,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0013 | Monorepo layout and @tj/* package scope            | Accepted (amended 2026-09-06, 2026-09-12) |
 | 0014 | Testing: bun test, Playwright (Vitest retired)     | Accepted |
 | 0015 | Env validation, logging, commit conventions        | Accepted |
-| 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted (amended 2026-09-04) |
+| 0016 | Deviations from PRD accepted for MVP scaffolding   | Accepted (amended 2026-09-04, 2026-09-27) |
 | 0017 | Agent skill layout: .agents canonical + symlinks   | Accepted |
 | 0018 | AI provider: Amazon Bedrock via Vercel AI SDK in @tj/ai | Accepted |
 | 0019 | Adopt the TeachDeck visual system in @tj/ui; shell and editor kits | Accepted, amended 2026-09-06 (×2) |
@@ -81,3 +81,5 @@ Template: `0000-template.md`.
 - 2026-09-26 — ADR 0025 §5, §21 and ADR 0029 items 1–2: behind `AI_LESSON_PLANNER=objectives-first` the plan job's checkpoint holds the objectives only and the facts move to the generate job; a second in-process workflow runs them; the lesson's `promptVersions.planned` stamp picks the path on resume (ADR 0033).
 - 2026-09-26 — ADR 0032 items 2–3: `diagram` is generated only (not offered in Add slide or the Slide layout menu); a Figure's group carries `alt` (rendered as `role="img"`, none in PPTX) and `figure: { template, values }`; a template's value rules are editorial and drawing never throws (TEACH-77). See the amendment in `0032-figures-from-templates.md`.
 - 2026-09-27 — ADR 0032 decisions 2, 4 and 6 and amendment item 5: geometry and trigonometry are drawn by general solver templates; a Figure lives on its worked example or question in `LessonFacts` and Plan's facts call writes it; figures appear on worked-example and question slides and on worksheet questions (a PNG in Word export); `bearings`, `construction-loci` and grid figures are drawn to true scale with a scale bar; teachers can edit a figure's values (ADR 0034).
+- 2026-09-27 — ADR 0008: Google sign-in is switched on and Microsoft stays off; the same verified email links to the same user; Google tokens are not stored; the name and photo URL are stored (copied once on link); production and local dev only, no PR environments; the Google console steps are manual (no API). See the amendment in `0008-better-auth.md`.
+- 2026-09-27 — ADR 0016 item 6: the Google profile photo URL in `users.image` goes beyond F15-D3; F15-R01's data-flow statement must name Google as an identity provider and list the photo URL; revisit with F15. See the amendment in `0016-prd-deviations.md`.

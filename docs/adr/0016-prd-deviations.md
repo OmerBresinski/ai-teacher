@@ -45,3 +45,15 @@ content alongside or in place of AWS (Bedrock); the Cohort Profile allow-list (F
 what keeps learner data out of that flow. The "`eu.` inference profiles" fix still applies on
 Bedrock; on the OpenAI route an EU endpoint is a question for OpenAI's data-residency options at
 the revisit.
+
+## Amendment (2026-09-27, TEACH-15, ADR 0008)
+
+6. **Google profile photo.** F15-D3 says the teacher's identity (email, name) is the only personal
+   data the product holds. Google sign-in (ADR 0008 amendment, 2026-09-27) also stores the
+   Google profile picture URL in `users.image`, for new Google users and once when a magic-link
+   user links Google. It is a link to an image Google hosts, not a copy, and nothing displays it
+   yet. Google tokens are not stored. F15-R01's data-flow statement must name Google as an
+   identity provider (a teacher who chooses Google sign-in shares their Google name, email and
+   photo URL with us) and list the photo URL. **Revisit with the F15 project** (privacy page,
+   export and delete): either keep it and name it, or stop storing it with a one-line change and
+   a backfill to `null`.

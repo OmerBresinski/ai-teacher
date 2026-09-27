@@ -32,7 +32,7 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **Founder's domain, not a product domain** | `app.bresinski.org` / `api.bresinski.org` (TEACH-36) run on Omer's personal domain. | Buy the product domain; swap: two CNAMEs + `mail.<d>` records in Resend, then `WEB_ORIGIN`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `MAIL_FROM` on Railway and `VITE_API_URL` on Vercel. | ADR 0010 amendment (TEACH-36); "Domain" below |
 | **Vercel production is public** | `app.bresinski.org` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
-| **OAuth disabled** | Google/Microsoft sign-in off (no client credentials); magic link only. | Set the four `*_CLIENT_ID`/`*_CLIENT_SECRET` variables when the OAuth apps exist. | TEACH-39; `docs/env.md` |
+| **Google sign-in off** | No Google client credentials yet; magic link only. Microsoft stays off by decision (ADR 0008 amendment, 2026-09-27). | Project **Google sign-in**: TEACH-311 drops Google tokens first, then TEACH-312 creates the clients and sets `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, then TEACH-31 adds the button. | "Google sign-in (Google Cloud)" below; ADR 0008 |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
@@ -167,7 +167,9 @@ allow-list; CORS alone does not prevent CSRF. The old hosts keep resolving but a
 `WEB_ORIGIN`, so a page loaded from `teaching-journey-web.vercel.app` gets 403 from the api.
 
 `bresinski.org` is the founder's domain. Moving to a product domain later is: the three rows above
-on the new domain, the Resend domain re-verified, and the five variables above plus `MAIL_FROM`.
+on the new domain, the Resend domain re-verified, the five variables above plus `MAIL_FROM`, and in
+the Google console the production client's redirect URI and the Branding page's authorized domain
+("Google sign-in (Google Cloud)").
 
 ### Turbo remote cache (TEACH-23 phase 2)
 
@@ -245,6 +247,90 @@ rm /tmp/creds.json
 Deleting the bucket (`railway bucket delete --bucket files --yes`) destroys every object and is
 blocked for as long as teacher content lives there; F15-R02 delete-all is `deleteByPrefix` per
 Workspace, not bucket deletion.
+
+## Google sign-in (Google Cloud)
+
+Decisions: ADR [0008](../docs/adr/0008-better-auth.md) amendment of 2026-09-27. The api turns
+Google on when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set (`socialProviders()` in
+`apps/api/src/auth/auth.ts`); without them it logs `Google sign-in disabled (no credentials)` at
+boot. Set production credentials only after TEACH-311 has landed, because that is the change that
+stops Google tokens from being stored.
+
+| Item | Value |
+| ---- | ----- |
+| Google Cloud project | `<project-id>` (recorded here by TEACH-312); owner: the founder's Google account; no organisation |
+| Production client | Web application "Teaching Journey (production)"; redirect URI `https://api.bresinski.org/auth/callback/google` |
+| Local client | Web application "Teaching Journey (local)"; redirect URI `http://localhost:3001/auth/callback/google` |
+| JavaScript origins | none: the browser never talks to Google directly; the api redirects it |
+| Scopes | better-auth's Google defaults (`openid`, `email`, `profile`): non-sensitive, so the app needs no Google verification |
+| Where the values live | production client: Railway `api` production; local client: each developer's `apps/api/.env`; both client JSON files: the founder's password manager |
+
+Google has no API or gcloud command for a standard Web OAuth client or for the consent screen; the
+IAP OAuth Admin API behind `gcloud iap oauth-clients` shut down on 2026-03-19. Step 2 is
+therefore console clicks; everything else is a command.
+
+1. **Project (CLI).** No Google API has to be enabled for sign-in.
+
+   ```sh
+   brew install --cask gcloud-cli                                 # once
+   gcloud auth login                                              # opens a browser: sign in as the owner
+   gcloud projects create <project-id> --name="Teaching Journey"  # ids are global: 6-30 chars, lower case
+   gcloud config set project <project-id>
+   ```
+
+2. **Consent screen and clients (console).**
+   1. Branding, `https://console.cloud.google.com/auth/branding?project=<project-id>`: app name
+      "Teaching Journey", user support email and developer contact (the owner's address), home page
+      `https://app.bresinski.org`, authorized domain `bresinski.org`. No logo: a logo makes the app
+      need brand verification.
+   2. Audience, `https://console.cloud.google.com/auth/audience?project=<project-id>`: user type
+      External, then **Publish app** so the status is "In production". In "Testing" only listed
+      test users can sign in.
+   3. Clients, `https://console.cloud.google.com/auth/clients/create?project=<project-id>`: create
+      the two Web application clients in the table. In each creation dialog **download the JSON**
+      before closing it: Google shows a client secret once, then only its last four characters.
+
+3. **Values (CLI).** Never print the secret or pass it as an argument. Run the Railway lines from a
+   directory linked to `teaching-journey` / `production` (`railway link`).
+
+   ```sh
+   F=~/Downloads/client_secret_<production-client-id>.json
+   railway variable set --service api --skip-deploys "GOOGLE_CLIENT_ID=$(jq -r .web.client_id "$F")"
+   jq -r .web.client_secret "$F" | railway variable set GOOGLE_CLIENT_SECRET --stdin --service api --skip-deploys
+   railway redeploy --service api --yes
+
+   F=~/Downloads/client_secret_<local-client-id>.json   # local development
+   printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\n' \
+     "$(jq -r .web.client_id "$F")" "$(jq -r .web.client_secret "$F")" >> apps/api/.env
+   ```
+
+   Then move both JSON files into the password manager and delete them from `~/Downloads`.
+
+4. **Verify.** The api returns a Google URL for the production client:
+
+   ```sh
+   curl -s -X POST https://api.bresinski.org/auth/sign-in/social \
+     -H 'content-type: application/json' -H 'origin: https://app.bresinski.org' \
+     -d '{"provider":"google","callbackURL":"https://app.bresinski.org/"}' | jq -r .url
+   ```
+
+   The URL starts with `https://accounts.google.com/` and carries `client_id=<production-client-id>`
+   and `redirect_uri=https%3A%2F%2Fapi.bresinski.org%2Fauth%2Fcallback%2Fgoogle`; the api's boot
+   log no longer says `Google sign-in disabled`. Opening that URL in a browser shows Google's
+   account chooser; an "Error 400: redirect_uri_mismatch" page means the client's redirect URI is
+   wrong. (Finishing that sign-in from a copied URL fails the state check by design; the full
+   round trip is tested from the `/sign-in` button.)
+
+Keep in mind:
+
+- Google deletes a client after six months with no token request and no settings change. The
+  local client is the one at risk; recreate it with step 2.3 and the local lines of step 3.
+- To rotate a secret, add a new secret on the client's console page, set it with the stdin line
+  of step 3, redeploy, then delete the old secret.
+- PR environments inherit the production client and end on Google's `redirect_uri_mismatch`
+  page; accepted while Vercel previews are off (ADR 0008 amendment, item 5).
+- The product-domain swap edits the production client's redirect URI and the authorized domain
+  (see "Domain").
 
 ## AI provider (Bedrock) — TEACH-72
 
@@ -609,11 +695,8 @@ railway variable set --service api --skip-deploys WEB_ORIGIN=https://app.bresins
 printf '%s' "$RESEND_API_KEY" | railway variable set RESEND_API_KEY --stdin --service api --skip-deploys
 railway variable set --service api --skip-deploys 'MAIL_FROM=Teaching Journey <sign-in@mail.bresinski.org>' MAIL_PROVIDER=resend
 railway variable delete ALLOW_CONSOLE_MAIL_IN_PRODUCTION --service api   # after the resend-capable api is deployed (no --skip-deploys on delete; it redeploys)
-# OAuth (optional, F17):
-railway variable set GOOGLE_CLIENT_ID=<id> --service api --skip-deploys
-railway variable set GOOGLE_CLIENT_SECRET --stdin --service api --skip-deploys < /tmp/secret
-railway variable set MICROSOFT_CLIENT_ID=<id> --service api --skip-deploys
-railway variable set MICROSOFT_CLIENT_SECRET --stdin --service api --skip-deploys < /tmp/secret
+# Google sign-in: see "Google sign-in (Google Cloud)" (the client JSON comes from the console).
+# Microsoft stays off by decision (ADR 0008 amendment, 2026-09-27); MICROSOFT_* stay unset.
 railway redeploy --service api --yes && railway redeploy --service worker --yes
 # per PR environment (after the first PR deploy; the environment is named after the GitHub repo):
 railway variable set --service api --environment ai-teacher-pr-<n> --skip-deploys \
@@ -739,8 +822,9 @@ Open:
       and the variables on the new name; narrow CSP `connect-src` to the api origin at the same time.
 - [ ] Vercel: Deployment Protection decision for production; *Speed Insights → Enable*.
 - [ ] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache").
-- [ ] Optional: Google / Microsoft OAuth credentials (F17); `railway ssh keys` for `railway ssh` /
-      `railway connect`.
+- [ ] Google sign-in: the Google Cloud consent screen and clients (TEACH-312, see "Google sign-in
+      (Google Cloud)"). Microsoft stays off by decision.
+- [ ] Optional: `railway ssh keys` for `railway ssh` / `railway connect`.
 
 Everything else — project, region, image + volume, services, service settings
 (`.railway/railway.ts`), variables, public domain, GitHub source, PR environments — is done by
