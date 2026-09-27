@@ -17,6 +17,7 @@ import {
   ACCENT_BAR_NAME,
   accentTint,
   DIAGRAM_NAME,
+  HEADING_GAP,
   KIND_TAG_NAME,
   PHOTO_NAME,
   PHOTO_TEXT_SHARE,
@@ -1899,7 +1900,7 @@ function greedyPages(
   const shell = fitSlide(continued(slide, chromeOf(slide), [], ids), t).slide;
   const head = headingOf(shell);
   // The continuation's words start where the first page's do: one gap under the heading (`look.ts`).
-  const top2 = Math.max(top, head ? snapY(head.y + head.h + SPACE[3]) : top);
+  const top2 = Math.max(top, head ? snapY(head.y + head.h + HEADING_GAP) : top);
   const groups: { items: string[]; size: number }[] = [];
   let rest = items.slice(k);
   while (rest.length) {
@@ -1948,7 +1949,8 @@ function paragraphColumn(
   const leading = readingLeading(t);
   const doc = docFromText(words);
   const h = heightOf(measure, doc, width, "body", size, 0, { lineHeight: leading });
-  if (!fits(top + h)) return undefined;
+  // The fit engine's own cushion too, or it steps the paragraph down after the page is made.
+  if (!fits(top + h) || top + withSafety(h) > SAFE_BOTTOM) return undefined;
   return [
     text(
       ids,
