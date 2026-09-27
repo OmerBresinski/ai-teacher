@@ -26,6 +26,7 @@ import {
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, TRIM } from "./grid";
 import { boxH, CARD_PAD, FULL, IMAGE_TEXT_COLUMN, layoutSlide } from "./layouts";
+import { PHOTO_NAME } from "./look";
 import { type IdSupplier, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { stepDownSize } from "./reflow";
@@ -194,10 +195,20 @@ describe("the card hugs its text", () => {
         [content({ kind: "watch-out", text: demo }), "headed"],
         [imageText({ kind: "watch-out", text: demo }), ""],
       ] as const) {
-        const laid = trio(laidWith(spec, theme, variant));
         const fitted = trio(
           materialiseSlide(spec, theme.id, meta, counter(), variant || undefined),
         );
+        // The look lays a content slide's words first and the card goes in the column they leave
+        // (TEACH-19), so its card is measured at its own width, not the recipe's.
+        if (spec.kind === "content") {
+          const at = fitted.text.style.fontSize;
+          const n = calloutLines(theme, demo, fitted.card.w, at);
+          expect(fitted.card.h).toBeGreaterThanOrEqual(calloutHeight(theme, n, at));
+          expect(fitted.card.h).toBeLessThan(calloutHeight(theme, n, at) + 7);
+          expect(inside(fitted.text, fitted.card)).toBe(true);
+          continue;
+        }
+        const laid = trio(laidWith(spec, theme, variant));
         // No empty line under the text: the fitted box is within a point of the one the card was
         // sized for, or (image-text on Playground and Beacon, where master's fit steps every
         // image-text slide down one stop because it counts the half-bleed picture as overflow)
@@ -221,10 +232,9 @@ describe("callout on a content slide", () => {
       for (const { label: length, text } of LENGTHS) {
         it(`${theme.id}/${variant}/${length}: the trio sits under the body, inside the safe area, as tall as its text`, () => {
           const spec = content({ kind: "watch-out", text });
-          const without = materialiseSlide(content(), theme.id, meta, counter(), variant);
           const slide = materialiseSlide(spec, theme.id, meta, counter(), variant);
-          // Appended, card first, after every element the recipe laid.
-          const added = slide.elements.slice(without.elements.length);
+          // Appended last, card first, after the look has laid the words (TEACH-19).
+          const added = slide.elements.slice(-4);
           expect(added.map((el) => el.name)).toEqual([
             CALLOUT_NAMES.card,
             CALLOUT_NAMES.icon,
@@ -416,13 +426,27 @@ describe("callout after the fit", () => {
         ...[SHORT, COLUMN_PROSE].map((text) => [imageText({ kind: "example", text }), ""] as const),
       ];
       for (const [spec, variant] of cases) {
-        const fitted = trio(
-          materialiseSlide(spec, theme.id, meta, counter(), variant || undefined),
-        );
-        const laid = trio(laidWith(spec, theme, variant));
+        const slide = materialiseSlide(spec, theme.id, meta, counter(), variant || undefined);
+        const fitted = trio(slide);
         const where = `${spec.kind}/${variant}/${plain(fitted.text).length}`;
-        const rect = ({ x, y, w, h }: SlideElement) => ({ x, y, w, h });
-        expect(rect(fitted.card), where).toEqual(rect(laid.card));
+        if (spec.kind === "content") {
+          // After the look (TEACH-19): at the foot, inside the safe width, clear of every word.
+          expect(fitted.card.y + fitted.card.h, where).toBe(CARD_BOTTOM);
+          expect(inside(fitted.card, SAFE), where).toBe(true);
+          for (const el of slide.elements) {
+            if (isCalloutElement(el) || el.name === "Accent bar") continue;
+            const card = fitted.card;
+            // Beside the card (a side panel or slot in the other column) is not over it.
+            if (el.x >= card.x + card.w || el.x + el.w <= card.x) continue;
+            expect(el.y + el.h + SPACE[2], `${where} ${el.name}`).toBeLessThanOrEqual(
+              fitted.card.y,
+            );
+          }
+        } else {
+          const laid = trio(laidWith(spec, theme, variant));
+          const rect = ({ x, y, w, h }: SlideElement) => ({ x, y, w, h });
+          expect(rect(fitted.card), where).toEqual(rect(laid.card));
+        }
         expect(inside(fitted.label, fitted.card), where).toBe(true);
         expect(inside(fitted.text, fitted.card), where).toBe(true);
         expect(inside(fitted.text, SAFE), where).toBe(true);
@@ -552,4 +576,76 @@ describe("a long body over an image-text callout", () => {
       }
     }
   }
+});
+
+/*
+ * A content slide with a photo slot and a callout (TEACH-19 with TEACH-75): the look lays the
+ * words beside the slot first, then the card goes under the text column, never across the slot;
+ * with no room left there it is left off and reported. It never overflows either way.
+ */
+describe("a callout beside a photo slot", () => {
+  const photo = { subject: "Clouds over the sea", mustShow: ["cumulus"] };
+  const bodies = {
+    short: "The sun heats water until it evaporates. High up it cools and condenses into cloud.",
+    long: "The sun heats water in seas, lakes and puddles until it evaporates into the air. The warm vapour rises, cools high up and condenses around specks of dust into tiny drops. Billions of drops together make a cloud, and when they join into bigger drops they fall as rain.",
+  };
+  for (const theme of THEMES) {
+    for (const side of ["left", "right"] as const) {
+      for (const [bodyName, body] of Object.entries(bodies)) {
+        for (const { label: length, text } of LENGTHS) {
+          it(`${theme.id}/${side}/${bodyName} body/${length}: under the words, clear of the slot, or left off and reported`, () => {
+            const notes: string[] = [];
+            const spec = { ...content({ kind: "watch-out", text }), body };
+            const slide = materialiseSlide(
+              spec,
+              theme.id,
+              meta,
+              counter(),
+              undefined,
+              { photo, slotSide: side },
+              (note) => notes.push(note),
+            );
+            const slot = slide.elements.find((el) => el.name === PHOTO_NAME);
+            if (!slot) throw new Error("no photo slot");
+            expect(fitSlide(slide, theme).overflow).toEqual([]);
+            if (!slide.elements.some(isCalloutElement)) {
+              expect(notes).toHaveLength(1);
+              expect(notes[0]).toMatch(/^callout dropped/);
+              return;
+            }
+            expect(notes).toEqual([]);
+            const { card, label, text: textEl } = trio(slide);
+            expect(inside(card, SAFE)).toBe(true);
+            expect(card.y + card.h).toBe(CARD_BOTTOM);
+            expect(inside(label, card)).toBe(true);
+            expect(inside(textEl, card)).toBe(true);
+            // Never across the slot: the card keeps to the other side of the gutter.
+            const clear =
+              card.x >= slot.x + slot.w + SPACE[5] || card.x + card.w <= slot.x - SPACE[5];
+            expect(clear).toBe(true);
+            // Every word in its column ends a gap above it.
+            for (const el of slide.elements) {
+              if (isCalloutElement(el) || el === slot || el.name === "Accent bar") continue;
+              if (el.x >= card.x + card.w || el.x + el.w <= card.x) continue;
+              expect(el.y + el.h + SPACE[2], el.name ?? el.type).toBeLessThanOrEqual(card.y);
+            }
+          });
+        }
+      }
+    }
+  }
+
+  it("a short callout beside the slot always shows on every theme", () => {
+    for (const theme of THEMES) {
+      const slide = materialiseSlide(
+        content({ kind: "example", text: SHORT }),
+        theme.id,
+        meta,
+        counter(),
+        undefined,
+        { photo },
+      );
+      expect(slide.elements.filter(isCalloutElement)).toHaveLength(4);
+    }
+  });
 });
