@@ -64,6 +64,17 @@ describe("SignInPage", () => {
     expect(screen.getByRole("button", { name: "Email me a link" })).toBeEnabled();
   });
 
+  it("shows the send error and frees both buttons when sending fails at the network level", async () => {
+    magicLink.mockRejectedValue(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not send the link");
+    expect(screen.getByRole("button", { name: "Email me a link" })).toBeEnabled();
+    expect(screen.getByRole("button", GOOGLE)).toBeEnabled();
+  });
+
   it("explains a failed magic-link verification and hides it once a new link is sent", async () => {
     magicLink.mockResolvedValue({ data: { status: true }, error: null });
     search = { error: "INVALID_TOKEN" };

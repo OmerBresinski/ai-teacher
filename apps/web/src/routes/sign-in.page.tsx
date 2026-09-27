@@ -125,12 +125,18 @@ export function SignInPage() {
     if (!address) return;
     setStatus({ kind: "sending" });
     setGoogle((current) => (current === "opening" ? current : "idle"));
-    const { error } = await authClient.signIn.magicLink({
-      email: address,
-      callbackURL: callbackUrl(window.location.origin, redirect),
-      errorCallbackURL: errorCallbackUrl(window.location.origin, redirect),
-    });
-    setStatus(error ? { kind: "error" } : { kind: "sent" });
+    try {
+      const { error } = await authClient.signIn.magicLink({
+        email: address,
+        callbackURL: callbackUrl(window.location.origin, redirect),
+        errorCallbackURL: errorCallbackUrl(window.location.origin, redirect),
+      });
+      setStatus(error ? { kind: "error" } : { kind: "sent" });
+    } catch {
+      // A network failure rejects instead of resolving with `error`. Left in "sending", the page
+      // would disable both ways in for good.
+      setStatus({ kind: "error" });
+    }
   }
 
   // One alert at a time (TEACH-31): the newest failure wins. The send error
