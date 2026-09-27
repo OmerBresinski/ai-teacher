@@ -18,6 +18,29 @@ export const FACT_TYPES = [
 ] as const;
 type FactType = (typeof FACT_TYPES)[number];
 
+/**
+ * Lab-only per-fact fields of the Oak packs (`quality-prd/lab/oak-packs`, 28 Sept 2026; FIX-PLAN
+ * plan C): what a fact is, where it comes from, and where to find it. `kind` sits inside the
+ * existing lists (a quotation, date or figure is a key idea's `statement`; a term is a vocabulary
+ * item), so the lists and `referenceText` are unchanged; `locator` is what `referenceText` puts
+ * after a quoted sentence. Recall packs written before this carry none of them.
+ */
+export type PackFactKind =
+  | "keyIdea"
+  | "term"
+  | "misconception"
+  | "quotation"
+  | "date"
+  | "figure"
+  | "workedExample";
+export interface PackFactMeta {
+  kind?: PackFactKind;
+  /** Oak lesson (`oak:<slug>`), act.scene and speaker, stanza and line, with the edition. */
+  locator?: string;
+  /** `oak`: imported with no model; `model`: written by the pack model (the fill share). */
+  source?: "oak" | "model";
+}
+
 // biome-ignore lint/suspicious/noExplicitAny: recall pack facts are read field by field below.
 type Fact = any;
 export interface RecallPack {
