@@ -152,17 +152,7 @@ export function SignInPage() {
   // Google redirect cannot fire in the middle of sending a link (or the other way round).
   const sending = status.kind === "sending";
   const opening = google === "opening";
-  // One alert on screen (TEACH-252), in one slot above the Google button: the sign-out notice wins
-  // (it renders on its own, with its Retry button), then the send error, then the Google start
-  // error, then the `?error=` a failed round trip came back with. The handlers clear each other's
-  // failures, so the newest one wins between the last three. Once a link is sent only the notice
-  // can show.
-  const alertMessage =
-    status.kind === "sent"
-      ? null
-      : status.kind === "error"
-        ? SEND_ERROR
-        : (googleError ?? (errorCode ? signInErrorMessage(errorCode) : null));
+  const alertMessage = oneAlert({ notice, status, googleError, errorCode });
 
   return (
     <main className="relative isolate flex min-h-svh flex-col overflow-x-clip bg-background">
@@ -189,24 +179,21 @@ export function SignInPage() {
                   New to DayBack? The same steps create your account.
                 </p>
               </div>
-              {notice ? (
-                <div className={cn(ALERT_BOX, "flex-col items-start")}>
+              {alertMessage ? (
+                <div className="flex flex-col items-start gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground">
                   <div className="flex gap-2.5">
                     {ALERT_ICON}
-                    <p role="alert">{notice}</p>
+                    <p role="alert">{alertMessage}</p>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
-                  >
-                    Retry sign out
-                  </Button>
-                </div>
-              ) : alertMessage ? (
-                <div className={ALERT_BOX}>
-                  {ALERT_ICON}
-                  <p role="alert">{alertMessage}</p>
+                  {notice ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
+                    >
+                      Retry sign out
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
               {status.kind === "sent" ? (
@@ -282,8 +269,28 @@ export function SignInPage() {
 /** One grid for the page, the homepage's: 1200px on a gutter of clamp(22px, 6vw, 48px). */
 const GRID_WIDTH = "mx-auto w-full max-w-[1296px] px-4 sm:px-[clamp(22px,6vw,48px)]";
 
-const ALERT_BOX =
-  "flex gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground";
+/**
+ * The one alert on screen (TEACH-252), highest priority first: the sign-out notice (shown with its
+ * Retry button), the send error, the Google start error, then the `?error=` a failed round trip came
+ * back with. The handlers clear each other's failures, so the newest wins among the last three.
+ * Once a link is sent only the notice can show.
+ */
+function oneAlert({
+  notice,
+  status,
+  googleError,
+  errorCode,
+}: {
+  notice: string | null;
+  status: Status;
+  googleError: string | null;
+  errorCode: string | undefined;
+}): string | null {
+  if (notice) return notice;
+  if (status.kind === "sent") return null;
+  if (status.kind === "error") return SEND_ERROR;
+  return googleError ?? (errorCode ? signInErrorMessage(errorCode) : null);
+}
 
 // Static JSX hoisted so a state change never rebuilds it (rendering-hoist-jsx).
 const ALERT_ICON = (
