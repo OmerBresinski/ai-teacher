@@ -38,10 +38,11 @@ with the founder; the tickets (TEACH-311, TEACH-312, TEACH-31) implement it and 
    (`handleOAuthUserInfo` in `better-auth/dist/oauth2/link-account.mjs` links when the provider
    says `email_verified` and the local user is verified); magic-link users are created with
    `emailVerified: true`, so no linking option changes. Either method works afterwards.
-3. **No Google tokens are stored.** Sign-in needs the identity only. The access, refresh and id
-   tokens are dropped before the `accounts` row is written, and later sign-ins do not write them
-   back (`account.updateAccountOnSignIn: false`). A future feature that calls Google APIs needs
-   new scopes and fresh consent anyway, which yields new tokens then.
+3. **No Google tokens are stored.** Sign-in needs the identity only. `databaseHooks.account`
+   `create.before` and `update.before` null the access, refresh and id tokens before any
+   `accounts` write, and `account.updateAccountOnSignIn: false` stops sign-ins from rewriting
+   them. A future feature that calls Google APIs needs new scopes and fresh consent anyway, which
+   yields new tokens then.
 4. **Name and photo URL are stored.** A user created through Google gets Google's name and
    picture URL in `users.name` / `users.image`. A magic-link user (created with `name: ""`) gets
    both once, when they link Google (`account.accountLinking.updateUserInfoOnLink: true`); later
@@ -55,12 +56,17 @@ with the founder; the tickets (TEACH-311, TEACH-312, TEACH-31) implement it and 
    gets Google's `redirect_uri_mismatch`. That is accepted while Vercel previews are off;
    better-auth's `oAuthProxy` plugin is the option if they come back.
 6. **`/sign-in` always shows "Continue with Google"**, above the email form with an "or" divider.
-   The web does not ask the api which providers are on; when the api has no Google provider the
-   page says so. A cancelled or failed Google round trip returns to `/sign-in` with a message and
-   the original `redirect`.
+   The web does not ask the api which providers are on; when the api has no Google provider
+   (`POST /auth/sign-in/social` answers 404 `PROVIDER_NOT_FOUND`) the page says so. A cancelled or
+   failed Google round trip returns to `/sign-in` with a message and the original `redirect`;
+   the failures better-auth would send to its own `/auth/error` page (missing or unknown state,
+   database errors) go to the web's `/sign-in` too (`onAPIError.errorURL`).
 7. **Order of switching on.** The token-dropping api change lands before any credential exists,
-   because setting `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` turns Google on at the api. The button
-   lands after production has credentials; a `smoke:prod` case proves the api returns a Google URL.
+   because setting `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` turns Google on at the api. The same
+   change adds the `accounts.issuer` column (unique with `account_id`) that better-auth 1.7.2's
+   account model requires; the P0 schema lacks it, and magic links never write `accounts`, so
+   until then every OAuth callback fails with `internal_server_error`. The button lands after
+   production has credentials; a `smoke:prod` case proves the api returns a Google URL.
 8. **Console-only steps.** Google has no API or gcloud command for a standard Web OAuth client or
    for the consent screen (the IAP OAuth Admin API behind `gcloud iap oauth-clients` shut down on
    2026-03-19). The consent screen and the clients are created in the Google Cloud console;
