@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Theme } from "@tj/domain/documents";
-import { CALLOUT_NAMES } from "./callout";
+import { CALLOUT_MEASURE_TEXT, CALLOUT_NAMES } from "./callout";
 import {
   CALLOUT_BUDGETS,
   CALLOUT_TEXT_WORDS,
@@ -108,32 +108,37 @@ describe("an explain slide whose body is one sentence", () => {
   }
 });
 
-describe("CALLOUT_BUDGETS: an explain keeps a one-line callout under its words", () => {
+describe("CALLOUT_BUDGETS: real words keep a one-line callout under them", () => {
+  // Real bodies, points and a 60-character callout from the PR 2 smoke runs (4, 5), not the
+  // filler: the filler's even word lengths gave one word too many beside a photograph and on a
+  // list (a 58-character card under a 21-word body still dropped). Each budget is the least
+  // measure over the six themes less one word, so a writer one word over still keeps the card.
   const meta = { model: "m", promptVersion: "p", generatedAt: new Date(0).toISOString() } as never;
-  const W =
-    "Plants take in carbon dioxide through small pores in their leaves and water from the soil through their roots while light energy absorbed by chlorophyll drives the reaction that makes glucose and releases oxygen into the surrounding air".split(
+  const PROSE =
+    "Fewer trees catch rain or take up water. In the Amazon Basin, cleared land can send more water overground into rivers, raising flood risk. Hard surfaces limit soaking, sending rain through drains to rivers. Birmingham's built-up streets show how this raises river levels faster. Magic lets Prospero direct where people go, controlling later meetings.".split(
       " ",
     );
-  const sentence = (n: number, from = 0) => {
-    const w = Array.from({ length: n }, (_, i) => W[(from + i) % W.length]).join(" ");
-    return `${w.charAt(0).toUpperCase()}${w.slice(1)}.`;
-  };
-  // One line for pupils, as generate-slide asks: 55 characters.
-  const callout = { kind: "watch-out" as const, text: sentence(CALLOUT_TEXT_WORDS, 3) };
-  const keeps = (t: Theme, lead: number, body: number, photo: boolean) => {
+  const prose = (n: number) =>
+    `${PROSE.slice(0, n)
+      .join(" ")
+      .replace(/[.,;]$/, "")}.`;
+  const LEAD = "These measures manage water to lower flood risk, but cannot eliminate it."; // 12 words
+  const LIST_LEAD = "Three measures can lower flood risk in towns along rivers."; // 10 words
+  const POINTS = [
+    "Embankments: Raised banks keep water in channels, reducing nearby flood risk.",
+    "Storage areas: Hold excess water so rivers do not overflow into towns.",
+    "Public baths: At Aquae Sulis, baths offered shared washing and meeting.",
+  ];
+  const words = (text: string, n: number) => text.split(" ").slice(0, n).join(" ");
+  const callout = { kind: "watch-out" as const, text: CALLOUT_MEASURE_TEXT };
+  const keeps = (t: Theme, spec: Record<string, unknown>, photo = false) => {
     const pages = materialiseSlides(
-      {
-        kind: "content",
-        heading: "Water cycle",
-        body: `${sentence(lead)} ${sentence(body, 7)}`,
-        callout,
-        factRefs: [],
-      },
+      { kind: "content", heading: "Reducing flood risk", factRefs: [], callout, ...spec } as never,
       t.id,
       meta,
       undefined,
       undefined,
-      photo ? { photo: { subject: "A photograph" } } : {},
+      { ...(photo ? { photo: { subject: "A photograph" } } : {}), sidePanel: false },
     );
     return (
       pages.length === 1 &&
@@ -141,46 +146,62 @@ describe("CALLOUT_BUDGETS: an explain keeps a one-line callout under its words",
       (!photo || pages[0]?.elements.some((e) => e.name === PHOTO_NAME) === true)
     );
   };
-  const capacity = (t: Theme, lead: number, photo: boolean) => {
-    let n = 1;
-    while (n <= 60 && keeps(t, lead, n, photo)) n += 1;
-    return n - 1;
-  };
+  const least = (f: (t: Theme, n: number) => boolean, from = 1) =>
+    Math.min(
+      ...THEMES.map((t) => {
+        let n = from;
+        while (n <= 60 && f(t, n)) n += 1;
+        return n - 1;
+      }),
+    );
+
+  test("the callout text is one line of about 60 characters", () => {
+    expect(callout.text.split(" ").length).toBeLessThanOrEqual(CALLOUT_TEXT_WORDS);
+  });
+
   for (const [composition, photo] of [
     ["full", false],
     ["panel", true],
   ] as const) {
-    test(`${composition}: the budget keeps the card on every theme, and is the least measure`, () => {
+    test(`explain, ${composition}: the budget is the least real measure less one word`, () => {
       const budget = CALLOUT_BUDGETS.explain[composition];
-      const measured = THEMES.map((t) => capacity(t, budget.lead.max, photo));
-      expect(Math.min(...measured)).toBe(budget.body?.max as number);
+      expect(budget.lead.max).toBe(12);
+      const measured = least((t, n) => keeps(t, { body: `${LEAD} ${prose(n)}` }, photo));
+      expect(budget.body?.max).toBe(measured - 1);
     });
   }
 
-  const listKeeps = (t: Theme, points: number, words: number) => {
-    const pages = materialiseSlides(
-      {
-        kind: "content",
-        heading: "Water cycle",
-        body: sentence(CALLOUT_BUDGETS.list.full.lead.max),
-        points: Array.from({ length: points }, (_, i) => sentence(words, 5 + i * 11)),
-        callout,
-        factRefs: [],
-      },
-      t.id,
-      meta,
-    );
-    return (
-      pages.length === 1 && pages[0]?.elements.some((e) => e.name === CALLOUT_NAMES.card) === true
-    );
-  };
-
   test("list, full: two points at the budget keep the card on every theme; a third loses it", () => {
-    const points = CALLOUT_BUDGETS.list.full.points;
-    const [, most] = points?.count ?? [2, 2];
-    const words = points?.max as number;
-    for (const t of THEMES) expect(listKeeps(t, most, words), `${t.id} at the budget`).toBe(true);
-    expect(THEMES.every((t) => listKeeps(t, most + 1, words))).toBe(false);
+    const budget = CALLOUT_BUDGETS.list.full;
+    expect(budget.lead.max).toBe(10);
+    const measured = least(
+      (t, n) => keeps(t, { body: LIST_LEAD, points: POINTS.slice(0, 2).map((p) => words(p, n)) }),
+      3,
+    );
+    expect(budget.points?.max).toBe(measured - 1);
+    const at = budget.points?.max as number;
+    const three = { body: LIST_LEAD, points: POINTS.map((p) => words(p, at)) };
+    expect(THEMES.every((t) => keeps(t, three))).toBe(false);
+  });
+
+  test("no room beside a photograph for a list, nor under a compare or a sequence", () => {
+    // Two 4-word points beside a photograph, a compare of 4-word points, three 5-word steps: short
+    // of any budget, and the card still does not fit on every theme. The planner gives these
+    // slides a callout or a photo, never both (`outline-from-facts`).
+    const four = POINTS.map((p) => words(p, 4));
+    expect(THEMES.every((t) => keeps(t, { body: LIST_LEAD, points: four.slice(0, 2) }, true))).toBe(
+      false,
+    );
+    const compare = {
+      body: "Two ways to manage floods.",
+      compare: {
+        left: { label: "Hard", points: [four[0], four[1]] },
+        right: { label: "Soft", points: [four[2], four[1]] },
+      },
+    };
+    expect(THEMES.every((t) => keeps(t, compare))).toBe(false);
+    const steps = { body: "How rain reaches a river.", steps: POINTS.map((p) => words(p, 5)) };
+    expect(THEMES.every((t) => keeps(t, steps))).toBe(false);
   });
 });
 

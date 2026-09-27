@@ -109,6 +109,12 @@ export type SlideStructure = {
    * one item is not left alone: the card comes with it.
    */
   callout?: boolean;
+  /**
+   * `false`: no key-term or key-idea panel beside the words (PR 2). Generation sets it on a slide
+   * that plans a callout, whose room (`CALLOUT_BUDGETS`) is measured across the full measure; a
+   * planning choice, so the words are still the same with or without the card (rulings 102, 106).
+   */
+  sidePanel?: false;
 };
 
 /* ---------------------------------------------------------------- text helpers */
@@ -2136,6 +2142,7 @@ function splitContent(
   floorless = false,
 ): Slide | undefined {
   if (top > SAFE.y + SAFE.h * 0.45) return undefined;
+  if (hints.sidePanel === false && !slot) return undefined;
   // A sentence that only repeats the heading is not said twice on the slide.
   const bare = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
   const said = bare(docText(headingOf(slide)?.doc ?? docFromText("")));

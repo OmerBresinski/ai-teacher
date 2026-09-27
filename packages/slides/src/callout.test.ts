@@ -15,10 +15,12 @@ import {
   CALLOUT_ICON,
   CALLOUT_ICONS,
   CALLOUT_LABELS,
+  CALLOUT_MEASURE_TEXT,
   CALLOUT_NAMES,
   type CalloutSpec,
   calloutHeight,
   calloutLines,
+  calloutWithinBudget,
   fitCallout,
   isCalloutElement,
   workedExampleCalloutRoom,
@@ -31,6 +33,7 @@ import { type IdSupplier, materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
 import { stepDownSize } from "./reflow";
 import { ceilingOf, type SlideSpec, SPEC_LIMITS } from "./specs";
+import { PANEL_NAME } from "./structure";
 import { CALLOUT_TONES, calloutTone, calloutTones, fontFloor, getTheme, THEMES } from "./themes";
 
 /*
@@ -714,4 +717,36 @@ describe("the words are the same with or without a callout", () => {
       }
     }
   }
+});
+
+describe("PR 2: a callout slide's words and the card's budget", () => {
+  it("calloutWithinBudget: one line as measured passes; a 110-character definition does not", () => {
+    for (const t of THEMES) {
+      expect(calloutWithinBudget(t, CALLOUT_MEASURE_TEXT, false)).toBe(true);
+      expect(calloutWithinBudget(t, "Flood defences do not stop all flooding.", true)).toBe(true);
+      expect(
+        calloutWithinBudget(
+          t,
+          "Stagecraft means the ways a play uses sound, lighting, scenery and movement to create effects for an audience.",
+          false,
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("sidePanel false: no key-term panel beside the words, with or without the card", () => {
+    const spec = {
+      ...content(),
+      body: "Evaporation turns liquid water into vapour. The sun heats seas and lakes, and the vapour rises into the air.",
+    } as SlideSpec;
+    const glossary = [{ term: "Evaporation", definition: "Liquid water turning into vapour." }];
+    const panelled = (structure: Record<string, unknown>) =>
+      materialiseSlide(spec, "chalk", meta, counter(), undefined, {
+        terms: ["Evaporation"],
+        glossary,
+        ...structure,
+      }).elements.some((el) => el.name?.startsWith("Side panel") || el.name === PANEL_NAME);
+    expect(panelled({})).toBe(true);
+    expect(panelled({ sidePanel: false })).toBe(false);
+  });
 });

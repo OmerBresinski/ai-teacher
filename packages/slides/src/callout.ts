@@ -23,6 +23,7 @@ import {
   shape,
   text,
 } from "./layouts";
+import { PHOTO_TEXT_SHARE } from "./look";
 import { SAFE_BOTTOM } from "./metrics";
 import { isBackdrop, isFootBand, stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
@@ -422,4 +423,25 @@ export function placeCallout(
     return old ? ({ ...old, ...el, id: old.id } as SlideElement) : { ...el, id: ids() };
   });
   return { ...slide, elements: [...slide.elements, ...placed] };
+}
+
+/**
+ * The callout `CALLOUT_BUDGETS` keeps room for (PR 2): a real 60-character watch-out from the PR 2
+ * smoke runs. The words' budgets leave room for its card and no more.
+ */
+export const CALLOUT_MEASURE_TEXT = "Prospero’s tempest is uncontrolled and endangers passengers.";
+
+/**
+ * Whether a callout's text takes no more lines than `CALLOUT_MEASURE_TEXT` on its card, at the
+ * theme's `small` or one stop down, the step `fitCallout` takes (never below the floor): the card
+ * the budgets kept room for. Across the full measure, or in the words' column beside a
+ * photograph. A longer text is never cut: the caller keeps another callout or none.
+ */
+export function calloutWithinBudget(t: Theme, text: string, photo: boolean): boolean {
+  const width = photo ? Math.floor((SAFE.w - SPACE[5]) * PHOTO_TEXT_SHARE) : SAFE.w;
+  const room = calloutLines(t, CALLOUT_MEASURE_TEXT, width);
+  if (calloutLines(t, text, width) <= room) return true;
+  const full = resolveFontSize(t, "small");
+  const size = stepDownSize(t, "small", full);
+  return size < full && calloutLines(t, text, width, size) <= room;
 }

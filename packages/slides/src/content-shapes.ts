@@ -38,16 +38,15 @@ type ShapeBudget = { heading: SlotBudget; lead: SlotBudget } & Partial<
 >;
 
 /**
- * The words an explain slide holds when a one-line callout (about 55 characters, as generate-slide
- * asks) keeps its card under them on the same page (PR 2): the callout gives way first
- * (`lookAndFitPages`), so words written to the plain budgets leave it no room. Measured through
- * `materialiseSlides` with the pages the writer's slide becomes, the least over the six themes
- * (content-shapes.test re-measures it): a 12-word lead, then 18 more words across the measure,
- * or 9 more beside a photograph. A list across the measure keeps the card with a 10-word lead and
- * exactly two points of 10 words, written to 9 (a 12-word lead leaves 8; a third point that long
- * loses it). A list beside a photograph
- * never keeps a card under its points, so it has no entry: its callout rides the continuation,
- * or is left off.
+ * The words a content slide holds when a one-line callout keeps its card under them on the same
+ * page (PR 2): the callout gives way first (`lookAndFitPages`), so words written to the plain
+ * budgets leave it no room. Measured with real bodies, points and a 60-character callout from the
+ * PR 2 smoke runs, through `materialiseSlides` with no side panel (`SlideStructure.sidePanel`,
+ * which generation sets on a callout slide), the least over the six themes less one word
+ * (content-shapes.test re-measures it): an explain keeps a 12-word lead and 18 more words across
+ * the measure, or 7 more beside a photograph; a list across the measure a 10-word lead and exactly
+ * two points of 8 words. A list beside a photograph, a compare and a sequence have no room: the
+ * planner gives them the callout or the photo, not both (`outline-from-facts`, `specs.ts`).
  */
 export const CALLOUT_BUDGETS: {
   explain: Record<ShapeComposition, ShapeBudget>;
@@ -55,10 +54,10 @@ export const CALLOUT_BUDGETS: {
 } = {
   explain: {
     full: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 18 } },
-    panel: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 9 } },
+    panel: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 7 } },
   },
   list: {
-    full: { heading: { max: 4 }, lead: { max: 10 }, points: { max: 9, count: [2, 2] } },
+    full: { heading: { max: 4 }, lead: { max: 10 }, points: { max: 8, count: [2, 2] } },
   },
 };
 
