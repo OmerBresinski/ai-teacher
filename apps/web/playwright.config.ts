@@ -97,6 +97,10 @@ export default defineConfig({
         BETTER_AUTH_URL: E2E_API_URL,
         BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
         MAIL_PROVIDER: "console",
+        // Bun auto-loads apps/api/.env, which holds a developer's local Google client (TEACH-312).
+        // Blank means unset (apps/api/src/env.ts), so e2e always runs with Google off (TEACH-31).
+        GOOGLE_CLIENT_ID: "",
+        GOOGLE_CLIENT_SECRET: "",
         STORAGE_ROOT: E2E_STORAGE_ROOT,
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },

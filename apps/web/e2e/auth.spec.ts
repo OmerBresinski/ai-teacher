@@ -75,10 +75,11 @@ test.describe("auth", () => {
     await expect(page.getByText("Sign in to Teaching Journey")).toBeVisible();
 
     // Tab from the document until the email field owns focus (no mouse anywhere in this test).
+    // "Continue with Google" is one tab stop before it (TEACH-31).
     const emailField = page.getByLabel("Email address");
     for (
       let i = 0;
-      i < 6 && !(await emailField.evaluate((el) => el === document.activeElement));
+      i < 7 && !(await emailField.evaluate((el) => el === document.activeElement));
       i++
     ) {
       await page.keyboard.press("Tab");
@@ -90,6 +91,24 @@ test.describe("auth", () => {
 
     await page.goto(await lastMagicLink(request, email));
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  });
+
+  test("Continue with Google says it is not set up when the api has no Google client", async ({
+    page,
+  }) => {
+    // playwright.config.ts blanks GOOGLE_CLIENT_ID/SECRET, so the api answers 404
+    // PROVIDER_NOT_FOUND and the page stays put with a plain sentence (TEACH-31).
+    await page.goto("/sign-in?redirect=%2Flessons");
+    const social = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.endsWith("/auth/sign-in/social"),
+    );
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    expect((await social).status()).toBe(404);
+    await expect(page.getByRole("alert")).toHaveText(
+      "Google sign-in is not set up here. Use the email link below.",
+    );
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+    await expect(page).toHaveURL(/\/sign-in\?redirect=%2Flessons$/);
   });
 
   test("sign out returns to /sign-in and protected pages are locked again", async ({

@@ -32,7 +32,6 @@ Linear issue in project **P1 — Production hardening**; update this table when 
 | **Founder's domain, not a product domain** | `app.bresinski.org` / `api.bresinski.org` (TEACH-36) run on Omer's personal domain. | Buy the product domain; swap: two CNAMEs + `mail.<d>` records in Resend, then `WEB_ORIGIN`, `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `MAIL_FROM` on Railway and `VITE_API_URL` on Vercel. | ADR 0010 amendment (TEACH-36); "Domain" below |
 | **Vercel production is public** | `app.bresinski.org` has no Deployment Protection; anyone can request a sign-in link (delivered by Resend since TEACH-35). | Founder decision: protect, or accept as the public entry point. | TEACH-39; "Dashboard-only (Vercel)" |
 | **No CI remote cache / Speed Insights** | `TURBO_TOKEN` not set; Speed Insights feature toggle off (billing). | Vercel token → GitHub secret `TURBO_TOKEN`, variable `TURBO_TEAM`; toggle Speed Insights in the dashboard. | TEACH-39; "Turbo remote cache", "Dashboard-only (Vercel)" |
-| **Google sign-in has no button** | The api accepts Google sign-in: TEACH-312 set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` on Railway `api` production on 2026-09-27, and `POST /auth/sign-in/social` returns a Google URL. `/sign-in` still offers the magic link only. Microsoft stays off by decision (ADR 0008 amendment, 2026-09-27). | TEACH-31 adds "Continue with Google" to `/sign-in`. | "Google sign-in (Google Cloud)" below; ADR 0008 |
 | **Single AI provider** | Bedrock only; no provider failover. | Add a second provider and failover in F13 (F13-D3). | ADR 0018; F13-D3 |
 | **AI rate limit is per api replica (in memory)** | One Railway api replica applies the per-Workspace limit locally. | Use Postgres or Redis before scaling the api horizontally. | TEACH-75; `apps/api/src/rate-limit.ts` |
 
@@ -725,7 +724,9 @@ After every production deploy run `bun run smoke:prod` (`scripts/smoke-prod.ts`)
 api unauthenticated with the exact headers a browser sends from `https://app.bresinski.org`
 (`Origin`, plus `Sec-Fetch-Site: cross-site` — since TEACH-36 a real browser sends `same-site`, but
 the cross-site marking is what the 2026-09-05 regression mishandled, so the probe keeps it) and asserts the guards answer correctly: app origin → 401 (reached the session
-guard), foreign origin → 403, cross-site without Origin → 403, preflight → 204, `/health` → 200.
+guard), foreign origin → 403, cross-site without Origin → 403, preflight → 204, `/health` → 200,
+and a Google `POST /auth/sign-in/social` → 200 (404 means the api has no Google credentials, so
+"Continue with Google" on `/sign-in` would tell every teacher it is not set up; TEACH-31).
 `--api <url> --web-origin <origin>` targets a PR environment. Added after the 2026-09-05 incident
 (PR #66) in which a CSRF guard returned 403 to every real request while local e2e stayed green.
 
