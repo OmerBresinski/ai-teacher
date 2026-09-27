@@ -7,7 +7,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { homedir } from "node:os";
 import { Writable } from "node:stream";
 import { createAi, createBudget } from "@tj/ai";
-import { isContinuation, type Lesson, lessonFromBrief } from "@tj/domain/documents";
+import { type Lesson, lessonFromBrief } from "@tj/domain/documents";
 import { noSources, type PipelineDeps, runLessonPipeline } from "@tj/generation";
 import pino from "pino";
 import {
@@ -153,8 +153,6 @@ async function run(briefId: string, arm: "KP" | "KN", packSpec: string, label: s
     shapeFallbackDetail: fallbacks,
     continuedLogged: continued.length,
     continuedDetail: continued,
-    continuationSlides: lesson.slides.filter((s, i) => isContinuation(s, lesson.slides[i - 1]))
-      .length,
     keyIdeaShapes: ((facts as { keyIdeas?: { shape?: string }[] } | undefined)?.keyIdeas ?? []).map(
       (k) => k.shape ?? null,
     ),
