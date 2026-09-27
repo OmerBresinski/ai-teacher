@@ -374,17 +374,27 @@ export function fitsExitTicket(lines: readonly Line[]): boolean {
 /**
  * The lines an exit ticket keeps (UX ruling 108, TEACH-172): in order, at most `EXIT_QUIZ_MAX`,
  * each within its line cap, and a line only when the ticket with it still fits
- * (`fitsExitTicket`); a line that does not fit is passed over for a later, shorter one. Measured
+ * (`fitsExitTicket`); a line that does not fit is passed over for a later, shorter one, and when
+ * taking the shortest first keeps more lines, those are kept (in the given order). Measured
  * rather than counted: a character budget cannot know where a line wraps. When no line fits
  * alone, the first that fits its cap is kept, so the ticket is never empty for want of room.
  */
 export function exitLines<T extends Line>(lines: readonly T[]): T[] {
   const capped = lines.filter(fitsLine);
-  const kept: T[] = [];
-  for (const line of capped) {
-    if (kept.length >= EXIT_QUIZ_MAX) break;
-    if (fitsExitTicket([...kept, line])) kept.push(line);
-  }
+  const greedy = (order: readonly T[]) => {
+    const kept: T[] = [];
+    for (const line of order) {
+      if (kept.length >= EXIT_QUIZ_MAX) break;
+      if (fitsExitTicket([...kept, line])) kept.push(line);
+    }
+    return kept;
+  };
+  const inOrder = greedy(capped);
+  // A long first line can crowd out two short ones: shortest first (question and answer) keeps
+  // more when it can, still printed in the given order.
+  const size = (l: T) => l.text.length + l.answer.length;
+  const short = greedy([...capped].sort((a, b) => size(a) - size(b)));
+  const kept = short.length > inOrder.length ? capped.filter((l) => short.includes(l)) : inOrder;
   const first = capped[0];
   return kept.length === 0 && first ? [first] : kept;
 }
