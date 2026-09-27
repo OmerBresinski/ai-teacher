@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import type { Theme } from "@tj/domain/documents";
+import { CALLOUT_NAMES } from "./callout";
 import {
+  CALLOUT_BUDGETS,
   COMPOSITION_BUDGETS,
   CONTENT_BUDGETS,
   CONTENT_SHAPES,
@@ -10,7 +13,8 @@ import {
 import { type Counts, check, leadLinesFor, measure } from "./content-shapes.measure";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
-import { materialiseSlide } from "./materialise";
+import { PHOTO_NAME } from "./look";
+import { materialiseSlide, materialiseSlides } from "./materialise";
 import { KEY_CARD_NAME } from "./structure";
 import { THEMES } from "./themes";
 
@@ -99,6 +103,56 @@ describe("an explain slide whose body is one sentence", () => {
       expect(words).toContain("Key idea");
       expect(words.split("Chlorophyll in the leaf").length - 1).toBe(1);
       expect(fitSlide(slide, t).overflow).toEqual([]);
+    });
+  }
+});
+
+describe("CALLOUT_BUDGETS: an explain keeps a one-line callout under its words", () => {
+  const meta = { model: "m", promptVersion: "p", generatedAt: new Date(0).toISOString() } as never;
+  const W =
+    "Plants take in carbon dioxide through small pores in their leaves and water from the soil through their roots while light energy absorbed by chlorophyll drives the reaction that makes glucose and releases oxygen into the surrounding air".split(
+      " ",
+    );
+  const sentence = (n: number, from = 0) => {
+    const w = Array.from({ length: n }, (_, i) => W[(from + i) % W.length]).join(" ");
+    return `${w.charAt(0).toUpperCase()}${w.slice(1)}.`;
+  };
+  // One line for pupils, as generate-slide asks: 55 characters.
+  const callout = { kind: "watch-out" as const, text: sentence(9, 3) };
+  const keeps = (t: Theme, lead: number, body: number, photo: boolean) => {
+    const pages = materialiseSlides(
+      {
+        kind: "content",
+        heading: "Water cycle",
+        body: `${sentence(lead)} ${sentence(body, 7)}`,
+        callout,
+        factRefs: [],
+      },
+      t.id,
+      meta,
+      undefined,
+      undefined,
+      photo ? { photo: { subject: "A photograph" } } : {},
+    );
+    return (
+      pages.length === 1 &&
+      pages[0]?.elements.some((e) => e.name === CALLOUT_NAMES.card) === true &&
+      (!photo || pages[0]?.elements.some((e) => e.name === PHOTO_NAME) === true)
+    );
+  };
+  const capacity = (t: Theme, lead: number, photo: boolean) => {
+    let n = 1;
+    while (n <= 60 && keeps(t, lead, n, photo)) n += 1;
+    return n - 1;
+  };
+  for (const [composition, photo] of [
+    ["full", false],
+    ["panel", true],
+  ] as const) {
+    test(`${composition}: the budget keeps the card on every theme, and is the least measure`, () => {
+      const budget = CALLOUT_BUDGETS.explain[composition];
+      const measured = THEMES.map((t) => capacity(t, budget.lead.max, photo));
+      expect(Math.min(...measured)).toBe(budget.body?.max as number);
     });
   }
 });

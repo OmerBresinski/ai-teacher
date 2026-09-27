@@ -37,6 +37,22 @@ type ShapeBudget = { heading: SlotBudget; lead: SlotBudget } & Partial<
   Record<"body" | "points" | "side" | "sidePoints" | "steps", SlotBudget>
 >;
 
+/**
+ * The words an explain slide holds when a one-line callout (about 55 characters, as generate-slide
+ * asks) keeps its card under them on the same page (PR 2): the callout gives way first
+ * (`lookAndFitPages`), so words written to the plain budgets leave it no room. Measured through
+ * `materialiseSlides` with the pages the writer's slide becomes, the least over the six themes
+ * (content-shapes.test re-measures it): a 12-word lead, then 18 more words across the measure,
+ * or 9 more beside a photograph. A list beside a photograph never keeps a card under its points,
+ * so it has no entry: its callout rides the continuation, or is left off.
+ */
+export const CALLOUT_BUDGETS: { explain: Record<ShapeComposition, ShapeBudget> } = {
+  explain: {
+    full: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 18 } },
+    panel: { heading: { max: 4 }, lead: { max: 12 }, body: { max: 9 } },
+  },
+};
+
 /** Where a shape's words sit: beside the right panel (key term, key idea, diagram) or across. */
 export type ShapeComposition = "panel" | "full";
 
