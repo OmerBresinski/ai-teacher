@@ -509,6 +509,10 @@ img {
   .brand {
     font-size: 2.25rem;
   }
+  .site-header .brand {
+    font-size: 1.625rem;
+    min-height: 44px;
+  }
   .menu-toggle {
     display: flex;
     gap: 1.3rem;
