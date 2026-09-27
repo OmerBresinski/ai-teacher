@@ -105,19 +105,22 @@ export type Audience = {
 };
 
 /**
- * The school terms line (27 Sept 2026, l6-kpack ROOT-CAUSE #5 and #7): the `british` house rule
- * covers spelling only, and the objectives and teach calls wrote "greatest common factor" and
- * "3 counters:5 counters" for Year 7. One line beside the year group, which every call renders,
- * so the term and the year level travel together. Production-wide.
+ * The school terms line (27 Sept 2026, l6-kpack ROOT-CAUSE #5): the `british` house rule covers
+ * spelling only, and a Year 7 starter asked for the "greatest common factor". One line beside the
+ * year group, which every call renders, so the term and the year level travel together. The
+ * examples are the maths ones that failed and go only on a maths subject; the ratio-units rule
+ * lives in the teach and question rules, beside the unit rule it excepts. Production-wide.
  */
-const TERMS_LINE =
-  "Terms: as used in English schools (HCF, not GCF; BIDMAS; a ratio's parts carry no units).";
+function termsLine(subject: string | undefined): string {
+  const examples = subject && /math/i.test(subject) ? " (HCF, not GCF; BIDMAS)" : "";
+  return `Terms: as used in English schools${examples}.`;
+}
 
 export function audienceBlock(a: Audience): string {
   const lines = [
     `Subject: ${a.subject ?? "not given"}`,
     `Year group: ${a.yearGroup ?? "not given"}${a.ageBand ? ` (${a.ageBand})` : ""}`,
-    TERMS_LINE,
+    termsLine(a.subject),
     `Reading level: ${a.readingLevel ?? a.yearGroup ?? "the year group"}`,
     `Language: ${a.language ?? "en-GB"}`,
   ];

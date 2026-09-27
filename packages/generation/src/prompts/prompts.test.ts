@@ -200,35 +200,35 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "check-input": {
     version: "check-input.v5",
-    hash: "08d2dec44ef4a346bc473a3e7f636370e2e10dc1b5c68fa79771c342bf5792da",
+    hash: "706483834fcff133f740dd2eb02721c60f688da6c68fabe81b5c6c738d4094ac",
   },
   "plan-skeleton": {
     version: "plan-skeleton.v23",
-    hash: "92518e0bb5ab175a7d4fddb893f8c8e638e5881b8d7e8c362d0a02a6e34f50e2",
+    hash: "bffc7801118f6be1504cad2541cff1b97a31e43499c2584661582f4e2583e466",
   },
   "plan-facts": {
     version: "plan-facts.v14",
-    hash: "ca4bbda03fa027a05179a9abe9c600e36effcfc2e155e2e287816fcb73fd707b",
+    hash: "7a353636aef416d649567e9487043ec296ddb8d84e5551ab9f8ab8ed3d5840f0",
   },
   "plan-objectives": {
     version: "plan-objectives.v19",
-    hash: "a7277f7c94a1f2ca09a3cedcf245ebda544fadb2c46364a47722fa3e2c066891",
+    hash: "a82b5a9570ddaaa190c8450ac5b23f447be70d3ddccc44f2bf487ca85b83794a",
   },
   "plan-facts-objective": {
     version: "plan-facts-objective.v15",
-    hash: "71df2cb811e3b26f4dc7ef227cab0e4b5001b8de799748a7263269f6ed4efe18",
+    hash: "310fb27eb5c34e32e27d9d284045b808c77b87098de8d7e2f2f2cb07fbfe4b97",
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v4",
-    hash: "681e6c96c479c502b8cbee8fdcc7b8434b0e68967b895ce07258ced9ba05fbf6",
+    hash: "3e32f4939e651aa5dc8ef4fe008f2464b37314f0b032a7a4f7d9872e5cc3aec8",
   },
   "plan-question-set": {
     version: "plan-question-set.v8",
-    hash: "2838701d8dd644cf86231c2b8a85c94c2f83e4d0b09d2f5da3a7bde024f5f074",
+    hash: "a836140eca588c8feb2a7c6ea0c4eed9c88951681cc95a53f242d3067363986f",
   },
   "verify-facts": {
     version: "verify-facts.v8",
-    hash: "47d60e946cdf3d9fa74416d1aff8cbec6e9e87d2310f4ac3bb8a95202c4dd7fc",
+    hash: "0aa485c15bb8b52a67e1292c0e4fdc9dbef46c174d397654683bff8e6a2e2f10",
   },
   "generate-slide": {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render, and so
@@ -236,15 +236,15 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
     version: "generate-slide.v30",
-    hash: "5edebfba9a4e1430d05b3996226bf49743ac46bc52b195440f07769bfc60fe16",
+    hash: "e2d50fd1cfd1f439e411c80a653608ae6267b7e9f89be856f8ea8e60245236e5",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v11",
-    hash: "c6a18cdedff2d205009e1f7fb1044c6f4a94d18a7e088d9a5c1400e92e12532b",
+    hash: "8e1a8aa91f51be0d262555aff4cc361b56fa24e6296a5188a86c5df98b7b4f72",
   },
   "generate-worksheet-fill": {
     version: "generate-worksheet-fill.v3",
-    hash: "1ac2368b839498448b07607d4796a6857db87e43054a84242a5158a88458ad6d",
+    hash: "a5f26421230af527e93617ad0cd1d7a4363f01b08cee0bcdd7fdc29b389b8cbb",
   },
   "parse-brief": {
     version: "parse-brief.v2",
@@ -256,31 +256,31 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "pick-or-requery-photo": {
     version: "pick-or-requery-photo.v8",
-    hash: "e818b4f34b85c4628442e2ed0672b4055e317fa7427769a4288298a207da7b82",
+    hash: "a015ab561de6d8162908aab8aa529c48f554fd5ad5f53d8b1d198d4b0462cebc",
   },
   evaluate: {
     // v9 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
     version: "evaluate.v10",
-    hash: "bbecc1e8f37bab11c4fd03a5694b7a30fbc038e72c6273dd863e28f57f07d9d8",
+    hash: "c24fed44fb56f20a0b345e8430d3f8f16b557ab50a4df4c67414843977341a8b",
   },
   repair: {
     // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
     version: "repair.v17",
-    hash: "94ce4fa17f189e3b58a0a58c42dbee8e91de21f984fa98d915c101e9395ceada",
+    hash: "2627903156f96fa8c7ec519dab927b221cc61a2b98a2f1a83bb089452015deaf",
   },
   "repair-fact": {
     version: "repair-fact.v7",
-    hash: "1ce2586f682076ce4e7ed38d2e30608dda7c1a5529b677d324676d72d5b099cd",
+    hash: "9a65c92c48bbbfa1aec9572885cc044027bd002691a76e40e5af71431762a42f",
   },
   cascade: {
     // v5 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
     version: "cascade.v6",
-    hash: "54a57f1ee9f9c1c4fb1c26ceb207410ff7bd3c92d8efb06616acce3e38ef6781",
+    hash: "64a77e7fe4bbe67527d85d968b585f78a23319cf74a1d4c36d02ab9d05d5f5d5",
   },
   regenerate: {
     // v5 (TEACH-253), as cascade.
     version: "regenerate.v6",
-    hash: "ccc143a40f34f37ac6a2e509c2d9ae47bf9802f02394f2617df74b8bfd3c02dd",
+    hash: "390f45b559cd7d1faa1e87e3d097edaea43cd1de6e91cc16de43a3d2ca72ed43",
   },
 };
 

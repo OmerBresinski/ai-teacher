@@ -160,6 +160,19 @@ describe("plan-teach-objective", () => {
       curriculum: undefined,
       reference: undefined,
     });
+    // The school-terms line (shared audience block): bare for every subject, the maths
+    // examples only on a maths subject. The ratio exception sits in this call's unit rule.
+    expect(rendered).toContain("Terms: as used in English schools.");
+    expect(rendered).not.toContain("HCF");
+    expect(
+      planTeachObjectivePrompt.user({
+        ...SAMPLE,
+        audience: { ...SAMPLE.audience, subject: "Mathematics" },
+      }),
+    ).toContain("Terms: as used in English schools (HCF, not GCF; BIDMAS).");
+    expect(planTeachObjectivePrompt.system).toContain(
+      "A ratio's parts carry none: 2:3, not 2 cm:3 cm.",
+    );
     expect(bare).not.toContain(CURRICULUM_INSTRUCTION);
     expect(bare).not.toContain(REFERENCE_INSTRUCTION);
     expect(bare).not.toContain("topic pack");

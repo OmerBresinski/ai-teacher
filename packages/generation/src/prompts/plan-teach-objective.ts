@@ -57,7 +57,9 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * string, so the phrase is now corpus-neutral, "the material given": true of an extract, a
  * reference and a teacher's upload alike, and shorter. Along with it: `REFERENCE_INSTRUCTION`
  * (`plan-facts-objective.ts`) is a pool-not-scope line with the quotation carve-out, and the
- * shared audience block gains the school-terms line ("3 counters:5 counters" was this call's).
+ * shared audience block gains the school-terms line. The unit rule gains question-set v7's ratio
+ * exception in the same words ("3 counters:5 counters", ROOT-CAUSE #7, was this call's own rule
+ * applied to ratio parts), so the exception sits beside the rule it excepts.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -204,7 +206,7 @@ export const planTeachObjectivePrompt = {
     "Write one or two key ideas, one misconception and up to two vocabulary terms.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the material given or checkable by the class, and an uncertain figure is left out, never estimated.',
-    "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
+    "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5. A ratio's parts carry none: 2:3, not 2 cm:3 cm.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
     'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
