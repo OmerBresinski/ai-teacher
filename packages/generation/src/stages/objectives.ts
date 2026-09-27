@@ -114,7 +114,9 @@ export async function runObjectivesStep(
     const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
     const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
     const curriculum =
-      selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
+      selected.length > 0
+        ? { text: selected.map((s) => s.text).join("\n\n") }
+        : deps.labPack?.curriculum;
     const shape = shapeOf(lesson);
     const cls = planClassFor(lesson, deps);
     const effort = plannerEffort(options.effort, "objectives");

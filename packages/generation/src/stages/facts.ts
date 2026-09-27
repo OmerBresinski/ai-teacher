@@ -79,7 +79,9 @@ export async function runFactsStep(
   const loaded = lesson.sources ? await deps.sources(lesson.sources) : [];
   const { selected } = selectSourceTexts(loaded, { maxChars: SOURCE_TEXT_MAX_CHARS });
   const curriculum =
-    selected.length > 0 ? { text: selected.map((s) => s.text).join("\n\n") } : undefined;
+    selected.length > 0
+      ? { text: selected.map((s) => s.text).join("\n\n") }
+      : deps.labPack?.curriculum;
   const shape = shapeOf(lesson);
   const audience = audienceOf(lesson);
   const cls = planClassFor(lesson, deps);
@@ -95,6 +97,8 @@ export async function runFactsStep(
   const factsFailed: number[] = [];
   const budgetFailed: { target: number; by: "usd" | "tokens" }[] = [];
   const tFacts = Date.now();
+  // Lab only (l6kp2): one pack select call per objective before the waves, as on lab/l6kp.
+  const references = deps.labPack ? await deps.labPack.referencesFor(objectives) : undefined;
   const ran = await runWaves(
     {
       deps,
@@ -107,6 +111,7 @@ export async function runFactsStep(
       slideCount,
       priorKnowledge: brief.classContext?.priorKnowledge,
       curriculum,
+      references,
       retrieval,
     },
     { findings, factsFailed, budgetFailed },

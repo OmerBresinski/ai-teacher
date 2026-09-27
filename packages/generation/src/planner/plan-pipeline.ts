@@ -417,6 +417,8 @@ interface WavesInput {
   slideCount: number;
   priorKnowledge?: string | undefined;
   curriculum?: { text: string } | undefined;
+  /** Lab only (l6kp2): per objective, a pack's reference text for its teach call's own slot. */
+  references?: (string | undefined)[] | undefined;
   retrieval?: PlanRetrievalQuestion[] | undefined;
 }
 
@@ -545,6 +547,7 @@ export async function runWaves(
         target,
         priorKnowledge: input.priorKnowledge,
         curriculum: input.curriculum,
+        ...(input.references?.[target] ? { reference: { text: input.references[target] } } : {}),
         ...retrievalInput(input),
       };
       deps.logger.info({ stage: "plan", call: "teach", target, cls }, "plan call");

@@ -118,6 +118,13 @@ export function emptyImageCounts(): ImageCounts {
   return { photographable: null, requested: 0, placed: 0, empty: 0, failed: 0 };
 }
 
+/** A topic pack as the planner reads it (lab only, see `PipelineDeps.labPack`). */
+export interface LabPack {
+  curriculum: { text: string };
+  /** One entry per objective: the matched section's facts as plain lines, or `undefined`. */
+  referencesFor: (objectives: { text: string }[]) => Promise<(string | undefined)[]>;
+}
+
 export interface PipelineDeps {
   ai: CreatedAi;
   budget: Budget;
@@ -129,6 +136,12 @@ export interface PipelineDeps {
   /** Element and block ids; `uid()` in production, a counter in tests. */
   ids: () => string;
   sources: SourceLoader;
+  /**
+   * Lab only (l6kp2, knowledge packs): a topic pack's outcomes as the curriculum extract when the
+   * lesson has no source, and per objective the pack section's facts as the teach call's reference
+   * text (`plan-teach-objective`'s own slot). Production never sets it.
+   */
+  labPack?: LabPack | undefined;
   /**
    * Write the documents as they stand (ADR 0025 §6, §7) and return the lesson's new `updatedAt`,
    * which the next `onProgress` carries so the read-only editor knows to refetch.
