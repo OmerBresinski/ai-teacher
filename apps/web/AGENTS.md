@@ -49,7 +49,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
   apply — this is a Vite SPA.
 - Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
-  `a11y` rules are errors. Specs: `auth`, `library` (shell, cards, dialogs, keyboard-only flow,
+  `a11y` rules are errors. Specs: `auth` (magic link, and "Continue with Google" against an api
+  with Google off: `playwright.config.ts` blanks `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, which Bun
+  would otherwise load from `apps/api/.env`; TEACH-31), `library` (shell, cards, dialogs, keyboard-only flow,
   narrow viewport), `series` (detail page incl. real-pointer drag), `viewer`, `present`, `editor`
   (canvas drag/snap/resize, navigator reorder, autosave, the TeachDeck geometry checks),
   `editor-text` (double-click to edit, Escape commits, toolbar, option label, Why? panel),
@@ -81,7 +83,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
   editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
   the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
-  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252).
+  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert.
   `generation` runs a lesson end to end over the fake
   worker (`playwright.config.ts` sets `AI_FAKE_SCRIPT=pipeline` and `AI_FAKE_DELAY_MS=250` on the
   e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal

@@ -233,6 +233,19 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 413,
     },
     {
+      // 404 PROVIDER_NOT_FOUND means the api has no GOOGLE_CLIENT_ID/SECRET, and every teacher who
+      // clicks "Continue with Google" is told it is not set up (TEACH-31). `disableRedirect` only
+      // makes the answer `{ url, redirect: false }`; no browser follows it. Spends one of the three
+      // `/sign-in*` requests better-auth's rate limiter allows per 10 s.
+      name: "google sign-in is configured in production",
+      method: "POST",
+      path: "/auth/sign-in/social",
+      headers: { ...browser, "Content-Type": "application/json" },
+      body: () =>
+        JSON.stringify({ provider: "google", callbackURL: `${webOrigin}/`, disableRedirect: true }),
+      expect: 200,
+    },
+    {
       // CORS runs before routing, so a preflight is answered for any path — including one that is
       // not mounted (TEACH-81). What this asserts is the allow headers a credentialed JSON POST
       // needs; 204 alone would pass while the browser still blocks the request.

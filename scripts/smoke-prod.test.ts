@@ -38,6 +38,13 @@ function fakeApi(): typeof fetch {
     ) {
       return new Response("too large", { status: 413 });
     }
+    // TEACH-31: better-auth answers 404 PROVIDER_NOT_FOUND for a provider it has no credentials for.
+    if (url.pathname === "/auth/sign-in/social") {
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : {};
+      return body.provider === "google"
+        ? Response.json({ url: "https://accounts.google.com/o/oauth2/v2/auth", redirect: false })
+        : Response.json({ code: "PROVIDER_NOT_FOUND" }, { status: 404 });
+    }
     // TEACH-81: the dev-only ping routes answer 404 before the session guard in production.
     if (url.pathname === "/jobs/ai-ping" || url.pathname === "/jobs/ping") {
       return new Response("not found", { status: 404 });
@@ -50,7 +57,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(24);
+    expect(results.length).toBe(25);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
@@ -74,7 +81,20 @@ describe("smoke-prod", () => {
       "/images/report",
       "/sources",
       "/auth/sign-in/magic-link",
+      "/auth/sign-in/social",
     ]);
+  });
+
+  test("the google case fails when production has no google credentials (TEACH-31)", async () => {
+    const noGoogle: typeof fetch = (async (input, init) => {
+      if (new URL(String(input)).pathname === "/auth/sign-in/social") {
+        return Response.json({ code: "PROVIDER_NOT_FOUND" }, { status: 404 });
+      }
+      return fakeApi()(input, init);
+    }) as typeof fetch;
+    const results = await runSmoke("https://api.example.test", smokeCases(WEB), noGoogle);
+    const failed = results.filter((r) => !r.ok);
+    expect(failed.map((r) => [r.path, r.actual])).toEqual([["/auth/sign-in/social", 404]]);
   });
 
   test("the multipart case sends a real FormData and no manual Content-Type (ADR 0027 §5)", async () => {
