@@ -163,7 +163,7 @@
   color: inherit;
   box-shadow: inset 0 -7px #ecc65177;
 }
-/* Scroll starts the arrival once. The drum then taps twice and rests. */
+/* Scroll starts the arrival once. Opening beats ease into a continuous gentle rhythm. */
 .materials-started .materials-slide {
   animation: materials-slide-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -173,20 +173,27 @@
 .materials-started .materials-answer-key {
   animation: materials-key-in 0.9s 1.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+/* Identical poses at every beat boundary; the opening slows into the same cycle. */
+.materials-stick {
+  transform: rotate(18deg);
+}
+.materials-started .materials-stick,
+.materials-started .materials-drum-body,
+.materials-started .materials-waves {
+  animation-duration: 0.65s, 0.9s, 1.25s, 1.6s;
+  animation-delay: 0.6s, 1.25s, 2.15s, 3.4s;
+  animation-iteration-count: 1, 1, 1, infinite;
+  animation-timing-function: ease-in-out;
+}
 .materials-started .materials-stick {
-  animation:
-    materials-opening-taps 1.4s 0.6s ease-in-out both,
-    materials-tap 2.8s 2s ease-in-out infinite;
+  animation-name: materials-tap, materials-tap, materials-tap, materials-tap;
 }
 .materials-started .materials-drum-body {
-  animation:
-    materials-opening-vibration 1.4s 0.6s ease-out both,
-    materials-vibration 2.8s 2s ease-out infinite;
+  animation-name:
+    materials-vibration, materials-vibration, materials-vibration, materials-vibration;
 }
 .materials-started .materials-waves {
-  animation:
-    materials-opening-ripples 1.4s 0.6s ease-out both,
-    materials-ripple 2.8s 2s ease-out infinite;
+  animation-name: materials-ripple, materials-ripple, materials-ripple, materials-ripple;
 }
 .materials-paused * {
   animation-play-state: paused !important;
@@ -233,141 +240,54 @@
     scale: 1;
   }
 }
+/* The tip touches the skin at 36%; vibration and sound follow that contact. */
 @keyframes materials-tap {
   0%,
-  6%,
-  25%,
   100% {
+    transform: rotate(18deg);
+  }
+  18% {
+    transform: rotate(23deg);
+  }
+  36% {
     transform: rotate(0deg);
   }
-  10%,
-  29% {
+  53% {
     transform: rotate(12deg);
-  }
-  15%,
-  34% {
-    transform: rotate(-5deg);
-  }
-  20%,
-  39% {
-    transform: rotate(0deg);
   }
 }
 @keyframes materials-vibration {
   0%,
-  14%,
-  22%,
-  33%,
-  41%,
+  35%,
+  60%,
   100% {
     transform: translateX(0);
   }
-  15%,
-  34% {
-    transform: translateX(1.8px);
-  }
-  17%,
-  36% {
-    transform: translateX(-1.4px);
-  }
-  19%,
   38% {
-    transform: translateX(0.7px);
+    transform: translateX(1.3px);
+  }
+  43% {
+    transform: translateX(-1px);
+  }
+  49% {
+    transform: translateX(0.5px);
   }
 }
+/* Fixed arcs brighten after impact. No expanding/contracting balloon effect. */
 @keyframes materials-ripple {
   0%,
+  35%,
   100% {
-    opacity: 0.22;
-    transform: scale(0.96);
+    opacity: 0.12;
   }
-  13% {
-    opacity: 0.32;
-    transform: scale(0.98);
+  43% {
+    opacity: 0.7;
   }
-  16%,
-  35% {
-    opacity: 0.85;
-    transform: scale(1);
+  65% {
+    opacity: 0.3;
   }
-  27%,
-  48% {
-    opacity: 0.22;
-    transform: scale(1.045);
-  }
-  70% {
-    opacity: 0.38;
-    transform: scale(1.015);
-  }
-}
-@keyframes materials-opening-taps {
-  0% {
-    transform: rotate(0deg);
-  }
-  12%,
-  42%,
-  68% {
-    transform: rotate(22deg);
-  }
-  22%,
-  52%,
-  78% {
-    transform: rotate(-7deg);
-  }
-  32%,
-  62%,
-  90%,
-  100% {
-    transform: rotate(0deg);
-  }
-}
-@keyframes materials-opening-vibration {
-  0%,
-  21%,
-  31%,
-  51%,
-  61%,
-  77%,
-  89%,
-  100% {
-    transform: translateX(0);
-  }
-  22%,
-  52%,
-  78% {
-    transform: translateX(3px) scaleY(0.98);
-  }
-  25%,
-  55%,
-  81% {
-    transform: translateX(-2px);
-  }
-  28%,
-  58%,
   85% {
-    transform: translateX(1px);
-  }
-}
-@keyframes materials-opening-ripples {
-  0%,
-  20%,
-  50%,
-  77%,
-  100% {
-    opacity: 0.18;
-    transform: scale(0.94);
-  }
-  23%,
-  53%,
-  80% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  40%,
-  70%,
-  97% {
-    opacity: 0.18;
-    transform: scale(1.1);
+    opacity: 0.12;
   }
 }
 @media (max-width: 1000px) and (min-width: 701px) {
