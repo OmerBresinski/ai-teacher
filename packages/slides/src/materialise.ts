@@ -518,13 +518,18 @@ export function shapeFallback(spec: SlideSpec, slide: Slide): ContentShape | und
 
 /**
  * What a compare or a sequence reads as when its cards cannot be placed: the lead plus dot points
- * (`structure.ts` falls back to it), so no line of the spec is lost with the component.
+ * (`structure.ts` falls back to it), so no line of the spec is lost with the component. A side's
+ * points join as sentences when they are sentences ("released. Ariel asks"), else with "; ".
  */
 export function shapeFallbackPoints(spec: ContentSpec): string[] | undefined {
   if (spec.compare) {
-    return [spec.compare.left, spec.compare.right].map(
-      (side) => `${side.label}: ${side.points.join("; ")}`,
-    );
+    return [spec.compare.left, spec.compare.right].map((side) => {
+      const points = side.points.map((p) => p.trim());
+      const joined = points
+        .map((p, i) => (i < points.length - 1 && !/[.!?"”]$/.test(p) ? `${p};` : p))
+        .join(" ");
+      return `${side.label}: ${joined}`;
+    });
   }
   if (spec.steps?.length) return spec.steps;
   return spec.points;

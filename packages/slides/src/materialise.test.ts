@@ -33,6 +33,7 @@ import {
   type IdSupplier,
   materialiseBlock,
   materialiseSlide,
+  shapeFallbackPoints,
   splitAtFullStop,
   vocabularySlots,
 } from "./materialise";
@@ -1118,5 +1119,36 @@ describe("materialiseSlide with a callout (UX ruling 84)", () => {
     const b = materialiseSlide(spec, "chalk", meta, counter(), "headed");
     expect(a).toEqual(b);
     for (const el of a.elements.filter(isCalloutElement)) expect(el.id).toMatch(/^e\d+$/);
+  });
+});
+
+describe("shapeFallbackPoints", () => {
+  const compare = (left: string[], right: string[]) =>
+    ({
+      kind: "content",
+      heading: "Promises and threats",
+      body: "Prospero secures obedience in two ways.",
+      compare: {
+        left: { label: "Ariel", points: left },
+        right: { label: "Caliban", points: right },
+      },
+      factRefs: [],
+    }) as never;
+
+  test("a compare side's sentences join as sentences, not with a stray semicolon", () => {
+    expect(
+      shapeFallbackPoints(
+        compare(["He hopes to be released.", "Prospero promises freedom."], ["He is threatened."]),
+      ),
+    ).toEqual([
+      "Ariel: He hopes to be released. Prospero promises freedom.",
+      "Caliban: He is threatened.",
+    ]);
+  });
+
+  test("phrases without a full stop still join with a semicolon", () => {
+    expect(
+      shapeFallbackPoints(compare(["hopes for freedom", "serves willingly"], ["fear"])),
+    ).toEqual(["Ariel: hopes for freedom; serves willingly", "Caliban: fear"]);
   });
 });
