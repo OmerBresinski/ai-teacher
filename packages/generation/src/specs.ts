@@ -890,10 +890,6 @@ export function keptPhoto(k: KeyIdeaLayout): { subject: string; mustShow?: strin
 }
 
 /**
- * The image brief a content slide carries (look/image-slot): the first photograph its key ideas
- * ask for, as a `context` picture. None when any of them has a drawing: the drawing takes the room.
- */
-/**
  * The Figure template a content slide's planned drawing matches, as a diagram entry's
  * `figureBrief` (look/slides-pr): a key idea's `visual` that names a reaction profile or a
  * right-angled triangle is a figure the code can draw (ADR 0032). Only when the slide also covers
@@ -922,6 +918,10 @@ export function contentFigureBrief(
   return undefined;
 }
 
+/**
+ * The image brief a content slide carries (look/image-slot): the first photograph its key ideas
+ * ask for, as a `context` picture. None when any of them has a drawing: the drawing takes the room.
+ */
 export function contentPhotoBrief(
   ideas: readonly KeyIdeaLayout[],
 ): { subject: string; mustShow: string[]; purpose: "context" } | undefined {
