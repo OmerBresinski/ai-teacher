@@ -22,6 +22,7 @@ export {
   getTheme,
   LAYOUT_CATALOGUE,
   materialiseSlide,
+  materialiseSlides,
   variantsFor,
 } from "@tj/slides";
 export { demoWorksheet } from "./model/demo-worksheet";

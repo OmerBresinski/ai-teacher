@@ -1602,7 +1602,7 @@ function listDoc(lead: string, items: string[]): RichDoc {
 }
 
 /** The room a teaching slide keeps beside its words: a diagram slot or a photo slot (look/image-slot). */
-const isSlot = (e: SlideElement) => e.name === DIAGRAM_NAME || e.name === PHOTO_NAME;
+export const isSlot = (e: SlideElement) => e.name === DIAGRAM_NAME || e.name === PHOTO_NAME;
 
 /**
  * A teaching slide with a diagram or photo slot: the words keep the left column and the slot the right,
@@ -1651,23 +1651,17 @@ export function alternateSlotSides(slides: readonly Slide[]): Slide[] {
   });
 }
 
-/** The slide with its slot on the other side. */
-export function swapSlotSide(slide: Slide): Slide {
-  const side = slotSideOf(slide);
-  return side === undefined ? slide : slotSide(slide, side === "left" ? "right" : "left");
-}
-
 /**
- * The side a teaching slide's photo goes to when the editor drops it `dx` along (R2): the other
- * side once the picture's centre has crossed the slide's midline, else `undefined` (an ordinary
- * move). Only the photo slot, placed or open, swaps this way.
+ * The side a teaching slide's slot goes to when the editor drops it `dx` along (R2): the other
+ * side once its centre has crossed the slide's midline, else `undefined` (an ordinary move). Only
+ * the slot itself swaps this way: the photo, open or placed, or the diagram zone (or its figure).
  */
 export function slotSideOnDrop(slide: Slide, id: string, dx: number): SlotSide | undefined {
   const side = slotSideOf(slide);
-  const photo = slide.elements.find((e) => e.id === id && e.name === PHOTO_NAME);
-  if (!side || !photo) return undefined;
+  const slot = slide.elements.find((e) => e.id === id && isSlot(e));
+  if (!side || !slot) return undefined;
   const mid = SAFE.x + SAFE.w / 2;
-  const centre = photo.x + photo.w / 2 + dx;
+  const centre = slot.x + slot.w / 2 + dx;
   if (side === "left" && centre > mid) return "right";
   if (side === "right" && centre < mid) return "left";
   return undefined;
