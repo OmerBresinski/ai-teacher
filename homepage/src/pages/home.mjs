@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { appHref, arrowIcon, cta, sectionHead, textLink } from "../components.mjs";
 import { examples } from "../examples-data.mjs";
 import { heroCharacter } from "../hero-artwork.mjs";
@@ -43,31 +45,33 @@ const topLessons = examples.length
 </section>`
   : "";
 
-const steps = [
-  [
-    "Say what you’re teaching.",
-    "A year group and a topic is enough. Add what the class already knows, or start from your own file.",
-  ],
-  [
-    "Get the whole lesson, checked.",
-    "Slides with your notes, a worksheet and its answer key, checked against each other before you open them.",
-  ],
-  [
-    "Make it yours.",
-    "Change anything. Then present from the browser, or export to PowerPoint, PDF or Word.",
-  ],
-];
+// How it works: the idea on the left, the Slides character and three short lines on the right.
+// The character is the original artwork at rest; how-it-works.js plays its entrance once.
+const slidesArtwork = (() => {
+  const context = { window: {} };
+  vm.runInNewContext(
+    readFileSync(new URL("../../motion/characters.js", import.meta.url), "utf8"),
+    context,
+  );
+  return context.window.characters.slides;
+})();
 
 const howItWorks = `
-<section class="section section-ruled hm-steps" aria-labelledby="steps-title">
-  <div class="container">
-    ${sectionHead({ id: "steps-title", title: "One line in.<br>The whole lesson out." })}
-    <ol class="hm-step-list">${steps
-      .map(
-        ([title, body], index) =>
-          `<li><span class="hm-step-number" aria-hidden="true">0${index + 1}</span><h3>${title}</h3><p>${body}</p></li>`,
-      )
-      .join("")}</ol>
+<section class="section section-ruled hm-hiw" aria-labelledby="steps-title" data-hiw>
+  <div class="container hm-hiw-grid">
+    ${sectionHead({
+      id: "steps-title",
+      eyebrow: "How it works",
+      title: "Your idea.<br><span>Your lesson.</span><br>Your call.",
+    })}
+    <div class="hm-hiw-side" data-hiw-side>
+      <div class="hm-hiw-stage" aria-hidden="true">
+        <div class="hm-hiw-shadow"></div>
+        <div class="hm-hiw-actor" data-hiw-actor>${slidesArtwork}</div>
+      </div>
+      <p class="hm-hiw-lines">Give us a topic.<br>Get a complete lesson.<br><strong>Change anything.</strong></p>
+      <p class="hm-hiw-closing">Then present or export.</p>
+    </div>
   </div>
 </section>`;
 
@@ -87,7 +91,12 @@ const home = {
   title: "DayBack | Outstanding lessons, without losing your evening",
   description:
     "Type what you’re teaching. DayBack writes the slides, the worksheet and the answer key, checks they agree with each other, then hands them to you.",
-  scripts: ["/assets/hero-motion.js", "/assets/proof.js"],
+  scripts: [
+    "/assets/hero-motion.js",
+    "/assets/proof.js",
+    "/motion/flipbook.js",
+    "/assets/how-it-works.js",
+  ],
   body: hero + lessonProof + topLessons + howItWorks + faq + cta({ home: true }),
 };
 

@@ -15,32 +15,149 @@
   margin-bottom: 0;
 }
 
-/* How it works. */
-.hm-step-list {
+/* How it works: the idea on the left, the Slides character and three lines on the right. The
+   finished layout is the markup; how-it-works.js adds hiw-armed, then hiw-playing on entrance. */
+.hm-hiw {
+  overflow: clip;
+}
+.hm-hiw-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(1.5rem, 4vw, 4rem);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-columns: 1.2fr 1fr;
+  column-gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
 }
-.hm-step-list li {
-  min-width: 0;
+.hm-hiw .section-head {
+  margin-bottom: 0;
 }
-.hm-step-number {
+.hm-hiw h2 {
+  font-size: clamp(3.25rem, 6.6vw, 6rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  max-width: none;
+}
+.hm-hiw h2 span {
+  color: var(--sage-dark);
+}
+.hm-hiw-side {
+  position: relative;
+  padding-left: clamp(0rem, 3.5vw, 3rem);
+}
+.hm-hiw-stage {
+  position: relative;
+  height: 250px;
+}
+.hm-hiw-actor {
+  position: absolute;
+  top: -5px;
+  left: -13px;
+  width: 230px;
+  color: var(--ink);
+}
+.hm-hiw-actor svg {
   display: block;
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
+  width: 100%;
+  overflow: visible;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.hm-hiw-actor .mouth,
+.flipbook-frame {
+  visibility: hidden;
+}
+.hm-hiw-shadow {
+  position: absolute;
+  left: 40px;
+  top: 200px;
+  width: 130px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgb(41 59 50 / 0.08);
+  filter: blur(3px);
+}
+.hm-hiw-lines {
+  font-size: clamp(1.25rem, 1.9vw, 1.5625rem);
+  line-height: 1.55;
+}
+.hm-hiw-lines strong {
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--yellow);
+  text-decoration-thickness: 5px;
+  text-underline-offset: 5px;
+}
+.hm-hiw-closing {
+  margin-top: 1.5rem;
   color: var(--muted);
 }
-.hm-step-list h3 {
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  margin: 0.75rem 0 0.6rem;
+.hiw-armed .hm-hiw-actor .body,
+.hiw-armed .hm-hiw-shadow,
+.hiw-armed .hm-hiw-lines,
+.hiw-armed .hm-hiw-closing {
+  opacity: 0;
 }
-.hm-step-list p {
-  color: var(--muted);
-  line-height: 1.6;
+.hiw-armed h2 span {
+  color: var(--ink);
+}
+.hiw-playing h2 span {
+  animation: hiw-colour 0.7s 0.55s both;
+}
+.hiw-playing .hm-hiw-lines,
+.hiw-playing .hm-hiw-closing {
+  animation: hiw-copy 0.55s 0.8s both;
+}
+@keyframes hiw-colour {
+  from {
+    color: var(--ink);
+  }
+  to {
+    color: var(--sage-dark);
+  }
+}
+@keyframes hiw-copy {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 950px) {
+  .hm-hiw-grid {
+    grid-template-columns: 1fr;
+    row-gap: 1.75rem;
+  }
+  .hm-hiw h2 {
+    font-size: clamp(3.25rem, 14vw, 5rem);
+  }
+  .hm-hiw-side {
+    padding: 1.5rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .hm-hiw-stage {
+    height: 185px;
+  }
+  .hm-hiw-actor {
+    top: 5px;
+    left: 0;
+    width: 175px;
+  }
+  .hm-hiw-shadow {
+    top: 163px;
+    left: 38px;
+    width: 105px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hiw-playing h2 span,
+  .hiw-playing .hm-hiw-lines,
+  .hiw-playing .hm-hiw-closing {
+    animation: none;
+  }
 }
 
 /* FAQ: heading on the left, answers on the right. */
@@ -62,12 +179,6 @@
 @media (max-width: 950px) {
   .hm-faq-grid {
     grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 760px) {
-  .hm-step-list {
-    grid-template-columns: 1fr;
-    gap: 2rem;
   }
 }
 
