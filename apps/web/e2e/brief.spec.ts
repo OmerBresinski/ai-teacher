@@ -16,7 +16,7 @@ test.describe("lesson brief", () => {
     await page.goto("/lessons");
     await page.getByRole("button", { name: "New lesson" }).click();
     await expect(page).toHaveURL(/\/lessons\/new$/);
-    await expect(page).toHaveTitle("New lesson · Teaching Journey");
+    await expect(page).toHaveTitle("New lesson · DayBack");
     await expect(page.getByRole("navigation", { name: "Library" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Topic or objective" })).toBeFocused();
     const planIt = page.getByRole("button", { name: "Plan it" });

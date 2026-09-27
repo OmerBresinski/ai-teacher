@@ -168,7 +168,7 @@ test.describe("library shell", () => {
   }) => {
     await page.goto("/lessons");
     await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
-    await expect(page).toHaveTitle("Lessons · Teaching Journey");
+    await expect(page).toHaveTitle("Lessons · DayBack");
     // Hover preloads run loaders but must not move the return target (committed navigations only).
     await page.getByRole("link", { name: /^Worksheets\b/ }).hover();
     await page.waitForTimeout(300);
@@ -176,7 +176,7 @@ test.describe("library shell", () => {
     // The editor (TEACH-103) owns `/l/*`; the stub remains on `/w/*` until phase D.
     await expect(page.getByRole("listbox", { name: "Slides" })).toBeVisible();
     // Route `head()` reads the loader's document.
-    await expect(page).toHaveTitle("The water cycle · Teaching Journey");
+    await expect(page).toHaveTitle("The water cycle · DayBack");
     await expect(page.getByRole("navigation", { name: "Library" })).not.toBeVisible();
     await page.getByLabel("Back to library").click();
     await expect(page).toHaveURL(/\/lessons$/);

@@ -25,7 +25,7 @@ test.describe("worksheet print route", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(paths.worksheet("fraction-practice", "/print"));
-    await expect(page).toHaveTitle("Fractions practice · Teaching Journey");
+    await expect(page).toHaveTitle("Fractions practice · DayBack");
     const pages = page.locator(".ws-print-root .ws-page");
     await expect(pages.first()).toBeVisible();
     // Pages appear once measured; the count settles when the fonts are in.

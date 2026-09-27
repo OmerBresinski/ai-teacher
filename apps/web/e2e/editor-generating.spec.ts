@@ -68,7 +68,7 @@ test.describe("generating lesson", () => {
     await expect(bar.getByRole("button", { name: "Stop" })).toHaveCount(1);
     await expect(bar.locator(".bg-primary-fill")).toHaveCount(0);
     await expect(page.locator("progress")).toHaveCount(0);
-    await expect(page).toHaveTitle("The water cycle · Teaching Journey");
+    await expect(page).toHaveTitle("The water cycle · DayBack");
 
     const rail = page.getByRole("navigation", { name: "Slides" });
     await expect(rail.locator("[data-slide-thumb]")).toHaveCount(3);

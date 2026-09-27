@@ -16,7 +16,7 @@ export function KitPage() {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    document.title = "Kit · Teaching Journey";
+    document.title = "Kit · DayBack";
   }, []);
 
   return (

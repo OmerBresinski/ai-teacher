@@ -27,7 +27,7 @@ test.describe("worksheet creation", () => {
     await page.goto("/worksheets");
     await page.getByRole("button", { name: "New worksheet" }).click();
     await expect(page).toHaveURL(/\/worksheets\/new$/);
-    await expect(page).toHaveTitle("New worksheet · Teaching Journey");
+    await expect(page).toHaveTitle("New worksheet · DayBack");
     await expect(page.getByRole("heading", { level: 1, name: "New worksheet" })).toBeVisible();
     const lessons = page.getByRole("list", { name: "Recent lessons" }).locator(":scope > li");
     await expect(lessons).toHaveCount(10);

@@ -17,7 +17,7 @@ describe("magicLinkMail", () => {
     const escaped = url.replaceAll("&", "&amp;");
     expect(html.split(`href="${escaped}"`)).toHaveLength(2);
     expect(html).not.toContain(`href="${url}"`);
-    expect(html).toContain("Sign in to Teaching Journey");
+    expect(html).toContain("Sign in to DayBack");
     expect(html).toContain('<meta charset="utf-8">');
     expect(html).toContain('src="https://api.test/mail-assets/arrow-up-right.png"');
   });
