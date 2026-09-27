@@ -8,9 +8,9 @@ vm.runInNewContext(
 );
 const originals = context.window.characters;
 
-import { appUrl, base } from "../config.mjs";
+import { appUrl, base, indexable, siteUrl } from "../config.mjs";
 
-export { appUrl, base };
+export { appUrl, base, indexable, siteUrl };
 export const href = (route = "/") =>
   route.startsWith("#") ? route : `${base}${route.startsWith("/") ? "" : "/"}${route}`;
 // Links into the application. Internal `href()` links stay inside the static site.
@@ -56,6 +56,51 @@ export function pageHero({ eyebrow = "", title, description = "", character: kin
 export function cta({ home = false, secondary = "" } = {}) {
   return `<section class="section closing-block" aria-labelledby="closing-title"><div class="container closing-inner"><div><h2 id="closing-title">Start with the lesson<br>you’re teaching tomorrow.</h2><p>A year group and a topic is enough.</p><div class="actions">${createButton(home)}${secondary}</div></div>${character("answers")}</div></section>`;
 }
+// Pages that are never indexed or listed in the sitemap, whatever the build flags say.
+export const unlisted = new Set(["/404/"]);
+/** Absolute public URL of a route on the production site (canonical, og:url, sitemap). */
+export const canonicalUrl = (route) => `${siteUrl}${route}`;
+/** The indexing, canonical and social metadata for one page. */
+export function headMeta(page) {
+  const listed = !unlisted.has(page.route);
+  const robots =
+    indexable && listed && !page.provisional
+      ? ""
+      : '<meta name="robots" content="noindex,nofollow">';
+  if (!listed) return robots;
+  const url = canonicalUrl(page.route);
+  const title = escapeHtml(page.title);
+  const description = escapeHtml(page.description);
+  const social = [
+    ["og:type", "website"],
+    ["og:site_name", "DayBack"],
+    ["og:locale", "en_GB"],
+    ["og:url", url],
+    ["og:title", title],
+    ["og:description", description],
+  ]
+    .map(([property, content]) => `<meta property="${property}" content="${content}">`)
+    .join("");
+  // No share image exists yet, so the card is the text-only summary rather than an empty image.
+  const card = `<meta name="twitter:card" content="summary"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}">`;
+  const structured =
+    page.route === "/"
+      ? `<script type="application/ld+json">${JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "DayBack",
+              legalName: legalEntity,
+              url: `${siteUrl}/`,
+              email: contactEmail,
+            },
+            { "@type": "WebSite", name: "DayBack", url: `${siteUrl}/` },
+          ],
+        }).replaceAll("<", "\\u003c")}</script>`
+      : "";
+  return `${robots}<link rel="canonical" href="${url}">${social}${card}${structured}`;
+}
 export function shell(page) {
   const home = page.route === "/";
   const nav = [
@@ -78,5 +123,5 @@ export function shell(page) {
   ];
   const link = ([label, target]) =>
     `<a href="${target}"${page.route !== "/" && target === href(page.route) ? ' aria-current="page"' : ""}>${label}</a>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(page.title)}</title><meta name="description" content="${escapeHtml(page.description)}"><link rel="icon" href="${href("/assets/favicon.svg")}" type="image/svg+xml"><link rel="stylesheet" href="${href("/assets/system.css")}">${["home", "examples", "information"].map((n) => `<link rel="stylesheet" href="${href(`/assets/${n}.css`)}">`).join("")}<link rel="stylesheet" href="${href("/motion/cast.css")}"></head><body data-living-cast><a class="skip" href="#main">Skip to content</a><header class="site-header container"><a class="brand" href="${href("/")}" aria-label="DayBack home">${brandMark}<span>DayBack</span></a><button class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu <span aria-hidden="true">+</span></button><nav id="main-nav" aria-label="Main navigation">${nav.map(link).join("")}<a class="nav-cta" href="${home ? "#start" : appHref("/lessons/new")}">Create a lesson<span aria-hidden="true">${arrowIcon}</span></a></nav></header><main id="main">${page.body}</main><footer class="site-footer"><div class="container"><div class="footer-top"><div><a class="brand" href="${href("/")}">${brandMark}<span>DayBack</span></a><p>Outstanding lessons.<br>Without losing your evening.</p></div><div class="footer-group"><h2>The product</h2>${footerProduct.map(link).join("")}</div><div class="footer-group"><h2>Trust</h2>${footerTrust.map(link).join("")}</div><div class="footer-group"><h2>Get in touch</h2><p>Questions, or a lesson that came out wrong?<br><a href="mailto:${contactEmail}">${contactEmail}</a></p></div></div><div class="footer-bottom"><span class="footer-legal">© 2026 ${legalEntity}</span></div></div></footer><script src="${href("/motion/vendor/gsap.min.js")}"></script><script src="${href("/motion/cast.js")}"></script><script src="${href("/assets/site.js")}"></script>${(page.scripts || []).map((src) => `<script src="${href(src)}"></script>`).join("")}</body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(page.title)}</title><meta name="description" content="${escapeHtml(page.description)}">${headMeta(page)}<link rel="icon" href="${href("/assets/favicon.svg")}" type="image/svg+xml"><link rel="stylesheet" href="${href("/assets/system.css")}">${["home", "examples", "information"].map((n) => `<link rel="stylesheet" href="${href(`/assets/${n}.css`)}">`).join("")}<link rel="stylesheet" href="${href("/motion/cast.css")}"></head><body data-living-cast><a class="skip" href="#main">Skip to content</a><header class="site-header container"><a class="brand" href="${href("/")}" aria-label="DayBack home">${brandMark}<span>DayBack</span></a><button class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu <span aria-hidden="true">+</span></button><nav id="main-nav" aria-label="Main navigation">${nav.map(link).join("")}<a class="nav-cta" href="${home ? "#start" : appHref("/lessons/new")}">Create a lesson<span aria-hidden="true">${arrowIcon}</span></a></nav></header><main id="main">${page.body}</main><footer class="site-footer"><div class="container"><div class="footer-top"><div><a class="brand" href="${href("/")}">${brandMark}<span>DayBack</span></a><p>Outstanding lessons.<br>Without losing your evening.</p></div><div class="footer-group"><h2>The product</h2>${footerProduct.map(link).join("")}</div><div class="footer-group"><h2>Trust</h2>${footerTrust.map(link).join("")}</div><div class="footer-group"><h2>Get in touch</h2><p>Questions, or a lesson that came out wrong?<br><a href="mailto:${contactEmail}">${contactEmail}</a></p></div></div><div class="footer-bottom"><span class="footer-legal">© 2026 ${legalEntity}</span></div></div></footer><script src="${href("/motion/vendor/gsap.min.js")}"></script><script src="${href("/motion/cast.js")}"></script><script src="${href("/assets/site.js")}"></script>${(page.scripts || []).map((src) => `<script src="${href(src)}"></script>`).join("")}</body></html>`;
 }

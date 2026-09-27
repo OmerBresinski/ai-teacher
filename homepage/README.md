@@ -19,7 +19,8 @@ bun run homepage:stage  # after a web build: copy homepage output into apps/web/
 `PORT=4187 bun homepage/serve.mjs` selects another local port. The default URL prefix is
 `/homepage`; `bun homepage/build.mjs --base=/` builds for a domain root if needed (pass the same
 `--base=/` to `check.mjs` and `serve.mjs`). `--app=https://…` overrides the application origin the
-hero posts to; it must be an absolute https URL and defaults to `https://app.bresinski.org`.
+hero posts to; it must be an absolute https URL and defaults to `https://teach.dayback.app`
+(`homepage:build` passes `https://app.bresinski.org` for the legacy staged copy).
 `--allow-provisional` lets the build emit a Top lesson whose assets are stand-ins. Output is
 in ignored `homepage/dist/`; never edit or commit generated HTML. No installation or network call
 is required to build this site. Scripts also work with Node.
@@ -93,6 +94,15 @@ flag is the whole swap.
 
 ## Deployment and verification
 
+**dayback.app (TEACH-78).** The public site is its own Vercel project rooted at `homepage/`,
+configured by `homepage/vercel.json` and built with the flags `bun scripts/vercel-env.ts site`
+resolves from `SITE_URL`, `SITE_APP_URL`, `SITE_INDEXING` and `SITE_ALLOW_PROVISIONAL`. A root
+build (`--base=/`) writes `robots.txt` and `sitemap.xml`; `--site=` sets the canonical and Open
+Graph origin (default `https://dayback.app`); `--index` drops the noindex (never with
+`--allow-provisional` or a prefixed base; the 404 page and stand-in examples stay noindex).
+`bun run homepage:check:site` builds and checks both root variants. URLs keep their trailing slash.
+
+The legacy copy below serves app.bresinski.org until the cutover.
 The existing `teaching-journey-web` Vercel project remains rooted at `apps/web`. Its build runs
 `homepage:stage` after the Vite build. No additional Vercel project, Railway service or secret is
 involved. `apps/web/scripts/vercel-ignore-build.sh` includes `homepage`, and CI checks homepage
