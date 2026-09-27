@@ -17,13 +17,14 @@ const theme = getTheme("chalk");
 let n = 0;
 const ids = () => `c${++n}`;
 
-/** 85 words, as the writer now sets a full explanation (59 to 92 words a teaching slide). */
+/** 99 words: more than one slide holds under the display heading (59 to 92 words a teaching slide). */
 const LONG = [
   "Roman towns brought new buildings and new ways of life to many parts of Britain.",
   "People could visit public bath houses and busy markets, and some lived in homes built in Roman styles.",
   "Towns were laid out on a grid of straight streets, with a forum at the centre for trade and meetings.",
   "Some pupils think Roman rule changed everyone's life in the same way, but this is wrong.",
   "The changes depended on where people lived and what they chose to adopt from Roman life.",
+  "Roads linked the towns, so soldiers, traders and news could travel quickly between them.",
 ].join(" ");
 /** Half as long again: more than two slides' worth. */
 const LONGER = [
@@ -31,6 +32,8 @@ const LONGER = [
   "Traders sold pottery, wine and olive oil brought from across the empire by road and by sea.",
   "Some Britons learned Latin, wore Roman clothes and worshipped Roman gods alongside their own.",
   "Others kept living in round houses in the countryside and farmed much as their families always had.",
+  "Villas with painted walls and mosaic floors showed how rich some families had become under Rome.",
+  "Most of the new wealth, though, stayed with the few who worked closely with the Roman rulers.",
 ].join(" ");
 
 const spec = (body: string, extra: Partial<SlideSpecOf<"content">> = {}): SlideSpec => ({
