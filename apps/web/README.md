@@ -168,7 +168,7 @@ on 2026-09-13, `lesson-editor` went to 321.1 KB and the check failed.
 | Chunk | Route | Measured (gz) | Ceiling |
 | ----- | ----- | ------------- | ------- |
 | `lesson-editor` | `/l/:id` | 200.9 KB | 241 KB |
-| `lesson-present` | `/l/:id/present` | 90.9 KB | 109 KB |
+| `lesson-present` | `/l/:id/present` | 111.3 KB (2026-09-27, TEACH-221) | 134 KB |
 | `lesson-view` | `/l/:id/view` | 75.8 KB | 91 KB |
 | `lesson-print` | `/l/:id/print` | 42.4 KB | 51 KB |
 | `worksheet-editor` | `/w/:id` | 155.5 KB | 187 KB |

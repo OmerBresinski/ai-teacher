@@ -138,7 +138,9 @@ export interface ChunkBudget {
 
 export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 241 },
-  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 109 },
+  // Re-pinned 2026-09-27 at 111.3 KB + 20% (TEACH-221: the triangle Figure template, which the
+  // present route reaches through `uid` → `factories.ts` → `layouts.ts`; TEACH-104 cuts that).
+  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 134 },
   { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 91 },
   { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 51 },
   { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 187 },
