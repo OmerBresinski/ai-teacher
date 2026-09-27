@@ -15,6 +15,7 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
+  detachCallout,
   imageTextSpecSchemaFor,
   isDiagramMark,
   type MaterialiseMeta,
@@ -67,6 +68,7 @@ import { BUDGET_FINDING, withUsage } from "./generate";
 import {
   audienceOf,
   blockText,
+  calloutStructure,
   figureOfEntry,
   generationOf,
   imageTextPhotoOf,
@@ -81,6 +83,7 @@ import {
   specFieldsCover,
   specFieldsOf,
   storedDiagramSchema,
+  withBudgetedCallout,
   withFactFigure,
   withImageCaption,
 } from "./shared";
@@ -517,9 +520,20 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
     extra.push(...outcome.findings);
     if (outcome.kind === "slide") {
       const original = base.slides[outcome.index] as Slide;
+      // The prompt caps a callout at one line; a repair that writes a longer one keeps the card
+      // the slide already showed, or goes without (`withBudgetedCallout`).
+      const spec = withBudgetedCallout(
+        outcome.spec,
+        lesson.themeId,
+        hasPhotoSlot(original),
+        deps.logger,
+        "repair",
+        outcome.index,
+        detachCallout(original).callout?.spec,
+      );
       // A rewrite too long for one slide continues on the next (UX ruling 91), as in Generate.
       const [first, ...rest] = materialiseSlides(
-        withImageCaption(outcome.spec, base.facts?.outline[outcome.entryIndex]),
+        withImageCaption(spec, base.facts?.outline[outcome.entryIndex]),
         lesson.themeId,
         meta(outcome.modelId, deps),
         deps.ids,
@@ -532,11 +546,12 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           })),
           // The slot only where the slide still has one: illustrate may have dropped a repeated
           // subject's slot, and a rewrite must not bring it back.
+          ...calloutStructure(spec),
           ...(hasPhotoSlot(original)
             ? {
                 ...photoStructure(
                   base.facts?.outline[outcome.entryIndex],
-                  outcome.spec,
+                  spec,
                   deps.logger,
                   "repair",
                   outcome.index,
@@ -549,7 +564,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         (note) => deps.logger.warn({ stage: "repair", index: outcome.index }, note),
       );
       const fresh: Slide = keepPhoto(original, { ...(first as Slide), id: original.id });
-      logShapeFallback(deps.logger, "repair", outcome.index, outcome.spec, fresh);
+      logShapeFallback(deps.logger, "repair", outcome.index, spec, fresh);
       // By id: an earlier outcome that continued onto a new slide has moved every later position.
       lesson = {
         ...lesson,

@@ -58,6 +58,7 @@ import { stemPlan } from "./question-pool";
 import {
   audienceOf,
   BUDGET_FINDING,
+  calloutStructure,
   figureOfEntry,
   generationOf,
   logShapeFallback,
@@ -65,6 +66,7 @@ import {
   planClassFor,
   runBounded,
   shapeOf,
+  withBudgetedCallout,
   withFactFigure,
   withImageCaption,
 } from "./shared";
@@ -297,7 +299,22 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         "slide shape",
       );
     }
-    const spec = shaped.spec;
+    const photoHints = photoStructure(
+      entry,
+      shaped.spec,
+      deps.logger,
+      "generate",
+      i,
+      builtFrom.outline,
+    );
+    const spec = withBudgetedCallout(
+      shaped.spec,
+      lesson.themeId,
+      photoHints.photo !== undefined,
+      deps.logger,
+      "generate",
+      i,
+    );
     // The lesson's vocabulary is picked out in the slide's running text (structure.ts key terms).
     // A teaching slide whose words do not fit at or above the body floor is materialised as the
     // slides it needs (UX ruling 91), so Evaluate and Repair check what the class will see.
@@ -310,7 +327,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       {
         terms: builtFrom.vocabulary.map((v) => v.term),
         glossary: builtFrom.vocabulary.map((v) => ({ term: v.term, definition: v.definition })),
-        ...photoStructure(entry, spec, deps.logger, "generate", i, builtFrom.outline),
+        ...photoHints,
+        ...calloutStructure(spec),
       },
       (note) => deps.logger.warn({ stage: "generate", call: "slide", index: i }, note),
     );

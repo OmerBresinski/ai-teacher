@@ -1041,6 +1041,23 @@ describe("planFactsSchemaFor", () => {
     });
   });
 
+  test("contentPhotoBrief: a callout or a photo, never both where only one fits (PR 2)", () => {
+    const photo = { subject: "Flood barrier" };
+    const brief = {
+      subject: "Flood barrier",
+      mustShow: [] as string[],
+      purpose: "context" as const,
+    };
+    expect(contentPhotoBrief([{ shape: "list", photo }])).toEqual(brief);
+    // A list beside a photograph keeps no card: the planned callout wins.
+    expect(contentPhotoBrief([{ shape: "list", photo }], true)).toBeUndefined();
+    // An explain keeps both (the card's room beside a photograph is measured).
+    expect(contentPhotoBrief([{ shape: "explain", photo }], true)).toEqual(brief);
+    // A compare or a sequence is full width: no photograph planned, with or without a callout.
+    expect(contentPhotoBrief([{ shape: "compare", photo }])).toBeUndefined();
+    expect(contentPhotoBrief([{ shape: "sequence", photo }])).toBeUndefined();
+  });
+
   test("every objective is served by a key idea and checked by a question; tiers have their minimums", () => {
     const f = facts();
     for (const k of f.keyIdeas) k.objectiveRefs = [O(0)];

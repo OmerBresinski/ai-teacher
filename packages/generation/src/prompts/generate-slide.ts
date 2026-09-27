@@ -227,6 +227,10 @@ import {
  * plainly ("Roman changes affected everyone equally."), which reads as true off the card; the line
  * now asks for it negated with "not". A point's word count includes its label: a 10-word point
  * against a 9-word target dropped the Romans card.
+ *
+ * v34 (same day, code only): the callout line's numbers come from `CALLOUT_BUDGETS` re-measured
+ * with real words and a 60-character card (explain beside a photograph 12 + 7, a list across the
+ * measure 10 + two points of 8). Wording and system text unchanged, so the pinned hash did not move.
  */
 
 /** The drawing types a `diagram` instruction opens with; anything else is dropped (`keptDiagram`). */
@@ -549,7 +553,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v33",
+  version: "generate-slide.v34",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",

@@ -1076,8 +1076,20 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         })
         .join(" "),
     );
+  // A compare or a sequence has no room for a callout's card under its cards or steps
+  // (`CALLOUT_BUDGETS`, measured with real words), so its slide plans none (PR 2): its
+  // misconception is left for a discussion (P7), never planned and then dropped at render.
+  const roomless = (s: Slot) => {
+    const ks = s.keyIdeas ?? [];
+    const shape =
+      ks.length === 1
+        ? (facts.keyIdeas[ks[0] ?? 0] as { shape?: string } | undefined)?.shape
+        : undefined;
+    return shape === "compare" || shape === "sequence";
+  };
   const watchOutFor = (i: number, used: ReadonlySet<number>): number | undefined => {
     const slot = slots[i] as Slot;
+    if (roomless(slot)) return undefined;
     const later = slots.filter(
       (s, j) => j > i && s.kind === "content" && s.primary === slot.primary,
     );
@@ -1527,6 +1539,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
         const watch = watchOutFor(i, usedMisconceptions);
+        if (roomless(slot)) break;
         if (watch !== undefined) {
           usedMisconceptions.add(watch);
           callouts[position] = {

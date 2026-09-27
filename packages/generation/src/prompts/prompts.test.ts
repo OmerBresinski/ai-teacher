@@ -246,7 +246,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v32: the callout's room across the measure, a 9-word callout, the watch-out names the
     // mistake, two points beside a photograph (user turn only).
     // v33: the watch-out negated with "not"; a point's words include its label (user turn only).
-    version: "generate-slide.v33",
+    // v34: the callout room re-measured with real words (user turn numbers only).
+    version: "generate-slide.v34",
     hash: "777da3fd84e1cf8e75f2db14354ea663219f8a51d9bb3fc82afaabb79bcbc866",
   },
   "generate-worksheet": {
@@ -281,7 +282,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v18: generate-slide v31's line (user turn only).
     // v19: generate-slide v32's line (user turn only).
     // v20: generate-slide v33's line (user turn only).
-    version: "repair.v20",
+    // v21: generate-slide v34's line (user turn only).
+    version: "repair.v21",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {

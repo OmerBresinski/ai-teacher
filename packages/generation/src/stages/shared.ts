@@ -14,10 +14,12 @@ import {
 } from "@tj/domain/documents";
 import {
   COMPARE_NAME,
+  calloutWithinBudget,
   type DiagramTextSpec,
   diagramSpecSchemaFor,
   diagramTextSpecSchemaFor,
   figureGroupOf,
+  getTheme,
   type ImageTextPhoto,
   KIND_TAG_NAME,
   type PhotoBrief,
@@ -510,4 +512,47 @@ export function photoStructure(
     .slice(0, Math.max(0, at))
     .filter((e) => e.kind === "content" && e.imageBrief);
   return { photo, slotSide: before.length % 2 === 0 ? "left" : "right" };
+}
+
+/**
+ * A content slide that carries a callout sets its words across the full measure, with no key-term
+ * or key-idea panel beside them (PR 2): the card's room (`CALLOUT_BUDGETS`) is measured there.
+ */
+export const calloutStructure = (spec: SlideSpec): { sidePanel?: false } =>
+  spec.kind === "content" && spec.callout ? { sidePanel: false } : {};
+
+/**
+ * A content slide's callout as the card the budgets kept room for (PR 2): a text longer than
+ * `calloutWithinBudget` allows, at the small size or one stop down, is never cut. It gives way to
+ * `fallback` (the callout a repaired slide already showed) when that one fits, else the slide goes
+ * without; either way it is logged (`metric: "callout-too-long"`), not silent.
+ */
+export function withBudgetedCallout(
+  spec: SlideSpec,
+  themeId: string,
+  photo: boolean,
+  logger: PipelineDeps["logger"],
+  stage: "generate" | "repair",
+  index: number,
+  fallback?: { kind: string; text: string },
+): SlideSpec {
+  if (spec.kind !== "content" || !spec.callout) return spec;
+  const t = getTheme(themeId);
+  if (calloutWithinBudget(t, spec.callout.text, photo)) return spec;
+  const kept =
+    fallback && calloutWithinBudget(t, fallback.text, photo)
+      ? (fallback as typeof spec.callout)
+      : undefined;
+  logger.warn(
+    {
+      stage,
+      metric: "callout-too-long",
+      index,
+      chars: spec.callout.text.length,
+      kept: kept ? "previous" : "none",
+    },
+    "callout longer than the card the slide keeps room for",
+  );
+  const { callout: _dropped, ...rest } = spec;
+  return (kept ? { ...rest, callout: kept } : rest) as SlideSpec;
 }

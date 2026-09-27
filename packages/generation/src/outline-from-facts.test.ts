@@ -516,6 +516,17 @@ describe("outlineFromFacts: callouts", () => {
     expect(r.result.callouts[roads ?? -1]?.kind).not.toBe("watch-out");
   });
 
+  test("a compare or a sequence slide plans no callout: its cards leave no room (PR 2)", () => {
+    for (const shape of ["compare", "sequence"]) {
+      const facts = factsFor(1, { keyIdeasPer: 1 });
+      (facts.keyIdeas[0] as { shape?: string }).shape = shape;
+      const r = run({ n: 1, slideCount: 8, facts });
+      const at = kinds(r).indexOf("content");
+      expect(at).toBeGreaterThan(-1);
+      expect(r.result.callouts[at]).toBeUndefined();
+    }
+  });
+
   test("a misconception sharing no word with a slide's key ideas is not its watch-out", () => {
     const facts = factsFor(1, { keyIdeasPer: 1, vocabulary: false });
     facts.misconceptions[0] = {

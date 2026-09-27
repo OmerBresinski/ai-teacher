@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Slide } from "@tj/domain/documents";
 import { materialiseSlide, materialiseSlides, type SlideSpec } from "@tj/slides";
 import type { PipelineDeps } from "../types";
-import { logShapeFallback, photoStructure } from "./shared";
+import { logShapeFallback, photoStructure, withBudgetedCallout } from "./shared";
 
 const meta = { promptVersion: "t", model: "m", at: "2026-09-26T00:00:00.000Z" };
 const long = (n: number) =>
@@ -131,4 +131,34 @@ test("a slide keeps room for a photo in a repair only where it still has a slot"
   );
   expect(hasPhotoSlot(withSlot)).toBe(true);
   expect(hasPhotoSlot(without)).toBe(false);
+});
+
+describe("withBudgetedCallout (PR 2): a callout longer than its card's room is never cut", () => {
+  const lines: Record<string, unknown>[] = [];
+  const logger = { warn: (o: Record<string, unknown>) => lines.push(o) } as never;
+  const longText =
+    "Stagecraft means the ways a play uses sound, lighting, scenery and movement to create effects for an audience.";
+  const spec = (text: string) =>
+    ({
+      kind: "content",
+      heading: "Stagecraft",
+      body: "Stagecraft makes Prospero's control visible to the audience.",
+      callout: { kind: "key-words", text },
+      factRefs: [],
+    }) as SlideSpec;
+  test("one line keeps its card", () => {
+    const s = spec("Stagecraft: sound, light and scenery on stage.");
+    expect(withBudgetedCallout(s, "chalk", false, logger, "generate", 3)).toBe(s);
+  });
+  test("a longer one gives way to the slide's previous callout, else the slide goes without", () => {
+    const before = { kind: "key-words" as const, text: "Stagecraft: sound, light and scenery." };
+    const kept = withBudgetedCallout(spec(longText), "chalk", false, logger, "repair", 4, before);
+    expect(kept.kind === "content" && kept.callout).toEqual(before);
+    const none = withBudgetedCallout(spec(longText), "chalk", true, logger, "generate", 5);
+    expect(none.kind === "content" && none.callout).toBeUndefined();
+    expect(lines.map((l) => [l.metric, l.kept])).toEqual([
+      ["callout-too-long", "previous"],
+      ["callout-too-long", "none"],
+    ]);
+  });
 });

@@ -920,12 +920,21 @@ export function contentFigureBrief(
 
 /**
  * The image brief a content slide carries (look/image-slot): the first photograph its key ideas
- * ask for, as a `context` picture. None when any of them has a drawing: the drawing takes the room.
+ * ask for, as a `context` picture. None when any of them has a drawing: the drawing takes the room;
+ * none on a compare or a sequence, or on a list that plans a callout.
  */
 export function contentPhotoBrief(
   ideas: readonly KeyIdeaLayout[],
+  callout = false,
 ): { subject: string; mustShow: string[]; purpose: "context" } | undefined {
   if (ideas.some((k) => k.visual?.trim())) return undefined;
+  // The slide's planned shape (`plannedShapeOf`: one key idea's own, else explain). A compare or
+  // a sequence is full width, so it keeps no photograph; a list beside one has no room for a
+  // callout's card (`CALLOUT_BUDGETS`), so a list that plans a callout keeps the card, which
+  // carries the misconception, and not the photograph (PR 2).
+  const shape = ideas.length === 1 ? ideas[0]?.shape : "explain";
+  if (shape === "compare" || shape === "sequence") return undefined;
+  if (callout && shape === "list") return undefined;
   for (const k of ideas) {
     const photo = keptPhoto(k);
     if (photo)
@@ -1416,6 +1425,7 @@ export function assignFactIds(
                     .filter((r) => r.type === "keyIdea")
                     .map((r) => facts.keyIdeas[r.index] as KeyIdeaLayout | undefined)
                     .filter((k): k is KeyIdeaLayout => k !== undefined),
+                  callouts.has(i),
                 )
               : undefined),
         ),
