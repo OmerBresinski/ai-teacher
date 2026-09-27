@@ -1,6 +1,12 @@
-import type { ImagePurpose, LessonFacts, LessonPhase, OutlineEntry } from "@tj/domain/documents";
+import type {
+  FigureRef,
+  ImagePurpose,
+  LessonFacts,
+  LessonPhase,
+  OutlineEntry,
+} from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
-import { figureBlock } from "./figures";
+import { figureBlock, figureShownBlock } from "./figures";
 import {
   type Audience,
   audienceBlock,
@@ -78,6 +84,10 @@ import {
  * numbers line is per template (`FIGURE_NUMBERS`): an energy profile's numbers are its two
  * energies, and its labels name the substances. The right-triangle block reads as before, and the
  * system text and the pinned hash are unchanged again.
+ *
+ * v29 (TEACH-253, ADR 0034 decision 5): a diagram slide whose fact carries the figure gets the
+ * "shows" block instead (`figureShownBlock`): the figure's template and values, the unknown's value
+ * left out, and a text-only answer shape. Diagram calls only, so the pinned hash is unchanged.
  */
 
 export type GenerateSlideInput = {
@@ -108,6 +118,11 @@ export type GenerateSlideInput = {
    * production and when no later slide asks about this slide's key ideas.
    */
   laterQuestions?: { stem: string; answer: string }[] | undefined;
+  /**
+   * For a `diagram` entry whose fact carries the figure (TEACH-253, `figureOfEntry`): the figure
+   * the slide shows, so the call writes the text around it and not the values.
+   */
+  figure?: FigureRef | undefined;
   /** How many vocabulary entries the theme's grid shows (`vocabularySlots`). */
   vocabularySlots: number;
   lessonTitle: string;
@@ -203,7 +218,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v28",
+  version: "generate-slide.v29",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -298,7 +313,9 @@ export const generateSlidePrompt = {
       );
     }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
-    if (input.entry.kind === "diagram" && input.entry.figureBrief) {
+    if (input.entry.kind === "diagram" && input.figure) {
+      parts.push(...figureShownBlock(input.figure));
+    } else if (input.entry.kind === "diagram" && input.entry.figureBrief) {
       parts.push(...figureBlock(input.entry.figureBrief));
     }
     if (input.entry.kind === "vocabulary") {

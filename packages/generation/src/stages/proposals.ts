@@ -31,9 +31,11 @@ import {
 import {
   audienceOf,
   blockText,
+  figureOfEntry,
   runBounded,
   slideText,
   storedDiagramSchema,
+  withFactFigure,
   withImageCaption,
 } from "./shared";
 
@@ -227,11 +229,14 @@ export async function proposeFor(
   const doSlide = async (job: SlideJob): Promise<Proposal[]> => {
     const index = lesson.slides.findIndex((s) => s.id === job.slideId);
     const slide = lesson.slides[index];
-    // A diagram is re-derived with the template stored on its figure group (TEACH-89).
+    // A diagram is re-derived with the template stored on its figure group (TEACH-89), or as text
+    // around its fact's current figure when the fact carries one (TEACH-253).
+    const factFigure =
+      slide?.kind === "diagram" ? figureOfEntry(facts, facts.outline[index]) : undefined;
     const schema = !slide
       ? undefined
       : slide.kind === "diagram"
-        ? storedDiagramSchema(slide, facts.outline[index])
+        ? storedDiagramSchema(slide, facts.outline[index], facts)
         : slideSpecSchemaFor(slide.kind);
     if (!slide || !schema) return [];
     // The figure's values ride with its text, so the rewrite can keep them.
@@ -253,7 +258,7 @@ export async function proposeFor(
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     const fresh = materialiseSlide(
-      withImageCaption(call.output, lesson.facts?.outline[index]),
+      withImageCaption(withFactFigure(call.output, factFigure), lesson.facts?.outline[index]),
       lesson.themeId,
       meta(call.modelId),
       deps.ids,

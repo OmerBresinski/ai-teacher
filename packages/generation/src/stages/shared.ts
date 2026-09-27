@@ -1,8 +1,10 @@
 import {
+  type FigureRef,
   type Finding,
   type ImagePurpose,
   isTrustedThumbnail,
   type Lesson,
+  type LessonFacts,
   type OutlineEntry,
   type RichDoc,
   richDocToPlainText,
@@ -11,12 +13,16 @@ import {
   yearNumberOf,
 } from "@tj/domain/documents";
 import {
+  type DiagramTextSpec,
   diagramSpecSchemaFor,
+  diagramTextSpecSchemaFor,
   figureGroupOf,
   type ImageTextPhoto,
   PLACEHOLDER_IMAGE,
+  type SlideSpec,
   type SpecSchemaOptions,
 } from "@tj/slides";
+import type { z } from "zod";
 import type { Audience, SlidePhoto } from "../prompts";
 import { type LessonShape, lessonShapeOf } from "../shapes";
 import type { PipelineDeps } from "../types";
@@ -120,16 +126,52 @@ export function slidePhotoOf(slide: Slide, entry: OutlineEntry | undefined): Sli
 }
 
 /**
+ * The figure a diagram slide draws from its fact (ADR 0034 decision 5, TEACH-253): the figure on
+ * the first worked example or question in `entry.factRefs` that has one. `undefined` for a lesson
+ * planned before figures lived on facts, or a facts call that missed it: that slide's own call
+ * writes the values, as before.
+ */
+export function figureOfEntry(
+  facts: LessonFacts | undefined,
+  entry: Pick<OutlineEntry, "factRefs"> | undefined,
+): FigureRef | undefined {
+  if (!facts || !entry) return undefined;
+  for (const id of entry.factRefs) {
+    const fact =
+      facts.workedExamples.find((x) => x.id === id) ?? facts.questions.find((q) => q.id === id);
+    if (fact?.figure) return fact.figure;
+  }
+  return undefined;
+}
+
+/**
+ * The spec a diagram answer is materialised from: with its fact's figure put back when the slide
+ * draws one (the answer was written with `diagramTextSpecSchemaFor` and has no figure), otherwise
+ * the answer as it is. The figure is the fact's current one, so a corrected fact redraws the slide.
+ */
+export function withFactFigure(
+  answer: SlideSpec | DiagramTextSpec,
+  figure: FigureRef | undefined,
+): SlideSpec {
+  if (figure && answer.kind === "diagram") return { ...answer, figure } as SlideSpec;
+  return answer as SlideSpec;
+}
+
+/**
  * The spec schema an existing diagram slide is rewritten with (Repair, cascade, regenerate;
  * TEACH-89): the template stored on its figure group, so the rewrite keeps the template and is
  * redrawn from the values it returns. A figure the teacher ungrouped has no group, so its outline
- * entry's `figureBrief` names the template instead.
+ * entry's `figureBrief` names the template instead. When the entry's fact carries the figure
+ * (TEACH-253) the rewrite is text only and the caller puts the fact's figure back
+ * (`withFactFigure`), so the slide always shows the fact's current figure.
  */
 export function storedDiagramSchema(
   slide: Slide,
   entry: OutlineEntry | undefined,
+  facts: LessonFacts | undefined,
   options: SpecSchemaOptions = {},
-) {
+): z.ZodType<SlideSpec | DiagramTextSpec> | undefined {
+  if (figureOfEntry(facts, entry)) return diagramTextSpecSchemaFor(options);
   const template = figureGroupOf(slide)?.figure.template ?? entry?.figureBrief?.template;
   return template && diagramSpecSchemaFor(template, options);
 }

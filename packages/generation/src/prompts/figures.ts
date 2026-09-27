@@ -1,10 +1,11 @@
-import type { FigureBrief, FigureTemplateName } from "@tj/domain/documents";
+import type { FigureBrief, FigureRef, FigureTemplateName } from "@tj/domain/documents";
 
 /*
  * What the prompts say about each Figure template (ADR 0032, TEACH-89): when Plan should choose it
  * (`plan-skeleton`), and what its values are and where their numbers come from, in words
- * (`generate-slide`'s figure block). Keyed by template, so a new template does not compile until
- * all three are written. The values' rules are the template's schema in `@tj/slides`; these
+ * (`generate-slide`'s figure block and, since TEACH-253, `plan-facts`' figure block, with what the
+ * figure's unknown is). Keyed by template, so a new template does not compile until all four are
+ * written. The values' rules are the template's schema in `@tj/slides`; these
  * sentences only name them for the model.
  */
 
@@ -46,5 +47,57 @@ export function figureBlock(brief: FigureBrief): string[] {
   return [
     `This slide draws a "${brief.template}" figure for ${brief.purpose}. Answer { "kind": "diagram", "caption"?, "heading", "body" (≤ 40 words), "figure": { "template": "${brief.template}", ${FIGURE_VALUES[brief.template]} }, "factRefs", "notes"? }`,
     `${FIGURE_NUMBERS[brief.template]} The body may set a task on the figure ("find x"); call it "the diagram", never a picture.`,
+  ];
+}
+
+/**
+ * What the figure's unknown is, for the facts call (TEACH-253): the answer check compares the
+ * fact's stated answer with the value the template works out for it, so the unknown must be named.
+ */
+export const FIGURE_UNKNOWN: Record<FigureTemplateName, string> = {
+  "right-triangle":
+    "The side the worked example or question finds is the one with a letter label and no length; its answer is checked against the other two.",
+  "energy-profile":
+    "The figure has no unknown to work out: its energies are the numbers the worked example or question uses.",
+  triangle:
+    'Always set "unknown" to the side or angle the worked example or question finds; its answer is checked against the triangle the other values make.',
+};
+
+/**
+ * The facts call's block for one diagram slide (TEACH-253): the key its figure goes under in
+ * `figures`, the template's values in words, and where the numbers and the unknown come from.
+ */
+export function planFigureBlock(position: number, template: FigureTemplateName): string[] {
+  return [
+    `Figure for the diagram slide at position ${position}: "figures": { "${position}": { "template": "${template}", ${FIGURE_VALUES[template]} } }`,
+    `  ${FIGURE_NUMBERS[template]} ${FIGURE_UNKNOWN[template]}`,
+  ];
+}
+
+/**
+ * The values as the slide writer is shown them (TEACH-253): a triangle's unknown loses its value,
+ * so the answer is never put in front of the writer beside the figure. The drawing already prints
+ * the unknown as its label, or "?".
+ */
+function shownValues(figure: FigureRef): Record<string, unknown> {
+  const { values } = figure;
+  if (figure.template !== "triangle" || typeof values.unknown !== "string") return values;
+  const group = /^[abc]$/.test(values.unknown) ? "sides" : "angles";
+  const measures = values[group];
+  if (typeof measures !== "object" || measures === null) return values;
+  const asked = (measures as Record<string, unknown>)[values.unknown];
+  if (typeof asked !== "object" || asked === null) return values;
+  const { value: _answer, ...label } = asked as Record<string, unknown>;
+  return { ...values, [group]: { ...measures, [values.unknown]: label } };
+}
+
+/**
+ * A diagram slide's block when its fact carries the figure (TEACH-253): the slide shows that figure
+ * and the writer answers with the text only (`diagramTextSpecSchemaFor`).
+ */
+export function figureShownBlock(figure: FigureRef): string[] {
+  return [
+    `This slide shows the "${figure.template}" figure of the worked example or question it covers: ${JSON.stringify(shownValues(figure))}. Write the heading and body about it. Answer { "kind": "diagram", "caption"?, "heading", "body" (≤ 40 words), "factRefs", "notes"? }`,
+    'The body may set a task on the figure ("find x") and never gives the answer; call it "the diagram", never a picture.',
   ];
 }

@@ -6,6 +6,10 @@ import { type Audience, audienceBlock, example, factsBlock, HOUSE_RULES } from "
  * on the teacher's request (`regenerate`). Same spec shapes as Generate, so `materialiseSlide` /
  * `materialiseBlock` place the result; the editor applies it as one undo transaction. Two prompt
  * modules share one builder because only the reason differs.
+ *
+ * cascade.v5 and regenerate.v5: a worked example's or question's figure (TEACH-253) renders under
+ * it in `factsBlock` as `Figure (<template>): <values as JSON>`. Only lessons with a figure on a
+ * fact render it, so the pinned hash is unchanged.
  */
 
 export type ProposeInput = {
@@ -68,7 +72,7 @@ function user(input: ProposeInput): string {
 }
 
 export const cascadePrompt = {
-  version: "cascade.v4",
+  version: "cascade.v5",
   system: SYSTEM(
     "A fact the item was built from has been edited by the teacher; the item must match the new fact.",
   ),
@@ -76,7 +80,7 @@ export const cascadePrompt = {
 } as const;
 
 export const regeneratePrompt = {
-  version: "regenerate.v4",
+  version: "regenerate.v5",
   system: SYSTEM(
     "The teacher has asked for this item again, optionally with an instruction about what to change.",
   ),

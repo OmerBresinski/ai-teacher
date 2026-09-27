@@ -289,6 +289,8 @@ function buildSpecs(soft: boolean) {
   const diagram = Object.fromEntries(
     FIGURE_TEMPLATE_NAMES.map((template) => [template, diagramOf(template)]),
   ) as Record<FigureTemplateName, ReturnType<typeof diagramOf>>;
+  /** A diagram's text alone, for a slide that draws its fact's figure (TEACH-253). */
+  const diagramText = z.object(diagramFields);
 
   /* ---------------------------------------------------------------- */
   /* Slide specs                                                       */
@@ -591,7 +593,7 @@ function buildSpecs(soft: boolean) {
     }),
   ]);
 
-  return { slide, block, diagram };
+  return { slide, block, diagram, diagramText };
 }
 
 const STRICT = buildSpecs(false);
@@ -655,6 +657,22 @@ export function diagramSpecSchemaFor(
   const option = (options.soft ? SOFT : STRICT).diagram[template];
   if (options.soft) return option as unknown as z.ZodType<SlideSpec>;
   return option.superRefine(noPictureReference) as unknown as z.ZodType<SlideSpec>;
+}
+
+/** A diagram spec without its figure: what the slide call writes when the fact has one. */
+export type DiagramTextSpec = Omit<SlideSpecOf<"diagram">, "figure">;
+
+/**
+ * The `diagram` spec without `figure` (ADR 0034 decision 5, TEACH-253): the caption, heading, body,
+ * `factRefs` and `notes` of a slide whose figure is the fact's, which the model neither writes
+ * nor sees as a field. Strict and soft as `diagramSpecSchemaFor`, with the same picture rule.
+ */
+export function diagramTextSpecSchemaFor(
+  options: SpecSchemaOptions = {},
+): z.ZodType<DiagramTextSpec> {
+  const option = (options.soft ? SOFT : STRICT).diagramText;
+  if (options.soft) return option as unknown as z.ZodType<DiagramTextSpec>;
+  return option.superRefine(noPictureReference) as unknown as z.ZodType<DiagramTextSpec>;
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { Brief, LessonFacts } from "@tj/domain/documents";
+import type { Brief, FigureRef, LessonFacts } from "@tj/domain/documents";
 import type { LessonShape, ObjectiveVerb, PriorConfidence } from "../shapes";
 
 /*
@@ -124,6 +124,11 @@ export function audienceBlock(a: Audience): string {
   return lines.join("\n");
 }
 
+/** A fact's figure (TEACH-253), one line under it: what Verify reads and corrects as JSON. */
+function figureLine(figure: FigureRef): string {
+  return `    Figure (${figure.template}): ${JSON.stringify(figure.values)}`;
+}
+
 /**
  * The facts with their ids, in the compact form the Generate/Evaluate/Repair prompts embed. A
  * fact's own links are shown in brackets after it (`[o1, o2]`, `[heads off m1]`) so the model can
@@ -163,6 +168,7 @@ export function factsBlock(facts: LessonFacts): string {
         out.push(`    ${i + 1}. ${s}`);
       });
       out.push(`    Answer: ${x.answer}`);
+      if (x.figure) out.push(figureLine(x.figure));
     }
   }
   if (facts.questions.length > 0) {
@@ -178,6 +184,7 @@ export function factsBlock(facts: LessonFacts): string {
             .join("; ")}`,
         );
       }
+      if (q.figure) out.push(figureLine(q.figure));
     }
   }
   if (facts.pitch) {

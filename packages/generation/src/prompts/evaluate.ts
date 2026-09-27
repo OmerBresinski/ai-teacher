@@ -25,6 +25,10 @@ import {
  * shortest span (3 of 28 calls retried on it, and whole-body quotes licensed whole-slide repairs);
  * the starter's questions render as earlier learning (C1: 6 of 28 calls flagged the starter as
  * unsupported by the facts).
+ *
+ * v9: a worked example's or question's figure (TEACH-253) renders under it in `factsBlock` as
+ * `Figure (<template>): <values as JSON>`. Only lessons with a figure on a fact render it, so the
+ * pinned hash is unchanged.
  */
 
 export type EvaluateInput = {
@@ -51,7 +55,7 @@ export type EvaluateInput = {
 };
 
 export const evaluatePrompt = {
-  version: "evaluate.v8",
+  version: "evaluate.v9",
   system: [
     "You review a generated classroom lesson against the facts it was built from.",
     "Report problems only; do not praise, rewrite or add content.",

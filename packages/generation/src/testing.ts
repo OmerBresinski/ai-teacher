@@ -138,6 +138,9 @@ export function pipelineScript(
     json(options.checkInput ?? { findings: [] }),
     json(skeleton),
     json(FIXTURES.planFacts),
+    // The facts fixture has no figures (TEACH-253): with a diagram in the skeleton the facts call
+    // misses "give the figure …", is retried once, and the retry is answered the same way.
+    ...(skeleton.outline.some((e) => e.kind === "diagram") ? [json(FIXTURES.planFacts)] : []),
     json(options.verify ?? FIXTURES.verify),
     ...fixtureSlideScript(skeleton),
     ...(options.judges ?? []),

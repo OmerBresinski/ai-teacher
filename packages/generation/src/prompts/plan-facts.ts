@@ -1,6 +1,7 @@
 import type { BriefLevel } from "@tj/domain/documents";
 import { SPEC_LIMITS } from "@tj/slides";
 import { PITCH_BOUNDS, type PlanSkeleton } from "../specs";
+import { planFigureBlock } from "./figures";
 import { briefBlock, type PlanSkeletonInput } from "./plan-skeleton";
 import { tierLine } from "./shape";
 import { example, HOUSE_RULES, limitsBlock } from "./shared";
@@ -19,6 +20,10 @@ import { example, HOUSE_RULES, limitsBlock } from "./shared";
  * wording (`shape.ts` included). UX ruling 82: the outline it is shown carries no minutes.
  * v12 (TEACH-89): a diagram slide needs the worked example or question its figure's numbers come
  * from, the kind-fit rule `planFactsSchemaFor` checks.
+ * v13 (TEACH-253, ADR 0034 decision 5): each diagram slide's figure is written here, in `figures`
+ * under the slide's outline position, from the worked example or question that slide cites; the
+ * user turn prints a figure block per diagram entry (`planFigureBlock`), which names the template,
+ * its values, where the numbers come from and what the unknown is.
  */
 
 export type PlanFactsInput = PlanSkeletonInput & {
@@ -101,14 +106,14 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v12",
+  version: "plan-facts.v13",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides, each with a brief saying what it adds. Produce the facts the slides and worksheet will be built from, then say which outline slide each fact supports.",
     "",
     "Rules:",
     HOUSE_RULES,
-    'Write the lists in this order, each before anything that refers to it: "keyIdeas", "misconceptions", "vocabulary", "workedExamples", "questions", then "pitch", then "outlineFactRefs".',
+    'Write the lists in this order, each before anything that refers to it: "keyIdeas", "misconceptions", "vocabulary", "workedExamples", "questions", then "pitch", then "outlineFactRefs", then "figures" when the outline has a diagram slide.',
     "Key ideas first: the 2–5 things a pupil must understand by the end, each with a plain explanation a pupil could follow, one concrete example and, where it helps, an analogy. A content slide is built from exactly one key idea, so write one per content slide in the outline.",
     "Then misconceptions: 2–4 things pupils at this level typically get wrong, each with the correction. A true-false slide confronts one of these.",
     "Then up to 8 vocabulary terms with pupil-level definitions, and up to 4 worked examples with at most 6 short steps each; where a worked example heads off a misconception, say which.",
@@ -117,6 +122,7 @@ export const planFactsPrompt = {
     'Then "pitch": the reading age to write for, the longest sentence in words, and up to 6 words to avoid, all judged from the year group and reading level given. A "Level" line in the brief moves the reading age and the sentence length one band down ("easier") or up ("harder"), never outside the bounds the brief states.',
     'Every fact names the objectives it serves: "objectiveRefs": [{ "type": "objective", "index": 0-based }]. Every objective is served by at least one key idea and checked by at least one question.',
     'Refer to facts by list and position: { "type": "keyIdea" | "misconception" | "vocabulary" | "workedExample" | "question", "index": 0-based }. In "outlineFactRefs", "index" is the 0-based position of the outline slide; list only slides from position 2 onwards and only the facts that slide draws on. A content slide needs its key idea; a worked-example slide needs its worked example; a question slide needs a question; a vocabulary slide needs vocabulary; a true-false slide names the misconception it confronts; a diagram slide needs the worked example or question whose numbers its figure shows.',
+    'Each diagram slide\'s figure is written in "figures", under the slide\'s outline position as a string ("6"), from the worked example or question that slide cites, with the numbers that fact uses, so the figure, the working and the answer agree. The brief gives each diagram slide\'s template and values.',
     limitsBlock({
       statement: SPEC_LIMITS.item,
       explanation: SPEC_LIMITS.body,
@@ -154,6 +160,10 @@ export const planFactsPrompt = {
       const phase = entry.phase ? `, ${entry.phase}` : "";
       const adds = entry.brief ? ` — ${entry.brief.adds}` : "";
       parts.push(`  ${i}: ${entry.kind}${phase}${adds}`);
+    });
+    input.skeleton.outline.forEach((entry, i) => {
+      if (entry.kind === "diagram" && entry.figureBrief)
+        parts.push(...planFigureBlock(i, entry.figureBrief.template));
     });
     return parts.join("\n");
   },
