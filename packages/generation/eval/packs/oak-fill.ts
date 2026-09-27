@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { StructuredPrompt } from "../../src/call";
+import { quotationLine } from "../lab-pack";
 
 /*
  * pack-oak-fill.v1 (28 Sept 2026, PE; gpt-6-sol, medium; lab l6kp2, oak-packs/NEEDS-PROMPT.md).
@@ -127,13 +128,13 @@ export const packOakFillPrompt: StructuredPrompt<PackOakFillInput> = {
 
 /** A pack section's facts as the context lines of the call, in the pack's list order. */
 export function oakFactLines(facts: {
-  keyIdeas?: { statement: string }[];
+  keyIdeas?: { statement: string; quote?: string; locator?: string }[];
   vocabulary?: { term: string; definition: string }[];
   misconceptions?: { belief: string; correction: string }[];
   workedExamples?: { problem: string; answer: string }[];
 }): string[] {
   return [
-    ...(facts.keyIdeas ?? []).map((k) => k.statement),
+    ...(facts.keyIdeas ?? []).map((k) => quotationLine(k) ?? k.statement),
     ...(facts.vocabulary ?? []).map((v) => `term: ${v.term}: ${v.definition}`),
     ...(facts.misconceptions ?? []).map(
       (m) => `misconception: ${m.belief} Response: ${m.correction}`,

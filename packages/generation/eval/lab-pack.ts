@@ -111,11 +111,33 @@ const QUOTED = /[‘“"]/;
  * where one is given" reads. No "Key idea:" label on the fact lines: rendered in the teach call's
  * own output shape, the section was paraphrased back whole (EXPERT-PROMPTS T1).
  */
+/**
+ * A quotation fact as one line: the words in curly quotes, the locator in brackets, then what the
+ * words show when the fact says more than the words (a `pack-oak-fill.v1` quotation carries both;
+ * a reused one's statement is the quotation itself). Null for a fact with no `quote`. Shared with
+ * the fill call's "facts already in the section" (`oakFactLines`), so both show the locator.
+ */
+export function quotationLine(k: {
+  quote?: string;
+  statement?: string;
+  locator?: string;
+}): string | null {
+  if (!k.quote) return null;
+  const bare = (t: string) => t.replace(/^[“"‘']+|[”"’']+$/g, "").trim();
+  const quote = bare(k.quote);
+  const about = k.statement && bare(k.statement) !== quote ? `: ${k.statement}` : "";
+  return `“${quote}”${k.locator ? ` (${k.locator})` : ""}${about}`;
+}
+
 export function referenceText(section: RecallPack["sections"][number]): string {
   const f = section.facts;
   const L: string[] = [];
+  // An Oak fact's locator is its lesson (`oak:<slug>`), not a place in a text: never shown, even
+  // when the sentence quotes a title ("‘The Tempest’ is considered…").
   const locate = (sentence: string, locator?: string) =>
-    locator && QUOTED.test(sentence) ? `${sentence} (${locator})` : sentence;
+    locator && !locator.startsWith("oak:") && QUOTED.test(sentence)
+      ? `${sentence} (${locator})`
+      : sentence;
   const add = (text: string | undefined, locator?: string) => {
     for (const s of (text ?? "").split(SENTENCE_BREAK)) {
       const t = s.trim();
@@ -123,6 +145,11 @@ export function referenceText(section: RecallPack["sections"][number]): string {
     }
   };
   for (const k of f.keyIdeas) {
+    const quoted = quotationLine(k);
+    if (quoted) {
+      L.push(`- ${quoted}`);
+      continue;
+    }
     add(k.statement, k.locator);
     add(k.explanation, k.locator);
     add(k.example, k.locator);

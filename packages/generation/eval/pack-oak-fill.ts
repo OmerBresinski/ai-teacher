@@ -74,7 +74,15 @@ const PackFileSchema = z.object({
       title: z.string().optional(),
       outcome: z.string(),
       facts: z.object({
-        keyIdeas: z.array(z.object({ statement: z.string() })).default([]),
+        keyIdeas: z
+          .array(
+            z.object({
+              statement: z.string(),
+              quote: z.string().optional(),
+              locator: z.string().optional(),
+            }),
+          )
+          .default([]),
         vocabulary: z.array(z.object({ term: z.string(), definition: z.string() })).default([]),
         misconceptions: z
           .array(z.object({ belief: z.string(), correction: z.string() }))
