@@ -330,7 +330,7 @@
     const uid = `ck-${Math.random().toString(36).slice(2, 7)}`;
     svg.insertAdjacentHTML(
       "afterbegin",
-      `<defs><filter id="hiw-blur" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter><clipPath id="${uid}" clipPathUnits="userSpaceOnUse"><rect/></clipPath></defs>`,
+      `<defs><clipPath id="${uid}" clipPathUnits="userSpaceOnUse"><rect/></clipPath></defs>`,
     );
     const clipRect = svg.querySelector(`#${uid} rect`);
     const group = document.createElementNS(NS, "g");
