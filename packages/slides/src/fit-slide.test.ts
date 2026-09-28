@@ -10,7 +10,7 @@ import { reflowSlide } from "./reflow";
 import type { SlideSpec } from "./specs";
 import { measureHeadless } from "./text-measure";
 import { floorBelow } from "./text-style";
-import { getTheme } from "./themes";
+import { getTheme, THEMES } from "./themes";
 
 /*
  * TEACH-28: the copy of the Year 9 Russian Revolution showcase lesson (np1, 23 Sep 2026), whose
@@ -331,5 +331,56 @@ describe("reflowSlide: a box pinned to the foot of the safe area (TEACH-28)", ()
     const ruler = (input: { preset: string }) => (input.preset === "body" ? 320 : 38);
     const out = reflowSlide(slide, theme, ruler);
     expect(out.elements.find((el) => el.id === "foot")?.y ?? 0).toBeGreaterThan(459);
+  });
+});
+
+/*
+ * TEACH-140: the image-text recipe's photograph runs down the left from the top of the slide to
+ * the bottom (0,0 to 540), past the safe area by design. `reflowSlide` counted it as overflow, so
+ * every image-text slide stepped its heading and body down to the floor whether its copy fitted
+ * or not. A picture is never text overflow: copy that fits keeps the theme's sizes, and copy that
+ * really overruns still steps down.
+ */
+describe("fitSlide on an image-text slide (TEACH-140)", () => {
+  const imageText = (body: string): SlideSpec => ({
+    kind: "image-text",
+    factRefs: ["o3"],
+    heading: "Clouds over the sea",
+    body,
+    callout: { kind: "watch-out", text: "Vapour is invisible." },
+  });
+  const SENTENCE = "Warm air rises from the sea carrying water vapour. ";
+  const laid = (spec: SlideSpec, themeId: string) => {
+    let n = 0;
+    return materialiseSlide(spec, themeId, META, () => `e${++n}`);
+  };
+
+  for (const t of THEMES) {
+    test(`${t.id}: copy that fits keeps the theme's sizes, and the picture is not an overflow`, () => {
+      const slide = laid(imageText(SENTENCE.trim()), t.id);
+      const picture = slide.elements.find((el) => el.type === "image");
+      expect(picture && bottom(picture)).toBeGreaterThan(SAFE_BOTTOM);
+      for (const el of texts(slide)) expect(el.style.fontSize, el.name ?? el.id).toBeUndefined();
+      const again = fitSlide(slide, t);
+      expect(again.overflow).toEqual([]);
+      expect(again.slide).toBe(slide);
+    });
+
+    test(`${t.id}: copy that really overruns still steps the heading and body down`, () => {
+      const slide = laid(imageText(SENTENCE.repeat(9).trim()), t.id);
+      const heading = byPreset(slide, "heading")[0];
+      const body = byPreset(slide, "body")[0];
+      expect(heading?.style.fontSize ?? t.sizes.heading).toBeLessThan(t.sizes.heading);
+      expect(body?.style.fontSize ?? t.sizes.body).toBeLessThanOrEqual(t.sizes.body);
+      expect(fitSlide(slide, t).overflow).toContain(body?.id ?? "body");
+    });
+  }
+
+  test("reflowSlide: a picture past the safe area alone is not an overflow and steps nothing", () => {
+    const slide = laid(imageText(SENTENCE.trim()), THEME);
+    const out = reflowSlide(slide, theme, measureHeadless(theme));
+    expect(out.overflow).toEqual([]);
+    expect(out.stepped).toEqual([]);
+    expect(out.splitAt).toBeUndefined();
   });
 });

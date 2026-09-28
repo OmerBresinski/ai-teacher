@@ -159,10 +159,9 @@ test("captures the demo's callout in the editor, present and the navigator, then
       path: `${OUT}/navigator-thumb-demo-content.png`,
     });
 
-  /** Open slide `n` on the stage: `?slide=` sets the slide, the start gate still asks. */
+  /** Open slide `n` on the stage: `?slide=` sets the slide. */
   const shoot = async (id: string | undefined, n: number, file: string) => {
     await page.goto(`/l/${id}/present?slide=${n}`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(page.getByRole("status").first()).toContainText(`Slide ${n} of`);
     await page.waitForTimeout(600);

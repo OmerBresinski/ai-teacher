@@ -63,6 +63,9 @@
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+.hm-hiw-actor .eye {
+  stroke: none;
+}
 .hm-hiw-actor .mouth,
 .flipbook-frame {
   visibility: hidden;

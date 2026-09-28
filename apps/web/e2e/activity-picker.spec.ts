@@ -111,7 +111,7 @@ test.describe("activity picker", () => {
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
 
     await page.goto(`${paths.lesson("demo-water-cycle", "/present")}?slide=2`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(status(page)).toContainText("Slide 2 of");
     await expect(status(page)).toContainText("step 1 of 5");
     const filled = page.getByRole("img", { name: "Correct answer" });

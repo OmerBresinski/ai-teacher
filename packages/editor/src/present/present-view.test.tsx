@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import { buildActivity } from "../model/derive-activities";
@@ -36,16 +36,11 @@ const status = () =>
 const key = (k: string, init: KeyboardEventInit = {}) =>
   fireEvent.keyDown(window, { key: k, ...init });
 
-async function start() {
-  await userEvent.setup().click(screen.getByRole("button", { name: "Stay in this window" }));
-}
-
 describe("PresentView", () => {
   it("stages a four-option multiple choice: three Rights dim the wrong cards, the fourth fills the right one", async () => {
     const l = lesson();
     l.slides.splice(0, 0, buildActivity("multiple-choice", l.themeId));
     const { container } = renderPresent({ lesson: l });
-    await start();
     expect(status()).toContain("Slide 1 of");
     const dimmed = () =>
       Array.from(
@@ -74,18 +69,103 @@ describe("PresentView", () => {
     expect(dimmed()).toBe(3);
   });
 
-  it("opens on the cover; Start shows slide 1 on the stage scope", async () => {
+  it("ruling 104: opens straight on slide 1, no cover, fading in once and only when motion is allowed", () => {
     const { container, lesson: l } = renderPresent();
     expect(container.querySelector("[data-present-root]")).toHaveClass("tj-stage");
-    expect(screen.getByRole("heading", { level: 1, name: l.title })).toBeVisible();
-    await start();
+    expect(screen.queryByRole("heading", { level: 1, name: l.title })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start presenting" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stay in this window" })).toBeNull();
     expect(status()).toContain(`Slide 1 of ${l.slides.length}`);
-    expect(container.querySelector('[data-slide-mode="present"]')).not.toBeNull();
+    const stage = container.querySelector('[data-slide-mode="present"]');
+    expect(stage).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Next" })).toBeVisible();
+    // Opacity only, and `motion-safe:` so reduced motion gets a cut (criterion 6).
+    const fading = container.querySelectorAll(".motion-safe\\:animate-fade-in");
+    expect(fading.length).toBe(1);
+    expect(fading[0]?.contains(stage as Node)).toBe(true);
+  });
+
+  it("ruling 104: never asks for fullscreen on its own; F still toggles it, a refusal is silent", async () => {
+    const root = document.documentElement;
+    const original = root.requestFullscreen;
+    const requestFullscreen = mock(() => Promise.reject(new Error("refused")));
+    root.requestFullscreen = requestFullscreen;
+    try {
+      renderPresent();
+      expect(requestFullscreen).not.toHaveBeenCalled();
+      key("f");
+      expect(requestFullscreen).toHaveBeenCalledTimes(1);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(status()).toContain("Slide 1 of");
+    } finally {
+      root.requestFullscreen = original;
+    }
+  });
+
+  it("ruling 104: leaving fullscreen from outside (the browser's Esc) leaves present; F does not", async () => {
+    let element: Element | null = document.documentElement;
+    const described = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => element,
+    });
+    const change = (to: Element | null) =>
+      act(() => {
+        element = to;
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+    const root = document.documentElement;
+    const original = { request: root.requestFullscreen, exit: document.exitFullscreen };
+    root.requestFullscreen = mock(async () => change(root));
+    document.exitFullscreen = mock(async () => change(null));
+    try {
+      const { onExit } = renderPresent();
+      key("f");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(onExit).not.toHaveBeenCalled();
+      key("f");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(onExit).not.toHaveBeenCalled();
+      change(null);
+      expect(onExit).toHaveBeenCalledTimes(1);
+    } finally {
+      root.requestFullscreen = original.request;
+      document.exitFullscreen = original.exit;
+      if (described) Object.defineProperty(document, "fullscreenElement", described);
+      else delete (document as { fullscreenElement?: unknown }).fullscreenElement;
+    }
+  });
+
+  it("ruling 104: leaving fullscreen with the shortcuts sheet open only closes fullscreen", async () => {
+    let element: Element | null = document.documentElement;
+    const described = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => element,
+    });
+    try {
+      const { onExit } = renderPresent();
+      await userEvent.setup().click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+      await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+      act(() => {
+        element = null;
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+      expect(onExit).not.toHaveBeenCalled();
+    } finally {
+      if (described) Object.defineProperty(document, "fullscreenElement", described);
+      else delete (document as { fullscreenElement?: unknown }).fullscreenElement;
+    }
+  });
+
+  it("ruling 104: the toolbar's ? opens the shortcuts sheet", async () => {
+    renderPresent();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+    expect(await screen.findByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
   });
 
   it("Space walks steps then slides; ArrowLeft returns; Home/End jump", async () => {
     const { lesson: l } = renderPresent();
-    await start();
     key(" ");
     expect(status()).toContain("Slide 2 of");
     expect(status()).toMatch(/step 1 of \d/);
@@ -101,7 +181,6 @@ describe("PresentView", () => {
 
   it("digits then Enter jump to a slide; the hint shows the number", async () => {
     renderPresent();
-    await start();
     key("3");
     expect(screen.getByText(/Go to slide 3/)).toBeVisible();
     key("Enter");
@@ -110,7 +189,6 @@ describe("PresentView", () => {
 
   it("B blacks out and any key restores; W whites out", async () => {
     const { container } = renderPresent();
-    await start();
     const overlay = () =>
       container.querySelector("[data-present-stage] > [aria-hidden]") as HTMLElement;
     expect(overlay().style.opacity).toBe("0");
@@ -127,7 +205,6 @@ describe("PresentView", () => {
 
   it("O opens the overview; a tile jumps; Esc closes it without exiting", async () => {
     const { onExit } = renderPresent();
-    await start();
     key("o");
     const dialog = await screen.findByRole("dialog");
     const tiles = within(dialog).getAllByRole("button", { name: /^Slide \d/ });
@@ -144,7 +221,6 @@ describe("PresentView", () => {
 
   it("? lists every shortcut; Esc closes the sheet first, a second Esc exits", async () => {
     const { onExit } = renderPresent();
-    await start();
     key("?");
     const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
     for (const s of PRESENT_SHORTCUTS) expect(within(dialog).getByText(s.label)).toBeVisible();
@@ -159,7 +235,6 @@ describe("PresentView", () => {
 
   it("a tool then Esc: the tool closes first", async () => {
     const { onExit } = renderPresent();
-    await start();
     key("p");
     expect(screen.getByRole("button", { name: "Pen" })).toHaveAttribute("aria-pressed", "true");
     key("Escape");
@@ -170,7 +245,6 @@ describe("PresentView", () => {
   it("the end card offers Back to start and Exit; Next lesson when in a series", async () => {
     const onOpen = mock(() => {});
     const { onExit } = renderPresent({ next: { title: "Life in the Roman army", onOpen } });
-    await start();
     key("End");
     key(" ");
     expect(screen.getByRole("heading", { name: "End of lesson" })).toBeVisible();
@@ -187,7 +261,6 @@ describe("PresentView", () => {
 
   it("N opens the presenter notes with the next slide; T opens the timer panel", async () => {
     renderPresent();
-    await start();
     key("n");
     const notes = screen.getByRole("complementary", { name: "Presenter notes" });
     expect(within(notes).getByText("Next slide")).toBeVisible();
@@ -199,7 +272,6 @@ describe("PresentView", () => {
   // starts the clock and closes the panel; the readout's menu pauses, resumes, resets and clears.
   it("a timer preset starts the readout; its menu pauses, resumes, resets and clears it", async () => {
     renderPresent();
-    await start();
     const user = userEvent.setup();
     key("t");
     const panel = await screen.findByRole("dialog", { name: "Timer" });
@@ -243,7 +315,6 @@ describe("PresentView", () => {
 
   it("onProgress reports the furthest slide once on exit; exit on slide 1 is not 'taught'", async () => {
     const first = renderPresent();
-    await start();
     key("Escape");
     expect(first.onProgress).toHaveBeenCalledTimes(1);
     expect(first.onProgress.mock.calls[0]?.[0]).toEqual({
@@ -253,7 +324,6 @@ describe("PresentView", () => {
     first.unmount();
 
     const second = renderPresent();
-    await start();
     key("End");
     key("Home");
     key("Escape");
@@ -269,7 +339,6 @@ describe("PresentView", () => {
 
   it("unmount without exit (browser back) still reports progress", async () => {
     const { onProgress, unmount } = renderPresent();
-    await start();
     key("ArrowRight");
     unmount();
     expect(onProgress).toHaveBeenCalledTimes(1);
@@ -278,7 +347,6 @@ describe("PresentView", () => {
 
   it("a committed stroke does not rebind the key handler: a typed jump number survives it", async () => {
     const { container } = renderPresent();
-    await start();
     key("p");
     key("3");
     expect(screen.getByText(/Go to slide 3/)).toBeVisible();
@@ -304,9 +372,8 @@ describe("PresentView", () => {
     expect(status()).toContain("Slide 3 of");
   });
 
-  it("?slide= starts on that slide", async () => {
+  it("?slide= starts on that slide", () => {
     renderPresent({ startIndex: 3 });
-    await start();
     expect(status()).toContain("Slide 4 of");
   });
 });
