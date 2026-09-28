@@ -44,3 +44,17 @@ export function writeLastClass(value: LastClass): void {
     // Storage is a convenience; the lesson was still created.
   }
 }
+
+/**
+ * Remember a theme the teacher chose in the editor (TEACH-258, ruling 116) without touching the
+ * class fields. Only a real choice is written; an automatic default never becomes "last used".
+ */
+export function rememberTheme(themeId: string): void {
+  const last = readLastClass();
+  writeLastClass({
+    subject: last?.subject ?? "",
+    subjectOther: last?.subjectOther ?? "",
+    yearGroup: last?.yearGroup ?? "",
+    themeId,
+  });
+}

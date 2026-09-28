@@ -74,11 +74,13 @@ export function TopBar({
 
   const secondaryActions = (
     <>
-      <QuietButton
-        label="Theme"
-        hintLabel="Themes arrive with the slide toolbar"
-        onClick={onOpenTheme}
-      />
+      {/* Ruling 116: on a desktop the theme lives with the slides (the rail's Theme button); a
+          phone has no rail, so it stays in the More menu there. */}
+      {mobile && onOpenTheme ? (
+        <Button variant="ghost" size="sm" onClick={onOpenTheme}>
+          Theme
+        </Button>
+      ) : null}
       <QuietButton label="Share" hintLabel="Sharing is not available yet" />
       {onToggleFacts ? (
         <Button

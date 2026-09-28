@@ -2,7 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderEditor } from "./test-harness";
 
-/* TEACH-105 row 8: the theme dialog switches `themeId`; Cancel puts the opening theme back. */
+/*
+ * TEACH-105 row 8, TEACH-258 (ruling 116): the theme picker at the head of the slide rail switches
+ * `themeId`; Cancel puts the opening theme back; Done is one undo step.
+ */
 
 afterEach(cleanup);
 
@@ -36,7 +39,7 @@ describe("ThemeDialog", () => {
     expect(onSave.mock.calls[0]?.[0]?.themeId).toBe("chalk");
   });
 
-  test("Cancel restores the theme the dialog opened with; the tag filter narrows the tiles", async () => {
+  test("Cancel restores the theme the picker opened with", async () => {
     const { read } = renderEditor();
     const opening = read().themeId;
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
@@ -47,8 +50,6 @@ describe("ThemeDialog", () => {
     if (!other) throw new Error("no other tile");
     fireEvent.click(other);
     expect(read().themeId).not.toBe(opening);
-    fireEvent.click(screen.getByRole("button", { name: "Dark room" }));
-    expect(screen.getAllByRole("radio").length).toBeLessThan(6);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(read().themeId).toBe(opening);
     // A cancelled browse is not an edit: nothing to undo, nothing to save.
@@ -89,5 +90,25 @@ describe("ThemeDialog", () => {
     expect(read().themeId).toBe(before.themeId);
     expect(read().slides).toEqual(before.slides);
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+  });
+});
+
+describe("where the theme lives (ruling 116)", () => {
+  test("the slide rail has the Theme button, showing the lesson's theme; the top bar does not", () => {
+    renderEditor();
+    const button = screen.getByRole("button", { name: "Theme" });
+    expect(button.closest("[data-navigator]")).not.toBeNull();
+    expect(button).toHaveTextContent("Chalk & Cream");
+    const topbar = document.querySelector("[data-topbar]");
+    expect(topbar?.textContent).not.toContain("Theme");
+  });
+
+  test("each tile is the lesson's own title slide", async () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    await screen.findByRole("dialog", { name: "Theme" });
+    const tiles = screen.getAllByRole("radio");
+    expect(tiles).toHaveLength(6);
+    for (const tile of tiles) expect(tile.querySelector("[data-slide-root]")).not.toBeNull();
   });
 });

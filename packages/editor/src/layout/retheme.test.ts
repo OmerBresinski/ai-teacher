@@ -6,7 +6,7 @@ import * as reducers from "../model/reducers";
 import { getTheme, THEMES } from "../model/themes";
 import { renderedHeights } from "./fit-plan";
 import { lintSlide } from "./lint";
-import { rethemeLesson, slidesNeedingFit } from "./retheme";
+import { recolourSlide, rethemeFromReducer, rethemeLesson, slidesNeedingFit } from "./retheme";
 
 /*
  * TEACH-258 FR5: a generated lesson re-themed with `setTheme` alone keeps the old theme's boxes
@@ -108,5 +108,33 @@ describe("re-theming a generated lesson (TEACH-258 FR5)", () => {
     const { lesson, outcome } = rethemeLesson(base, "chalk", measureHeadless(getTheme("chalk")));
     expect(lesson).toBe(base);
     expect(outcome.tidied).toEqual([]);
+  });
+
+  test("the picker's preview always starts from the opening lesson, so browsing never stacks", () => {
+    const measure = measureHeadless(getTheme("playground"));
+    const once = rethemeLesson(base, "playground", measure).lesson;
+    const browsed = rethemeLesson(once, "beacon", measureHeadless(getTheme("beacon"))).lesson;
+    // Same result as re-theming the opening lesson directly (`updatedAt` is the clock's).
+    const previewed = rethemeFromReducer(browsed, base, "playground", measure).lesson;
+    expect(previewed.themeId).toBe(once.themeId);
+    expect(previewed.slides).toEqual(once.slides);
+    expect(rethemeFromReducer(browsed, base, "chalk", measure).lesson).toBe(base);
+  });
+
+  test("the palette follows the theme: no old-theme colour is left, text is untouched", () => {
+    const chalk = getTheme("chalk");
+    const night = getTheme("night-lab");
+    const { lesson: after } = rethemeLesson(base, "night-lab", measureHeadless(night));
+    const json = JSON.stringify(after.slides.map((s) => s.elements)).toLowerCase();
+    for (const [key, value] of Object.entries(chalk.colors)) {
+      const same =
+        (night.colors as Record<string, string>)[key]?.toLowerCase() === value.toLowerCase();
+      if (!same) expect(json).not.toContain(`"${value.toLowerCase()}"`);
+    }
+    expect(words(after)).toEqual(words(base));
+    const custom = { ...base.slides[0], elements: [] } as unknown as Parameters<
+      typeof recolourSlide
+    >[0];
+    expect(recolourSlide(custom, chalk, chalk)).toBe(custom);
   });
 });

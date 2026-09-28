@@ -62,10 +62,6 @@ function openPlanned(themeId = "chalk") {
   show();
   return row.id;
 }
-const themeRadios = async () => {
-  const group = await screen.findByRole("radiogroup", { name: "Theme" });
-  return Array.from(group.querySelectorAll<HTMLInputElement>("input[type=radio]"));
-};
 describe("real lesson intake", () => {
   beforeEach(() => {
     cleanup();
@@ -162,36 +158,34 @@ describe("real lesson intake", () => {
     expect(post().skipPlanning).toBe(false);
   });
 
-  it("offers six theme tiles on the objectives step with the default chosen (ruling 113)", async () => {
+  it("asks no theme question on the objectives step (ruling 116)", async () => {
     openPlanned();
-    const radios = await themeRadios();
-    expect(radios).toHaveLength(6);
-    expect(radios.filter((r) => r.checked).map((r) => r.value)).toEqual(["chalk"]);
+    await screen.findByRole("button", { name: /Continue/ });
+    expect(screen.queryByRole("radiogroup", { name: "Theme" })).toBeNull();
   });
-  it("preselects the remembered theme over the lesson's own", async () => {
+  it("confirms with the remembered theme over the lesson's own", async () => {
     localStorage.setItem(
       "tj:brief:last-class",
       JSON.stringify({ yearGroup: "Year 5", subject: "", subjectOther: "", themeId: "night-lab" }),
     );
-    openPlanned("chalk");
-    const radios = await themeRadios();
-    expect(radios.find((r) => r.checked)?.value).toBe("night-lab");
-  });
-  it("confirms with the picked theme and remembers it for the next brief", async () => {
-    const id = openPlanned();
-    const radios = await themeRadios();
-    const beacon = radios.find((r) => r.value === "beacon");
-    if (!beacon) throw new Error("no beacon tile");
-    fireEvent.click(beacon);
-    expect(beacon.checked).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    const id = openPlanned("chalk");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Just the slides" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     const confirm = fakeApi.requests.find((r) => r.path === `/lessons/${id}/generate`);
-    expect(confirm?.body).toMatchObject({ expectedRevision: 1, themeId: "beacon" });
-    expect(readLastClass()).toMatchObject({ yearGroup: "Year 5", themeId: "beacon" });
+    expect(confirm?.body).toMatchObject({ expectedRevision: 1, themeId: "night-lab" });
   });
-  it("skip planning sends the remembered theme and writes it back", async () => {
+  it("confirms with the class default when nothing is remembered, and does not remember it", async () => {
+    const id = openPlanned("chalk");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Just the slides" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    const confirm = fakeApi.requests.find((r) => r.path === `/lessons/${id}/generate`);
+    // Year 5 is Key Stage 2: Chalk & Cream.
+    expect(confirm?.body).toMatchObject({ themeId: "chalk" });
+    expect(readLastClass()?.themeId ?? "").toBe("");
+  });
+  it("skip planning sends the remembered theme and keeps it", async () => {
     localStorage.setItem(
       "tj:brief:last-class",
       JSON.stringify({ yearGroup: "Year 6", subject: "", subjectOther: "", themeId: "playground" }),
@@ -203,12 +197,13 @@ describe("real lesson intake", () => {
     expect(post().themeId).toBe("playground");
     expect(readLastClass()?.themeId).toBe("playground");
   });
-  it("a brief with nothing remembered creates the lesson in the default theme", async () => {
+  it("a brief with nothing remembered creates the lesson in its class default", async () => {
     search = { topic: "Rocks" };
     show();
     fireEvent.click(screen.getByRole("button", { name: "Skip planning" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
-    expect(post().themeId).toBe("chalk");
-    expect(readLastClass()?.themeId).toBe("chalk");
+    // The brief opens on Year 4: Playground.
+    expect(post().themeId).toBe("playground");
+    expect(readLastClass()?.themeId).toBe("");
   });
 });

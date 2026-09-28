@@ -51,7 +51,7 @@ export const lessonGenerateJob = defineJob<"lesson.generate", WorkerDeps>(
 
 /**
  * The lesson with its plan-time slides rebuilt. The title slide is redrawn in the lesson's theme
- * (ruling 113: a theme picked on the objectives step arrives with the confirm, after Plan drew the
+ * (ruling 116: the starting theme arrives with the confirm, after Plan drew the
  * title in the plan-time one). The objectives slide is rebuilt from `facts.objectives` (ADR 0029
  * item 8): a text-only edit on the plan screen changed the facts, not the slide. Each is replaced
  * in place under its own id, so the editor keeps the slide; the objectives slide's provenance
