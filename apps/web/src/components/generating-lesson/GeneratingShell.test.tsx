@@ -442,7 +442,8 @@ describe("the selected-theme callout (ruling 123)", () => {
     const callout = <button type="button">Theme · Chalk &amp; Cream</button>;
     const { rerender } = renderAt(1, { themeCallout: callout });
     const slot = document.querySelector("[data-generating-theme]");
-    expect(slot?.closest('[data-testid="generating-lock"]')).not.toBeNull();
+    expect(slot?.closest("[data-generating-bar]")).not.toBeNull();
+    expect(screen.getByTestId("generating-lock")).toHaveTextContent(LOCK_LINE);
     expect(screen.getByRole("button", { name: /Theme/ })).toBeInTheDocument();
     const events = runEvents(generationRun, 6);
     rerender(
@@ -457,7 +458,7 @@ describe("the selected-theme callout (ruling 123)", () => {
       </TooltipProvider>,
     );
     expect(
-      document.querySelector("[data-generating-theme]")?.closest('[data-testid="generating-lock"]'),
+      document.querySelector("[data-generating-theme]")?.closest("[data-generating-bar]"),
     ).not.toBeNull();
   });
 });

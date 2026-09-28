@@ -329,20 +329,25 @@ export function GeneratingShell({
           {/* Where the editor's zoom group sits, so the swap at Ready is a text change. While the
               teacher is on an earlier slide, the way back to the newest sits beside the line. */}
           <div
-            data-testid="generating-lock"
-            className="relative flex h-12 shrink-0 items-center justify-center gap-1.5 text-meta font-medium text-ink-3"
+            data-generating-bar
+            className="relative flex h-12 shrink-0 items-center justify-center"
           >
             {themeCallout ? (
               <div className="absolute left-3" data-generating-theme>
                 {themeCallout}
               </div>
             ) : null}
-            {state.terminal === "completed" ? (
-              <span aria-hidden className="size-[5px] rounded-full bg-success" />
-            ) : (
-              <Lock aria-hidden size={14} strokeWidth={1.5} />
-            )}
-            <span>{lockLine(state)}</span>
+            <div
+              data-testid="generating-lock"
+              className="flex items-center gap-1.5 text-meta font-medium text-ink-3"
+            >
+              {state.terminal === "completed" ? (
+                <span aria-hidden className="size-[5px] rounded-full bg-success" />
+              ) : (
+                <Lock aria-hidden size={14} strokeWidth={1.5} />
+              )}
+              <span>{lockLine(state)}</span>
+            </div>
             {!following && newest ? (
               <Button
                 variant="ghost"

@@ -88,14 +88,16 @@ export function MobileGeneratingShell({
           }
         />
       </main>
-      <footer className="mobile-generation-footer" data-testid="generating-lock">
+      <footer className="mobile-generation-footer">
         {themeCallout ? (
           <div className="mobile-generation-theme" data-generating-theme>
             {themeCallout}
           </div>
         ) : null}
-        <Lock aria-hidden size={13} />
-        <span>{lockLine}</span>
+        <span className="mobile-generation-lock" data-testid="generating-lock">
+          <Lock aria-hidden size={13} />
+          <span>{lockLine}</span>
+        </span>
         {exportSlot}
       </footer>
     </div>

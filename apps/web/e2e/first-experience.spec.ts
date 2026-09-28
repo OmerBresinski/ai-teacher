@@ -267,7 +267,7 @@ test.describe("first-experience design preview", () => {
     await expect(page.locator("[data-theme-callout]")).toHaveCount(1);
     const slideBg = () =>
       page
-        .locator("[data-canvas-slide] > *")
+        .locator("[data-canvas] [data-slide-root]")
         .first()
         .evaluate((el) => getComputedStyle(el).backgroundColor);
     await expect(page.locator("[data-canvas-slide]")).toBeVisible({ timeout: 15_000 });
