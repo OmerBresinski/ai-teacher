@@ -214,12 +214,12 @@ export function createHandoverRig(root, gsap) {
     g.append(body);
     return g;
   });
-  // Persona idle: Plan breathes slow and small, Slides can't stand still, Worksheet is
-  // brisk but contained, Check holds almost still. `lift` scales the breath, `weight` the sway.
+  // Persona idle: Plan breathes slow and small, Slides can't stand still, Worksheet never
+  // wobbles, Check holds almost still. `lift` scales the breath, `weight` the sway.
   const rhythms = [
     { period: 7.4, phase: 0.4, weight: 0.45, lift: 0.7 },
     { period: 3.3, phase: 2.1, weight: 1.15, lift: 1.35 },
-    { period: 4.3, phase: 4.2, weight: 0.6, lift: 0.9 },
+    { period: 4.3, phase: 4.2, weight: 0.25, lift: 0.8 },
     { period: 8.2, phase: 1.3, weight: 0.3, lift: 0.45 },
   ];
   let calm = 1,

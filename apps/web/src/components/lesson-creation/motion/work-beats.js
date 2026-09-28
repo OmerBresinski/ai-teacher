@@ -1,10 +1,10 @@
-/** How each persona takes centre stage: [seconds, ease]. Plan glides, Slides bounds in and
- * overshoots, Worksheet strides in and stops short, Check lands exactly with no overshoot. */
+/** How each persona takes centre stage: [seconds, ease]. Plan glides in evenly, Slides bounds
+ * in and overshoots, Worksheet zips in and stops dead, Check comes in three exact held steps. */
 const ARRIVAL = [
   [0.85, "sine.inOut"],
   [0.7, "back.out(1.9)"],
-  [0.55, "power3.out"],
-  [0.6, "expo.out"],
+  [0.5, "expo.out"],
+  [0.6, "steps(3)"],
 ];
 // Source production.js work beats. All hand/prop contact timing is preserved.
 export function buildBeat(context, n, gsap) {
