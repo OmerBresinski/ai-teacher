@@ -71,3 +71,16 @@ with the founder; the tickets (TEACH-311, TEACH-312, TEACH-31) implement it and 
    for the consent screen (the IAP OAuth Admin API behind `gcloud iap oauth-clients` shut down on
    2026-03-19). The consent screen and the clients are created in the Google Cloud console;
    everything else is scripted. Runbook: `infra/README.md`, "Google sign-in (Google Cloud)".
+
+## Amendment (2026-09-28, TEACH-246): magic links survive mail scanners
+
+School mail filters (Microsoft Defender Safe Links and similar) GET every link in an email before
+the teacher sees it, and better-auth consumes the single-use token on the first
+`GET /auth/magic-link/verify`, so the teacher's own click failed with `INVALID_TOKEN`. The email
+now links to the web page `/sign-in/confirm?token=…&callbackURL=…&errorCallbackURL=…`
+(`confirmPageUrl` in `apps/api/src/auth/magic-link-mail.ts`), on the callback's origin when
+better-auth trusts it and on `WEB_ORIGIN[0]` otherwise. The page makes no request on load and holds
+no link to the verify URL; its "Sign in" button sanitises both callbacks to same-origin paths and
+navigates the window to the verify URL, so the cookie is set exactly as before and better-auth's
+origin check still runs. Links last 15 minutes (`expiresIn: 900`) instead of 5. A scanner that
+runs JavaScript and presses buttons would still spend the token; that is accepted.

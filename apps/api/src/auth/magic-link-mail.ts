@@ -19,6 +19,43 @@ const FONT =
 
 export const MAGIC_LINK_SUBJECT = "Sign in to DayBack";
 
+/** How long a sign-in link stays valid (better-auth `magicLink({ expiresIn })`, TEACH-246). */
+export const MAGIC_LINK_EXPIRES_IN_SECONDS = 15 * 60;
+
+/** The web page the email links to; only its "Sign in" button spends the token (TEACH-246). */
+export const MAGIC_LINK_CONFIRM_PATH = "/sign-in/confirm";
+
+/** The verify URL's params the confirm page needs; the web never sends `newUserCallbackURL`. */
+const CONFIRM_PARAMS = ["token", "callbackURL", "errorCallbackURL"] as const;
+
+/**
+ * The link the email carries. School mail scanners (Defender Safe Links and similar) GET every
+ * link before the teacher sees it, and better-auth consumes the token on the first
+ * `GET /magic-link/verify`, so the email points at a static web page instead and only its button
+ * navigates to `verifyUrl`. The page lives on the origin the teacher asked from (the
+ * `callbackURL`'s, when `isTrustedOrigin` accepts it, so a preview api mails its own preview web)
+ * and otherwise on `fallbackOrigin` (`WEB_ORIGIN[0]`).
+ */
+export function confirmPageUrl(
+  verifyUrl: string,
+  fallbackOrigin: string,
+  isTrustedOrigin: (origin: string) => boolean,
+): string {
+  const verify = new URL(verifyUrl);
+  const callback = verify.searchParams.get("callbackURL");
+  let origin = fallbackOrigin;
+  if (callback && URL.canParse(callback)) {
+    const candidate = new URL(callback).origin;
+    if (candidate !== "null" && isTrustedOrigin(candidate)) origin = candidate;
+  }
+  const confirm = new URL(MAGIC_LINK_CONFIRM_PATH, origin);
+  for (const name of CONFIRM_PARAMS) {
+    const value = verify.searchParams.get(name);
+    if (value !== null) confirm.searchParams.set(name, value);
+  }
+  return confirm.toString();
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -31,7 +68,7 @@ export function magicLinkText(url: string): string {
   return [
     "DayBack",
     "",
-    "Here is your sign-in link. It expires in 5 minutes.",
+    "Here is your sign-in link. It expires in 15 minutes.",
     "",
     url,
     "",
@@ -62,7 +99,7 @@ export function magicLinkHtml(url: string, assetOrigin: string): string {
 </style>
 </head>
 <body style="margin:0;padding:0;background:${PAPER};">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your sign-in link, valid for 5 minutes.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your sign-in link, valid for 15 minutes.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${PAPER};">
   <tr>
     <td align="center" style="padding:0;">
@@ -76,7 +113,7 @@ export function magicLinkHtml(url: string, assetOrigin: string): string {
 
             <h1 class="h1" style="margin:0;font-family:${FONT};font-size:34px;line-height:40px;font-weight:700;letter-spacing:-0.02em;color:${INK};">Here is your sign-in link.</h1>
 
-            <p style="margin:16px 0 0 0;font-family:${FONT};font-size:17px;line-height:26px;color:${INK_MUTED};">It expires in 5&nbsp;minutes.</p>
+            <p style="margin:16px 0 0 0;font-family:${FONT};font-size:17px;line-height:26px;color:${INK_MUTED};">It expires in 15&nbsp;minutes.</p>
 
             <div style="height:36px;line-height:36px;font-size:0;">&nbsp;</div>
 
