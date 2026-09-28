@@ -74,7 +74,9 @@ export function MobileGeneratingShell({
           followArrivals={running}
           footer={
             running ? (
-              <div className="mobile-generation-next" data-mobile-loading-slot>
+              // Each arrival opens a new "next slide" slot below it rather than pushing the old one
+              // down the page (so the list growing is not a layout shift).
+              <div key={count} className="mobile-generation-next" data-mobile-loading-slot>
                 <p>{count === 0 ? "Preparing your lesson" : "Making the next slide"}</p>
               </div>
             ) : count === 0 ? (

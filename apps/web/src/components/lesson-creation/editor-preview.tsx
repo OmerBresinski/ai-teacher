@@ -84,6 +84,36 @@ function LocalEditor({
   const [presenting, setPresenting] = useState(false);
   const [destination, setDestination] = useState<HTMLDivElement | null>(null);
   const [storyFinished, setStoryFinished] = useState(false);
+  // The editor mounts hidden and is shown once its layout has settled (zoom-to-fit, toolbar), so
+  // the swap from the generating shell moves nothing on screen (CLS).
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!ready) return;
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        timer = window.setTimeout(() => setShown(true), 150);
+      });
+    });
+    let timer = 0;
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [ready]);
+  // Check stays with the finished lesson until the teacher starts working; its column closes on
+  // that first input, so the canvas resizing is the teacher's own doing, not a shift.
+  const [engaged, setEngaged] = useState(false);
+  useEffect(() => {
+    if (!shown) return;
+    const engage = () => setEngaged(true);
+    const options = { capture: true, once: true } as const;
+    window.addEventListener("pointerdown", engage, options);
+    window.addEventListener("keydown", engage, options);
+    return () => {
+      window.removeEventListener("pointerdown", engage, options);
+      window.removeEventListener("keydown", engage, options);
+    };
+  }, [shown]);
   const count = lesson?.slides.length ?? 0;
   useEffect(() => {
     if (stopped || ready) return;
@@ -117,22 +147,30 @@ function LocalEditor({
       className="creation-editor-preview"
       data-testid="creation-generating"
       data-preview-state={ready ? "ready" : arrived ? "partial" : "empty"}
-      data-story-finished={storyFinished}
+      // The column closes on the teacher's first input (or at once if the story ended untouched
+      // by motion); Check walks out of the overlay as it closes.
+      data-story-finished={storyFinished || engaged}
     >
       <div className="creation-editor-surface">
         {ready ? (
-          <LessonEditor
-            lessonId={lesson.id}
-            queryKey={KEY}
-            // An explicit queryFn: the editor passes its own (even undefined) over the defaults.
-            queryFn={async () => lesson}
-            onSave={saveLocally}
-            onBack={onBack}
-            onPresent={() => setPresenting(true)}
-            initialSlideId={selected ?? lesson.slides.at(-1)?.id}
-            companion={companionSlot}
-          />
-        ) : (
+          <div
+            className={shown ? "creation-editor-live" : "creation-editor-staging"}
+            inert={!shown}
+          >
+            <LessonEditor
+              lessonId={lesson.id}
+              queryKey={KEY}
+              // An explicit queryFn: the editor passes its own (even undefined) over the defaults.
+              queryFn={async () => lesson}
+              onSave={saveLocally}
+              onBack={onBack}
+              onPresent={() => setPresenting(true)}
+              initialSlideId={selected ?? lesson.slides.at(-1)?.id}
+              companion={shown ? companionSlot : <div className="creation-generation-anchor" />}
+            />
+          </div>
+        ) : null}
+        {!shown ? (
           <GeneratingShell
             lesson={{ ...lesson, slides: lesson.slides.slice(0, arrived) }}
             events={events}
@@ -143,7 +181,7 @@ function LocalEditor({
             className="h-full"
             canvasCompanion={companionSlot}
           />
-        )}
+        ) : null}
       </div>
       {!storyFinished ? (
         <GenerationCompanion
@@ -153,6 +191,7 @@ function LocalEditor({
           progress={count ? arrived / count : 0}
           ready={ready}
           paused={stopped}
+          hold={!engaged}
           onExited={() => setStoryFinished(true)}
         />
       ) : null}

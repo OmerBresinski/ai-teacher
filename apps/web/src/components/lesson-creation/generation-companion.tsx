@@ -17,6 +17,7 @@ export function GenerationCompanion({
   statusText,
   skipIntro = false,
   paused,
+  hold = false,
   onExited,
 }: {
   destination: HTMLElement | null;
@@ -28,6 +29,8 @@ export function GenerationCompanion({
   statusText?: string;
   skipIntro?: boolean;
   paused: boolean;
+  /** Keep the finished character in its slot until released (the teacher's first input). */
+  hold?: boolean;
   onExited: () => void;
 }) {
   const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
@@ -206,7 +209,14 @@ export function GenerationCompanion({
     },
     [],
   );
+  const held = useRef(false);
+  const holding = useRef(hold);
+  holding.current = hold;
   const finish = () => {
+    if (holding.current) {
+      held.current = true;
+      return;
+    }
     if (finishing.current || !gsap) return;
     finishing.current = true;
     flight.current?.kill();
@@ -217,6 +227,12 @@ export function GenerationCompanion({
     stage.current?.dispatchEvent(leave);
     if (!leave.detail.accepted) onExited();
   };
+  useEffect(() => {
+    if (!hold && held.current) {
+      held.current = false;
+      finish();
+    }
+  });
   return (
     <div className="creation-generation-layer" aria-hidden="true">
       <div ref={scrim} className="creation-generation-scrim" />
