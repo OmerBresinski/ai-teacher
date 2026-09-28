@@ -66,26 +66,32 @@ export function factsAnswerFor(i: number) {
   };
 }
 
-/** A question set as the split call returns one: `count` questions, each on the taught key idea 0. */
+/**
+ * A question set as the split call returns one: `count` questions, each on the taught key idea 0.
+ * Exit questions are short (TEACH-172): the exit ticket keeps only what fits one slide with its
+ * answers, and three of the slide questions' length do not, which would leave the last
+ * objective unchecked in tests about the pipeline, not about the ticket.
+ */
 export function questionSetAnswer(
   set: { target: number; use: "slide" | "exit"; count: number },
   keyIdeaIndex = 0,
 ) {
+  const exit = set.use === "exit";
   return {
     questions: Array.from({ length: set.count }, (_, n) => ({
-      stem: `${set.use} question ${n + 1} on objective ${set.target + 1}: which is right?`,
-      answer: `Right answer ${n + 1}`,
+      stem: exit
+        ? `Exit ${n + 1}, objective ${set.target + 1}?`
+        : `${set.use} question ${n + 1} on objective ${set.target + 1}: which is right?`,
+      answer: exit ? `Right ${n + 1}` : `Right answer ${n + 1}`,
       reasoning: "The taught key idea says so.",
       tier: n === 0 ? "easy" : n === 1 ? "core" : "stretch",
       use: set.use,
       demand: "recall",
       forms: ["multiple-choice", "open-response"],
       keyIdeaRefs: [{ type: "keyIdea", index: keyIdeaIndex }],
-      distractors: [
-        { text: `Wrong option ${n + 1}a` },
-        { text: `Wrong option ${n + 1}b` },
-        { text: `Wrong option ${n + 1}c` },
-      ],
+      distractors: ["a", "b", "c"].map((x) => ({
+        text: exit ? `Wrong ${n + 1}${x}` : `Wrong option ${n + 1}${x}`,
+      })),
     })),
   };
 }
