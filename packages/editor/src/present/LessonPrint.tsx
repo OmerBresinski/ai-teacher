@@ -11,6 +11,9 @@ import { parseSlideRange } from "../export/range";
 import { getTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 
+/** The print route re-fits a lesson stored under older floors first (`../layout/refit.ts`). */
+export { useFittedLesson } from "../layout/refit";
+
 /**
  * The lesson print layout (TeachDeck `app/l/[id]/print/page.tsx`; ADR 0023 §2). One slide per
  * landscape page at 960x540pt, an A4 page with the presenter notes when `notes`, or three slides to

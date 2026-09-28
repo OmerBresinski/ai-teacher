@@ -288,8 +288,16 @@ describeDb("lesson.plan on pg-boss", () => {
     expect(
       await waitFor(async () => (await settledEvent(nextJobId))?.type === "completed", 30_000),
     ).toBe(true);
+    // The completed event can land before the watcher polls the released lock; let it see the
+    // release (it stops on null) rather than cutting it off.
+    const released = await waitFor(
+      async () => (await getDocument(ws, lessonId))?.generatingJobId === null,
+      5_000,
+    );
     watching = false;
     await watcher;
+    expect(released).toBe(true);
+    if (holders.at(-1) !== null) holders.push(null);
 
     // The lock went jobId → nextJobId → null (released by the generate job), never null between.
     const distinct = holders.filter((h, i) => i === 0 || h !== holders[i - 1]);
