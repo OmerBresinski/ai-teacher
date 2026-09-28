@@ -1,40 +1,20 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Button, cn, Display, Input, Label, Separator } from "@tj/ui";
+import { Button, cn, Input, Label, Separator } from "@tj/ui";
 import { CircleAlert, MailCheck } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import { DaybackMark } from "@/components/brand/dayback-mark";
 import { type CastMood, type CastTargets, SignInCast } from "@/components/brand/sign-in-cast";
+import { PAPER_GLOW, SIGN_IN_LOCKUP } from "@/components/brand/sign-in-chrome";
 import { GoogleLogo } from "@/components/google-logo";
 import { useContentHeight } from "@/hooks/use-content-height";
 import { authClient } from "@/lib/auth";
-import { sanitiseRedirectPath } from "@/lib/auth-redirect";
+import { callbackUrl, errorCallbackUrl } from "@/lib/auth-redirect";
 import { sessionBoundary } from "@/lib/session-boundary";
 
 const route = getRouteApi("/sign-in");
 
 export function normaliseEmail(raw: string): string {
   return raw.trim().toLowerCase();
-}
-
-/**
- * Where better-auth sends the browser after the magic link is verified or Google signs the teacher
- * in. Same-origin paths only; a stale `?error=…` from a previous failed attempt is dropped
- * (TEACH-68).
- */
-export function callbackUrl(origin: string, redirect: string | undefined): string {
-  return origin + sanitiseRedirectPath(redirect);
-}
-
-/**
- * Where better-auth sends the browser when verification or the Google round trip fails. It appends
- * `error=<code>` itself, so we point it back at `/sign-in` and keep `redirect` so the teacher can
- * retry to the same place.
- */
-export function errorCallbackUrl(origin: string, redirect: string | undefined): string {
-  const url = new URL("/sign-in", origin);
-  url.searchParams.set("redirect", sanitiseRedirectPath(redirect));
-  return url.toString();
 }
 
 const GOOGLE_INTERRUPTED = "Your Google sign-in took too long or was interrupted. Try again.";
@@ -189,7 +169,7 @@ export function SignInPage() {
     <main className="relative isolate flex min-h-svh flex-col overflow-x-clip bg-background">
       {PAPER_GLOW}
       <div className="mx-auto w-full max-w-[1296px] px-4 pt-5 sm:px-[clamp(22px,6vw,48px)] lg:pt-8">
-        {LOCKUP}
+        {SIGN_IN_LOCKUP}
       </div>
       <div className="flex flex-1 flex-col items-center justify-center px-4 pt-6 pb-10 sm:px-6">
         {HEADLINE}
@@ -237,7 +217,7 @@ export function SignInPage() {
                       <strong className="font-semibold break-words text-foreground">
                         {status.email}
                       </strong>
-                      . It works once and expires in 5 minutes.
+                      . It works once and expires in 15 minutes.
                     </p>
                   </div>
                   {DEV_HINT}
@@ -328,24 +308,6 @@ function oneAlert({
 // Static JSX hoisted so a state change never rebuilds it (rendering-hoist-jsx).
 const ALERT_ICON = (
   <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
-);
-
-/** The homepage hero's paper glow (homepage/assets/hero.css `.hm-hero-band`), on tokens. */
-const PAPER_GLOW = (
-  <div
-    aria-hidden="true"
-    className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_60%_50%,var(--card)_0,transparent_65%)]"
-  />
-);
-
-/** The brand lockup: not a link, so it adds no tab stop before the email field. */
-const LOCKUP = (
-  <Display as="span" size="md" className="inline-flex items-center gap-[0.2em] whitespace-nowrap">
-    <span className="inline-flex origin-[50%_52%] motion-safe:animate-dayback-rewind">
-      <DaybackMark />
-    </span>
-    DayBack
-  </Display>
 );
 
 const SENT_BADGE = (

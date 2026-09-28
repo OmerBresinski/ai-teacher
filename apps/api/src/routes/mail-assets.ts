@@ -1,22 +1,25 @@
 /**
  * `GET /mail-assets/:file` — the handful of images the transactional emails embed (TEACH-35
  * follow-up). Gmail rewrites `<img>` sources through its proxy and strips inline SVG, so the
- * arrow on the magic-link button has to be a PNG at a public URL; the api is the one origin the
- * mail code already knows (`BETTER_AUTH_URL`). Unauthenticated by design (a mail client fetches
- * it with no cookie), immutable and long-cached, and `app.ts` exempts the prefix from the
- * `same-origin` CORP header so Apple Mail's WebView may render it. No Bun-only APIs: this module is
- * part of `AppType`, which `apps/web` typechecks without Bun's types.
+ * arrow on the magic-link button and the DayBack mark in its header have to be PNGs at a public
+ * URL; the api is the one origin the mail code already knows (`BETTER_AUTH_URL`).
+ * Unauthenticated by design (a mail client fetches it with no cookie), immutable and long-cached,
+ * and `app.ts` exempts the prefix from the `same-origin` CORP header so Apple Mail's WebView may
+ * render it. No Bun-only APIs: this module is part of `AppType`, which `apps/web` typechecks
+ * without Bun's types.
  */
 import { Hono } from "hono";
 import type { AppEnv } from "../context";
 import { errorResponse } from "../errors";
 import { ARROW_UP_RIGHT_PNG } from "../mail/assets/arrow-up-right";
+import { DAYBACK_MARK_PNG } from "../mail/assets/dayback-mark";
 
 export const MAIL_ASSETS_PREFIX = "/mail-assets";
 
 /** Bytes are embedded (see `../mail/assets`): the runtime image carries the bundle only. */
 const ASSETS: Record<string, { bytes: ArrayBuffer; type: string }> = {
   "arrow-up-right.png": { bytes: ARROW_UP_RIGHT_PNG, type: "image/png" },
+  "dayback-mark.png": { bytes: DAYBACK_MARK_PNG, type: "image/png" },
 };
 
 export function mailAssetRoutes() {
