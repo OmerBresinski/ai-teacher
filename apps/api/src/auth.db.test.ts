@@ -2,7 +2,16 @@
  * Integration: the magic-link flow end to end against the real test database (skips visibly when
  * unreachable). Cookies are captured from `Set-Cookie` and replayed by hand, as a browser would.
  */
-import { afterAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  setSystemTime,
+  spyOn,
+  test,
+} from "bun:test";
 import { insertJobEvent } from "@tj/db";
 import {
   cookieHeaderFromResponse,
@@ -18,7 +27,7 @@ import { createPersonalWorkspace, logUsersWithoutWorkspace } from "./auth/worksp
 import { SMALL_JSON_BODY_BYTES } from "./body-limits";
 import { createEventsRuntime } from "./events/runtime";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
-import { captureLogger, silentLogger, TEST_ENV } from "./test-helpers";
+import { captureLogger, silentLogger, TEST_ENV, verifyUrlFromEmailLink } from "./test-helpers";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -59,11 +68,16 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       body: JSON.stringify({ email, callbackURL: `${WEB}/` }),
     });
     expect(res.status).toBe(200);
-    const link = extractFirstUrl(mail.last?.text ?? "");
-    if (!link) throw new Error("no magic link captured");
+    const emailed = extractFirstUrl(mail.last?.text ?? "");
+    if (!emailed) throw new Error("no magic link captured");
     expect(mail.last?.to).toBe(email);
-    expect(link.startsWith(`${BASE}/auth/magic-link/verify?token=`)).toBe(true);
-    return link;
+    // The email opens the web confirm page, never the api verify endpoint (TEACH-246).
+    expect(emailed.startsWith(`${WEB}/sign-in/confirm?token=`)).toBe(true);
+    return verifyUrlFromEmailLink(emailed, BASE);
+  }
+
+  async function verificationCount() {
+    return Number((await db.sql`select count(*)::text as c from verifications`)[0]?.c);
   }
 
   /** Follow the link once (no auto-redirect) and return `{ res, cookie }`. */
@@ -114,6 +128,48 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     expect(reused.headers.get("location")).toContain("error=INVALID_TOKEN");
   });
 
+  describe("mail scanners and the 15-minute expiry (TEACH-246)", () => {
+    afterEach(() => setSystemTime());
+
+    test("the emailed link is a static web page: sending it leaves the token unspent", async () => {
+      await requestMagicLink("scanned@example.test");
+      const emailed = extractFirstUrl(mail.last?.text ?? "") as string;
+      expect(new URL(emailed).origin).toBe(WEB);
+      // The api serves nothing at the confirm path, so a scanner's GET cannot reach the token.
+      const scannerHit = await app.request(
+        `${BASE}${new URL(emailed).pathname}${new URL(emailed).search}`,
+      );
+      expect(scannerHit.status).toBe(404);
+      expect(await verificationCount()).toBe(1);
+      // The teacher's click afterwards still signs in.
+      const { res, cookie } = await followLink(verifyUrlFromEmailLink(emailed, BASE));
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toBe(`${WEB}/`);
+      expect((await app.request(`${BASE}/me`, { headers: { cookie } })).status).toBe(200);
+      expect(await verificationCount()).toBe(0);
+    });
+
+    test("a link clicked 14 minutes after sending still signs in", async () => {
+      const sentAt = Date.now();
+      const link = await requestMagicLink("late@example.test");
+      setSystemTime(new Date(sentAt + 14 * 60_000));
+      const { res, cookie } = await followLink(link);
+      expect(res.headers.get("location")).toBe(`${WEB}/`);
+      expect(cookie).toContain("tj.session_token=");
+    });
+
+    test("a link clicked 16 minutes after sending lands on the error callback", async () => {
+      const sentAt = Date.now();
+      const link = await requestMagicLink("expired@example.test");
+      setSystemTime(new Date(sentAt + 16 * 60_000));
+      const { res, cookie } = await followLink(link);
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toContain("error=INVALID_TOKEN");
+      expect(cookie).not.toContain("tj.session_token=");
+      expect(await usersCount()).toBe(0);
+    });
+  });
+
   test("GET /me without a cookie → 401 envelope", async () => {
     const res = await app.request(`${BASE}/me`);
     expect(res.status).toBe(401);
@@ -161,8 +217,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       }),
     });
     expect(requested.status).toBe(200);
-    const link = extractFirstUrl(mail.last?.text ?? "");
-    if (!link) throw new Error("no synthetic link captured");
+    const link = verifyUrlFromEmailLink(extractFirstUrl(mail.last?.text ?? ""), BASE);
     const stderr: string[] = [];
     const consoleError = spyOn(console, "error").mockImplementation((...args) => {
       stderr.push(Bun.inspect(args));
@@ -319,8 +374,8 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       body: JSON.stringify({ email: "dom2@example.test", callbackURL: `${WEB}/` }),
     });
     expect(r1.status).toBe(200);
-    const link = extractFirstUrl(scopedMail.last?.text ?? "");
-    const r2 = await scoped.request(link ?? "", { redirect: "manual" });
+    const link = verifyUrlFromEmailLink(extractFirstUrl(scopedMail.last?.text ?? ""), BASE);
+    const r2 = await scoped.request(link, { redirect: "manual" });
     const sessionLine = r2.headers.getSetCookie().find((l) => l.startsWith("tj.session_token="));
     expect(sessionLine).toMatch(/Domain=\.example\.test/i);
   });
@@ -350,8 +405,8 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       body: JSON.stringify({ email: "cross@example.test", callbackURL: `${WEB}/` }),
     });
     expect(r1.status).toBe(200);
-    const link = extractFirstUrl(crossMail.last?.text ?? "");
-    const r2 = await cross.request(link ?? "", { redirect: "manual" });
+    const link = verifyUrlFromEmailLink(extractFirstUrl(crossMail.last?.text ?? ""), BASE);
+    const r2 = await cross.request(link, { redirect: "manual" });
     const sessionLine = r2.headers
       .getSetCookie()
       .find((l) => /^(__Secure-)?tj\.session_token=/.test(l));
