@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { railwayPrApiUrl, resolveWebEnv, shellQuote, toExportLines } from "./vercel-env";
+import {
+  railwayPrApiUrl,
+  resolveSiteArgs,
+  resolveWebEnv,
+  shellQuote,
+  toExportLines,
+} from "./vercel-env";
 
 const TEMPLATE = "https://api-ai-teacher-pr-{pr}.up.railway.app";
 
@@ -101,5 +107,49 @@ describe("shell output", () => {
     ).toBe(
       "export VITE_APP_ENV='preview'\nexport VITE_API_URL='https://api-ai-teacher-pr-1.up.railway.app'",
     );
+  });
+});
+
+describe("resolveSiteArgs (marketing project, TEACH-78)", () => {
+  const origins = { SITE_URL: "https://dayback.app", SITE_APP_URL: "https://teach.dayback.app/" };
+
+  test("production is a root build on the given origins, noindex and without stand-ins by default", () => {
+    expect(resolveSiteArgs({ VERCEL_ENV: "production", ...origins })).toEqual([
+      "--base=/",
+      "--site=https://dayback.app",
+      "--app=https://teach.dayback.app",
+    ]);
+  });
+
+  test("production indexes only with SITE_INDEXING=1, and never together with stand-ins", () => {
+    expect(resolveSiteArgs({ VERCEL_ENV: "production", ...origins, SITE_INDEXING: "1" })).toContain(
+      "--index",
+    );
+    expect(
+      resolveSiteArgs({ VERCEL_ENV: "production", ...origins, SITE_ALLOW_PROVISIONAL: "1" }),
+    ).toContain("--allow-provisional");
+    expect(() =>
+      resolveSiteArgs({
+        VERCEL_ENV: "production",
+        ...origins,
+        SITE_INDEXING: "1",
+        SITE_ALLOW_PROVISIONAL: "1",
+      }),
+    ).toThrow("stand-in");
+  });
+
+  test("production refuses a missing or non-https origin", () => {
+    expect(() => resolveSiteArgs({ VERCEL_ENV: "production", SITE_URL: origins.SITE_URL })).toThrow(
+      "SITE_APP_URL",
+    );
+    expect(() =>
+      resolveSiteArgs({ VERCEL_ENV: "production", ...origins, SITE_URL: "http://dayback.app" }),
+    ).toThrow("SITE_URL");
+  });
+
+  test("preview is never indexable, may show stand-ins and falls back to the config defaults", () => {
+    const args = resolveSiteArgs({ VERCEL_ENV: "preview", SITE_INDEXING: "1" });
+    expect(args).toEqual(["--base=/", "--allow-provisional"]);
+    expect(resolveSiteArgs({ VERCEL_ENV: "preview", ...origins })).not.toContain("--index");
   });
 });
