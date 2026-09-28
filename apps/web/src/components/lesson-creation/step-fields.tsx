@@ -63,7 +63,8 @@ export function BriefStep({
   brief: IntakeBrief;
   onChange: (brief: IntakeBrief) => void;
   onNext: () => void;
-  onSkip: () => void;
+  /** Absent once a plan exists: a changed brief has to be replanned before it can generate. */
+  onSkip?: () => void;
   filePicker?: React.ReactNode;
 }) {
   const id = useId();
@@ -151,9 +152,11 @@ export function BriefStep({
         <Button variant="inverse" type="submit" disabled={!brief.topic.trim()}>
           Next <ArrowRight />
         </Button>
-        <Button variant="link" disabled={!brief.topic.trim()} onClick={onSkip}>
-          Skip planning
-        </Button>
+        {onSkip ? (
+          <Button variant="link" disabled={!brief.topic.trim()} onClick={onSkip}>
+            Skip planning
+          </Button>
+        ) : null}
       </div>
     </form>
   );

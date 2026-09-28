@@ -80,6 +80,14 @@ test.describe("lesson brief", () => {
     });
     await expect(page.getByRole("textbox", { name: /^Objective / })).not.toHaveCount(0);
 
+    // Back to the brief: the plan exists, so Skip planning is gone (a changed brief must replan
+    // first) and Next is the only way on.
+    await page.getByRole("button", { name: "Back to the brief" }).click();
+    await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Skip planning" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByRole("heading", { name: "Learning objectives" })).toBeVisible();
+
     // The next brief opens with the class already set.
     await page.goto("/lessons/new");
     await expect(page.getByRole("combobox", { name: "Year group" })).toHaveText("Year 5");

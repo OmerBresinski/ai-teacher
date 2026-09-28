@@ -332,7 +332,7 @@ function LessonIntake({
                 brief={brief}
                 onChange={setBrief}
                 onNext={() => void plan(false)}
-                onSkip={() => void plan(!lessonId)}
+                onSkip={lessonId ? undefined : () => void plan(true)}
                 filePicker={
                   <div className="creation-upload">
                     <Button
