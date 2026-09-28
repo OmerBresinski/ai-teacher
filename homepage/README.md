@@ -98,8 +98,9 @@ flag is the whole swap.
 configured by `homepage/vercel.json` and built with the flags `bun scripts/vercel-env.ts site`
 resolves from `SITE_URL`, `SITE_APP_URL`, `SITE_INDEXING` and `SITE_ALLOW_PROVISIONAL`. A root
 build (`--base=/`) writes `robots.txt` and `sitemap.xml`; `--site=` sets the canonical and Open
-Graph origin (default `https://dayback.app`); `--index` drops the noindex (never with
-`--allow-provisional` or a prefixed base; the 404 page and stand-in examples stay noindex).
+Graph origin (default `https://dayback.app`); `--index` drops the noindex (never with a
+prefixed base; the 404 page and stand-in examples stay noindex and out of the sitemap, so `--index`
+and `--allow-provisional` may ship together).
 `bun run homepage:check:site` builds and checks the root variants and ends on the launch build
 (`homepage:build:site`: noindex, stand-in Top lessons shown), so `homepage/dist` is what dayback.app
 serves. `bun run homepage:dev:site` builds that and serves it at http://localhost:4190/. A root build

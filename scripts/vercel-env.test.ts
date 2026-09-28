@@ -121,21 +121,22 @@ describe("resolveSiteArgs (marketing project, TEACH-78)", () => {
     ]);
   });
 
-  test("production indexes only with SITE_INDEXING=1, and never together with stand-ins", () => {
+  test("production indexes only with SITE_INDEXING=1, and may show the stand-ins too", () => {
     expect(resolveSiteArgs({ VERCEL_ENV: "production", ...origins, SITE_INDEXING: "1" })).toContain(
       "--index",
     );
     expect(
       resolveSiteArgs({ VERCEL_ENV: "production", ...origins, SITE_ALLOW_PROVISIONAL: "1" }),
     ).toContain("--allow-provisional");
-    expect(() =>
-      resolveSiteArgs({
-        VERCEL_ENV: "production",
-        ...origins,
-        SITE_INDEXING: "1",
-        SITE_ALLOW_PROVISIONAL: "1",
-      }),
-    ).toThrow("stand-in");
+    // DOM-11/DOM-13: the site is indexed while the stand-ins are shown; they stay noindex per page.
+    const both = resolveSiteArgs({
+      VERCEL_ENV: "production",
+      ...origins,
+      SITE_INDEXING: "1",
+      SITE_ALLOW_PROVISIONAL: "1",
+    });
+    expect(both).toContain("--index");
+    expect(both).toContain("--allow-provisional");
   });
 
   test("production refuses a missing or non-https origin", () => {
