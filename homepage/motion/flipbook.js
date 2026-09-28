@@ -385,8 +385,8 @@
       ]) {
         const e = at(dx, dy);
         out.push(
-          `<ellipse cx="${f1(e[0])}" cy="${f1(e[1])}" rx="${f1(3 * Math.max(0.35, Math.abs(kx)))}" ry="${f1(3 * (1 - 0.85 * (p.blink || 0)))}" fill="${ink}" ${S()}/>`,
-        );
+          `<ellipse cx="${f1(e[0])}" cy="${f1(e[1])}" rx="${f1(3 * Math.max(0.35, Math.abs(kx)))}" ry="${f1(3 * (1 - 0.85 * (p.blink || 0)))}" fill="${ink}" stroke="none"/>`,
+        ); // unstroked, as the cast draws pupils (cast.css .eye)
       }
     }
     if (p.mouth === "happy")
