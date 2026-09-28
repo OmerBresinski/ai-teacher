@@ -27,6 +27,12 @@
  *
  * Only `VITE_*` variables reach the bundle; turbo.json lists them under `@tj/web#build.env` so
  * the remote cache key changes with them.
+ *
+ * The marketing project (dayback.app, root `homepage/`, TEACH-78) uses the `site` subcommand, which
+ * appends the homepage build flags resolved by `resolveSiteArgs` to the command:
+ *
+ *   bun scripts/vercel-env.ts site print               # prints the flags
+ *   bun scripts/vercel-env.ts site exec <command...>   # runs <command> <flags...>
  */
 
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
@@ -130,6 +136,56 @@ export function resolveWebEnv(input: VercelBuildInputs): ResolvedWebEnv {
   );
 }
 
+export interface SiteBuildInputs {
+  VERCEL_ENV?: string;
+  /** Public origin of the marketing site (`https://dayback.app`): canonicals, sitemap. */
+  SITE_URL?: string;
+  /** Application origin the hero hands a topic to (`https://teach.dayback.app`). */
+  SITE_APP_URL?: string;
+  /** `1` lets a production build be indexed. Unset = noindex. */
+  SITE_INDEXING?: string;
+  /** `1` lets a production build show stand-in example lessons (never indexable). */
+  SITE_ALLOW_PROVISIONAL?: string;
+}
+
+function httpsOrigin(name: string, value: string | undefined): string {
+  const trimmed = nonEmpty(value);
+  if (!trimmed || !isAbsoluteHttpUrl(trimmed) || !trimmed.startsWith("https://")) {
+    throw new UserFacingError(
+      `Site build: ${name} must be an absolute https URL (got "${trimmed ?? ""}").`,
+    );
+  }
+  return trimmed.replace(/\/$/, "");
+}
+
+/**
+ * Homepage build flags (`homepage/config.mjs`) for the marketing project. Production needs both
+ * origins, and is indexable or shows stand-in examples only when told so explicitly, never both.
+ * Every other environment is noindex and may show the stand-ins.
+ */
+export function resolveSiteArgs(input: SiteBuildInputs): string[] {
+  const production = (nonEmpty(input.VERCEL_ENV) ?? "preview") === "production";
+  const args = ["--base=/"];
+  if (production || nonEmpty(input.SITE_URL)) {
+    args.push(`--site=${httpsOrigin("SITE_URL", input.SITE_URL)}`);
+  }
+  if (production || nonEmpty(input.SITE_APP_URL)) {
+    args.push(`--app=${httpsOrigin("SITE_APP_URL", input.SITE_APP_URL)}`);
+  }
+  if (!production) return [...args, "--allow-provisional"];
+  const indexing = nonEmpty(input.SITE_INDEXING) === "1";
+  const provisional = nonEmpty(input.SITE_ALLOW_PROVISIONAL) === "1";
+  if (indexing && provisional) {
+    throw new UserFacingError(
+      "Site build: SITE_INDEXING=1 and SITE_ALLOW_PROVISIONAL=1 together would index stand-in " +
+        "example lessons. Unset one of them.",
+    );
+  }
+  if (indexing) args.push("--index");
+  if (provisional) args.push("--allow-provisional");
+  return args;
+}
+
 /** POSIX single-quote so the value is safe to `eval` (`'` → `'\''`). */
 export function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'\\''`)}'`;
@@ -142,10 +198,24 @@ export function toExportLines(env: ResolvedWebEnv): string {
   ].join("\n");
 }
 
-const USAGE = "usage: bun scripts/vercel-env.ts print | exec <command...>";
+const USAGE = "usage: bun scripts/vercel-env.ts [site] print | [site] exec <command...>";
+
+async function site(args: string[]): Promise<number> {
+  const [mode = "print", ...command] = args;
+  const flags = resolveSiteArgs(process.env as SiteBuildInputs);
+  if (mode === "print" && command.length === 0) {
+    console.log(flags.join(" "));
+    return ExitCode.Ok;
+  }
+  if (mode !== "exec" || command.length === 0) throw new UserFacingError(USAGE, ExitCode.Usage);
+  console.error(`vercel-env site: ${flags.join(" ")}`);
+  const child = Bun.spawn([...command, ...flags], { stdio: ["inherit", "inherit", "inherit"] });
+  return await child.exited;
+}
 
 async function main(): Promise<number> {
   const [subcommand = "print", ...command] = process.argv.slice(2);
+  if (subcommand === "site") return await site(command);
   const resolved = resolveWebEnv(process.env as VercelBuildInputs);
 
   if (subcommand === "print" && command.length === 0) {
