@@ -91,6 +91,16 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       headers: { ...browser, "Content-Type": "application/json" },
       expect: 403,
     },
+    // TEACH-222
+    {
+      // The anonymous guard runs after the session guard: without a session a save is 401. A 403
+      // here (sign_in_required, or a CSRF refusal) means the guard order changed.
+      name: "app origin, PUT /documents JSON, reaches the session guard before the anonymous guard",
+      method: "PUT",
+      path: "/documents/0192f7a0-0000-7000-8000-000000000042",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 401,
+    },
     {
       // TEACH-81 (audit F05): the diagnostic ping routes are not mounted in production. The 404
       // comes before the session guard, so a 401 here means the dev-only routes are back.

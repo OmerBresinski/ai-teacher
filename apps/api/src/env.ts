@@ -125,6 +125,12 @@ export const EnvSchema = z
     ALLOW_WORKSPACE_HEADER_SHIM: optionalString,
     /** Kill switch for anonymous sessions (TEACH-223): anything but `true` refuses the endpoint. */
     ANONYMOUS_LESSONS_ENABLED: z.enum(["true", "false"]).default("false"),
+    /** TEACH-222: anonymous sessions one client IP may mint per UTC day (school NAT: generous). */
+    ANONYMOUS_SIGNINS_PER_IP_DAILY: z.coerce.number().int().min(1).default(20),
+    /** TEACH-222: anonymous lessons created per UTC day across every Workspace. */
+    ANONYMOUS_LESSONS_DAILY_CAP: z.coerce.number().int().min(0).default(200),
+    /** TEACH-222: the request header holding the client IP (e.g. `cf-connecting-ip`); unset → better-auth's `x-forwarded-for`. */
+    AUTH_IP_HEADER: optionalString,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {

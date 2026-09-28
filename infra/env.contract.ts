@@ -456,6 +456,58 @@ const CONTRACT = [
     description:
       "Kill switch for signed-out first lessons (TEACH-223). Unless `true`, `POST /auth/sign-in/anonymous` answers 403 anonymous_disabled. Default `false`; leave unset on Railway until the signed-out guard lands.",
   },
+  {
+    name: "ANONYMOUS_SIGNINS_PER_IP_DAILY",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["api"],
+    description:
+      "Per-IP daily ceiling on `POST /auth/sign-in/anonymous` (TEACH-222), counted per UTC day in Postgres. Over it the endpoint answers 429 rate_limited. Default 20: schools share one NAT address, so this is a bot backstop, not the device quota.",
+  },
+  {
+    name: "ANONYMOUS_LESSONS_DAILY_CAP",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["api"],
+    description:
+      "Global cap on lessons created by anonymous users per UTC day (TEACH-222). At the cap, anonymous `POST /lessons` and `POST /auth/sign-in/anonymous` answer 403 anonymous_capacity. Default 200.",
+  },
+  {
+    name: "AUTH_IP_HEADER",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Request header that carries the client IP for the anonymous per-IP ceiling and better-auth's limiter (TEACH-222), e.g. `cf-connecting-ip` behind Cloudflare. Unset → `x-forwarded-for` (single address only). The api logs the source at boot; verify it on Railway before turning anonymous lessons on.",
+  },
+  {
+    name: "ANONYMOUS_USER_TTL_DAYS",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["worker"],
+    description:
+      "The daily `auth.anonymous-cleanup` job deletes anonymous users older than this many days whose Workspace was not claimed, with their lessons and stored files (TEACH-222). Default 14.",
+  },
 
   // --- storage (ADR 0026) ------------------------------------------------------------------------
   {

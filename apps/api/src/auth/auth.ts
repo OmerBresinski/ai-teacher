@@ -22,6 +22,7 @@ import { microsoft } from "better-auth/social-providers";
 import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
+import { authIpAddress } from "./client-ip";
 import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
 
@@ -223,6 +224,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
         : { enabled: false },
       defaultCookieAttributes: sessionCookieAttributes(env),
       useSecureCookies: env.NODE_ENV === "production" || env.COOKIE_SAMESITE === "none",
+      ipAddress: authIpAddress(env),
     },
     databaseHooks: {
       user: {

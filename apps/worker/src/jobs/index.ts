@@ -18,3 +18,9 @@ export const registry: JobRegistry<WorkerDeps> = {
   "lesson.generate": lessonGenerateJob,
   "lesson.worksheet": lessonWorksheetJob,
 };
+
+export {
+  ANONYMOUS_CLEANUP_CRON,
+  ANONYMOUS_CLEANUP_QUEUE,
+  runAnonymousCleanup,
+} from "./anonymous-cleanup";

@@ -5,6 +5,7 @@
 export { type CreateDbOptions, createDb, type Db, type DbHandle, type Sql } from "./client";
 export {
   clearGenerating,
+  countLessons,
   createDocument,
   type DocumentBody,
   type DocumentRow,

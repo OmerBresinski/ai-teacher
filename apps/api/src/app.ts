@@ -16,7 +16,15 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import { anonymousGuard } from "./auth/anonymous-guard";
+import {
+  anonymousSignInLimits,
+  countAnonymousLessonsToday,
+  lessonsDailyCap,
+  signinsPerIpDaily,
+} from "./auth/anonymous-limits";
 import { ANONYMOUS_SIGN_IN_PATH, AUTH_BASE_PATH, type Auth } from "./auth/auth";
+import { ipSourceDescription } from "./auth/client-ip";
 import { requireSession } from "./auth/require-session";
 import { smallJsonBodyLimit } from "./body-limits";
 import type { AppEnv } from "./context";
@@ -66,6 +74,9 @@ export interface CreateAppOptions {
         | "ENABLE_TEST_ROUTES"
         | "WEB_ORIGIN_PATTERNS"
         | "ANONYMOUS_LESSONS_ENABLED"
+        | "ANONYMOUS_SIGNINS_PER_IP_DAILY"
+        | "ANONYMOUS_LESSONS_DAILY_CAP"
+        | "AUTH_IP_HEADER"
       >
     >;
   /**
@@ -204,8 +215,8 @@ function buildApp({
     // TEACH-223 kill switch: the anonymous plugin is registered, but its sign-in endpoint is
     // refused before better-auth creates a user unless ANONYMOUS_LESSONS_ENABLED=true.
     // Matched on the normalised path so a trailing slash or other casing cannot slip past it.
+    const anonymousSignIn = `${AUTH_BASE_PATH}${ANONYMOUS_SIGN_IN_PATH}`;
     if (env.ANONYMOUS_LESSONS_ENABLED !== "true") {
-      const anonymousSignIn = `${AUTH_BASE_PATH}${ANONYMOUS_SIGN_IN_PATH}`;
       app.use("/auth/*", async (c, next) => {
         if (c.req.path.replace(/\/+$/, "").toLowerCase() !== anonymousSignIn) return next();
         return errorResponse(
@@ -215,11 +226,30 @@ function buildApp({
           "Signed-out lessons are not available yet.",
         );
       });
+    } else {
+      // TEACH-222: with the feature on, the global daily cap (403 anonymous_capacity) and the
+      // per-IP daily ceiling (429 rate_limited) run before better-auth creates a user.
+      // Matched like the kill switch (normalised) so a trailing slash cannot skip the limits.
+      const limits = anonymousSignInLimits(db, env);
+      app.use("/auth/*", async (c, next) => {
+        if (c.req.path.replace(/\/+$/, "").toLowerCase() !== anonymousSignIn) return next();
+        return limits(c, next);
+      });
+      logger.info(
+        {
+          ...ipSourceDescription(env),
+          perIpDaily: signinsPerIpDaily(env),
+          lessonsDailyCap: lessonsDailyCap(env),
+        },
+        "anonymous lessons enabled: client IP source for the per-IP ceiling",
+      );
     }
     app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   }
   const csrf = rejectCrossSiteRequests(allowed);
   const guard = requireSession(auth, db, { allowHeaderShim });
+  // TEACH-222: after the session guard, anonymous sessions get the default-deny allow-list.
+  const anonymous = anonymousGuard();
   // TEACH-81: the diagnostic ping routes do not exist in production. Registered before the
   // `/jobs/*` guards so the answer is 404, not a 401 that says the route is there.
   if (!devJobRoutesEnabled(env)) {
@@ -244,6 +274,7 @@ function buildApp({
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
     app.use(path, guard);
+    app.use(path, anonymous);
   }
   // Every request on these ends in a model call (ADR 0024 §15): one shared per-Workspace limiter.
   app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
@@ -283,7 +314,17 @@ function buildApp({
       ),
     )
     .route("/", documentRoutes(db.unsafeDb))
-    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime, { worksheetSingletonS }))
+    .route(
+      "/",
+      lessonRoutes(db.unsafeDb, eventsRuntime, {
+        worksheetSingletonS,
+        anonymous: {
+          enabled: env.ANONYMOUS_LESSONS_ENABLED === "true",
+          dailyCap: lessonsDailyCap(env),
+          countToday: () => countAnonymousLessonsToday(db),
+        },
+      }),
+    )
     .route("/", briefRoutes(ai));
 
   // TEACH-22/121: test-only routes, outside the RPC contract (`AppType` stays clean). The seed
