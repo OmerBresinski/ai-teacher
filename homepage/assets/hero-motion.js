@@ -117,17 +117,19 @@
   });
   reset();
   gsap.ticker.add(tick);
-  // Hover reactions: fetched once the page is idle, or at once when a pointer nears the characters.
+  // Hover reactions and the hover highlight: fetched once the page is idle, or at once when a pointer nears the characters.
   window.HeroLife = life;
   const stage = hosts[0].parentElement;
   let loading = false;
   function load() {
     if (loading || !script) return;
     loading = true;
-    const tag = document.createElement("script");
-    tag.src = script.src.replace(/assets\/hero-motion\.js.*$/, "motion/hero-hover.js");
-    tag.async = true;
-    document.head.append(tag);
+    for (const name of ["hero-hover", "hover-contour"]) {
+      const tag = document.createElement("script");
+      tag.src = script.src.replace(/assets\/hero-motion\.js.*$/, `motion/${name}.js`);
+      tag.async = true;
+      document.head.append(tag);
+    }
   }
   stage.addEventListener("pointerover", load, { once: true, passive: true });
   stage.addEventListener("pointerdown", load, { once: true, passive: true });
