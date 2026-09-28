@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { DROPPED_OAUTH_TOKENS, effectiveCookieDomain, sessionCookieAttributes } from "./auth";
+import {
+  DROPPED_OAUTH_TOKENS,
+  effectiveCookieDomain,
+  MICROSOFT_CONSUMER_TENANT_ID,
+  microsoftEmailVerified,
+  microsoftOptions,
+  sessionCookieAttributes,
+} from "./auth";
 
 describe("sessionCookieAttributes", () => {
   test("default: Lax, Secure only in production", () => {
@@ -90,5 +97,62 @@ describe("DROPPED_OAUTH_TOKENS", () => {
       refreshToken: null,
       idToken: null,
     });
+  });
+});
+
+describe("Microsoft sign-in (ADR 0008 amendment of 2026-09-28)", () => {
+  const WORK_TENANT = "72f988bf-86f1-41af-91ab-2d7cd011db47";
+
+  function idToken(claims: Record<string, unknown>): string {
+    const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+    return `${part({ alg: "RS256", typ: "JWT" })}.${part({
+      oid: "oid-1",
+      iss: `https://login.microsoftonline.com/${claims.tid}/v2.0`,
+      name: "Ada Lovelace",
+      email: "ada@school.example",
+      ...claims,
+    })}.sig`;
+  }
+
+  test("a personal account's email is verified", () => {
+    expect(microsoftEmailVerified({ tid: MICROSOFT_CONSUMER_TENANT_ID })).toBe(true);
+  });
+
+  test("a work or school email is verified only with xms_edov", () => {
+    expect(microsoftEmailVerified({ tid: WORK_TENANT, xms_edov: true })).toBe(true);
+    expect(microsoftEmailVerified({ tid: WORK_TENANT, xms_edov: "1" })).toBe(true);
+    expect(microsoftEmailVerified({ tid: WORK_TENANT })).toBe(false);
+    expect(microsoftEmailVerified({ tid: WORK_TENANT, xms_edov: false })).toBe(false);
+    // Entra's `email_verified` is not trusted on its own: a tenant admin controls it.
+    expect(microsoftEmailVerified({ tid: WORK_TENANT, email_verified: true })).toBe(false);
+  });
+
+  test("options: any account type, account picker, identity scopes, no photo", () => {
+    const options = microsoftOptions("client-id", "client-secret");
+    expect(options.tenantId).toBe("common");
+    expect(options.prompt).toBe("select_account");
+    expect(options.disableDefaultScope).toBe(true);
+    expect(options.scope).toEqual(["openid", "profile", "email"]);
+    expect(options.disableProfilePhoto).toBe(true);
+  });
+
+  test("getUserInfo passes a verified email through, marked verified", async () => {
+    const { getUserInfo } = microsoftOptions("client-id", "client-secret");
+    const info = await getUserInfo({
+      idToken: idToken({ tid: WORK_TENANT, xms_edov: true }),
+      accessToken: "access",
+    });
+    expect(info?.user).toMatchObject({ email: "ada@school.example", emailVerified: true });
+
+    const personal = await getUserInfo({ idToken: idToken({ tid: MICROSOFT_CONSUMER_TENANT_ID }) });
+    expect(personal?.user.emailVerified).toBe(true);
+  });
+
+  test("getUserInfo refuses an unverified email, so no user is created or linked", async () => {
+    const { getUserInfo } = microsoftOptions("client-id", "client-secret");
+    expect(await getUserInfo({ idToken: idToken({ tid: WORK_TENANT }) })).toBeNull();
+    expect(
+      await getUserInfo({ idToken: idToken({ tid: WORK_TENANT, email_verified: true }) }),
+    ).toBeNull();
   });
 });

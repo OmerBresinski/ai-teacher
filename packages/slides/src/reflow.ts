@@ -391,8 +391,15 @@ const safeBottomOf = (s: Slot) =>
   s.y === s.y0 && s.h <= s.h0 && Math.abs(s.y0 + s.h0 - SAFE_BOTTOM) <= 1
     ? s.y + s.h
     : s.y + withSafety(s.h);
-const overflowing = (slots: Slot[], bottom: number) =>
-  slots.some((s) => safeBottomOf(s) > bottom + EPS);
+/**
+ * Whether the box can overflow at all. A picture, a backdrop or a locked shape the engine never
+ * moves or re-measures is where the author put it: the image-text recipe's photograph runs from
+ * the top of the slide to the bottom, past the safe area by design, and counting it made every
+ * image-text slide step its type down to the floor. Stepping text down cannot move it anyway.
+ */
+const canOverflow = (s: Slot, slide: Slide) => !s.frozen || textPartsOf(s.el, slide) !== null;
+const overflowing = (slots: Slot[], bottom: number, slide: Slide) =>
+  slots.some((s) => canOverflow(s, slide) && safeBottomOf(s) > bottom + EPS);
 
 export type ReflowOptions = {
   /**
@@ -426,7 +433,7 @@ export function reflowSlide(
   const sizes = new Map<Id, number>();
   let slots = layoutPass(slide, theme, measure, sizes);
 
-  for (let round = 0; round < MAX_STEPS && overflowing(slots, fitBottom); round++) {
+  for (let round = 0; round < MAX_STEPS && overflowing(slots, fitBottom, slide); round++) {
     let anyStepped = false;
     for (const el of slide.elements) {
       const parts = textPartsOf(el, slide);
@@ -442,12 +449,13 @@ export function reflowSlide(
     slots = layoutPass(slide, theme, measure, sizes);
   }
 
-  const overflow = slots.filter((s) => safeBottomOf(s) > SAFE_BOTTOM + EPS);
+  const counted = slots.filter((s) => canOverflow(s, slide));
+  const overflow = counted.filter((s) => safeBottomOf(s) > SAFE_BOTTOM + EPS);
   const firstBad = [...overflow].sort((a, b) => a.y - b.y || a.index - b.index)[0];
   // Only worth reporting when a lane was actually asked for: with no `fitBottom`
   // this is the overflow list again, and saying the same thing twice helps nobody.
   const laneOverflow =
-    fitBottom < SAFE_BOTTOM - EPS ? slots.filter((s) => safeBottomOf(s) > fitBottom + EPS) : [];
+    fitBottom < SAFE_BOTTOM - EPS ? counted.filter((s) => safeBottomOf(s) > fitBottom + EPS) : [];
 
   const elements = slots.map((slot) => applySlot(slot, sizes.get(slot.el.id)));
 

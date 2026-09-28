@@ -4,8 +4,17 @@ import ratio from "../fixtures/question-demand.w1-h-y7-ratio-W.json";
 import { type OutlineFacts, outlineFromFacts } from "../outline-from-facts";
 import type { LessonShape } from "../shapes";
 import { lessonShapeOf } from "../shapes";
-import { EXIT_QUIZ_MAX, fitsLine, MC_LINE_MAX, questionLine, SET_CHARS } from "./coded-slides";
 import {
+  EXIT_QUIZ_MAX,
+  fitsExitTicket,
+  fitsLine,
+  MC_LINE_MAX,
+  questionLine,
+  SET_CHARS,
+} from "./coded-slides";
+import {
+  EXIT_PLACEHOLDER_LINE,
+  EXIT_PLACEHOLDER_STEM_CHARS,
   PLACEHOLDER_STEM_CHARS,
   PLACEHOLDERS_PER_OBJECTIVE,
   placeholderQuestions,
@@ -97,7 +106,7 @@ describe("questionDemand", () => {
     expect(demand.map((d) => d.slide)).toEqual([3, 3, 1]);
   });
 
-  test("a placeholder is as long as a real question: an 80-character stem, a multiple-choice line at the cap", () => {
+  test("a placeholder is as long as a real question: an 80-character stem, a multiple-choice line at the cap; an exit one fits three to a ticket", () => {
     const objectives = objectivesOf(3);
     const questions = placeholderQuestions(sketchTaught(objectives, [false, false, true]), 3);
     expect(questions).toHaveLength(
@@ -107,11 +116,14 @@ describe("questionDemand", () => {
       expect(q.forms).toEqual(["multiple-choice", "open-response"]);
       expect(q.distractors).toHaveLength(3);
       expect(q.keyIdeaRefs?.length).toBe(2);
-      expect(q.stem.length).toBe(PLACEHOLDER_STEM_CHARS);
+      const exit = q.use === "exit";
+      expect(q.stem.length).toBe(exit ? EXIT_PLACEHOLDER_STEM_CHARS : PLACEHOLDER_STEM_CHARS);
       const line = questionLine(q);
       expect(line.mc).toBe(true);
-      expect(line.text.length).toBe(MC_LINE_MAX);
+      if (exit) expect(line.text.length).toBeLessThanOrEqual(EXIT_PLACEHOLDER_LINE);
+      else expect(line.text.length).toBe(MC_LINE_MAX);
       expect(fitsLine(line)).toBe(true);
+      if (exit) expect(fitsExitTicket([line, line, line])).toBe(true);
     }
     // So a set holds two of them within its budget, never four.
     expect(Math.floor(SET_CHARS / MC_LINE_MAX)).toBe(2);
@@ -148,11 +160,13 @@ describe("questionDemand", () => {
       const o = q.objectiveRefs[0]?.index ?? 0;
       (placed[o] as { slide: number; exit: number })[q.use === "exit" ? "exit" : "slide"] += 1;
     });
-    // What the real questions achieved: a set of three and two exit lines on objective 1, one
-    // open-response slide and three exit lines on objective 2.
+    // What the real questions achieved: a set of three on objective 1 and one open-response slide
+    // on objective 2. The exit ticket holds what fits one slide with its answers (ruling 108):
+    // one exit line per objective, the shortest that fit together; a third fits beside neither
+    // pair (it held five, 2 + 3, before TEACH-172).
     expect(placed).toEqual([
-      { slide: 3, exit: 2 },
-      { slide: 1, exit: 3 },
+      { slide: 3, exit: 1 },
+      { slide: 1, exit: 1 },
     ]);
     // The demand from the count-only sketch, before any question existed.
     const { demand, counts } = questionDemand({

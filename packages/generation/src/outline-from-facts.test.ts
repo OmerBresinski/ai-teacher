@@ -661,6 +661,9 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
           ]
         : [],
     );
+  /** Left off the exit ticket for room (ruling 108: three at most, and only what fits one slide). */
+  const offForRoom = (r: ReturnType<typeof run>, i: number) =>
+    r.result.gaps.some((g) => g.includes("fit one slide") && new RegExp(`\\b${i + 1}\\b`).test(g));
   const exitRefs = (r: ReturnType<typeof run>) =>
     refsAt(r, r.result.skeleton.outline.length - 1).flatMap((ref) =>
       ref.type === "question" ? [ref.index] : [],
@@ -681,9 +684,9 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
     expect(r.result.unplaced.keyIdeas).toEqual([]);
     expect(contentKeyIdeas(r).flat().sort()).toEqual([0, 1, 2, 3, 4, 5]);
     expect(contentKeyIdeas(r).every((ks) => ks.length <= 2)).toBe(true);
-    // Every exit question is fair, so every one is on the exit ticket.
+    // Every exit question is fair, so every one is on the exit ticket, or left off for room only.
     const exits = r.facts.questions.flatMap((q, i) => (q.use === "exit" ? [i] : []));
-    expect(exitRefs(r)).toEqual(expect.arrayContaining(exits));
+    expect(exits.every((i) => exitRefs(r).includes(i) || offForRoom(r, i))).toBe(true);
     expect(r.result.gaps.some((g) => /is on no slide/.test(g))).toBe(false);
   });
 
@@ -764,8 +767,10 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
     };
     const r = run({ n: 3, slideCount: 8, facts: declared });
     expect(new Set(r.result.unplaced.keyIdeas)).toEqual(unplaced);
-    // All three exit questions come back: none tests the untaught idea.
-    expect(exitRefs(r).length).toBeGreaterThanOrEqual(3);
+    // All three exit questions come back: none tests the untaught idea (one may be left off for
+    // room, ruling 108).
+    const exits = r.facts.questions.flatMap((q, i) => (q.use === "exit" ? [i] : []));
+    expect(exits.every((i) => exitRefs(r).includes(i) || offForRoom(r, i))).toBe(true);
     expect(exitRefs(before).length).toBeLessThan(exitRefs(r).length);
     expect(r.result.gaps.some((g) => g.includes("questions stay off"))).toBe(false);
 
@@ -1189,7 +1194,7 @@ describe("lab r1 structure: sets, cycle checks, starter, exit quiz", () => {
     expect(qs.some((i) => i >= facts.questions.length)).toBe(false);
   });
 
-  test("two exit questions per objective (facts v14): six items, two per objective", () => {
+  test("two exit questions per objective (facts v14): at most three, one per objective (ruling 108)", () => {
     const facts = factsFor(3);
     const extra = facts.questions
       .filter((q) => q.use === "exit")
@@ -1205,10 +1210,12 @@ describe("lab r1 structure: sets, cycle checks, starter, exit quiz", () => {
       facts: { ...facts, questions: [...facts.questions, ...extra] },
     });
     const qs = questionRefs(r, exitAt(r));
-    expect(qs).toHaveLength(EXIT_MAX);
-    for (const o of [0, 1, 2]) {
-      expect(qs.filter((i) => r.facts.questions[i]?.objectiveRefs[0]?.index === o)).toHaveLength(2);
-    }
+    // One per objective first: what fits one slide (two of these fixture lines) comes from two
+    // objectives, never two from one.
+    expect(qs.length).toBeGreaterThanOrEqual(2);
+    expect(qs.length).toBeLessThanOrEqual(EXIT_MAX);
+    const objectives = qs.map((i) => r.facts.questions[i]?.objectiveRefs[0]?.index);
+    expect(new Set(objectives).size).toBe(qs.length);
   });
 });
 

@@ -199,9 +199,9 @@ describe("the card hugs its text", () => {
           materialiseSlide(spec, theme.id, meta, counter(), variant || undefined),
         );
         // No empty line under the text: the fitted box is within a point of the one the card was
-        // sized for, or (image-text on Playground and Beacon, where master's fit steps every
-        // image-text slide down one stop because it counts the half-bleed picture as overflow)
-        // the same number of lines one stop smaller.
+        // sized for, at the size it was sized for (TEACH-140: the image-text picture is no longer
+        // an overflow that steps the callout down a stop on Playground and Beacon).
+        expect(fitted.text.style.fontSize, `${spec.kind} size`).toBe(laid.text.style.fontSize);
         const size = fitted.text.style.fontSize ?? theme.sizes.small;
         const line = size * theme.lineHeights.small;
         const lines = (h: number, at: number) => Math.round(h / (at * theme.lineHeights.small));
