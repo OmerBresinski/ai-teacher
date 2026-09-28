@@ -29,6 +29,9 @@ import {
  * v16: a worked example's or question's figure (TEACH-253) renders under it in `factsBlock` as
  * `Figure (<template>): <values as JSON>`. Only lessons with a figure on a fact render it, so the
  * pinned hash is unchanged.
+ *
+ * v17 (TEACH-11 port): `IMAGE_TEXT_RULE` changed with generate-slide v30 — a missing item becomes
+ * a teacher move in `notes`, never a sentence about what the photograph lacks.
  */
 
 /** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
@@ -87,7 +90,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v16",
+  version: "repair.v17",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",
