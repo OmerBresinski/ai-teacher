@@ -68,7 +68,9 @@ items marked `home`; /help/ shows all of them.
 2. Proof: one idea travelling from a slide to a worksheet question to its answer, drawn as
    illustration, not a screenshot. It renders finished; `proof.js` replays it once on scroll.
 3. Top lessons: up to four lesson cards read from the manifests.
-4. How it works: three steps, one line each.
+4. How it works: "Your idea. Your lesson. Your call." on the left; on the right the Slides
+   character over three short lines (topic, complete lesson, change anything). It renders at
+   rest; `how-it-works.js` plays the character's flipbook entrance once on scroll.
 5. Questions teachers ask: the home FAQ items, heading on the left.
 6. The closing invitation, back to the form.
 
@@ -82,5 +84,7 @@ Marketing adds a quiet body-life layer and signatures soften it. Offscreen actor
 reduced-motion preference suppresses animation. There is no manual pause control. The proof papers enter once on scroll, followed by a drum flourish and a quiet tapping loop.
 Offscreen and hidden-tab motion pauses automatically. With reduced
 motion or without JavaScript the finished state is shown. One full team is
-enough per page; isolated characters accompany specific material context. The hero cast is
+enough per page; isolated characters accompany specific material context. The How it works
+entrance (`motion/flipbook.js`) is drawn frame by frame, swapped on a stepped timeline with no
+tweening, and clipped to the character's side of the section so it never crosses the heading. The hero cast is
 ambient art: plan, slides, worksheet and check.
