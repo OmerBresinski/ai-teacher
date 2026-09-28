@@ -28,7 +28,7 @@ import {
 } from "../canvas/place-slide-actions";
 import { useCompactChrome } from "../use-compact-chrome";
 import { useSelectedElements, useSessionUi } from "../use-editor-session";
-import { useMobileEditor } from "../use-mobile-editor";
+import { MOBILE_SHEET_CLASS, useMobileEditor } from "../use-mobile-editor";
 import { CropToolbar } from "./CropToolbar";
 import { ImageToolbar } from "./ImageToolbar";
 import { LineToolbar } from "./LineToolbar";
@@ -197,7 +197,7 @@ export function ContextualToolbar({
               {selected.length ? "Selection settings" : "Slide settings"}
             </Button>
           </DialogTrigger>
-          <DialogContent className="mobile-editor-sheet" aria-describedby={undefined}>
+          <DialogContent className={MOBILE_SHEET_CLASS} aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>{selected.length ? "Selection settings" : "Slide settings"}</DialogTitle>
             </DialogHeader>

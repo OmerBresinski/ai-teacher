@@ -6,6 +6,7 @@ import { useLesson } from "./document-context";
 import { InsertRail, type InsertRailProps } from "./InsertRail";
 import { MobileSlideList } from "./MobileSlideList";
 import { useSessionActions } from "./use-editor-session";
+import { MOBILE_SHEET_CLASS } from "./use-mobile-editor";
 
 export function MobileLessonEditor({
   canvas,
@@ -61,7 +62,7 @@ export function MobileLessonEditor({
                 <Button variant="outline">Insert</Button>
               </DialogTrigger>
               <DialogContent
-                className="mobile-editor-sheet"
+                className={MOBILE_SHEET_CLASS}
                 aria-describedby={undefined}
                 onOpenAutoFocus={(event) => {
                   event.preventDefault();
