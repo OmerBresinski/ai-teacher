@@ -133,16 +133,17 @@ test.describe("auth", () => {
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/sign-in");
-    // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts);
-    // measure once they are up.
+    // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts),
+    // Worksheet a beat after Slides; measure once both are up.
     const googleButton = page.getByRole("button", { name: "Continue with Google" });
     await expect
       .poll(async () => {
-        const [peeker, button] = [
+        const [slides, activity, button] = [
           await page.locator(cast("slides")).boundingBox(),
+          await page.locator(cast("activity")).boundingBox(),
           await googleButton.boundingBox(),
         ];
-        return peeker && button ? peeker.y < button.y : false;
+        return slides && activity && button ? slides.y < button.y && activity.y < button.y : false;
       })
       .toBe(true);
     const google = await googleButton.boundingBox();
