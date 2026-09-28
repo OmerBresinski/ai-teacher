@@ -93,6 +93,11 @@ button.mobile-lesson-paper:focus-visible {
   border-radius: 20px 20px 0 0;
   padding: 24px 16px max(24px, env(safe-area-inset-bottom));
 }
+/* The DayBack design narrows every dialog to `100vw - 32px` on phones; a sheet spans the edge. */
+html[data-design][data-theme] .mobile-editor-sheet[data-slot="dialog-content"] {
+  width: 100%;
+  max-height: min(72dvh, 560px);
+}
 .mobile-editor-sheet [data-insert-rail] {
   width: 100%;
   display: grid;
