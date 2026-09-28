@@ -1,7 +1,8 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { shell } from "./src/components.mjs";
+import { base, indexable } from "./config.mjs";
+import { canonicalUrl, shell, siteUrl, unlisted } from "./src/components.mjs";
 
 const output = new URL("./dist/", import.meta.url);
 await rm(output, { recursive: true, force: true });
@@ -35,4 +36,22 @@ await writeFile(
     2,
   ),
 );
-console.log(`Built ${pages.length} DayBack pages into homepage/dist.`);
+// Crawl files belong to a domain-root build only. robots.txt never disallows a page: a crawler has
+// to fetch a noindex page to see its noindex. The sitemap lists public pages only, and robots.txt
+// points at it only when the build is indexable.
+if (base === "") {
+  const listed = pages.filter((page) => !unlisted.has(page.route) && !page.provisional);
+  await writeFile(
+    new URL("sitemap.xml", output),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${listed
+      .map((page) => `  <url><loc>${canonicalUrl(page.route)}</loc></url>`)
+      .join("\n")}\n</urlset>\n`,
+  );
+  await writeFile(
+    new URL("robots.txt", output),
+    `User-agent: *\nAllow: /\n${indexable ? `\nSitemap: ${siteUrl}/sitemap.xml\n` : ""}`,
+  );
+}
+console.log(
+  `Built ${pages.length} DayBack pages into homepage/dist (${indexable ? "indexable" : "noindex"}).`,
+);

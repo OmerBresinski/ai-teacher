@@ -2,7 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { base } from "./config.mjs";
+import { base, indexable, siteUrl } from "./config.mjs";
 import { examples } from "./src/examples-data.mjs";
 
 const root = fileURLToPath(new URL("./dist/", import.meta.url));
@@ -148,8 +148,20 @@ for (const { route, title } of routes) {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   if (new Set(ids).size !== ids.length) errors.push(`${route}: duplicate IDs`);
   if (!html.includes("<main")) errors.push(`${route}: missing main`);
-  // Removed by the launch-config ticket (TEACH-308), not this one.
-  if (!html.includes('content="noindex,nofollow"')) errors.push(`${route}: indexing guard`);
+  // Indexing follows the build flags (TEACH-78): noindex everywhere unless --index, and always on
+  // the 404 page and stand-in examples. Every other page names its canonical on the public site.
+  const provisional = examples.some((e) => e.provisional && route === `/examples/${e.slug}/`);
+  const wantNoindex = !indexable || route === "/404/" || provisional;
+  if (html.includes('content="noindex,nofollow"') !== wantNoindex) {
+    errors.push(`${route}: indexing guard (want ${wantNoindex ? "noindex" : "indexable"})`);
+  }
+  if (route !== "/404/") {
+    const canonical = `<link rel="canonical" href="${siteUrl}${route}">`;
+    if (!html.includes(canonical)) errors.push(`${route}: missing ${canonical}`);
+    if (!html.includes(`<meta property="og:url" content="${siteUrl}${route}">`)) {
+      errors.push(`${route}: og:url`);
+    }
+  } else if (html.includes('rel="canonical"')) errors.push(`${route}: 404 has a canonical`);
   const branded = route === "/" ? title.startsWith("DayBack | ") : title.endsWith(" | DayBack");
   if (!branded) errors.push(`${route}: title is not branded DayBack ("${title}")`);
   if (route !== "/" && /DayBack.*DayBack/.test(title)) errors.push(`${route}: duplicated suffix`);
@@ -163,6 +175,25 @@ for (const example of examples) {
   if (!html.includes("lesson-viewer.js")) errors.push(`${label}: missing slide viewer script`);
   if (html.includes(">Worksheet<") !== Boolean(example.worksheet)) {
     errors.push(`${label}: worksheet section does not match the manifest`);
+  }
+}
+// A domain-root build carries its crawl files and never leaks the legacy /homepage prefix.
+if (base === "") {
+  const sitemap = await readFile(resolve(root, "sitemap.xml"), "utf8").catch(() => "");
+  const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+  const wanted = expectedRoutes
+    .filter((route) => route !== "/404/")
+    .filter((route) => !examples.some((e) => e.provisional && route === `/examples/${e.slug}/`))
+    .map((route) => `${siteUrl}${route}`);
+  if (listed.join() !== wanted.join()) errors.push(`sitemap.xml lists ${listed.join(", ")}`);
+  const robots = await readFile(resolve(root, "robots.txt"), "utf8").catch(() => "");
+  if (!/^User-agent: \*$/m.test(robots) || /^Disallow: \/\s*$/m.test(robots)) {
+    errors.push("robots.txt must exist and must not disallow the site");
+  }
+  if (robots.includes("Sitemap:") !== indexable) errors.push("robots.txt Sitemap line");
+  for (const file of ["index.html", "404.html", "examples/index.html"]) {
+    const html = await readFile(resolve(root, file), "utf8");
+    if (/(?:href|src|action)="\/homepage\//.test(html)) errors.push(`${file}: /homepage prefix`);
   }
 }
 await checkFiles(root);
