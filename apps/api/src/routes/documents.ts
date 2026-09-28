@@ -43,6 +43,7 @@ import type { AppEnv } from "../context";
 import { ConflictError } from "../errors";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
+import { assertKnownDocumentTheme } from "./theme-guard";
 
 /** ADR 0024 §8: a downscaled deck is 1–3 MB; anything past this fails loudly rather than slowly. */
 export const DOCUMENT_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
@@ -141,6 +142,7 @@ export function documentRoutes(unsafeDb: ScopableDb) {
       async (c) => {
         const ws = scoped(c);
         const { kind, body } = c.req.valid("json");
+        assertKnownDocumentTheme(body);
         const row = await createDocument(ws, kind, body).catch(unprocessableOnParseError);
         return c.json({ document: toDocumentJson(row) }, 201);
       },
@@ -170,6 +172,7 @@ export function documentRoutes(unsafeDb: ScopableDb) {
         if (bodyId(document) !== id) {
           throw new HTTPException(422, { message: "The document id does not match the URL." });
         }
+        assertKnownDocumentTheme(document);
         const result = await putDocument(ws, id, document, new Date(expectedUpdatedAt)).catch(
           unprocessableOnParseError,
         );
