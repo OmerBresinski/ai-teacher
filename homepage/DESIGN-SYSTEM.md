@@ -85,6 +85,15 @@ reduced-motion preference suppresses animation. There is no manual pause control
 Offscreen and hidden-tab motion pauses automatically. With reduced
 motion or without JavaScript the finished state is shown. One full team is
 enough per page; isolated characters accompany specific material context. The How it works
-entrance (`motion/flipbook.js`) is drawn frame by frame, swapped on a stepped timeline with no
-tweening, and clipped to the character's side of the section so it never crosses the heading. The hero cast is
+character (`motion/flipbook.js`, `assets/how-it-works.js`) follows the cast's motion rule, UX
+ruling 114: smooth base, anime accents. Its timing and acting are anime (anticipation, squash
+and stretch, smears, holds, overshoot where the persona allows), but poses are evaluated every
+display frame and interpolated. Stepped frames survive only as accents: a short hold on impact
+and single smear drawings mid-spin. Turns are drawn poses (trapezoid, edge, back), never an SVG
+rotation, and there is no black or negative flash. Slides' persona is boundless energy, can't sit
+still: it bursts in once, then breathes (the body deforms from its planted feet), blinks, hops or
+glances at the copy every 10–15 s, and spins when hovered or tapped. At rest the drawing is
+identical to the artwork, and the ground shadow is one element that follows it, so no handoff
+shows. The drawings are clipped to the character's side of the section, so they never cross the
+heading. The hero cast is
 ambient art: plan, slides, worksheet and check.

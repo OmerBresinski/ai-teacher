@@ -1,8 +1,10 @@
-/* Flipbook engine for the Slides character. Every frame is a fresh drawing: the card is projected
-   from 3D corners (a turn redraws it as a trapezoid, an edge, a back), limbs are posed per drawing
-   and the face spots. Frames swap on a stepped Web Animations timeline, so the browser only ever
-   shows whole drawings, never a tween. The original artwork stays in the page as the rest pose;
-   the drawings replace it only while the entrance plays. */
+/* Drawing engine and player for the Slides character (UX ruling 114: smooth base, anime accents).
+   Every frame is a fresh drawing: the card is projected from 3D corners (a turn redraws it as a
+   trapezoid, an edge, a back), limbs are posed per drawing and the face spots. Poses are evaluated
+   every display frame and interpolated between key poses; the only stepped accents are a short
+   impact hold and single smear drawings mid-spin. A frame is attribute updates on a fixed pool of
+   SVG nodes. At rest the drawing is identical to the original artwork, so handing over between
+   them never shows. */
 (() => {
   const F = 480,
     CX = 156,
@@ -190,7 +192,8 @@
     return ([X, y, z]) => {
       const x1 = X * c + z * s,
         z1 = -X * s + z * c,
-        k = F / (F - z1);
+        // Perspective comes only from the turn: at rest every layer sits exactly on the artwork.
+        k = F / (F - (z1 - z));
       return [CX + x1 * k + p.tx, EYE_Y + (y - EYE_Y) * k + p.ty, z1];
     };
   }
@@ -198,7 +201,8 @@
     (p) =>
     ([X, y], z = 0) => {
       const y2 = YB + (y - YB) * p.sy;
-      return [X * p.sx + (YB - y2) * p.lean, y2, z];
+      // `swell` widens the card toward the top only, so a breath grows from the planted base.
+      return [X * p.sx * (1 + ((p.swell || 0) * (YB - y2)) / 170) + (YB - y2) * p.lean, y2, z];
     };
   const f1 = (n) => Math.round(n * 10) / 10;
   const pt = (q) => `${f1(q[0])} ${f1(q[1])}`;
@@ -249,7 +253,7 @@
       out.push(
         `<rect x="-3000" y="-3000" width="6000" height="6000" fill="${INK}" stroke="none"/>`,
       );
-    else {
+    else if (!p.noShadow) {
       const h = Math.min(1, Math.max(0, -p.ty / 180));
       const rx = 86 * (1 - h * 0.55);
       out.push(
@@ -330,7 +334,8 @@
         out.push(`<path d="M${pt(m1)} L${pt(m2)}" ${S(1.5)} stroke-opacity=".25" fill="none"/>`);
       }
     }
-    const head = spot(p.th);
+    // `head` overrides spotting: a glance or double-take turns the face without turning the card.
+    const head = p.head != null ? p.head : spot(p.th);
     if (head != null && !(c < -0.1)) face(out, pr, df, p, head, ink, S);
     for (const l of limbs) if (l.z > 4) out.push(l.svg);
 
@@ -380,7 +385,7 @@
       ]) {
         const e = at(dx, dy);
         out.push(
-          `<ellipse cx="${f1(e[0])}" cy="${f1(e[1])}" rx="${f1(3 * Math.max(0.35, Math.abs(kx)))}" ry="3" fill="${ink}" stroke="none"/>`,
+          `<ellipse cx="${f1(e[0])}" cy="${f1(e[1])}" rx="${f1(3 * Math.max(0.35, Math.abs(kx)))}" ry="${f1(3 * (1 - 0.85 * (p.blink || 0)))}" fill="${ink}" ${S()}/>`,
         );
       }
     }
@@ -411,7 +416,7 @@
       if (r <= 0 || r >= 1) continue;
       const rx = 70 + 230 * Math.sqrt(r) * (p.ringSize || 1);
       out.push(
-        `<ellipse cx="${f1(155 + p.gx)}" cy="${GROUND}" rx="${f1(rx)}" ry="${f1(rx * 0.12)}" fill="none" stroke="${ink}" stroke-width="${f1(w * (1 - r) + 0.8)}" stroke-opacity="${f1(1 - r * r)}"/>`,
+        `<ellipse cx="${f1(155 + p.gx)}" cy="${GROUND - 4}" rx="${f1(rx)}" ry="${f1(rx * 0.05)}" fill="none" stroke="${ink}" stroke-width="${f1(w * (1 - r) + 0.8)}" stroke-opacity="${f1(1 - r * r)}"/>`,
       );
     }
   }
@@ -467,6 +472,8 @@
       cy = 180;
     for (let k = 0; k < 22; k++) {
       const a = (k / 22) * TAU + rnd(k + i * 3) * 0.2;
+      // Only the upper fan and the sides: the copy sits below the character on every layout.
+      if (Math.sin(a) > 0.2) continue;
       const r0 = 190 + rnd(k * 5 + i) * 50,
         r1 = r0 + 90 + rnd(k) * 120;
       out.push(
@@ -539,12 +546,87 @@
     return Object.assign(p, fx ? fx(t) : {});
   }
 
-  /* Mounts a spec on an actor whose <svg> holds the original artwork in `g.body`.
-     `region()` returns the page rectangle the drawings may occupy; everything outside it is
-     clipped, so the spin, impact lines and flash never cross neighbouring content.
-     `shake` is the element that takes the impact shake. Returns play(). */
-  function mount(actor, spec, { region, shake }) {
-    const ns = "http://www.w3.org/2000/svg";
+  // Per-frame rendering: a drawing (an SVG string from `draw`) is reconciled into a fixed pool of
+  // nodes, so a frame only sets the attributes that changed.
+  const NS = "http://www.w3.org/2000/svg";
+  const TAG = /<(\w+)\s([^>]*?)\/>/g,
+    ATTR = /([\w:-]+)="([^"]*)"/g;
+  function reconciler(group) {
+    const pool = [];
+    let last = "";
+    return (str) => {
+      if (str === last) return;
+      last = str;
+      let i = 0;
+      TAG.lastIndex = 0;
+      for (let m = TAG.exec(str); m; m = TAG.exec(str)) {
+        let el = pool[i];
+        if (!el || el.localName !== m[1]) {
+          const fresh = document.createElementNS(NS, m[1]);
+          fresh.attrs = {};
+          if (el) group.replaceChild(fresh, el);
+          else group.appendChild(fresh);
+          pool[i] = el = fresh;
+        }
+        const seen = {};
+        ATTR.lastIndex = 0;
+        for (let a = ATTR.exec(m[2]); a; a = ATTR.exec(m[2])) {
+          seen[a[1]] = true;
+          if (el.attrs[a[1]] !== a[2]) {
+            el.setAttribute(a[1], a[2]);
+            el.attrs[a[1]] = a[2];
+          }
+        }
+        for (const k in el.attrs)
+          if (!seen[k]) {
+            el.removeAttribute(k);
+            delete el.attrs[k];
+          }
+        i++;
+      }
+      while (pool.length > i) pool.pop().remove();
+    };
+  }
+
+  const clamp01 = (u) => Math.max(0, Math.min(1, u));
+  const sine = (u) => 0.5 - Math.cos(Math.PI * clamp01(u)) / 2;
+  const between = (a, b) => a + Math.random() * (b - a);
+  function mix(a, b, u) {
+    if (typeof a === "number" && typeof b === "number") return a + (b - a) * u;
+    if (Array.isArray(a) && Array.isArray(b)) return a.map((v, i) => mix(v, b[i], u));
+    if (a && b && typeof a === "object") {
+      const o = { ...a };
+      for (const k in b) o[k] = k in a ? mix(a[k], b[k], u) : b[k];
+      return o;
+    }
+    return u < 0.5 ? a : b;
+  }
+  const smearAt = (p, until, t) => {
+    const u = p.th - Math.floor(p.th);
+    return t < until && Math.abs(u - 0.375) < 0.035 ? 1 : 0;
+  };
+  // Drawings that can leave the character's region are clipped to it; drawings at or near rest
+  // are not, so they rasterise exactly like the artwork.
+  const roams = (p) =>
+    Math.abs(p.tx) > 1 ||
+    Math.abs(p.ty) > 1 ||
+    p.smear ||
+    p.swirl ||
+    p.fall ||
+    p.lines ||
+    p.ring != null ||
+    p.dust != null ||
+    p.papers != null;
+
+  /* Plays `entrance` once, then keeps the character alive at rest until the page goes away.
+     `actor` holds the original artwork (`svg > g.body`); `region()` is the page rectangle the
+     drawings may occupy; `shake` takes the impact shake; `shadow` is the page's one ground shadow,
+     which follows the drawings. `idle` = { clips: { hop, glance, burst }, breath, lift }.
+     Returns { start() }; call it when the section comes into view. Nothing runs while the section
+     is off screen or the tab is hidden. */
+  function player(actor, { entrance, idle, poses }, { region, shake, shadow, section }) {
+    for (const [name, over] of Object.entries(poses || {}))
+      P[name] = Object.assign(structuredClone(P.rest), over);
     const svg = actor.querySelector("svg"),
       base = svg.querySelector("g.body");
     const uid = `hiw-${Math.random().toString(36).slice(2, 8)}`;
@@ -552,65 +634,203 @@
       "afterbegin",
       `<defs><filter id="hiw-blur" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter><clipPath id="${uid}" clipPathUnits="userSpaceOnUse"><rect/></clipPath></defs>`,
     );
-    const clip = svg.querySelector(`#${uid} rect`);
-    const layer = document.createElementNS(ns, "g");
-    layer.setAttribute("class", "flipbook-frames");
-    layer.setAttribute("clip-path", `url(#${uid})`);
-    svg.appendChild(layer);
-    const times = new Set();
-    for (const [a, b, fps] of spec.frames)
-      for (let t = a; t < b - 0.5; t += 1000 / fps) times.add(Math.round(t));
-    const list = [...times].sort((x, y) => x - y);
-    layer.innerHTML = list
-      .map((t, i) => `<g class="flipbook-frame">${draw(poseAt(spec.keys, t, spec.fx), i)}</g>`)
-      .join("");
-    const frames = [...layer.children];
-    let anims = [];
-
+    const clipRect = svg.querySelector(`#${uid} rect`);
+    const group = document.createElementNS(NS, "g");
+    svg.appendChild(group);
+    const paint = reconciler(group);
+    const unit = () => svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
     function fitClip() {
       const box = svg.getBoundingClientRect(),
-        r = region();
-      const k = box.width / svg.viewBox.baseVal.width;
-      clip.setAttribute("x", f1((r.left - box.left) / k));
-      clip.setAttribute("y", f1((r.top - box.top) / k));
-      clip.setAttribute("width", f1(r.width / k));
-      clip.setAttribute("height", f1(r.height / k));
+        r = region(),
+        k = unit();
+      clipRect.setAttribute("x", f1((r.left - box.left) / k));
+      clipRect.setAttribute("y", f1((r.top - box.top) / k));
+      clipRect.setAttribute("width", f1(r.width / k));
+      clipRect.setAttribute("height", f1(r.height / k));
     }
-    function play() {
-      for (const a of anims) a.cancel();
-      anims = [];
-      fitClip();
-      const D = spec.duration;
-      frames.forEach((g, i) => {
-        const t0 = list[i],
-          t1 = i + 1 < list.length ? list[i + 1] : D;
-        anims.push(
-          g.animate([{ visibility: "visible" }, { visibility: "visible" }], {
-            delay: t0,
-            duration: t1 - t0,
-          }),
-        );
-      });
-      anims.push(base.animate([{ opacity: 0 }, { opacity: 0 }], { duration: D }));
-      for (const sh of spec.shake || []) {
-        const kf = [];
-        const n = Math.round((sh.dur / 1000) * 30);
-        for (let k = 0; k <= n; k++) {
-          const amp = sh.amp * (1 - k / n);
-          kf.push({
-            translate:
-              k === n
-                ? "0 0"
-                : `${f1((k % 2 ? -1 : 1) * amp * (0.6 + rnd(k) * 0.4))}px ${f1((rnd(k + 5) - 0.5) * amp * 1.2)}px`,
-            easing: "steps(1, end)",
-          });
+    function render(p) {
+      p.noShadow = true;
+      paint(draw(p, 0));
+      if (roams(p)) group.setAttribute("clip-path", `url(#${uid})`);
+      else group.removeAttribute("clip-path");
+      // The one shadow follows the drawing: it slides with travel, shrinks and fades with height
+      // and widens a touch on the in-breath.
+      const h = clamp01(-p.ty / 180),
+        sx = (1 - h * 0.55) * (1 + (p.swell || 0) * 1.2),
+        sy = 1 - h * 0.55,
+        tx = p.tx * unit();
+      const still = Math.abs(tx) < 0.05 && Math.abs(sx - 1) < 1e-4 && sy === 1;
+      shadow.style.transform = still
+        ? ""
+        : `translateX(${f1(tx)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`;
+      shadow.style.opacity = h ? String(f1((1 - h * 0.6) * 100) / 100) : "";
+    }
+    const unquantised = (keys) => keys.map((k) => ({ ...k, quant: undefined }));
+    const entranceKeys = unquantised(entrance.keys);
+    const clips = Object.fromEntries(
+      Object.entries(idle.clips).map(([n, c]) => [n, { ...c, keys: unquantised(c.keys) }]),
+    );
+    function entrancePose(t) {
+      // Anime accent: the first squash drawing holds for a few frames on impact.
+      const te = t > entrance.impact && t < entrance.impact + 50 ? entrance.impact + 1 : t;
+      const p = poseAt(entranceKeys, te, entrance.fx);
+      p.smear = smearAt(p, 600, te);
+      return p;
+    }
+    function clipPose(c, t) {
+      const p = poseAt(c.keys, t, c.fx);
+      p.smear = c.smearUntil ? smearAt(p, c.smearUntil, t) : 0;
+      return p;
+    }
+    // Breath: an in-breath and out-breath, then a held rest; the body deforms (the card swells
+    // from its planted base, arms lift, the face rides up), never a whole-body bob.
+    const REST = structuredClone(P.rest_happy);
+    const { breath } = idle;
+    function idlePose(t, blink) {
+      const ph = t % breath.cycle;
+      const b =
+        ph < breath.inhale
+          ? sine(ph / breath.inhale)
+          : ph < breath.inhale + breath.exhale
+            ? 1 - sine((ph - breath.inhale) / breath.exhale)
+            : 0;
+      const p = structuredClone(REST);
+      p.sy = 1 + breath.depth * b;
+      p.swell = breath.depth * b;
+      p.arms = mix(REST.arms, idle.lift, b);
+      p.blink = blink;
+      p.gx = 0;
+      return p;
+    }
+    const blinkAt = (t) => (t < 0 || t > 180 ? 0 : 1 - Math.abs(t - 90) / 90);
+
+    let mode = "waiting",
+      t0 = 0,
+      idle0 = 0,
+      clip = null,
+      from = null,
+      raf = 0,
+      timer = 0,
+      onScreen = false,
+      lastPaint = 0;
+    let blinkAt0 = 0,
+      beatAt = 0,
+      nextBeat = "hop",
+      lastBurst = -1e9;
+    const live = () =>
+      onScreen &&
+      document.visibilityState === "visible" &&
+      !matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function wake() {
+      clearTimeout(timer);
+      if (!raf && live() && mode !== "waiting") raf = requestAnimationFrame(frame);
+    }
+    function sleepUntil(at, now) {
+      clearTimeout(timer);
+      timer = setTimeout(wake, Math.max(0, at - now));
+    }
+    function beginIdle(now) {
+      mode = "idle";
+      clip = null;
+      idle0 = now;
+      if (!blinkAt0) blinkAt0 = now + between(1500, 3000);
+      if (!beatAt) beatAt = now + between(10000, 15000);
+    }
+    function play(name, now) {
+      from = idlePose(now - idle0, 0);
+      clip = clips[name];
+      mode = "clip";
+      t0 = now;
+    }
+    function frame(now) {
+      raf = 0;
+      if (!live()) return;
+      if (mode === "entrance") {
+        const t = now - t0;
+        if (t < entrance.duration) {
+          render(entrancePose(t));
+          raf = requestAnimationFrame(frame);
+          return;
         }
-        anims.push(shake.animate(kf, { delay: sh.at, duration: sh.dur }));
+        beginIdle(now);
       }
-      return anims;
+      if (mode === "clip") {
+        const t = now - t0;
+        if (t < clip.duration) {
+          let p = clipPose(clip, t);
+          if (from && t < 140) p = mix(from, p, sine(t / 140)); // ease out of the breath
+          render(p);
+          raf = requestAnimationFrame(frame);
+          return;
+        }
+        beginIdle(now);
+      }
+      if (now >= beatAt) {
+        beatAt = now + between(10000, 15000);
+        play(nextBeat, now);
+        nextBeat = nextBeat === "hop" ? "glance" : "hop";
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+      if (now > blinkAt0 + 180) blinkAt0 = now + between(3000, 5000);
+      const t = now - idle0,
+        ph = t % breath.cycle,
+        blinking = now >= blinkAt0,
+        breathing = ph < breath.inhale + breath.exhale;
+      // The breath is slow, so it repaints at breath.fps; a blink runs at display rate.
+      if (blinking || now - lastPaint >= 1000 / breath.fps) {
+        render(idlePose(t, blinkAt(now - blinkAt0)));
+        lastPaint = now;
+      }
+      // Between paints the loop sleeps: a blink needs display rate, the breath only breath.fps,
+      // and the held rest nothing until the next breath, blink or beat.
+      if (blinking) raf = requestAnimationFrame(frame);
+      else if (breathing) sleepUntil(Math.min(now + 1000 / breath.fps, blinkAt0, beatAt), now);
+      else sleepUntil(Math.min(blinkAt0, beatAt, now - ph + breath.cycle), now);
     }
-    return { play, duration: spec.duration, frames: list };
+
+    new IntersectionObserver((entries) => {
+      onScreen = entries.some((e) => e.isIntersecting);
+      wake();
+    }).observe(section);
+    document.addEventListener("visibilitychange", wake);
+    const burst = () => {
+      const now = performance.now();
+      if (mode !== "idle" || !live() || now - lastBurst < 2500) return;
+      lastBurst = now;
+      play("burst", now);
+      wake();
+    };
+    actor.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && burst());
+    actor.addEventListener("pointerdown", burst);
+
+    return {
+      duration: entrance.duration,
+      start() {
+        onScreen = true;
+        fitClip();
+        base.style.visibility = "hidden"; // hidden, not faded: fading re-rasterises the SVG
+        mode = "entrance";
+        t0 = performance.now();
+        for (const sh of entrance.shake || []) {
+          const kf = [];
+          const n = Math.round((sh.dur / 1000) * 30);
+          for (let k = 0; k <= n; k++) {
+            const amp = sh.amp * (1 - k / n);
+            kf.push({
+              translate:
+                k === n
+                  ? "0 0"
+                  : `${f1((k % 2 ? -1 : 1) * amp * (0.6 + rnd(k) * 0.4))}px ${f1((rnd(k + 5) - 0.5) * amp * 1.2)}px`,
+            });
+          }
+          shake.animate(kf, { delay: sh.at, duration: sh.dur });
+        }
+        wake();
+      },
+    };
   }
 
-  window.Flipbook = { mount };
+  window.Flipbook = { player };
 })();

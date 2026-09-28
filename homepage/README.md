@@ -45,8 +45,8 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 - `src/examples-data.mjs`: reads the example manifests and decides which lessons the build emits.
 - `assets/`: styles, hero motion, font and favicon.
 - `assets/examples/<slug>/`: one folder per Top lesson (see below).
-- `motion/`: original character artwork and animation; `flipbook.js` draws the How it works
-  entrance. `vendor/gsap.min.js` is the original
+- `motion/`: original character artwork and animation; `flipbook.js` draws and plays the How it
+  works character (its entrance and resting life). `vendor/gsap.min.js` is the original
   GSAP 3.14.2 distribution with its copyright/license header retained. Do not hand-edit it.
 - `config.mjs`, `build.mjs`, `check.mjs`, `stage.mjs`: URL prefix, application origin, generation,
   route and string checks and staging into the existing Vite output. `serve.mjs` is local-only.
