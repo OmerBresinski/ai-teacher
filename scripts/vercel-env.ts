@@ -160,8 +160,9 @@ function httpsOrigin(name: string, value: string | undefined): string {
 
 /**
  * Homepage build flags (`homepage/config.mjs`) for the marketing project. Production needs both
- * origins, and is indexable or shows stand-in examples only when told so explicitly, never both.
- * Every other environment is noindex and may show the stand-ins.
+ * origins, and is indexable or shows stand-in examples only when told so explicitly. Both may be
+ * set: the stand-in examples then stay noindex and out of the sitemap while every other page is
+ * indexed. Every other environment is noindex and may show the stand-ins.
  */
 export function resolveSiteArgs(input: SiteBuildInputs): string[] {
   const production = (nonEmpty(input.VERCEL_ENV) ?? "preview") === "production";
@@ -175,12 +176,6 @@ export function resolveSiteArgs(input: SiteBuildInputs): string[] {
   if (!production) return [...args, "--allow-provisional"];
   const indexing = nonEmpty(input.SITE_INDEXING) === "1";
   const provisional = nonEmpty(input.SITE_ALLOW_PROVISIONAL) === "1";
-  if (indexing && provisional) {
-    throw new UserFacingError(
-      "Site build: SITE_INDEXING=1 and SITE_ALLOW_PROVISIONAL=1 together would index stand-in " +
-        "example lessons. Unset one of them.",
-    );
-  }
   if (indexing) args.push("--index");
   if (provisional) args.push("--allow-provisional");
   return args;
