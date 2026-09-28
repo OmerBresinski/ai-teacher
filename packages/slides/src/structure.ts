@@ -966,9 +966,13 @@ export function structureSlide(
     return answersClear([slide], t, ids, options.pages !== false);
   }
   switch (slide.kind) {
+    case "exit-ticket":
+      // One list, each question with its options inline, and the answers as a line under it that
+      // the generator turns into a reveal: up to three questions fit one slide with their answers
+      // (UX ruling 108, TEACH-172). No option cards and no pages.
+      return [slide];
     case "starter":
     case "instructions":
-    case "exit-ticket":
       return structureSet(slide, t, hints, ids, options.pages !== false);
     case "worked-example":
       return structureWorked(slide, t, ids, options.pages !== false);

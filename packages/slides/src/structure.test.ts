@@ -123,10 +123,10 @@ describe("options grid", () => {
     expect(numbers).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
-  test("materialise: a coded exit ticket with quiz hints lays the grid; its answers never run off the slide", () => {
+  test("materialise: a coded starter with quiz hints lays the grid; its answers never run off the slide", () => {
     const slide = materialiseSlide(
       {
-        kind: "exit-ticket",
+        kind: "starter",
         factRefs: [],
         heading: "Exit ticket",
         items: [MC, "What is sediment?", "Name one hard engineering method."],

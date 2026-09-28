@@ -547,8 +547,11 @@ export function applyLook(
 
   if (slide.kind === "content" && options.lead !== false) els = leadAndCard(els, t, ids);
   if (slide.kind === "worked-example") els = workedCard(els, t);
-  // A worked example's working keeps its card's leading: the card is sized for it.
-  if (label && slide.kind !== "worked-example") els = els.map((e) => roomyList(e, t));
+  // A worked example's working keeps its card's leading: the card is sized for it. An exit ticket
+  // keeps the theme's body leading so its three questions and their answers fit one slide (UX
+  // ruling 108, TEACH-172).
+  if (label && slide.kind !== "worked-example" && slide.kind !== "exit-ticket")
+    els = els.map((e) => roomyList(e, t));
 
   return {
     ...slide,

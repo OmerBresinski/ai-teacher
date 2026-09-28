@@ -136,7 +136,7 @@ describe("the answers never cover the questions", () => {
       const t = getTheme(id);
       const slide = materialiseSlide(
         {
-          kind: "exit-ticket",
+          kind: "starter",
           factRefs: [],
           heading: "Quick check",
           items: plants,
@@ -171,7 +171,7 @@ describe("the answers never cover the questions", () => {
     const t = getTheme("chalk");
     const slide = materialiseSlide(
       {
-        kind: "exit-ticket",
+        kind: "starter",
         factRefs: [],
         heading: "Quick check",
         items: ["What do roots take in?", "Name one thing a plant needs."],
