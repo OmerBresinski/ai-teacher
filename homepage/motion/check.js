@@ -346,7 +346,7 @@
         ry = p.eyes === "wide" ? 1.2 : p.eyes === "half" ? 0.5 : 1; // half: the lid halfway, in a blink
       for (const e of eyes)
         o.push(
-          `<ellipse cx="${f1(e[0])}" cy="${f1(e[1] + (p.eyes === "half" ? 0.6 : 0))}" rx="${f1(r * (p.eyes === "half" ? 1.2 : 1) * Math.max(0.4, Math.abs(kx)))}" ry="${f1(r * ry)}" fill="${INK}" ${S()}/>`,
+          `<ellipse cx="${f1(e[0])}" cy="${f1(e[1] + (p.eyes === "half" ? 0.6 : 0))}" rx="${f1(r * (p.eyes === "half" ? 1.2 : 1) * Math.max(0.4, Math.abs(kx)))}" ry="${f1(r * ry)}" fill="${INK}" stroke="none"/>`,
         ); // stroked like the art's eyes
     }
     // brows: absent from the rest art; they cut in for a look and cut out again. browUp lifts the right one

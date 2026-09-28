@@ -327,6 +327,8 @@
       base = svg.querySelector("g.body");
     // drawn the way the ambient cast draws every other character: 2-unit strokes
     svg.style.strokeWidth = "2";
+    // and, like the cast, filled pupils with no outline (cast.css styles .eye under data-cast-ready)
+    actor.dataset.castReady = "";
     const uid = `ck-${Math.random().toString(36).slice(2, 7)}`;
     svg.insertAdjacentHTML(
       "afterbegin",
