@@ -1,3 +1,11 @@
+/** How each persona takes centre stage: [seconds, ease]. Plan glides, Slides bounds in and
+ * overshoots, Worksheet strides in and stops short, Check lands exactly with no overshoot. */
+const ARRIVAL = [
+  [0.85, "sine.inOut"],
+  [0.7, "back.out(1.9)"],
+  [0.55, "power3.out"],
+  [0.6, "expo.out"],
+];
 // Source production.js work beats. All hand/prop contact timing is preserved.
 export function buildBeat(context, n, gsap) {
   const { p, actors, fan, questionNodes, questionLengths, draw, setFanMode, onComplete } = context;
@@ -28,9 +36,11 @@ export function buildBeat(context, n, gsap) {
     go({ y: 242 }, 1.1, 0.22);
     go({ offer: 1 }, 1.38, 0.4); // A visible shared grip precedes release.
     tl.to(actors[from], { x: 85, alpha: 0, duration: 0.85, ease: "sine.inOut" }, 1.78);
-    tl.to(actors[to], { x: 320, duration: 0.85, ease: "sine.inOut" }, 1.78);
-    go({ x: 320, y: 251, gazeMix: 0 }, 1.78, 0.85);
-    tl.to({}, { duration: 0.3 }, 2.63);
+    // The receiver takes centre in its own manner; the prop travels with its hands.
+    const [d, ease] = ARRIVAL[to] ?? ARRIVAL[0];
+    tl.to(actors[to], { x: 320, duration: d, ease }, 1.78);
+    go({ x: 320, y: 251, gazeMix: 0 }, 1.78, d, ease);
+    tl.to({}, { duration: 0.3 }, 1.78 + d);
   }
   if (n === 11) {
     // A declined worksheet acknowledges the choice and leaves empty-handed.
@@ -40,7 +50,8 @@ export function buildBeat(context, n, gsap) {
     go({ gesture: 1, look: 2 }, 0, 0.25);
     go({ gesture: 0, look: 0 }, 0.35, 0.3);
     tl.to(actors[from], { x: 150, alpha: 0, duration: 0.85, ease: "sine.inOut" }, 0.65);
-    tl.to(actors[to], { x: 320, alpha: 1, duration: 0.85, ease: "sine.inOut" }, 0.85);
+    const [d, ease] = ARRIVAL[to] ?? ARRIVAL[0];
+    tl.to(actors[to], { x: 320, alpha: 1, duration: d, ease }, 0.85);
   }
   if (n === 3) {
     p.pending = 1;

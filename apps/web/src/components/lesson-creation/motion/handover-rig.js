@@ -214,24 +214,28 @@ export function createHandoverRig(root, gsap) {
     g.append(body);
     return g;
   });
+  // Persona idle: Plan breathes slow and small, Slides can't stand still, Worksheet is
+  // brisk but contained, Check holds almost still. `lift` scales the breath, `weight` the sway.
   const rhythms = [
-    { period: 5.9, phase: 0.4, weight: 0.7 },
-    { period: 4.2, phase: 2.1, weight: 1 },
-    { period: 5.1, phase: 4.2, weight: 0.65 },
-    { period: 6.7, phase: 1.3, weight: 0.8 },
+    { period: 7.4, phase: 0.4, weight: 0.45, lift: 0.7 },
+    { period: 3.3, phase: 2.1, weight: 1.15, lift: 1.35 },
+    { period: 4.3, phase: 4.2, weight: 0.6, lift: 0.9 },
+    { period: 8.2, phase: 1.3, weight: 0.3, lift: 0.45 },
   ];
+  let calm = 1,
+    calmTarget = 1;
   function paintAmbient() {
     actors.forEach((_a, i) => {
       const rhythm = rhythms[i],
         phase = (ambientTime * 2 * Math.PI) / rhythm.period + rhythm.phase;
-      const amount = pref.matches ? 0 : motion.intensity * ambientFocus * p.ambientGate;
+      const amount = pref.matches ? 0 : motion.intensity * ambientFocus * p.ambientGate * calm;
       // Two unequal waves avoid an obvious left/right metronome.
       const r =
         amount *
         motion.sway *
         rhythm.weight *
         (0.62 * Math.sin(phase) + 0.18 * Math.sin(phase * 0.61 + 1.4));
-      const y = amount * motion.breathing * 1.3 * Math.sin(phase * 1.17 + 0.6);
+      const y = amount * motion.breathing * 1.3 * rhythm.lift * Math.sin(phase * 1.17 + 0.6);
       ambientPose[i] = { r, y };
       const scale = i === 1 ? 1.2 : 0.85,
         cx = i === 1 ? 200 : 150,
@@ -269,6 +273,7 @@ export function createHandoverRig(root, gsap) {
           ? 0.32
           : 1;
     ambientFocus += (focus - ambientFocus) * blend;
+    calm += (calmTarget - calm) * (1 - Math.exp(-dt * 2));
     ambientTime += dt * motion.tempo;
     draw();
   }
@@ -725,6 +730,10 @@ export function createHandoverRig(root, gsap) {
     },
     settle,
     pause,
+    /** Resting between gestures: ease the sway down to a breath. */
+    calm(value) {
+      calmTarget = value ? 0.45 : 1;
+    },
     get reduced() {
       return pref.matches;
     },
