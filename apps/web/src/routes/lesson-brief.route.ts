@@ -2,8 +2,8 @@ import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { BRIEF_TOPIC_MAX } from "@tj/domain/documents";
 import { z } from "zod";
 import { pageTitle } from "@/lib/page-title";
+import { authLayoutRoute } from "./auth.route";
 import { flag } from "./documents.route";
-import { libraryLayoutRoute } from "./library.route";
 
 /**
  * `/lessons/new?topic=<text>&source=1` — the marketing homepage's hero box and upload icon send a
@@ -21,14 +21,15 @@ export const lessonBriefSearchSchema = z.object({
     .optional()
     .catch(undefined),
   source: flag("1"),
+  lesson: z.uuid().optional().catch(undefined),
 });
 
 /**
- * `/lessons/new` — the lesson brief (F01 item 2, TEACH-122). Inside the library shell so the
- * sidebar stays; no loader — the page needs nothing from the server before the teacher types.
+ * `/lessons/new` — the focused intake, outside the sidebar but behind the same auth guard.
+ * `?lesson=` resumes a durable proposed plan; a new brief needs no loader.
  */
 export const lessonBriefRoute = createRoute({
-  getParentRoute: () => libraryLayoutRoute,
+  getParentRoute: () => authLayoutRoute,
   path: "/lessons/new",
   validateSearch: lessonBriefSearchSchema,
   head: () => pageTitle("New lesson"),

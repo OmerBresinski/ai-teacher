@@ -4,6 +4,7 @@ export { AUTOSAVE_MS, SaveRefusedError, type SaveState } from "../model/use-auto
 export { GUTTER, stepZoom, ZOOM_STEPS } from "./Canvas";
 export { impactPreview, impactSentence, slidesReferencing } from "./impact-preview";
 export { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
+export { MobileSlideList } from "./MobileSlideList";
 export {
   NAVIGATOR_MODE_KEY,
   type NavigatorMode,
@@ -22,3 +23,4 @@ export {
 export { COALESCE_MS } from "./use-coalesced-ids";
 export { useCompactChrome } from "./use-compact-chrome";
 export type { RegenerateTarget } from "./use-editor-session";
+export { useMobileEditor } from "./use-mobile-editor";

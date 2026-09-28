@@ -11,31 +11,42 @@ import { COPYRIGHT_NOTICE, LIMIT_NOTICE, SourceDropZone } from "./SourceDropZone
 const { fakeApi, restore } = installFakeApi();
 
 /** The zone as the brief mounts it: the parent owns the list. */
-function Harness({ initial = [] as SourceRef[] }: { initial?: SourceRef[] }) {
+function Harness({
+  initial = [] as SourceRef[],
+  boundSourceIds = [],
+}: {
+  initial?: SourceRef[];
+  boundSourceIds?: string[];
+}) {
   const [sources, setSources] = useState<SourceRef[]>(initial);
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <SourceDropZone sources={sources} onChange={setSources} onBusyChange={setBusy} />
+      <SourceDropZone
+        boundSourceIds={boundSourceIds}
+        sources={sources}
+        onChange={setSources}
+        onBusyChange={setBusy}
+      />
       <output data-testid="ids">{sources.map((s) => s.id).join(",")}</output>
       <output data-testid="busy">{String(busy)}</output>
     </>
   );
 }
 
-function renderZone(initial?: SourceRef[]) {
+function renderZone(initial?: SourceRef[], boundSourceIds?: string[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Harness initial={initial} />
+        <Harness initial={initial} boundSourceIds={boundSourceIds} />
       </TooltipProvider>
     </QueryClientProvider>,
   );
 }
 
 const pdf = (name = "plants.pdf", bytes = 1400) =>
-  new File([new Uint8Array(bytes)], name, { type: "application/pdf" });
+  new File([new Uint8Array(bytes).fill(name.charCodeAt(0))], name, { type: "application/pdf" });
 const fileInput = () => screen.getByLabelText("Choose files", { selector: "input" });
 const ids = () => screen.getByTestId("ids").textContent ?? "";
 const uploads = () => fakeApi.requests.filter((r) => r.path === "/sources" && r.method === "POST");
@@ -48,10 +59,18 @@ describe("SourceDropZone", () => {
   afterEach(() => cleanup());
   afterAll(() => restore());
 
+  it("removes a bound source only from the draft for transactional replan", async () => {
+    const source = { id: "bound-source", name: "plants.pdf", kind: "file", pages: 2 } as SourceRef;
+    renderZone([source], [source.id]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove plants.pdf" }));
+    await waitFor(() => expect(ids()).toBe(""));
+    expect(fakeApi.requests.filter((r) => r.method === "DELETE")).toHaveLength(0);
+  });
+
   it("renders the controls and the copyright line with no chips", () => {
     renderZone();
     expect(screen.getByRole("button", { name: "Choose files" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Paste text instead" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Paste text" })).toBeEnabled();
     expect(screen.getByText(COPYRIGHT_NOTICE)).toBeTruthy();
     expect(screen.queryByRole("list", { name: "Your material" })).toBeNull();
   });
@@ -75,11 +94,11 @@ describe("SourceDropZone", () => {
     fireEvent.change(fileInput(), { target: { files: [pdf("deck.pptx")] } });
     await screen.findByText("30 slides");
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Paste text instead" }));
+    await user.click(screen.getByRole("tab", { name: "Paste text" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Text to use as material" }), {
       target: { value: "Some pasted material." },
     });
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add text" }));
     await screen.findByRole("button", { name: "Remove Pasted text" });
     expect(screen.getByText("text")).toBeTruthy();
     const second = uploads()[1]?.body;
@@ -100,6 +119,48 @@ describe("SourceDropZone", () => {
     expect(screen.queryByRole("list", { name: "Files we could not take" })).toBeNull();
   });
 
+  it("rejects identical bytes even under a different filename", async () => {
+    renderZone();
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    fireEvent.change(fileInput(), { target: { files: [new File([bytes], "original.pdf")] } });
+    await screen.findByRole("button", { name: "Remove original.pdf" });
+    fireEvent.change(fileInput(), { target: { files: [new File([bytes], "renamed.pdf")] } });
+    await screen.findAllByText("renamed.pdf is already added.");
+    expect(uploads()).toHaveLength(1);
+  });
+
+  it("allows the same contents after removing the original attachment", async () => {
+    renderZone();
+    fireEvent.change(fileInput(), { target: { files: [pdf()] } });
+    fireEvent.click(await screen.findByRole("button", { name: "Remove plants.pdf" }));
+    await waitFor(() => expect(ids()).toBe(""));
+    fireEvent.change(fileInput(), { target: { files: [pdf()] } });
+    await screen.findByRole("button", { name: "Remove plants.pdf" });
+    expect(uploads()).toHaveLength(2);
+  });
+
+  it("uploads clipboard files from the modal and preserves normal text pasting", async () => {
+    renderZone();
+    fireEvent.paste(screen.getByRole("dialog"), {
+      clipboardData: { files: [pdf("clipboard.pdf")] },
+    });
+    await screen.findByRole("button", { name: "Remove clipboard.pdf" });
+    expect(uploads()).toHaveLength(1);
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { files: [] } });
+    screen.getByRole("dialog").dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("explains unsupported clipboard files without uploading them", async () => {
+    renderZone();
+    fireEvent.paste(screen.getByRole("dialog"), {
+      clipboardData: { files: [new File(["image"], "image.png")] },
+    });
+    await screen.findAllByText(/Choose a PDF, PowerPoint or Word file/);
+    expect(uploads()).toHaveLength(0);
+  });
+
   it("a file over 25 MB is refused client-side with no request", async () => {
     renderZone();
     fireEvent.change(fileInput(), { target: { files: [pdf("huge.pdf", 25 * 1024 * 1024 + 1)] } });
@@ -115,7 +176,7 @@ describe("SourceDropZone", () => {
     await screen.findByRole("button", { name: "Remove c.pdf" });
     expect(screen.queryByRole("button", { name: "Remove d.pdf" })).toBeNull();
     expect(uploads()).toHaveLength(3);
-    expect(screen.getByText(LIMIT_NOTICE, { selector: "p.text-body" })).toBeTruthy();
+    expect(screen.getAllByText(LIMIT_NOTICE).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Choose files" })).toBeDisabled();
   });
 

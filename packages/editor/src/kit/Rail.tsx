@@ -1,5 +1,7 @@
 import { cn, IconButton, type IconButtonProps, Tooltip } from "@tj/ui";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
+
+const RailLabels = createContext(false);
 
 /*
  * The insert rail's column and its buttons (TeachDeck `components/ui2/Rail.tsx`). No `@tj/ui`
@@ -12,26 +14,34 @@ export type RailProps = {
   /** The rail's accessible name. The editor's is "Insert". */
   "aria-label"?: string;
   className?: string;
+  showLabels?: boolean;
 };
 
 /**
  * A toolbar, not a nav: these buttons insert things and switch tools, they do not navigate. White
  * with one hairline on the right over the app ground, so it reads as a raised strip.
  */
-export function Rail({ children, className, "aria-label": ariaLabel = "Tools" }: RailProps) {
+export function Rail({
+  children,
+  className,
+  showLabels = false,
+  "aria-label": ariaLabel = "Tools",
+}: RailProps) {
   return (
-    <div
-      role="toolbar"
-      aria-orientation="vertical"
-      aria-label={ariaLabel}
-      data-insert-rail
-      className={cn(
-        "flex w-(--rail-width) shrink-0 flex-col items-center gap-1 border-border border-r bg-background py-1.5",
-        className,
-      )}
-    >
-      {children}
-    </div>
+    <RailLabels.Provider value={showLabels}>
+      <div
+        role="toolbar"
+        aria-orientation="vertical"
+        aria-label={ariaLabel}
+        data-insert-rail
+        className={cn(
+          "flex w-(--rail-width) shrink-0 flex-col items-center gap-1 border-border border-r bg-background py-1.5",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </RailLabels.Provider>
   );
 }
 
@@ -49,21 +59,30 @@ export function RailButton({
   shortcut,
   tooltipLabel,
   label,
+  children,
   ...rest
 }: RailButtonProps) {
+  const showLabels = useContext(RailLabels);
+  const button = (
+    <IconButton
+      {...rest}
+      label={label}
+      noTooltip
+      active={active}
+      className={cn(
+        showLabels ? "rail-button-labelled" : "size-10 rounded-control",
+        active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+        className,
+      )}
+    >
+      {children}
+      {showLabels ? <span>{label}</span> : null}
+    </IconButton>
+  );
+  if (showLabels) return button;
   return (
     <Tooltip label={tooltipLabel ?? label} shortcut={shortcut} side="right">
-      <IconButton
-        {...rest}
-        label={label}
-        noTooltip
-        active={active}
-        className={cn(
-          "size-10 rounded-control",
-          active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-          className,
-        )}
-      />
+      {button}
     </Tooltip>
   );
 }

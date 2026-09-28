@@ -6,6 +6,7 @@ import {
   navigatorWidthVar,
   readNavigatorMode,
   useCompactChrome,
+  useMobileEditor,
 } from "@tj/editor/lesson";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
@@ -18,6 +19,7 @@ import {
   useState,
 } from "react";
 import { pendingSlides } from "@/lib/pending-slides";
+import { MobileGeneratingShell } from "./MobileGeneratingShell";
 import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
 
 /*
@@ -54,6 +56,8 @@ export type GeneratingShellProps = {
    * nothing when there is no honest number).
    */
   estimate?: ReactNode;
+  /** Optional art-direction companion; stays mounted as the first slide arrives. */
+  canvasCompanion?: ReactNode;
   onBack: () => void;
   onStop: () => void;
   /**
@@ -76,6 +80,7 @@ export function GeneratingShell({
   lesson,
   events,
   estimate,
+  canvasCompanion,
   onBack,
   onStop,
   stop,
@@ -83,7 +88,8 @@ export function GeneratingShell({
   className,
   onViewSlide,
 }: GeneratingShellProps) {
-  const state = stageOf(events);
+  const mobile = useMobileEditor();
+  const state = stageOf(events, lesson.plan?.state === "proposed");
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
   const theme = getTheme(lesson.themeId);
@@ -144,6 +150,24 @@ export function GeneratingShell({
 
   const line = stopped ? stoppedLine(state) : stageLine(state);
   const stopDisabled = Boolean(stop?.pending || stop?.sent);
+
+  if (mobile) {
+    return (
+      <MobileGeneratingShell
+        lesson={lesson}
+        state={state}
+        line={line}
+        lockLine={lockLine(state)}
+        canvasCompanion={canvasCompanion}
+        onBack={onBack}
+        onStop={onStop}
+        stop={stop}
+        exportSlot={exportSlot}
+        className={className}
+        onViewSlide={onViewSlide}
+      />
+    );
+  }
 
   return (
     <div
@@ -259,7 +283,12 @@ export function GeneratingShell({
           </ul>
         </nav>
 
-        <main className="flex min-w-0 flex-1 flex-col bg-canvas" data-canvas>
+        <main
+          className="relative flex min-w-0 flex-1 flex-col bg-canvas"
+          data-canvas
+          data-has-slides={Boolean(shown)}
+          data-companion-layout={canvasCompanion ? "side" : undefined}
+        >
           <div className="min-h-0 flex-1 p-10">
             {shown ? (
               <SlideScaler zoom="fit">
@@ -278,7 +307,7 @@ export function GeneratingShell({
                   <SlideView slide={shown} theme={theme} mode="view" />
                 </div>
               </SlideScaler>
-            ) : (
+            ) : canvasCompanion ? null : (
               <div className="flex h-full flex-col items-center justify-center text-center">
                 {/* The title in Lora before the first slide; the strip's dot is the spinner. */}
                 <Display as="span" size="lg" className="block">
@@ -315,6 +344,7 @@ export function GeneratingShell({
               </Button>
             ) : null}
           </div>
+          {canvasCompanion ? <div data-canvas-companion>{canvasCompanion}</div> : null}
         </main>
       </div>
     </div>

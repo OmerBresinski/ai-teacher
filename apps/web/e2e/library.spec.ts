@@ -41,12 +41,14 @@ test.describe("library shell", () => {
   }) => {
     await page.getByRole("button", { name: "New lesson" }).click();
     await expect(page).toHaveURL(/\/lessons\/new$/);
-    await expect(page.getByRole("textbox", { name: "Topic or objective" })).toBeFocused();
+    await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeFocused();
 
     await page.getByRole("button", { name: "Blank lesson" }).click();
-    await page.getByRole("button", { name: "Next" }).click();
-    await page.getByRole("radio", { name: "Playground" }).click();
-    await page.getByRole("button", { name: "Create lesson" }).click();
+    // The intake has its own Next behind the dialog; the dialog's is the one to press.
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Next" }).click();
+    await dialog.getByRole("radio", { name: "Playground" }).click();
+    await dialog.getByRole("button", { name: "Create lesson" }).click();
 
     await expect(page).toHaveURL(/\/l\/[^/]+$/);
     await expect(
