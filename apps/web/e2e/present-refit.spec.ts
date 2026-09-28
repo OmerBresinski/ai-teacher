@@ -55,7 +55,6 @@ test.describe("a lesson stored under the old floors", () => {
     signedInPage: { page, paths },
   }) => {
     await page.goto(paths.lesson("electricity", "/present"));
-    await page.getByRole("button", { name: "Stay in this window" }).click();
     const status = page.getByRole("status").first();
     await expect(status).toContainText("Slide 1 of");
     await page.evaluate(() => document.fonts.ready);
