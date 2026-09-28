@@ -134,6 +134,18 @@ describe("useTurnstileToken", () => {
     expect(await pending).toBe("fresh");
   });
 
+  it("takes no space until Cloudflare shows an interactive challenge", async () => {
+    const h = mountHarness();
+    await waitFor(() => expect(fake.widgets).toHaveLength(1));
+    const box = h.view.container.querySelector("[data-turnstile]") as HTMLElement;
+    expect(box.className).toContain("absolute");
+    act(() => fake.last()?.["before-interactive-callback"]?.());
+    expect(h.get().interactive).toBe(true);
+    expect(box.className).not.toContain("absolute");
+    act(() => fake.last()?.["after-interactive-callback"]?.());
+    expect(box.className).toContain("absolute");
+  });
+
   it("reset() drops the token and restarts the widget; unmount removes it", async () => {
     const h = mountHarness();
     await waitFor(() => expect(fake.widgets).toHaveLength(1));

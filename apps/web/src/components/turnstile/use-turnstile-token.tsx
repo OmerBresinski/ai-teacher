@@ -17,6 +17,8 @@ export interface TurnstileToken {
   /** Discard the current token and start a fresh challenge. */
   reset(): void;
   readonly error: TurnstileError | null;
+  /** Cloudflare is showing an interactive challenge; only then does the widget take space. */
+  readonly interactive: boolean;
   /** Attach with `<TurnstileWidget turnstile={…} />`. */
   readonly containerRef: (element: HTMLDivElement | null) => void;
 }
@@ -55,6 +57,7 @@ export function useTurnstileToken(options: UseTurnstileTokenOptions = {}): Turns
     setErrorState(value);
   }, []);
 
+  const [interactive, setInteractive] = useState(false);
   const api = useRef<TurnstileApi | null>(null);
   const widgetId = useRef<string | undefined>(undefined);
   const element = useRef<HTMLDivElement | null>(null);
@@ -106,6 +109,8 @@ export function useTurnstileToken(options: UseTurnstileTokenOptions = {}): Turns
             "timeout-callback": () => {
               token.current = null;
             },
+            "before-interactive-callback": () => setInteractive(true),
+            "after-interactive-callback": () => setInteractive(false),
           });
         },
         () => {
@@ -124,6 +129,7 @@ export function useTurnstileToken(options: UseTurnstileTokenOptions = {}): Turns
         api.current?.remove(widgetId.current);
         widgetId.current = undefined;
       }
+      setInteractive(false);
       element.current = el;
       token.current = null;
       if (el) mount(el);
@@ -176,14 +182,14 @@ export function useTurnstileToken(options: UseTurnstileTokenOptions = {}): Turns
   }, [setError]);
 
   return useMemo(
-    () => ({ enabled, getToken, reset, error, containerRef }),
-    [enabled, getToken, reset, error, containerRef],
+    () => ({ enabled, getToken, reset, error, interactive, containerRef }),
+    [enabled, getToken, reset, error, interactive, containerRef],
   );
 }
 
 /**
- * Where the Turnstile checkbox appears when Cloudflare asks for one; empty (and zero height) the
- * rest of the time. Renders nothing when Turnstile is off.
+ * Where the Turnstile checkbox appears when Cloudflare asks for one; out of the layout (no space,
+ * no gap) the rest of the time. Renders nothing when Turnstile is off.
  */
 export function TurnstileWidget({
   turnstile,
@@ -197,7 +203,13 @@ export function TurnstileWidget({
     <div
       ref={turnstile.containerRef}
       data-turnstile=""
-      className={cn("empty:hidden [&_iframe]:max-w-full", className)}
+      // Out of the flow until Cloudflare shows a challenge: the empty frame Turnstile renders for an
+      // invisible check must not add the form's gap or this margin. Kept rendered (not `hidden`) so
+      // the invisible challenge still runs.
+      className={cn(
+        "[&_iframe]:max-w-full",
+        turnstile.interactive ? className : "pointer-events-none absolute size-0 overflow-hidden",
+      )}
     />
   );
 }

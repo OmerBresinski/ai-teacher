@@ -24,6 +24,9 @@ export interface TurnstileRenderOptions {
   "error-callback"?: (code: string) => boolean | undefined;
   "expired-callback"?: () => void;
   "timeout-callback"?: () => void;
+  /** The widget is about to show an interactive challenge (a checkbox), and leaves it again. */
+  "before-interactive-callback"?: () => void;
+  "after-interactive-callback"?: () => void;
   appearance?: "always" | "execute" | "interaction-only";
   "refresh-expired"?: "auto" | "manual" | "never";
   theme?: "auto" | "light" | "dark";
