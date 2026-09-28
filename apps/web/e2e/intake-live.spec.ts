@@ -34,9 +34,12 @@ test.describe("real lesson intake over the fake worker", () => {
     await page.getByRole("button", { name: "Include worksheet" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
     const generationStatus = page.locator(".creation-generation-status");
-    await expect(generationStatus).toContainText(/Making your slides|Checking your slides/, {
-      timeout: 15_000,
-    });
+    // The paced fake writes the eight slides in well under a second, so the editor can mount
+    // after the slides are done: the status line is the check here, not which phase it shows.
+    await expect(generationStatus).toContainText(
+      /Making your slides|Checking your slides|Slides ready/,
+      { timeout: 15_000 },
+    );
     await page.screenshot({ path: "/tmp/live-intake-generating-desktop.png" });
 
     await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible({
