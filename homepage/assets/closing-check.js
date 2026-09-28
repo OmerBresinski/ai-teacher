@@ -54,7 +54,7 @@
   const smoother = (u) => u * u * u * (u * (u * 6 - 15) + 10);
   // the breath is evaluated at 30 Hz and painted only when some part has moved a visible
   // amount (a quarter of an artwork unit, about 0.2 px): the same motion at about a quarter of the cost
-  const qa = (n) => Math.round(n * 4);
+  const qa = (n) => Math.round(n * 2); // half a unit: a third of a pixel at the CTA size
   const sig = (p) =>
     [
       p.sy * 160,
@@ -68,7 +68,9 @@
       .map(qa)
       .join(",") + p.eyes;
   let lastSig = "";
-  const BREATH_MS = 1000 / 30; // the breath is evaluated at 30 Hz: a quarter-unit step every 2-3 ticks at its fastest
+  // The breath is evaluated 10 times a second (as the Slides breath) and drawn only when a part has moved half a unit
+  // (a sixth of a pixel): smooth at its pace, and inside the 5 % idle budget at 4x throttle.
+  const BREATH_MS = 100;
   function script(seed) {
     const r = rng(seed),
       B = [],
@@ -362,8 +364,30 @@
       return { left: (32 - box.x) / 2, right: (box.r - 270) / 2, box };
     }
     let lastPose = null;
+    // The region clip applies only while Check travels in: at rest and in the beats it stays on its
+    // spot, and a clip on a still drawing makes every repaint dearer.
+    let clipped = true;
+    // The breath's swell, as a CSS scale of the character about its feet on its own layer.
+    let swellT = "",
+      swollen = null,
+      lastDetail = 0;
+    actor.style.transformOrigin = `${(M.cx / 300) * 100}% ${(FB.GROUND / 300) * 100}%`;
+    function swell(sx, sy) {
+      const t = sx === 1 && sy === 1 ? "" : `scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`;
+      if (t === swellT) return;
+      actor.style.transform = t;
+      actor.style.willChange = t ? "transform" : "";
+      swellT = t;
+    }
     function render(p, i = 0) {
+      if (!(mode === "idle" && swollen)) swell(1, 1);
       paint(FB.draw(p, i));
+      const roam = mode === "entrance";
+      if (roam !== clipped) {
+        if (roam) group.setAttribute("clip-path", `url(#${uid})`);
+        else group.removeAttribute("clip-path");
+        clipped = roam;
+      }
       let x0 = box.x,
         x1 = box.r;
       if (p.wingA > 0) {
@@ -515,7 +539,10 @@
     }
     function play(name, now, dir) {
       if (mode !== "idle") return false;
-      from = lastPose ? structuredClone(lastPose) : idlePose(now - idle0, true);
+      // mid-breath the drawing on screen is the scaled one
+      const shown = swollen || lastPose;
+      from = shown ? structuredClone(shown) : idlePose(now - idle0, true);
+      swollen = null;
       clip = { name, ...clipKeys(name, rest(), dir) };
       mode = "clip";
       t0 = now;
@@ -575,13 +602,19 @@
           // reconciler); a blink edge or the landing on the still drawing paints once; between
           // breaths nothing runs until the next event
           if (st.busy) {
-            const g = sig(st.p);
-            if (g !== lastSig || key !== lastKey) {
-              p = st.p;
+            // the swell is a composited scale about the feet (no repaint); the slow details
+            // (shoulders, hands, glasses) are redrawn at most 5 times a second, when one has moved
+            swell(st.p.sx, st.p.sy);
+            swollen = st.p;
+            const g = sig({ ...st.p, sy: 1, sx: 1, bulge: 0 });
+            if ((g !== lastSig && now - lastDetail >= 200) || key !== lastKey) {
+              p = { ...st.p, sy: 1, sx: 1, bulge: 0 };
               lastKey = key;
               lastSig = g;
+              lastDetail = now;
             }
-          } else if (!lastPaint || key !== lastKey) {
+          } else if (!lastPaint || key !== lastKey || swollen) {
+            swollen = null;
             p = st.p;
             lastKey = key;
           }
@@ -597,6 +630,10 @@
 
     // ---- reduced motion, at any moment: stop everything, the original artwork back at rest
     function showArt(art) {
+      if (art) {
+        swollen = null;
+        swell(1, 1);
+      }
       group.style.visibility = art ? "hidden" : "visible";
       base.style.visibility = art ? "" : "hidden";
       restShadow.style.visibility = art ? "" : "hidden";
