@@ -70,6 +70,10 @@ export function createHandoverRig(root, gsap) {
     hry: 0,
     penRot: 0,
     penToss: 0,
+    lift: 0,
+    riffle: 0,
+    lookY: 0,
+    reach: 0,
   }));
   // Persona blink spacing: Plan slow, Slides quick, Worksheet sometimes doubles, Check considered.
   const lives = [
@@ -566,6 +570,17 @@ export function createHandoverRig(root, gsap) {
       if (STROKE_CLOCKS.has(k)) continue;
       p[k] = follow(`p.${k}`, p[k], false);
     }
+    // Plan's check-through, drawn on the plan it holds: lifted and tipped toward its eyes to read,
+    // the pages riffled (the fold flutters), then set back down. (Restored with the rest of p.)
+    if (ownerOf() === 0) {
+      const cf = castFx[0];
+      if (cf.lift || cf.riffle) {
+        for (const k of ["y", "r", "fold"]) if (!(k in savedP)) savedP[k] = p[k];
+        p.y -= 22 * cf.lift;
+        p.r -= 9 * cf.lift;
+        p.fold = Math.max(0, p.fold - 0.4 * Math.abs(cf.riffle));
+      }
+    }
     actors.forEach((a, i) => {
       const shown = a.alpha > 0.5,
         fresh = !shown || !wasShown[i];
@@ -622,7 +637,7 @@ export function createHandoverRig(root, gsap) {
       const gazeX = passing
         ? Math.max(-3, Math.min(3, (target - a.x) * 0.024)) * p.gazeMix
         : p.look + castFx[i].look;
-      const gazeY = passing ? 1 + 0.7 * p.gazeMix : 1;
+      const gazeY = (passing ? 1 + 0.7 * p.gazeMix : 1) + castFx[i].lookY * 0.7;
       if (i !== 1) q(".gaze", figures[i]).setAttribute("transform", `translate(${gazeX} ${gazeY})`);
       else if (!fanMode)
         q(".face", fanSVG).setAttribute("transform", `translate(${gazeX + 0.125} ${gazeY - 1})`);
@@ -845,6 +860,16 @@ export function createHandoverRig(root, gsap) {
       const cf = castFx[i];
       left = { x: left.x + cf.hlx, y: left.y + cf.hly };
       right = { x: right.x + cf.hrx, y: right.y + cf.hry };
+      if (i === 3 && cf.reach > 0) {
+        // Check's push: the hand really arrives on the bridge of its glasses (wherever they have
+        // slipped to), a fingertip's width under it, and rides them back up.
+        const [bx, by] = bodies[3].map(146.5, 130.5 + a.b.slip + 9);
+        const bridge = { x: a.x - 127.5 + bx * 0.85, y: 65 + by * 0.85 };
+        right = {
+          x: right.x + (bridge.x - right.x) * cf.reach,
+          y: right.y + (bridge.y - right.y) * cf.reach,
+        };
+      }
       // A hand driving a tool or the reveal is locked to it: no spring between the hand, the tool
       // and the stroke it is drawing (0 px drift). The lock fades in with the gesture.
       const lock = i === owner && (p.tool || p.pending) ? Math.max(0, Math.min(1, p.gesture)) : 0;
@@ -1003,9 +1028,21 @@ export function createHandoverRig(root, gsap) {
     castRuns.get(i)?.kill();
     castRuns.delete(i);
     Object.assign(actors[i].c, zeroBody());
-    Object.assign(castFx[i], { look: 0, hlx: 0, hly: 0, hrx: 0, hry: 0, penRot: 0, penToss: 0 });
+    Object.assign(castFx[i], {
+      look: 0,
+      hlx: 0,
+      hly: 0,
+      hrx: 0,
+      hry: 0,
+      penRot: 0,
+      penToss: 0,
+      lift: 0,
+      riffle: 0,
+      lookY: 0,
+      reach: 0,
+    });
   }
-  function playCast(i, id, { hands = 1, onCatch, onDone } = {}) {
+  function playCast(i, id, { hands = 1, onCatch, onRelease, onDone } = {}) {
     const clip = CAST_CLIPS[id];
     if (!clip || reduced) {
       onDone?.();
@@ -1016,7 +1053,8 @@ export function createHandoverRig(root, gsap) {
       fx = castFx[i],
       last = Object.values(clip.f)[0].length - 1;
     const time = { t: 0 };
-    let airborne = false;
+    let airborne = false,
+      reached = false;
     const apply = () => {
       const x = Math.min(last, (time.t / 1000) * clip.hz),
         i0 = Math.floor(x),
@@ -1026,6 +1064,12 @@ export function createHandoverRig(root, gsap) {
         const v = s[i0] + (s[i1] - s[i0]) * u;
         if (CAST_BODY.has(k)) a.c[k] = v;
         else fx[k] = k.startsWith("h") ? v * hands : v;
+      }
+      // A reach that has arrived and starts back: the contact's release (Check's push-up).
+      if (fx.reach > 0.9) reached = true;
+      else if (reached && fx.reach < 0.6) {
+        reached = false;
+        onRelease?.();
       }
       if (fx.penToss < -4) airborne = true;
       else if (airborne && fx.penToss > -0.5) {
@@ -1098,9 +1142,14 @@ export function createHandoverRig(root, gsap) {
           const at =
             kind === "hand"
               ? { ...toolAt }
-              : kind === "scene"
-                ? { x, y }
-                : materialPoint(x, y, kind);
+              : kind === "glasses"
+                ? (() => {
+                    const [gx, gy] = bodies[3].map(168, 118 + actors[3].b.slip);
+                    return { x: actors[3].x - 127.5 + gx * 0.85, y: 65 + gy * 0.85 };
+                  })()
+                : kind === "scene"
+                  ? { x, y }
+                  : materialPoint(x, y, kind);
           accent(at.x, at.y, size);
         },
         loops: loops[n],

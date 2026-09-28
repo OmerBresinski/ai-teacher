@@ -150,9 +150,11 @@ export function drawnBody(body, kind) {
     shear = 0,
     hipDrop = 0;
   function map(x, y, part) {
+    // The glasses slip in the artwork's own space, so the squash and lean below carry them.
+    // (Adding it to Y was lost: Y is recomputed from y for the body.)
+    if (part?.glasses) y += b.slip;
     let X = x - f.cx,
       Y = y;
-    if (part?.glasses) Y += b.slip;
     if (part?.face) X += b.spot;
     const br = part?.face ? lag : breath;
     if (!part?.legs || y <= f.base) {
