@@ -18,14 +18,10 @@ mock.module("@tanstack/react-router", () => ({
 
 const { SIGN_OUT_FAILED, sessionBoundary } = await import("@/lib/session-boundary");
 const { POSES, mouthPath } = await import("@/components/brand/cast-rig");
-const {
-  SignInPage,
-  callbackUrl,
-  errorCallbackUrl,
-  googleStartError,
-  normaliseEmail,
-  signInErrorMessage,
-} = await import("./sign-in.page");
+const { callbackUrl, errorCallbackUrl } = await import("@/lib/auth-redirect");
+const { SignInPage, googleStartError, normaliseEmail, signInErrorMessage } = await import(
+  "./sign-in.page"
+);
 
 const GOOGLE = { name: "Continue with Google" } as const;
 const NOT_SET_UP = "Google sign-in is not set up here. Use the email link below.";
@@ -63,7 +59,7 @@ describe("SignInPage", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/^Check your inbox/);
     expect(status).toHaveTextContent(
-      "We sent a sign-in link to ada@example.com. It works once and expires in 5 minutes.",
+      "We sent a sign-in link to ada@example.com. It works once and expires in 15 minutes.",
     );
   });
 

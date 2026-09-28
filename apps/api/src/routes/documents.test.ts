@@ -99,6 +99,13 @@ describe("/documents validation", () => {
     expect((await errorBody(res)).error.fields).toEqual(["expectedUpdatedAt"]);
   });
 
+  test("422 for a new document whose themeId is not in the catalogue (TEACH-258)", async () => {
+    const body = { ...lessonFixture(), id: newId(), themeId: "no-such-theme" };
+    const post = await testApp().request("/documents", json({ kind: "lesson", body }));
+    expect(post.status).toBe(422);
+    expect((await errorBody(post)).error.message).toBe("That theme does not exist.");
+  });
+
   test("413 payload_too_large for a body over the cap, before it is parsed", async () => {
     const padding = "x".repeat(DOCUMENT_BODY_LIMIT_BYTES + 1024);
     const res = await testApp().request(`/documents/${newId()}`, {
