@@ -54,6 +54,33 @@ const optionalString = z
 const CONSOLE_MAIL_IN_PRODUCTION_ERROR =
   "console is not allowed in production (set ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1 to accept that sign-in links are printed to the log)";
 
+/**
+ * Cloudflare's published always-pass Turnstile test secret. Railway PR environments (copies of
+ * production, but served to Vercel previews on hostnames the real widget does not list) run with
+ * it; see `withPrEnvironmentDefaults`.
+ */
+export const TURNSTILE_TEST_SECRET_KEY = "1x0000000000000000000000000000000AA";
+
+/**
+ * A Railway PR environment (`ai-teacher-pr-352`, `pr-b6d0f8-352`), from the platform-injected
+ * `RAILWAY_ENVIRONMENT_NAME`. Production is named `production` and never matches.
+ */
+export function isRailwayPrEnvironment(name: string | undefined): boolean {
+  return name !== undefined && name !== "production" && /(^|-)pr-/.test(name);
+}
+
+/**
+ * In a Railway PR environment the Turnstile secret is always Cloudflare's test secret: the preview
+ * web build sends test tokens (`scripts/vercel-env.ts`), and a copied production secret would
+ * reject them. Production is untouched and still requires the real key.
+ */
+export function withPrEnvironmentDefaults(
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  if (!isRailwayPrEnvironment(source.RAILWAY_ENVIRONMENT_NAME)) return source;
+  return { ...source, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY };
+}
+
 export const TURNSTILE_REQUIRED_IN_PRODUCTION =
   "required in production: anonymous and magic-link sign-in are gated by Cloudflare Turnstile (TEACH-243)";
 
@@ -222,7 +249,10 @@ function describeIssue(issue: z.core.$ZodIssue): string {
 }
 
 /** Pure: parse `source` (defaults to `process.env`) into a typed `Env` or a list of errors. */
-export function parseEnv(source: Record<string, string | undefined> = process.env): ParseEnvResult {
+export function parseEnv(
+  rawSource: Record<string, string | undefined> = process.env,
+): ParseEnvResult {
+  const source = withPrEnvironmentDefaults(rawSource);
   const result = EnvSchema.safeParse(source);
   if (result.success) return { ok: true, env: result.data };
   const errors = result.error.issues.map((issue) => ({

@@ -59,6 +59,21 @@ export interface ResolvedWebEnv {
 
 const PR_PLACEHOLDER = "{pr}";
 
+/**
+ * Cloudflare's published always-pass Turnstile site key (visible widget). A preview that talks to
+ * its Railway PR api builds with it, because that api runs the matching test secret
+ * (`withPrEnvironmentDefaults` in apps/api/src/env.ts, TEACH-223). Production and previews on
+ * another api keep whatever `VITE_TURNSTILE_SITE_KEY` Vercel holds.
+ */
+export const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
+
+/** Extra `VITE_*` values a resolved build gets beyond `VITE_APP_ENV` / `VITE_API_URL`. */
+export function turnstileOverride(env: ResolvedWebEnv): Record<string, string> {
+  return env.source === "railway-pr-template"
+    ? { VITE_TURNSTILE_SITE_KEY: TURNSTILE_TEST_SITE_KEY }
+    : {};
+}
+
 function isAbsoluteHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -190,6 +205,7 @@ export function toExportLines(env: ResolvedWebEnv): string {
   return [
     `export VITE_APP_ENV=${shellQuote(env.VITE_APP_ENV)}`,
     `export VITE_API_URL=${shellQuote(env.VITE_API_URL)}`,
+    ...Object.entries(turnstileOverride(env)).map(([k, v]) => `export ${k}=${shellQuote(v)}`),
   ].join("\n");
 }
 
@@ -231,6 +247,7 @@ async function main(): Promise<number> {
       ...process.env,
       VITE_APP_ENV: resolved.VITE_APP_ENV,
       VITE_API_URL: resolved.VITE_API_URL,
+      ...turnstileOverride(resolved),
     },
   });
   return await child.exited;

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { tmpdir } from "node:os";
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
-import { parseEnv, TURNSTILE_REQUIRED_IN_PRODUCTION } from "./env";
+import {
+  isRailwayPrEnvironment,
+  parseEnv,
+  TURNSTILE_REQUIRED_IN_PRODUCTION,
+  TURNSTILE_TEST_SECRET_KEY,
+} from "./env";
 
 const base = {
   DATABASE_URL: "postgres://postgres:postgres@localhost:5432/teaching_journey",
@@ -33,6 +38,38 @@ describe("parseEnv", () => {
       const r = parseEnv({ ...base, NODE_ENV, TURNSTILE_SECRET_KEY: undefined });
       expect(r.ok && r.env.TURNSTILE_SECRET_KEY).toBeUndefined();
     }
+  });
+
+  test("a Railway PR environment boots on the Turnstile test secret; production does not (TEACH-223)", () => {
+    const production = {
+      ...base,
+      NODE_ENV: "production",
+      OPENAI_API_KEY: "k",
+      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
+      TURNSTILE_SECRET_KEY: undefined,
+    };
+    for (const name of ["ai-teacher-pr-352", "pr-b6d0f8-352"]) {
+      expect(isRailwayPrEnvironment(name)).toBe(true);
+      // Missing, or copied from production: either way the PR environment runs the test secret.
+      for (const secret of [undefined, "0x-real-production-secret"]) {
+        const r = parseEnv({
+          ...production,
+          RAILWAY_ENVIRONMENT_NAME: name,
+          TURNSTILE_SECRET_KEY: secret,
+        });
+        expect(r.ok && r.env.TURNSTILE_SECRET_KEY).toBe(TURNSTILE_TEST_SECRET_KEY);
+      }
+    }
+    for (const name of ["production", undefined, "staging", "preprod"]) {
+      expect(isRailwayPrEnvironment(name)).toBe(false);
+      expect(parseEnv({ ...production, RAILWAY_ENVIRONMENT_NAME: name }).ok).toBe(false);
+    }
+    const real = parseEnv({
+      ...production,
+      RAILWAY_ENVIRONMENT_NAME: "production",
+      TURNSTILE_SECRET_KEY: "0x-real",
+    });
+    expect(real.ok && real.env.TURNSTILE_SECRET_KEY).toBe("0x-real");
   });
 
   test("applies defaults", () => {
