@@ -5,7 +5,8 @@ import { docFromText, newLesson } from "../model/factories";
 import { FIT_VERSION, getTheme } from "../model/themes";
 import { renderedHeights } from "./fit-plan";
 import { lintSlide } from "./lint";
-import { refitStaleLesson, storedSlideId, useFittedLesson } from "./refit";
+import { storedSlideId, useFittedLesson } from "./refit";
+import { refitStaleLesson } from "./refit-run";
 import type { Measurer } from "./reflow";
 import { rulerFor } from "./test-ruler";
 
