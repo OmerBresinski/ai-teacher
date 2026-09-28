@@ -95,6 +95,8 @@ export const GenerateLessonSchema = z.strictObject({
     .max(MAX_CONFIRMED_OBJECTIVES),
   slideCount: BriefSchema.shape.slideCount,
   durationMin: DurationMinSchema.optional(),
+  // Ruling 116: the lesson's starting theme (last used, else the class default) travels with the confirm.
+  themeId: z.string().optional(),
 });
 export type GenerateLesson = z.infer<typeof GenerateLessonSchema>;
 export type GenerateLessonInput = z.input<typeof GenerateLessonSchema>;

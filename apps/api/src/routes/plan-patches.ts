@@ -126,11 +126,13 @@ export function confirmLesson(
       }
     : {};
   // The stored duration follows the brief in both branches; nothing is re-planned for it.
+  // Ruling 116: the starting theme sent with the confirm replaces the plan-time one.
+  const themePatch = input.themeId !== undefined ? { themeId: input.themeId } : {};
   const withDuration = (facts: LessonFacts): LessonFacts =>
     input.durationMin !== undefined ? { ...facts, durationMin: input.durationMin } : facts;
   if (!replan) {
     return {
-      lesson: { ...lesson, ...briefPatch, facts: withDuration(edited.facts), plan },
+      lesson: { ...lesson, ...briefPatch, ...themePatch, facts: withDuration(edited.facts), plan },
       replan,
     };
   }
@@ -139,6 +141,7 @@ export function confirmLesson(
       ...withoutCheckpoint(lesson),
       facts: withDuration(edited.shapeChanged ? edited.facts : pinnedFacts(edited.facts)),
       ...briefPatch,
+      ...themePatch,
       slides: [],
       plan,
     },

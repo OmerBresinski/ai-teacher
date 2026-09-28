@@ -80,6 +80,28 @@ describe("useLibraryActions", () => {
     });
   });
 
+  it("ruling 104: present asks for fullscreen before it routes, and a refusal does not stop it", async () => {
+    const { result } = renderActions();
+    const doc = await lesson();
+    const order: string[] = [];
+    const root = document.documentElement;
+    const original = root.requestFullscreen;
+    root.requestFullscreen = mock(() => {
+      order.push("fullscreen");
+      return Promise.reject(new Error("refused"));
+    });
+    navigate.mockImplementation(() => {
+      order.push("navigate");
+    });
+    try {
+      await fire(() => result.current.onDocumentAction("present", doc));
+      expect(order).toEqual(["fullscreen", "navigate"]);
+    } finally {
+      root.requestFullscreen = original;
+      navigate.mockReset();
+    }
+  });
+
   it("duplicate writes a copy, toasts, and invalidates the library family", async () => {
     const { result, invalidate } = renderActions();
     const doc = await lesson();
