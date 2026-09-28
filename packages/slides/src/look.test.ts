@@ -6,6 +6,7 @@ import {
   ACCENT_BAR_NAME,
   accentTint,
   applyLook,
+  contrastRatio,
   HEADING_DISPLAY,
   HEADING_NAME,
   KEY_IDEA_NAME,
@@ -43,6 +44,23 @@ describe("the lesson look", () => {
     expect(accentTint(chalk)).not.toBe(chalk.colors.background);
     expect(accentTint(chalk)).not.toBe(chalk.colors.accent);
   });
+
+  for (const theme of THEMES) {
+    test(`${theme.id}: the cover's eyebrow and subtitle keep 4.5:1 on the accent`, () => {
+      const slide = materialiseSlide(
+        { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },
+        theme.id,
+        META,
+        counter(),
+      );
+      const texts = slide.elements.filter((e): e is TextElement => e.type === "text");
+      expect(texts.length).toBeGreaterThan(1);
+      for (const el of texts) {
+        const color = el.style.color ?? theme.colors.onAccent;
+        expect(contrastRatio(color, theme.colors.accent)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
 
   for (const theme of THEMES) {
     test(`${theme.id}: the title is a cover on the accent, its text in the accent's ink`, () => {

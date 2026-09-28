@@ -192,11 +192,38 @@ function accentBar(ids: Ids, t: Theme, els: SlideElement[]): SlideElement {
 
 /* ---------------------------------------------------------------- slides */
 
+/** WCAG relative luminance of a `#rrggbb` colour. */
+function luminance(hex: string): number {
+  const [r, g, b] = rgb(hex).map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio between two `#rrggbb` colours. */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * The cover's quieter ink (eyebrow, subtitle): `ink` softened toward the accent, but never below
+ * 4.5:1 on it, so small caption text stays readable on every theme.
+ */
+function readableSoft(ink: string, accent: string): string {
+  for (let amount = 0.8; amount < 1; amount += 0.02) {
+    const soft = mix(ink, accent, amount);
+    if (contrastRatio(soft, accent) >= 4.5) return soft;
+  }
+  return ink;
+}
+
 function cover(slide: Slide, t: Theme): Slide {
   // A title set beside a photograph keeps its own composition; the cover is the typographic one.
   if (slide.elements.some((e) => e.type === "image")) return slide;
   const ink = t.colors.onAccent;
-  const soft = mix(ink, t.colors.accent, 0.8);
+  const soft = readableSoft(ink, t.colors.accent);
   const elements = slide.elements.map((el): SlideElement => {
     if (el.type === "shape") return el.name === "Accent rule" ? { ...el, fill: ink } : el;
     if (el.type !== "text") return el;
