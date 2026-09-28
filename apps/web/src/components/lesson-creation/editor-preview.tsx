@@ -22,27 +22,37 @@ export function EditorPreview({
   onRestart,
   worksheetCount,
   characterOrigin,
+  themeId,
 }: {
   onBack: () => void;
   onRestart: () => void;
   worksheetCount: number;
   characterOrigin: CharacterOrigin | null;
+  /** The lesson's starting theme (ruling 116): automatic, changed later in the slide rail. */
+  themeId: string;
 }) {
   const [client] = useState(() => {
     const cache = new QueryClient({
       defaultOptions: { queries: { staleTime: Infinity, retry: false } },
     });
-    const lesson = demoLibrary()[0];
-    if (!lesson) throw new Error("Preview lesson missing");
+    const sample = demoLibrary()[0];
+    if (!sample) throw new Error("Preview lesson missing");
+    const lesson = { ...sample, themeId };
     cache.setQueryDefaults(KEY, { queryFn: async () => lesson });
     cache.setQueryData(KEY, lesson);
     return cache;
   });
   useEffect(() => {
     // StrictMode rehearses cleanup/setup; reseed only if that cleanup cleared our isolated cache.
-    if (!client.getQueryData(KEY)) client.setQueryData(KEY, demoLibrary()[0]);
+    const sample = demoLibrary()[0];
+    if (sample && !client.getQueryData(KEY)) {
+      const lesson = { ...sample, themeId };
+      // `clear()` drops the query defaults too: restore both, or the editor's queries have no queryFn.
+      client.setQueryDefaults(KEY, { queryFn: async () => lesson });
+      client.setQueryData(KEY, lesson);
+    }
     return () => client.clear();
-  }, [client]);
+  }, [client, themeId]);
   return (
     <QueryClientProvider client={client}>
       <LocalEditor
@@ -114,6 +124,8 @@ function LocalEditor({
           <LessonEditor
             lessonId={lesson.id}
             queryKey={KEY}
+            // An explicit queryFn: the editor passes its own (even undefined) over the defaults.
+            queryFn={async () => lesson}
             onSave={saveLocally}
             onBack={onBack}
             onPresent={() => setPresenting(true)}

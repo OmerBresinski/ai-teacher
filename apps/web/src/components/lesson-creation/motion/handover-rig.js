@@ -1,5 +1,6 @@
 import { artwork } from "./artwork.js";
 import { drawnBody, restBody, restingLife } from "./body-draw.js";
+import { CAST_CLIPS } from "./cast-clips.js";
 import { fanRig } from "./fan-rig.js";
 import { buildBeat, buildReaction } from "./work-beats.js";
 
@@ -58,6 +59,17 @@ export function createHandoverRig(root, gsap) {
     alpha: i === 0 ? 1 : 0,
     b: restBody(),
     r: zeroBody(),
+    // The cast layer: a clip baked from the character's own cast module (deltas from rest).
+    c: zeroBody(),
+  }));
+  const castFx = names.map(() => ({
+    look: 0,
+    hlx: 0,
+    hly: 0,
+    hrx: 0,
+    hry: 0,
+    penRot: 0,
+    penToss: 0,
   }));
   // Persona blink spacing: Plan slow, Slides quick, Worksheet sometimes doubles, Check considered.
   const lives = [
@@ -133,7 +145,7 @@ export function createHandoverRig(root, gsap) {
   }
   const paper = (fill) =>
     `<rect x="-37.2" y="-26.4" width="74.4" height="52.8" rx="2.4" fill="${fill}"/>`;
-  root.innerHTML = `<svg class="production-scene" viewBox="80 45 480 280" aria-hidden="true"><g class="ground-shadows">${actors.map((_, i) => `<ellipse data-shadow="${i}" cx="320" cy="305" rx="67" ry="5" fill="#293b32" opacity=".12" stroke="none"/>`).join("")}</g><g id="dust" stroke="#9aa590" stroke-width="1.6" fill="none">${[0, 1, 2, 3].map(() => "<ellipse/>").join("")}</g><g id="people">${keys.map((k, i) => (i === 1 ? `<g class="person" data-actor="1">${fanRig.markup()}</g>` : `<g class="person" data-actor="${i}"><g class="figure">${parsed[k]}</g></g>`)).join("")}</g><g id="package"><defs><clipPath id="stack-occlusion"><rect x="-200" y="-200" width="400" height="226.4"/></clipPath><clipPath id="magic-reveal"><rect class="magic-window" x="-37.2" y="-26.4" width="0" height="52.8"/></clipPath></defs><g class="reserve">${paper("#faf5df")}</g><g class="brief"></g><g class="deck" stroke-width="2.4"><g class="leaf back-a">${paper("#d6e2bd")}</g><g class="leaf back-b">${paper("#f5c054")}</g><g class="leaf front">${paper("#faf5df")}<path class="slide-ink" d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52"/><circle class="slide-sun" cx="19.2" cy="-12" r="4.8" fill="#f5c054"/></g></g><g class="worksheet"></g><g class="pending-slide" stroke-width="2.4">${paper("#faf5df")}<g clip-path="url(#magic-reveal)"><path d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52" stroke-width="2.4"/><circle cx="19.2" cy="-12" r="4.8" fill="#f5c054" stroke-width="2.4"/></g></g><g class="approved"><circle r="16" fill="#faf5df"/><path d="m-8 0 5 5 11-13"/></g></g><g id="comparison">${[0, 1].map((i) => `<g class="compare-page" data-page="${i}">${paper("#faf5df")}<path d="M-23-14H20M-23-4H12M-23 9H19"/><path d="${i ? "m5 16 4 4 8-10" : "M-21 18H-4"}" stroke="#9b704b"/></g>`).join("")}</g><g id="limbs">${actors.map((_, i) => `<g data-limbs="${i}"><path class="arm-l"/><path class="arm-r"/></g>`).join("")}</g><g id="fingers">${actors.map((_, i) => `<g data-fingers="${i}"><path class="finger-l"/><path class="finger-r"/></g>`).join("")}</g><g id="tool"><g class="pencil"><path d="M0 0 4-20 10-17Z" fill="#e88f52"/></g><g class="stamp"><path d="M-12 0H12V-7H-12ZM-4-7v-17h8v17" fill="#e88f52"/></g></g><g id="spark"><path d="M0-7V7M-7 0H7M-4-4 4 4M4-4-4 4" stroke="#ba8d3a"/></g></svg>`;
+  root.innerHTML = `<svg class="production-scene" viewBox="80 45 480 280" aria-hidden="true"><g class="ground-shadows">${actors.map((_, i) => `<ellipse data-shadow="${i}" cx="320" cy="305" rx="67" ry="5" fill="#293b32" opacity=".12" stroke="none"/>`).join("")}</g><g id="dust" stroke="#9aa590" stroke-width="1.6" fill="none">${[0, 1, 2, 3].map(() => "<ellipse/>").join("")}</g><g id="people">${keys.map((k, i) => (i === 1 ? `<g class="person" data-actor="1">${fanRig.markup()}</g>` : `<g class="person" data-actor="${i}"><g class="figure">${parsed[k]}</g></g>`)).join("")}</g><g id="package"><defs><clipPath id="stack-occlusion"><rect x="-200" y="-200" width="400" height="226.4"/></clipPath><clipPath id="magic-reveal"><rect class="magic-window" x="-37.2" y="-26.4" width="0" height="52.8"/></clipPath></defs><g class="reserve">${paper("#faf5df")}</g><g class="brief"></g><g class="deck" stroke-width="2.4"><g class="leaf back-a">${paper("#d6e2bd")}</g><g class="leaf back-b">${paper("#f5c054")}</g><g class="leaf front">${paper("#faf5df")}<path class="slide-ink" d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52"/><circle class="slide-sun" cx="19.2" cy="-12" r="4.8" fill="#f5c054"/></g></g><g class="worksheet"></g><g class="pending-slide" stroke-width="2.4">${paper("#faf5df")}<g clip-path="url(#magic-reveal)"><path d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52" stroke-width="2.4"/><circle cx="19.2" cy="-12" r="4.8" fill="#f5c054" stroke-width="2.4"/></g></g><g class="approved"><circle r="16" fill="#faf5df"/><path d="m-8 0 5 5 11-13"/></g></g><g id="comparison">${[0, 1].map((i) => `<g class="compare-page" data-page="${i}">${paper("#faf5df")}<path d="M-23-14H20M-23-4H12M-23 9H19"/><path d="${i ? "m5 16 4 4 8-10" : "M-21 18H-4"}" stroke="#9b704b"/></g>`).join("")}</g><g id="limbs">${actors.map((_, i) => `<g data-limbs="${i}"><path class="arm-l"/><path class="arm-r"/></g>`).join("")}</g><g id="fingers">${actors.map((_, i) => `<g data-fingers="${i}"><path class="finger-l"/><path class="finger-r"/></g>`).join("")}</g><g id="tool"><g class="pencil"><path d="M0 0 4-20 10-17Z" fill="#e88f52"/></g><g class="stamp"><path d="M-12 0H12V-7H-12ZM-4-7v-17h8v17" fill="#e88f52"/></g></g><g id="spark"><path d="M0-7V7M-7 0H7M-4-4 4 4M4-4-4 4" stroke="#ba8d3a"/></g><g id="accent" stroke="#e88f52" stroke-width="2.2" stroke-linecap="round" fill="none">${[0, 1, 2, 3, 4].map(() => "<path/>").join("")}</g></svg>`;
   root.innerHTML = root.innerHTML
     .replace(/id="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
     .replace(/url\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
@@ -280,7 +292,34 @@ export function createHandoverRig(root, gsap) {
   function puff(x, size = 1) {
     Object.assign(dustState, { at: clock, x, size });
   }
+  // Anime accent: short strokes fanned up and out from a contact (never down across the copy).
+  const accentLines = [...scene.querySelectorAll(`#${prefix}accent path`)];
+  const accentState = { at: -9, x: 0, y: 0, size: 1 };
+  function accent(x, y, size = 1) {
+    Object.assign(accentState, { at: clock, x, y, size });
+  }
+  function paintAccent() {
+    const u = (clock - accentState.at) / 0.24;
+    accentLines.forEach((e, i) => {
+      if (u < 0 || u >= 1) {
+        if (e.style.visibility !== "hidden") e.style.visibility = "hidden";
+        return;
+      }
+      e.style.visibility = "";
+      const ang = ((-160 + i * 35) * Math.PI) / 180,
+        k = accentState.size,
+        grow = 1 - (1 - u) ** 3,
+        r0 = (9 + 16 * grow) * k,
+        r1 = r0 + (9 * (1 - u) + 2) * k;
+      const { x, y } = accentState;
+      e.setAttribute(
+        "d",
+        `M${(x + Math.cos(ang) * r0).toFixed(1)} ${(y + Math.sin(ang) * r0).toFixed(1)}L${(x + Math.cos(ang) * r1).toFixed(1)} ${(y + Math.sin(ang) * r1).toFixed(1)}`,
+      );
+    });
+  }
   function paintFx() {
+    paintAccent();
     const u = (clock - dustState.at) / 0.5;
     dust.forEach((e, i) => {
       if (u < 0 || u >= 1) {
@@ -314,6 +353,8 @@ export function createHandoverRig(root, gsap) {
       blend ||
       settling ||
       fan.t.isActive() ||
+      castRunning() ||
+      clock - accentState.at < 0.3 ||
       clock - dustState.at < 0.5;
     if (!acting && clock - lastPaint < 0.05) return;
     lastPaint = clock;
@@ -329,6 +370,9 @@ export function createHandoverRig(root, gsap) {
   gsap.ticker.add(ambientTick);
   // Read-only view for the filmstrip and trace tooling.
   root.__cast = {
+    get tool() {
+      return { toolAt, tipAt, toolHand, contact: p.contact, stroke: p.stroke };
+    },
     actors,
     p,
     lifeNow,
@@ -474,6 +518,9 @@ export function createHandoverRig(root, gsap) {
   const wasShown = actors.map((a) => a.alpha > 0.5);
   // What was last put on screen, for the trace tooling.
   const drawn = { actors: [], p: {} };
+  // The pen and its strokes keep their own eased clocks: a spring would lag the pen off the page.
+  const STROKE_CLOCKS = new Set(["q0", "q1", "q2", "penX", "penY"]);
+  let lastContact = 0;
   function draw() {
     springDt = Math.max(0, Math.min(0.05, clock - springClock));
     springClock = clock;
@@ -495,7 +542,7 @@ export function createHandoverRig(root, gsap) {
     const beats = actors.map((a, i) => {
       const o = off && w ? off.actors[i] : null;
       const c = composed[i];
-      for (const k of BODY) c[k] = a.b[k] + a.r[k] + (o?.b[k] ?? 0) * w;
+      for (const k of BODY) c[k] = a.b[k] + a.r[k] + a.c[k] + (o?.b[k] ?? 0) * w;
       c.shut = Math.min(1, Math.max(0, c.shut));
       const x = a.x;
       if (o) a.x += o.x * w;
@@ -503,8 +550,16 @@ export function createHandoverRig(root, gsap) {
       a.b = c;
       return { b, x };
     });
+    // The pen is on the page while it draws: the stroke is its own clock (linear), so it is never
+    // smoothed, and the pen's hover springs restart from the stroke on every touch and lift.
+    if (p.contact !== lastContact) {
+      lastContact = p.contact;
+      springs.delete("p.penX");
+      springs.delete("p.penY");
+    }
     for (const k of BLEND_P) {
       if (!(k in savedP)) savedP[k] = p[k];
+      if (STROKE_CLOCKS.has(k)) continue;
       p[k] = follow(`p.${k}`, p[k], false);
     }
     actors.forEach((a, i) => {
@@ -514,7 +569,15 @@ export function createHandoverRig(root, gsap) {
       a.x = follow(`x${i}`, a.x, fresh);
       const c = a.b;
       for (const k of BODY) c[k] = follow(`b${i}${k}`, c[k], fresh);
-      drawn.actors[i] = { x: a.x, lean: c.lean, th: c.th };
+      drawn.actors[i] = {
+        x: a.x,
+        lean: c.lean,
+        th: c.th,
+        ty: c.ty,
+        sy: c.sy,
+        sx: c.sx,
+        shown: a.alpha > 0.5,
+      };
     });
     drawn.p = { x: p.x, y: p.y };
     try {
@@ -527,7 +590,11 @@ export function createHandoverRig(root, gsap) {
       for (const k in savedP) p[k] = savedP[k];
     }
   }
+  let toolHand = null;
+  const toolAt = { x: 0, y: 0 },
+    tipAt = { x: 0, y: 0 };
   function paint() {
+    toolHand = null;
     root.dataset.beat = String(current);
     root.dataset.holder = names[ownerOf()];
 
@@ -548,7 +615,7 @@ export function createHandoverRig(root, gsap) {
       const target = passing ? (i === owner ? actors[receiverOf()].x : actors[owner].x) : p.x;
       const gazeX = passing
         ? Math.max(-3, Math.min(3, (target - a.x) * 0.024)) * p.gazeMix
-        : p.look;
+        : p.look + castFx[i].look;
       const gazeY = passing ? 1 + 0.7 * p.gazeMix : 1;
       if (i !== 1) q(".gaze", figures[i]).setAttribute("transform", `translate(${gazeX} ${gazeY})`);
       else if (!fanMode)
@@ -633,6 +700,8 @@ export function createHandoverRig(root, gsap) {
       const world = materialPoint(tip.x, tip.y, "sheet");
       p.rx = world.x;
       p.ry = world.y;
+      tipAt.x = world.x;
+      tipAt.y = world.y;
     }
     if (p.gesture && p.pending) {
       const hand = materialPoint(
@@ -766,11 +835,23 @@ export function createHandoverRig(root, gsap) {
         left = { x: a.x - 84 + dl.x, y: 255 + dl.y };
         right = { x: a.x + 86 + dr.x, y: 253 + dr.y - (i === owner ? 36 * p.gesture : 0) };
       }
+      // The cast clip's hands ride on whatever the beat has them doing.
+      const cf = castFx[i];
+      left = { x: left.x + cf.hlx, y: left.y + cf.hly };
+      right = { x: right.x + cf.hrx, y: right.y + cf.hry };
+      // A hand driving a tool or the reveal is locked to it: no spring between the hand, the tool
+      // and the stroke it is drawing (0 px drift). The lock fades in with the gesture.
+      const lock = i === owner && (p.tool || p.pending) ? Math.max(0, Math.min(1, p.gesture)) : 0;
       for (const [j, target] of [
         [0, left],
         [1, right],
       ]) {
         const h = smoothHand(i, j, target, vis);
+        if (j === 1 && lock > 0) {
+          h.x += (target.x - h.x) * lock;
+          h.y += (target.y - h.y) * lock;
+        }
+        if (j === 1 && i === owner) toolHand = vis ? { x: h.x, y: h.y } : null;
         const sh = shoulders[j],
           arm = armPaths[i][j],
           depth = transfer
@@ -803,7 +884,17 @@ export function createHandoverRig(root, gsap) {
       }
     });
     $("#tool").style.opacity = p.tool ? p.toolAlpha : 0;
-    $("#tool").setAttribute("transform", `translate(${p.rx} ${p.ry})`);
+    // The tool is drawn from the hand that holds it, so the two can never separate. A cast clip may
+    // toss it (twirl-and-catch): it spins about the grip and is caught back on the same point.
+    const cfo = castFx[ownerOf()];
+    const tx = toolHand ? toolHand.x - (p.tool === 1 ? 5 : 0) : p.rx,
+      ty = toolHand ? toolHand.y + (p.tool === 1 ? 11 : p.tool === 2 ? 17 * p.toolAlpha : 0) : p.ry;
+    toolAt.x = tx;
+    toolAt.y = ty + cfo.penToss;
+    $("#tool").setAttribute(
+      "transform",
+      `translate(${tx.toFixed(2)} ${(ty + cfo.penToss).toFixed(2)}) rotate(${cfo.penRot.toFixed(1)} 5 -11)`,
+    );
     q(".pencil").style.display = p.tool === 1 ? "" : "none";
     q(".stamp").style.display = p.tool === 2 ? "" : "none";
     $("#spark").style.opacity = p.spark;
@@ -897,6 +988,62 @@ export function createHandoverRig(root, gsap) {
     fan.t.pause(0);
   }
 
+  // Cast clips (baked from new/_shared/cast/*.js, context "creation"): each character's own
+  // persona beat, laid on its cast layer so it never fights the work beat underneath.
+  const castRuns = new Map();
+  const castRunning = () => [...castRuns.values()].some((t) => t.isActive());
+  const CAST_BODY = new Set(BODY);
+  function clearCast(i) {
+    castRuns.get(i)?.kill();
+    castRuns.delete(i);
+    Object.assign(actors[i].c, zeroBody());
+    Object.assign(castFx[i], { look: 0, hlx: 0, hly: 0, hrx: 0, hry: 0, penRot: 0, penToss: 0 });
+  }
+  function playCast(i, id, { hands = 1, onCatch, onDone } = {}) {
+    const clip = CAST_CLIPS[id];
+    if (!clip || reduced) {
+      onDone?.();
+      return;
+    }
+    clearCast(i);
+    const a = actors[i],
+      fx = castFx[i],
+      last = Object.values(clip.f)[0].length - 1;
+    const time = { t: 0 };
+    let airborne = false;
+    const apply = () => {
+      const x = Math.min(last, (time.t / 1000) * clip.hz),
+        i0 = Math.floor(x),
+        u = x - i0,
+        i1 = Math.min(last, i0 + 1);
+      for (const [k, s] of Object.entries(clip.f)) {
+        const v = s[i0] + (s[i1] - s[i0]) * u;
+        if (CAST_BODY.has(k)) a.c[k] = v;
+        else fx[k] = k.startsWith("h") ? v * hands : v;
+      }
+      if (fx.penToss < -4) airborne = true;
+      else if (airborne && fx.penToss > -0.5) {
+        airborne = false;
+        onCatch?.();
+      }
+    };
+    const run = gsap.to(time, {
+      t: clip.ms,
+      duration: clip.ms / 1000,
+      ease: "none",
+      onUpdate: () => {
+        apply();
+        draw();
+      },
+      onComplete: () => {
+        clearCast(i);
+        draw();
+        onDone?.();
+      },
+    });
+    if (paused) run.pause();
+    castRuns.set(i, run);
+  }
   function play(n, options = {}) {
     beginBlend();
     tl?.kill();
@@ -924,6 +1071,7 @@ export function createHandoverRig(root, gsap) {
     p.spark = 0;
     fanMode = false;
     fan.t.pause(0);
+    loops[n] = (loops[n] ?? -1) + 1;
     tl = buildBeat(
       {
         p,
@@ -938,6 +1086,18 @@ export function createHandoverRig(root, gsap) {
           fanMode = value;
         },
         puff,
+        cast: playCast,
+        /** An accent at a point of the prop, in its own coordinates. */
+        accentAt(kind, x, y, size) {
+          const at =
+            kind === "hand"
+              ? { ...toolAt }
+              : kind === "scene"
+                ? { x, y }
+                : materialPoint(x, y, kind);
+          accent(at.x, at.y, size);
+        },
+        loops: loops[n],
         onComplete: options.onComplete,
       },
       n,
@@ -961,10 +1121,11 @@ export function createHandoverRig(root, gsap) {
     draw();
   }
   const queued = [];
+  const loops = {};
   draw();
   function pause(value) {
     paused = value;
-    [tl, ...faces].forEach((t) => {
+    [tl, ...faces, ...castRuns.values()].forEach((t) => {
       if (value) t?.pause();
       else t?.play();
     });
@@ -977,6 +1138,9 @@ export function createHandoverRig(root, gsap) {
     reaction = null;
     queued.length = 0;
     for (const a of actors) Object.assign(a.r, zeroBody());
+    actors.forEach((_, i) => {
+      clearCast(i);
+    });
     handoff = null;
     current = n;
     canonical(n);
@@ -1103,6 +1267,7 @@ export function createHandoverRig(root, gsap) {
     },
     dispose() {
       tl?.kill();
+      for (const t of castRuns.values()) t.kill();
       reaction?.kill();
       faces.forEach((face) => {
         face.kill();

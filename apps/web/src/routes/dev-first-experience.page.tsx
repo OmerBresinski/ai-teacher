@@ -15,6 +15,7 @@ import {
   type WorksheetDraft,
   WorksheetStep,
 } from "@/components/lesson-creation/step-fields";
+import { startingTheme } from "@/lib/default-theme";
 
 const loadEditorPreview = () =>
   import("@/components/lesson-creation/editor-preview").then((m) => ({ default: m.EditorPreview }));
@@ -150,6 +151,8 @@ export function DevFirstExperiencePage() {
           onBack={() => go("worksheet")}
           onRestart={() => go("brief")}
           worksheetCount={includeWorksheets ? worksheets.length : 0}
+          // No theme question before generation: the class picks one, the rail changes it.
+          themeId={startingTheme(undefined, "Science", brief.yearGroup)}
         />
       </Suspense>
     );

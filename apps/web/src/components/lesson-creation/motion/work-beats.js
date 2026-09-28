@@ -50,7 +50,8 @@ function arrive(k, ctx, who, a, t0, xm) {
     // Sprints in side-on, plants a heel, stops dead with a skid; the page curls and snaps back.
     snap(a, { x: x0, alpha: 1 }, t0);
     snap(b, { lean: -9, th: -0.1, curl: -0.6, sy: 1.02, sx: 0.98 }, t0);
-    to(a, { x: xm + 30 }, t0, t0 + 250, "none");
+    // The brake starts at the sprint's own speed (3 x 20 / 80 ms = 200 / 250 ms): no kink.
+    to(a, { x: xm + 20 }, t0, t0 + 250, "none");
     stride(b, t0, t0 + 250, 3);
     to(a, { x: xm }, t0 + 250, t0 + 330, "power3.out");
     to(b, { lean: 7, curl: -0.2, sy: 1.04, sx: 0.97 }, t0 + 250, t0 + 300, "power2.out");
@@ -131,12 +132,12 @@ function leave(k, who, a, t0) {
     stride(b, t0, t0 + 500, 6);
   } else if (who === SLIDES) {
     to(b, { sy: 1.14, sx: 0.9, tuck: 0.5 }, t0, t0 + 60, "power2.out");
-    to(a, { x: a.x - 120 }, t0, t0 + 200, "power1.in");
+    // One continuous run out across both bounds: the speed only ever builds.
+    to(a, { x: -80 }, t0, t0 + 440, "power1.in");
     to(b, { ty: -36 }, t0, t0 + 100, "power2.out");
     to(b, { ty: 0 }, t0 + 100, t0 + 200, "power2.in");
     hit(b, { sy: 0.84, sx: 1.12, tuck: 0 }, t0 + 200);
     to(b, { sy: 1.14, sx: 0.9, tuck: 0.5 }, t0 + 233, t0 + 280, "power2.out");
-    to(a, { x: -80 }, t0 + 233, t0 + 440, "none");
     to(b, { ty: -40 }, t0 + 233, t0 + 340, "power2.out");
     to(b, { ty: -10 }, t0 + 340, t0 + 440, "power2.in");
   } else if (who === PLAN) {
@@ -230,18 +231,12 @@ export function buildBeat(context, n, gsap) {
   }
   if (n === 1) {
     const b = actors[PLAN].b;
-    // Checks the plan: the eyes lead each look by 80 ms, then a content nod with shut eyes.
+    // Checks the plan through: Plan's own check-through from its cast module (plan.hover: the
+    // corner lifted, a riffle of the pages, one content nod with shut eyes), laid on the lift.
     go({ y: 242 }, 0, 0.7, "sine.out");
-    hit(p, { look: -2 }, 650, 70);
-    to(b, { th: -0.05 }, 730, 1000, "power2.out");
-    to(b, { sy: 1.01 }, 1000, 1200, "sine.inOut");
-    hit(p, { look: 2 }, 1200, 70);
-    to(b, { th: 0.05, sy: 1 }, 1280, 1550, "power2.out");
-    hit(p, { look: 0 }, 1900, 70);
-    to(b, { th: 0 }, 1900, 2100, "power2.inOut");
-    to(b, { sy: 1.02 }, 2000, 2060, "power2.out");
-    to(b, { sy: 0.95, shut: 1 }, 2060, 2200, "power2.in");
-    to(b, { sy: 1, shut: 0 }, 2450, 2600, "sine.out");
+    to(b, { sy: 1.01 }, 500, 700, "sine.inOut");
+    k.call(() => context.cast(PLAN, "plan.hover", { hands: 0.35 }), 700);
+    to(b, { sy: 1 }, 1900, 2300, "sine.inOut");
     go({ fold: 0 }, 2.6, 0.7, "power2.inOut");
     go({ y: 251 }, 2.6, 0.7, "power2.in");
     hit(b, { sy: 0.93, sx: 1.03 }, 3300);
@@ -320,13 +315,19 @@ export function buildBeat(context, n, gsap) {
     go({ magic: 1, spark: 1 }, 2.35, 0.95, "power1.inOut");
     go({ spark: 0 }, 3.3, 0.2, "power2.out");
     {
-      // The slide is made: a small hop of delight, a squash on landing, back to rest.
+      // The slide is made. Slides draws back a touch (anticipation), then presents it: a lean
+      // toward the slide, a pleased squint, the slide kicks and settles, an accent bursts off its
+      // top edge. Feet planted, nothing leaves the ground. Every other slide it then glances out
+      // at the teacher (its cast module's glance). No shake: that is Slides' landing only.
       const b = actors[SLIDES].b;
-      to(b, { sy: 0.9, sx: 1.06 }, 3240, 3300, "power2.in");
-      to(b, { ty: -12, sy: 1.08, sx: 0.95 }, 3300, 3420, "power2.out");
-      to(b, { ty: 0, sy: 1.04 }, 3420, 3520, "power2.in");
-      hit(b, { sy: 0.88, sx: 1.08 }, 3520);
-      to(b, { sy: 1, sx: 1 }, 3570, 3700, "power2.out");
+      to(b, { sy: 0.975, sx: 1.015, lean: -2.5, th: -0.02 }, 3120, 3300, "power2.in");
+      to(b, { sy: 1.03, sx: 0.985, lean: 3, th: 0.035, shut: 0.75 }, 3300, 3420, "power2.out");
+      k.call(() => context.accentAt("slide", 36, -24, 1.3), 3300);
+      go({ pr: 4 }, 3.3, 0.11, "power2.out");
+      go({ pr: 0 }, 3.41, 0.34, "back.out(2)");
+      to(b, { sy: 1.018, sx: 0.992, lean: 2 }, 3420, 3720, "sine.inOut");
+      to(b, { sy: 1, sx: 1, lean: 0, th: 0, shut: 0 }, 3720, 3900, "sine.inOut");
+      if (context.loops % 2 === 1) k.call(() => context.cast(SLIDES, "slides.glance"), 3950);
     }
     go({ sweep: 0 }, 3.5, 0.2);
     go({ py: 0 }, 3.7, 0.7);
@@ -383,11 +384,13 @@ export function buildBeat(context, n, gsap) {
     go({ sx: 84, sy: -10, sr: -4 }, 0.85, 0.45, "power2.inOut");
     tl.set(p, { sheetFront: 1 }, 1.3);
     go({ sx: 0, sy: 0, sr: 0, y: 249, sheetGrip: 1 }, 1.3, 0.7, "power3.inOut");
-    tl.set(p, { tool: 1, stroke: -1, penX: -21, penY: -33 }, 2);
+    // The pen touches down exactly where each stroke starts, so the line grows out of its tip.
+    const starts = questionNodes.map((node) => node.getPointAtLength(0));
+    tl.set(p, { tool: 1, stroke: -1, penX: starts[0].x, penY: starts[0].y - 6 }, 2);
     go({ gesture: 1, toolAlpha: 1 }, 2, 0.4, "power2.out");
     // Cocks the pencil before the first stroke.
-    go({ penY: -40 }, 2.3, 0.12, "power2.out");
-    go({ penY: -27 }, 2.42, 0.14, "power3.in");
+    go({ penY: starts[0].y - 13 }, 2.3, 0.12, "power2.out");
+    go({ penY: starts[0].y }, 2.42, 0.14, "power3.in");
     let at = 2.56;
     for (let i = 0; i < 3; i++) {
       tl.set(p, { stroke: i, contact: 1 }, at);
@@ -401,16 +404,27 @@ export function buildBeat(context, n, gsap) {
       go({ penY: end.y - 6 }, at, 0.14, "power2.out");
       at += 0.14;
       if (i < 2) {
-        go({ penX: -21, penY: -33 + (i + 1) * 12 }, at, 0.3, "power2.inOut");
+        go({ penX: starts[i + 1].x, penY: starts[i + 1].y - 6 }, at, 0.3, "power2.inOut");
         at += 0.3;
-        go({ penY: -27 + (i + 1) * 12 }, at, 0.14, "power2.in");
+        go({ penY: starts[i + 1].y }, at, 0.14, "power2.in");
         at += 0.14;
       }
     }
     tl.set(p, { questions: 1, stroke: -1 }, at);
-    go({ penX: 31, penY: -42 }, at, 0.35, "power2.out");
-    go({ toolAlpha: 0 }, at + 0.35, 0.25, "power1.out");
-    go({ gesture: 0, extractGrip: 0, y: 245 }, at + 0.6, 0.5, "power2.inOut");
+    go({ penX: 31, penY: -42 }, at, 0.35, "power2.inOut");
+    // The sheet is done: Worksheet's own twirl-and-catch from its cast module, caught dead with
+    // an accent off the hand. The clip runs in real time; the beat waits it out at its tempo.
+    k.call(
+      () =>
+        context.cast(WORKSHEET, "worksheet.twirl", {
+          hands: 0.6,
+          onCatch: () => context.accentAt("hand", 0, 0, 0.7),
+        }),
+      (at + 0.4) * 1000,
+    );
+    at += 0.4 + 1.45 * 1.4;
+    go({ toolAlpha: 0 }, at, 0.25, "power1.out");
+    go({ gesture: 0, extractGrip: 0, y: 245 }, at + 0.25, 0.5, "power2.inOut");
   }
   if (n === 7) {
     const b = actors[WORKSHEET].b;
@@ -437,6 +451,11 @@ export function buildBeat(context, n, gsap) {
     hit(p, { look: 0 }, 2800, 70);
     to(b, { th: 0, sy: 1 }, 2880, 3100, "power2.out");
     go({ compare: 0, y: 251 }, 3.5, 0.85, "power2.inOut");
+    if (context.loops % 3 === 0) {
+      // Then its own dry look over the glasses at the teacher (the cast module's look).
+      k.call(() => context.cast(3, "check.look", { hands: 0.9 }), 4400);
+      tl.to({}, { duration: 2.9 * 1.45 }, 4.4);
+    }
   }
   if (n === 10) {
     const b = actors[3].b;
@@ -450,6 +469,7 @@ export function buildBeat(context, n, gsap) {
     go({ ry: 251 }, 1.35, 0.09, "power3.in");
     to(b, { sy: 1 }, 1350, 1440, "power3.in");
     tl.set(p, { seal: 1 }, 1.44);
+    k.call(() => context.accentAt("scene", 320, 238, 1), 1440);
     hit(b, { sy: 0.93, sx: 1.04, shut: 0.5 }, 1440);
     to(b, { sy: 0.95, sx: 1.03 }, 1490, 1610, "sine.inOut");
     to(b, { sy: 1, sx: 1, shut: 0 }, 1610, 1750, "power2.out");
