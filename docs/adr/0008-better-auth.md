@@ -84,3 +84,6 @@ no link to the verify URL; its "Sign in" button sanitises both callbacks to same
 navigates the window to the verify URL, so the cookie is set exactly as before and better-auth's
 origin check still runs. Links last 15 minutes (`expiresIn: 900`) instead of 5. A scanner that
 runs JavaScript and presses buttons would still spend the token; that is accepted.
+Links sent just before a domain switch point at the old web host, so that host must keep serving
+(or redirect with the query string intact) for at least the 15-minute expiry. The confirm page is
+served with `Referrer-Policy: no-referrer` so the token never leaves in a Referer header.

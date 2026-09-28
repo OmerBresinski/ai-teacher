@@ -25,8 +25,22 @@ export const MAGIC_LINK_EXPIRES_IN_SECONDS = 15 * 60;
 /** The web page the email links to; only its "Sign in" button spends the token (TEACH-246). */
 export const MAGIC_LINK_CONFIRM_PATH = "/sign-in/confirm";
 
-/** The verify URL's params the confirm page needs; the web never sends `newUserCallbackURL`. */
-const CONFIRM_PARAMS = ["token", "callbackURL", "errorCallbackURL"] as const;
+/**
+ * A callback the confirm link may carry: a same-origin path, or an absolute http(s) URL whose
+ * origin `isTrustedOrigin` accepts. Anything else is `undefined`, so an untrusted value never
+ * reaches the email even though better-auth's own origin check would reject it later.
+ */
+function trustedCallback(
+  value: string | null,
+  isTrustedOrigin: (origin: string) => boolean,
+): string | undefined {
+  if (value === null) return undefined;
+  if (/^\/(?![/\\])/.test(value)) return value;
+  if (!URL.canParse(value)) return undefined;
+  const url = new URL(value);
+  const web = url.protocol === "http:" || url.protocol === "https:";
+  return web && isTrustedOrigin(url.origin) ? value : undefined;
+}
 
 /**
  * The link the email carries. School mail scanners (Defender Safe Links and similar) GET every
@@ -34,7 +48,8 @@ const CONFIRM_PARAMS = ["token", "callbackURL", "errorCallbackURL"] as const;
  * `GET /magic-link/verify`, so the email points at a static web page instead and only its button
  * navigates to `verifyUrl`. The page lives on the origin the teacher asked from (the
  * `callbackURL`'s, when `isTrustedOrigin` accepts it, so a preview api mails its own preview web)
- * and otherwise on `fallbackOrigin` (`WEB_ORIGIN[0]`).
+ * and otherwise on `fallbackOrigin` (`WEB_ORIGIN[0]`). An untrusted `callbackURL` becomes `/` and
+ * an untrusted `errorCallbackURL` is left out (the page defaults it to `/sign-in`).
  */
 export function confirmPageUrl(
   verifyUrl: string,
@@ -42,17 +57,16 @@ export function confirmPageUrl(
   isTrustedOrigin: (origin: string) => boolean,
 ): string {
   const verify = new URL(verifyUrl);
-  const callback = verify.searchParams.get("callbackURL");
-  let origin = fallbackOrigin;
-  if (callback && URL.canParse(callback)) {
-    const candidate = new URL(callback).origin;
-    if (candidate !== "null" && isTrustedOrigin(candidate)) origin = candidate;
-  }
+  const callback = trustedCallback(verify.searchParams.get("callbackURL"), isTrustedOrigin) ?? "/";
+  const errorCallback = trustedCallback(
+    verify.searchParams.get("errorCallbackURL"),
+    isTrustedOrigin,
+  );
+  const origin = URL.canParse(callback) ? new URL(callback).origin : fallbackOrigin;
   const confirm = new URL(MAGIC_LINK_CONFIRM_PATH, origin);
-  for (const name of CONFIRM_PARAMS) {
-    const value = verify.searchParams.get(name);
-    if (value !== null) confirm.searchParams.set(name, value);
-  }
+  confirm.searchParams.set("token", verify.searchParams.get("token") ?? "");
+  confirm.searchParams.set("callbackURL", callback);
+  if (errorCallback !== undefined) confirm.searchParams.set("errorCallbackURL", errorCallback);
   return confirm.toString();
 }
 

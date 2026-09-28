@@ -72,11 +72,24 @@ describe("confirmPageUrl (TEACH-246)", () => {
     expect(link.searchParams.has("newUserCallbackURL")).toBe(false);
   });
 
-  test("an untrusted or relative callback falls back to the configured web origin", () => {
+  test("untrusted callbacks never reach the link: `/` and no error callback", () => {
     const evil = verify.replaceAll("app.test", "evil.test");
-    expect(new URL(confirmPageUrl(evil, "https://fallback.test", trusted)).origin).toBe(
-      "https://fallback.test",
+    expect(confirmPageUrl(evil, "https://fallback.test", trusted)).toBe(
+      "https://fallback.test/sign-in/confirm?token=tok123&callbackURL=%2F",
     );
+    const mixed =
+      "https://api.test/auth/magic-link/verify?token=t&callbackURL=https%3A%2F%2Fapp.test%2Flessons&errorCallbackURL=javascript%3Aalert(1)";
+    expect(confirmPageUrl(mixed, "https://fallback.test", trusted)).toBe(
+      "https://app.test/sign-in/confirm?token=t&callbackURL=https%3A%2F%2Fapp.test%2Flessons",
+    );
+    const protocolRelative =
+      "https://api.test/auth/magic-link/verify?token=t&callbackURL=%2F%2Fevil.test%2F&errorCallbackURL=%2Fsign-in";
+    expect(confirmPageUrl(protocolRelative, "https://fallback.test", trusted)).toBe(
+      "https://fallback.test/sign-in/confirm?token=t&callbackURL=%2F&errorCallbackURL=%2Fsign-in",
+    );
+  });
+
+  test("a relative callback falls back to the configured web origin", () => {
     const relative = "https://api.test/auth/magic-link/verify?token=t&callbackURL=%2F";
     expect(confirmPageUrl(relative, "https://fallback.test", trusted)).toBe(
       "https://fallback.test/sign-in/confirm?token=t&callbackURL=%2F",

@@ -26,7 +26,14 @@ export const signInConfirmRoute = createRoute({
   validateSearch: signInConfirmSearchSchema,
   head: () => {
     const { meta } = pageTitle("Sign in");
-    return { meta: [...meta, { name: "robots", content: "noindex" }] };
+    // The URL holds the token: keep it out of Referer (vercel.json sends the same header).
+    return {
+      meta: [
+        ...meta,
+        { name: "robots", content: "noindex" },
+        { name: "referrer", content: "no-referrer" },
+      ],
+    };
   },
   component: lazyRouteComponent(() => import("./sign-in-confirm.page"), "SignInConfirmPage"),
 });
