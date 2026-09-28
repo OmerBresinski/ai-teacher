@@ -352,7 +352,7 @@ const CONTRACT = [
     format: "string",
     files: ["api"],
     description:
-      "Sender of the magic-link email, RFC 5322 (`DayBack <sign-in@mail.bresinski.org>`). The domain must be verified in Resend (EU region, ADR 0016). Required when MAIL_PROVIDER=resend.",
+      "Sender of the magic-link email, RFC 5322 (`DayBack <sign-in@mail.dayback.app>`). The domain must be verified in Resend (EU region, ADR 0016). Required when MAIL_PROVIDER=resend.",
   },
   {
     name: "ALLOW_CONSOLE_MAIL_IN_PRODUCTION",
