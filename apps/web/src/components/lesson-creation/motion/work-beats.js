@@ -235,7 +235,7 @@ export function buildBeat(context, n, gsap) {
     // corner lifted, a riffle of the pages, one content nod with shut eyes), laid on the lift.
     go({ y: 242 }, 0, 0.7, "sine.out");
     to(b, { sy: 1.01 }, 500, 700, "sine.inOut");
-    k.call(() => context.cast(PLAN, "plan.hover", { hands: 0.7 }), 700);
+    k.call(() => context.cast(PLAN, "plan.hover", { hands: 1 }), 700);
     to(b, { sy: 1 }, 1900, 2300, "sine.inOut");
     go({ fold: 0 }, 2.6, 0.7, "power2.inOut");
     go({ y: 251 }, 2.6, 0.7, "power2.in");
@@ -482,7 +482,7 @@ export function buildBeat(context, n, gsap) {
       // look) before the stamp. The stamp's run moves back by the look's length at this tempo.
       const look = 2.9 * 1.7;
       for (const child of tl.getChildren(false)) child.startTime(child.startTime() + look);
-      k.call(() => context.cast(3, "check.look", { hands: 0.9 }), 0);
+      k.call(() => context.cast(3, "check.look", { hands: 1 }), 0);
     }
   }
 
