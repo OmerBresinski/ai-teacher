@@ -1,6 +1,6 @@
 /**
  * TEACH-222 against the real test database: two lessons per anonymous Workspace, the re-plan cap,
- * the refused writes, the per-IP sign-in ceiling, the global daily cap and the kill switch.
+ * the refused writes, the per-IP sign-in ceiling and the global daily cap.
  * Real better-auth anonymous sessions; pg-boss only queues (no worker runs here).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
@@ -60,7 +60,7 @@ describeDb("anonymous guard and limits (TEACH-222)", () => {
   type Env = Parameters<typeof createApp>[0]["env"];
   const appWith = (env: Partial<Env> = {}) =>
     createApp({
-      env: { ...TEST_ENV_NO_SHIM, ANONYMOUS_LESSONS_ENABLED: "true", ...env },
+      env: { ...TEST_ENV_NO_SHIM, ...env },
       db,
       logger: silentLogger,
       auth,
@@ -264,16 +264,27 @@ describeDb("anonymous guard and limits (TEACH-222)", () => {
     expect((await send(app, teacher, "POST", "/lessons", brief("C", newId()))).status).toBe(202);
   });
 
-  test("row 9: kill switch off → existing lesson readable, POST /lessons 403 anonymous_disabled", async () => {
-    const on = appWith();
-    const { cookie } = await signIn(on);
-    const created = await send(on, cookie, "POST", "/lessons", brief("Volcanoes", newId()));
-    const { lessonId } = (await created.json()) as { lessonId: string };
-
-    const off = appWith({ ANONYMOUS_LESSONS_ENABLED: "false" });
-    expect((await send(off, cookie, "GET", `/documents/${lessonId}`)).status).toBe(200);
-    const refused = await send(off, cookie, "POST", "/lessons", brief("Rivers", newId()));
-    expect(refused.status).toBe(403);
-    expect(await code(refused)).toBe("anonymous_disabled");
+  test("row 9: no flag; a slash or casing variant of the sign-in path cannot skip the limits", async () => {
+    // Anonymous lessons need no configuration: the default env signs in.
+    const app = appWith({ ANONYMOUS_SIGNINS_PER_IP_DAILY: 1 });
+    expect((await signIn(app, "203.0.113.9")).res.status).toBe(200);
+    for (const path of ["/auth/sign-in/anonymous/", "/auth/Sign-In/Anonymous"]) {
+      const res = await app.request(`${BASE}${path}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: WEB,
+          "x-forwarded-for": "203.0.113.9",
+        },
+        body: "{}",
+      });
+      expect(res.status).toBe(429);
+      expect(cookieHeaderFromResponse(res)).not.toContain("tj.session_token=");
+    }
+    // A cap of 0 closes signed-out lessons without a deploy of new code.
+    const closed = appWith({ ANONYMOUS_LESSONS_DAILY_CAP: 0 });
+    const refused = await signIn(closed);
+    expect(refused.res.status).toBe(403);
+    expect(await code(refused.res)).toBe("anonymous_capacity");
   });
 });

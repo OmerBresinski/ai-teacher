@@ -443,20 +443,6 @@ const CONTRACT = [
       "Development/test only: lets x-tj-workspace-id select a Workspace without a session. Refused at boot when NODE_ENV=production; never set it on Railway.",
   },
   {
-    name: "ANONYMOUS_LESSONS_ENABLED",
-    services: ["api"],
-    scope: "config",
-    local: null,
-    railway: "n/a",
-    vercel: "n/a",
-    setBy: "manual",
-    format: "enum",
-    values: ["true", "false"],
-    files: ["api"],
-    description:
-      "Kill switch for signed-out first lessons (TEACH-223). Unless `true`, `POST /auth/sign-in/anonymous` answers 403 anonymous_disabled. Default `false`; leave unset on Railway until the signed-out guard lands.",
-  },
-  {
     name: "ANONYMOUS_SIGNINS_PER_IP_DAILY",
     services: ["api"],
     scope: "config",
@@ -493,7 +479,7 @@ const CONTRACT = [
     format: "string",
     files: ["api"],
     description:
-      "Request header that carries the client IP for the anonymous per-IP ceiling and better-auth's limiter (TEACH-222), e.g. `cf-connecting-ip` behind Cloudflare. Unset → `x-forwarded-for` (single address only). The api logs the source at boot; verify it on Railway before turning anonymous lessons on.",
+      "Request header that carries the client IP for the anonymous per-IP ceiling and better-auth's limiter (TEACH-222), e.g. `cf-connecting-ip` behind Cloudflare. Unset → `x-forwarded-for` (single address only). The api logs the source at boot; verify it on Railway after deploy.",
   },
   {
     name: "ANONYMOUS_USER_TTL_DAYS",

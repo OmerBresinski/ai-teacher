@@ -482,8 +482,8 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
 
   // --- anonymous sessions (TEACH-223) -----------------------------------------------------------
 
-  const ANON_APP_ENV = { ...TEST_ENV, ANONYMOUS_LESSONS_ENABLED: "true" as const };
-  const anonApp = createApp({ env: ANON_APP_ENV, db, logger: silentLogger, auth });
+  // No flag: anonymous sign-in is on with the default env (Greg, 28 Sep 2026).
+  const anonApp = app;
 
   async function signInAnonymously(target = anonApp) {
     const res = await target.request(`${BASE}/auth/sign-in/anonymous`, {
@@ -507,33 +507,6 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       workspaceId: string;
     };
   }
-
-  test("anonymous sign-in with the flag unset → 403 anonymous_disabled, no user row", async () => {
-    for (const path of [
-      "/auth/sign-in/anonymous",
-      "/auth/sign-in/anonymous/",
-      "/auth/Sign-In/Anonymous",
-    ]) {
-      const res = await app.request(`${BASE}${path}`, {
-        method: "POST",
-        headers: { "content-type": "application/json", origin: WEB },
-        body: "{}",
-      });
-      expect(res.status).toBe(403);
-      expect(await res.json()).toMatchObject({ error: { code: "anonymous_disabled" } });
-      expect(cookieHeaderFromResponse(res)).not.toContain("tj.session_token=");
-    }
-    expect(await usersCount()).toBe(0);
-    // `ANONYMOUS_LESSONS_ENABLED=false` is the same as unset.
-    const off = createApp({
-      env: { ...TEST_ENV, ANONYMOUS_LESSONS_ENABLED: "false" },
-      db,
-      logger: silentLogger,
-      auth,
-    });
-    expect((await signInAnonymously(off)).res.status).toBe(403);
-    expect(await usersCount()).toBe(0);
-  });
 
   test("anonymous sign-in → session cookie, is_anonymous row, personal workspace, /me isAnonymous", async () => {
     const { res, cookie } = await signInAnonymously();
@@ -607,7 +580,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     expect(plugin.options.disableDeleteAnonymousUser).toBe(true);
     plugin.options.disableDeleteAnonymousUser = false;
     const defaultApp = createApp({
-      env: ANON_APP_ENV,
+      env: TEST_ENV,
       db,
       logger: silentLogger,
       auth: defaultAuth,

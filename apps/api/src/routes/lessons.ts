@@ -90,7 +90,6 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import {
   ANONYMOUS_CAPACITY_MESSAGE,
-  ANONYMOUS_DISABLED_MESSAGE,
   ANONYMOUS_LESSON_LIMIT,
   ANONYMOUS_LIMIT_MESSAGE,
   ANONYMOUS_REPLAN_LIMIT,
@@ -402,11 +401,10 @@ async function restoreSources(ws: WorkspaceDb, lessonId: LessonId, change: Sourc
 
 /**
  * Quotas for anonymous sessions on the create and re-plan routes (TEACH-222). `app.ts` builds it
- * from the env; absent (unit tests of other routes) → anonymous creates are refused as disabled.
+ * from the env; absent (unit tests of other routes) → a cap of 0, so anonymous creates are refused
+ * as over capacity (fail closed).
  */
 export interface AnonymousLessonPolicy {
-  /** `ANONYMOUS_LESSONS_ENABLED=true`. Off → anonymous `POST /lessons` is 403 anonymous_disabled. */
-  enabled: boolean;
   /** `ANONYMOUS_LESSONS_DAILY_CAP`. */
   dailyCap: number;
   /** Anonymous lessons created today across every Workspace (`countAnonymousLessonsToday`). */
@@ -419,23 +417,19 @@ export interface LessonRouteOptions {
   anonymous?: AnonymousLessonPolicy;
 }
 
-const DISABLED_POLICY: AnonymousLessonPolicy = {
-  enabled: false,
+const NO_CAPACITY_POLICY: AnonymousLessonPolicy = {
   dailyCap: 0,
   countToday: async () => 0,
 };
 
 /**
  * The anonymous create checks, in order (after the `requestId` replay, so a repeat always answers
- * its lesson): kill switch, two lessons per Workspace (ruling 111), then the global daily cap.
+ * its lesson): two lessons per Workspace (ruling 111), then the global daily cap.
  */
 async function assertAnonymousMayCreate(
   ws: Parameters<typeof countLessons>[0],
   policy: AnonymousLessonPolicy,
 ): Promise<void> {
-  if (!policy.enabled) {
-    throw new AnonymousRefusedError("anonymous_disabled", ANONYMOUS_DISABLED_MESSAGE);
-  }
   if ((await countLessons(ws)) >= ANONYMOUS_LESSON_LIMIT) {
     throw new AnonymousRefusedError("anonymous_limit", ANONYMOUS_LIMIT_MESSAGE);
   }
@@ -449,7 +443,7 @@ export function lessonRoutes(
   runtime: EventsRuntime | undefined,
   {
     worksheetSingletonS = WORKSHEET_SINGLETON_S,
-    anonymous = DISABLED_POLICY,
+    anonymous = NO_CAPACITY_POLICY,
   }: LessonRouteOptions = {},
 ) {
   // Anonymous creates run one at a time per Workspace so two parallel briefs cannot both pass

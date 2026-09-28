@@ -21,7 +21,6 @@ export const ERROR_CODES = [
   "service_unavailable",
   "internal_error",
   "http_error",
-  "anonymous_disabled",
   // TEACH-222: what an anonymous (signed-out) session is refused.
   "sign_in_required",
   "anonymous_limit",
@@ -121,11 +120,7 @@ export class SourceRefusedError extends HTTPException {
 }
 
 /** The anonymous-session refusals (TEACH-222): each is a `403` with its own envelope code. */
-export type AnonymousRefusalCode =
-  | "sign_in_required"
-  | "anonymous_limit"
-  | "anonymous_capacity"
-  | "anonymous_disabled";
+export type AnonymousRefusalCode = "sign_in_required" | "anonymous_limit" | "anonymous_capacity";
 
 /**
  * A `403` for an anonymous session, thrown from inside a handler or transaction (e.g. the

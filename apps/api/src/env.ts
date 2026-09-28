@@ -123,8 +123,6 @@ export const EnvSchema = z
     ENABLE_TEST_ROUTES: optionalString,
     /** `"1"` enables the dev/test `x-tj-workspace-id` header shim. Never in production. */
     ALLOW_WORKSPACE_HEADER_SHIM: optionalString,
-    /** Kill switch for anonymous sessions (TEACH-223): anything but `true` refuses the endpoint. */
-    ANONYMOUS_LESSONS_ENABLED: z.enum(["true", "false"]).default("false"),
     /** TEACH-222: anonymous sessions one client IP may mint per UTC day (school NAT: generous). */
     ANONYMOUS_SIGNINS_PER_IP_DAILY: z.coerce.number().int().min(1).default(20),
     /** TEACH-222: anonymous lessons created per UTC day across every Workspace. */

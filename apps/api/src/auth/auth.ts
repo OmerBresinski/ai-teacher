@@ -4,9 +4,9 @@
  * and Microsoft when `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` are (amendment of
  * 2026-09-28: any Microsoft account, verified email only).
  *
- * Anonymous sessions (`POST /auth/sign-in/anonymous`, TEACH-223) are registered but refused with
- * 403 by `app.ts` until `ANONYMOUS_LESSONS_ENABLED=true`; an anonymous user gets its personal Workspace from
- * the same `databaseHooks.user.create.after` hook as everyone else.
+ * Anonymous sessions (`POST /auth/sign-in/anonymous`, TEACH-223) are always on, bounded by the
+ * daily cap and per-IP ceiling in `app.ts` (TEACH-222) and Turnstile (TEACH-243); an anonymous
+ * user gets its personal Workspace from the same `databaseHooks.user.create.after` hook as everyone else.
  *
  * Mounted at `/auth/*` by `app.ts` (`basePath: "/auth"`), so the browser-facing endpoints are
  * `POST /auth/sign-in/magic-link`, `GET /auth/magic-link/verify`, `GET /auth/get-session`,

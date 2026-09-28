@@ -1,8 +1,8 @@
 /**
  * better-auth client for `apps/web` (ADR 0008). Talks to the api's `/auth/*` endpoints with
  * cookies included; the magic-link plugin adds `signIn.magicLink({ email, callbackURL })` and the
- * anonymous plugin `signIn.anonymous()` (TEACH-223; the api refuses it unless
- * `ANONYMOUS_LESSONS_ENABLED=true`).
+ * anonymous plugin `signIn.anonymous()` (TEACH-223; the api requires a Turnstile token in the
+ * `x-captcha-response` header).
  *
  * ```ts
  * const authClient = createAuthClient(import.meta.env.VITE_API_URL);

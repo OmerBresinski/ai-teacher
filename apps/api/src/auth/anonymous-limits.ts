@@ -8,7 +8,7 @@
  *   tenant repository (ADR 0007).
  * - `bumpAnonymousSignins` — the per-IP, per-UTC-day counter behind the sign-in ceiling.
  * - `anonymousSignInLimits` — middleware on `POST /auth/sign-in/anonymous`, mounted in `app.ts`
- *   after the kill switch and before `auth.handler`: global cap first (403 anonymous_capacity),
+ *   before `auth.handler`: global cap first (403 anonymous_capacity),
  *   then the per-IP ceiling (429 rate_limited).
  */
 import type { DbHandle } from "@tj/db";
@@ -28,18 +28,11 @@ export const REPLAN_LIMIT_MESSAGE = "Sign in to keep changing the plan.";
 export const ANONYMOUS_LIMIT_MESSAGE = "Sign in to make more lessons.";
 export const ANONYMOUS_CAPACITY_MESSAGE =
   "Signed-out lessons are busy today. Sign in to make your lesson.";
-export const ANONYMOUS_DISABLED_MESSAGE = "Signed-out lessons are not available yet.";
 export const ANONYMOUS_RATE_LIMITED_MESSAGE =
   "Too many signed-out lessons from this network today. Sign in to carry on.";
 
 export type AnonymousLimitsEnv = Partial<
-  Pick<
-    Env,
-    | "ANONYMOUS_LESSONS_ENABLED"
-    | "ANONYMOUS_SIGNINS_PER_IP_DAILY"
-    | "ANONYMOUS_LESSONS_DAILY_CAP"
-    | "AUTH_IP_HEADER"
-  >
+  Pick<Env, "ANONYMOUS_SIGNINS_PER_IP_DAILY" | "ANONYMOUS_LESSONS_DAILY_CAP" | "AUTH_IP_HEADER">
 >;
 
 export const DEFAULT_SIGNINS_PER_IP_DAILY = 20;
