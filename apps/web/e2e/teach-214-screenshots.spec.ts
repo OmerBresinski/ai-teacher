@@ -12,7 +12,7 @@ import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
 test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
-// Twenty-one presenter loads, each through the start gate.
+// Twenty-one presenter loads.
 test.setTimeout(240_000);
 
 const DECKS = [
@@ -62,10 +62,9 @@ test("captures the fixture lesson through chooseVariant on two themes", async ({
   expect(res.ok(), `seed failed: ${res.status()} ${await res.text()}`).toBe(true);
   const { ids } = (await res.json()) as { ids: Record<string, string> };
 
-  /** Open slide `n` on the stage: `?slide=` sets the slide, the start gate still asks. */
+  /** Open slide `n` on the stage: `?slide=` sets the slide. */
   const shoot = async (id: string | undefined, n: number, file: string) => {
     await page.goto(`/l/${id}/present?slide=${n}`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
     await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await expect(page.getByRole("status").first()).toContainText(`Slide ${n} of`);
     await page.waitForTimeout(600);

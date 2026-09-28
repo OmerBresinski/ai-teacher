@@ -294,6 +294,9 @@ export class FakeApi {
     if (segments[0] === "lessons" && segments.length === 1 && method === "POST") {
       return this.createLesson(body);
     }
+    if (segments[0] === "lessons" && segments[2] === "generate" && method === "POST") {
+      return this.confirmLesson(segments[1] ?? "", body);
+    }
     if (segments[0] === "sources" && segments.length === 1 && method === "POST") {
       return this.uploadSource(body);
     }
@@ -451,6 +454,32 @@ export class FakeApi {
 
   /** When set, the next proposal job gets this id (so a test can drive its fake EventSource). */
   nextProposalJobId: string | null = null;
+
+  /** Seed a lesson row (e.g. one at `planned`, as the plan job leaves it); returns its row. */
+  insertLesson(body: Body, generatingJobId: string | null = null): FakeRow {
+    return this.insert("lesson", body, generatingJobId);
+  }
+
+  /**
+   * `POST /lessons/:id/generate`: confirm the plan and lock the row to a new job. Only the fields
+   * the intake screens read are applied (the plan and, per ruling 113, the theme); the objective
+   * edits are the api's business and are left out here.
+   */
+  private confirmLesson(id: string, input: unknown): Response {
+    const row = this.rows.get(id);
+    if (!row || row.deletedAt || row.kind !== "lesson") return error(404, "not_found", "Not found");
+    const { expectedRevision, themeId } = input as { expectedRevision: number; themeId?: string };
+    const jobId = newId();
+    const lesson = row.body as Lesson;
+    row.body = {
+      ...lesson,
+      ...(themeId !== undefined ? { themeId } : {}),
+      plan: { revision: expectedRevision, state: "confirmed", jobId },
+    } as Body;
+    row.generatingJobId = jobId;
+    row.updatedAt = new Date().toISOString();
+    return json(202, { jobId, revision: expectedRevision });
+  }
 
   private createLesson(input: unknown): Response {
     const jobId = newId();

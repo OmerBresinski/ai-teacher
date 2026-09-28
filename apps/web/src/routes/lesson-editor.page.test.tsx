@@ -127,7 +127,7 @@ describe("LessonEditorPage", () => {
     );
   });
 
-  it("Present navigates to present mode with from=edit; Back returns to the shell", async () => {
+  it("Present navigates to present mode on the current slide with from=edit; Back returns to the shell", async () => {
     renderPage();
     await screen.findByRole("heading", { level: 1, name: "The water cycle" });
     fireEvent.click(screen.getByRole("button", { name: "Present" }));
@@ -135,7 +135,7 @@ describe("LessonEditorPage", () => {
       expect(navigate).toHaveBeenCalledWith({
         to: "/l/$lessonId/present",
         params: { lessonId: "demo-water-cycle" },
-        search: { series: undefined, from: "edit" },
+        search: { series: undefined, slide: 1, from: "edit" },
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Back to library" }));

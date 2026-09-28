@@ -117,7 +117,6 @@ test("captures energy-profile slides in the editor and on the stage, on two them
       await page.screenshot({ path: `/tmp/teach-94-${themeId}-editor-${name}.png` });
 
       await page.goto(`/l/${id}/present?slide=${n}`);
-      await page.getByRole("button", { name: "Stay in this window" }).click();
       await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
       await expect(page.getByRole("status").first()).toContainText(`Slide ${n} of`);
       await page.waitForTimeout(600);

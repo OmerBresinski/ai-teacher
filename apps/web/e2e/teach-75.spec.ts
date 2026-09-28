@@ -78,7 +78,6 @@ test.describe("slide callouts", () => {
 
   test("row 8: present and print carry the card", async ({ signedInPage: { page, paths } }) => {
     await page.goto(`${paths.lesson("demo-water-cycle", "/present")}?slide=5`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
     const stage = page.locator('[data-slide-mode="present"]');
     await expect(stage).toHaveCount(1);
     await expect(page.getByRole("status").first()).toContainText("Slide 5 of");

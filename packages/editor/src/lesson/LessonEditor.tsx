@@ -56,10 +56,9 @@ import { useMobileEditor } from "./use-mobile-editor";
  * `?` help sheet. The document lives in the TanStack Query cache under `queryKey` and is edited
  * through `useDocumentHistory` (ADR 0022 §4); the session state — selection, zoom, clipboard — is
  * React state owned here and handed down through `EditorSessionProvider`. Saving is the app's
- * `onSave` (ADR 0022 §5), debounced by `useAutosave`.
- *
- * Not wired yet: `useFitMigration` (TEACH-106), the theme dialog (TEACH-105), in-place text editing
- * (TEACH-104) — the canvas renders text statically until then.
+ * `onSave` (ADR 0022 §5), debounced by `useAutosave`. The theme picker sits at the head of the
+ * slide rail (the More menu on a phone) and re-themes and re-fits the whole lesson as one undo
+ * step (TEACH-258, ruling 116).
  */
 
 /** The single-key inserts (`SHELL_SHORTCUTS` Insert group); `i` waits for the images ticket. */
@@ -79,8 +78,11 @@ export type LessonEditorProps = {
   /** Persist the document: the mock store today, `PUT /documents/:id` later. */
   onSave: (lesson: Lesson) => Promise<void>;
   onBack: () => void;
-  /** Called after the autosave has flushed, so present mode opens the deck as it is now. */
-  onPresent: () => void;
+  /**
+   * Called after the autosave has flushed, so present mode opens the deck as it is now, with the
+   * 1-based number of the slide the teacher is on (ruling 104).
+   */
+  onPresent: (slide: number) => void;
   /** Pexels search + pick for the Add image panel, injected by the app. */
   images?: ImageSearchClient;
   /** Where the export control sits once it exists (E1). */
@@ -400,7 +402,7 @@ export function LessonEditor({
                     >
                       <TopBar
                         onBack={onBack}
-                        onPresent={onPresent}
+                        onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
                         onOpenTheme={() => setThemeOpen(true)}
                         exportSlot={exportSlot}
                         onOpenWorksheet={onOpenWorksheet}
@@ -456,7 +458,9 @@ export function LessonEditor({
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>
                       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                      <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                      {mobile ? (
+                        <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                      ) : null}
                       {proposalsEnabled ? <RegenerateDialog /> : null}
                     </div>
                   </ProposalsContext.Provider>

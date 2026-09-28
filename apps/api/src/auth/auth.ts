@@ -17,7 +17,7 @@ import { magicLink } from "better-auth/plugins";
 import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
-import { magicLinkMail } from "./magic-link-mail";
+import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
 
 export const AUTH_BASE_PATH = "/auth";
@@ -135,8 +135,14 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     emailAndPassword: { enabled: false },
     plugins: [
       magicLink({
-        sendMagicLink: async ({ email, url }) => {
-          await mail.send({ to: email, ...magicLinkMail(url, env.BETTER_AUTH_URL) });
+        expiresIn: MAGIC_LINK_EXPIRES_IN_SECONDS,
+        // The email links to the web's confirm page, not to the verify endpoint: a mail scanner's
+        // GET must not spend the single-use token (TEACH-246).
+        sendMagicLink: async ({ email, url }, ctx) => {
+          const link = confirmPageUrl(url, env.WEB_ORIGIN[0] as string, (origin) =>
+            Boolean(ctx?.context.isTrustedOrigin(origin)),
+          );
+          await mail.send({ to: email, ...magicLinkMail(link, env.BETTER_AUTH_URL) });
         },
       }),
     ],

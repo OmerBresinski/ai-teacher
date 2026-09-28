@@ -43,7 +43,7 @@ test("captures the picker on Activities, a matching slide and present mid-reveal
   await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
 
   await page.goto(`${paths.lesson("demo-water-cycle", "/present")}?slide=3`);
-  await page.getByRole("button", { name: "Stay in this window" }).click();
+  await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
   await expect(page.getByRole("status").first()).toContainText("Slide 3 of");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");

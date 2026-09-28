@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { DocumentSummary } from "@tj/domain/documents";
+import { enterPresentFullscreen } from "@tj/editor/present";
 import { toast } from "@tj/ui";
 import { useMemo } from "react";
 import type { LibraryCardProps } from "@/components/library-card";
@@ -65,6 +66,8 @@ export function useLibraryActions() {
             openDocument(doc);
             return;
           case "present":
+            // In the click, before the route changes, so the browser grants it (ruling 104).
+            enterPresentFullscreen();
             void navigate({ to: "/l/$lessonId/present", params: { lessonId: doc.id } });
             return;
           case "duplicate":
@@ -89,6 +92,7 @@ export function useLibraryActions() {
           case "present": {
             const first = item.lessons[0];
             if (!first) return;
+            enterPresentFullscreen();
             void navigate({
               to: "/l/$lessonId/present",
               params: { lessonId: first.id },

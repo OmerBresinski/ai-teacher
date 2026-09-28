@@ -117,8 +117,9 @@ bun run dev               # api :3001, worker :3002, web :5173
 curl -s -X POST localhost:3001/auth/sign-in/magic-link -H 'content-type: application/json' \
   -H 'origin: http://localhost:5173' \
   -d '{"email":"teacher@example.test","callbackURL":"http://localhost:5173/"}'
-# open the printed http://localhost:3001/auth/magic-link/verify?token=... URL with a cookie jar:
-curl -s -c jar '<printed url>' -o /dev/null            # 302 + Set-Cookie tj.session_token
+# the printed link is the web confirm page (http://localhost:5173/sign-in/confirm?token=...);
+# its Sign in button opens localhost:3001/auth/magic-link/verify with the same query. With curl:
+curl -s -c jar 'localhost:3001/auth/magic-link/verify?token=...&callbackURL=...' -o /dev/null  # 302 + Set-Cookie
 curl -s -b jar localhost:3001/me                        # 200 {"user":{...},"workspaceId":"..."}
 curl -s -b jar -X POST localhost:3001/jobs/ping -H 'content-type: application/json' \
   -H 'origin: http://localhost:5173' -d '{"message":"hello","steps":3}'   # {"jobId":"..."}
