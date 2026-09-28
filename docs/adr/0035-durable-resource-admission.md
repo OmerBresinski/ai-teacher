@@ -1,4 +1,4 @@
-# 0028 — Durable resource admission: storage, queue and spend ceilings
+# 0035 — Durable resource admission: storage, queue and spend ceilings
 
 - Status: Accepted (design only — nothing below is implemented yet)
 - Date: 2026-09-13
