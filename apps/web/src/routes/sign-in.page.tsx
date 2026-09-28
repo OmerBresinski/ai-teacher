@@ -27,58 +27,48 @@ export function normaliseEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
 
-const GOOGLE_INTERRUPTED = "Your Google sign-in took too long or was interrupted. Try again.";
-
 /**
  * Human copy for the `?error=<code>` better-auth appends to our `errorCallbackURL`; the raw code is
  * never shown. The magic-link plugin (better-auth 1.7) only emits `INVALID_TOKEN`, for both used and
- * expired tokens. The Google round trip passes Google's own `access_denied` through, and reports
- * `account_not_linked` and the three state-check failures itself (ADR 0008 amendment, item 6).
+ * expired tokens. A provider round trip passes the provider's own `access_denied` through, and
+ * better-auth reports `account_not_linked` and the three state-check failures itself (ADR 0008
+ * amendment, item 6). `unable_to_get_user_info` is how the api refuses a Microsoft email Microsoft
+ * does not vouch for, and `consent_required` comes from a school tenant that lets only its
+ * administrators approve apps (amendment of 2026-09-28). The round trip is Google's unless the
+ * error callback said `via=microsoft` (TEACH-206).
  * A `Map`, not an object literal, so `?error=constructor` cannot reach `Object.prototype`.
  */
-const SIGN_IN_ERRORS = new Map([
-  ["INVALID_TOKEN", "That sign-in link has expired or was already used. Request a new one below."],
-  ["access_denied", "Google sign-in was cancelled. Try again, or use the email link below."],
-  [
-    "account_not_linked",
-    "We could not match that Google account to your account. Use the email link below.",
-  ],
-  ["state_mismatch", GOOGLE_INTERRUPTED],
-  ["state_not_found", GOOGLE_INTERRUPTED],
-  ["please_restart_the_process", GOOGLE_INTERRUPTED],
-]);
+function signInErrors(name: string): Map<string, string> {
+  const interrupted = `Your ${name} sign-in took too long or was interrupted. Try again.`;
+  return new Map([
+    [
+      "INVALID_TOKEN",
+      "That sign-in link has expired or was already used. Request a new one below.",
+    ],
+    ["access_denied", `${name} sign-in was cancelled. Try again, or use the email link below.`],
+    [
+      "account_not_linked",
+      `We could not match that ${name} account to your account. Use the email link below.`,
+    ],
+    [
+      "unable_to_get_user_info",
+      `${name} could not confirm the email address on that account. Use the email link below.`,
+    ],
+    [
+      "consent_required",
+      `Your school needs an administrator to approve DayBack for ${name} sign-in. Use the email link below.`,
+    ],
+    ["state_mismatch", interrupted],
+    ["state_not_found", interrupted],
+    ["please_restart_the_process", interrupted],
+  ]);
+}
 
-const MICROSOFT_INTERRUPTED = "Your Microsoft sign-in took too long or was interrupted. Try again.";
-
-/**
- * The same codes when the round trip was Microsoft's (`?via=microsoft`, TEACH-206), plus the two
- * only Microsoft sends: `unable_to_get_user_info` when the api refuses an email Microsoft does not
- * vouch for (ADR 0008 amendment of 2026-09-28), and `consent_required` from a school tenant that
- * lets only its administrators approve apps.
- */
-const MICROSOFT_SIGN_IN_ERRORS = new Map([
-  ["access_denied", "Microsoft sign-in was cancelled. Try again, or use the email link below."],
-  [
-    "account_not_linked",
-    "We could not match that Microsoft account to your account. Use the email link below.",
-  ],
-  [
-    "unable_to_get_user_info",
-    "Microsoft could not confirm the email address on that account. Use the email link below.",
-  ],
-  [
-    "consent_required",
-    "Your school needs an administrator to approve DayBack for Microsoft sign-in. Use the email link below.",
-  ],
-  ["state_mismatch", MICROSOFT_INTERRUPTED],
-  ["state_not_found", MICROSOFT_INTERRUPTED],
-  ["please_restart_the_process", MICROSOFT_INTERRUPTED],
-]);
+const SIGN_IN_ERRORS = { google: signInErrors("Google"), microsoft: signInErrors("Microsoft") };
 
 export function signInErrorMessage(code: string, via?: "microsoft"): string {
   return (
-    (via === "microsoft" ? MICROSOFT_SIGN_IN_ERRORS.get(code) : undefined) ??
-    SIGN_IN_ERRORS.get(code) ??
+    SIGN_IN_ERRORS[via ?? "google"].get(code) ??
     "We could not sign you in. Request a new link below."
   );
 }

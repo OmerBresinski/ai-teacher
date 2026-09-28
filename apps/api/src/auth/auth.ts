@@ -102,8 +102,11 @@ export function microsoftOptions(clientId: string, clientSecret: string) {
     }),
   };
   const provider = microsoft(base);
+  // `mapProfileToUser` is left out: better-auth skips it once `getUserInfo` is given, and the
+  // inner `provider` above has already applied it.
+  const { mapProfileToUser: _applied, ...options } = base;
   return {
-    ...base,
+    ...options,
     getUserInfo: async (token: Parameters<typeof provider.getUserInfo>[0]) => {
       const info = await provider.getUserInfo(token);
       return info?.user.emailVerified === true ? info : null;
