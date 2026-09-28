@@ -1,5 +1,9 @@
-/* Quiet, scoped life for the approved hero poses. The loading cast is untouched. */
+/* Quiet, scoped life for the approved hero poses. The loading cast is untouched.
+   Hover reactions live in motion/hero-hover.js, loaded after first paint (or at once when a pointer
+   comes near the characters); while a reaction plays it owns that character and adds this idle sway
+   on top, so the handback is seamless. */
 (() => {
+  const script = document.currentScript;
   const hosts = [...document.querySelectorAll("[data-hero-actor]")];
   if (!hosts.length || !window.gsap) return;
   const preference = matchMedia("(prefers-reduced-motion: reduce)");
@@ -25,21 +29,29 @@
       right: svg.querySelector(".arm-right"),
       eyes,
       visible: false,
-      gesture: 0,
-      leftGesture: 0,
-      rightGesture: 0,
-      lean: 0,
-      rise: 0,
-      glassesLift: 0,
       glasses: svg.querySelector(".glasses"),
     };
   });
-  function paint(actor, resting) {
-    const { pose, index } = actor;
+  // The idle sway and blink at this moment, as offsets from the pose (all zero at rest).
+  function sway(actor, resting) {
+    if (resting) return { lift: 0, lean: 0, arm: 0, blink: 1 };
+    const { index } = actor;
     const phase = (elapsed * Math.PI * 2) / [4.7, 5.4, 6.1, 6.8][index] + index * 1.7;
-    const lift = resting ? 0 : Math.sin(phase * 1.17) * 1.25 + actor.rise;
-    const angle = pose.angle + (resting ? 0 : Math.sin(phase) * 0.85 + actor.lean);
-    const arm = resting ? 0 : Math.sin(phase * 0.7) * 0.65 + actor.gesture;
+    const blinkTime = (elapsed + index * 1.3) % (5.2 + index * 0.8);
+    return {
+      lift: Math.sin(phase * 1.17) * 1.25,
+      lean: Math.sin(phase) * 0.85,
+      arm: Math.sin(phase * 0.7) * 0.65,
+      blink: blinkTime > 0.18 ? 1 : Math.abs(blinkTime - 0.09) / 0.09,
+    };
+  }
+  function paint(actor, resting) {
+    if (actor.owner) return;
+    const { pose } = actor;
+    const idle = sway(actor, resting);
+    const lift = idle.lift;
+    const angle = pose.angle + idle.lean;
+    const arm = idle.arm;
     actor.body.setAttribute(
       "transform",
       `translate(0 ${lift}) translate(150 235) rotate(${angle}) translate(-150 -235)`,
@@ -55,30 +67,17 @@
         })
         .join(" "),
     );
-    actor.left.setAttribute(
-      "transform",
-      `rotate(${arm * 0.5 + (resting ? 0 : actor.leftGesture)} ${pose.pivots[0].join(" ")})`,
-    );
-    actor.right.setAttribute(
-      "transform",
-      `rotate(${-arm + (resting ? 0 : actor.rightGesture)} ${pose.pivots[1].join(" ")})`,
-    );
-    actor.glasses?.setAttribute("transform", `translate(0 ${resting ? 0 : actor.glassesLift})`);
-    const blinkTime = (elapsed + index * 1.3) % (5.2 + index * 0.8);
-    const blink = resting || blinkTime > 0.18 ? 1 : Math.abs(blinkTime - 0.09) / 0.09;
-    for (const eye of actor.eyes) eye.element.setAttribute("ry", Math.max(0.2, eye.radius * blink));
+    actor.left.setAttribute("transform", `rotate(${arm * 0.5} ${pose.pivots[0].join(" ")})`);
+    actor.right.setAttribute("transform", `rotate(${-arm} ${pose.pivots[1].join(" ")})`);
+    actor.glasses?.setAttribute("transform", "translate(0 0)");
+    for (const eye of actor.eyes)
+      eye.element.setAttribute("ry", Math.max(0.2, eye.radius * idle.blink));
   }
   const blocked = () => preference.matches || document.hidden;
+  const life = { actors, sway, paint, blocked, onReset: null };
   function reset() {
+    life.onReset?.();
     for (const actor of actors) {
-      gsap.killTweensOf(actor);
-      actor.gesture =
-        actor.leftGesture =
-        actor.rightGesture =
-        actor.lean =
-        actor.rise =
-        actor.glassesLift =
-          0;
       paint(actor, true);
     }
   }
@@ -88,14 +87,6 @@
         const actor = actors.find((item) => item.host === entry.target);
         actor.visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
         if (!actor.visible) {
-          gsap.killTweensOf(actor);
-          actor.gesture =
-            actor.leftGesture =
-            actor.rightGesture =
-            actor.lean =
-            actor.rise =
-            actor.glassesLift =
-              0;
           paint(actor, true);
         }
       }
@@ -104,32 +95,6 @@
   );
   for (const actor of actors) {
     observer.observe(actor.host);
-    actor.host.addEventListener("pointerenter", (event) => {
-      if (event.pointerType === "touch" || blocked() || !actor.visible) return;
-      gsap.killTweensOf(actor);
-      const t = gsap.timeline();
-      const to = (values, at, duration) =>
-        t.to(actor, { ...values, duration, ease: "sine.inOut" }, at);
-      const kind = actor.host.dataset.heroActor;
-      if (kind === "slides") {
-        to({ lean: -3, rise: -1.5, rightGesture: -22, leftGesture: 4 }, 0, 0.45);
-        to({ rightGesture: -8 }, 0.45, 0.18);
-        to({ rightGesture: -20 }, 0.63, 0.2);
-        to({ rightGesture: -12 }, 0.83, 0.2);
-      } else if (kind === "activity") {
-        to({ rise: 2, lean: -1 }, 0, 0.14);
-        to({ rise: -3, lean: 2, rightGesture: 20, leftGesture: 6 }, 0.14, 0.42);
-        to({ rightGesture: 15 }, 0.56, 0.35);
-      } else if (kind === "support") {
-        to({ rise: 1.5, lean: -1 }, 0, 0.27);
-        to({ rise: -1, leftGesture: 18, rightGesture: -18 }, 0.27, 0.65);
-      } else {
-        to({ lean: 2.8, rise: 1 }, 0, 0.4);
-        to({ glassesLift: -3.2, rightGesture: -9 }, 0.25, 0.4);
-        to({ rise: 2.5, lean: 1.8 }, 0.7, 0.22);
-      }
-      to({ leftGesture: 0, rightGesture: 0, lean: 0, rise: 0, glassesLift: 0 }, 1.05, 0.8);
-    });
   }
   function tick(_time, delta) {
     if (blocked() || !actors.some((actor) => actor.visible)) return;
@@ -152,4 +117,21 @@
   });
   reset();
   gsap.ticker.add(tick);
+  // Hover reactions: fetched once the page is idle, or at once when a pointer nears the characters.
+  window.HeroLife = life;
+  const stage = hosts[0].parentElement;
+  let loading = false;
+  function load() {
+    if (loading || !script) return;
+    loading = true;
+    const tag = document.createElement("script");
+    tag.src = script.src.replace(/assets\/hero-motion\.js.*$/, "motion/hero-hover.js");
+    tag.async = true;
+    document.head.append(tag);
+  }
+  stage.addEventListener("pointerover", load, { once: true, passive: true });
+  stage.addEventListener("pointerdown", load, { once: true, passive: true });
+  const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
+  if (document.readyState === "complete") idle(load, { timeout: 3000 });
+  else window.addEventListener("load", () => idle(load, { timeout: 3000 }), { once: true });
 })();

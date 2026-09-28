@@ -47,7 +47,9 @@ The visual rules are in `DESIGN-SYSTEM.md`; `REVIEW.md` records what has been ve
 - `assets/`: styles, hero motion, font and favicon.
 - `assets/examples/<slug>/`: one folder per Top lesson (see below).
 - `motion/`: original character artwork and animation; `flipbook.js` draws and plays the How it
-  works character (its entrance and resting life). `vendor/gsap.min.js` is the original
+  works character (its entrance and resting life). `hero-hover.js` holds the hero characters'
+  hover reactions (UX rulings 114, 115, 124) as clips baked from the cast modules; `assets/hero-motion.js`
+  loads it after first paint, or as soon as a pointer nears the characters. `vendor/gsap.min.js` is the original
   GSAP 3.14.2 distribution with its copyright/license header retained. Do not hand-edit it.
 - `config.mjs`, `build.mjs`, `check.mjs`, `stage.mjs`: URL prefix, application origin, generation,
   route and string checks and staging into the existing Vite output. `serve.mjs` is local-only.
