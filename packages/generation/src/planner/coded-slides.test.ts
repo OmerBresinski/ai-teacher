@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type { LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
-import { materialiseSlide } from "@tj/slides";
+import type { LessonFacts, OutlineEntry, Slide, TextElement } from "@tj/domain/documents";
+import { materialiseSlide, measureHeadless, SAFE_BOTTOM, THEMES, textPartsOf } from "@tj/slides";
 import {
   codedSetSpec,
+  EXIT_QUIZ_MAX,
+  EXIT_QUIZ_MIN,
+  exitLines,
+  fitsExitTicket,
   LINE_MAX,
+  type Line,
+  MC_LINE_MAX,
   misconceptionLine,
   questionLine,
   sameQuestion,
@@ -264,4 +270,120 @@ describe("sameQuestion (pw prompts-2)", () => {
       ),
     ).toBe(false);
   });
+});
+
+/*
+ * TEACH-172, UX ruling 108: an exit ticket holds at most three questions and fits one slide on
+ * every theme with its answers, which are revealed under the list and never over it.
+ */
+const words = (n: number, seed: string) => {
+  let s = "";
+  while (s.length < n) s += `${seed} water vapour rises and cools `;
+  return `${s.slice(0, n - 1).trim()}?`;
+};
+/** A multiple-choice question whose printed line is `len` characters, options of `opt`. */
+const mcOf = (id: string, len: number, opt = 18) => {
+  const options = ["right", "alpha", "beta", "gamma"].map((w) => words(opt, w).slice(0, -1));
+  const stemLen = len - options.reduce((n, o) => n + o.length + 2, 0) - 6;
+  return {
+    id,
+    stem: words(stemLen, `why ${id}`),
+    answer: options[0] as string,
+    reasoning: "",
+    distractors: options.slice(1).map((text) => ({ text })),
+    use: "exit" as const,
+  };
+};
+const exitFacts = (qs: ReturnType<typeof mcOf>[]) =>
+  ({ ...facts, questions: qs, misconceptions: [] }) as unknown as LessonFacts;
+const exitSpec = (qs: ReturnType<typeof mcOf>[]) =>
+  codedSetSpec(
+    entry(
+      "exit-ticket",
+      qs.map((q) => q.id),
+    ),
+    exitFacts(qs),
+    "L:9",
+  );
+const itemsOf = (coded: ReturnType<typeof codedSetSpec>) => {
+  if (coded?.spec.kind !== "exit-ticket") throw new Error("no exit ticket");
+  return coded.spec.items;
+};
+const meta = { promptVersion: "code", model: "code", at: "2026-09-27T00:00:00.000Z" };
+const needOf = (slide: Slide, el: TextElement, themeId: string) => {
+  const theme = THEMES.find((t) => t.id === themeId);
+  const parts = textPartsOf(el, slide);
+  if (!theme || !parts) throw new Error(themeId);
+  return measureHeadless(theme)({ ...parts, width: el.w });
+};
+
+describe("the exit ticket: at most three, on one slide (TEACH-172, ruling 108)", () => {
+  test("the cap is three; one prints a ticket", () => {
+    expect(EXIT_QUIZ_MAX).toBe(3);
+    expect(EXIT_QUIZ_MIN).toBe(1);
+  });
+
+  test("five short questions: the first three are kept, in order", () => {
+    const qs = ["a", "b", "c", "d", "e"].map((id) => mcOf(id, 80, 8));
+    const items = itemsOf(exitSpec(qs));
+    expect(items).toHaveLength(3);
+    expect(items.map((t) => t.slice(0, 20))).toEqual(
+      qs.slice(0, 3).map((q) => q.stem.slice(0, 20)),
+    );
+  });
+
+  test("three multiple-choice lines at the 240-character cap do not fit: fewer are kept, and they fit", () => {
+    const qs = ["a", "b", "c"].map((id) => mcOf(id, MC_LINE_MAX, 40));
+    const lines = qs.map((q) => questionLine(q, "s"));
+    expect(lines.every((l) => l.text.length <= MC_LINE_MAX)).toBe(true);
+    expect(fitsExitTicket(lines)).toBe(false);
+    const kept = exitLines(lines);
+    expect(kept.length).toBeGreaterThanOrEqual(1);
+    expect(kept.length).toBeLessThan(3);
+    expect(fitsExitTicket(kept)).toBe(true);
+  });
+
+  test("a line that does not fit is passed over for a later, shorter one", () => {
+    const long = questionLine(mcOf("a", MC_LINE_MAX, 40), "s");
+    const lines: Line[] = [long, long, questionLine(mcOf("c", 70, 8), "s")];
+    const kept = exitLines(lines);
+    expect(kept.at(-1)?.text).toBe(lines[2]?.text);
+    expect(fitsExitTicket(kept)).toBe(true);
+  });
+
+  test("one line is always kept, even when nothing fits beside it", () => {
+    const one = { text: "x".repeat(LINE_MAX), answer: "y ".repeat(300).trim() };
+    expect(exitLines([one])).toEqual([one]);
+  });
+
+  // The maximum: the longest three lines the measure keeps, found by growing them together.
+  let max = 60;
+  while (fitsExitTicket(["a", "b", "c"].map((id) => questionLine(mcOf(id, max + 5), "s"))))
+    max += 5;
+  const atMax = ["a", "b", "c"].map((id) => mcOf(id, max));
+
+  for (const theme of THEMES) {
+    test(`${theme.id}: three questions at the maximum (${max} characters a line) fit with their answers under the list`, () => {
+      const coded = exitSpec(atMax);
+      expect(itemsOf(coded)).toHaveLength(3);
+      const slide = withAnswersReveal(
+        materialiseSlide(coded?.spec as never, theme.id, meta),
+        theme.id,
+      );
+      const body = slide.elements.find(
+        (e): e is TextElement => e.type === "text" && e.style.preset === "body",
+      );
+      const answers = slide.elements.find(
+        (e): e is TextElement => e.type === "text" && e.name === "Answers",
+      );
+      if (!body || !answers) throw new Error("no list or answers");
+      // The list's words fit its box, the answers start below it and hold their words, and all of
+      // it stays inside the safe area: nothing overflows and no answer covers a question.
+      expect(needOf(slide, body, theme.id)).toBeLessThanOrEqual(body.h + 0.5);
+      expect(body.y + body.h).toBeLessThanOrEqual(answers.y);
+      expect(needOf(slide, answers, theme.id)).toBeLessThanOrEqual(answers.h + 0.5);
+      expect(answers.y + answers.h).toBeLessThanOrEqual(SAFE_BOTTOM);
+      expect(answers.revealStep).toBe(1);
+    });
+  }
 });

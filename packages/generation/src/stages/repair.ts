@@ -764,7 +764,7 @@ export function reprintPatchedSets(
     const coded = entry ? codedSetSpec(entry, facts, `${lesson.id}:${i}`) : undefined;
     if (!coded) return slide;
     const fresh = materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL, deps), deps.ids);
-    return { ...withAnswersReveal(fresh), id: slide.id };
+    return { ...withAnswersReveal(fresh, lesson.themeId), id: slide.id };
   });
   return { ...lesson, slides };
 }

@@ -4,9 +4,25 @@ import type {
   Misconception,
   OutlineEntry,
   Slide,
+  TextElement,
+  Theme,
 } from "@tj/domain/documents";
 import { asksForUnlistedOptions } from "@tj/domain/documents";
-import { ANSWERS_NAME, type QuizLine, type SlideSpec } from "@tj/slides";
+import {
+  ANSWERS_NAME,
+  fitSlide,
+  getTheme,
+  HEADING_NAME,
+  isBackdrop,
+  materialiseSlide,
+  measureHeadless,
+  SAFE_BOTTOM,
+  type QuizLine,
+  type SlideSpec,
+  SPACE,
+  THEMES,
+  textPartsOf,
+} from "@tj/slides";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -62,15 +78,16 @@ export const LINE_MAX = 160;
 export const MC_LINE_MAX = 240;
 /** The text one set slide carries at most, its lines together (a content body is 400). */
 export const SET_CHARS = 600;
-/** The exit quiz's text on one slide, its lines together (six lines of about 140). */
-export const EXIT_CHARS = 840;
 /** A set: 2–4 lines (the `instructions` list holds four; the starter three). */
 export const SET_MIN = 2;
 export const SET_MAX = 4;
 export const STARTER_MAX = 3;
-/** The exit quiz: 4–6 quick items (uk-teacher review, cb judges). */
-export const EXIT_QUIZ_MIN = 4;
-export const EXIT_QUIZ_MAX = 6;
+/**
+ * The exit ticket: at most three questions, one per objective first (UX ruling 108, TEACH-172),
+ * on one slide with its answers. One is enough to print it; the outline tops it up to three.
+ */
+export const EXIT_QUIZ_MIN = 1;
+export const EXIT_QUIZ_MAX = 3;
 const LETTERS = ["A", "B", "C", "D"] as const;
 
 type LineQuestion = Pick<FactQuestion, "stem" | "answer"> & {
@@ -298,10 +315,11 @@ export function codedSetSpec(
   // A starter or check slide with no question is the model's (a misconception discussed, prior
   // knowledge retrieved); the exit quiz is code's whenever it has a line.
   if ((entry.kind !== "exit-ticket" && asked === 0) || lines.length === 0) return undefined;
-  const kept = keptLines(lines, coded.max, entry.kind === "exit-ticket" ? EXIT_CHARS : SET_CHARS);
+  const kept =
+    entry.kind === "exit-ticket" ? exitLines(lines) : keptLines(lines, coded.max, SET_CHARS);
   if (kept.length === 0) return undefined;
   const answers = kept.map((l) => l.answer);
-  const footnote = `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;
+  const footnote = answersLine(answers);
   const notes = `Answers: ${answers.map((a, i) => `${i + 1}. ${a}`).join(" ")}`;
   const items = kept.map((l) => l.text);
   const base = { factRefs: entry.factRefs, notes, heading: coded.heading, footnote };
@@ -318,19 +336,150 @@ export function codedSetSpec(
   return { spec, answers, questionRefs, quiz };
 }
 
+const answersLine = (answers: readonly string[]) =>
+  `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;
+/** The gap between a list and the answers revealed under it. */
+const ANSWERS_GAP = SPACE[2];
+const EXIT_META = { promptVersion: "fit", model: "fit", at: "1970-01-01T00:00:00.000Z" };
+
+/** Height a text element's words need at its width, by the headless ruler. */
+function needOf(slide: Slide, el: TextElement, theme: Theme): number {
+  const parts = textPartsOf(el, slide);
+  return parts ? measureHeadless(theme)({ ...parts, width: el.w }) : el.h;
+}
+
+/** The list and the answer strip of a set slide: its body and its footnote. */
+function setParts(slide: Slide): { body: TextElement; foot: TextElement } | undefined {
+  const texts = slide.elements.filter((e): e is TextElement => e.type === "text");
+  const body = texts.find((e) => e.style.preset === "body");
+  const foot = texts.find((e) => e.style.preset === "small");
+  return body && foot ? { body, foot } : undefined;
+}
+
 /**
- * The answers as a reveal. `materialiseSlide` now lays a set's answers on the answers panel
- * (`@tj/slides` structure.ts: a card anchored to the foot on reveal step 1, out of the flow), and
- * a slide that carries it is returned as it is. The older reveal, for a slide materialised before
- * the panel: the footnote element (which carries them) appears on the slide's first step, in the
- * lower part of the list's box. Nothing else moves.
+ * Room for a set's answers between its list's measured text and the foot of the safe area, in
+ * points, on `theme` (negative: they do not fit). The footnote's own box is not the bound: the
+ * fit engine pushes it down when the list grows, past the safe area if need be.
  */
-export function withAnswersReveal(slide: Slide): Slide {
+function answersRoom(slide: Slide, theme: Theme): { top: number; spare: number } | undefined {
+  const parts = setParts(slide);
+  if (!parts) return undefined;
+  const { body, foot } = parts;
+  const top = Math.ceil(body.y + needOf(slide, body, theme) + ANSWERS_GAP);
+  return { top, spare: SAFE_BOTTOM - top - needOf(slide, foot, theme) };
+}
+
+const CHROME_NAMES = new Set([HEADING_NAME, "Kind tag", "Accent bar"]);
+
+/**
+ * Whether a set `materialiseSlide` laid out itself fits: the answers panel (`@tj/slides`
+ * structure.ts, a card anchored to the foot on reveal step 1) clears the last question, as
+ * `answersClear` there asks, or, with the answers shown in place and no panel, the questions end
+ * inside the safe area; nothing overflows. Undefined for a slide still carrying its answers as a
+ * footnote, which `answersRoom` measures.
+ */
+function laidOutFits(slide: Slide, theme: Theme): boolean | undefined {
+  const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && e.type === "shape");
+  if (!panel && setParts(slide)) return undefined;
+  const fitted = fitSlide(slide, theme);
+  if (fitted.overflow.length > 0) return false;
+  const foot = Math.max(
+    0,
+    ...fitted.slide.elements
+      .filter(
+        (e) =>
+          e.id !== panel?.id &&
+          !CHROME_NAMES.has(e.name ?? "") &&
+          !isBackdrop(e) &&
+          !(e.revealStep ?? 0),
+      )
+      .map((e) => e.y + e.h),
+  );
+  return panel ? panel.y >= foot + ANSWERS_GAP : foot <= SAFE_BOTTOM;
+}
+
+/**
+ * The exit ticket's lines and their answers fit one slide on every theme (UX ruling 108): the
+ * list at full size under the heading, the answers under the list, all inside the safe area.
+ * Every theme, because a teacher can change the look after the lesson is written.
+ */
+export function fitsExitTicket(lines: readonly Line[]): boolean {
+  const spec: SlideSpec = {
+    kind: "exit-ticket",
+    factRefs: [],
+    heading: "Exit ticket",
+    items: lines.map((l) => l.text),
+    footnote: answersLine(lines.map((l) => l.answer)),
+  };
+  return THEMES.every((theme) => {
+    const slide = materialiseSlide(spec, theme.id, EXIT_META);
+    const laid = laidOutFits(slide, theme);
+    if (laid !== undefined) return laid;
+    const room = answersRoom(slide, theme);
+    return room !== undefined && room.spare >= 0;
+  });
+}
+
+/**
+ * The lines an exit ticket keeps (UX ruling 108, TEACH-172): in order, at most `EXIT_QUIZ_MAX`,
+ * each within its line cap, and a line only when the ticket with it still fits
+ * (`fitsExitTicket`); a line that does not fit is passed over for a later, shorter one, and when
+ * taking the shortest first keeps more lines, those are kept (in the given order). Measured
+ * rather than counted: a character budget cannot know where a line wraps. When no line fits
+ * alone, the first that fits its cap is kept, so the ticket is never empty for want of room.
+ */
+export function exitLines<T extends Line>(lines: readonly T[]): T[] {
+  const capped = lines.filter(fitsLine);
+  const greedy = (order: readonly T[]) => {
+    const kept: T[] = [];
+    for (const line of order) {
+      if (kept.length >= EXIT_QUIZ_MAX) break;
+      if (fitsExitTicket([...kept, line])) kept.push(line);
+    }
+    return kept;
+  };
+  const inOrder = greedy(capped);
+  // A long first line can crowd out two short ones: shortest first (question and answer) keeps
+  // more when it can, still printed in the given order.
+  const size = (l: T) => l.text.length + l.answer.length;
+  const short = greedy([...capped].sort((a, b) => size(a) - size(b)));
+  const kept = short.length > inOrder.length ? capped.filter((l) => short.includes(l)) : inOrder;
+  const first = capped[0];
+  return kept.length === 0 && first ? [first] : kept;
+}
+
+/**
+ * The answers as a reveal. A slide `materialiseSlide` gave the answers panel (`@tj/slides`
+ * structure.ts: a card anchored to the foot on reveal step 1) is returned as it is. Otherwise the footnote element (which carries them) appears on the slide's
+ * first step. Given the lesson's theme, it sits under the list's measured text when there is room
+ * there (TEACH-172: no answer covers a question); otherwise, or with no theme, in the lower part
+ * of the list's box, which gives it the room. Nothing else moves.
+ */
+export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
   if (slide.elements.some((e) => e.name === ANSWERS_NAME && e.type === "shape")) return slide;
-  const body = slide.elements.find((e) => e.type === "text" && e.style.preset === "body");
-  const foot = slide.elements.find((e) => e.type === "text" && e.style.preset === "small");
-  if (!body || !foot) return slide;
+  const parts = setParts(slide);
+  if (!parts) return slide;
+  const { body, foot } = parts;
   const bottom = foot.y + foot.h;
+  const room = themeId === undefined ? undefined : answersRoom(slide, getTheme(themeId));
+  if (room && room.spare >= 0) {
+    return {
+      ...slide,
+      elements: slide.elements.map((e) => {
+        if (e === body) return { ...e, h: room.top - ANSWERS_GAP - body.y };
+        if (e === foot)
+          return {
+            ...e,
+            y: room.top,
+            h: SAFE_BOTTOM - room.top,
+            name: ANSWERS_NAME,
+            revealStep: 1,
+            reveal: "fade",
+          };
+        return e;
+      }),
+    };
+  }
   const top = body.y + Math.round(body.h * 0.7);
   return {
     ...slide,
