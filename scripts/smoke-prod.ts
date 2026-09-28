@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// bun run smoke:prod [--api <url>] [--web-origin <origin>]
+// bun run smoke:prod [--target bresinski|dayback] [--api <url>] [--web-origin <origin>] [--site <origin>]
 //
 // Black-box smoke check of the deployed api, run after every Railway deploy (AGENTS.md step 4).
 // It sends the exact request shapes a browser produces so a regression in the request guards
@@ -9,20 +9,32 @@
 //   exit 0  every case returned the expected status
 //   exit 1  at least one did not (the table says which)
 //
-// Defaults are production; PR environments can be probed with --api / --web-origin.
+// Defaults are production; PR environments can be probed with --api / --web-origin. `--target`
+// picks a set of production origins: `bresinski` (live today) or `dayback` (after the TEACH-78
+// cutover). `--site` adds the marketing-site cases (dayback.app: 200, real 404, crawl files, www
+// and legacy /homepage redirects).
 
 import { parseArgs } from "node:util";
 import { ExitCode, runMain, UserFacingError } from "./lib/exit";
 import { log } from "./lib/log";
 
-export const PRODUCTION_API = "https://api.bresinski.org";
-export const PRODUCTION_WEB_ORIGIN = "https://app.bresinski.org";
+export const SMOKE_TARGETS = {
+  bresinski: { api: "https://api.bresinski.org", webOrigin: "https://app.bresinski.org" },
+  dayback: { api: "https://api.dayback.app", webOrigin: "https://teach.dayback.app" },
+} as const;
+export type SmokeTarget = keyof typeof SMOKE_TARGETS;
+/** The default target. Flip to `dayback` in the post-cutover cleanup (TEACH-78). */
+export const DEFAULT_TARGET: SmokeTarget = "bresinski";
+export const PRODUCTION_API = SMOKE_TARGETS[DEFAULT_TARGET].api;
+export const PRODUCTION_WEB_ORIGIN = SMOKE_TARGETS[DEFAULT_TARGET].webOrigin;
 /** Per-request ceiling: a hung origin must fail the smoke check, not park `bun run land`. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
 export interface SmokeCase {
   name: string;
   method?: string;
+  /** Absolute origin for this case when it is not the api (the marketing-site cases). */
+  origin?: string;
   path: string;
   headers?: Record<string, string>;
   /**
@@ -266,6 +278,37 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
   ];
 }
 
+/**
+ * The marketing site (TEACH-78): a static page, a real 404 rather than an SPA fallback, crawl
+ * files, `www` folded into the apex in one redirect that keeps path and query, and the app's legacy
+ * `/homepage/*` sent to the public page. Needs no session and touches no api.
+ */
+export function siteSmokeCases(site: string, webOrigin: string): SmokeCase[] {
+  const apex = new URL(site);
+  const www = `${apex.protocol}//www.${apex.host}`;
+  const origin = apex.origin;
+  return [
+    { name: "site home is a static page", origin, path: "/", expect: 200 },
+    { name: "an unknown site path is a real 404", origin, path: "/no-such-page/", expect: 404 },
+    { name: "robots.txt is published", origin, path: "/robots.txt", expect: 200 },
+    { name: "sitemap.xml is published", origin, path: "/sitemap.xml", expect: 200 },
+    {
+      name: "www redirects once to the apex, keeping path and query",
+      origin: www,
+      path: "/privacy/?from=smoke",
+      expect: 308,
+      expectHeaders: { location: `${origin}/privacy/?from=smoke` },
+    },
+    {
+      name: "the app's legacy /homepage page redirects once to the public page",
+      origin: webOrigin,
+      path: "/homepage/privacy/",
+      expect: 308,
+      expectHeaders: { location: `${origin}/privacy/` },
+    },
+  ];
+}
+
 export interface SmokeResult extends SmokeCase {
   /** Status code, or a description of what went wrong (network error, missing header). */
   actual: number | string;
@@ -295,7 +338,7 @@ export async function runSmoke(
   return Promise.all(
     cases.map(async (c) => {
       try {
-        const res = await fetchImpl(`${api}${c.path}`, {
+        const res = await fetchImpl(`${c.origin ?? api}${c.path}`, {
           method: c.method ?? "GET",
           headers: c.headers,
           body: c.body ? c.body() : c.method === "POST" ? "{}" : undefined,
@@ -315,34 +358,48 @@ export async function runSmoke(
 }
 
 async function main(): Promise<number> {
-  let values: { api?: string; "web-origin"?: string };
+  let values: { target?: string; api?: string; "web-origin"?: string; site?: string };
+  const usage =
+    "Usage: bun run smoke:prod [--target bresinski|dayback] [--api <url>] [--web-origin <origin>] [--site <origin>]";
   try {
     values = parseArgs({
       options: {
-        api: { type: "string", default: PRODUCTION_API },
-        "web-origin": { type: "string", default: PRODUCTION_WEB_ORIGIN },
+        target: { type: "string", default: DEFAULT_TARGET },
+        api: { type: "string" },
+        "web-origin": { type: "string" },
+        site: { type: "string" },
       },
     }).values;
   } catch (err) {
     throw new UserFacingError(
-      `${err instanceof Error ? err.message : String(err)}\nUsage: bun run smoke:prod [--api <url>] [--web-origin <origin>]`,
+      `${err instanceof Error ? err.message : String(err)}\n${usage}`,
       ExitCode.Usage,
     );
   }
-  const api = (values.api ?? PRODUCTION_API).replace(/\/$/, "");
-  const webOrigin = values["web-origin"] ?? PRODUCTION_WEB_ORIGIN;
+  const targetName = values.target ?? DEFAULT_TARGET;
+  if (!Object.hasOwn(SMOKE_TARGETS, targetName)) {
+    throw new UserFacingError(`--target must be bresinski or dayback\n${usage}`, ExitCode.Usage);
+  }
+  const target = SMOKE_TARGETS[targetName as SmokeTarget];
+  const api = (values.api ?? target.api).replace(/\/$/, "");
+  const webOrigin = values["web-origin"] ?? target.webOrigin;
   for (const [flag, value] of [
     ["--api", api],
     ["--web-origin", webOrigin],
+    ["--site", values.site ?? api],
   ] as const) {
     if (!URL.canParse(value))
       throw new UserFacingError(`${flag} is not a URL: ${value}`, ExitCode.Usage);
   }
+  const cases = [
+    ...smokeCases(webOrigin),
+    ...(values.site ? siteSmokeCases(values.site, webOrigin) : []),
+  ];
 
   log.step(`Smoke-checking ${api} as ${webOrigin}`);
-  const results = await runSmoke(api, smokeCases(webOrigin));
+  const results = await runSmoke(api, cases);
   for (const r of results) {
-    const line = `${r.method ?? "GET"} ${r.path} -> ${r.actual} (want ${r.expect}) — ${r.name}`;
+    const line = `${r.method ?? "GET"} ${r.origin ?? ""}${r.path} -> ${r.actual} (want ${r.expect}) — ${r.name}`;
     if (r.ok) log.ok(line);
     else log.fail(line);
   }

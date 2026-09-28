@@ -12,6 +12,7 @@ import {
   TURBO_ENV_GLOBS,
   vercelNames,
 } from "../infra/env.contract";
+import { SERVICE_ORDER } from "./lib/env-render";
 import { ROOT } from "./lib/paths";
 
 const NAME_RE = /^[A-Z][A-Z0-9_]*$/;
@@ -42,7 +43,12 @@ describe("infra/env.contract.ts", () => {
           v.name,
         ).toBe(true);
       }
-      if (v.vercel !== "n/a") expect(v.services).toContain("web");
+      if (v.vercel !== "n/a") {
+        expect(
+          v.services.some((x) => x === "web" || x === "site"),
+          v.name,
+        ).toBe(true);
+      }
       for (const p of placementsOf(v)) {
         expect(Object.keys(ENV_FILES)).toContain(p.file);
         if (!p.commented) expect(p.value, `${v.name} in ${p.file}`).not.toBeNull();
@@ -100,6 +106,14 @@ describe("infra/env.contract.ts", () => {
       "RAILWAY_PR_API_URL_TEMPLATE",
       "VITE_API_URL_FALLBACK",
     ]);
+    // The marketing project (dayback.app, TEACH-78) carries only its own names.
+    expect(vercelNames("production", "site")).toEqual([
+      "SITE_URL",
+      "SITE_APP_URL",
+      "SITE_INDEXING",
+      "SITE_ALLOW_PROVISIONAL",
+    ]);
+    expect(vercelNames("preview", "site")).toEqual(["SITE_URL", "SITE_APP_URL"]);
   });
 });
 
@@ -147,5 +161,12 @@ describe("AI provider defaults", () => {
     for (const [name, value] of Object.entries(expected)) {
       expect(byName(name)).toMatchObject({ local: value, railwayValue: value });
     }
+  });
+});
+
+describe("docs/env.md service column", () => {
+  test("every service the contract uses has a place in SERVICE_ORDER", () => {
+    const used = new Set(ENV_CONTRACT.flatMap((v) => v.services));
+    for (const service of used) expect(SERVICE_ORDER, service).toContain(service);
   });
 });
