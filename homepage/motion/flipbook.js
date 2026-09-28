@@ -870,5 +870,6 @@
     };
   }
 
-  window.Flipbook = { player };
+  // the node pool and the easing helpers, shared with the other characters' players
+  window.Flipbook = { player, kit: { reconciler, clamp01, sine, between } };
 })();
