@@ -51,12 +51,10 @@ test.describe("TEACH-153: Present in one click", () => {
     expect(await fullscreenCalls(page)).toEqual([{ activation: true }]);
     await expect.poll(() => page.evaluate(() => document.fullscreenElement !== null)).toBe(true);
 
-    // Esc leaves fullscreen and the deck. Chromium may keep the first press for fullscreen alone.
+    // One Esc leaves fullscreen and the deck (ruling 104).
     await page.keyboard.press("Escape");
-    await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
-    await page.waitForTimeout(250);
-    if (page.url().includes("/present")) await page.keyboard.press("Escape");
     await expect(page).toHaveURL(new RegExp(`${paths.lesson("demo-water-cycle")}$`));
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
   });
 
   test("criterion 2: a library card's Present opens slide 1 in one click", async ({

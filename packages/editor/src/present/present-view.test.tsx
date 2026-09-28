@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@tj/ui";
 import { buildActivity } from "../model/derive-activities";
@@ -99,6 +99,62 @@ describe("PresentView", () => {
       expect(status()).toContain("Slide 1 of");
     } finally {
       root.requestFullscreen = original;
+    }
+  });
+
+  it("ruling 104: leaving fullscreen from outside (the browser's Esc) leaves present; F does not", async () => {
+    let element: Element | null = document.documentElement;
+    const described = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => element,
+    });
+    const change = (to: Element | null) =>
+      act(() => {
+        element = to;
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+    const root = document.documentElement;
+    const original = { request: root.requestFullscreen, exit: document.exitFullscreen };
+    root.requestFullscreen = mock(async () => change(root));
+    document.exitFullscreen = mock(async () => change(null));
+    try {
+      const { onExit } = renderPresent();
+      key("f");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(onExit).not.toHaveBeenCalled();
+      key("f");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(onExit).not.toHaveBeenCalled();
+      change(null);
+      expect(onExit).toHaveBeenCalledTimes(1);
+    } finally {
+      root.requestFullscreen = original.request;
+      document.exitFullscreen = original.exit;
+      if (described) Object.defineProperty(document, "fullscreenElement", described);
+      else delete (document as { fullscreenElement?: unknown }).fullscreenElement;
+    }
+  });
+
+  it("ruling 104: leaving fullscreen with the shortcuts sheet open only closes fullscreen", async () => {
+    let element: Element | null = document.documentElement;
+    const described = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => element,
+    });
+    try {
+      const { onExit } = renderPresent();
+      await userEvent.setup().click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+      await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+      act(() => {
+        element = null;
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+      expect(onExit).not.toHaveBeenCalled();
+    } finally {
+      if (described) Object.defineProperty(document, "fullscreenElement", described);
+      else delete (document as { fullscreenElement?: unknown }).fullscreenElement;
     }
   });
 

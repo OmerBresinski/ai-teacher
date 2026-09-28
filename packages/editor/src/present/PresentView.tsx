@@ -144,11 +144,38 @@ function PresentSurface({
 
   const { exit: exitFullscreen, toggle: toggleFullscreen } = fullscreen;
 
+  // One Esc leaves both fullscreen and present (ruling 104). In fullscreen the browser spends
+  // the first Esc on leaving fullscreen and never delivers the key, so present follows the
+  // fullscreen change instead. A change present made itself (F, or its own exit) is not an exit.
+  const wasFullscreen = useRef(fullscreen.isFullscreen);
+  const selfLeftFullscreen = useRef(false);
+
   const exit = useCallback(() => {
     report();
+    selfLeftFullscreen.current = true;
     void exitFullscreen();
     onExit();
   }, [report, exitFullscreen, onExit]);
+
+  const toggleFullscreenByKey = useCallback(() => {
+    selfLeftFullscreen.current = wasFullscreen.current;
+    void toggleFullscreen();
+  }, [toggleFullscreen]);
+
+  useEffect(() => {
+    const was = wasFullscreen.current;
+    wasFullscreen.current = fullscreen.isFullscreen;
+    if (!was || fullscreen.isFullscreen) return;
+    if (selfLeftFullscreen.current) {
+      selfLeftFullscreen.current = false;
+      return;
+    }
+    // Esc was meant for an open panel, dialog, overview or blackout: only fullscreen ends.
+    const s = stateRef.current;
+    if (s.overviewOpen || s.blackout !== "none" || panelToClose(s)) return;
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    exit();
+  }, [fullscreen.isFullscreen, exit]);
 
   /* ---------------- keyboard ---------------- */
 
@@ -260,7 +287,7 @@ function PresentSurface({
           return dispatch({ type: "toggleBlackout", blackout: "white" });
         case "f":
           take();
-          void toggleFullscreen();
+          toggleFullscreenByKey();
           return;
         case "t": {
           take();
@@ -316,7 +343,7 @@ function PresentSurface({
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(timer.current);
     };
-  }, [exit, toggleFullscreen, dispatch, clearInk, report]);
+  }, [exit, toggleFullscreenByKey, dispatch, clearInk, report]);
 
   /* ---------------- pointer: tap thirds, swipe, click ---------------- */
 
