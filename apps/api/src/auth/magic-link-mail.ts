@@ -13,7 +13,6 @@ const PAPER = "#fbf8ee";
 const INK = "#243428";
 const INK_MUTED = "#5f6b62";
 const HAIRLINE = "#d8d5c8";
-const TERRACOTTA = "#d2644b";
 const FONT =
   "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
@@ -93,7 +92,9 @@ export function magicLinkText(url: string): string {
 /** `assetOrigin` is the api's public origin (`BETTER_AUTH_URL`); it serves `/mail-assets/*`. */
 export function magicLinkHtml(url: string, assetOrigin: string): string {
   const href = escapeHtml(url);
-  const arrow = escapeHtml(`${assetOrigin.replace(/\/$/, "")}/mail-assets/arrow-up-right.png`);
+  const assets = `${assetOrigin.replace(/\/$/, "")}/mail-assets`;
+  const arrow = escapeHtml(`${assets}/arrow-up-right.png`);
+  const mark = escapeHtml(`${assets}/dayback-mark.png`);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -121,7 +122,15 @@ export function magicLinkHtml(url: string, assetOrigin: string): string {
         <tr>
           <td class="wrap" style="padding:56px 40px 48px 40px;font-family:${FONT};color:${INK};">
 
-            <div style="font-family:${FONT};font-size:22px;line-height:28px;font-weight:700;letter-spacing:-0.02em;color:${INK};">Teaching&nbsp;Journey<span style="color:${TERRACOTTA};">*</span></div>
+            <!-- The DayBack lockup (homepage .brand): the mark as a PNG (Gmail drops inline SVG),
+                 1.08em beside the word, 0.14em gap. -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="24" style="width:24px;vertical-align:middle;"><img src="${mark}" width="24" height="24" alt="" style="display:block;width:24px;height:24px;border:0;"></td>
+                <td width="4" style="width:4px;font-size:0;line-height:0;">&nbsp;</td>
+                <td style="font-family:${FONT};font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.055em;color:${INK};vertical-align:middle;">DayBack</td>
+              </tr>
+            </table>
 
             <div style="height:64px;line-height:64px;font-size:0;">&nbsp;</div>
 

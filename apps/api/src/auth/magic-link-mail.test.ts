@@ -29,6 +29,13 @@ describe("magicLinkMail", () => {
     expect(html).toContain('src="https://api.test/mail-assets/arrow-up-right.png"');
   });
 
+  test("html heads with the DayBack lockup, not the old name", () => {
+    const html = magicLinkHtml(url, "https://api.test/");
+    expect(html).toContain('src="https://api.test/mail-assets/dayback-mark.png"');
+    expect(html).toContain(">DayBack</td>");
+    expect(html).not.toContain("Teaching");
+  });
+
   test("html does not let markup through the URL", () => {
     const html = magicLinkHtml('https://x.test/?a="><script>alert(1)</script>', "https://api.test");
     expect(html).not.toContain("<script>");
