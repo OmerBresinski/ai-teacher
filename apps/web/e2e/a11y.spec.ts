@@ -83,7 +83,7 @@ test.describe("accessibility (axe)", () => {
     { path: paths.series("series-romans"), ready: "The Romans" },
     { path: paths.lesson("demo-water-cycle"), ready: "The water cycle" },
     { path: paths.lesson("demo-water-cycle", "/view"), ready: /\d+ slides/ },
-    { path: paths.lesson("demo-water-cycle", "/present"), ready: "Start presenting" },
+    { path: paths.lesson("demo-water-cycle", "/present"), ready: "The water cycle" },
     // The lesson print route (TEACH-110) paints paper-white pages whatever the theme.
     { path: paths.lesson("demo-water-cycle", "/print"), ready: /Slide 1 of \d+|The water cycle/ },
     { path: paths.worksheet("fraction-practice"), ready: "Fractions practice" },
@@ -229,7 +229,7 @@ test.describe("accessibility (axe)", () => {
     await expectNoSeriousA11yViolations(page, "/l/:id/view (diagram)");
 
     await page.goto(`/l/${ids.diagram}/present?slide=2`);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     const stage = page.locator('[data-slide-mode="present"]');
     await expect(stage).toHaveCount(1);
     await expect(stage.getByRole("img", { name: notToScale })).toBeVisible();
@@ -329,7 +329,7 @@ test.describe("accessibility (axe)", () => {
     await page.keyboard.press("Escape");
 
     await page.goto(paths.lesson("demo-water-cycle", "/present"));
-    await page.getByRole("button", { name: "Stay in this window" }).click();
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
     await page.keyboard.press("t");
     await expect(page.getByRole("dialog", { name: "Timer" })).toBeVisible();
     await settled(page);

@@ -400,7 +400,8 @@ const CONTRACT = [
     vercel: "n/a",
     setBy: "manual",
     files: ["api"],
-    description: "OAuth application (client) id (F17). Unset disables Microsoft sign-in.",
+    description:
+      "Entra application (client) id (F17, ADR 0008 amendment of 2026-09-28). Unset disables Microsoft sign-in and hides its button.",
   },
   {
     name: "MICROSOFT_CLIENT_SECRET",

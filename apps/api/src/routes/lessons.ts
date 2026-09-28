@@ -101,6 +101,7 @@ import {
 } from "./documents";
 import { requireRuntime } from "./jobs";
 import { confirmLesson, replanLesson } from "./plan-patches";
+import { assertKnownTheme } from "./theme-guard";
 
 // `lessonFromBrief` lives in `@tj/domain/documents` (shared with the Studio entry); re-exported
 // because `lessons.test.ts` and the brief screen import it from here.
@@ -409,6 +410,7 @@ export function lessonRoutes(
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const rt = requireRuntime(runtime);
         const input = c.req.valid("json");
+        assertKnownTheme(input.themeId);
         const ws = forWorkspace(unsafeDb, workspaceId);
         const { requestId, skipPlanning = false } = input;
         if (requestId !== undefined) {
@@ -529,6 +531,7 @@ export function lessonRoutes(
         if (input.objectives.length === 0) {
           throw new HTTPException(422, { message: NO_OBJECTIVES_MESSAGE });
         }
+        assertKnownTheme(input.themeId);
         const rt = requireRuntime(runtime);
         const lessonId = c.req.valid("param").id as LessonId;
         const ws = forWorkspace(unsafeDb, workspaceId);

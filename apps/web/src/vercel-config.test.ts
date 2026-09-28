@@ -147,6 +147,10 @@ describe("vercel.json", () => {
       expect(headersFor(path)["X-Frame-Options"]).toBe("DENY");
     }
     expect(headersFor("/homepage/")["X-Robots-Tag"]).toBe("noindex, nofollow");
+    // The magic-link confirm page carries the token in its URL: never send it as a Referer
+    // (TEACH-246). Every other page keeps the default policy.
+    expect(headersFor("/sign-in/confirm")["Referrer-Policy"]).toBe("no-referrer");
+    expect(headersFor("/sign-in")["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
     expect(headersFor("/")["X-Robots-Tag"]).toBeUndefined();
     expect(headersFor("/homepage/assets/system.css")["Cache-Control"]).toBe("no-cache");
   });

@@ -719,7 +719,11 @@ printf '%s' "$RESEND_API_KEY" | railway variable set RESEND_API_KEY --stdin --se
 railway variable set --service api --skip-deploys 'MAIL_FROM=Teaching Journey <sign-in@mail.bresinski.org>' MAIL_PROVIDER=resend
 railway variable delete ALLOW_CONSOLE_MAIL_IN_PRODUCTION --service api   # after the resend-capable api is deployed (no --skip-deploys on delete; it redeploys)
 # Google sign-in: see "Google sign-in (Google Cloud)" (the client JSON comes from the console).
-# Microsoft stays off by decision (ADR 0008 amendment, 2026-09-27); MICROSOFT_* stay unset.
+# Microsoft sign-in (ADR 0008 amendment, 2026-09-28): an Entra app registration, any organizational directory
+# plus personal accounts, redirect URI https://api.<domain>/auth/callback/microsoft, ID-token optional claims
+# email + xms_edov. Setting both turns Microsoft on at the api and shows the button on /sign-in:
+railway variable set --service api --skip-deploys MICROSOFT_CLIENT_ID=<application (client) id>
+printf '%s' "$MICROSOFT_CLIENT_SECRET" | railway variable set MICROSOFT_CLIENT_SECRET --stdin --service api --skip-deploys
 railway redeploy --service api --yes && railway redeploy --service worker --yes
 # per PR environment (after the first PR deploy; the environment is named after the GitHub repo):
 railway variable set --service api --environment ai-teacher-pr-<n> --skip-deploys \
@@ -848,7 +852,9 @@ Open:
 - [ ] Vercel: Deployment Protection decision for production; *Speed Insights → Enable*.
 - [ ] GitHub: `TURBO_TOKEN` secret + `TURBO_TEAM` variable for the CI remote cache (see "Turbo remote cache").
 - [ ] Google sign-in: the Google Cloud consent screen and clients (TEACH-312, see "Google sign-in
-      (Google Cloud)"). Microsoft stays off by decision.
+      (Google Cloud)").
+- [ ] Microsoft sign-in: the Entra app registration and `MICROSOFT_*` (TEACH-206, ADR 0008
+      amendment of 2026-09-28).
 - [ ] Optional: `railway ssh keys` for `railway ssh` / `railway connect`.
 
 Everything else — project, region, image + volume, services, service settings

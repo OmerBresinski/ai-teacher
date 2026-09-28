@@ -1,14 +1,24 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Button, cn, Display, Input, Label, Separator } from "@tj/ui";
+import { Button, cn, Input, Label, Separator } from "@tj/ui";
 import { CircleAlert, MailCheck } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type FormEvent,
+  type MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { flushSync } from "react-dom";
-import { DaybackMark } from "@/components/brand/dayback-mark";
 import { type CastMood, type CastTargets, SignInCast } from "@/components/brand/sign-in-cast";
+import { PAPER_GLOW, SIGN_IN_LOCKUP } from "@/components/brand/sign-in-chrome";
 import { GoogleLogo } from "@/components/google-logo";
+import { MicrosoftLogo } from "@/components/microsoft-logo";
 import { useContentHeight } from "@/hooks/use-content-height";
 import { authClient } from "@/lib/auth";
-import { sanitiseRedirectPath } from "@/lib/auth-redirect";
+import { fetchAuthProviders } from "@/lib/auth-providers";
+import { callbackUrl, errorCallbackUrl } from "@/lib/auth-redirect";
 import { sessionBoundary } from "@/lib/session-boundary";
 
 const route = getRouteApi("/sign-in");
@@ -18,59 +28,65 @@ export function normaliseEmail(raw: string): string {
 }
 
 /**
- * Where better-auth sends the browser after the magic link is verified or Google signs the teacher
- * in. Same-origin paths only; a stale `?error=…` from a previous failed attempt is dropped
- * (TEACH-68).
- */
-export function callbackUrl(origin: string, redirect: string | undefined): string {
-  return origin + sanitiseRedirectPath(redirect);
-}
-
-/**
- * Where better-auth sends the browser when verification or the Google round trip fails. It appends
- * `error=<code>` itself, so we point it back at `/sign-in` and keep `redirect` so the teacher can
- * retry to the same place.
- */
-export function errorCallbackUrl(origin: string, redirect: string | undefined): string {
-  const url = new URL("/sign-in", origin);
-  url.searchParams.set("redirect", sanitiseRedirectPath(redirect));
-  return url.toString();
-}
-
-const GOOGLE_INTERRUPTED = "Your Google sign-in took too long or was interrupted. Try again.";
-
-/**
  * Human copy for the `?error=<code>` better-auth appends to our `errorCallbackURL`; the raw code is
  * never shown. The magic-link plugin (better-auth 1.7) only emits `INVALID_TOKEN`, for both used and
- * expired tokens. The Google round trip passes Google's own `access_denied` through, and reports
- * `account_not_linked` and the three state-check failures itself (ADR 0008 amendment, item 6).
+ * expired tokens. A provider round trip passes the provider's own `access_denied` through, and
+ * better-auth reports `account_not_linked` and the three state-check failures itself (ADR 0008
+ * amendment, item 6). `unable_to_get_user_info` is how the api refuses a Microsoft email Microsoft
+ * does not vouch for, and `consent_required` comes from a school tenant that lets only its
+ * administrators approve apps (amendment of 2026-09-28). The round trip is Google's unless the
+ * error callback said `via=microsoft` (TEACH-206).
  * A `Map`, not an object literal, so `?error=constructor` cannot reach `Object.prototype`.
  */
-const SIGN_IN_ERRORS = new Map([
-  ["INVALID_TOKEN", "That sign-in link has expired or was already used. Request a new one below."],
-  ["access_denied", "Google sign-in was cancelled. Try again, or use the email link below."],
-  [
-    "account_not_linked",
-    "We could not match that Google account to your account. Use the email link below.",
-  ],
-  ["state_mismatch", GOOGLE_INTERRUPTED],
-  ["state_not_found", GOOGLE_INTERRUPTED],
-  ["please_restart_the_process", GOOGLE_INTERRUPTED],
-]);
-
-export function signInErrorMessage(code: string): string {
-  return SIGN_IN_ERRORS.get(code) ?? "We could not sign you in. Request a new link below.";
+function signInErrors(name: string): Map<string, string> {
+  const interrupted = `Your ${name} sign-in took too long or was interrupted. Try again.`;
+  return new Map([
+    [
+      "INVALID_TOKEN",
+      "That sign-in link has expired or was already used. Request a new one below.",
+    ],
+    ["access_denied", `${name} sign-in was cancelled. Try again, or use the email link below.`],
+    [
+      "account_not_linked",
+      `We could not match that ${name} account to your account. Use the email link below.`,
+    ],
+    [
+      "unable_to_get_user_info",
+      `${name} could not confirm the email address on that account. Use the email link below.`,
+    ],
+    [
+      "consent_required",
+      `Your school needs an administrator to approve DayBack for ${name} sign-in. Use the email link below.`,
+    ],
+    ["state_mismatch", interrupted],
+    ["state_not_found", interrupted],
+    ["please_restart_the_process", interrupted],
+  ]);
 }
 
-type GoogleStartError = "not-set-up" | "unreachable";
+const SIGN_IN_ERRORS = { google: signInErrors("Google"), microsoft: signInErrors("Microsoft") };
 
-const GOOGLE_START_ERRORS: Record<GoogleStartError, string> = {
-  "not-set-up": "Google sign-in is not set up here. Use the email link below.",
-  unreachable: "We could not reach Google. Try again, or use the email link below.",
-};
+export function signInErrorMessage(code: string, via?: "microsoft"): string {
+  return (
+    SIGN_IN_ERRORS[via ?? "google"].get(code) ??
+    "We could not sign you in. Request a new link below."
+  );
+}
 
-/** Why "Continue with Google" could not start; the api answers 404 when it has no credentials. */
-export function googleStartError(error: { status?: number; code?: string }): GoogleStartError {
+type SocialProvider = "google" | "microsoft";
+type SocialStartError = "not-set-up" | "unreachable";
+
+const PROVIDER_NAME: Record<SocialProvider, string> = { google: "Google", microsoft: "Microsoft" };
+
+function socialStartMessage(provider: SocialProvider, error: SocialStartError): string {
+  const name = PROVIDER_NAME[provider];
+  return error === "not-set-up"
+    ? `${name} sign-in is not set up here. Use the email link below.`
+    : `We could not reach ${name}. Try again, or use the email link below.`;
+}
+
+/** Why "Continue with …" could not start; the api answers 404 when it has no credentials. */
+export function socialStartError(error: { status?: number; code?: string }): SocialStartError {
   return error.status === 404 || error.code === "PROVIDER_NOT_FOUND" ? "not-set-up" : "unreachable";
 }
 
@@ -82,19 +98,26 @@ type Status =
   | { kind: "sent"; email: string }
   | { kind: "error" };
 
-/** "Continue with Google" has its own status: it never shares a state with the magic link. */
-type GoogleStatus = "idle" | "opening" | GoogleStartError;
+/**
+ * "Continue with Google" / "… Microsoft" have their own status: it never shares a state with the
+ * magic link. `null` is idle; only one provider can be opening or failed at a time.
+ */
+type SocialStatus = { provider: SocialProvider; state: "opening" | SocialStartError } | null;
 
 export function SignInPage() {
   const { notice } = useSyncExternalStore(sessionBoundary.subscribe, sessionBoundary.getSnapshot);
-  const { redirect, error: errorCode } = route.useSearch();
+  const { redirect, error: errorCode, via } = route.useSearch();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [google, setGoogle] = useState<GoogleStatus>("idle");
+  const [social, setSocial] = useState<SocialStatus>(null);
+  // Microsoft shows only once the api says it has credentials (TEACH-206); Google always shows
+  // (ADR 0008 amendment of 2026-09-27, item 6).
+  const [microsoftOn, setMicrosoftOn] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const emailField = useRef<HTMLInputElement>(null);
   const [cardBody, cardSize] = useContentHeight<HTMLDivElement>();
-  const googleButton = useRef<HTMLButtonElement>(null);
+  // The provider button pressed last, which the cast watches as the teacher leaves for it.
+  const leavingButton = useRef<HTMLElement | null>(null);
   const submitButton = useRef<HTMLButtonElement>(null);
   const alertBox = useRef<HTMLDivElement>(null);
   const sentMessage = useRef<HTMLDivElement>(null);
@@ -105,36 +128,51 @@ export function SignInPage() {
       sending: submitButton,
       sent: sentMessage,
       error: alertBox,
-      leaving: googleButton,
+      leaving: leavingButton,
     }),
     [],
   );
 
-  // Back from Google's page can restore this page from the back/forward cache with the button
-  // still "Opening Google…"; a restored page starts over.
+  useEffect(() => {
+    let live = true;
+    void fetchAuthProviders().then((providers) => {
+      if (live) setMicrosoftOn(providers.microsoft);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Back from the provider's page can restore this page from the back/forward cache with the
+  // button still "Opening Google…"; a restored page starts over.
   useEffect(() => {
     function onPageShow(event: PageTransitionEvent) {
-      if (event.persisted) setGoogle("idle");
+      if (event.persisted) setSocial(null);
     }
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
-  async function onContinueWithGoogle() {
-    setGoogle("opening");
+  async function onContinueWith(provider: SocialProvider, event: MouseEvent<HTMLButtonElement>) {
+    leavingButton.current = event.currentTarget;
+    setSocial({ provider, state: "opening" });
     setStatus((current) => (current.kind === "error" ? { kind: "idle" } : current));
     try {
-      // On success better-auth's redirect plugin sets `window.location.href` to Google itself, so
-      // the button stays disabled until the page unloads.
+      // On success better-auth's redirect plugin sets `window.location.href` to the provider
+      // itself, so the button stays disabled until the page unloads.
       const { error } = await authClient.signIn.social({
-        provider: "google",
+        provider,
         callbackURL: callbackUrl(window.location.origin, redirect),
-        errorCallbackURL: errorCallbackUrl(window.location.origin, redirect),
+        errorCallbackURL: errorCallbackUrl(
+          window.location.origin,
+          redirect,
+          provider === "microsoft" ? "microsoft" : undefined,
+        ),
       });
-      if (error) setGoogle(googleStartError(error));
+      if (error) setSocial({ provider, state: socialStartError(error) });
     } catch {
       // better-fetch rethrows a network failure instead of resolving with `error`.
-      setGoogle("unreachable");
+      setSocial({ provider, state: "unreachable" });
     }
   }
 
@@ -143,7 +181,7 @@ export function SignInPage() {
     const address = normaliseEmail(email);
     if (!address) return;
     setStatus({ kind: "sending" });
-    setGoogle((current) => (current === "opening" ? current : "idle"));
+    setSocial((current) => (current?.state === "opening" ? current : null));
     try {
       const { error } = await authClient.signIn.magicLink({
         email: address,
@@ -164,13 +202,13 @@ export function SignInPage() {
     emailField.current?.focus();
   }
 
-  const googleError =
-    google === "idle" || google === "opening" ? null : GOOGLE_START_ERRORS[google];
-  // Only one way in at a time: while one request is in flight the other control is disabled, so a
-  // Google redirect cannot fire in the middle of sending a link (or the other way round).
+  const socialError =
+    social && social.state !== "opening" ? socialStartMessage(social.provider, social.state) : null;
+  // Only one way in at a time: while one request is in flight the other controls are disabled, so
+  // a provider redirect cannot fire in the middle of sending a link (or the other way round).
   const sending = status.kind === "sending";
-  const opening = google === "opening";
-  const alertMessage = oneAlert({ notice, status, googleError, errorCode });
+  const opening = social?.state === "opening";
+  const alertMessage = oneAlert({ notice, status, socialError, errorCode, via });
 
   const castMood: CastMood =
     status.kind === "sent"
@@ -189,7 +227,7 @@ export function SignInPage() {
     <main className="relative isolate flex min-h-svh flex-col overflow-x-clip bg-background">
       {PAPER_GLOW}
       <div className="mx-auto w-full max-w-[1296px] px-4 pt-5 sm:px-[clamp(22px,6vw,48px)] lg:pt-8">
-        {LOCKUP}
+        {SIGN_IN_LOCKUP}
       </div>
       <div className="flex flex-1 flex-col items-center justify-center px-4 pt-6 pb-10 sm:px-6">
         {HEADLINE}
@@ -237,7 +275,7 @@ export function SignInPage() {
                       <strong className="font-semibold break-words text-foreground">
                         {status.email}
                       </strong>
-                      . It works once and expires in 5 minutes.
+                      . It works once and expires in 15 minutes.
                     </p>
                   </div>
                   {DEV_HINT}
@@ -248,16 +286,31 @@ export function SignInPage() {
               ) : (
                 <>
                   <Button
-                    ref={googleButton}
                     type="button"
                     variant="default"
                     className="h-12 w-full cursor-pointer"
                     disabled={opening || sending}
-                    onClick={() => void onContinueWithGoogle()}
+                    onClick={(event) => void onContinueWith("google", event)}
                   >
                     <GoogleLogo />
-                    {opening ? "Opening Google…" : "Continue with Google"}
+                    {opening && social?.provider === "google"
+                      ? "Opening Google…"
+                      : "Continue with Google"}
                   </Button>
+                  {microsoftOn ? (
+                    <Button
+                      type="button"
+                      variant="default"
+                      className="-mt-2 h-12 w-full cursor-pointer"
+                      disabled={opening || sending}
+                      onClick={(event) => void onContinueWith("microsoft", event)}
+                    >
+                      <MicrosoftLogo />
+                      {opening && social?.provider === "microsoft"
+                        ? "Opening Microsoft…"
+                        : "Continue with Microsoft"}
+                    </Button>
+                  ) : null}
                   <div className="flex items-center gap-3">
                     <Separator className="flex-1" />
                     <span className="text-meta text-ink-3">or</span>
@@ -304,48 +357,32 @@ export function SignInPage() {
 
 /**
  * The one alert on screen (TEACH-252), highest priority first: the sign-out notice (shown with its
- * Retry button), the send error, the Google start error, then the `?error=` a failed round trip came
- * back with. The handlers clear each other's failures, so the newest wins among the last three.
+ * Retry button), the send error, the provider start error, then the `?error=` a failed round trip
+ * came back with. The handlers clear each other's failures, so the newest wins among the last three.
  * Once a link is sent only the notice can show.
  */
 function oneAlert({
   notice,
   status,
-  googleError,
+  socialError,
   errorCode,
+  via,
 }: {
   notice: string | null;
   status: Status;
-  googleError: string | null;
+  socialError: string | null;
   errorCode: string | undefined;
+  via: "microsoft" | undefined;
 }): string | null {
   if (notice) return notice;
   if (status.kind === "sent") return null;
   if (status.kind === "error") return SEND_ERROR;
-  return googleError ?? (errorCode ? signInErrorMessage(errorCode) : null);
+  return socialError ?? (errorCode ? signInErrorMessage(errorCode, via) : null);
 }
 
 // Static JSX hoisted so a state change never rebuilds it (rendering-hoist-jsx).
 const ALERT_ICON = (
   <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
-);
-
-/** The homepage hero's paper glow (homepage/assets/hero.css `.hm-hero-band`), on tokens. */
-const PAPER_GLOW = (
-  <div
-    aria-hidden="true"
-    className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_60%_50%,var(--card)_0,transparent_65%)]"
-  />
-);
-
-/** The brand lockup: not a link, so it adds no tab stop before the email field. */
-const LOCKUP = (
-  <Display as="span" size="md" className="inline-flex items-center gap-[0.2em] whitespace-nowrap">
-    <span className="inline-flex origin-[50%_52%] motion-safe:animate-dayback-rewind">
-      <DaybackMark />
-    </span>
-    DayBack
-  </Display>
 );
 
 const SENT_BADGE = (

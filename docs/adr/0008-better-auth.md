@@ -71,3 +71,48 @@ with the founder; the tickets (TEACH-311, TEACH-312, TEACH-31) implement it and 
    for the consent screen (the IAP OAuth Admin API behind `gcloud iap oauth-clients` shut down on
    2026-03-19). The consent screen and the clients are created in the Google Cloud console;
    everything else is scripted. Runbook: `infra/README.md`, "Google sign-in (Google Cloud)".
+
+## Amendment (2026-09-28, TEACH-246): magic links survive mail scanners
+
+School mail filters (Microsoft Defender Safe Links and similar) GET every link in an email before
+the teacher sees it, and better-auth consumes the single-use token on the first
+`GET /auth/magic-link/verify`, so the teacher's own click failed with `INVALID_TOKEN`. The email
+now links to the web page `/sign-in/confirm?token=…&callbackURL=…&errorCallbackURL=…`
+(`confirmPageUrl` in `apps/api/src/auth/magic-link-mail.ts`), on the callback's origin when
+better-auth trusts it and on `WEB_ORIGIN[0]` otherwise. The page makes no request on load and holds
+no link to the verify URL; its "Sign in" button sanitises both callbacks to same-origin paths and
+navigates the window to the verify URL, so the cookie is set exactly as before and better-auth's
+origin check still runs. Links last 15 minutes (`expiresIn: 900`) instead of 5. A scanner that
+runs JavaScript and presses buttons would still spend the token; that is accepted.
+Links sent just before a domain switch point at the old web host, so that host must keep serving
+(or redirect with the query string intact) for at least the 15-minute expiry. The confirm page is
+served with `Referrer-Policy: no-referrer` so the token never leaves in a Referer header.
+
+## Amendment (2026-09-28, TEACH-206): Microsoft sign-in
+
+Greg approved switching Microsoft on. This amendment gives it the linking rule the Google
+amendment's item 1 asked for, and replaces that item and item 6 for Microsoft only.
+
+1. **Any Microsoft account.** Work or school (Entra ID) and personal accounts: `tenantId:
+   "common"`. The app registration's supported account types match ("Accounts in any
+   organizational directory and personal Microsoft accounts"). `prompt: "select_account"`, so a
+   shared classroom PC never signs the next teacher in as the last one.
+2. **Verified email only.** Entra sends no `email_verified`, and a tenant admin can put any address
+   in a user's `mail`. The api therefore treats a Microsoft email as verified only when the id
+   token's `tid` is the personal-account tenant (`9188040d-6c67-4c5b-b112-36a304b66dad`) or the
+   optional claim `xms_edov` ("email domain owner verified") is true; the app registration adds
+   `email` and `xms_edov` to the ID token. Any other Microsoft sign-in is refused before
+   better-auth sees it (`getUserInfo` returns `null`), so it creates no user and links nothing:
+   better-auth 1.7.2 would otherwise create a user for an unverified address, letting a tenant
+   admin pre-create an account for someone else's email. The browser returns to `/sign-in` with
+   `error=unable_to_get_user_info`. A verified email links to an existing user as Google's does
+   (item 2 above).
+3. **Identity only.** Scopes `openid profile email`; no `User.Read`, no `offline_access`, no Graph
+   photo (better-auth would store it as a base64 `users.image`). Tokens are dropped as in item 3.
+4. **Production and local development only**, as item 5: one Entra app registration with the
+   redirect URIs `https://api.<domain>/auth/callback/microsoft` and
+   `http://localhost:3001/auth/callback/microsoft`. PR environments get no Microsoft sign-in.
+5. **The web asks.** `GET /auth-providers` (public) answers `{ google, microsoft }` from the live
+   better-auth instance. `/sign-in` shows "Continue with Microsoft", under Google, only when it
+   says `microsoft: true`; a failed or pending request hides it. Google keeps item 6. The
+   Microsoft error callback adds `via=microsoft` so the page's copy names Microsoft.

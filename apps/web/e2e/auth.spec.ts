@@ -7,6 +7,7 @@ import {
   escapeRegExp,
   expect,
   lastMagicLink,
+  openMagicLink,
   signIn,
   test,
   uniqueEmail,
@@ -45,8 +46,8 @@ test.describe("auth", () => {
 
     // The form lower-cases the address; the api "sent" the mail to that address.
     const link = await lastMagicLink(request, email);
-    expect(link).toContain("/auth/magic-link/verify?token=");
-    await page.goto(link);
+    expect(link.startsWith(`${E2E_WEB_URL}/sign-in/confirm?token=`)).toBe(true);
+    await openMagicLink(page, link);
 
     await expect(page).toHaveURL(/\/dev\/jobs$/);
     await expect(page.getByText("Jobs / SSE demo", { exact: true })).toBeVisible();
@@ -66,8 +67,7 @@ test.describe("auth", () => {
     await page.getByRole("button", { name: "Email me a link" }).click();
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
 
-    const link = await lastMagicLink(request, email);
-    await page.goto(link);
+    await openMagicLink(page, await lastMagicLink(request, email));
 
     await expect(page).toHaveURL(/\/lessons\/new\?topic=The\+cycle$/);
   });
@@ -93,6 +93,17 @@ test.describe("auth", () => {
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
 
     await page.goto(await lastMagicLink(request, email));
+    // The confirm page's one button is reachable by Tab and Enter presses it (TEACH-246).
+    const signInButton = page.getByRole("button", { name: "Sign in", exact: true });
+    for (
+      let i = 0;
+      i < 5 && !(await signInButton.evaluate((el) => el === document.activeElement));
+      i++
+    ) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(signInButton).toBeFocused();
+    await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   });
 
@@ -122,16 +133,17 @@ test.describe("auth", () => {
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/sign-in");
-    // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts);
-    // measure once they are up.
+    // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts),
+    // Worksheet a beat after Slides; measure once both are up.
     const googleButton = page.getByRole("button", { name: "Continue with Google" });
     await expect
       .poll(async () => {
-        const [peeker, button] = [
+        const [slides, activity, button] = [
           await page.locator(cast("slides")).boundingBox(),
+          await page.locator(cast("activity")).boundingBox(),
           await googleButton.boundingBox(),
         ];
-        return peeker && button ? peeker.y < button.y : false;
+        return slides && activity && button ? slides.y < button.y && activity.y < button.y : false;
       })
       .toBe(true);
     const google = await googleButton.boundingBox();
@@ -215,9 +227,9 @@ test.describe("auth", () => {
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
 
-    // Tokens are single-use: the second visit fails verification and better-auth redirects to
-    // our errorCallbackURL with `?error=INVALID_TOKEN` (TEACH-68).
-    await page.goto(link);
+    // Tokens are single-use: pressing Sign in on the used link fails verification and better-auth
+    // redirects to our errorCallbackURL with `?error=INVALID_TOKEN` (TEACH-68).
+    await openMagicLink(page, link);
     await expect(page).toHaveURL(/\/sign-in\?/);
     const search = new URL(page.url()).searchParams;
     expect(search.get("error")).toBe("INVALID_TOKEN");
@@ -230,8 +242,42 @@ test.describe("auth", () => {
     await page.getByLabel("Email address").fill(email);
     await page.getByRole("button", { name: "Email me a link" }).click();
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
-    await page.goto(await lastMagicLink(request, email));
+    await openMagicLink(page, await lastMagicLink(request, email));
     await expect(page).toHaveURL(new RegExp(`^${escapeRegExp(E2E_WEB_URL)}/$`));
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  });
+
+  test("a mail scanner that fetches the link does not use it up (TEACH-246)", async ({
+    page,
+    request,
+    browser,
+  }) => {
+    const email = uniqueEmail("scanner");
+    await page.goto("/sign-in?redirect=%2Fdev%2Fjobs");
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Email me a link" }).click();
+    await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+    const link = await lastMagicLink(request, email);
+
+    // A scanner GETs the link twice without running the page, then another one renders it.
+    for (let i = 0; i < 2; i++) expect((await request.get(link)).ok()).toBe(true);
+    const scanner = await browser.newContext();
+    const scanned = await scanner.newPage();
+    const verifyHits: string[] = [];
+    scanned.on("request", (r) => {
+      if (r.url().includes("/magic-link/verify")) verifyHits.push(r.url());
+    });
+    await scanned.goto(link);
+    await expect(
+      scanned.getByRole("heading", { level: 1, name: "Sign in to DayBack" }),
+    ).toBeVisible();
+    await scanned.waitForLoadState("networkidle");
+    expect(verifyHits).toEqual([]);
+    await scanner.close();
+
+    // The teacher opens it later, on this device, and signs in to where they were going.
+    await openMagicLink(page, link);
+    await expect(page).toHaveURL(/\/dev\/jobs$/);
+    await expect(page.getByText("Jobs / SSE demo", { exact: true })).toBeVisible();
   });
 });

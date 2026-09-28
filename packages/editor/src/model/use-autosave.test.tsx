@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, renderHook, screen, waitFor } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
-import { renderEditor } from "../lesson/test-harness";
+import { renderEditor, seededLesson } from "../lesson/test-harness";
 import { newLesson } from "../model/factories";
 import {
   AUTOSAVE_MS,
@@ -194,5 +194,25 @@ describe("LessonEditor autosave", () => {
       await gate.promise;
     });
     await waitFor(() => expect(onPresent).toHaveBeenCalledTimes(1));
+  });
+
+  test("ruling 104: Present asks for fullscreen in the click and opens on the current slide", async () => {
+    const lesson = seededLesson();
+    const third = lesson.slides[2];
+    if (!third) throw new Error("seeded lesson has three slides");
+    const root = document.documentElement;
+    const original = root.requestFullscreen;
+    const requestFullscreen = mock(() => Promise.reject(new Error("refused")));
+    root.requestFullscreen = requestFullscreen;
+    try {
+      const { onPresent } = renderEditor(lesson, { initialSlideId: third.id });
+      fireEvent.click(screen.getByRole("button", { name: "Present" }));
+      // Synchronously, inside the click: an awaited request would have lost the gesture.
+      expect(requestFullscreen).toHaveBeenCalledTimes(1);
+      // A refusal is not an error; the teacher still gets present, on slide 3.
+      await waitFor(() => expect(onPresent).toHaveBeenCalledWith(3));
+    } finally {
+      root.requestFullscreen = original;
+    }
   });
 });

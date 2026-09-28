@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { enterPresentFullscreen } from "@tj/editor/present";
 import { toast } from "@tj/ui";
 import { UNDO_MS } from "@/components/library/use-library-actions";
 import { libraryMutations, type SeriesWithLessons } from "@/lib/library";
@@ -42,6 +43,8 @@ export function useSeriesActions(item: SeriesWithLessons | null | undefined) {
     presentFirst(): void {
       const first = item?.lessons[0];
       if (!first || !seriesId) return;
+      // In the click, before the route changes, so the browser grants it (ruling 104).
+      enterPresentFullscreen();
       void navigate({
         to: "/l/$lessonId/present",
         params: { lessonId: first.id },

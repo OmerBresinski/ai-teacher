@@ -213,6 +213,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     if (coded) {
       const slide = withAnswersReveal(
         materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
+        lesson.themeId,
       );
       return { slide, misses: [], builtFrom };
     }

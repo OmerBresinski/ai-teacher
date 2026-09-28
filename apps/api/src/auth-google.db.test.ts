@@ -9,7 +9,7 @@ import { cookieHeaderFromResponse, withTestDb } from "@tj/db/testing";
 import { createApp } from "./app";
 import { type AuthEnv, createAuth } from "./auth/auth";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
-import { silentLogger, TEST_ENV } from "./test-helpers";
+import { silentLogger, TEST_ENV, verifyUrlFromEmailLink } from "./test-helpers";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -143,8 +143,7 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
       body: JSON.stringify({ email, callbackURL: `${WEB}/` }),
     });
     expect(sent.status).toBe(200);
-    const link = extractFirstUrl(mail.last?.text ?? "");
-    if (!link) throw new Error("no magic link captured");
+    const link = verifyUrlFromEmailLink(extractFirstUrl(mail.last?.text ?? ""), BASE);
     expect((await app.request(link, { redirect: "manual" })).status).toBe(302);
     const user = await userByEmail(email);
     if (!user) throw new Error(`no user for ${email}`);

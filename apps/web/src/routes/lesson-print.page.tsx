@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearch } from "@tanstack/react-router";
-import { LessonPrint } from "@tj/editor/lesson-print";
+import { LessonPrint, useFittedLesson } from "@tj/editor/lesson-print";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
@@ -21,6 +21,8 @@ export function LessonPrintPage() {
   const search = useSearch({ from: lessonPrintRoute.id });
   const queryClient = useQueryClient();
   const { data } = useQuery(libraryQueries.document(lessonId, queryClient));
+  // The PDF is the print route: a lesson stored under older floors prints re-fitted.
+  const fitted = useFittedLesson(data && isFullDocument(data) && "slides" in data ? data : null);
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
@@ -32,9 +34,11 @@ export function LessonPrintPage() {
     );
   }
 
+  if (!fitted) return <RoutePendingPage />;
+
   return (
     <LessonPrint
-      lesson={data}
+      lesson={fitted}
       options={{
         auto: search.auto === "1",
         answers: search.answers === "1",

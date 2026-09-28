@@ -281,6 +281,16 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     ]);
   });
 
+  test("POST /lessons refuses a themeId outside the catalogue with 422 and creates nothing (TEACH-258)", async () => {
+    const res = await postLesson(wsA, {
+      brief: { topic: "Volcanoes" },
+      themeId: "no-such-theme",
+      skipPlanning: true,
+    });
+    expect(res.status).toBe(422);
+    expect((await errorOf(res)).message).toBe("That theme does not exist.");
+  });
+
   test("skipPlanning: one job to the end, confirmed up front, continue_when_planned set", async () => {
     const res = await postLesson(wsA, { brief: { topic: "Volcanoes" }, skipPlanning: true });
     expect(res.status).toBe(202);
@@ -768,6 +778,42 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       });
       expect(again.status).toBe(409);
       expect(await errorOf(again)).toMatchObject({ reason: "generating", jobId });
+    });
+
+    test("a theme sent with the confirm is stored on the lesson; none sent keeps it (ruling 113)", async () => {
+      const picked = await seedPlanned();
+      const before = (picked.row.body as Lesson).themeId;
+      expect(before).not.toBe("night-lab");
+      const res = await postJson(wsA, `/lessons/${picked.lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(picked.row.body as Lesson),
+        themeId: "night-lab",
+      });
+      expect(res.status).toBe(202);
+      expect((await bodyOf(wsA, picked.lessonId)).themeId).toBe("night-lab");
+
+      const unsent = await seedPlanned();
+      const kept = await postJson(wsA, `/lessons/${unsent.lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(unsent.row.body as Lesson),
+      });
+      expect(kept.status).toBe(202);
+      expect((await bodyOf(wsA, unsent.lessonId)).themeId).toBe(
+        (unsent.row.body as Lesson).themeId,
+      );
+
+      // An id outside the catalogue is refused, and nothing is confirmed (TEACH-258).
+      const unknown = await seedPlanned();
+      const refused = await postJson(wsA, `/lessons/${unknown.lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(unknown.row.body as Lesson),
+        themeId: "no-such-theme",
+      });
+      expect(refused.status).toBe(422);
+      expect((await bodyOf(wsA, unknown.lessonId)).themeId).toBe(
+        (unknown.row.body as Lesson).themeId,
+      );
+      expect((await bodyOf(wsA, unknown.lessonId)).plan?.state).not.toBe("confirmed");
     });
 
     test("an objectives-first plan (objectives, no outline) confirms and queues lesson.generate (TEACH-93)", async () => {

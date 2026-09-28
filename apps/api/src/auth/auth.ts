@@ -1,8 +1,8 @@
 /**
  * better-auth instance for `@tj/api` (ADR 0008). Email magic link, plus Google when
- * `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 0008 amendment of 2026-09-27).
- * Microsoft is wired and gated the same way but stays off by decision: its credentials are not
- * set until it has its own linking review (amendment item 1).
+ * `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 0008 amendment of 2026-09-27),
+ * and Microsoft when `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` are (amendment of
+ * 2026-09-28: any Microsoft account, verified email only).
  *
  * Mounted at `/auth/*` by `app.ts` (`basePath: "/auth"`), so the browser-facing endpoints are
  * `POST /auth/sign-in/magic-link`, `GET /auth/magic-link/verify`, `GET /auth/get-session`,
@@ -14,10 +14,11 @@ import { authSchema } from "@tj/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
+import { microsoft } from "better-auth/social-providers";
 import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
-import { magicLinkMail } from "./magic-link-mail";
+import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
 
 export const AUTH_BASE_PATH = "/auth";
@@ -51,18 +52,66 @@ function socialProviders(env: AuthEnv, logger: Logger) {
       : {};
   if (!("google" in google)) logger.info("Google sign-in disabled (no credentials)");
 
-  const microsoft =
+  const ms =
     env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
-      ? {
-          microsoft: {
-            clientId: env.MICROSOFT_CLIENT_ID,
-            clientSecret: env.MICROSOFT_CLIENT_SECRET,
-          },
-        }
+      ? { microsoft: microsoftOptions(env.MICROSOFT_CLIENT_ID, env.MICROSOFT_CLIENT_SECRET) }
       : {};
-  if (!("microsoft" in microsoft)) logger.info("Microsoft sign-in disabled (no credentials)");
+  if (!("microsoft" in ms)) logger.info("Microsoft sign-in disabled (no credentials)");
 
-  return { ...google, ...microsoft };
+  return { ...google, ...ms };
+}
+
+/**
+ * Microsoft's fixed tenant id for personal (consumer) accounts: every personal-account id token
+ * carries it as `tid` (Microsoft identity platform, id token claims reference).
+ */
+export const MICROSOFT_CONSUMER_TENANT_ID = "9188040d-6c67-4c5b-b112-36a304b66dad";
+
+/**
+ * Whether Microsoft vouches for the id token's `email` (ADR 0008 amendment of 2026-09-28, item 2).
+ * A personal account's address was verified when the account was made. A work or school tenant's
+ * admin can type any address into a user's `mail`, so only the optional `xms_edov` claim ("email
+ * domain owner verified", added to the app registration's ID token) counts there. Entra sends no
+ * `email_verified`, so better-auth's own reading would call every Microsoft email unverified.
+ */
+export function microsoftEmailVerified(claims: Record<string, unknown>): boolean {
+  if (claims.tid === MICROSOFT_CONSUMER_TENANT_ID) return true;
+  const edov = claims.xms_edov;
+  return edov === true || edov === 1 || edov === "1" || edov === "true";
+}
+
+/**
+ * better-auth's `microsoft` provider options (amendment of 2026-09-28). `common` takes work,
+ * school and personal accounts; `select_account` stops a shared classroom PC signing the next
+ * teacher in as the last one. Identity scopes only, and no Graph photo (it would be stored as a
+ * base64 `users.image`). `getUserInfo` refuses an unverified email: better-auth would otherwise
+ * create a user for it, so a tenant admin could pre-create an account for someone else's address.
+ * `null` sends the browser back to `/sign-in?error=unable_to_get_user_info`.
+ */
+export function microsoftOptions(clientId: string, clientSecret: string) {
+  const base = {
+    clientId,
+    clientSecret,
+    tenantId: "common",
+    prompt: "select_account" as const,
+    disableDefaultScope: true,
+    scope: ["openid", "profile", "email"],
+    disableProfilePhoto: true,
+    mapProfileToUser: (profile: Record<string, unknown>) => ({
+      emailVerified: microsoftEmailVerified(profile),
+    }),
+  };
+  const provider = microsoft(base);
+  // `mapProfileToUser` is left out: better-auth skips it once `getUserInfo` is given, and the
+  // inner `provider` above has already applied it.
+  const { mapProfileToUser: _applied, ...options } = base;
+  return {
+    ...options,
+    getUserInfo: async (token: Parameters<typeof provider.getUserInfo>[0]) => {
+      const info = await provider.getUserInfo(token);
+      return info?.user.emailVerified === true ? info : null;
+    },
+  };
 }
 
 /**
@@ -135,8 +184,14 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     emailAndPassword: { enabled: false },
     plugins: [
       magicLink({
-        sendMagicLink: async ({ email, url }) => {
-          await mail.send({ to: email, ...magicLinkMail(url, env.BETTER_AUTH_URL) });
+        expiresIn: MAGIC_LINK_EXPIRES_IN_SECONDS,
+        // The email links to the web's confirm page, not to the verify endpoint: a mail scanner's
+        // GET must not spend the single-use token (TEACH-246).
+        sendMagicLink: async ({ email, url }, ctx) => {
+          const link = confirmPageUrl(url, env.WEB_ORIGIN[0] as string, (origin) =>
+            Boolean(ctx?.context.isTrustedOrigin(origin)),
+          );
+          await mail.send({ to: email, ...magicLinkMail(link, env.BETTER_AUTH_URL) });
         },
       }),
     ],

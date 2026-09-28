@@ -13,8 +13,6 @@ const HEADING = "By the end of this lesson I can";
 /** The present view with the cover gone and slide `n` on the stage. */
 async function presentSlide(page: Page, url: string, n: number): Promise<void> {
   await page.goto(`${url}?slide=${n}`);
-  await page.getByRole("button", { name: "Stay in this window" }).click();
-  await expect(page.getByRole("button", { name: "Stay in this window" })).toBeHidden();
   await expect(page.getByRole("status").first()).toContainText(`Slide ${n} of`);
   const stage = page.locator('[data-slide-mode="present"]');
   await expect(stage).toHaveCount(1);

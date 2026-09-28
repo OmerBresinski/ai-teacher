@@ -279,6 +279,11 @@ export const calloutTones = (t: Theme): CalloutToneSet =>
 /** The tone a callout of `kind` takes on theme `t`. */
 export const calloutTone = (t: Theme, kind: CalloutKind): CalloutTone => calloutTones(t)[kind];
 
+/** True for an id in the catalogue. `getTheme` falls back to the default for anything else. */
+export function isThemeId(id: string): boolean {
+  return THEMES.some((t) => t.id === id);
+}
+
 export function getTheme(id: string | undefined | null): Theme {
   return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);
 }

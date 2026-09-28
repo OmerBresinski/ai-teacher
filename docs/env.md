@@ -38,7 +38,7 @@ is set".
 | `ALLOW_CONSOLE_MAIL_IN_PRODUCTION` | api | config | — | both | n/a | manual | Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Not set anywhere since TEACH-35 (Railway runs MAIL_PROVIDER=resend) and never seeded by provision.sh; only for an emergency fallback to console mail. |
 | `GOOGLE_CLIENT_ID` | api | config | — | prod | n/a | manual | OAuth client id (F17). Unset disables Google sign-in (the api logs `Google sign-in disabled`). |
 | `GOOGLE_CLIENT_SECRET` | api | secret | — | prod | n/a | manual | OAuth client secret paired with GOOGLE_CLIENT_ID (F17). |
-| `MICROSOFT_CLIENT_ID` | api | config | — | prod | n/a | manual | OAuth application (client) id (F17). Unset disables Microsoft sign-in. |
+| `MICROSOFT_CLIENT_ID` | api | config | — | prod | n/a | manual | Entra application (client) id (F17, ADR 0008 amendment of 2026-09-28). Unset disables Microsoft sign-in and hides its button. |
 | `MICROSOFT_CLIENT_SECRET` | api | secret | — | prod | n/a | manual | OAuth client secret paired with MICROSOFT_CLIENT_ID (F17). |
 | `ENABLE_TEST_ROUTES` | api | config | — | n/a | n/a | manual | "1" mounts the test-only routes (`/__test/*`, TEACH-22) when NODE_ENV=test. Refused at boot when NODE_ENV=production; never set it on Railway. |
 | `ALLOW_WORKSPACE_HEADER_SHIM` | api | config | `1` | n/a | n/a | template | Development/test only: lets x-tj-workspace-id select a Workspace without a session. Refused at boot when NODE_ENV=production; never set it on Railway. |
@@ -117,8 +117,9 @@ bun run dev               # api :3001, worker :3002, web :5173
 curl -s -X POST localhost:3001/auth/sign-in/magic-link -H 'content-type: application/json' \
   -H 'origin: http://localhost:5173' \
   -d '{"email":"teacher@example.test","callbackURL":"http://localhost:5173/"}'
-# open the printed http://localhost:3001/auth/magic-link/verify?token=... URL with a cookie jar:
-curl -s -c jar '<printed url>' -o /dev/null            # 302 + Set-Cookie tj.session_token
+# the printed link is the web confirm page (http://localhost:5173/sign-in/confirm?token=...);
+# its Sign in button opens localhost:3001/auth/magic-link/verify with the same query. With curl:
+curl -s -c jar 'localhost:3001/auth/magic-link/verify?token=...&callbackURL=...' -o /dev/null  # 302 + Set-Cookie
 curl -s -b jar localhost:3001/me                        # 200 {"user":{...},"workspaceId":"..."}
 curl -s -b jar -X POST localhost:3001/jobs/ping -H 'content-type: application/json' \
   -H 'origin: http://localhost:5173' -d '{"message":"hello","steps":3}'   # {"jobId":"..."}

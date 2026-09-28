@@ -32,8 +32,8 @@ function renderPage() {
   );
 }
 
-const start = async () =>
-  fireEvent.click(await screen.findByRole("button", { name: "Stay in this window" }));
+/** No cover (ruling 104): the deck is up once the stage's toolbar is. */
+const ready = () => screen.findByRole("button", { name: "Keyboard shortcuts" });
 const key = (k: string) => fireEvent.keyDown(window, { key: k });
 
 describe("LessonPresentPage", () => {
@@ -51,7 +51,7 @@ describe("LessonPresentPage", () => {
 
   it("presents the lesson; Escape exits back to the editor", async () => {
     renderPage();
-    await start();
+    await ready();
     expect(screen.getAllByRole("status")[0]?.textContent).toMatch(/Slide 1 of \d+/);
     key("Escape");
     expect(navigate).toHaveBeenCalledWith({
@@ -63,7 +63,7 @@ describe("LessonPresentPage", () => {
   it("?from=view exits back to the viewer", async () => {
     search = { from: "view" };
     renderPage();
-    await start();
+    await ready();
     key("Escape");
     expect(navigate).toHaveBeenCalledWith({
       to: "/l/$lessonId/view",
@@ -75,7 +75,7 @@ describe("LessonPresentPage", () => {
     lessonId = "roman-roads";
     search = { series: "series-romans" };
     renderPage();
-    await start();
+    await ready();
     key("End");
     key(" ");
     expect(await screen.findByText("Next: Fractions of amounts")).toBeVisible();
@@ -96,7 +96,7 @@ describe("LessonPresentPage", () => {
     lessonId = "roman-army";
     search = { series: "series-romans" };
     renderPage();
-    await start();
+    await ready();
     key("End");
     key(" ");
     expect(await screen.findByRole("heading", { name: "End of lesson" })).toBeVisible();
@@ -105,7 +105,7 @@ describe("LessonPresentPage", () => {
 
   it("writes reachedSlideId and taughtAt on exit past slide 1; only reachedSlideId on slide 1", async () => {
     renderPage();
-    await start();
+    await ready();
     key("ArrowRight");
     key("ArrowRight");
     key("ArrowLeft");
@@ -120,7 +120,7 @@ describe("LessonPresentPage", () => {
     cleanup();
     fakeApi.reset();
     renderPage();
-    await start();
+    await ready();
     key("Escape");
     await waitFor(async () => {
       const body = fakeApi.loadDocument("demo-water-cycle");
@@ -133,7 +133,7 @@ describe("LessonPresentPage", () => {
   it("?slide=3 opens on slide 3", async () => {
     search = { slide: 3 };
     renderPage();
-    await start();
+    await ready();
     expect(screen.getAllByRole("status")[0]?.textContent).toMatch(/Slide 3 of/);
   });
 
