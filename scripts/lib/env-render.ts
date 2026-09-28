@@ -61,7 +61,14 @@ export function renderEnvExample(file: EnvFile): string {
 
 // --- docs/env.md ------------------------------------------------------------------------------------
 
-const SERVICE_ORDER: readonly EnvService[] = ["api", "worker", "web", "ci", "compose"];
+export const SERVICE_ORDER: readonly EnvService[] = [
+  "api",
+  "worker",
+  "web",
+  "site",
+  "ci",
+  "compose",
+];
 
 function code(s: string): string {
   return `\`${s}\``;

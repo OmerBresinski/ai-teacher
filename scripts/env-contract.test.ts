@@ -12,6 +12,7 @@ import {
   TURBO_ENV_GLOBS,
   vercelNames,
 } from "../infra/env.contract";
+import { SERVICE_ORDER } from "./lib/env-render";
 import { ROOT } from "./lib/paths";
 
 const NAME_RE = /^[A-Z][A-Z0-9_]*$/;
@@ -160,5 +161,12 @@ describe("AI provider defaults", () => {
     for (const [name, value] of Object.entries(expected)) {
       expect(byName(name)).toMatchObject({ local: value, railwayValue: value });
     }
+  });
+});
+
+describe("docs/env.md service column", () => {
+  test("every service the contract uses has a place in SERVICE_ORDER", () => {
+    const used = new Set(ENV_CONTRACT.flatMap((v) => v.services));
+    for (const service of used) expect(SERVICE_ORDER, service).toContain(service);
   });
 });

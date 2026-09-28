@@ -54,6 +54,12 @@ describe("homepage/vercel.json", () => {
     const csp: string = h["Content-Security-Policy-Report-Only"];
     const formAction = csp.split(";").find((d) => d.trim().startsWith("form-action"));
     expect(formAction?.trim()).toBe("form-action 'self' https://teach.dayback.app");
+    // Static header, so it must name the same app origin the build hands the hero form to: the
+    // homepage/config.mjs default, which production also sets as SITE_APP_URL (PROVIDER-STEPS).
+    const configSource = readFileSync(resolve(root, "homepage/config.mjs"), "utf8");
+    const appDefault = configSource.match(/flag\("app"\) \?\? "([^"]+)"/)?.[1];
+    expect(appDefault).toBe("https://teach.dayback.app");
+    expect(formAction?.trim()).toBe(`form-action 'self' ${appDefault}`);
     expect(csp).not.toContain("*");
     expect(csp).not.toContain("'unsafe-inline'");
   });
