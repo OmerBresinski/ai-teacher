@@ -144,7 +144,7 @@ export function DevFirstExperiencePage() {
   );
   if (stage === "generating")
     return (
-      <Suspense fallback={<div className="creation-shell">Opening your lesson…</div>}>
+      <Suspense fallback={<div className="creation-shell" aria-busy="true" />}>
         <EditorPreview
           characterOrigin={characterOrigin}
           onBack={() => go("worksheet")}

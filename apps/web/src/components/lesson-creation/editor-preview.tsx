@@ -13,6 +13,8 @@ import "@tj/editor/styles/editor.css";
 
 const KEY = ["first-experience-local-preview"] as const;
 const saveLocally = async () => undefined;
+/** `?first=6000` rehearses a slow first slide (real runs take 3–6 s). */
+const FIRST_SLIDE_MS = Number(new URLSearchParams(window.location.search).get("first")) || 2600;
 
 /** Local fixtures drive the production generating shell and editor; no transport is mounted. */
 export function EditorPreview({
@@ -80,7 +82,7 @@ function LocalEditor({
         if (arrived < count) setArrived(arrived + 1);
         else setReady(true);
       },
-      arrived === 0 ? 2600 : arrived === count ? 1800 : 2400,
+      arrived === 0 ? FIRST_SLIDE_MS : arrived === count ? 1800 : 2400,
     );
     return () => window.clearTimeout(timer);
   }, [arrived, count, ready, stopped]);
