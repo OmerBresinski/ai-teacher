@@ -306,6 +306,19 @@ export function Controls({ slideCount, stepCount, answerSteps = 0, onExit }: Con
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {/* The shortcut sheet's way in now the cover is gone (ruling 104, amending 28). */}
+        <Tooltip label="Keyboard shortcuts" shortcut="?" contentClassName={STAGE_SCOPE_CLASS}>
+          <StageButton
+            label="Keyboard shortcuts"
+            open={state.shortcutsOpen}
+            onClick={() => dispatch({ type: "setShortcutsOpen", open: true })}
+          >
+            <span aria-hidden className="font-semibold text-body leading-none">
+              ?
+            </span>
+          </StageButton>
+        </Tooltip>
+
         <StageDivider />
 
         <Tooltip label="Collapse" shortcut="C" contentClassName={STAGE_SCOPE_CLASS}>
