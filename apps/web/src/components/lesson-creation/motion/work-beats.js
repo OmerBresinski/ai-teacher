@@ -235,7 +235,7 @@ export function buildBeat(context, n, gsap) {
     // corner lifted, a riffle of the pages, one content nod with shut eyes), laid on the lift.
     go({ y: 242 }, 0, 0.7, "sine.out");
     to(b, { sy: 1.01 }, 500, 700, "sine.inOut");
-    k.call(() => context.cast(PLAN, "plan.hover", { hands: 0.35 }), 700);
+    k.call(() => context.cast(PLAN, "plan.hover", { hands: 0.7 }), 700);
     to(b, { sy: 1 }, 1900, 2300, "sine.inOut");
     go({ fold: 0 }, 2.6, 0.7, "power2.inOut");
     go({ y: 251 }, 2.6, 0.7, "power2.in");
@@ -477,6 +477,13 @@ export function buildBeat(context, n, gsap) {
     go({ toolAlpha: 0 }, 2.2, 0.25, "power1.out");
     go({ gesture: 0, y: 239 }, 2.45, 0.6, "power2.inOut");
     tl.to({}, { duration: 0.3 }, 3.05);
+    if (context.loops === 0) {
+      // First sign-off: Check's own dry look over the glasses at the teacher (its cast module's
+      // look) before the stamp. The stamp's run moves back by the look's length at this tempo.
+      const look = 2.9 * 1.7;
+      for (const child of tl.getChildren(false)) child.startTime(child.startTime() + look);
+      k.call(() => context.cast(3, "check.look", { hands: 0.9 }), 0);
+    }
   }
 
   return tl;
