@@ -53,7 +53,16 @@ export async function lastMagicLink(request: APIRequestContext, email: string): 
   return body.url;
 }
 
-/** Full sign-in: request link → read it back → visit it → land on `callbackPath`, signed in. */
+/**
+ * Open an emailed magic link the way a teacher does: the link lands on the web confirm page, and
+ * only its "Sign in" button spends the token (TEACH-246).
+ */
+export async function openMagicLink(page: Page, link: string): Promise<void> {
+  await page.goto(link);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+}
+
+/** Full sign-in: request link → read it back → open it and press Sign in → land on `callbackPath`. */
 export async function signIn(
   page: Page,
   request: APIRequestContext,
@@ -61,7 +70,7 @@ export async function signIn(
   callbackPath = "/",
 ): Promise<string> {
   await requestMagicLink(request, email, callbackPath);
-  await page.goto(await lastMagicLink(request, email));
+  await openMagicLink(page, await lastMagicLink(request, email));
   await expect(page).toHaveURL(
     new RegExp(`^${escapeRegExp(E2E_WEB_URL)}${escapeRegExp(callbackPath)}`),
   );

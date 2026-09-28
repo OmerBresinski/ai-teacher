@@ -1,6 +1,7 @@
 import type { Lesson } from "@tj/domain/documents";
 import {
   materialiseObjectives,
+  materialiseTitle,
   type PipelineDeps,
   plannerOf,
   resumeFrom,
@@ -43,27 +44,32 @@ export const lessonGenerateJob = defineJob<"lesson.generate", WorkerDeps>(
         }
       },
       input: (lesson, deps) => ({
-        lesson: lesson.generation?.stage === "planned" ? withObjectivesSlide(lesson, deps) : lesson,
+        lesson: lesson.generation?.stage === "planned" ? withPlanSlides(lesson, deps) : lesson,
       }),
     }),
 );
 
 /**
- * The lesson with its objectives slide rebuilt from `facts.objectives` (ADR 0029 item 8): a
- * text-only edit on the plan screen changed the facts, not the slide. Replaced in place under its
- * own id, so the editor keeps the slide; provenance keeps the stamp Plan gave it. Generate's
- * first persist writes it.
+ * The lesson with its plan-time slides rebuilt. The title slide is redrawn in the lesson's theme
+ * (ruling 116: the starting theme arrives with the confirm, after Plan drew the
+ * title in the plan-time one). The objectives slide is rebuilt from `facts.objectives` (ADR 0029
+ * item 8): a text-only edit on the plan screen changed the facts, not the slide. Each is replaced
+ * in place under its own id, so the editor keeps the slide; the objectives slide's provenance
+ * keeps the stamp Plan gave it. Generate's first persist writes them.
  */
-export function withObjectivesSlide(lesson: Lesson, deps: PipelineDeps): Lesson {
-  const current = lesson.slides[1];
-  if (lesson.facts === undefined || current?.kind !== "objectives") return lesson;
-  const stamp = current.elements.find((el) => el.generatedFrom)?.generatedFrom;
-  const slide = materialiseObjectives(lesson, lesson.facts, deps, {
-    promptVersion: stamp?.promptVersion ?? "plan",
-    model: stamp?.model ?? "none",
-    at: deps.now().toISOString(),
-  });
+export function withPlanSlides(lesson: Lesson, deps: PipelineDeps): Lesson {
   const slides = [...lesson.slides];
-  slides[1] = { ...slide, id: current.id };
+  const title = slides[0];
+  if (title?.kind === "title") slides[0] = { ...materialiseTitle(lesson, deps), id: title.id };
+  const current = slides[1];
+  if (lesson.facts !== undefined && current?.kind === "objectives") {
+    const stamp = current.elements.find((el) => el.generatedFrom)?.generatedFrom;
+    const slide = materialiseObjectives(lesson, lesson.facts, deps, {
+      promptVersion: stamp?.promptVersion ?? "plan",
+      model: stamp?.model ?? "none",
+      at: deps.now().toISOString(),
+    });
+    slides[1] = { ...slide, id: current.id };
+  }
   return { ...lesson, slides };
 }

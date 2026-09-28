@@ -12,6 +12,7 @@ import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
+import { rememberTheme } from "@/lib/brief-memory";
 import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
@@ -76,7 +77,22 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       void navigate({ to: "/lessons/new", search: { lesson: lessonId }, replace: true });
     }
   }, [data, lessonId, navigate]);
-  const save = useSaveWithConflictToast(lessonId);
+  const saveDocument = useSaveWithConflictToast(lessonId);
+  // Ruling 116: a theme the teacher picks in the editor becomes the next lesson's starting theme.
+  // The theme the lesson opened with is not a choice (it may be the automatic default).
+  const openedTheme = useRef<string | undefined>(undefined);
+  if (openedTheme.current === undefined && data && isFullDocument(data) && "slides" in data)
+    openedTheme.current = data.themeId;
+  const save = useCallback(
+    (lesson: Parameters<typeof saveDocument>[0]) => {
+      if ("themeId" in lesson && lesson.themeId && lesson.themeId !== openedTheme.current) {
+        openedTheme.current = lesson.themeId;
+        rememberTheme(lesson.themeId);
+      }
+      return saveDocument(lesson);
+    },
+    [saveDocument],
+  );
   const [destination, setDestination] = useState<HTMLDivElement | null>(null);
   const [storyStarted, setStoryStarted] = useState(false);
   const [storyFinished, setStoryFinished] = useState(false);

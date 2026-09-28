@@ -24,6 +24,7 @@ import { SourceDropZone } from "@/components/source-drop-zone/SourceDropZone";
 import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
 import { readLastClass, writeLastClass } from "@/lib/brief-memory";
+import { startingTheme } from "@/lib/default-theme";
 import {
   confirmLesson,
   objectiveEdits,
@@ -157,7 +158,8 @@ function LessonIntake({
       const input = CreateLessonSchema.parse({
         brief: { topic: brief.topic.trim(), level: brief.level, slideCount: Number(slideCount) },
         yearGroup: brief.yearGroup,
-        ...(last?.themeId ? { themeId: last.themeId } : {}),
+        // Ruling 116: no theme question; the teacher's last theme, else the class default.
+        themeId: startingTheme(last?.themeId, undefined, brief.yearGroup),
         sourceIds: sources.map(({ id }) => id),
         skipPlanning: skip,
       });
@@ -221,6 +223,8 @@ function LessonIntake({
         expectedRevision: lesson.plan?.revision ?? 0,
         objectives: objectiveEdits(lesson, objectives),
         slideCount: Number(slideCount) as 6 | 8 | 10 | 12,
+        // Plan knows the subject now, so the class default can use it.
+        themeId: startingTheme(last?.themeId, lesson.subject, lesson.yearGroup ?? brief.yearGroup),
       });
       const worksheet = worksheets[0];
       rememberWorksheetIntent(
