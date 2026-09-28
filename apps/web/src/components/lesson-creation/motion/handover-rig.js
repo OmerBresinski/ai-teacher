@@ -49,7 +49,8 @@ export function createHandoverRig(root, gsap) {
     handoff = null;
   const names = ["Plan", "Slides", "Worksheet", "Check"],
     keys = ["support", "slides", "activity", "answers"];
-  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2].map((owner) => ["", owner]);
+  // 12: Slides' own entrance when it is the first character making anything (slides only).
+  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2, 1].map((owner) => ["", owner]);
   const ownerOf = () => handoff?.from ?? beats[current][1];
   const receiverOf = () => handoff?.to ?? ownerOf() + 1;
   // `b` is the beat's pose; `r` is a reaction layered on top (deltas from rest), so a nod or a
@@ -298,22 +299,25 @@ export function createHandoverRig(root, gsap) {
   }
   // Anime accent: short strokes fanned up and out from a contact (never down across the copy).
   const accentLines = [...scene.querySelectorAll(`#${prefix}accent path`)];
-  const accentState = { at: -9, x: 0, y: 0, size: 1 };
-  function accent(x, y, size = 1) {
-    Object.assign(accentState, { at: clock, x, y, size });
+  const accentState = { at: -9, x: 0, y: 0, size: 1, ground: false };
+  // A ground burst fans out to both sides of the feet, clear of the body; a point burst fans up.
+  const GROUND = [-172, -152, -28, -8];
+  function accent(x, y, size = 1, ground = false) {
+    Object.assign(accentState, { at: clock, x, y, size, ground });
   }
   function paintAccent() {
     const u = (clock - accentState.at) / 0.24;
     accentLines.forEach((e, i) => {
-      if (u < 0 || u >= 1) {
+      if (u < 0 || u >= 1 || (accentState.ground && i >= GROUND.length)) {
         if (e.style.visibility !== "hidden") e.style.visibility = "hidden";
         return;
       }
       e.style.visibility = "";
-      const ang = ((-160 + i * 35) * Math.PI) / 180,
+      const g = accentState.ground,
+        ang = ((g ? GROUND[i] : -160 + i * 35) * Math.PI) / 180,
         k = accentState.size,
         grow = 1 - (1 - u) ** 3,
-        r0 = (9 + 16 * grow) * k,
+        r0 = (g ? 52 + 18 * grow : 9 + 16 * grow) * k,
         r1 = r0 + (9 * (1 - u) + 2) * k;
       const { x, y } = accentState;
       e.setAttribute(
@@ -567,7 +571,8 @@ export function createHandoverRig(root, gsap) {
     }
     for (const k of BLEND_P) {
       if (!(k in savedP)) savedP[k] = p[k];
-      if (STROKE_CLOCKS.has(k)) continue;
+      // The deck rides in with Slides' entrance at Slides' own (unsprung) pace.
+      if (STROKE_CLOCKS.has(k) || (current === 12 && k === "x")) continue;
       p[k] = follow(`p.${k}`, p[k], false);
     }
     // Plan's check-through, drawn on the plan it holds: lifted and tipped toward its eyes to read,
@@ -931,7 +936,10 @@ export function createHandoverRig(root, gsap) {
     $("#spark").style.opacity = p.spark;
     $("#spark").setAttribute("transform", `translate(${p.rx} ${p.ry}) scale(${p.spark})`);
   }
-  function canonical(n) {
+  function canonical(beat) {
+    // Slides' entrance starts from beat 3's work state, with Slides and its deck still off stage.
+    const entering = beat === 12,
+      n = entering ? 3 : beat;
     fanMode = false;
     Object.assign(p, {
       x: 320,
@@ -991,6 +999,10 @@ export function createHandoverRig(root, gsap) {
       // In place: a reaction running beside the beat keeps drawing on the same pose.
       Object.assign(a.b, restBody());
     });
+    if (entering) {
+      Object.assign(actors[1], { x: 760, alpha: 0 });
+      p.x = 760;
+    }
     if (n >= 3) {
       p.stackGap = 0;
       p.gripShape = n === 3 ? 0 : 1;
@@ -1094,8 +1106,15 @@ export function createHandoverRig(root, gsap) {
     if (paused) run.pause();
     castRuns.set(i, run);
   }
+  /** An entrance from off stage has nothing on screen to blend from (or spring from). */
+  function fresh(n) {
+    if (n !== 12) return;
+    blend = null;
+    springs.clear();
+  }
   function play(n, options = {}) {
     beginBlend();
+    fresh(n);
     tl?.kill();
     handoff = options.handoff ?? null;
     current = n;
@@ -1147,10 +1166,10 @@ export function createHandoverRig(root, gsap) {
                     const [gx, gy] = bodies[3].map(168, 118 + actors[3].b.slip);
                     return { x: actors[3].x - 127.5 + gx * 0.85, y: 65 + gy * 0.85 };
                   })()
-                : kind === "scene"
+                : kind === "scene" || kind === "ground"
                   ? { x, y }
                   : materialPoint(x, y, kind);
-          accent(at.x, at.y, size);
+          accent(at.x, at.y, size, kind === "ground");
         },
         loops: loops[n],
         onComplete: options.onComplete,
@@ -1189,6 +1208,7 @@ export function createHandoverRig(root, gsap) {
   function settle(n) {
     if (reduced) springs.clear();
     beginBlend();
+    fresh(n);
     tl?.kill();
     reaction?.kill();
     reaction = null;
@@ -1211,7 +1231,8 @@ export function createHandoverRig(root, gsap) {
       blend = null;
       tl?.pause();
       dustState.at = -9;
-      settle(handoff ? ([0, 3, 7, 9][handoff.to] ?? current) : current);
+      // Mid-entrance, Slides is already the one at work: settle it on its mark (beat 3).
+      settle(handoff ? ([0, 3, 7, 9][handoff.to] ?? current) : current === 12 ? 3 : current);
     }
   };
   pref.addEventListener("change", onReduce);

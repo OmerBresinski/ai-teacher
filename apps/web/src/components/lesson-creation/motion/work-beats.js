@@ -297,6 +297,17 @@ export function buildBeat(context, n, gsap) {
       tl.to({}, { duration: 0.1 }, end / 1000);
     }
   }
+  if (n === 12) {
+    // Slides only: nobody else is making anything, so nobody hands over. Slides bounds in on its
+    // own with its deck (its persona entrance: two bounds, an impact squash, a rebound, a second
+    // landing and the hero pose), and burst lines fan up off the landing.
+    const a = actors[SLIDES];
+    const { end } = arrive(k, context, SLIDES, a, 0, 320);
+    k.snap(p, { x: 540 }, 0);
+    to(p, { x: 320 }, 0, 470, "power1.out");
+    k.call(() => context.accentAt("ground", 320, 300, 1.2), 470);
+    tl.to({}, { duration: 0.2 }, end / 1000);
+  }
   if (n === 3) {
     p.pending = 1;
     p.stackGap = 0;

@@ -202,6 +202,59 @@ test.describe("first-experience design preview", () => {
     await expect(page.getByTestId("creation-generating")).toHaveCount(0);
   });
 
+  test("only the characters whose work was asked for appear: slides only is Slides' own entrance", async ({
+    page,
+  }) => {
+    await openGenerating(page);
+    const stage = page.locator(".creation-generation-actor .handover-stage");
+    // Slides enters on its own (beat 12); Worksheet never comes on and nothing is handed over.
+    await expect(stage).toHaveAttribute("data-beat", "12");
+    await expect(stage).toHaveAttribute("data-holder", "Slides");
+    const worksheetSeen = await stage.evaluate(
+      (root) =>
+        new Promise<boolean>((resolve) => {
+          let seen = false;
+          const end = performance.now() + 2_000;
+          const look = () => {
+            const worksheet = root.querySelector('[data-actor="2"]');
+            if (worksheet && getComputedStyle(worksheet).visibility !== "hidden") {
+              const figure = worksheet.querySelector(".figure");
+              if (figure && getComputedStyle(figure).visibility !== "hidden") seen = true;
+            }
+            if (performance.now() < end) requestAnimationFrame(look);
+            else resolve(seen);
+          };
+          look();
+        }),
+    );
+    expect(worksheetSeen).toBe(false);
+    await expect(stage).toHaveAttribute("data-beat", "3", { timeout: 4_000 });
+  });
+
+  test("a worksheet being made is handed to Slides by Worksheet", async ({ page }) => {
+    await openWorksheets(page);
+    await page.getByRole("button", { name: /^Include/ }).click();
+    const stage = page.locator(".creation-generation-actor .handover-stage");
+    await expect(stage).toHaveAttribute("data-beat", "8");
+    await expect(stage).toHaveAttribute("data-holder", "Worksheet");
+  });
+
+  test("Check stays with the finished lesson until the teacher starts working", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const preview = await openGenerating(page);
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
+    await page.waitForTimeout(8_000);
+    // The sign-off is done, but Check has not walked off on its own and its column is still there.
+    await expect(page.locator(".creation-generation-actor")).toHaveCount(1);
+    await expect(preview).toHaveAttribute("data-story-finished", "false");
+    await page.locator("[data-canvas]").click();
+    await expect(preview).toHaveAttribute("data-story-finished", "true");
+    await expect(page.locator(".creation-generation-actor")).toHaveCount(0, { timeout: 3_000 });
+  });
+
   test("long objectives grow on mobile without losing focus or overflowing", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openObjectives(page);

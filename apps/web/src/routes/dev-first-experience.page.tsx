@@ -79,9 +79,12 @@ export function DevFirstExperiencePage() {
   const [characterOrigin, setCharacterOrigin] = useState<CharacterOrigin | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const transition = useRef<ViewTransition | null>(null);
-  function go(next: Stage) {
+  function go(next: Stage, withWorksheet = true) {
     transition.current?.skipTransition();
-    if (next === "generating") setCharacterOrigin(character.current?.capture() ?? null);
+    // The worksheet character flies on only when a worksheet is being made; slides only starts
+    // with Slides' own entrance.
+    if (next === "generating")
+      setCharacterOrigin(withWorksheet ? (character.current?.capture() ?? null) : null);
     const update = () => {
       flushSync(() => setStage(next));
       window.scrollTo({ top: 0, behavior: "instant" });
@@ -192,7 +195,7 @@ export function DevFirstExperiencePage() {
             }}
             onSkip={() => {
               setIncludeWorksheets(false);
-              go("generating");
+              go("generating", false);
             }}
           />
         ) : null}

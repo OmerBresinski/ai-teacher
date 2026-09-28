@@ -90,7 +90,8 @@ export function GenerationStory({
       });
     };
     let entry: ReturnType<typeof gsap.delayedCall> | null = null;
-    root.dataset.entry = origin && !actor.reduced && !skipIntro ? "travelling" : "arrived";
+    root.dataset.entry =
+      origin && includedWorksheet && !actor.reduced && !skipIntro ? "travelling" : "arrived";
     if (actor.reduced) actor.settle(3);
     else if (skipIntro) {
       if (latest.current.ready && !latest.current.checking) finish();
@@ -99,13 +100,15 @@ export function GenerationStory({
         inspect();
       } else work(3);
     } else {
-      if (origin) actor.restore(origin.pose);
-      else actor.settle(7);
-      entry = gsap.delayedCall(origin ? CHARACTER_ENTRY_SECONDS : 0, () => {
+      // Only characters whose work was asked for appear: with slides only, Worksheet never comes
+      // on, and Slides enters on its own instead of being handed anything.
+      if (origin && includedWorksheet) actor.restore(origin.pose);
+      else actor.settle(includedWorksheet ? 7 : 12);
+      entry = gsap.delayedCall(origin && includedWorksheet ? CHARACTER_ENTRY_SECONDS : 0, () => {
         root.dataset.entry = "arrived";
         handoverFrom = performance.now();
-        actor.play(includedWorksheet ? 8 : 11, {
-          handoff: { from: 2, to: 1 },
+        actor.play(includedWorksheet ? 8 : 12, {
+          handoff: includedWorksheet ? { from: 2, to: 1 } : undefined,
           speed: includedWorksheet ? 1.45 : 1,
           onComplete: () => {
             work(latest.current.ready ? 4 : 3);
