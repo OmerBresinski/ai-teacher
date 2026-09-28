@@ -35,5 +35,6 @@ export {
   type SlideStaticProps,
 } from "./slide/SlideStatic";
 export { type SlideMode, SlideView, type SlideViewProps } from "./slide/SlideView";
+export { setSlotPlaceholders, slotPlaceholdersOn } from "./slide/slot-placeholders";
 export * from "./text/extensions";
 export * from "./text/static";

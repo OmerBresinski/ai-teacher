@@ -45,6 +45,39 @@ describe("pendingSlides", () => {
     );
   });
 
+  it("counts an entry and its continuation slides (UX ruling 91) as one", () => {
+    const lesson = lessonWith(4, facts(KINDS));
+    const last = lesson.slides[3];
+    if (!last) throw new Error("demo slide missing");
+    const continuation = {
+      ...last,
+      id: "continued",
+      elements: last.elements.map((e) =>
+        e.type === "text" && (e.name === "Heading" || e.style.preset === "heading")
+          ? {
+              ...e,
+              doc: {
+                type: "doc" as const,
+                content: [
+                  {
+                    type: "paragraph" as const,
+                    content: [
+                      {
+                        type: "text" as const,
+                        text: `${e.doc.content?.[0]?.content?.[0]?.text ?? ""} (continued)`,
+                      },
+                    ],
+                  },
+                ],
+              },
+            }
+          : e,
+      ),
+    };
+    const withContinuation = { ...lesson, slides: [...lesson.slides, continuation] };
+    expect(pendingSlides(withContinuation)).toEqual(KINDS.slice(4).map((kind) => ({ kind })));
+  });
+
   it("promises the objectives slide after a lone title slide, before the outline exists", () => {
     expect(pendingSlides(lessonWith(1))).toEqual([{ kind: "objectives" }]);
   });

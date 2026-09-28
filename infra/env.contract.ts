@@ -1033,6 +1033,20 @@ const CONTRACT = [
       "development | preview | production. Only `production` loads Vercel Speed Insights. On Vercel `scripts/vercel-env.ts` sets it from VERCEL_ENV at build time.",
   },
   {
+    name: "VITE_SHOW_SLOT_PLACEHOLDERS",
+    services: ["web"],
+    scope: "config",
+    local: "0",
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "enum",
+    values: ["0", "1"],
+    files: ["web"],
+    description:
+      "`1` draws every slide's photo and diagram slots in present as placeholders naming what the model asked for, for demos and screenshots (look/image-slot). Off by default; ignored when VITE_APP_ENV is production.",
+  },
+  {
     name: "VITE_DEV_API_TARGET",
     services: ["web"],
     scope: "config",
@@ -1107,7 +1121,7 @@ const CONTRACT = [
     values: ["1"],
     runtimeOnly: true,
     description:
-      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. Refused together with SITE_ALLOW_PROVISIONAL.",
+      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. With SITE_ALLOW_PROVISIONAL=1 too, the stand-in examples stay noindex and out of the sitemap.",
   },
   {
     name: "SITE_ALLOW_PROVISIONAL",

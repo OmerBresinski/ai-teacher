@@ -137,13 +137,15 @@ export interface ChunkBudget {
 }
 
 export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
-  { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 241 },
-  // Re-pinned 2026-09-27 at 111.3 KB + 20% (TEACH-221: the triangle Figure template, which the
-  // present route reaches through `uid` → `factories.ts` → `layouts.ts`; TEACH-104 cuts that).
-  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 134 },
-  { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 91 },
-  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 51 },
-  { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 187 },
+  // Re-pinned 2026-09-28 at measured + 20% (TEACH-19: the viewer, print, present and both editors
+  // now draw `presentedSlide` / `withoutDiagramSlot`, which relays an open slot's words with the
+  // look and fit engine from `@tj/slides`). Measured: editor 254.1, present 132.7, view 125.7,
+  // print 92.9, worksheet editor 198.6 KB.
+  { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 305 },
+  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 160 },
+  { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 151 },
+  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 112 },
+  { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
   { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 36 },
 ];
 

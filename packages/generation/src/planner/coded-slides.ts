@@ -9,9 +9,14 @@ import type {
 } from "@tj/domain/documents";
 import { asksForUnlistedOptions } from "@tj/domain/documents";
 import {
+  ANSWERS_NAME,
+  fitSlide,
   getTheme,
+  HEADING_NAME,
+  isBackdrop,
   materialiseSlide,
   measureHeadless,
+  type QuizLine,
   SAFE_BOTTOM,
   type SlideSpec,
   SPACE,
@@ -88,7 +93,8 @@ const LETTERS = ["A", "B", "C", "D"] as const;
 type LineQuestion = Pick<FactQuestion, "stem" | "answer"> & {
   distractors?: readonly { text: string }[] | undefined;
 };
-export type Line = { text: string; answer: string; mc?: boolean; ref?: string };
+/** `quiz`: the line as data, for the options grid (`@tj/slides` structure.ts). */
+export type Line = { text: string; answer: string; mc?: boolean; ref?: string; quiz?: QuizLine };
 
 /** 32-bit FNV-1a: a stable seed from a string (lesson id and slide). */
 function hash(seed: string): number {
@@ -221,19 +227,29 @@ export function sameQuestion(
 /** A question as one line of a set, with its answer. */
 export function questionLine(q: LineQuestion, seed = ""): Line {
   const options = mcOptions(q, seed);
-  if (!options) return { text: q.stem.trim(), answer: q.answer.trim() };
+  if (!options) {
+    const open = { stem: q.stem.trim(), answer: q.answer.trim() };
+    return { text: open.stem, answer: open.answer, quiz: open };
+  }
   const at = options.findIndex((o) => o.correct);
+  const answer = `${LETTERS[at]} (${options[at]?.text.trim() ?? ""})`;
   return {
     text: `${q.stem.trim()} ${options.map((o, i) => `${LETTERS[i]} ${o.text.trim()}`).join("  ")}`,
-    answer: `${LETTERS[at]} (${options[at]?.text.trim() ?? ""})`,
+    answer,
     mc: true,
+    quiz: { stem: q.stem.trim(), options: options.map((o) => o.text.trim()), correct: at, answer },
   };
 }
 
 /** A misconception as a true/false line: its belief, which the facts declare false. */
 export function misconceptionLine(m: Pick<Misconception, "belief" | "correction">): Line {
   const belief = m.belief.trim().replace(/[.!]+$/, "");
-  return { text: `True or false? ${belief}.`, answer: `False. ${m.correction.trim()}` };
+  const answer = `False. ${m.correction.trim()}`;
+  return {
+    text: `True or false? ${belief}.`,
+    answer,
+    quiz: { stem: `${belief}.`, options: ["True", "False"], correct: 1, answer },
+  };
 }
 
 export const fitsLine = (line: Line) => line.text.length <= (line.mc ? MC_LINE_MAX : LINE_MAX);
@@ -270,7 +286,7 @@ export function codedSetSpec(
   entry: OutlineEntry,
   facts: LessonFacts,
   seed: string,
-): { spec: SlideSpec; answers: string[]; questionRefs: string[] } | undefined {
+): { spec: SlideSpec; answers: string[]; questionRefs: string[]; quiz: QuizLine[] } | undefined {
   const coded = CODED[entry.kind];
   if (!coded) return undefined;
   const questions = new Map(facts.questions.map((q) => [q.id, q]));
@@ -282,7 +298,8 @@ export function codedSetSpec(
   const retrieval = entry.kind === "starter" ? (facts.retrieval ?? []) : [];
   for (const r of retrieval) {
     asked += 1;
-    lines.push({ text: r.question.trim(), answer: r.answer.trim() });
+    const open = { stem: r.question.trim(), answer: r.answer.trim() };
+    lines.push({ text: open.stem, answer: open.answer, quiz: open });
   }
   for (const ref of retrieval.length > 0 ? [] : entry.factRefs) {
     const q = questions.get(ref);
@@ -315,7 +332,8 @@ export function codedSetSpec(
   // The lesson questions the set actually prints (a line over the caps is dropped): what
   // `laterQuestionsFor` hands the teaching slides before it.
   const questionRefs = kept.flatMap((l) => (l.ref && questions.has(l.ref) ? [l.ref] : []));
-  return { spec, answers, questionRefs };
+  const quiz = kept.map((l) => l.quiz ?? { stem: l.text, answer: l.answer });
+  return { spec, answers, questionRefs, quiz };
 }
 
 const answersLine = (answers: readonly string[]) =>
@@ -351,6 +369,35 @@ function answersRoom(slide: Slide, theme: Theme): { top: number; spare: number }
   return { top, spare: SAFE_BOTTOM - top - needOf(slide, foot, theme) };
 }
 
+const CHROME_NAMES = new Set([HEADING_NAME, "Kind tag", "Accent bar"]);
+
+/**
+ * Whether a set `materialiseSlide` laid out itself fits: the answers panel (`@tj/slides`
+ * structure.ts, a card anchored to the foot on reveal step 1) clears the last question, as
+ * `answersClear` there asks, or, with the answers shown in place and no panel, the questions end
+ * inside the safe area; nothing overflows. Undefined for a slide still carrying its answers as a
+ * footnote, which `answersRoom` measures.
+ */
+function laidOutFits(slide: Slide, theme: Theme): boolean | undefined {
+  const panel = slide.elements.find((e) => e.name === ANSWERS_NAME && e.type === "shape");
+  if (!panel && setParts(slide)) return undefined;
+  const fitted = fitSlide(slide, theme);
+  if (fitted.overflow.length > 0) return false;
+  const foot = Math.max(
+    0,
+    ...fitted.slide.elements
+      .filter(
+        (e) =>
+          e.id !== panel?.id &&
+          !CHROME_NAMES.has(e.name ?? "") &&
+          !isBackdrop(e) &&
+          !(e.revealStep ?? 0),
+      )
+      .map((e) => e.y + e.h),
+  );
+  return panel ? panel.y >= foot + ANSWERS_GAP : foot <= SAFE_BOTTOM;
+}
+
 /**
  * The exit ticket's lines and their answers fit one slide on every theme (UX ruling 108): the
  * list at full size under the heading, the answers under the list, all inside the safe area.
@@ -366,6 +413,8 @@ export function fitsExitTicket(lines: readonly Line[]): boolean {
   };
   return THEMES.every((theme) => {
     const slide = materialiseSlide(spec, theme.id, EXIT_META);
+    const laid = laidOutFits(slide, theme);
+    if (laid !== undefined) return laid;
     const room = answersRoom(slide, theme);
     return room !== undefined && room.spare >= 0;
   });
@@ -400,12 +449,14 @@ export function exitLines<T extends Line>(lines: readonly T[]): T[] {
 }
 
 /**
- * The answers as a reveal: the footnote element (which carries them) appears on the slide's
+ * The answers as a reveal. A slide `materialiseSlide` gave the answers panel (`@tj/slides`
+ * structure.ts: a card anchored to the foot on reveal step 1) is returned as it is. Otherwise the footnote element (which carries them) appears on the slide's
  * first step. Given the lesson's theme, it sits under the list's measured text when there is room
  * there (TEACH-172: no answer covers a question); otherwise, or with no theme, in the lower part
  * of the list's box, which gives it the room. Nothing else moves.
  */
 export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
+  if (slide.elements.some((e) => e.name === ANSWERS_NAME && e.type === "shape")) return slide;
   const parts = setParts(slide);
   if (!parts) return slide;
   const { body, foot } = parts;
@@ -421,7 +472,7 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
             ...e,
             y: room.top,
             h: SAFE_BOTTOM - room.top,
-            name: "Answers",
+            name: ANSWERS_NAME,
             revealStep: 1,
             reveal: "fade",
           };
@@ -435,7 +486,7 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
     elements: slide.elements.map((e) => {
       if (e === body) return { ...e, h: top - body.y - 8 };
       if (e === foot)
-        return { ...e, y: top, h: bottom - top, name: "Answers", revealStep: 1, reveal: "fade" };
+        return { ...e, y: top, h: bottom - top, name: ANSWERS_NAME, revealStep: 1, reveal: "fade" };
       return e;
     }),
   };

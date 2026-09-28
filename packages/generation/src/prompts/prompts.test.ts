@@ -235,8 +235,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v29",
-    hash: "e3953495e78f5e8746ca4a39e00004a8756720a703f2503954ca11d5fcc5a072",
+    version: "generate-slide.v30",
+    hash: "34723eafd7ccf5c5a94b0bfec02939dff407b96bb96d0a832669c7401ea9d319",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -265,7 +265,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   repair: {
     // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
-    version: "repair.v16",
+    version: "repair.v17",
     hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
   },
   "repair-fact": {

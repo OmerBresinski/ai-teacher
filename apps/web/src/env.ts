@@ -10,6 +10,11 @@ export const EnvSchema = z.object({
   /** API base URL: `/api` (dev proxy) or an absolute origin in production builds. */
   VITE_API_URL: z.string().min(1).default("/api"),
   VITE_APP_ENV: z.enum(["development", "preview", "production"]).default("development"),
+  /**
+   * "1" draws every slide's photo and diagram slots in present as placeholders saying what the
+   * model asked for, for demos and screenshots (look/image-slot). Ignored in production.
+   */
+  VITE_SHOW_SLOT_PLACEHOLDERS: z.enum(["0", "1"]).default("0"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -28,5 +33,9 @@ export function parseEnv(source: Record<string, unknown>, isProdBuild: boolean):
   }
   return result.data;
 }
+
+/** The slot placeholders are on: asked for, and not a production app (`@tj/editor` switch). */
+export const slotPlaceholdersEnabled = (e: Env): boolean =>
+  e.VITE_SHOW_SLOT_PLACEHOLDERS === "1" && e.VITE_APP_ENV !== "production";
 
 export const env: Env = parseEnv(import.meta.env, import.meta.env.PROD);
