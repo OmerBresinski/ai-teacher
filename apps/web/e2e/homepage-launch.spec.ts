@@ -12,7 +12,8 @@ import { expectNoSeriousA11yViolations } from "./a11y";
 const root = resolve(import.meta.dirname, "../../..");
 const output = resolve(root, "homepage/dist");
 const site = "http://homepage.test/homepage";
-const appOrigin = "https://app.bresinski.org";
+// The homepage build default (homepage/config.mjs); production passes the same origin.
+const appOrigin = "https://teach.dayback.app";
 
 interface Route {
   route: string;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { runSmoke, smokeCases } from "./smoke-prod";
+import { PRODUCTION_API, runSmoke, SMOKE_TARGETS, siteSmokeCases, smokeCases } from "./smoke-prod";
 
 const WEB = "https://app.example.test";
 
@@ -133,5 +133,71 @@ describe("smoke-prod", () => {
     }) as unknown as typeof fetch;
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), down);
     expect(results.every((r) => !r.ok && r.actual === "ECONNREFUSED")).toBe(true);
+  });
+});
+
+describe("siteSmokeCases (TEACH-78)", () => {
+  const SITE = "https://dayback.app";
+  const TEACH = "https://teach.dayback.app";
+
+  /** A fake marketing site + app host that behaves like the configured projects should. */
+  const fakeSite: typeof fetch = (async (input) => {
+    const url = new URL(String(input));
+    if (url.host === "www.dayback.app") {
+      return new Response(null, {
+        status: 308,
+        headers: { location: `${SITE}${url.pathname}${url.search}` },
+      });
+    }
+    if (url.origin === TEACH && url.pathname.startsWith("/homepage/")) {
+      return new Response(null, {
+        status: 308,
+        headers: { location: `${SITE}/${url.pathname.slice("/homepage/".length)}` },
+      });
+    }
+    if (url.origin === SITE && ["/", "/robots.txt", "/sitemap.xml"].includes(url.pathname)) {
+      return new Response("ok", { status: 200 });
+    }
+    return new Response("not found", { status: 404 });
+  }) as typeof fetch;
+
+  test("the configured site passes every case", async () => {
+    const results = await runSmoke(
+      "https://api.unused.test",
+      siteSmokeCases(SITE, TEACH),
+      fakeSite,
+    );
+    expect(results.filter((r) => !r.ok)).toEqual([]);
+    expect(results.map((r) => `${r.origin}${r.path}`)).toContain(
+      "https://www.dayback.app/privacy/?from=smoke",
+    );
+  });
+
+  test("an SPA fallback (200 for everything) fails the 404 case", async () => {
+    const spa = (async () =>
+      new Response("<div id=root>", { status: 200 })) as unknown as typeof fetch;
+    const results = await runSmoke("https://api.unused.test", siteSmokeCases(SITE, TEACH), spa);
+    expect(results.find((r) => r.path === "/no-such-page/")?.ok).toBe(false);
+  });
+
+  test("a www redirect that drops the query fails", async () => {
+    const lossy = (async (input) => {
+      const url = new URL(String(input));
+      return url.host === "www.dayback.app"
+        ? new Response(null, { status: 308, headers: { location: `${SITE}${url.pathname}` } })
+        : fakeSite(input);
+    }) as typeof fetch;
+    const results = await runSmoke("https://api.unused.test", siteSmokeCases(SITE, TEACH), lossy);
+    expect(results.find((r) => r.origin === "https://www.dayback.app")?.ok).toBe(false);
+  });
+});
+
+describe("SMOKE_TARGETS", () => {
+  test("default stays on the live origins until the cutover; dayback is exact and https", () => {
+    expect(PRODUCTION_API).toBe("https://api.bresinski.org");
+    expect(SMOKE_TARGETS.dayback).toEqual({
+      api: "https://api.dayback.app",
+      webOrigin: "https://teach.dayback.app",
+    });
   });
 });

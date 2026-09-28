@@ -95,6 +95,8 @@ const lessonPage = (example) => ({
   title: `${example.title} | ${yearSubject(example).replace(" · ", " ")} | DayBack`,
   description: `${example.title}: a ${example.year} ${example.subject} lesson with ${example.slides.length} slides${example.worksheet ? ", a worksheet" : ""}${example.exitTicket ? ", an exit ticket" : ""} and the answers.`,
   scripts: ["/assets/lesson-viewer.js"],
+  // Stand-in assets are never indexed or listed in the sitemap.
+  provisional: example.provisional,
   body: `<section class="container lesson-head">
       <nav class="lesson-crumbs" aria-label="Breadcrumb"><a href="${href("/examples/")}">Top lessons</a><span aria-hidden="true">/</span><span>${yearSubject(example)}</span></nav>
       <h1>${escapeHtml(example.title)}</h1>
