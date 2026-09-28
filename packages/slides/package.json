@@ -25,12 +25,12 @@
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
-    "@types/bun": "1.4.0",
+    "@types/bun": "1.4.2",
     "typescript": "5.9.3"
   },
   "dependencies": {
     "@tj/domain": "workspace:*",
     "nanoid": "5.1.16",
-    "zod": "4.5.4"
+    "zod": "4.6.5"
   }
 }

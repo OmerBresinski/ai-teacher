@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
-    "docx": "9.7.1",
+    "docx": "9.7.2",
     "pdf-lib": "1.17.1",
     "typescript": "5.9.3"
   }
