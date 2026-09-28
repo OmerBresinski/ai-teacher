@@ -17,6 +17,11 @@ export const signInSearchSchema = z.object({
    * is not in the schema. Same lenient parsing as `redirect`.
    */
   error: z.string().optional().catch(undefined),
+  /**
+   * Which provider's round trip the `error` came back from, when it is not Google's: our
+   * `errorCallbackURL` for Microsoft adds `via=microsoft` (TEACH-206) so the copy names it.
+   */
+  via: z.literal("microsoft").optional().catch(undefined),
 });
 
 export const signInRoute = createRoute({
