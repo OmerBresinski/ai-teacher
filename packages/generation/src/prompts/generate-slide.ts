@@ -88,6 +88,12 @@ import {
  * v29 (TEACH-253, ADR 0034 decision 5): a diagram slide whose fact carries the figure gets the
  * "shows" block instead (`figureShownBlock`): the figure's template and values, the unknown's value
  * left out, and a text-only answer shape. Diagram calls only, so the pinned hash is unchanged.
+ *
+ * v30 (TEACH-11 port, lab pe-it5): `IMAGE_TEXT_RULE` no longer tells the writer to put what the
+ * picture cannot show in `notes`. On a context slide, outside that clause's identify-parts scope,
+ * the writer wrote "the photograph does not show wall ruins"; the judge scored notes 1 and Evaluate
+ * raised `image-fit` on that sentence. The notes now give the teacher a move instead. Shared with
+ * Repair (v17).
  */
 
 export type GenerateSlideInput = {
@@ -153,7 +159,7 @@ export function photoBlock(photo: SlidePhoto | "none"): string[] {
 
 /** The rule the writer follows for an `image-text` slide; shared with Repair. */
 export const IMAGE_TEXT_RULE =
-  "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If the purpose is identify-parts and something required is not visible, describe what is there and tell the teacher in `notes` what the picture cannot show. If there is no photograph, do not mention a picture at all.";
+  "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If a required item is not visible, `notes` tell the teacher to say or show it another way; never say what the photograph does not show. If there is no photograph, do not mention a picture at all.";
 
 const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
@@ -218,7 +224,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v29",
+  version: "generate-slide.v30",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",

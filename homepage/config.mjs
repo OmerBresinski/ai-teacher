@@ -45,11 +45,10 @@ export const allowProvisional = process.argv.includes("--allow-provisional");
 
 // Search engines may index the output only when --index is passed, which the Vercel production
 // build does only when SITE_INDEXING=1. Everything else (local, staging, the legacy /homepage copy)
-// stays noindex. Stand-in examples are never indexable, and a prefixed build never is either.
+// stays noindex. It may be combined with --allow-provisional: the stand-in examples are then shown
+// but stay noindex and out of the sitemap page by page (`headMeta`, `build.mjs`). A prefixed build
+// is never indexable.
 export const indexable = process.argv.includes("--index");
-if (indexable && allowProvisional) {
-  throw new Error("--index cannot be combined with --allow-provisional: stand-ins stay noindex.");
-}
 if (indexable && base !== "") {
   throw new Error("--index needs --base=/: only the domain-root site is indexable.");
 }
