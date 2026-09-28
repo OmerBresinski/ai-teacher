@@ -370,6 +370,10 @@ export function createHandoverRig(root, gsap) {
   gsap.ticker.add(ambientTick);
   // Read-only view for the filmstrip and trace tooling.
   root.__cast = {
+    /** The time every timeline runs on (gsap's ticker, lag-smoothed), for the trace tooling. */
+    get time() {
+      return gsap.ticker.time;
+    },
     get tool() {
       return { toolAt, tipAt, toolHand, contact: p.contact, stroke: p.stroke };
     },
@@ -566,7 +570,9 @@ export function createHandoverRig(root, gsap) {
       const shown = a.alpha > 0.5,
         fresh = !shown || !wasShown[i];
       wasShown[i] = shown;
-      a.x = follow(`x${i}`, a.x, fresh);
+      // Travel is choreographed accel-limited (work-beats.js), so x is drawn as timed: a spring
+      // here would start from rest behind a character entering at speed and kink its arrival.
+      void fresh;
       const c = a.b;
       for (const k of BODY) c[k] = follow(`b${i}${k}`, c[k], fresh);
       drawn.actors[i] = {
@@ -1106,7 +1112,8 @@ export function createHandoverRig(root, gsap) {
     // Handovers are charted in real time; gestures take the persona's tempo.
     // A hurried sign-off (the lesson is already ready) runs the pass a little quicker.
     tl.timeScale(
-      [2, 5, 8, 11].includes(n) ? ((options.speed ?? 1) >= 1.6 ? 1.3 : 1) : (options.speed ?? 1.2),
+      // Handovers always run at charted time: their travel is accel-limited at 1x.
+      [2, 5, 8, 11].includes(n) ? 1 : (options.speed ?? 1.2),
     );
     if (reduced) {
       tl.pause();

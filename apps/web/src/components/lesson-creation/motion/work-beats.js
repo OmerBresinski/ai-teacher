@@ -50,10 +50,11 @@ function arrive(k, ctx, who, a, t0, xm) {
     // Sprints in side-on, plants a heel, stops dead with a skid; the page curls and snaps back.
     snap(a, { x: x0, alpha: 1 }, t0);
     snap(b, { lean: -9, th: -0.1, curl: -0.6, sy: 1.02, sx: 0.98 }, t0);
-    // The brake starts at the sprint's own speed (3 x 20 / 80 ms = 200 / 250 ms): no kink.
-    to(a, { x: xm + 20 }, t0, t0 + 250, "none");
+    // Travel is accel-limited (<= 1 unit/frame^2): a constant sprint, then a constant-deceleration
+    // brake that starts at the sprint's own speed (2 x 90 / 225 ms = 130 / 162 ms): no kink.
+    to(a, { x: xm + 90 }, t0, t0 + 162, "none");
     stride(b, t0, t0 + 250, 3);
-    to(a, { x: xm }, t0 + 250, t0 + 330, "power3.out");
+    to(a, { x: xm }, t0 + 162, t0 + 387, "power1.out");
     to(b, { lean: 7, curl: -0.2, sy: 1.04, sx: 0.97 }, t0 + 250, t0 + 300, "power2.out");
     hit(b, { lean: 0, sy: 0.9, sx: 1.08, bulge: 0.04, stride: 0 }, t0 + 300);
     hit(b, { curl: 0.7 }, t0 + 317);
@@ -70,11 +71,11 @@ function arrive(k, ctx, who, a, t0, xm) {
     // smaller landing with shut eyes, a hero pop, rest. Units are the deck's (x1.2 on stage).
     snap(a, { x: x0, alpha: 1 }, t0);
     snap(b, { ty: -32, sy: 1.1, sx: 0.92, tuck: 0.5, th: -0.04 }, t0);
-    to(a, { x: xm + 105 }, t0, t0 + 200, "none");
+    // One travel from the edge to the mark across both bounds, slowing all the way (no stop-go).
+    to(a, { x: xm }, t0, t0 + 470, "power1.out");
     to(b, { ty: 0 }, t0, t0 + 200, "sine.inOut");
     // The first landing runs straight into the crouch for the second bound.
     hit(b, { sy: 0.86, sx: 1.1, bulge: 0.04, tuck: 0 }, t0 + 170, 120, "sine.inOut");
-    to(a, { x: xm }, t0 + 290, t0 + 470, "power1.out");
     to(b, { ty: -22 }, t0 + 290, t0 + 380, "sine.inOut");
     to(b, { ty: 0 }, t0 + 380, t0 + 470, "sine.inOut");
     to(b, { sy: 1.04, sx: 0.97, bulge: 0, tuck: 0.4 }, t0 + 290, t0 + 380, "sine.inOut");
@@ -106,12 +107,12 @@ function arrive(k, ctx, who, a, t0, xm) {
   // an exact stop held three frames with the glasses trailing.
   snap(a, { x: x0, alpha: 1 }, t0);
   snap(b, { sy: 0.96, sx: 1.02 }, t0);
-  to(a, { x: xm + 108 }, t0 + 40, t0 + 300, "sine.inOut");
+  // One even, decelerating glide under two drawn step-togethers (the stops live in the feet).
+  to(a, { x: xm }, t0, t0 + 600, "power1.out");
   to(b, { stride: 1, sy: 1 }, t0 + 60, t0 + 170, "power2.out");
   to(b, { stride: 0 }, t0 + 170, t0 + 280, "power2.in");
   to(b, { slip: 1.5 }, t0 + 140, t0 + 300, "power2.out");
   hit(b, { sy: 0.96, sx: 1.02 }, t0 + 280);
-  to(a, { x: xm }, t0 + 300, t0 + 560, "sine.inOut");
   to(b, { stride: -1, sy: 1, sx: 1 }, t0 + 330, t0 + 440, "power2.out");
   to(b, { stride: 0 }, t0 + 440, t0 + 540, "power2.in");
   hit(b, { sy: 0.94, sx: 1.03 }, t0 + 540);
@@ -128,12 +129,12 @@ function leave(k, who, a, t0) {
   to(b, { th: 0.1, sy: 0.94, sx: 1.03 }, t0 - 120, t0, "power2.in");
   if (who === WORKSHEET) {
     hit(b, { lean: -9, sy: 1.02, sx: 0.98, curl: -0.5 }, t0);
-    to(a, { x: -70 }, t0, t0 + 500, "power2.in");
+    to(a, { x: -70 }, t0, t0 + 500, "power1.in");
     stride(b, t0, t0 + 500, 6);
   } else if (who === SLIDES) {
     to(b, { sy: 1.14, sx: 0.9, tuck: 0.5 }, t0, t0 + 60, "power2.out");
     // One continuous run out across both bounds: the speed only ever builds.
-    to(a, { x: -80 }, t0, t0 + 440, "power1.in");
+    to(a, { x: -80 }, t0, t0 + 470, "power1.in");
     to(b, { ty: -36 }, t0, t0 + 100, "power2.out");
     to(b, { ty: 0 }, t0 + 100, t0 + 200, "power2.in");
     hit(b, { sy: 0.84, sx: 1.12, tuck: 0 }, t0 + 200);
@@ -142,14 +143,13 @@ function leave(k, who, a, t0) {
     to(b, { ty: -10 }, t0 + 340, t0 + 440, "power2.in");
   } else if (who === PLAN) {
     hit(b, { sy: 1, sx: 1, lean: -2 }, t0);
-    to(a, { x: -60 }, t0, t0 + 460, "power2.in");
+    to(a, { x: -60 }, t0, t0 + 460, "power1.in");
     stride(b, t0, t0 + 460, 4, "power2.in");
   } else {
     hit(b, { sy: 1, sx: 1 }, t0);
-    to(a, { x: a.x - 120 }, t0, t0 + 200, "power2.inOut");
+    to(a, { x: -70 }, t0, t0 + 440, "power1.in");
     to(b, { stride: 1 }, t0, t0 + 100, "power2.out");
     to(b, { stride: 0 }, t0 + 100, t0 + 200, "power2.in");
-    to(a, { x: -70 }, t0 + 240, t0 + 440, "power2.in");
     to(b, { stride: -1 }, t0 + 240, t0 + 340, "power2.out");
     to(b, { stride: 0 }, t0 + 340, t0 + 440, "power2.in");
   }
@@ -166,18 +166,18 @@ function carry(k, who, a, p, t0) {
   const x = { x: 320 };
   if (who === WORKSHEET) {
     to(b, { lean: -6, curl: -0.3 }, t0, t0 + 80, "power2.out");
-    to(a, x, t0, t0 + 300, "power3.inOut");
-    to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 300, "power3.inOut");
-    hit(b, { lean: 0, sy: 0.94, sx: 1.05 }, t0 + 300);
-    snap(p, { carryFront: 1 }, t0 + 300);
-    hit(b, { curl: 0.4 }, t0 + 317);
-    to(b, { sy: 1, sx: 1, curl: 0, th: 0 }, t0 + 350, t0 + 480, "power3.out");
-    return t0 + 480;
+    to(a, x, t0, t0 + 340, "sine.inOut");
+    to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 340, "sine.inOut");
+    hit(b, { lean: 0, sy: 0.94, sx: 1.05 }, t0 + 340);
+    snap(p, { carryFront: 1 }, t0 + 340);
+    hit(b, { curl: 0.4 }, t0 + 357);
+    to(b, { sy: 1, sx: 1, curl: 0, th: 0 }, t0 + 390, t0 + 520, "power3.out");
+    return t0 + 520;
   }
   if (who === SLIDES) {
     to(b, { sy: 0.88, sx: 1.08 }, t0, t0 + 70, "power2.in");
-    to(a, x, t0 + 70, t0 + 330, "power1.inOut");
-    to(p, { x: 320, gazeMix: 0 }, t0 + 70, t0 + 330, "power1.inOut");
+    to(a, x, t0 + 20, t0 + 360, "sine.inOut");
+    to(p, { x: 320, gazeMix: 0 }, t0 + 20, t0 + 360, "sine.inOut");
     to(b, { ty: -26, sy: 1.1, sx: 0.92 }, t0 + 70, t0 + 200, "power2.out");
     to(p, { y: 251 - 31 }, t0 + 70, t0 + 200, "power2.out");
     to(b, { ty: 0, sy: 1.06 }, t0 + 200, t0 + 330, "power2.in");
@@ -188,16 +188,16 @@ function carry(k, who, a, p, t0) {
     return t0 + 500;
   }
   if (who === PLAN) {
-    to(a, x, t0, t0 + 480, "sine.out");
-    to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 480, "sine.out");
+    to(a, x, t0, t0 + 480, "sine.inOut");
+    to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 480, "sine.inOut");
     k.stride(b, t0, t0 + 480, 3, "sine.out");
     to(b, { sy: 0.94, sx: 1.03, th: 0 }, t0 + 480, t0 + 540, "power2.in");
     snap(p, { carryFront: 1 }, t0 + 540);
     to(b, { sy: 1, sx: 1 }, t0 + 590, t0 + 720, "sine.out");
     return t0 + 720;
   }
-  to(a, x, t0, t0 + 300, "power2.inOut");
-  to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 300, "power2.inOut");
+  to(a, x, t0, t0 + 340, "sine.inOut");
+  to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 340, "sine.inOut");
   to(b, { stride: 1 }, t0, t0 + 150, "power2.out");
   to(b, { stride: 0 }, t0 + 150, t0 + 300, "power2.in");
   hit(b, { sy: 0.96, sx: 1.02 }, t0 + 300);
@@ -261,14 +261,14 @@ export function buildBeat(context, n, gsap) {
       go({ gazeMix: 1 }, 0, 0.1, "power2.out");
       to(giver.b, { th: 0.07 }, 80, 200, "power2.out");
       to(giver.b, { sy: 0.94, sx: 1.03, lean: -3 }, 120, 330, "power2.inOut");
-      to(giver, { x: 250 }, 120, 330, "power2.inOut");
+      to(giver, { x: 272 }, 120, 390, "sine.inOut");
       k.stride(giver.b, 120, 330, 1, "power2.inOut");
       go({ y: 255, outerRelease: 1 }, 0.12, 0.21, "power2.inOut");
       to(giver.b, { sy: 1.03, sx: 0.99, lean: 0 }, 330, 480, "power2.out");
       go({ x: 336 }, 0.33, 0.15, "power2.out");
       go({ y: 243 }, 0.33, 0.15, "power2.out");
       to(giver.b, { sy: 1.02 }, 480, 700, "sine.inOut");
-      const { ready } = arrive(k, context, into, taker, 0, 440);
+      const { ready } = arrive(k, context, into, taker, 0, 400);
       // Reach, tug, release (timing chart "the exchange"). The taker leans in and grips, then leans
       // back and draws the prop over on an arc; the giver is pulled after it 60 ms late, lets go,
       // rocks back one way and closes its eyes, pleased. The taker takes the weight: the prop
@@ -525,12 +525,10 @@ export function buildReaction(context, name, options, gsap) {
     to(r, { sy: 0, sx: 0, shut: 0, th: 0.08 }, 220, 340, "sine.inOut");
     // It takes the finished deck with it: the prop travels in its hands.
     const lead = context.p.x - a.x;
-    to(a, { x: a.x + 110 }, 340, 580, "sine.inOut");
-    to(context.p, { x: a.x + 110 + lead }, 340, 580, "sine.inOut");
-    to(context.p, { x: 700 + lead }, 600, 900, "sine.in");
+    to(context.p, { x: 700 + lead }, 340, 900, "power1.in");
     to(r, { stride: 1, slip: 1.5 }, 340, 440, "power2.out");
     to(r, { stride: 0 }, 440, 540, "power2.in");
-    to(a, { x: 700 }, 600, 900, "sine.in");
+    to(a, { x: 700 }, 340, 900, "power1.in");
     to(r, { stride: -1 }, 600, 750, "power2.out");
     to(r, { stride: 0 }, 750, 900, "power2.in");
     snap(a, { alpha: 0 }, 900);
