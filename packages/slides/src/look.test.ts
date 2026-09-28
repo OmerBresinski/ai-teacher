@@ -46,6 +46,10 @@ describe("the lesson look", () => {
   });
 
   for (const theme of THEMES) {
+    test(`${theme.id}: accent text keeps 4.5:1 on the accent tint`, () => {
+      expect(contrastRatio(theme.colors.accent, accentTint(theme))).toBeGreaterThanOrEqual(4.5);
+    });
+
     test(`${theme.id}: the cover's eyebrow and subtitle keep 4.5:1 on the accent`, () => {
       const slide = materialiseSlide(
         { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },

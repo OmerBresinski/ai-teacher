@@ -132,9 +132,14 @@ export function mix(a: string, b: string, amount: number): string {
   return `#${c(ar, br)}${c(ag, bg)}${c(ab, bb)}`.toUpperCase();
 }
 
-/** The theme's accent tint: the panel and pill colour. */
-export const accentTint = (t: Theme) =>
-  mix(t.colors.accent, t.colors.background, t.dark ? 0.2 : 0.12);
+/** The theme's accent tint: the panel and pill colour. Accent text on it keeps 4.5:1. */
+export function accentTint(t: Theme): string {
+  for (let amount = t.dark ? 0.2 : 0.12; amount > 0; amount -= 0.01) {
+    const tint = mix(t.colors.accent, t.colors.background, amount);
+    if (contrastRatio(t.colors.accent, tint) >= 4.5) return tint;
+  }
+  return t.colors.background;
+}
 
 /* ---------------------------------------------------------------- pieces */
 
