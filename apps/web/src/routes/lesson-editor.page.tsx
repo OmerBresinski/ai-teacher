@@ -3,9 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
 import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LessonWorksheets } from "@/components/generating-lesson/LessonWorksheets";
 import { stageOf } from "@/components/generating-lesson/stage";
-import { GenerationCompanion } from "@/components/lesson-creation/generation-companion";
 import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheets";
 import "@/components/lesson-creation/creation.css";
 import { EmptyLesson } from "@/components/empty-lesson";
@@ -19,6 +17,20 @@ import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
 import { lessonEditorRoute } from "./documents.route";
+
+// Both are off the editor's first paint (and its chunk budget): the worksheets dialog pulls the
+// worksheet recipes, the companion the creation motion. Each mounts only when it is needed.
+const LessonWorksheets = lazy(() =>
+  import("@/components/generating-lesson/LessonWorksheets").then((m) => ({
+    default: m.LessonWorksheets,
+  })),
+);
+const GenerationCompanion = lazy(() =>
+  import("@/components/lesson-creation/generation-companion").then((m) => ({
+    default: m.GenerationCompanion,
+  })),
+);
+
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
 import "@tj/editor/styles/editor.css";
@@ -139,12 +151,14 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const exportSlot = (
     <>
       {data.plan?.state === "confirmed" ? (
-        <LessonWorksheets
-          lesson={data}
-          open={worksheetsOpen}
-          onOpenChange={setWorksheetsOpen}
-          onOpenWorksheet={onOpenWorksheet}
-        />
+        <Suspense fallback={null}>
+          <LessonWorksheets
+            lesson={data}
+            open={worksheetsOpen}
+            onOpenChange={setWorksheetsOpen}
+            onOpenWorksheet={onOpenWorksheet}
+          />
+        </Suspense>
       ) : null}
       <ExportControl document={data} imageOrigin={env.VITE_API_URL} onOpenPrint={openPrintTab} />
     </>
@@ -198,34 +212,36 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     <div className="creation-editor-preview" data-story-finished={storyFinished}>
       {content}
       {showStory && destination ? (
-        <GenerationCompanion
-          destination={destination}
-          origin={handoff.origin}
-          skipIntro={!handoff.origin}
-          includedWorksheet={includedWorksheet}
-          progress={
-            stage.stage === "checking"
-              ? 1
-              : Math.min(0.74, data.slides.length / Math.max(1, data.facts?.outline.length ?? 1))
-          }
-          checking={checkingSeen.current || stage.stage === "checking"}
-          ready={ready}
-          paused={paused}
-          statusText={
-            paused
-              ? "Generation stopped"
-              : ready
-                ? "Slides ready"
-                : stage.stage === "checking"
-                  ? "Checking your slides…"
-                  : // A confirmed plan already has its facts; the generate job's first events
-                    // still read as Planning, which is not what the teacher is waiting for.
-                    stage.stage === "planning" && !data.facts
-                    ? "Planning your lesson…"
-                    : "Making your slides…"
-          }
-          onExited={() => setStoryFinished(true)}
-        />
+        <Suspense fallback={null}>
+          <GenerationCompanion
+            destination={destination}
+            origin={handoff.origin}
+            skipIntro={!handoff.origin}
+            includedWorksheet={includedWorksheet}
+            progress={
+              stage.stage === "checking"
+                ? 1
+                : Math.min(0.74, data.slides.length / Math.max(1, data.facts?.outline.length ?? 1))
+            }
+            checking={checkingSeen.current || stage.stage === "checking"}
+            ready={ready}
+            paused={paused}
+            statusText={
+              paused
+                ? "Generation stopped"
+                : ready
+                  ? "Slides ready"
+                  : stage.stage === "checking"
+                    ? "Checking your slides…"
+                    : // A confirmed plan already has its facts; the generate job's first events
+                      // still read as Planning, which is not what the teacher is waiting for.
+                      stage.stage === "planning" && !data.facts
+                      ? "Planning your lesson…"
+                      : "Making your slides…"
+            }
+            onExited={() => setStoryFinished(true)}
+          />
+        </Suspense>
       ) : null}
     </div>
   );
