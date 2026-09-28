@@ -131,12 +131,14 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       void navigate({ to: "/worksheets/new", search: { lesson: lessonId } });
     }
   }, [data, navigate, lessonId]);
+  // Present opens on the slide the teacher is on (ruling 104); the editor has already asked for
+  // fullscreen inside the click.
   const onPresent = useCallback(
-    () =>
+    (slide: number) =>
       void navigate({
         to: "/l/$lessonId/present",
         params: { lessonId },
-        search: { series: undefined, from: "edit" },
+        search: { series: undefined, slide, from: "edit" },
       }),
     [navigate, lessonId],
   );

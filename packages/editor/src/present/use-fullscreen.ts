@@ -94,6 +94,17 @@ async function release(): Promise<void> {
   }
 }
 
+/**
+ * The Present buttons' half of fullscreen (ruling 104). Called first thing in the click handler,
+ * before the route changes, so the request carries the click's user gesture; the client-side route
+ * change keeps the document fullscreen. A refusal (iframe, no gesture left, iPhone Safari) is
+ * swallowed: present runs in the window and F still toggles.
+ */
+export function enterPresentFullscreen(): void {
+  if (currentElement() || !supported()) return;
+  void request();
+}
+
 export type FullscreenApi = {
   /** Real fullscreen is active. */
   isFullscreen: boolean;
