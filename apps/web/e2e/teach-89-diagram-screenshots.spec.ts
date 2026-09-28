@@ -102,7 +102,6 @@ test("captures a generated diagram slide in the editor and on the stage, on two 
       await page.screenshot({ path: `/tmp/teach-89-diagram-${themeId}-editor-${which}.png` });
 
       await page.goto(`/l/${id}/present?slide=${n}`);
-      await page.getByRole("button", { name: "Stay in this window" }).click();
       await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
       await expect(page.getByRole("status").first()).toContainText(`Slide ${n} of`);
       await page.waitForTimeout(600);

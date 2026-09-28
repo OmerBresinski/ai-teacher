@@ -1,0 +1,241 @@
+{
+  "_source": "Stored lesson \"Freud's psychoanalytic theories\" (E49, Y13 psychology), slide 9, as generated; TEACH-18.",
+  "themeId": "chalk",
+  "slide": {
+    "id": "e5dmuirh1x6",
+    "kind": "worked-example",
+    "elements": [
+      {
+        "id": "e57muirh1x6",
+        "type": "text",
+        "x": 58,
+        "y": 43,
+        "w": 844,
+        "h": 62,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Freud stressed unconscious motives; behaviourists stressed learning"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true,
+          "fontSize": 26
+        },
+        "generatedFrom": {
+          "factRefs": ["o3", "x1", "m3"],
+          "promptVersion": "generate-slide.v25",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:56.633Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e58muirh1x6",
+        "type": "shape",
+        "shape": "rect",
+        "x": 58,
+        "y": 133,
+        "w": 844,
+        "h": 1,
+        "fill": "#E7DCC4",
+        "name": "Rule",
+        "generatedFrom": {
+          "factRefs": ["o3", "x1", "m3"],
+          "promptVersion": "generate-slide.v25",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:56.633Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e59muirh1x6",
+        "type": "text",
+        "x": 58,
+        "y": 168,
+        "w": 844,
+        "h": 40,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "How might Freud and a behaviourist explain this avoidance?"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true,
+          "fontSize": 26
+        },
+        "generatedFrom": {
+          "factRefs": ["o3", "x1", "m3"],
+          "promptVersion": "generate-slide.v25",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:56.633Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e5amuirh1x6",
+        "type": "shape",
+        "shape": "rounded",
+        "x": 58,
+        "y": 266,
+        "w": 844,
+        "h": 249,
+        "fill": "#FFFBF0",
+        "radius": 14,
+        "name": "Working card",
+        "generatedFrom": {
+          "factRefs": ["o3", "x1", "m3"],
+          "promptVersion": "generate-slide.v25",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:56.633Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e5bmuirh1x6",
+        "type": "text",
+        "x": 72,
+        "y": 280,
+        "w": 816,
+        "h": 21,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "WORKING"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "autoHeight": true,
+          "color": "#6E6656"
+        },
+        "generatedFrom": {
+          "factRefs": ["o3", "x1", "m3"],
+          "promptVersion": "generate-slide.v25",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:56.633Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e5cmuirh1x6",
+        "type": "text",
+        "x": 72,
+        "y": 308,
+        "w": 816,
+        "h": 309,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "orderedList",
+              "attrs": {
+                "start": 1
+              },
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Freud: unconscious anxiety or conflict may contribute."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Behaviourist: laughter makes presenting threatening; avoidance brings relief."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Relief reinforces avoidance, so the learned response may continue."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Freud stresses unconscious motives; behaviourism, learning and consequences."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "autoHeight": true,
+          "fontSize": 26
+        },
+        "revealStep": 1,
+        "reveal": "rise",
+        "generatedFrom": {
+          "factRefs": ["o3", "x1", "m3"],
+          "promptVersion": "generate-slide.v25",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:56.633Z"
+        },
+        "authoredBy": "ai"
+      }
+    ],
+    "notes": "Talk through how each account explains the same behaviour. Behaviourists focus on observable behaviour and learning; this does not mean they claim thoughts and feelings do not exist. Ask: What evidence might help distinguish these explanations?"
+  }
+}

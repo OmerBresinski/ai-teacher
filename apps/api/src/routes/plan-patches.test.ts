@@ -232,6 +232,35 @@ describe("confirmLesson (/generate)", () => {
     expect(lesson.slides).toEqual(before.slides);
   });
 
+  test("a theme picked at confirm is stored in both branches; none sent keeps the plan-time one (ruling 113)", () => {
+    const before = { ...planned(), themeId: "chalk" };
+    const kept = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before), themeId: "night-lab" },
+      { jobId, now },
+    );
+    expect(kept.replan).toBe(false);
+    expect(kept.lesson.themeId).toBe("night-lab");
+    const replanned = confirmLesson(
+      before,
+      {
+        expectedRevision: 1,
+        objectives: sameObjectives(before),
+        slideCount: 6,
+        themeId: "night-lab",
+      },
+      { jobId, now },
+    );
+    expect(replanned.replan).toBe(true);
+    expect(replanned.lesson.themeId).toBe("night-lab");
+    const unsent = confirmLesson(
+      before,
+      { expectedRevision: 1, objectives: sameObjectives(before) },
+      { jobId, now },
+    );
+    expect(unsent.lesson.themeId).toBe("chalk");
+  });
+
   test("a lesson written before plans existed is confirmed as revision 1", () => {
     const { plan: _plan, ...legacy } = planned();
     const { lesson, replan } = confirmLesson(
