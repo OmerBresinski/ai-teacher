@@ -3,7 +3,7 @@
    energy, can't sit still: it spins in, lands with a squash, rebounds, lands again and pops a
    hero pose; at rest it breathes, blinks, now and then hops or glances at the copy, and spins
    when hovered or tapped. The rest pose is the markup, so without JavaScript or with reduced
-   motion nothing moves. */
+   motion nothing moves, including when reduced motion is turned on mid-page. */
 (() => {
   const section = document.querySelector("[data-hiw]");
   if (!section || !window.Flipbook || !("IntersectionObserver" in window)) return;
@@ -200,4 +200,14 @@
     { threshold: 0.6 },
   );
   observer.observe(side);
+  // Reduced motion turned on before the entrance: show the character at rest straight away.
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  reduced.addEventListener("change", function disarm() {
+    if (!reduced.matches) return;
+    reduced.removeEventListener("change", disarm);
+    if (!section.classList.contains("hiw-armed")) return;
+    observer.disconnect();
+    slides.start();
+    section.classList.remove("hiw-armed");
+  });
 })();

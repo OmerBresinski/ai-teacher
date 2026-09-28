@@ -623,7 +623,8 @@
      drawings may occupy; `shake` takes the impact shake; `shadow` is the page's one ground shadow,
      which follows the drawings. `idle` = { clips: { hop, glance, burst }, breath, lift }.
      Returns { start() }; call it when the section comes into view. Nothing runs while the section
-     is off screen or the tab is hidden. */
+     is off screen or the tab is hidden. Turning on reduced motion at any point stops it and shows
+     the artwork at rest; turning it off again resumes only the resting life. */
   function player(actor, { entrance, idle, poses }, { region, shake, shadow, section }) {
     for (const [name, over] of Object.entries(poses || {}))
       P[name] = Object.assign(structuredClone(P.rest), over);
@@ -716,16 +717,49 @@
     let blinkAt0 = 0,
       beatAt = 0,
       nextBeat = "hop",
-      lastBurst = -1e9;
-    const live = () =>
-      onScreen &&
-      document.visibilityState === "visible" &&
-      !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      lastBurst = -1e9,
+      shakes = [];
+    // Read `matches` only in the change handler: Chromium drops the change event when `matches` is
+    // polled between the switch and the event, which the entrance's every-frame check would do.
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    let reduce = reduced.matches;
+    const live = () => onScreen && document.visibilityState === "visible" && !reduce;
+    const moving = () => mode === "entrance" || mode === "clip" || mode === "idle";
 
     function wake() {
       clearTimeout(timer);
-      if (!raf && live() && mode !== "waiting") raf = requestAnimationFrame(frame);
+      if (!raf && live() && moving()) raf = requestAnimationFrame(frame);
     }
+    // Reduced motion, at any moment: stop everything and put the original artwork back at rest.
+    function still() {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      clearTimeout(timer);
+      for (const a of shakes) a.cancel();
+      shakes = [];
+      paint("");
+      group.removeAttribute("clip-path");
+      shadow.style.transform = shadow.style.opacity = "";
+      base.style.visibility = "";
+      clip = from = null;
+      mode = "still";
+    }
+    // Motion allowed again: resume the resting life only; the entrance never replays.
+    function resume() {
+      const now = performance.now();
+      blinkAt0 = beatAt = 0;
+      beginIdle(now);
+      render(idlePose(0, 0)); // the rest drawing matches the artwork, so the swap is seamless
+      base.style.visibility = "hidden";
+      lastPaint = now;
+      wake();
+    }
+    reduced.addEventListener("change", () => {
+      reduce = reduced.matches;
+      if (reduce) {
+        if (mode !== "waiting") still();
+      } else if (mode === "still") resume();
+    });
     function sleepUntil(at, now) {
       clearTimeout(timer);
       timer = setTimeout(wake, Math.max(0, at - now));
@@ -745,7 +779,7 @@
     }
     function frame(now) {
       raf = 0;
-      if (!live()) return;
+      if (!live() || !moving()) return;
       if (mode === "entrance") {
         const t = now - t0;
         if (t < entrance.duration) {
@@ -810,6 +844,10 @@
       start() {
         onScreen = true;
         fitClip();
+        if (reduce) {
+          mode = "still"; // the artwork already stands at rest
+          return;
+        }
         base.style.visibility = "hidden"; // hidden, not faded: fading re-rasterises the SVG
         mode = "entrance";
         t0 = performance.now();
@@ -825,7 +863,7 @@
                   : `${f1((k % 2 ? -1 : 1) * amp * (0.6 + rnd(k) * 0.4))}px ${f1((rnd(k + 5) - 0.5) * amp * 1.2)}px`,
             });
           }
-          shake.animate(kf, { delay: sh.at, duration: sh.dur });
+          shakes.push(shake.animate(kf, { delay: sh.at, duration: sh.dur }));
         }
         wake();
       },
