@@ -6,6 +6,7 @@ import {
   type TextPreset,
   type Theme,
 } from "@tj/domain/documents";
+import { artOf as themeArtOf } from "./art";
 import { newLesson, newSlide } from "./factories";
 import {
   CALLOUT_TONES,
@@ -24,7 +25,7 @@ import {
 const artOf = (t: Theme) =>
   [
     t.backgroundImage ?? "",
-    ...Object.values(t.backgrounds ?? {}).flatMap((layers) =>
+    ...Object.values(themeArtOf(t) ?? {}).flatMap((layers) =>
       (layers ?? []).flatMap((l) => [l.image, l.flipped ?? ""]),
     ),
   ].join(" ");

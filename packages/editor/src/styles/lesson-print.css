@@ -11,6 +11,8 @@
  * Imported by the lesson print page only (ADR 0022 §8): Vite ships it with that lazy chunk.
  */
 @import "./fonts.css";
+/* The playful themes' faces go only where slides render: worksheets never use them. */
+@import "./fonts-playful.css";
 @import "./slide.css";
 
 .td-print {

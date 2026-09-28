@@ -2,5 +2,7 @@
 /* @tj/editor styles: document fonts and the slide renderer (ADR 0022). Import once from the
    app that mounts the editor; the shell kit tokens come from @tj/ui/styles/globals.css. */
 @import "./fonts.css";
+/* The playful themes' faces go only where slides render: worksheets never use them. */
+@import "./fonts-playful.css";
 @import "./slide.css";
 @import "./present.css";

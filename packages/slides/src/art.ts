@@ -1,4 +1,4 @@
-import type { ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
+import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
 
 /*
  * The ten themes' art per role (UX ruling 107), in slide points (960x540). Each theme keeps one
@@ -300,3 +300,11 @@ export const THEME_ART: Record<string, Art> = {
   "night-lab": NIGHT_LAB,
   beacon: BEACON,
 };
+
+/**
+ * A theme's art per role: its own `backgrounds` when it sets the key (a test's bare theme sets it
+ * to undefined), else the catalogue's. Kept out of `THEMES` so worksheets, which draw no slide art,
+ * do not carry it.
+ */
+export const artOf = (t: Theme): Theme["backgrounds"] =>
+  "backgrounds" in t ? t.backgrounds : THEME_ART[t.id];

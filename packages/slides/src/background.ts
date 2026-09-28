@@ -7,6 +7,7 @@ import {
   type ThemeArtLayer,
   type ThemeArtRole,
 } from "@tj/domain/documents";
+import { artOf } from "./art";
 import { figureGroupOf } from "./figures";
 import { DIAGRAM_NAME } from "./look";
 
@@ -65,7 +66,7 @@ export function themeArt(
   side: ArtSide = "left",
 ): ThemeArtLayer[] {
   if (side === "full" && role === "picture") return [];
-  const layers = theme.backgrounds?.[role] ?? [];
+  const layers = artOf(theme)?.[role] ?? [];
   if (role !== "picture" || side !== "right") return layers;
   return layers.map((l) => ({ ...l, image: l.flipped ?? l.image, x: SLIDE_W - l.x - l.w }));
 }
@@ -119,7 +120,7 @@ const cssLayer = (l: ThemeArtLayer) =>
  */
 export function slideBackground(theme: Theme, slide: Slide): string | undefined {
   if (slide.background?.color || slide.background?.image) return undefined;
-  if (!theme.backgrounds) {
+  if (!artOf(theme)) {
     return slide.background?.art === "plain" ? undefined : theme.backgroundImage;
   }
   const layers = slideArtLayers(theme, slide);
@@ -128,7 +129,7 @@ export function slideBackground(theme: Theme, slide: Slide): string | undefined 
 
 /** Whether a theme has art variants a teacher can choose between. */
 export const hasArtVariants = (theme: Theme): boolean =>
-  !!theme.backgrounds && Object.values(theme.backgrounds).some((l) => l && l.length > 0);
+  !!artOf(theme) && Object.values(artOf(theme) ?? {}).some((l) => l && l.length > 0);
 
 /**
  * The art choices worth offering on this slide: auto, every role whose art fits the slide whole

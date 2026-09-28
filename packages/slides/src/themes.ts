@@ -1,5 +1,4 @@
 import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
-import { THEME_ART } from "./art";
 import { FONT_STACKS } from "./fonts";
 
 /**
@@ -353,8 +352,8 @@ const BASE: Theme[] = [
   },
 ];
 
-/** Every theme with its art per slide role (`art.ts`, UX ruling 107). */
-export const THEMES: Theme[] = BASE.map((t) => ({ ...t, backgrounds: THEME_ART[t.id] }));
+/** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
+export const THEMES: Theme[] = BASE;
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 

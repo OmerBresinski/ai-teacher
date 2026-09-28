@@ -7,6 +7,7 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { artOf } from "./art";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { PLACEHOLDER_IMAGE } from "./layouts";
@@ -233,7 +234,7 @@ function cover(slide: Slide, t: Theme): Slide {
   if (slide.elements.some((e) => e.type === "image")) return slide;
   // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
   // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
-  if (t.backgrounds?.title?.length) {
+  if (artOf(t)?.title?.length) {
     const elements = slide.elements.map((el): SlideElement => {
       if (el.type === "shape")
         return el.name === "Accent rule" ? { ...el, fill: t.colors.accent } : el;
