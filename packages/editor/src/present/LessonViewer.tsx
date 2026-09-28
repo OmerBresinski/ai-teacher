@@ -14,6 +14,7 @@ import { getTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideStatic } from "../slide/SlideStatic";
 import { SlideView } from "../slide/SlideView";
+import { enterPresentFullscreen } from "./use-fullscreen";
 
 /*
  * The read-only surface (TeachDeck `components/v2/present/Viewer.tsx`, `f3dbcf7`): the same
@@ -177,7 +178,15 @@ export function LessonViewer({
             {copying ? "Copying…" : "Make a copy"}
           </Button>
           {exportSlot}
-          <Button variant="primary" size="sm" onClick={() => onPresent(index + 1)}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              // In the click itself, so the browser grants it (ruling 104).
+              enterPresentFullscreen();
+              onPresent(index + 1);
+            }}
+          >
             <Play aria-hidden size={16} strokeWidth={1.5} />
             Present
           </Button>

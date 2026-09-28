@@ -16,6 +16,7 @@ import { PanelSeparator } from "../kit/Panel";
 import { SaveIndicator } from "../kit/SaveIndicator";
 import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
+import { enterPresentFullscreen } from "../present/use-fullscreen";
 import { useHistory, useLesson } from "./document-context";
 import { useCompactChrome } from "./use-compact-chrome";
 import { useMobileEditor } from "./use-mobile-editor";
@@ -68,17 +69,21 @@ export function TopBar({
   const worksheetId = lesson.artefacts?.worksheetId;
 
   const present = async () => {
+    // Before the await: the fullscreen request needs this click's gesture (ruling 104).
+    enterPresentFullscreen();
     await autosave.flush();
     onPresent();
   };
 
   const secondaryActions = (
     <>
-      <QuietButton
-        label="Theme"
-        hintLabel="Themes arrive with the slide toolbar"
-        onClick={onOpenTheme}
-      />
+      {/* Ruling 116: on a desktop the theme lives with the slides (the rail's Theme button); a
+          phone has no rail, so it stays in the More menu there. */}
+      {mobile && onOpenTheme ? (
+        <Button variant="ghost" size="sm" onClick={onOpenTheme}>
+          Theme
+        </Button>
+      ) : null}
       <QuietButton label="Share" hintLabel="Sharing is not available yet" />
       {onToggleFacts ? (
         <Button

@@ -12,6 +12,7 @@ const { authLayoutRoute } = await import("./routes/auth.route");
 const SHELL_ROUTES = [
   "/",
   "/sign-in",
+  "/sign-in/confirm",
   "/lessons",
   "/lessons/new",
   "/worksheets",
@@ -45,7 +46,9 @@ describe("router", () => {
 
   it("nests every signed-in route under the auth guard, and the library pages under one shell", () => {
     const ids = Object.keys(router.routesById);
-    const authed = ids.filter((id) => id !== "__root__" && id !== "/sign-in" && id !== "/auth");
+    // `/sign-in/confirm` is public: the magic-link email lands there before any session (TEACH-246).
+    const PUBLIC = new Set(["__root__", "/sign-in", "/sign-in/confirm", "/auth"]);
+    const authed = ids.filter((id) => !PUBLIC.has(id));
     expect(authed.every((id) => id.startsWith("/auth/"))).toBe(true);
     // The six shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
     expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(6);

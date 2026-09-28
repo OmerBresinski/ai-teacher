@@ -4,10 +4,9 @@ import {
   type Lesson,
   slideStepCount,
 } from "@tj/domain/documents";
-import { Button, cn, Display, IconButton, Kbd } from "@tj/ui";
+import { cn, Kbd } from "@tj/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTheme } from "../model/themes";
-import { SlideStatic } from "../slide/SlideStatic";
 import { Controls } from "./Controls";
 import { EndCard, type NextLesson } from "./EndCard";
 import { NotesPanel } from "./NotesPanel";
@@ -28,10 +27,11 @@ import {
  * gestures, fullscreen and the wake lock; everything visible is a child reading the session from
  * context. Navigation and persistence are the app's: `onExit`, `next` (series), `onProgress`
  * (TD item 5, ADR 0021 §4).
+ *
+ * There is no cover (ruling 104): the session starts on mount. Fullscreen is the Present button's
+ * to ask for, in its own click (`enterPresentFullscreen`), because a request made here, after the
+ * route change, has no user gesture and is refused.
  */
-
-/** The cover's slide picture: wide enough to read across a room, narrow enough that the title is still the loudest thing. */
-const COVER_SLIDE_W = 560;
 
 const SWIPE_PX = 48;
 const TAP_MS = 400;
@@ -102,7 +102,6 @@ function PresentSurface({
   const clearInk = ink.clearInk;
   const theme = getTheme(lesson.themeId);
   const fullscreen = useFullscreen();
-  const [started, setStarted] = useState(false);
   const [jump, setJump] = useState("");
 
   const { index, step, ended, notesOpen, blackout, tool, laser } = state;
@@ -136,25 +135,47 @@ function PresentSurface({
   }, []);
   useEffect(() => report, [report]);
 
-  useWakeLock(started);
+  // The elapsed clock in the presenter panel counts from the moment the stage opens.
+  useEffect(() => {
+    dispatch({ type: "startSession", at: Date.now() });
+  }, [dispatch]);
 
-  const { enter: enterFullscreen, exit: exitFullscreen, toggle: toggleFullscreen } = fullscreen;
+  useWakeLock(true);
+
+  const { exit: exitFullscreen, toggle: toggleFullscreen } = fullscreen;
+
+  // One Esc leaves both fullscreen and present (ruling 104). In fullscreen the browser spends
+  // the first Esc on leaving fullscreen and never delivers the key, so present follows the
+  // fullscreen change instead. A change present made itself (F, or its own exit) is not an exit.
+  const wasFullscreen = useRef(fullscreen.isFullscreen);
+  const selfLeftFullscreen = useRef(false);
 
   const exit = useCallback(() => {
     report();
+    selfLeftFullscreen.current = true;
     void exitFullscreen();
     onExit();
   }, [report, exitFullscreen, onExit]);
 
-  // The elapsed clock in the presenter panel counts from here.
-  const start = useCallback(
-    (goFullscreen: boolean) => {
-      dispatch({ type: "startSession", at: Date.now() });
-      setStarted(true);
-      if (goFullscreen) void enterFullscreen();
-    },
-    [dispatch, enterFullscreen],
-  );
+  const toggleFullscreenByKey = useCallback(() => {
+    selfLeftFullscreen.current = wasFullscreen.current;
+    void toggleFullscreen();
+  }, [toggleFullscreen]);
+
+  useEffect(() => {
+    const was = wasFullscreen.current;
+    wasFullscreen.current = fullscreen.isFullscreen;
+    if (!was || fullscreen.isFullscreen) return;
+    if (selfLeftFullscreen.current) {
+      selfLeftFullscreen.current = false;
+      return;
+    }
+    // Esc was meant for an open panel, dialog, overview or blackout: only fullscreen ends.
+    const s = stateRef.current;
+    if (s.overviewOpen || s.blackout !== "none" || panelToClose(s)) return;
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    exit();
+  }, [fullscreen.isFullscreen, exit]);
 
   /* ---------------- keyboard ---------------- */
 
@@ -266,7 +287,7 @@ function PresentSurface({
           return dispatch({ type: "toggleBlackout", blackout: "white" });
         case "f":
           take();
-          void toggleFullscreen();
+          toggleFullscreenByKey();
           return;
         case "t": {
           take();
@@ -322,7 +343,7 @@ function PresentSurface({
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(timer.current);
     };
-  }, [exit, toggleFullscreen, dispatch, clearInk, report]);
+  }, [exit, toggleFullscreenByKey, dispatch, clearInk, report]);
 
   /* ---------------- pointer: tap thirds, swipe, click ---------------- */
 
@@ -382,8 +403,8 @@ function PresentSurface({
     >
       <div className="relative min-w-0 flex-1">
         <div
-          // When the cover goes, slide 1 arrives rather than cutting in — opacity only, once.
-          className={cn("absolute inset-0", started && "motion-safe:animate-fade-in")}
+          // Slide 1 arrives rather than cutting in: opacity only, once, on mount.
+          className="absolute inset-0 motion-safe:animate-fade-in"
           style={{ touchAction: "none" }}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
@@ -394,7 +415,7 @@ function PresentSurface({
         {ended ? <EndCard title={lesson.title} onExit={exit} next={next} /> : null}
         <Overview lesson={lesson} theme={theme} />
 
-        {started && blackout === "none" && !ended ? (
+        {blackout === "none" && !ended ? (
           <Controls
             slideCount={lesson.slides.length}
             stepCount={stepCount}
@@ -405,7 +426,7 @@ function PresentSurface({
 
         {/* Where the deck is, for anyone who cannot see the slide. */}
         <p className="sr-only" role="status" aria-live="polite">
-          {started ? announcement : ""}
+          {announcement}
         </p>
 
         {jump ? (
@@ -415,45 +436,6 @@ function PresentSurface({
           >
             Go to slide {jump}
             <Kbd>Enter</Kbd>
-          </div>
-        ) : null}
-
-        {!started ? (
-          <div className="absolute inset-0 z-[490] flex items-center justify-center bg-background px-8">
-            <div className="flex max-w-[46ch] flex-col items-center text-center">
-              {/* The lesson's first slide, so the cover is a lesson about to be taught. */}
-              {lesson.slides[0] ? (
-                <div
-                  aria-hidden
-                  className="mb-7 overflow-hidden rounded-card shadow-2"
-                  style={{ width: COVER_SLIDE_W }}
-                >
-                  <SlideStatic slide={lesson.slides[0]} theme={theme} width={COVER_SLIDE_W} />
-                </div>
-              ) : null}
-              <p className="font-medium text-ink-3 text-meta">{lesson.slides.length} slides</p>
-              <Display size="lg" as="h1" className="mt-2">
-                {lesson.title}
-              </Display>
-              <div className="mt-6 flex items-center gap-2">
-                <Button variant="primary" onClick={() => start(true)}>
-                  Start presenting
-                </Button>
-                <Button variant="ghost" onClick={() => start(false)}>
-                  Stay in this window
-                </Button>
-                {/* The shortcut sheet has to be signposted from the cover. */}
-                <IconButton
-                  label="Keyboard shortcuts"
-                  tooltipClassName={STAGE_SCOPE_CLASS}
-                  onClick={() => dispatch({ type: "setShortcutsOpen", open: true })}
-                >
-                  <span aria-hidden className="font-semibold text-body">
-                    ?
-                  </span>
-                </IconButton>
-              </div>
-            </div>
           </div>
         ) : null}
       </div>
