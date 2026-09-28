@@ -91,7 +91,8 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   const preview = (themeId: string) => {
-    if (tx.current === null) return;
+    // Done is waiting for the chosen theme's faces: the choice is made.
+    if (tx.current === null || applying) return;
     const theme = getTheme(themeId);
     historyRef.current.dispatch(rethemeFromReducer, opening, themeId, createMeasurer(theme));
   };

@@ -17,6 +17,13 @@ export function assertKnownTheme(themeId: unknown): void {
   }
 }
 
+/** True when the body carries no `themeId` or a catalogue one. */
+export function hasKnownOrNoTheme(document: unknown): boolean {
+  if (document === null || typeof document !== "object" || !("themeId" in document)) return true;
+  const themeId = (document as { themeId?: unknown }).themeId;
+  return themeId === undefined || (typeof themeId === "string" && isThemeId(themeId));
+}
+
 /** The same check for a whole document body (`POST /documents`, `PUT /documents/:id`). */
 export function assertKnownDocumentTheme(document: unknown): void {
   if (document !== null && typeof document === "object" && "themeId" in document) {
