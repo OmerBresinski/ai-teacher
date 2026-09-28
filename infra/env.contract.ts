@@ -1106,7 +1106,7 @@ const CONTRACT = [
     values: ["1"],
     runtimeOnly: true,
     description:
-      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. Refused together with SITE_ALLOW_PROVISIONAL.",
+      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. With SITE_ALLOW_PROVISIONAL=1 too, the stand-in examples stay noindex and out of the sitemap.",
   },
   {
     name: "SITE_ALLOW_PROVISIONAL",
