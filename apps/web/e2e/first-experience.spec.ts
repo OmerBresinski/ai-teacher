@@ -121,13 +121,10 @@ test.describe("first-experience design preview", () => {
     const scene = page.locator(".handover-stage .production-scene");
     await expect(scene).toHaveCount(1);
     await expect(scene.locator("#package, [id$='package']")).toHaveCount(1);
-    const visibleOwners = await scene
-      .locator(".person")
-      .evaluateAll(
-        (actors) =>
-          actors.filter((actor) => Number.parseFloat(getComputedStyle(actor).opacity) > 0.05)
-            .length,
-      );
+    const visibleOwners = await scene.locator(".person").evaluateAll(
+      // Characters are never faded: an off-stage actor is hidden with `visibility`.
+      (actors) => actors.filter((actor) => getComputedStyle(actor).visibility !== "hidden").length,
+    );
     expect(visibleOwners).toBe(1);
   });
 

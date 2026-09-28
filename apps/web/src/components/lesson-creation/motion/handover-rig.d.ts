@@ -18,6 +18,10 @@ export interface HandoverRig {
   snapshot(actor: number): RigPose;
   restore(pose: RigPose): void;
   settle(beat: number): void;
+  react(
+    name: "nod" | "leap" | "leave",
+    options?: { flight?: number; onComplete?: () => void },
+  ): void;
   calm(value: boolean): void;
   pause(paused: boolean): void;
   readonly reduced: boolean;

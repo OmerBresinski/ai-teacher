@@ -1,10 +1,13 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin, PERSONA_SPEED } from "./character-origin";
-import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
+import type { HandoverRig } from "./motion/handover-rig.js";
+
+type RigModule = typeof import("./motion/handover-rig.js");
 
 /** Data drives the story; completed gestures hand over without holding up the editor. */
 export function GenerationStory({
   gsap,
+  rigModule,
   includedWorksheet,
   origin,
   progress,
@@ -15,6 +18,7 @@ export function GenerationStory({
   onFinished,
 }: {
   gsap: typeof import("gsap").gsap;
+  rigModule: RigModule;
   includedWorksheet: boolean;
   origin: CharacterOrigin | null;
   progress: number;
@@ -33,7 +37,7 @@ export function GenerationStory({
     if (!root) return;
     let cancelled = false;
     const context = gsap.context(() => {
-      rig.current = createHandoverRig(root, gsap);
+      rig.current = rigModule.createHandoverRig(root, gsap);
     });
     const actor = rig.current;
     if (!actor) return;
@@ -99,14 +103,35 @@ export function GenerationStory({
       else actor.settle(7);
       entry = gsap.delayedCall(origin ? CHARACTER_ENTRY_SECONDS : 0, () => {
         root.dataset.entry = "arrived";
+        handoverFrom = performance.now();
         actor.play(includedWorksheet ? 8 : 11, {
           handoff: { from: 2, to: 1 },
           speed: includedWorksheet ? 1.45 : 1,
-          onComplete: () => work(latest.current.ready ? 4 : 3),
+          onComplete: () => {
+            work(latest.current.ready ? 4 : 3);
+          },
         });
         actor.pause(latest.current.paused);
       });
     }
+    // The companion's flight and exit: the character leaps with the flight and walks out at the end.
+    const host = root.closest(".creation-generation-actor");
+    // The leap may join once the receiver has arrived and is carrying the work to centre.
+    let handoverFrom = !skipIntro && !actor.reduced ? Number.POSITIVE_INFINITY : 0;
+    const onLeap = (event: Event) => {
+      const detail = (event as CustomEvent<{ flight: number; accepted: boolean }>).detail;
+      if (actor.reduced || performance.now() - handoverFrom < 1500) return;
+      detail.accepted = true;
+      actor.react("leap", { flight: detail.flight });
+    };
+    const onLeave = (event: Event) => {
+      const detail = (event as CustomEvent<{ done: () => void; accepted: boolean }>).detail;
+      if (actor.reduced) return;
+      detail.accepted = true;
+      actor.react("leave", { onComplete: detail.done });
+    };
+    host?.addEventListener("cast:leap", onLeap);
+    host?.addEventListener("cast:leave", onLeave);
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const changed = () => {
       if (media.matches) {
@@ -121,11 +146,13 @@ export function GenerationStory({
       cancelled = true;
       entry?.kill();
       media.removeEventListener("change", changed);
+      host?.removeEventListener("cast:leap", onLeap);
+      host?.removeEventListener("cast:leave", onLeave);
       actor.dispose();
       rig.current = null;
       context.revert();
     };
-  }, [includedWorksheet, origin, skipIntro, gsap]);
+  }, [includedWorksheet, origin, skipIntro, gsap, rigModule]);
   useEffect(() => {
     rig.current?.pause(paused);
   }, [paused]);

@@ -1,7 +1,9 @@
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadGsap } from "@/lib/gsap";
 import { type CharacterCapture, PERSONA_SPEED } from "./character-origin";
-import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
+import type { HandoverRig } from "./motion/handover-rig.js";
+
+type RigModule = typeof import("./motion/handover-rig.js");
 
 export type CharacterStage =
   | "brief"
@@ -41,10 +43,13 @@ export function CharacterHost({
   slidesPhase?: "making" | "stacking";
 }) {
   const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
+  const rigModule = useRef<RigModule | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void loadGsap()
-      .then((runtime) => {
+    // The rig is lazy: the form never waits for the characters' chunk.
+    void Promise.all([loadGsap(), import("./motion/handover-rig.js")])
+      .then(([runtime, module]) => {
+        rigModule.current = module;
         if (!cancelled) setGsap(runtime);
       })
       .catch(() => {
@@ -78,7 +83,8 @@ export function CharacterHost({
     if (!element.current || !gsap) return;
     previous.current = initialStage;
     const context = gsap.context(() => {
-      rig.current = createHandoverRig(element.current as HTMLDivElement, gsap);
+      rig.current =
+        rigModule.current?.createHandoverRig(element.current as HTMLDivElement, gsap) ?? null;
     });
     return () => {
       rig.current?.dispose();
@@ -89,7 +95,8 @@ export function CharacterHost({
   useEffect(() => {
     const actor = rig.current;
     if (!actor || !gsap) return;
-    const from = OWNER[previous.current],
+    const prior = previous.current;
+    const from = OWNER[prior],
       to = OWNER[stage];
     previous.current = stage;
     let cancelled = false;
@@ -149,6 +156,10 @@ export function CharacterHost({
         speed: 1.45,
         onComplete: () => work(BEAT[to] ?? 0),
       });
+    } else if (prior !== stage) {
+      // Same character, next step: it acknowledges the teacher's move with a nod, then carries on.
+      actor.react("nod");
+      work(stage === "objectives" ? 1 : (BEAT[to] ?? 0));
     } else work(stage === "objectives" ? 1 : (BEAT[to] ?? 0));
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const changed = () => {

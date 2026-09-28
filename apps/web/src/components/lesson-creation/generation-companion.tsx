@@ -31,11 +31,17 @@ export function GenerationCompanion({
   onExited: () => void;
 }) {
   const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
+  const [rigModule, setRigModule] = useState<typeof import("./motion/handover-rig.js") | null>(
+    null,
+  );
   useEffect(() => {
     let cancelled = false;
-    void loadGsap()
-      .then((runtime) => {
-        if (!cancelled) setGsap(runtime);
+    // Motion is lazy: the editor never waits for the characters' chunk.
+    void Promise.all([loadGsap(), import("./motion/handover-rig.js")])
+      .then(([runtime, module]) => {
+        if (cancelled) return;
+        setRigModule(module);
+        setGsap(runtime);
       })
       .catch(() => {
         /* The editor remains usable without decorative motion. */
@@ -116,19 +122,27 @@ export function GenerationCompanion({
         centred.current = false;
         const slot = destination.getBoundingClientRect();
         actor.dataset.handover = "settling";
+        // The character crouches and leaps with the flight when it is free to (not mid-pass).
+        const leap = new CustomEvent("cast:leap", { detail: { flight: 0.65, accepted: false } });
+        actor.dispatchEvent(leap);
         flight.current = gsap
           .timeline({
             onComplete: () => {
               actor.dataset.handover = "settled";
             },
           })
-          .to(actor, {
-            x: slot.left,
-            y: slot.top,
-            scale: 1,
-            duration: 0.65,
-            ease: "power2.inOut",
-          })
+          // The scrim clears at once; only the flight waits out the 130 ms crouch.
+          .to(
+            actor,
+            {
+              x: slot.left,
+              y: slot.top,
+              scale: 1,
+              duration: 0.65,
+              ease: "power2.inOut",
+            },
+            leap.detail.accepted ? 0.13 : 0,
+          )
           .to(scrim.current, { autoAlpha: 0, duration: 0.45, ease: "power1.out" }, 0);
       };
     } else {
@@ -169,19 +183,21 @@ export function GenerationCompanion({
     if (finishing.current || !gsap) return;
     finishing.current = true;
     flight.current?.kill();
-    exit.current = gsap.to(stage.current, {
-      opacity: 0,
-      duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 0.3,
-      onComplete: onExited,
+    // The character walks out of the slot; it is never faded. Without motion it simply goes.
+    const leave = new CustomEvent("cast:leave", {
+      detail: { done: () => onExited(), accepted: false },
     });
+    stage.current?.dispatchEvent(leave);
+    if (!leave.detail.accepted) onExited();
   };
   return (
     <div className="creation-generation-layer" aria-hidden="true">
       <div ref={scrim} className="creation-generation-scrim" />
       <div ref={stage} className="creation-generation-actor" data-handover="passing">
-        {gsap ? (
+        {gsap && rigModule ? (
           <GenerationStory
             gsap={gsap}
+            rigModule={rigModule}
             includedWorksheet={includedWorksheet}
             origin={origin}
             progress={progress}

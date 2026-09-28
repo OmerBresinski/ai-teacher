@@ -1,3 +1,5 @@
+import { drawnBody, restBody } from "./body-draw.js";
+
 // Original Fan.Check.Square geometry and gestures; demo gallery/observers removed.
 const card = (fill = "#faf4df") =>
   `<rect x="-31" y="-22" width="62" height="44" rx="2" fill="${fill}"/><path class="detail" d="M-20 10 -8-3 3 6 14-8 23 10Z" fill="#e88f52"/><circle class="detail" cx="16" cy="-10" r="4" fill="#f5c054"/>`;
@@ -28,35 +30,43 @@ function setup(el, i, gsap) {
     lag: 0,
     grip: 0,
   };
-  const state = { el, visible: false, t: null };
+  const state = { el, visible: false, t: null, b: restBody(), life: undefined };
+  const drawn = drawnBody(b, "slides");
+  const sidePath = el.querySelector(".side");
+  let lastEdge = null;
 
   function paint() {
-    const sx = 1 - Math.abs(p.turn) * 0.08,
-      skew = p.turn * 1.5;
+    // The deck's three-quarter look is a drawn turn and lean, not a skew of the drawing.
     const edge = 5 + Math.abs(p.turn) * 2;
-    el.querySelector(".side").setAttribute(
-      "d",
-      `M-59-70l${-edge} -5V${54 - edge * 0.25}L-59 54ZM-59-70l${-edge} -5L${64 - edge} -63 64-58Z`,
-    );
-    b.setAttribute(
-      "transform",
-      `translate(${p.x} ${p.y}) rotate(${p.lean}) skewY(${skew}) scale(${sx} 1)`,
-    );
-    // Match SVG's complete body transform, keeping shoulders and hips attached.
-    const angle = (p.lean * Math.PI) / 180;
+    if (edge !== lastEdge) {
+      lastEdge = edge;
+      drawn.source(
+        sidePath,
+        `M-59-70l${-edge} -5V${54 - edge * 0.25}L-59 54ZM-59-70l${-edge} -5L${64 - edge} -63 64-58Z`,
+      );
+    }
+    const pose = { ...state.b, lean: state.b.lean + p.lean, th: state.b.th + p.turn * 0.05 };
+    drawn.paint(pose, state.life);
+    const shift = `translate(${p.x} ${p.y})`;
+    if (b.getAttribute("transform") !== shift) b.setAttribute("transform", shift);
     const joint = (x, y) => {
-      x *= sx;
-      y += x * Math.tan((skew * Math.PI) / 180);
-      return {
-        x: p.x + x * Math.cos(angle) - y * Math.sin(angle),
-        y: p.y + x * Math.sin(angle) + y * Math.cos(angle),
-      };
+      const [jx, jy] = drawn.map(x, y);
+      return { x: p.x + jx, y: p.y + jy };
     };
     const hipL = joint(-35, 57),
       hipR = joint(35, 64);
+    // Feet stay planted unless the deck hops; a stride and a tuck are drawn into them.
+    const B = state.b,
+      lift = B.ty - B.tuck * 20;
+    const foot = (side) => {
+      const s = B.stride * side;
+      return [s * 16, lift - Math.max(0, s) * 9];
+    };
+    const [flx, fly] = foot(-1),
+      [frx, fry] = foot(1);
     legs.setAttribute(
       "d",
-      `M${hipL.x} ${hipL.y}Q${p.x - 43} 239 164 249l-12 2M${hipR.x} ${hipR.y}Q${p.x + 38} 241 231 249l14 1`,
+      `M${hipL.x} ${hipL.y}Q${p.x - 43 + flx / 2} ${239 + fly / 2} ${164 + flx} ${249 + fly}l-12 2M${hipR.x} ${hipR.y}Q${p.x + 38 + frx / 2} ${241 + fry / 2} ${231 + frx} ${249 + fry}l14 1`,
     );
     const shL = joint(-59, 0),
       shR = joint(64, 5);
