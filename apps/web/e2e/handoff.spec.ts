@@ -129,11 +129,12 @@ test.describe("handoff: the editor end to end", () => {
     await expect(page.getByRole("toolbar", { name: "Image" })).toBeVisible();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
 
-    // Present with fullscreen refused ("Stay in this window"), open and close the overview, back.
+    // Present in one click, straight onto the slide the editor was on (ruling 104), open and close
+    // the overview, back.
     await page.getByRole("button", { name: "Present" }).click();
-    await expect(page).toHaveURL(/present\?from=edit$/);
-    await page.getByRole("button", { name: "Stay in this window" }).click();
-    await expect(page.getByRole("status").first()).toContainText("Slide 1 of 7");
+    await expect(page).toHaveURL(/present\?slide=2&from=edit$/);
+    await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
+    await expect(page.getByRole("status").first()).toContainText("Slide 2 of 7");
     await page.keyboard.press("o");
     const overview = page.getByRole("dialog");
     await expect(overview).toBeVisible();

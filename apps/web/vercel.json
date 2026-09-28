@@ -69,6 +69,15 @@
       ]
     },
     {
+      "source": "/sign-in/confirm",
+      "headers": [
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
       "source": "/homepage/(.*)",
       "headers": [
         {

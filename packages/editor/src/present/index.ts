@@ -6,3 +6,4 @@ export type { NextLesson } from "./EndCard";
 export { LessonViewer, type LessonViewerProps, type PendingSlide } from "./LessonViewer";
 export { type PresentProgress, PresentView, type PresentViewProps } from "./PresentView";
 export { PRESENT_SHORTCUT_GROUPS, PRESENT_SHORTCUTS, type PresentShortcut } from "./shortcuts";
+export { enterPresentFullscreen } from "./use-fullscreen";

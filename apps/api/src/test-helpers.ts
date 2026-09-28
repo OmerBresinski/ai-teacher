@@ -55,3 +55,17 @@ export function fakeSql(up: boolean): TestDb {
 export function testApp(db: TestDb = fakeSql(true)) {
   return createApp({ env: TEST_ENV, db, logger: silentLogger });
 }
+
+/**
+ * The emailed magic link opens the web confirm page (`/sign-in/confirm?token=…&callbackURL=…`,
+ * TEACH-246); its "Sign in" button navigates to the api verify URL with the same query. Tests that
+ * sign in through the api follow that button by hand.
+ */
+export function verifyUrlFromEmailLink(link: string | undefined, apiBase: string): string {
+  if (!link) throw new Error("no magic link captured");
+  const confirm = new URL(link);
+  if (confirm.pathname !== "/sign-in/confirm") throw new Error(`not a confirm link: ${link}`);
+  const verify = new URL("/auth/magic-link/verify", apiBase);
+  verify.search = confirm.search;
+  return verify.toString();
+}

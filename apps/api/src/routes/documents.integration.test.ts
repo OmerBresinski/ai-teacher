@@ -294,6 +294,24 @@ describeDb("/documents against Postgres", () => {
   });
 
   describe("PUT /documents/:id", () => {
+    test("an unknown themeId is refused only when the save introduces it (TEACH-258)", async () => {
+      // A lesson stored under a theme the catalogue no longer has stays savable.
+      const legacy = await seedLesson(wsA, { themeId: "retired-theme" });
+      const kept = await send(wsA, "PUT", `/documents/${legacy.id}`, {
+        document: { ...legacy.body, title: "Still savable" },
+        expectedUpdatedAt: legacy.updatedAt.toISOString(),
+      });
+      expect(kept.status).toBe(200);
+
+      const row = await seedLesson(wsA);
+      const refused = await send(wsA, "PUT", `/documents/${row.id}`, {
+        document: { ...row.body, themeId: "no-such-theme" },
+        expectedUpdatedAt: row.updatedAt.toISOString(),
+      });
+      expect(refused.status).toBe(422);
+      expect((await errorOf(refused)).message).toBe("That theme does not exist.");
+    });
+
     test("200 with the row's updatedAt: body replaced, updatedAt advanced, title promoted", async () => {
       const row = await seedLesson(wsA);
       const res = await send(wsA, "PUT", `/documents/${row.id}`, {

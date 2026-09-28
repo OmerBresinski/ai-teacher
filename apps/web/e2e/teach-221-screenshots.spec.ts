@@ -146,7 +146,6 @@ test("captures triangle diagrams in the editor and on the stage, and the PowerPo
       await page.screenshot({ path: `/tmp/teach-221-${themeId}-editor-${name}.png` });
 
       await page.goto(`/l/${id}/present?slide=${i + 1}`);
-      await page.getByRole("button", { name: "Stay in this window" }).click();
       await expect(page.locator('[data-slide-mode="present"]')).toHaveCount(1);
       await expect(page.getByRole("status").first()).toContainText(`Slide ${i + 1} of`);
       await page.waitForTimeout(600);

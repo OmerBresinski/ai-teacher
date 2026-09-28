@@ -36,3 +36,36 @@ export function sanitiseRedirectPath(target: string | undefined): string {
   const path = url.pathname + url.search + url.hash;
   return isSameOriginPath(path) ? path : "/";
 }
+
+/**
+ * Where better-auth sends the browser after the magic link is verified or Google signs the teacher
+ * in. Same-origin paths only; a stale `?error=…` from a previous failed attempt is dropped
+ * (TEACH-68).
+ */
+export function callbackUrl(origin: string, redirect: string | undefined): string {
+  return origin + sanitiseRedirectPath(redirect);
+}
+
+/**
+ * Where better-auth sends the browser when verification or the Google round trip fails. It appends
+ * `error=<code>` itself, so we point it back at `/sign-in` and keep `redirect` so the teacher can
+ * retry to the same place.
+ */
+export function errorCallbackUrl(origin: string, redirect: string | undefined): string {
+  const url = new URL("/sign-in", origin);
+  url.searchParams.set("redirect", sanitiseRedirectPath(redirect));
+  return url.toString();
+}
+
+/**
+ * The path of a callback that is either a same-origin path or an absolute URL on `origin` (the
+ * magic-link email carries absolute callbacks, TEACH-246). Anything else, including another
+ * origin, is `undefined`.
+ */
+export function pathOnOrigin(target: string | undefined, origin: string): string | undefined {
+  if (target === undefined) return undefined;
+  if (isSameOriginPath(target)) return target;
+  if (!URL.canParse(target)) return undefined;
+  const url = new URL(target);
+  return url.origin === origin ? url.pathname + url.search + url.hash : undefined;
+}
