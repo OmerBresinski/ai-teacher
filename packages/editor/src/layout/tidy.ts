@@ -7,7 +7,7 @@ import type {
   SlideElement,
   Theme,
 } from "@tj/domain/documents";
-import { BODY_Y } from "@tj/slides";
+import { BODY_Y, SAFE } from "@tj/slides";
 import { cloneSlide, docFromText } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
@@ -318,6 +318,52 @@ function levelHeadings(slides: Slide[], theme: Theme, measure: Measurer): Slide[
   }));
 }
 
+/**
+ * The carried text boxes that take the full safe width on a continuation (ruling 102, T18-6): the
+ * picture or column they stood beside stays behind, so they would otherwise wrap early. A box that
+ * shares its row with another carried box (side-by-side columns) keeps its width, and so does
+ * anything on a card, which the caller leaves out of `carried`.
+ */
+function fullWidth(carried: SlideElement[]): Set<Id> {
+  const sharesRow = (a: SlideElement) =>
+    carried.some(
+      (b) =>
+        b.id !== a.id &&
+        a.y < b.y + b.h - EPS &&
+        b.y < a.y + a.h - EPS &&
+        (a.x + a.w <= b.x + EPS || b.x + b.w <= a.x + EPS),
+    );
+  return new Set(
+    carried
+      .filter((c) => (c.type === "text" || c.type === "gap-text") && !sharesRow(c))
+      .filter((c) => c.x > SAFE.x + EPS || c.w < SAFE.w - EPS)
+      .map((c) => c.id),
+  );
+}
+
+/** Set a carried box across the safe width, re-measuring an auto-height box at its new width. */
+function widen(el: SlideElement, slide: Slide, measure: Measurer): void {
+  el.x = SAFE.x;
+  el.w = SAFE.w;
+  const parts = textPartsOf(el, slide);
+  if (!parts?.autoHeight) return;
+  el.h = Math.max(
+    1,
+    Math.round(
+      measure({
+        doc: parts.doc,
+        width: el.w,
+        style: parts.style,
+        preset: parts.preset,
+        role: parts.role,
+        fontSize: parts.style?.fontSize,
+        inset: parts.inset,
+        chrome: parts.chrome,
+      }),
+    ),
+  );
+}
+
 type Plan = {
   /** The head slide's elements once the overspill has gone: shortened, or with boxes removed. */
   head: SlideElement[];
@@ -361,6 +407,10 @@ function buildPlan(
     for (const o of authored) if (o.id !== card.id && sitsOn(card, o)) group.add(o.id);
   }
 
+  const after = order.filter((c) => isFlow(c.el) && byY(c, target) > 0);
+  const moving = new Set<Id>([el.id, ...after.map((c) => c.el.id)]);
+  const wide = fullWidth([el, ...after.map((c) => c.el)].filter((r) => !group.has(r.id)));
+
   let headDoc: RichDoc | null = null;
   let tail: RichDoc | null = null;
   let tailH = el.h;
@@ -401,14 +451,18 @@ function buildPlan(
     }
     headDoc = split.head;
     tail = split.tail;
-    tailH = Math.max(1, Math.round(measure({ ...base, doc: tail })));
+    // Measured at the width the tail will have on the continuation.
+    const width = wide.has(el.id) ? SAFE.w : el.w;
+    tailH = Math.max(1, Math.round(measure({ ...base, width, doc: tail })));
+  } else if (wide.has(el.id)) {
+    const widened = structuredClone(el);
+    widen(widened, slide, measure);
+    tailH = widened.h;
   }
-
-  const after = order.filter((c) => isFlow(c.el) && byY(c, target) > 0);
-  const moving = new Set<Id>([el.id, ...after.map((c) => c.el.id)]);
   const shift = reflowedCard ? bodyTop - reflowedCard.y : bodyTop - el.y;
-  // Boxes under a shortened target close up beneath its tail.
-  const trailing = mode === "split" && !card ? tailH - el.h : 0;
+  // Boxes under a target that is shorter on the continuation (its tail, or the box set wider)
+  // close up beneath it.
+  const trailing = !card ? tailH - el.h : 0;
 
   const elements: SlideElement[] = [];
   let targetIdx = -1;
@@ -426,6 +480,10 @@ function buildPlan(
       const next = structuredClone(r);
       if (tail && (next.type === "text" || next.type === "gap-text")) next.doc = tail;
       next.y = r.y + shift;
+      if (wide.has(r.id)) {
+        next.x = SAFE.x;
+        next.w = SAFE.w;
+      }
       next.h = tailH;
       targetIdx = elements.length;
       elements.push(next);
@@ -444,6 +502,7 @@ function buildPlan(
       const next = structuredClone(r);
       // Below a card the card's bottom edge has not moved; elsewhere the box follows the target.
       next.y = card ? r.y : r.y + shift + trailing;
+      if (wide.has(r.id)) widen(next, slide, measure);
       elements.push(next);
     }
   });

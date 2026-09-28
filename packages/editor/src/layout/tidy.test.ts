@@ -9,7 +9,7 @@ import {
   type TextElement,
 } from "@tj/domain/documents";
 import { generatedFrom } from "@tj/domain/documents/fixtures";
-import { BODY_Y, materialiseSlide, measureHeadless, SAFE_BOTTOM } from "@tj/slides";
+import { BODY_Y, materialiseSlide, measureHeadless, SAFE, SAFE_BOTTOM } from "@tj/slides";
 import { docFromText, newLesson, newSlide } from "../model/factories";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
@@ -489,6 +489,72 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     if (!headSteps) throw new Error("head steps");
     expectWorkingCard(cont, docLineCount(headSteps.doc) + 1);
     expect(tidySlide(out.lesson, slide.id, ruler).outcome.changed).toBe(false);
+  });
+
+  describe("continuation text takes the full safe width (ruling 102, T18-6)", () => {
+    const picture: SlideElement = {
+      id: "pic",
+      type: "image",
+      x: 58,
+      y: 140,
+      w: 400,
+      h: 300,
+      src: "x",
+      fit: "cover",
+    };
+    const beside = (id: string, y: number, words: string): TextElement => ({
+      ...text(id, y, 200, words),
+      x: 482,
+      w: 420,
+    });
+
+    test("a list beside a picture continues across the whole safe area; the head keeps its column", () => {
+      const lesson = lessonOf([
+        text("h", 43, 60, "Why the Bolsheviks gained support", "heading"),
+        picture,
+        beside("list", 140, items(5).join("\n")),
+      ]);
+      const out = tidySlide(lesson, sidOf(lesson), ruler);
+      expect(out.outcome.continued).toBe(1);
+      const [head, cont] = out.lesson.slides;
+      expect(byId(head, "list")).toMatchObject({ x: 482, w: 420 });
+      const tail = bodies(cont)[0];
+      if (tail?.type !== "text") throw new Error("tail");
+      expect(tail).toMatchObject({ x: SAFE.x, w: SAFE.w });
+      // The picture stays on the head; nothing on the continuation stands beside the list.
+      expect(cont?.elements.some((e) => e.type === "image")).toBe(false);
+      // Its height is the tail's at the full width, not at the column's.
+      const measured = (width: number) =>
+        ruler({ doc: tail.doc, width, preset: "body", style: tail.style, inset: 0, chrome: 0 });
+      expect(tail.h).toBeLessThan(measured(420) / 2);
+    });
+
+    test("a box moved whole from beside a picture is widened and re-measured", () => {
+      const lesson = lessonOf([
+        text("h", 43, 60, "Why the Bolsheviks gained support", "heading"),
+        picture,
+        beside("p", 140, para),
+        beside("q", 470, para),
+      ]);
+      const out = tidySlide(lesson, sidOf(lesson), ruler);
+      expect(out.outcome.continued).toBe(1);
+      const moved = bodies(out.lesson.slides[1])[0];
+      if (!moved) throw new Error("moved");
+      expect(moved).toMatchObject({ x: SAFE.x, w: SAFE.w });
+      expect(byId(out.lesson.slides[0], "p")).toMatchObject({ x: 482, w: 420 });
+    });
+
+    test("a worked example's card and steps keep their widths on the continuation", () => {
+      const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", sevenSteps);
+      const out = tidySlide(lesson, slide.id, ruler);
+      const cont = out.lesson.slides[1];
+      for (const el of cont?.elements ?? []) {
+        const authored = slide.elements.find((e) => e.id === el.id);
+        if (authored && el.type !== "text") expect(el.w).toBe(authored.w);
+        if (authored && el.type === "text" && el.style.preset === "body")
+          expect({ x: el.x, w: el.w }).toEqual({ x: authored.x, w: authored.w });
+      }
+    });
   });
 
   test("a steps box grown past its card by editing still brings the card along", () => {
