@@ -492,29 +492,28 @@ function livingCast(actors: Actor[], gsap: Gsap): Cast {
     enter(stage, greet) {
       const peekers = actors.filter((a) => a.kind === "slides" || a.kind === "activity");
       const sides = actors.filter((a) => a.kind === "support" || a.kind === "answers");
-      gsap.set(
-        peekers.map((a) => a.host),
-        { yPercent: 100 },
-      );
-      gsap.set(
-        sides.map((a) => a.host),
-        { opacity: 0, y: 18 },
-      );
+      // Lift the waiting state first, in the same task, so nothing paints in between. GSAP reads an
+      // element's CSS `translate` into its own transform the first time it touches it; if the
+      // waiting `translate-y-full` were still on, the peekers would keep that offset for the whole
+      // climb and only snap into place when `clearProps` dropped it.
       stage.dataset.castStage = "live";
       const t = gsap.timeline({ delay: 0.15 });
-      t.to(
+      t.fromTo(
         peekers.map((a) => a.host),
+        { yPercent: 100, opacity: 0 },
         {
           yPercent: 0,
-          duration: 0.75,
-          ease: "back.out(1.7)",
-          stagger: 0.16,
-          clearProps: "transform",
+          opacity: 1,
+          duration: 0.9,
+          ease: "back.out(1.5)",
+          stagger: 0.18,
+          clearProps: "transform,opacity",
         },
         0,
       );
-      t.to(
+      t.fromTo(
         sides.map((a) => a.host),
+        { opacity: 0, y: 18 },
         { opacity: 1, y: 0, duration: 0.6, ease: "power2.out", stagger: 0.16, clearProps: "all" },
         0.12,
       );
