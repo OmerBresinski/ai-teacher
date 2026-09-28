@@ -1,5 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Button, Display, Input, Label, Separator } from "@tj/ui";
+import { Button, cn, Display, Input, Label, Separator } from "@tj/ui";
 import { CircleAlert, MailCheck } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
@@ -93,7 +93,7 @@ export function SignInPage() {
   const [google, setGoogle] = useState<GoogleStatus>("idle");
   const [emailFocused, setEmailFocused] = useState(false);
   const emailField = useRef<HTMLInputElement>(null);
-  const [cardBody, cardHeight] = useContentHeight<HTMLDivElement>();
+  const [cardBody, cardSize] = useContentHeight<HTMLDivElement>();
   const googleButton = useRef<HTMLButtonElement>(null);
   const submitButton = useRef<HTMLButtonElement>(null);
   const alertBox = useRef<HTMLDivElement>(null);
@@ -195,11 +195,16 @@ export function SignInPage() {
         {HEADLINE}
         <div className="relative mt-24 w-full max-w-[520px] sm:mt-32">
           <SignInCast mood={castMood} targets={castTargets} />
-          {/* The card eases to each new height (form, sent, an alert) instead of jumping to it. */}
+          {/* The card eases to each new height (form, sent, an alert) instead of jumping to it; a
+              resize or rotation that reflows it follows at once. */}
           <div
             data-sign-in-card=""
-            className="relative z-10 box-content overflow-hidden rounded-card border border-border bg-card shadow-2 motion-safe:transition-[height] motion-safe:duration-500 motion-safe:ease-out-expo"
-            style={cardHeight === null ? undefined : { height: cardHeight }}
+            className={cn(
+              "relative z-10 box-content overflow-hidden rounded-card border border-border bg-card shadow-2",
+              !cardSize?.reflowed &&
+                "motion-safe:transition-[height] motion-safe:duration-500 motion-safe:ease-out-expo",
+            )}
+            style={cardSize ? { height: cardSize.height } : undefined}
           >
             <div ref={cardBody} className="flex flex-col gap-5 p-5 sm:p-7">
               {alertMessage ? (
