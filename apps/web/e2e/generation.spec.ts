@@ -16,10 +16,11 @@ test.describe("lesson generation over the fake worker", () => {
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
-    await page.getByRole("textbox", { name: "Topic or objective" }).fill("States of matter");
+    await page.getByRole("textbox", { name: "Topic", exact: true }).fill("States of matter");
     await page.getByRole("combobox", { name: "Year group" }).click();
     await page.getByRole("option", { name: "Year 8" }).click();
-    await page.getByRole("button", { name: "Plan it" }).click();
+    // Skip planning is the one-job path this spec follows; planning first is `intake-live`.
+    await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
 
     // The shell is up while the job runs: the strip, the stage line and one ghost Stop.
@@ -74,8 +75,9 @@ test.describe("lesson generation over the fake worker", () => {
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
-    await page.getByRole("textbox", { name: "Topic or objective" }).fill("Forces and motion");
-    await page.getByRole("button", { name: "Plan it" }).click();
+    await page.getByRole("textbox", { name: "Topic", exact: true }).fill("Forces and motion");
+    // Skip planning is the one-job path this spec follows; planning first is `intake-live`.
+    await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
     const banner = page.getByTestId("generating-shell");
     // Let the job start before stopping it, so the cancel exercises the running path: the title

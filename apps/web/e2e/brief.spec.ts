@@ -1,8 +1,10 @@
 /**
- * The lesson brief (F01 item 2, TEACH-122; TEACH-177): from the library's New lesson to `/l/:id`.
+ * The lesson intake at `/lessons/new` (F01 item 2, TEACH-122; #303): the brief step, planning to
+ * objectives, and Skip planning straight to `/l/:id`.
  * The e2e worker has no Bedrock token (or a developer's has one and spends real money), so the
  * spec asserts the hand-over to the lesson page and the request shape, not a finished deck.
  */
+import { GUARD_MESSAGE } from "@tj/domain/documents";
 import { E2E_API_URL } from "../playwright.config";
 import { expect, test } from "./fixtures";
 import { MATERIAL, tinyPdf } from "./source-fixtures";
@@ -10,49 +12,41 @@ import { MATERIAL, tinyPdf } from "./source-fixtures";
 test.use({ seed: false });
 
 test.describe("lesson brief", () => {
-  test("New lesson opens the brief inside the shell with the topic focused", async ({
+  test("New lesson opens the focused intake with its heading focused", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons");
     await page.getByRole("button", { name: "New lesson" }).click();
     await expect(page).toHaveURL(/\/lessons\/new$/);
     await expect(page).toHaveTitle("New lesson · DayBack");
-    await expect(page.getByRole("navigation", { name: "Library" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Topic or objective" })).toBeFocused();
-    const planIt = page.getByRole("button", { name: "Plan it" });
-    await expect(planIt).toBeDisabled();
-    await expect(page.getByRole("status")).toHaveText("Type a topic to plan the lesson.");
-    await expect(page.getByRole("tab")).toHaveCount(0);
+    // The intake sits outside the library shell; each step announces its heading.
+    await expect(page.getByRole("navigation", { name: "Library" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeFocused();
+    await expect(page.getByRole("textbox", { name: "Topic", exact: true })).toHaveValue("");
+    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Skip planning" })).toBeDisabled();
+    await expect(page.getByRole("combobox", { name: "Year group" })).toHaveText("Year 4");
     await expect(page.getByRole("button", { name: "Blank lesson" })).toBeVisible();
-    // Nothing stored: the class selects read "Not set" with no hint.
-    await expect(page.getByRole("combobox", { name: "Subject" })).toHaveText("Not set");
-    await expect(page.getByText("From your last lesson")).toHaveCount(0);
-    // Six theme tiles are one radio group; arrow keys move the choice.
-    const tiles = page.getByTestId("theme-tiles").getByRole("radio");
-    await expect(tiles).toHaveCount(6);
-    await expect(page.getByRole("radio", { name: "Chalk & Cream" })).toBeChecked();
-    await page.getByRole("radio", { name: "Chalk & Cream" }).focus();
-    await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("radio", { name: "Playground" })).toBeChecked();
-    await expect(page.getByTestId("theme-tiles").locator("[data-slide-fluid]")).toHaveCount(6);
   });
 
-  test("?topic= prefills the topic and moves focus to Subject, never auto-submitting (TEACH-309)", async ({
+  test("?topic= prefills the topic and never auto-submits (TEACH-309)", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new?topic=Fractions%20of%20amounts");
-    await expect(page.getByRole("textbox", { name: "Topic or objective" })).toHaveValue(
+    await expect(page.getByRole("textbox", { name: "Topic", exact: true })).toHaveValue(
       "Fractions of amounts",
     );
-    await expect(page.getByRole("combobox", { name: "Subject" })).toBeFocused();
-    // Nothing has submitted: still the brief, not the lesson it would open to.
+    await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+    // Nothing has submitted: still the brief, not the plan it would open to.
     await expect(page).toHaveURL(/\/lessons\/new\?topic=/);
+    await expect(page.getByRole("heading", { name: "Let’s start with your idea." })).toBeVisible();
   });
 
-  test("?source=1 scrolls the drop zone into view and focuses Choose files (TEACH-309)", async ({
+  test("?source=1 opens the materials dialog with Choose files focused (TEACH-309)", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new?source=1");
+    await expect(page.getByRole("dialog", { name: "Add your materials" })).toBeVisible();
     // `input[type=file]` also carries an implicit "button" role under the same accessible name
     // (it is `aria-label`led "Choose files" too), so scope to the real `<button>` element.
     const chooseFiles = page.locator("button", { hasText: "Choose files" });
@@ -60,167 +54,60 @@ test.describe("lesson brief", () => {
     await expect(chooseFiles).toBeInViewport();
   });
 
-  test("the action bar stays in view at any scroll; a bad duration says why the primary is off", async ({
+  test("Next posts the brief, plans the objectives, and the year group is remembered", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
-    await page.getByRole("textbox", { name: "Topic or objective" }).fill("The water cycle");
-    await page.getByRole("button", { name: "Add class context" }).click();
-    const planIt = page.getByRole("button", { name: "Plan it" });
-    await expect(planIt).toBeEnabled();
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(planIt).toBeInViewport();
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await expect(planIt).toBeInViewport();
-
-    await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("3");
-    await expect(planIt).toBeDisabled();
-    await expect(page.getByRole("status")).toHaveText(
-      "Duration must be between 5 and 180 minutes.",
-    );
-    await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("30");
-    await expect(planIt).toBeEnabled();
-    await expect(page.getByRole("status")).toHaveCount(0);
-  });
-
-  test("questions come one at a time with the suggestion marked; Enter accepts, Skip stays", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons/new");
-    await page.getByRole("textbox", { name: "Topic or objective" }).fill("the water cycle");
-    const explain = page.getByRole("radio", { name: "Explain" });
-    await expect(explain).toBeChecked();
-    await expect(explain).toHaveAccessibleDescription(/suggested/);
-    await expect(page.getByText("suggested", { exact: true })).toBeVisible();
-    await expect(page.getByRole("radio", { name: "New to it" })).toHaveCount(0);
-
-    await explain.press("Enter");
-    await expect(page.getByTestId("question-objectiveVerb-done")).toContainText("Explain");
-    const newToIt = page.getByRole("radio", { name: "New to it" });
-    await expect(newToIt).toBeChecked();
-    await expect(newToIt).toBeFocused();
-    await page.getByRole("button", { name: "Skip" }).click();
-    await expect(page.getByTestId("question-priorConfidence-done")).toContainText(
-      "Skipped — the plan decides.",
-    );
-    await expect(page.getByRole("button", { name: "Plan it" })).toBeFocused();
-
-    const posted = page.waitForRequest(
-      (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
-    );
-    await page.getByRole("button", { name: "Plan it" }).click();
-    expect((await posted).postDataJSON()).toEqual({
-      brief: { topic: "the water cycle", answers: { objectiveVerb: "Explain the water cycle" } },
-      themeId: "chalk",
-      // One job to the end until the plan screen ships (TEACH-13 stopgap, T7).
-      skipPlanning: true,
-    });
-  });
-
-  test("topic, subject and year are enough: defaults, questions, POST /lessons, the lesson page, then the class is remembered", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons/new");
-    const topic = page.getByRole("textbox", { name: "Topic or objective" });
-    await topic.fill("Fractions of amounts");
-    await page.getByRole("combobox", { name: "Subject" }).click();
-    await page.getByRole("option", { name: "Science" }).click();
+    await page.getByRole("textbox", { name: "Topic", exact: true }).fill("Fractions of amounts");
     await page.getByRole("combobox", { name: "Year group" }).click();
     await page.getByRole("option", { name: "Year 5" }).click();
 
-    const duration = page.getByRole("spinbutton", { name: "Duration (minutes)" });
-    await expect(duration).toHaveAttribute("placeholder", "60");
-    await expect(page.getByRole("button", { name: "Plan it" })).toBeEnabled();
-    // The suggested answers travel untouched: the first question is open, the second unasked.
-    await expect(page.getByRole("radio", { name: "Explain" })).toBeChecked();
-
     const posted = page.waitForRequest(
       (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
     );
-    await page.getByRole("button", { name: "Plan it" }).click();
+    await page.getByRole("button", { name: "Next" }).click();
     const request = await posted;
-    expect(request.postDataJSON()).toEqual({
-      brief: {
-        topic: "Fractions of amounts",
-        answers: {
-          objectiveVerb: "Explain fractions of amounts",
-          priorConfidence: "New to it",
-        },
-      },
-      subject: "Science",
+    expect(request.postDataJSON()).toMatchObject({
+      brief: { topic: "Fractions of amounts", level: "standard", slideCount: 8 },
       yearGroup: "Year 5",
-      themeId: "chalk",
-      skipPlanning: true,
+      sourceIds: [],
+      skipPlanning: false,
     });
-    const response = await request.response();
-    expect(response?.status()).toBe(202);
+    expect((await request.response())?.status()).toBe(202);
+    await expect(page).toHaveURL(/\/lessons\/new\?lesson=[0-9a-f-]{36}$/);
+    await expect(page.getByRole("heading", { name: "Learning objectives" })).toBeVisible({
+      timeout: 35_000,
+    });
+    await expect(page.getByRole("textbox", { name: /^Objective / })).not.toHaveCount(0);
 
-    await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
-    // Either the job still holds the lock (banner) or it has already ended (the page's empty or
-    // editor state); the title is on screen in every case.
-    await expect(page.getByText("Fractions of amounts").first()).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page
-        .getByTestId("generating-banner")
-        .or(page.getByText("This lesson has no slides yet"))
-        .or(page.getByRole("button", { name: "Rename lesson" }))
-        .first(),
-    ).toBeVisible({ timeout: 15_000 });
-
-    // The next brief opens with the class already set and says so, until a field is changed.
+    // The next brief opens with the class already set.
     await page.goto("/lessons/new");
-    await expect(page.getByRole("combobox", { name: "Subject" })).toHaveText("Science");
     await expect(page.getByRole("combobox", { name: "Year group" })).toHaveText("Year 5");
-    await expect(page.getByText("From your last lesson")).toHaveCount(2);
-    await expect(page.getByRole("spinbutton", { name: "Duration (minutes)" })).toHaveAttribute(
-      "placeholder",
-      "60",
-    );
-    await page.getByRole("combobox", { name: "Year group" }).click();
-    await page.getByRole("option", { name: "Year 1", exact: true }).click();
-    await expect(page.getByText("From your last lesson")).toHaveCount(1);
-    await expect(page.getByRole("spinbutton", { name: "Duration (minutes)" })).toHaveAttribute(
-      "placeholder",
-      "45",
-    );
   });
 
-  test("skipping both questions posts no answers; the guard blocks a pupil reference", async ({
+  test("the guard blocks a pupil reference; Skip planning goes straight to the lesson", async ({
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
-    await page.getByRole("textbox", { name: "Topic or objective" }).fill("The water cycle");
-    // Skip settles a question and reveals the next, so Skip is clicked twice.
-    await page.getByRole("button", { name: "Skip" }).click();
-    await page.getByRole("button", { name: "Skip" }).click();
-    await expect(page.getByText("Skipped — the plan decides.")).toHaveCount(2);
-    await page.getByRole("spinbutton", { name: "Duration (minutes)" }).fill("45");
+    const topic = page.getByRole("textbox", { name: "Topic", exact: true });
+    await topic.fill("A pupil called Jamie struggles with the water cycle");
+    await expect(page.getByRole("status").filter({ hasText: GUARD_MESSAGE })).toBeVisible();
+    let posts = 0;
+    page.on("request", (request) => {
+      if (request.method() === "POST" && request.url().endsWith("/lessons")) posts += 1;
+    });
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page).toHaveURL(/\/lessons\/new$/);
+    expect(posts).toBe(0);
 
-    await page.getByRole("button", { name: "Add class context" }).click();
-    const notes = page.getByRole("textbox", { name: "Notes" });
-    await notes.fill("A pupil called Jamie struggles");
-    await notes.blur();
-    const alert = page.getByRole("alert");
-    await expect(alert).toContainText("Remove pupil names or identifiers before saving.");
-    await expect(alert.locator("mark")).toHaveText("pupil called");
-    await expect(page.getByRole("button", { name: "Plan it" })).toBeDisabled();
-    await expect(page.getByRole("status")).toHaveText(
-      "Remove pupil names or identifiers before saving.",
-    );
-    await notes.fill("Lively after lunch");
-    await expect(page.getByRole("button", { name: "Plan it" })).toBeEnabled();
-
+    await topic.fill("The water cycle");
+    await expect(page.getByText(GUARD_MESSAGE)).toHaveCount(0);
     const posted = page.waitForRequest(
       (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
     );
-    await page.getByRole("button", { name: "Plan it" }).click();
-    expect((await posted).postDataJSON()).toEqual({
-      brief: {
-        topic: "The water cycle",
-        durationMin: 45,
-        classContext: { notes: "Lively after lunch" },
-      },
-      themeId: "chalk",
+    await page.getByRole("button", { name: "Skip planning" }).click();
+    expect((await posted).postDataJSON()).toMatchObject({
+      brief: { topic: "The water cycle" },
       skipPlanning: true,
     });
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);
@@ -275,7 +162,8 @@ test.describe("lesson brief: start from your material (ADR 0027 §7)", () => {
     const posted = page.waitForRequest(
       (request) => request.method() === "POST" && request.url().endsWith("/lessons"),
     );
-    await page.getByRole("button", { name: "Plan it" }).click();
+    // Skip planning runs one job to the end, so the worker's read of the Sources is asserted too.
+    await page.getByRole("button", { name: "Skip planning" }).click();
     const body = (await posted).postDataJSON() as { sourceIds?: string[] };
     expect(body.sourceIds).toHaveLength(2);
     await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/);

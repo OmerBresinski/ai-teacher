@@ -137,7 +137,8 @@ test.describe("generating lesson", () => {
   }) => {
     const res = await page.request.post(`${E2E_API_URL}/lessons`, {
       headers: { origin: E2E_WEB_URL },
-      data: { brief: { topic: "Fractions of amounts" }, yearGroup: "Year 5" },
+      // Skip planning: a proposed plan opens on the intake, not on `/l/:id`.
+      data: { brief: { topic: "Fractions of amounts" }, yearGroup: "Year 5", skipPlanning: true },
     });
     expect(res.status(), await res.text()).toBe(202);
     const { lessonId, jobId } = (await res.json()) as { lessonId: string; jobId: string };

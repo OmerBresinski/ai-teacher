@@ -76,7 +76,7 @@ test.describe("first-experience design preview", () => {
     await openWorksheets(page);
     await page.getByRole("button", { name: "Back to objectives" }).click();
     await expect(page.getByTestId("creation-objectives")).toBeVisible();
-    await expect(page.getByRole("combobox", { name: "Slides" })).toContainText("7 slides");
+    await expect(page.getByRole("combobox", { name: "Slides" })).toContainText("8 slides");
 
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Just the slides" }).click();

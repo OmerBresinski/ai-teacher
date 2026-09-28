@@ -76,7 +76,7 @@ test.describe("accessibility (axe)", () => {
   const ROUTES = (paths: SeededPaths): { path: string; ready: RegExp | string }[] => [
     { path: "/", ready: "Home" },
     { path: "/lessons", ready: "Lessons" },
-    { path: "/lessons/new", ready: "Topic or objective" },
+    { path: "/lessons/new", ready: "Let’s start with your idea." },
     { path: "/worksheets", ready: "Worksheets" },
     { path: "/worksheets/new", ready: "From a lesson" },
     { path: "/series", ready: "Series" },
