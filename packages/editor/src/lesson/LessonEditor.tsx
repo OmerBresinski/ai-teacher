@@ -56,10 +56,9 @@ import { useMobileEditor } from "./use-mobile-editor";
  * `?` help sheet. The document lives in the TanStack Query cache under `queryKey` and is edited
  * through `useDocumentHistory` (ADR 0022 §4); the session state — selection, zoom, clipboard — is
  * React state owned here and handed down through `EditorSessionProvider`. Saving is the app's
- * `onSave` (ADR 0022 §5), debounced by `useAutosave`.
- *
- * Not wired yet: `useFitMigration` (TEACH-106), the theme dialog (TEACH-105), in-place text editing
- * (TEACH-104) — the canvas renders text statically until then.
+ * `onSave` (ADR 0022 §5), debounced by `useAutosave`. The theme picker sits at the head of the
+ * slide rail (the More menu on a phone) and re-themes and re-fits the whole lesson as one undo
+ * step (TEACH-258, ruling 116).
  */
 
 /** The single-key inserts (`SHELL_SHORTCUTS` Insert group); `i` waits for the images ticket. */
@@ -459,7 +458,9 @@ export function LessonEditor({
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>
                       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                      <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                      {mobile ? (
+                        <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                      ) : null}
                       {proposalsEnabled ? <RegenerateDialog /> : null}
                     </div>
                   </ProposalsContext.Provider>
