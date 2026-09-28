@@ -134,6 +134,24 @@ describe("CORS", () => {
     expect(res.headers.get("Access-Control-Max-Age")).toBe("600");
   });
 
+  test("preflight allows the Turnstile token header from a web origin (TEACH-243)", async () => {
+    const res = await testApp().request("/auth/sign-in/magic-link", {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://localhost:5173",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type,x-captcha-response",
+      },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:5173");
+    const allowed = (res.headers.get("Access-Control-Allow-Headers") ?? "")
+      .split(",")
+      .map((h) => h.trim().toLowerCase());
+    expect(allowed).toContain("x-captcha-response");
+    expect(allowed).toContain("content-type");
+  });
+
   test("disallowed origin gets no CORS headers", async () => {
     const res = await preflight("https://evil.example");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();

@@ -179,7 +179,7 @@ function buildApp({
     origin: (origin) => (allowed(origin) ? origin : null),
     credentials: true,
     maxAge: 600,
-    allowHeaders: ["Content-Type", "x-request-id", "Last-Event-ID"],
+    allowHeaders: ["Content-Type", "x-request-id", "Last-Event-ID", "x-captcha-response"],
     exposeHeaders: ["x-request-id"],
   });
   app.use(async (c, next) => {

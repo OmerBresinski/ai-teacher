@@ -1,14 +1,40 @@
 import { describe, expect, test } from "bun:test";
 import { tmpdir } from "node:os";
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
-import { parseEnv } from "./env";
+import { parseEnv, TURNSTILE_REQUIRED_IN_PRODUCTION } from "./env";
 
 const base = {
   DATABASE_URL: "postgres://postgres:postgres@localhost:5432/teaching_journey",
   BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-0123456789",
+  // Required in production (TEACH-243); present here so the production cases test one thing each.
+  TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
 };
 
 describe("parseEnv", () => {
+  test("TURNSTILE_SECRET_KEY is required in production and optional elsewhere (TEACH-243)", () => {
+    const production = {
+      ...base,
+      NODE_ENV: "production",
+      OPENAI_API_KEY: "k",
+      ALLOW_CONSOLE_MAIL_IN_PRODUCTION: "1",
+    };
+    const required = {
+      variable: "TURNSTILE_SECRET_KEY",
+      message: TURNSTILE_REQUIRED_IN_PRODUCTION,
+    };
+    for (const missing of [undefined, "", "   "]) {
+      expect(parseEnv({ ...production, TURNSTILE_SECRET_KEY: missing })).toEqual({
+        ok: false,
+        errors: [required],
+      });
+    }
+    expect(parseEnv(production).ok).toBe(true);
+    for (const NODE_ENV of ["development", "test"]) {
+      const r = parseEnv({ ...base, NODE_ENV, TURNSTILE_SECRET_KEY: undefined });
+      expect(r.ok && r.env.TURNSTILE_SECRET_KEY).toBeUndefined();
+    }
+  });
+
   test("applies defaults", () => {
     const r = parseEnv(base);
     expect(r.ok).toBe(true);

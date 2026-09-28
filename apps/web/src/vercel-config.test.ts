@@ -178,6 +178,16 @@ describe("vercel.json", () => {
     expect(scriptSrc, `update vercel.json script-src to ${hash}`).toContain(hash);
   });
 
+  test("CSP allows the Cloudflare Turnstile script and its challenge frame (TEACH-243)", () => {
+    for (const path of ["/", "/sign-in", "/lessons/new"]) {
+      const csp = headersFor(path)["Content-Security-Policy-Report-Only"] ?? "";
+      const directive = (name: string) =>
+        csp.split(";").find((d) => d.trim().startsWith(`${name} `)) ?? "";
+      expect(directive("script-src")).toContain("https://challenges.cloudflare.com");
+      expect(directive("frame-src").trim()).toBe("frame-src https://challenges.cloudflare.com");
+    }
+  });
+
   test("CSP style-src has no 'unsafe-inline' (the built index.html carries no inline styles)", () => {
     const csp = headersFor("/")["Content-Security-Policy-Report-Only"] ?? "";
     const styleSrc = csp.split(";").find((d) => d.trim().startsWith("style-src")) ?? "";

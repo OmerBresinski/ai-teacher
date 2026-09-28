@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // `mock.module` is not hoisted like `vi.mock`, so register both module mocks before the dynamic
@@ -11,6 +11,31 @@ mock.module("@/lib/auth", () => ({ authClient: { signIn: { magicLink, social }, 
 let providers = { google: true, microsoft: false };
 const fetchAuthProviders = mock(async () => providers);
 mock.module("@/lib/auth-providers", () => ({ fetchAuthProviders }));
+
+// Turnstile (TEACH-243): off by default (no site key), as in local dev. The Turnstile cases set a
+// site key and stand in for Cloudflare's `window.turnstile`: every render or reset issues the next
+// token. (`mock.module` would leak into the hook's own tests, so the real hook runs here.)
+const { env } = await import("@/env");
+let issued = 0;
+let turnstileOptions: { callback?: (token: string) => void } | undefined;
+const turnstileReset = mock(() => {
+  issued += 1;
+  const token = `tok-${issued}`;
+  queueMicrotask(() => turnstileOptions?.callback?.(token));
+});
+function enableTurnstile() {
+  env.VITE_TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
+  window.turnstile = {
+    render: (_el, options) => {
+      turnstileOptions = options;
+      turnstileReset();
+      return "w1";
+    },
+    reset: turnstileReset,
+    remove: mock(),
+    getResponse: mock(),
+  };
+}
 
 let search: { redirect?: string; error?: string; via?: "microsoft" } = {};
 const actualRouter = await import("@tanstack/react-router");
@@ -43,6 +68,11 @@ describe("SignInPage", () => {
     social.mockReset();
     signOut.mockReset();
     search = {};
+    env.VITE_TURNSTILE_SITE_KEY = undefined;
+    delete window.turnstile;
+    issued = 0;
+    turnstileOptions = undefined;
+    turnstileReset.mockClear();
     providers = { google: true, microsoft: false };
     fetchAuthProviders.mockClear();
   });
@@ -72,6 +102,83 @@ describe("SignInPage", () => {
     expect(status).toHaveTextContent(
       "We sent a sign-in link to ada@example.com. It works once and expires in 15 minutes.",
     );
+  });
+
+  it("sends the Turnstile token as x-captcha-response and resets the widget after (TEACH-243)", async () => {
+    enableTurnstile();
+    magicLink.mockResolvedValue({ data: { status: true }, error: null });
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+
+    await waitFor(() => expect(magicLink).toHaveBeenCalledTimes(1));
+    expect(magicLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "ada@example.com",
+        fetchOptions: { headers: { "x-captcha-response": "tok-1" } },
+      }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(/^Check your inbox/);
+    // Rendered once, then reset once after the send: the token is never reused.
+    expect(turnstileReset).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends no captcha header when Turnstile is off", async () => {
+    magicLink.mockResolvedValue({ data: { status: true }, error: null });
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    expect(magicLink.mock.calls[0]?.[0]).not.toHaveProperty("fetchOptions");
+  });
+
+  it("a rejected captcha shows the security-check retry and resets for a fresh token", async () => {
+    enableTurnstile();
+    magicLink.mockResolvedValue({
+      data: null,
+      error: { status: 403, code: "VERIFICATION_FAILED", message: "Captcha verification failed" },
+    });
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "We could not finish a quick security check. Please try again.",
+    );
+    expect(magicLink).toHaveBeenCalledWith(
+      expect.objectContaining({ fetchOptions: { headers: { "x-captcha-response": "tok-1" } } }),
+    );
+    expect(screen.getByRole("button", { name: "Email me a link" })).toBeEnabled();
+
+    // The retry sends the fresh token the reset produced.
+    magicLink.mockResolvedValue({ data: { status: true }, error: null });
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    expect(magicLink).toHaveBeenLastCalledWith(
+      expect.objectContaining({ fetchOptions: { headers: { "x-captcha-response": "tok-2" } } }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(/^Check your inbox/);
+  });
+
+  it("a challenge that never finishes shows the retry and sends nothing", async () => {
+    enableTurnstile();
+    // Cloudflare errors instead of issuing a token.
+    const failing = window.turnstile;
+    if (failing) {
+      failing.render = (_el, options) => {
+        queueMicrotask(() =>
+          (options as { "error-callback"?: (c: string) => void })["error-callback"]?.("300030"),
+        );
+        return "w1";
+      };
+      failing.reset = mock();
+    }
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.type(screen.getByLabelText("Email address"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a link" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("quick security check");
+    expect(magicLink).not.toHaveBeenCalled();
   });
 
   it("shows a plain-sentence error when sending fails", async () => {

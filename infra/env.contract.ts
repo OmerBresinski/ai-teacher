@@ -494,6 +494,19 @@ const CONTRACT = [
     description:
       "The daily `auth.anonymous-cleanup` job deletes anonymous users older than this many days whose Workspace was not claimed, with their lessons and stored files (TEACH-222). Default 14.",
   },
+  {
+    name: "TURNSTILE_SECRET_KEY",
+    services: ["api"],
+    scope: "secret",
+    local: null,
+    railway: "both",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["api"],
+    description:
+      "Cloudflare Turnstile secret key (TEACH-243; Cloudflare dashboard → Turnstile → the widget for the web hostnames). When set, `POST /auth/sign-in/anonymous` and `POST /auth/sign-in/magic-link` require an `x-captcha-response` token (400 missing, 403 failed). Required when NODE_ENV=production: set the real key on Railway production before TEACH-223 merges, or the api does not boot. Railway PR environments ignore it and run Cloudflare's test secret (`withPrEnvironmentDefaults`, keyed on `RAILWAY_ENVIRONMENT_NAME`), matching the preview web build. Unset locally turns the check off. Tests and e2e use Cloudflare's always-pass test secret `1x0000000000000000000000000000000AA` (always-fail: `2x0000000000000000000000000000000AA`). Pairs with VITE_TURNSTILE_SITE_KEY: set both, or neither.",
+  },
 
   // --- storage (ADR 0026) ------------------------------------------------------------------------
   {
@@ -1084,6 +1097,19 @@ const CONTRACT = [
     files: ["web"],
     description:
       "development | preview | production. Only `production` loads Vercel Speed Insights. On Vercel `scripts/vercel-env.ts` sets it from VERCEL_ENV at build time.",
+  },
+  {
+    name: "VITE_TURNSTILE_SITE_KEY",
+    services: ["web"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "both",
+    setBy: "manual",
+    format: "string",
+    files: ["web"],
+    description:
+      "Cloudflare Turnstile site key (public, TEACH-243), paired with the api's TURNSTILE_SECRET_KEY. When set, magic-link sign-in (and signed-out lesson creation) runs the Turnstile widget and sends its token as `x-captcha-response`. A production build (VITE_APP_ENV=production) requires it: set the real key on Vercel Production. A preview built against its Railway PR api gets Cloudflare's test site key from `scripts/vercel-env.ts`. Unset locally skips the widget; e2e uses the always-pass test key `1x00000000000000000000AA`.",
   },
   {
     name: "VITE_SHOW_SLOT_PLACEHOLDERS",

@@ -22,6 +22,7 @@ import { microsoft } from "better-auth/social-providers";
 import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
+import { captchaPlugins } from "./captcha";
 import { authIpAddress } from "./client-ip";
 import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
@@ -41,7 +42,8 @@ export type AuthEnv = Pick<
   | "GOOGLE_CLIENT_SECRET"
   | "MICROSOFT_CLIENT_ID"
   | "MICROSOFT_CLIENT_SECRET"
->;
+> &
+  Partial<Pick<Env, "TURNSTILE_SECRET_KEY">>;
 
 export interface CreateAuthOptions {
   env: AuthEnv;
@@ -205,6 +207,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
       // Linking must never delete the anonymous user: its workspace (and every lesson in it)
       // cascades from `users.id`, and the claim step needs it alive (TEACH-223).
       anonymous({ disableDeleteAnonymousUser: true }),
+      ...captchaPlugins(env),
     ],
     socialProviders: socialProviders(env, logger),
     session: {

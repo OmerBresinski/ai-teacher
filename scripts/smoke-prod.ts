@@ -83,13 +83,13 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
-      // TEACH-223: the anonymous plugin is registered but ANONYMOUS_LESSONS_ENABLED is off in
-      // production until the signed-out guard lands; a 200 here means anyone can mint a user.
-      name: "anonymous sign-in is refused while the kill switch is off (403)",
+      // TEACH-223/243: anonymous sign-in is always on, behind Turnstile. Without a token the
+      // captcha plugin answers 400 before a user exists; a 200 here means anyone can mint a user.
+      name: "anonymous sign-in without a Turnstile token is refused (400)",
       method: "POST",
       path: "/auth/sign-in/anonymous",
       headers: { ...browser, "Content-Type": "application/json" },
-      expect: 403,
+      expect: 400,
     },
     // TEACH-222
     {
@@ -293,6 +293,19 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
         "access-control-allow-origin": webOrigin,
         "access-control-allow-credentials": "true",
       },
+    },
+    // TEACH-243
+    {
+      // Turnstile gates magic-link sign-in: without an `x-captcha-response` token the captcha
+      // plugin answers 400 MISSING_RESPONSE before any mail is sent. A 200 means anyone can make
+      // the api email any address. The address is on a reserved TLD, so nothing is delivered even
+      // if the gate regresses. Spends one of better-auth's three `/sign-in*` requests per 10 s.
+      name: "magic-link sign-in without a Turnstile token is refused (400)",
+      method: "POST",
+      path: "/auth/sign-in/magic-link",
+      headers: { ...browser, "Content-Type": "application/json" },
+      body: () => JSON.stringify({ email: "smoke@example.invalid", callbackURL: `${webOrigin}/` }),
+      expect: 400,
     },
   ];
 }

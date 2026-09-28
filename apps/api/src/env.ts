@@ -54,6 +54,9 @@ const optionalString = z
 const CONSOLE_MAIL_IN_PRODUCTION_ERROR =
   "console is not allowed in production (set ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1 to accept that sign-in links are printed to the log)";
 
+export const TURNSTILE_REQUIRED_IN_PRODUCTION =
+  "required in production: anonymous and magic-link sign-in are gated by Cloudflare Turnstile (TEACH-243)";
+
 export const COOKIE_SAMESITE_VALUES = ["lax", "none", "strict"] as const;
 
 export const MAIL_PROVIDERS = ["console", "resend"] as const;
@@ -129,8 +132,20 @@ export const EnvSchema = z
     ANONYMOUS_LESSONS_DAILY_CAP: z.coerce.number().int().min(0).default(200),
     /** TEACH-222: the request header holding the client IP (e.g. `cf-connecting-ip`); unset → better-auth's `x-forwarded-for`. */
     AUTH_IP_HEADER: optionalString,
+    /**
+     * Cloudflare Turnstile secret (TEACH-243). Set: anonymous and magic-link sign-in require a
+     * token (`auth/captcha.ts`). Required in production; unset elsewhere turns the check off.
+     */
+    TURNSTILE_SECRET_KEY: optionalString,
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === "production" && !env.TURNSTILE_SECRET_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["TURNSTILE_SECRET_KEY"],
+        message: TURNSTILE_REQUIRED_IN_PRODUCTION,
+      });
+    }
     if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {
       ctx.addIssue({
         code: "custom",
