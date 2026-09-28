@@ -53,7 +53,7 @@ jobs:
         run: bun run lint
 
       - name: homepage source and generated links
-        run: bun run homepage:lint && bun run homepage:check
+        run: bun run homepage:lint && bun run homepage:check:site && bun run homepage:check
 
       - name: bun run typecheck
         run: bun run typecheck

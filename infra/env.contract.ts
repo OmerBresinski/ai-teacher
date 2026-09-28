@@ -17,8 +17,11 @@
  * `.env`. Edit this file, then run `bun run env:generate`.
  */
 
-/** Who reads the variable. `compose` = docker compose + the root scripts (root `.env`). */
-export type EnvService = "api" | "worker" | "web" | "ci" | "compose";
+/**
+ * Who reads the variable. `compose` = docker compose + the root scripts (root `.env`); `site` = the
+ * marketing project on Vercel (dayback.app, root `homepage/`, TEACH-78).
+ */
+export type EnvService = "api" | "worker" | "web" | "site" | "ci" | "compose";
 
 /** `secret` values are never printed, never in git and get a gitleaks rule; `config` is public. */
 export type EnvScope = "secret" | "config";
@@ -235,9 +238,9 @@ const CONTRACT = [
     setBy: "manual",
     format: "origin-list",
     files: ["api"],
-    railwayValue: "https://app.bresinski.org",
+    railwayValue: "https://teach.dayback.app",
     description:
-      "Comma-separated exact browser origins allowed by CORS (credentials on) and trusted by better-auth. Locally the Vite dev server; on Railway the Vercel production origin (`https://teaching-journey-web.vercel.app`, later `https://app.<domain>`).",
+      "Comma-separated exact browser origins allowed by CORS (credentials on) and trusted by better-auth. Locally the Vite dev server; on Railway the app's production origin, exactly `https://teach.dayback.app` since the TEACH-78 cutover (was `https://app.bresinski.org`). Never a wildcard; the marketing site (dayback.app) only navigates to the app and is not listed.",
   },
   {
     name: "WEB_ORIGIN_PATTERNS",
@@ -280,7 +283,7 @@ const CONTRACT = [
     railwayValue: "https://${{RAILWAY_PUBLIC_DOMAIN}}",
     description:
       "Public origin of this API; magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?...`. On Railway the reference `https://$" +
-      "{{RAILWAY_PUBLIC_DOMAIN}}` resolves per environment: the custom domain `api.bresinski.org` in production (Railway swaps it in once a custom domain is attached, TEACH-36), `api-ai-teacher-pr-<n>.up.railway.app` in a PR environment. Keep the reference; an explicit value would be copied into PR environments and point their magic links at production.",
+      "{{RAILWAY_PUBLIC_DOMAIN}}` resolves per environment: the custom domain `api.dayback.app` in production (TEACH-78; Railway swaps in a custom domain once attached, and with two attached it may keep the older one: check the rendered value before a cutover), `api-ai-teacher-pr-<n>.up.railway.app` in a PR environment. Keep the reference; an explicit value would be copied into PR environments and point their magic links at production.",
   },
   {
     name: "COOKIE_DOMAIN",
@@ -292,9 +295,9 @@ const CONTRACT = [
     setBy: "template",
     format: "string",
     files: ["api"],
-    railwayValue: ".bresinski.org",
+    railwayValue: ".dayback.app",
     description:
-      "Parent domain of the session cookie (`.bresinski.org`) so app.bresinski.org and api.bresinski.org share it (TEACH-36, ADR 0010). Unset locally (the Vite proxy makes web and api same-origin). PR environments inherit it (hence `both`); their api is on `*.up.railway.app`, not under it, so `effectiveCookieDomain()` ignores it with a boot warning and the cookie is host-only.",
+      "Parent domain of the session cookie (`.dayback.app`) so teach.dayback.app and api.dayback.app share it (TEACH-78, ADR 0010; `.bresinski.org` before). Ignored with a boot warning when BETTER_AUTH_URL is not under it, so check the api boot log after changing either. Unset locally (the Vite proxy makes web and api same-origin). PR environments inherit it (hence `both`); their api is on `*.up.railway.app`, not under it, so `effectiveCookieDomain()` ignores it with a boot warning and the cookie is host-only.",
   },
   {
     name: "COOKIE_SAMESITE",
@@ -309,7 +312,7 @@ const CONTRACT = [
     files: ["api"],
     railwayValue: "lax",
     description:
-      "lax (default) | none | strict. Production is `lax` with COOKIE_DOMAIN since TEACH-36 (app.bresinski.org / api.bresinski.org are first-party; WebKit blocks third-party cookies, which is why the earlier `none` stopgap failed on every iOS browser). `none` makes the cookie `SameSite=None; Secure` (boot warning) and is only for a Vercel preview <-> Railway PR api pair on unrelated origins.",
+      "lax (default) | none | strict. Production is `lax` with COOKIE_DOMAIN since TEACH-36 (teach.dayback.app / api.dayback.app are first-party; WebKit blocks third-party cookies, which is why the earlier `none` stopgap failed on every iOS browser). `none` makes the cookie `SameSite=None; Secure` (boot warning) and is only for a Vercel preview <-> Railway PR api pair on unrelated origins.",
   },
   {
     name: "MAIL_PROVIDER",
@@ -349,7 +352,7 @@ const CONTRACT = [
     format: "string",
     files: ["api"],
     description:
-      "Sender of the magic-link email, RFC 5322 (`DayBack <sign-in@mail.bresinski.org>`). The domain must be verified in Resend (EU region, ADR 0016). Required when MAIL_PROVIDER=resend.",
+      "Sender of the magic-link email, RFC 5322 (`DayBack <sign-in@mail.dayback.app>`). The domain must be verified in Resend (EU region, ADR 0016). Required when MAIL_PROVIDER=resend.",
   },
   {
     name: "ALLOW_CONSOLE_MAIL_IN_PRODUCTION",
@@ -1012,7 +1015,7 @@ const CONTRACT = [
     format: "string",
     files: ["web"],
     description:
-      "Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds `https://api.bresinski.org` (TEACH-36); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE).",
+      "Base URL the browser uses for the API. Locally `/api`: the Vite dev server proxies `/api/*` to the api and strips the prefix so cookies stay same-origin. A production build requires an absolute URL — Vercel Production holds `https://api.dayback.app` (TEACH-78; `https://api.bresinski.org` before); previews derive it (see RAILWAY_PR_API_URL_TEMPLATE).",
   },
   {
     name: "VITE_APP_ENV",
@@ -1064,7 +1067,60 @@ const CONTRACT = [
     setBy: "manual",
     runtimeOnly: true,
     description:
-      "Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api (`https://api-production-903f.up.railway.app`). Never in a local .env.",
+      "Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api (`https://api.dayback.app`). Never in a local .env.",
+  },
+  // --- site: the marketing project on Vercel (dayback.app, root homepage/, TEACH-78) -------------
+  {
+    name: "SITE_URL",
+    services: ["site"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "both",
+    setBy: "manual",
+    runtimeOnly: true,
+    description:
+      "Public origin of the marketing site, `https://dayback.app`: canonicals, Open Graph URLs and sitemap entries. `scripts/vercel-env.ts site` passes it to `homepage/build.mjs --site=`; required in production.",
+  },
+  {
+    name: "SITE_APP_URL",
+    services: ["site"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "both",
+    setBy: "manual",
+    runtimeOnly: true,
+    description:
+      "The app the hero form and every Create a lesson link go to, `https://teach.dayback.app` (`--app=`); required in production.",
+  },
+  {
+    name: "SITE_INDEXING",
+    services: ["site"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "prod",
+    setBy: "manual",
+    format: "enum",
+    values: ["1"],
+    runtimeOnly: true,
+    description:
+      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. Refused together with SITE_ALLOW_PROVISIONAL.",
+  },
+  {
+    name: "SITE_ALLOW_PROVISIONAL",
+    services: ["site"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "prod",
+    setBy: "manual",
+    format: "enum",
+    values: ["1"],
+    runtimeOnly: true,
+    description:
+      "`1` lets the production marketing build show example lessons whose assets are stand-ins (`--allow-provisional`); they are never indexable. Previews always show them.",
   },
   {
     name: "E2E_VERBOSE",
@@ -1285,12 +1341,15 @@ export function railwayNames(service: "api" | "worker", environment: RailwayEnvi
   ).map((v) => v.name);
 }
 
-/** Names expected on the Vercel project in `environment`. */
-export function vercelNames(environment: VercelEnvironment): string[] {
+/** Names expected on a Vercel project in `environment`: the app (`web`) or dayback.app (`site`). */
+export function vercelNames(
+  environment: VercelEnvironment,
+  project: "web" | "site" = "web",
+): string[] {
   const want: VercelTarget = environment === "production" ? "prod" : "preview";
   return ENV_CONTRACT.filter(
     (v) =>
-      (v.services as readonly EnvService[]).includes("web") &&
+      (v.services as readonly EnvService[]).includes(project) &&
       (v.vercel === "both" || v.vercel === want),
   ).map((v) => v.name);
 }
