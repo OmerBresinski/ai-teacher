@@ -47,13 +47,18 @@ export function callbackUrl(origin: string, redirect: string | undefined): strin
 }
 
 /**
- * Where better-auth sends the browser when verification or the Google round trip fails. It appends
+ * Where better-auth sends the browser when verification or a provider round trip fails. It appends
  * `error=<code>` itself, so we point it back at `/sign-in` and keep `redirect` so the teacher can
- * retry to the same place.
+ * retry to the same place. Microsoft's adds `via=microsoft` so the copy can name it (TEACH-206).
  */
-export function errorCallbackUrl(origin: string, redirect: string | undefined): string {
+export function errorCallbackUrl(
+  origin: string,
+  redirect: string | undefined,
+  via?: "microsoft",
+): string {
   const url = new URL("/sign-in", origin);
   url.searchParams.set("redirect", sanitiseRedirectPath(redirect));
+  if (via) url.searchParams.set("via", via);
   return url.toString();
 }
 

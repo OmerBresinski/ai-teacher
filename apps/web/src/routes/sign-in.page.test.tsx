@@ -8,8 +8,11 @@ const magicLink = mock();
 const social = mock();
 const signOut = mock();
 mock.module("@/lib/auth", () => ({ authClient: { signIn: { magicLink, social }, signOut } }));
+let providers = { google: true, microsoft: false };
+const fetchAuthProviders = mock(async () => providers);
+mock.module("@/lib/auth-providers", () => ({ fetchAuthProviders }));
 
-let search: { redirect?: string; error?: string } = {};
+let search: { redirect?: string; error?: string; via?: "microsoft" } = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
@@ -19,14 +22,20 @@ mock.module("@tanstack/react-router", () => ({
 const { SIGN_OUT_FAILED, sessionBoundary } = await import("@/lib/session-boundary");
 const { POSES, mouthPath } = await import("@/components/brand/cast-rig");
 const { callbackUrl, errorCallbackUrl } = await import("@/lib/auth-redirect");
-const { SignInPage, googleStartError, normaliseEmail, signInErrorMessage } = await import(
+const { SignInPage, socialStartError, normaliseEmail, signInErrorMessage } = await import(
   "./sign-in.page"
 );
 
 const GOOGLE = { name: "Continue with Google" } as const;
+const MICROSOFT = { name: "Continue with Microsoft" } as const;
 const NOT_SET_UP = "Google sign-in is not set up here. Use the email link below.";
 const INTERRUPTED = "Your Google sign-in took too long or was interrupted. Try again.";
 const EXPIRED = "That sign-in link has expired or was already used. Request a new one below.";
+
+/** Whether `b` comes after `a` in document order. */
+function follows(a: Node, b: Node): boolean {
+  return Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
 
 describe("SignInPage", () => {
   beforeEach(() => {
@@ -34,6 +43,8 @@ describe("SignInPage", () => {
     social.mockReset();
     signOut.mockReset();
     search = {};
+    providers = { google: true, microsoft: false };
+    fetchAuthProviders.mockClear();
   });
 
   afterEach(() => {
@@ -120,8 +131,6 @@ describe("SignInPage", () => {
     const google = screen.getByRole("button", GOOGLE);
     const email = screen.getByLabelText("Email address");
     const heading = screen.getByRole("heading", { level: 1 });
-    const follows = (a: Node, b: Node) =>
-      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(follows(heading, google)).toBe(true);
     expect(follows(google, email)).toBe(true);
     expect(google).toHaveAttribute("type", "button");
@@ -426,11 +435,85 @@ describe("SignInPage", () => {
     ).toBeTruthy();
   });
 
-  it("helpers: googleStartError reads 404 or PROVIDER_NOT_FOUND as not set up", () => {
-    expect(googleStartError({ status: 404 })).toBe("not-set-up");
-    expect(googleStartError({ status: 400, code: "PROVIDER_NOT_FOUND" })).toBe("not-set-up");
-    expect(googleStartError({ status: 500 })).toBe("unreachable");
-    expect(googleStartError({ status: 429 })).toBe("unreachable");
+  it("helpers: socialStartError reads 404 or PROVIDER_NOT_FOUND as not set up", () => {
+    expect(socialStartError({ status: 404 })).toBe("not-set-up");
+    expect(socialStartError({ status: 400, code: "PROVIDER_NOT_FOUND" })).toBe("not-set-up");
+    expect(socialStartError({ status: 500 })).toBe("unreachable");
+    expect(socialStartError({ status: 429 })).toBe("unreachable");
+  });
+
+  it("hides Continue with Microsoft until the api says it is on", async () => {
+    render(<SignInPage />);
+    await act(async () => {});
+    expect(fetchAuthProviders).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", MICROSOFT)).toBeNull();
+  });
+
+  it("shows Continue with Microsoft under Google and starts it with a via=microsoft error callback", async () => {
+    providers = { google: true, microsoft: true };
+    social.mockResolvedValue({
+      data: { url: "https://login.microsoftonline.com/", redirect: true },
+    });
+    search = { redirect: "/library" };
+    const user = userEvent.setup();
+    render(<SignInPage />);
+
+    const microsoft = await screen.findByRole("button", MICROSOFT);
+    expect(follows(screen.getByRole("button", GOOGLE), microsoft)).toBe(true);
+    expect(follows(microsoft, screen.getByLabelText("Email address"))).toBe(true);
+    expect(microsoft.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+
+    await user.click(microsoft);
+    expect(social).toHaveBeenCalledWith({
+      provider: "microsoft",
+      callbackURL: `${window.location.origin}/library`,
+      errorCallbackURL: `${window.location.origin}/sign-in?redirect=%2Flibrary&via=microsoft`,
+    });
+    expect(screen.getByRole("button", { name: "Opening Microsoft…" })).toBeDisabled();
+    expect(screen.getByRole("button", GOOGLE)).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Email me a link" })).toBeDisabled();
+  });
+
+  it("says Microsoft is not set up when its start answers 404", async () => {
+    providers = { google: true, microsoft: true };
+    social.mockResolvedValue({ data: null, error: { status: 404, code: "PROVIDER_NOT_FOUND" } });
+    const user = userEvent.setup();
+    render(<SignInPage />);
+    await user.click(await screen.findByRole("button", MICROSOFT));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Microsoft sign-in is not set up here. Use the email link below.",
+    );
+    expect(screen.getByRole("button", MICROSOFT)).toBeEnabled();
+  });
+
+  it("names Microsoft in a failed Microsoft round trip and keeps Google's copy otherwise", () => {
+    for (const [code, text] of [
+      ["access_denied", "Microsoft sign-in was cancelled. Try again, or use the email link below."],
+      [
+        "unable_to_get_user_info",
+        "Microsoft could not confirm the email address on that account. Use the email link below.",
+      ],
+      [
+        "account_not_linked",
+        "We could not match that Microsoft account to your account. Use the email link below.",
+      ],
+      ["state_mismatch", "Your Microsoft sign-in took too long or was interrupted. Try again."],
+      ["INVALID_TOKEN", EXPIRED],
+    ] as const) {
+      expect(signInErrorMessage(code, "microsoft")).toBe(text);
+    }
+    expect(signInErrorMessage("access_denied")).toBe(
+      "Google sign-in was cancelled. Try again, or use the email link below.",
+    );
+    search = { error: "unable_to_get_user_info", via: "microsoft" };
+    render(<SignInPage />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Microsoft could not confirm the email");
+  });
+
+  it("helpers: errorCallbackUrl adds via=microsoft only for Microsoft", () => {
+    expect(errorCallbackUrl("https://app.example", "/x", "microsoft")).toBe(
+      "https://app.example/sign-in?redirect=%2Fx&via=microsoft",
+    );
   });
 
   it("helpers: signInErrorMessage never reads the object prototype", () => {
