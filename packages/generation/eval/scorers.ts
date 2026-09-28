@@ -242,6 +242,12 @@ function rationalesOf(output: RubricOutput): Record<RubricDimension, string> {
  * Every score for one generated lesson, keyed for the results file. With `judge` the rubric judge
  * runs too (one paid call); without it — the schema half — the rubric is `null` and nothing spends.
  */
+/** Our scorers never return `notScorable()`, so a run without a score is a bug, not a skip. */
+function scoreOf(result: { score?: number; notScorable?: unknown }, id: string): number {
+  if (result.score === undefined) throw new Error(`scorer ${id} returned no score`);
+  return result.score;
+}
+
 export async function scoreLesson(
   briefId: string,
   output: ScorerOutput,
@@ -252,15 +258,17 @@ export async function scoreLesson(
     modelFindingsScorer.run({ input: briefId, output }),
     judge ? rubricJudgeScorer(judge).run({ input: briefId, output }) : undefined,
   ]);
+  const schemaScore = scoreOf(schema, "schema");
+  const modelScore = scoreOf(model, "modelFindings");
   const analysis = rubric?.analyzeStepResult;
   if (!analysis?.ok) {
-    return { scores: { schema: schema.score, modelFindings: model.score, rubric: null } };
+    return { scores: { schema: schemaScore, modelFindings: modelScore, rubric: null } };
   }
   const dimensions = scoresOf(analysis.output);
   return {
     scores: {
-      schema: schema.score,
-      modelFindings: model.score,
+      schema: schemaScore,
+      modelFindings: modelScore,
       rubric: { mean: rubricMean(dimensions), dimensions },
     },
     rubricRationales: rationalesOf(analysis.output),
