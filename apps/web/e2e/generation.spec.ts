@@ -32,7 +32,15 @@ test.describe("lesson generation over the fake worker", () => {
     await expect(page.getByTestId("generating-stage")).toContainText(/Writing the slides/, {
       timeout: 20_000,
     });
-    await expect(page.locator('[data-stage="planning"]')).toHaveAttribute("data-status", "done");
+    // The paced fake can finish before this line runs, and the shell (strip included) unmounts when
+    // the editor takes over, so a shell that is already gone counts as planning done.
+    await expect
+      .poll(async () =>
+        (await banner.count()) === 0
+          ? "done"
+          : page.locator('[data-stage="planning"]').getAttribute("data-status", { timeout: 1_000 }),
+      )
+      .toBe("done");
 
     // Slides appear one by one: the count grows at least once before the terminal event.
     const slides = page.locator("[data-slide-root]");
