@@ -557,6 +557,41 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     });
   });
 
+  test("a generated slide's continuation keeps its frame and sets the body under the heading, full width", () => {
+    // Stored lesson "Animals and their young" (E49, Y1 science), slide 6: a body beside the diagram
+    // zone, under a kind tag and deck line; the teacher adds three sentences as paragraphs.
+    const fixture = JSON.parse(
+      readFileSync(new URL("./fixtures/animals-diagram.slide.json", import.meta.url), "utf8"),
+    ) as { themeId: string; slide: Slide };
+    const lesson = newLesson("Animals", fixture.themeId);
+    lesson.slides = [fixture.slide];
+    const animals = parseLesson(lesson);
+    const source = animals.slides[0] as Slide;
+    const body = source.elements.find((e) => e.name === "Body");
+    if (body?.type !== "text") throw new Error("fixture");
+    const added = docFromText(
+      [
+        "A duckling hatches from an egg covered in soft down, and grows feathers before it can swim far.",
+        "A lamb is born able to stand, and it drinks its mother's milk until it can eat grass.",
+        "A caterpillar eats leaves, makes a chrysalis, and comes out as a butterfly with wings.",
+      ].join("\n"),
+    );
+    body.doc = { type: "doc", content: [...(body.doc.content ?? []), ...(added.content ?? [])] };
+    const out = tidySlide(animals, source.id, measureHeadless(getTheme(animals.themeId)));
+    expect(out.outcome.continued).toBe(1);
+    const [head, cont] = out.lesson.slides;
+    const names = (s: Slide | undefined) => (s?.elements ?? []).map((e) => e.name);
+    for (const frame of ["Kind tag", "Deck line", "Accent bar"])
+      expect(names(cont)).toContain(frame);
+    expect(names(cont)).not.toContain("Diagram placeholder");
+    const heading = cont?.elements.find((e) => e.name === "Heading");
+    const tail = cont?.elements.find((e) => e.name === "Body");
+    if (!heading || tail?.type !== "text") throw new Error("continuation");
+    expect(tail.y).toBeGreaterThanOrEqual(heading.y + heading.h);
+    expect(tail).toMatchObject({ x: SAFE.x, w: SAFE.w });
+    expect(head?.elements.find((e) => e.name === "Body")).toMatchObject({ x: body.x, w: body.w });
+  });
+
   test("a steps box grown past its card by editing still brings the card along", () => {
     const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", sevenSteps);
     // Editing rewrites an auto-height box's stored height to its content: the steps now run past

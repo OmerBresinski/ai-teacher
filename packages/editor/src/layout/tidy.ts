@@ -1,11 +1,12 @@
-import type {
-  Id,
-  Lesson,
-  RichDoc,
-  RichNode,
-  Slide,
-  SlideElement,
-  Theme,
+import {
+  type Id,
+  type Lesson,
+  type RichDoc,
+  type RichNode,
+  SLIDE_W,
+  type Slide,
+  type SlideElement,
+  type Theme,
 } from "@tj/domain/documents";
 import { BODY_Y, SAFE } from "@tj/slides";
 import { cloneSlide, docFromText } from "../model/factories";
@@ -213,8 +214,34 @@ const cardOf = (el: SlideElement, authored: SlideElement[]): SlideElement | unde
  * Where carried text starts on a continuation: the recipes' body top, or higher when the source
  * slide's own body starts higher (a title slide has no heading band to clear).
  */
-const bodyTopOf = (authored: SlideElement[]): number =>
-  Math.min(BODY_Y, ...authored.filter(isFlow).map((el) => el.y));
+const bodyTopOf = (authored: SlideElement[]): number => {
+  const band = headerBand(authored);
+  return Math.min(
+    BODY_Y,
+    ...authored.filter((el) => isFlow(el) && !band.has(el.id)).map((el) => el.y),
+  );
+};
+
+/**
+ * The slide's frame, which every continuation keeps as it stands: what sits wholly above the
+ * heading (a generated slide's kind tag and deck line) and a locked bar across the slide's width
+ * (its accent bar). Without it a generated slide's continuation lost its frame and started its body
+ * in the header band, above the heading.
+ */
+function headerBand(authored: SlideElement[]): Set<Id> {
+  const heading = authored.find(isHeadingText);
+  return new Set(
+    authored
+      .filter(
+        (el) =>
+          el !== heading &&
+          !isChrome(el) &&
+          ((heading && el.type === "text" && el.y + el.h <= heading.y + EPS) ||
+            (el.type === "shape" && !!el.locked && el.w >= SLIDE_W - 1)),
+      )
+      .map((el) => el.id),
+  );
+}
 
 /**
  * Question slides are never split (ruling 91): an option grid that does not fit takes a roomier
@@ -393,6 +420,7 @@ function buildPlan(
   const authored = slide.elements;
   const src = authored[target.index] ?? el;
   const bodyTop = bodyTopOf(authored);
+  const band = headerBand(authored);
 
   const card = cardOf(src, authored);
   const reflowedCard = card ? reflowed.find((r) => r.id === card.id) : undefined;
@@ -468,6 +496,10 @@ function buildPlan(
   let targetIdx = -1;
   reflowed.forEach((r, i) => {
     const a = authored[i] ?? r;
+    if (band.has(a.id)) {
+      elements.push(structuredClone(r));
+      return;
+    }
     if (isChrome(a)) {
       // As it stands on this slide, size included, so the chain's headings match. A rule below
       // the body top belongs to the content it sat under, not the heading.
