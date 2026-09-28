@@ -3,6 +3,7 @@ import {
   type IconElement,
   richDocToPlainText,
   type ShapeElement,
+  type Slide,
   type SlideElement,
   type TextElement,
   type Theme,
@@ -23,7 +24,7 @@ import {
   text,
 } from "./layouts";
 import { SAFE_BOTTOM } from "./metrics";
-import { stepDownSize } from "./reflow";
+import { isBackdrop, isFootBand, stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";
 import { calloutTone, fontFloor } from "./themes";
@@ -337,3 +338,88 @@ export const isCalloutElement = (el: SlideElement): boolean =>
   el.name === CALLOUT_NAMES.icon ||
   el.name === CALLOUT_NAMES.label ||
   el.name === CALLOUT_NAMES.text;
+
+/* ---------------------------------------------------------- with the look */
+
+/** A content slide's callout, taken off before the look and put back after it. */
+export type DetachedCallout = { spec: CalloutSpec; kept: SlideElement[] };
+
+/**
+ * Take a content slide's callout off (TEACH-19 with TEACH-75): the look (`applyLook`) and the
+ * structure pass (`structureSlide`) re-lay the words from the top of the slide and know nothing
+ * of a card at its foot, so they would run the words, a side panel or a photo slot over it.
+ * The words are laid out without it and `placeCallout` puts it back in the room they leave. A
+ * slide without a whole callout (a teacher deleted its text or card) comes back as it is.
+ */
+export function detachCallout(slide: Slide): { slide: Slide; callout?: DetachedCallout } {
+  const kept = slide.elements.filter(isCalloutElement);
+  const card = kept.find((el) => el.name === CALLOUT_NAMES.card);
+  const body = kept.find((el) => el.name === CALLOUT_NAMES.text);
+  if (!card || body?.type !== "text") return { slide };
+  const icon = kept.find((el): el is IconElement => el.type === "icon");
+  const kind =
+    (Object.keys(CALLOUT_ICONS) as CalloutKind[]).find((k) => CALLOUT_ICONS[k] === icon?.icon) ??
+    "watch-out";
+  return {
+    slide: { ...slide, elements: slide.elements.filter((el) => !isCalloutElement(el)) },
+    callout: { spec: { kind, text: richDocToPlainText(body.doc) }, kept },
+  };
+}
+
+/**
+ * The column a teaching slide's callout takes: the safe width less whatever stands at the foot
+ * beside the words (a photo or diagram slot on either side, the key idea's side panel, each a
+ * box narrower than the measure that reaches the foot), with the slot gutter kept.
+ */
+export function calloutColumn(slide: Slide): { x: number; w: number; beside: SlideElement[] } {
+  const beside = slide.elements.filter(
+    (el) =>
+      !isBackdrop(el) &&
+      !isFootBand(el) &&
+      !isCalloutElement(el) &&
+      el.y + el.h >= CARD_BOTTOM - 1 &&
+      el.w < SAFE.w - 1,
+  );
+  let x: number = SAFE.x;
+  let right: number = SAFE.x + SAFE.w;
+  for (const el of beside) {
+    const leftRoom = el.x - SPACE[5] - x;
+    const rightRoom = right - (el.x + el.w + SPACE[5]);
+    if (leftRoom >= rightRoom) right = Math.min(right, el.x - SPACE[5]);
+    else x = Math.max(x, el.x + el.w + SPACE[5]);
+  }
+  return { x, w: right - x, beside };
+}
+
+/**
+ * Put a callout back on a laid-out, fitted slide: across the text column, under the lowest
+ * thing in it, bottom-anchored as `applyCallout` sets it. The text column is the safe width less
+ * whatever stands at the foot beside the words (a photo or diagram slot on either side, the key
+ * idea's side panel). The card is sized to its text, a stop down when it needs it; when even that
+ * does not fit the room, `undefined`: the caller leaves the callout off and reports it, never
+ * clipped and never over the words or the slot (rulings 91 and 102). Ids and provenance of a
+ * stored callout are kept.
+ */
+export function placeCallout(
+  slide: Slide,
+  t: Theme,
+  callout: DetachedCallout,
+  ids: () => string = uid,
+): Slide | undefined {
+  const { x, w, beside } = calloutColumn(slide);
+  if (w <= 2 * CARD_PAD) return undefined;
+  const right = x + w;
+  const flow = slide.elements.filter((el) => !isBackdrop(el) && !isFootBand(el));
+  const inColumn = flow.filter((el) => !beside.includes(el) && el.x < right && el.x + el.w > x);
+  const foot = Math.max(SAFE.y, ...inColumn.map((el) => el.y + el.h));
+  const room = CARD_BOTTOM - (foot + SPACE[2]);
+  const fit = fitCallout(t, callout.spec.text, w, room);
+  if (!fit) return undefined;
+  const y = Math.max(bottomAnchoredY(fit.height), CARD_BOTTOM - room);
+  const fresh = calloutElements(t, callout.spec, { x, y, w, h: CARD_BOTTOM - y }, fit.size);
+  const placed = fresh.map((el): SlideElement => {
+    const old = callout.kept.find((k) => k.name === el.name);
+    return old ? ({ ...old, ...el, id: old.id } as SlideElement) : { ...el, id: ids() };
+  });
+  return { ...slide, elements: [...slide.elements, ...placed] };
+}

@@ -171,11 +171,11 @@ on 2026-09-13, `lesson-editor` went to 321.1 KB and the check failed.
 
 | Chunk | Route | Measured (gz) | Ceiling |
 | ----- | ----- | ------------- | ------- |
-| `lesson-editor` | `/l/:id` | 236.1 KB (2026-09-28, TEACH-258) | 241 KB |
-| `lesson-present` | `/l/:id/present` | 111.3 KB (2026-09-27, TEACH-221) | 134 KB |
-| `lesson-view` | `/l/:id/view` | 75.8 KB | 91 KB |
-| `lesson-print` | `/l/:id/print` | 42.4 KB | 51 KB |
-| `worksheet-editor` | `/w/:id` | 155.5 KB | 187 KB |
+| `lesson-editor` | `/l/:id` | 254.1 KB (2026-09-28, TEACH-19) | 305 KB |
+| `lesson-present` | `/l/:id/present` | 132.7 KB (2026-09-28, TEACH-19) | 160 KB |
+| `lesson-view` | `/l/:id/view` | 125.7 KB (2026-09-28, TEACH-19) | 151 KB |
+| `lesson-print` | `/l/:id/print` | 92.9 KB (2026-09-28, TEACH-19) | 112 KB |
+| `worksheet-editor` | `/w/:id` | 198.6 KB (2026-09-28, TEACH-19) | 239 KB |
 | `worksheet-print` | `/w/:id/print` | 30.2 KB | 36 KB |
 
 ## Deploy (Vercel, ADR 0010)

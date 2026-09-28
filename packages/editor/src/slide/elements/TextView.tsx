@@ -1,4 +1,5 @@
 import type { TextElement, Theme } from "@tj/domain/documents";
+import { HEADING_NAME } from "@tj/slides";
 import { TriangleAlert } from "lucide-react";
 import { type CSSProperties, lazy, type ReactNode, type Ref, Suspense } from "react";
 import {
@@ -18,6 +19,12 @@ import { RichText } from "./RichText";
  * none of it — they render `StaticText` and nothing else.
  */
 const EditableText = lazy(() => import("./EditableText"));
+
+/**
+ * A look heading that wraps does so in balanced lines, never a long line and a stray word (Greg,
+ * 27 Sept 2026). Balancing moves the break, not the line count, so the box measures the same.
+ */
+const BALANCED: CSSProperties = { textWrap: "balance" };
 
 /**
  * The box every text-ish element sits in: padding, optional fill, vertical alignment,
@@ -115,7 +122,12 @@ export function StaticText({
   return (
     <TextShell r={r} mode={mode} overflowing={overflowing} theme={theme}>
       <div ref={bodyRef} style={{ width: "100%", flex: "0 0 auto" }}>
-        <RichText doc={element.doc} style={textTypeCss(r)} />
+        <RichText
+          doc={element.doc}
+          style={
+            element.name === HEADING_NAME ? { ...textTypeCss(r), ...BALANCED } : textTypeCss(r)
+          }
+        />
       </div>
     </TextShell>
   );

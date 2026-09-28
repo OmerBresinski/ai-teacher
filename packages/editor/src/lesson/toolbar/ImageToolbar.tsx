@@ -7,19 +7,24 @@ import { Segmented } from "../../kit/Segmented";
 import { normaliseHref } from "../../text/links";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
+import { SlotSideControl, type SlotSideProps } from "./SlotSideControl";
 import { BarButton, CornersMenu, ICON, ICON_SM, OpacityControl, useElementWrites } from "./shared";
 
 /**
  * Replace, fit, crop, corners, alt text, credit (TeachDeck `ImageToolbar`). Replace opens
  * the Add image panel in replace mode (TEACH-107); Crop enters crop mode on the slide (TEACH-153),
- * where `CropToolbar` takes this bar's place.
+ * where `CropToolbar` takes this bar's place. A teaching slide's photo, open or placed, also picks
+ * its side of the words (`slotSide`, R2): one write, one undo step.
  */
 export const ImageToolbar = memo(function ImageToolbar({
   element,
   slideId,
+  slot,
 }: {
   element: ImageElement;
   slideId: string;
+  /** Set when this image is its slide's slot (the photo): the side control leads the bar. */
+  slot?: SlotSideProps;
 }) {
   const { update, scrub, end } = useElementWrites(slideId);
   const { openImagePanel, enterCrop } = useSessionActions();
@@ -31,6 +36,7 @@ export const ImageToolbar = memo(function ImageToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Image" data-image-toolbar>
+      {slot ? <SlotSideControl slideId={slideId} {...slot} /> : null}
       <BarButton onClick={() => openImagePanel({ elementId: element.id })}>
         <Replace aria-hidden {...ICON_SM} />
         Replace

@@ -1,4 +1,5 @@
 import { SLIDE_W, type Slide, type Theme } from "@tj/domain/documents";
+import { DIAGRAM_NAME, isSlot, slotSideOf } from "@tj/slides";
 import {
   Button,
   Dialog,
@@ -142,6 +143,11 @@ export function ContextualToolbar({
 
   if (!stageRect) return null;
   const [only] = selected;
+  // The slide's photo or diagram zone (or the figure filling it) picks its side of the words (R2).
+  const slotAt = only && selected.length === 1 && isSlot(only) ? slotSideOf(slide) : undefined;
+  const slot = slotAt
+    ? { side: slotAt, label: only?.name === DIAGRAM_NAME ? "Diagram" : "Picture" }
+    : undefined;
 
   // Anchor: the selection's bounds, or the top of the slide when nothing is selected.
   const bounds =
@@ -178,13 +184,13 @@ export function ContextualToolbar({
     ) : only.type === "image" && crop?.id === only.id ? (
       <CropToolbar element={only} />
     ) : only.type === "image" ? (
-      <ImageToolbar element={only} slideId={slide.id} />
+      <ImageToolbar element={only} slideId={slide.id} slot={slot} />
     ) : only.type === "shape" ? (
-      <ShapeToolbar element={only} theme={theme} slideId={slide.id} />
+      <ShapeToolbar element={only} theme={theme} slideId={slide.id} slot={slot} />
     ) : only.type === "line" ? (
       <LineToolbar element={only} theme={theme} slideId={slide.id} />
     ) : (
-      <OtherToolbar element={only} theme={theme} slideId={slide.id} />
+      <OtherToolbar element={only} theme={theme} slideId={slide.id} slot={slot} />
     );
 
   if (mobile)
