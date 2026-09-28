@@ -1,7 +1,8 @@
 /**
- * The /sign-in cast (TEACH-252): the homepage hero's four characters, alive through GSAP loaded on
- * mount (ADR 0028), reacting to the form. With reduced motion GSAP is never fetched and they stay
- * still. Transforms and paths are read straight off the SVG the rig writes to.
+ * /sign-in motion (TEACH-252): the homepage hero's four characters, alive through GSAP loaded on
+ * mount (ADR 0028) and reacting to the form, and the card easing between heights. With reduced
+ * motion GSAP is never fetched and the cast stays still. Transforms and paths are read straight
+ * off the SVG the rig writes to.
  */
 import type { Page } from "@playwright/test";
 import { expect, test, uniqueEmail } from "./fixtures";
@@ -101,6 +102,37 @@ test("the cast reads along while you type and celebrates when the link is sent",
   await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
   await page.waitForTimeout(1200);
   expect(smileDepth(await mouthOf(page, "answers"))).toBeGreaterThan(before);
+});
+
+test("the card eases to its new height when the link is sent", async ({ page }) => {
+  await page.goto("/sign-in");
+  const card = page.locator("[data-sign-in-card]");
+  await page.getByLabel("Email address").fill(uniqueEmail("height"));
+  const before = (await card.boundingBox())?.height ?? 0;
+  // The card's height on every frame for 1.5 s, started before the click.
+  const recorded = page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const element = document.querySelector("[data-sign-in-card]");
+        const seen: number[] = [];
+        const started = performance.now();
+        const step = () => {
+          if (element) seen.push(element.getBoundingClientRect().height);
+          if (performance.now() - started < 1500) requestAnimationFrame(step);
+          else resolve(seen);
+        };
+        step();
+      }),
+  );
+  await page.getByRole("button", { name: "Email me a link" }).click();
+  await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+  const heights = await recorded;
+  const after = heights.at(-1) ?? 0;
+  expect(Math.abs(after - before), `form ${before}px, sent ${after}px`).toBeGreaterThan(8);
+  // Frames strictly between the two heights: it travelled rather than jumped.
+  const [low, high] = [Math.min(before, after), Math.max(before, after)];
+  const between = new Set(heights.filter((h) => h > low + 1 && h < high - 1).map(Math.round));
+  expect(between.size).toBeGreaterThanOrEqual(3);
 });
 
 test("with reduced motion the cast never moves and GSAP is never fetched", async ({ page }) => {

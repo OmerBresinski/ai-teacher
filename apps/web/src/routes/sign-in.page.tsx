@@ -1,11 +1,12 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Button, Display, Input, Label, Separator } from "@tj/ui";
+import { Button, cn, Display, Input, Label, Separator } from "@tj/ui";
 import { CircleAlert, MailCheck } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { DaybackMark } from "@/components/brand/dayback-mark";
 import { type CastMood, type CastTargets, SignInCast } from "@/components/brand/sign-in-cast";
 import { GoogleLogo } from "@/components/google-logo";
+import { useContentHeight } from "@/hooks/use-content-height";
 import { authClient } from "@/lib/auth";
 import { sanitiseRedirectPath } from "@/lib/auth-redirect";
 import { sessionBoundary } from "@/lib/session-boundary";
@@ -92,6 +93,7 @@ export function SignInPage() {
   const [google, setGoogle] = useState<GoogleStatus>("idle");
   const [emailFocused, setEmailFocused] = useState(false);
   const emailField = useRef<HTMLInputElement>(null);
+  const [cardBody, cardSize] = useContentHeight<HTMLDivElement>();
   const googleButton = useRef<HTMLButtonElement>(null);
   const submitButton = useRef<HTMLButtonElement>(null);
   const alertBox = useRef<HTMLDivElement>(null);
@@ -193,92 +195,104 @@ export function SignInPage() {
         {HEADLINE}
         <div className="relative mt-24 w-full max-w-[520px] sm:mt-32">
           <SignInCast mood={castMood} targets={castTargets} />
-          <div className="relative z-10 flex flex-col gap-5 rounded-card border border-border bg-card p-5 shadow-2 sm:p-7">
-            {alertMessage ? (
-              <div
-                ref={alertBox}
-                className="flex flex-col items-start gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground"
-              >
-                <div className="flex gap-2.5">
-                  {ALERT_ICON}
-                  <p role="alert">{alertMessage}</p>
-                </div>
-                {notice ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
-                  >
-                    Retry sign out
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-            {status.kind === "sent" ? (
-              <div ref={sentMessage} className="flex flex-col items-start gap-4">
-                {SENT_BADGE}
-                <div role="status" className="flex flex-col gap-1">
-                  <p className="text-title font-semibold text-foreground">Check your inbox</p>
-                  <p className="text-body text-ink-2">
-                    We sent a sign-in link to{" "}
-                    <strong className="font-semibold break-words text-foreground">
-                      {status.email}
-                    </strong>
-                    . It works once and expires in 5 minutes.
-                  </p>
-                </div>
-                {DEV_HINT}
-                <Button variant="ghost" className="-ml-4" onClick={onUseDifferentEmail}>
-                  Use a different email
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Button
-                  ref={googleButton}
-                  type="button"
-                  variant="default"
-                  className="h-12 w-full"
-                  disabled={opening || sending}
-                  onClick={() => void onContinueWithGoogle()}
-                >
-                  <GoogleLogo />
-                  {opening ? "Opening Google…" : "Continue with Google"}
-                </Button>
-                <div className="flex items-center gap-3">
-                  <Separator className="flex-1" />
-                  <span className="text-meta text-ink-3">or</span>
-                  <Separator className="flex-1" />
-                </div>
-                <form onSubmit={onSubmit} className="flex flex-col gap-2">
-                  <Label htmlFor="email">Email address</Label>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Input
-                      ref={emailField}
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      className="h-12"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onFocus={() => setEmailFocused(true)}
-                      onBlur={() => setEmailFocused(false)}
-                    />
-                    <Button
-                      ref={submitButton}
-                      variant="primary"
-                      type="submit"
-                      className="h-12 sm:min-w-40"
-                      disabled={sending || opening}
-                    >
-                      {sending ? "Sending…" : "Email me a link"}
-                    </Button>
-                  </div>
-                </form>
-              </>
+          {/* The card eases to each new height (form, sent, an alert) instead of jumping to it; a
+              resize or rotation that reflows it follows at once. */}
+          <div
+            data-sign-in-card=""
+            className={cn(
+              "relative z-10 box-content overflow-hidden rounded-card border border-border bg-card shadow-2",
+              !cardSize?.reflowed &&
+                "motion-safe:transition-[height] motion-safe:duration-500 motion-safe:ease-out-expo",
             )}
+            style={cardSize ? { height: cardSize.height } : undefined}
+          >
+            <div ref={cardBody} className="flex flex-col gap-5 p-5 sm:p-7">
+              {alertMessage ? (
+                <div
+                  ref={alertBox}
+                  className="flex flex-col items-start gap-2.5 rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-body text-foreground"
+                >
+                  <div className="flex gap-2.5">
+                    {ALERT_ICON}
+                    <p role="alert">{alertMessage}</p>
+                  </div>
+                  {notice ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void sessionBoundary.signOut(() => authClient.signOut())}
+                    >
+                      Retry sign out
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+              {status.kind === "sent" ? (
+                <div ref={sentMessage} className="flex flex-col items-start gap-4">
+                  {SENT_BADGE}
+                  <div role="status" className="flex flex-col gap-1">
+                    <p className="text-title font-semibold text-foreground">Check your inbox</p>
+                    <p className="text-body text-ink-2">
+                      We sent a sign-in link to{" "}
+                      <strong className="font-semibold break-words text-foreground">
+                        {status.email}
+                      </strong>
+                      . It works once and expires in 5 minutes.
+                    </p>
+                  </div>
+                  {DEV_HINT}
+                  <Button variant="ghost" className="-ml-4" onClick={onUseDifferentEmail}>
+                    Use a different email
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    ref={googleButton}
+                    type="button"
+                    variant="default"
+                    className="h-12 w-full cursor-pointer"
+                    disabled={opening || sending}
+                    onClick={() => void onContinueWithGoogle()}
+                  >
+                    <GoogleLogo />
+                    {opening ? "Opening Google…" : "Continue with Google"}
+                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <span className="text-meta text-ink-3">or</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <form onSubmit={onSubmit} className="flex flex-col gap-2">
+                    <Label htmlFor="email">Email address</Label>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Input
+                        ref={emailField}
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        className="h-12"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onFocus={() => setEmailFocused(true)}
+                        onBlur={() => setEmailFocused(false)}
+                      />
+                      <Button
+                        ref={submitButton}
+                        variant="primary"
+                        type="submit"
+                        className="h-12 cursor-pointer sm:min-w-40"
+                        disabled={sending || opening}
+                      >
+                        {sending ? "Sending…" : "Email me a link"}
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
           </div>
         </div>
         {TAGLINE}
