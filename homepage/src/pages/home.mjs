@@ -96,8 +96,17 @@ const home = {
     "/assets/proof.js",
     "/motion/flipbook.js",
     "/assets/how-it-works.js",
+    "/motion/check.js",
+    "/assets/closing-check.js",
   ],
-  body: hero + lessonProof + topLessons + howItWorks + faq + cta({ home: true }),
+  // The closing Check is driven by closing-check.js, not the ambient cast, so it is marked for it.
+  body:
+    hero +
+    lessonProof +
+    topLessons +
+    howItWorks +
+    faq +
+    cta({ home: true }).replace('data-character-copy="answers"', "data-closing-check"),
 };
 
 export default [home];
