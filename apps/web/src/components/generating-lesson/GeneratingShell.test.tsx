@@ -436,3 +436,28 @@ describe("GeneratingLesson over playRun", () => {
     restore();
   });
 });
+
+describe("the selected-theme callout (ruling 123)", () => {
+  it("sits under the slide stage, in the lock line, before the first slide and after", () => {
+    const callout = <button type="button">Theme · Chalk &amp; Cream</button>;
+    const { rerender } = renderAt(1, { themeCallout: callout });
+    const slot = document.querySelector("[data-generating-theme]");
+    expect(slot?.closest('[data-testid="generating-lock"]')).not.toBeNull();
+    expect(screen.getByRole("button", { name: /Theme/ })).toBeInTheDocument();
+    const events = runEvents(generationRun, 6);
+    rerender(
+      <TooltipProvider>
+        <GeneratingShell
+          lesson={bodyAt(generationRun, 5, full)}
+          events={events}
+          onBack={noop}
+          onStop={noop}
+          themeCallout={callout}
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      document.querySelector("[data-generating-theme]")?.closest('[data-testid="generating-lock"]'),
+    ).not.toBeNull();
+  });
+});

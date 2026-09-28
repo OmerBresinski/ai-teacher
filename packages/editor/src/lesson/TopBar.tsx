@@ -18,20 +18,21 @@ import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
 import { enterPresentFullscreen } from "../present/use-fullscreen";
 import { useHistory, useLesson } from "./document-context";
+import { ThemeCallout } from "./ThemeDialog";
 import { useCompactChrome } from "./use-compact-chrome";
 import { useMobileEditor } from "./use-mobile-editor";
 
 /*
  * The editor's top bar (TeachDeck `components/v2/editor/TopBar.tsx`): back arrow → title (inline
- * rename) → undo / redo at the left; the save indicator, Theme, Share, Export and the filled
- * Present at the right. 48px (`--topbar-height`), hairline below, on the card surface.
+ * rename) → undo / redo at the left; the save indicator, the selected-theme callout, Share, Export
+ * and the filled Present at the right. 48px (`--topbar-height`), hairline below, on the card surface.
  */
 
 export type TopBarProps = {
   onBack: () => void;
   /** Awaits the autosave flush first, so present mode never opens a second-old deck. */
   onPresent: () => void;
-  /** The theme dialog arrives with TEACH-105; until then the button is off. */
+  /** Opens the theme picker from the selected-theme callout (ruling 123). */
   onOpenTheme?: () => void;
   /** Where the export control sits once it exists (E1, TEACH-110). */
   exportSlot?: ReactNode;
@@ -77,13 +78,6 @@ export function TopBar({
 
   const secondaryActions = (
     <>
-      {/* Ruling 116: on a desktop the theme lives with the slides (the rail's Theme button); a
-          phone has no rail, so it stays in the More menu there. */}
-      {mobile && onOpenTheme ? (
-        <Button variant="ghost" size="sm" onClick={onOpenTheme}>
-          Theme
-        </Button>
-      ) : null}
       <QuietButton label="Share" hintLabel="Sharing is not available yet" />
       {onToggleFacts ? (
         <Button
@@ -145,8 +139,18 @@ export function TopBar({
 
       <AppBarGroup className="ml-auto gap-2">
         <SaveIndicator autosave={autosave} />
-        {/* Theme, Share and Export are the same kind of object three times over, so they take one
-            shape — a ghost label — and Present is the only fill in the editor. */}
+        {/* Ruling 123: the selected theme, named, beside the design controls and never folded
+            into More, so it is visible on a phone too. */}
+        {onOpenTheme ? (
+          <ThemeCallout
+            themeId={lesson.themeId}
+            onClick={onOpenTheme}
+            compact={mobile}
+            className="shrink-0"
+          />
+        ) : null}
+        {/* Share and Export are the same kind of object, so they take one shape — a ghost label —
+            and Present is the only fill in the editor. */}
         {compactChrome || mobile ? (
           <Popover>
             <PopoverTrigger asChild>

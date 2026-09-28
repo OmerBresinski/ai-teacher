@@ -255,6 +255,83 @@ test.describe("first-experience design preview", () => {
     await expect(page.locator(".creation-generation-actor")).toHaveCount(0, { timeout: 3_000 });
   });
 
+  test("the selected-theme callout under the stage opens the picker and re-themes made and arriving slides", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const preview = await openGenerating(page);
+    const callout = page.locator("[data-generating-theme] [data-theme-callout]");
+    await expect(callout).toBeVisible({ timeout: 15_000 });
+    await expect(callout).toHaveText(/^Theme · /);
+    // Nothing else opens the picker: no rail entry while the lesson is made.
+    await expect(page.locator("[data-theme-callout]")).toHaveCount(1);
+    const slideBg = () =>
+      page
+        .locator("[data-canvas-slide] > *")
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+    await expect(page.locator("[data-canvas-slide]")).toBeVisible({ timeout: 15_000 });
+    const before = await slideBg();
+    await callout.click();
+    const dialog = page.getByRole("dialog", { name: "Theme" });
+    await expect(dialog).toBeVisible();
+    await dialog.locator('[data-theme-tile="night-lab"]').click();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(callout).toHaveAttribute("data-theme-callout", "night-lab");
+    await expect.poll(slideBg).not.toBe(before);
+    const nightLab = await slideBg();
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    // Editable: the same callout sits in the top bar and the slide rail has none.
+    const toolbar = page.locator("[data-topbar] [data-theme-callout]");
+    await expect(toolbar).toBeVisible({ timeout: 5_000 });
+    await expect(toolbar).toHaveAttribute("data-theme-callout", "night-lab");
+    await expect(page.locator("[data-navigator] [data-theme-callout]")).toHaveCount(0);
+    await expect.poll(slideBg).toBe(nightLab);
+    await toolbar.click();
+    await expect(page.getByRole("dialog", { name: "Theme" })).toBeVisible();
+  });
+
+  test("Cancel in the picker goes back to the theme the callout named", async ({ page }) => {
+    await openGenerating(page);
+    const callout = page.locator("[data-generating-theme] [data-theme-callout]");
+    await expect(callout).toBeVisible({ timeout: 15_000 });
+    const opening = await callout.getAttribute("data-theme-callout");
+    const other = opening === "night-lab" ? "playground" : "night-lab";
+    await callout.click();
+    const dialog = page.getByRole("dialog", { name: "Theme" });
+    await dialog.locator(`[data-theme-tile="${other}"]`).click();
+    await expect(callout).toHaveAttribute("data-theme-callout", other);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(callout).toHaveAttribute("data-theme-callout", opening ?? "");
+  });
+
+  test("on a phone the callout is visible under the slides and in the top bar, never in More", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const preview = await openGenerating(page);
+    const callout = page.locator("[data-generating-theme] [data-theme-callout]");
+    await expect(callout).toBeVisible({ timeout: 15_000 });
+    const box = await callout.boundingBox();
+    if (!box) throw new Error("theme callout missing");
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    await callout.click();
+    const dialog = page.getByRole("dialog", { name: "Theme" });
+    await expect(dialog.locator("[data-theme-tile]")).toHaveCount(6);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    const toolbar = page.locator("[data-topbar] [data-theme-callout]");
+    await expect(toolbar).toBeVisible({ timeout: 5_000 });
+    const bar = await toolbar.boundingBox();
+    if (!bar) throw new Error("top bar callout missing");
+    expect(bar.x + bar.width).toBeLessThanOrEqual(390);
+    await page.getByRole("button", { name: "More lesson actions" }).click();
+    await expect(page.getByRole("dialog", { name: "Lesson actions" })).not.toContainText("Theme");
+  });
+
   test("long objectives grow on mobile without losing focus or overflowing", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openObjectives(page);

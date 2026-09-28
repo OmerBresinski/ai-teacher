@@ -32,10 +32,13 @@ export function GeneratingLesson({
   onViewSlide,
   exportSlot,
   canvasCompanion,
+  themeCallout,
   onStage,
 }: {
   lesson: Lesson;
   canvasCompanion?: ReactNode;
+  /** The selected-theme callout under the slide stage (ruling 123). */
+  themeCallout?: ReactNode;
   onStage?: (state: StageState) => void;
   jobId: string;
   /** The estimate text for the top bar's slot (TEACH-201). */
@@ -111,6 +114,7 @@ export function GeneratingLesson({
   return (
     <GeneratingShell
       canvasCompanion={canvasCompanion}
+      themeCallout={themeCallout}
       lesson={lesson}
       events={stream.events.map((record) => record.event)}
       estimate={estimate}

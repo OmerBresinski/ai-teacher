@@ -19,6 +19,7 @@ export function MobileGeneratingShell({
   line,
   lockLine,
   canvasCompanion,
+  themeCallout,
   onBack,
   onStop,
   stop,
@@ -88,6 +89,11 @@ export function MobileGeneratingShell({
         />
       </main>
       <footer className="mobile-generation-footer" data-testid="generating-lock">
+        {themeCallout ? (
+          <div className="mobile-generation-theme" data-generating-theme>
+            {themeCallout}
+          </div>
+        ) : null}
         <Lock aria-hidden size={13} />
         <span>{lockLine}</span>
         {exportSlot}

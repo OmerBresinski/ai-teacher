@@ -1,11 +1,17 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
 import { type JobEvent, JobEventSchema } from "@tj/domain/jobs";
-import { LessonEditor } from "@tj/editor/lesson";
+import {
+  displayInTheme,
+  GeneratingThemeDialog,
+  LessonEditor,
+  type LessonEditorHandle,
+  ThemeCallout,
+} from "@tj/editor/lesson";
 import { PresentView } from "@tj/editor/present";
 import { demoLibrary } from "@tj/editor/starter";
 import { Button } from "@tj/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GeneratingShell } from "@/components/generating-lesson/GeneratingShell";
 import type { CharacterOrigin } from "./character-origin";
 import { GenerationCompanion } from "./generation-companion";
@@ -84,6 +90,16 @@ function LocalEditor({
   const [presenting, setPresenting] = useState(false);
   const [destination, setDestination] = useState<HTMLDivElement | null>(null);
   const [storyFinished, setStoryFinished] = useState(false);
+  // Ruling 123: the theme picked while the lesson is made, shown on the slides as they arrive and
+  // applied by the editor (re-fitted, one undo step) while it is still mounted hidden at Ready.
+  const [pickedTheme, setPickedTheme] = useState<string | null>(null);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const editorRef = useRef<LessonEditorHandle | null>(null);
+  useLayoutEffect(() => {
+    if (!ready || !pickedTheme || !editorRef.current) return;
+    editorRef.current.retheme(pickedTheme);
+    setPickedTheme(null);
+  }, [ready, pickedTheme]);
   // The editor mounts hidden and is shown once its layout has settled (zoom-to-fit, toolbar), so
   // the swap from the generating shell moves nothing on screen (CLS).
   const [shown, setShown] = useState(false);
@@ -142,6 +158,10 @@ function LocalEditor({
   ];
   const companionSlot = <div ref={setDestination} className="creation-generation-anchor" />;
   if (presenting) return <PresentView lesson={lesson} onExit={() => setPresenting(false)} />;
+  const generating = displayInTheme(
+    { ...lesson, slides: lesson.slides.slice(0, arrived) },
+    pickedTheme,
+  );
   return (
     <div
       className="creation-editor-preview"
@@ -165,6 +185,7 @@ function LocalEditor({
               onSave={saveLocally}
               onBack={onBack}
               onPresent={() => setPresenting(true)}
+              editorRef={editorRef}
               initialSlideId={selected ?? lesson.slides.at(-1)?.id}
               companion={shown ? companionSlot : <div className="creation-generation-anchor" />}
             />
@@ -172,7 +193,10 @@ function LocalEditor({
         ) : null}
         {!shown ? (
           <GeneratingShell
-            lesson={{ ...lesson, slides: lesson.slides.slice(0, arrived) }}
+            lesson={generating}
+            themeCallout={
+              <ThemeCallout themeId={generating.themeId} onClick={() => setThemeOpen(true)} />
+            }
             events={events}
             onBack={onBack}
             onStop={() => setStopped(true)}
@@ -183,6 +207,14 @@ function LocalEditor({
           />
         ) : null}
       </div>
+      {!shown ? (
+        <GeneratingThemeDialog
+          open={themeOpen}
+          lesson={generating}
+          onChange={setPickedTheme}
+          onClose={() => setThemeOpen(false)}
+        />
+      ) : null}
       {!storyFinished ? (
         <GenerationCompanion
           destination={destination}

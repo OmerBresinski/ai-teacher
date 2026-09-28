@@ -14,6 +14,8 @@ import {
 } from "react";
 import type { ImageSearchClient } from "../images/image-search";
 import { isFitStale } from "../layout/fit-plan";
+import { createMeasurer } from "../layout/measure";
+import { rethemeFromReducer } from "../layout/retheme";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
@@ -56,9 +58,9 @@ import { useMobileEditor } from "./use-mobile-editor";
  * `?` help sheet. The document lives in the TanStack Query cache under `queryKey` and is edited
  * through `useDocumentHistory` (ADR 0022 §4); the session state — selection, zoom, clipboard — is
  * React state owned here and handed down through `EditorSessionProvider`. Saving is the app's
- * `onSave` (ADR 0022 §5), debounced by `useAutosave`. The theme picker sits at the head of the
- * slide rail (the More menu on a phone) and re-themes and re-fits the whole lesson as one undo
- * step (TEACH-258, ruling 116).
+ * `onSave` (ADR 0022 §5), debounced by `useAutosave`. The theme picker opens from the selected-theme
+ * callout in the top bar (ruling 123) and re-themes and re-fits the whole lesson as one undo step
+ * (TEACH-258).
  */
 
 /** The single-key inserts (`SHELL_SHORTCUTS` Insert group); `i` waits for the images ticket. */
@@ -130,6 +132,11 @@ export type LessonEditorHandle = {
   undo: () => void;
   /** Make a slide the active one (the toast's "View"). */
   goToSlide: (slideId: Id) => void;
+  /**
+   * Re-theme and re-fit the lesson as one undo step: the theme the teacher picked while it was
+   * being made, applied at Ready (ruling 123). Picking the theme it already has does nothing.
+   */
+  retheme: (themeId: string) => void;
 };
 
 export function LessonEditor({
@@ -319,6 +326,13 @@ export function LessonEditor({
       },
       undo: () => historyRef.current.undo(),
       goToSlide: (slideId) => session.actions.setActiveSlide(slideId),
+      retheme: (themeId) => {
+        const h = historyRef.current;
+        const current = lessonRef.current;
+        if (!current || current.themeId === themeId) return;
+        h.flushTransactions();
+        h.dispatch(rethemeFromReducer, current, themeId, createMeasurer(getTheme(themeId)));
+      },
     }),
     [session],
   );
@@ -458,9 +472,7 @@ export function LessonEditor({
                         {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
                       </div>
                       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                      {mobile ? (
-                        <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
-                      ) : null}
+                      <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
                       {proposalsEnabled ? <RegenerateDialog /> : null}
                     </div>
                   </ProposalsContext.Provider>

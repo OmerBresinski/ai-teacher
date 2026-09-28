@@ -67,3 +67,14 @@
   border-top: 1px solid var(--border);
   font-size: 12px;
 }
+/* The selected-theme callout (ruling 123) takes the footer's start; the lock line follows it. */
+.mobile-generation-theme {
+  margin-right: auto;
+  flex-shrink: 0;
+}
+.mobile-generation-theme + svg + span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
