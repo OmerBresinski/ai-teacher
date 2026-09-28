@@ -58,7 +58,7 @@ export function renderEditor(
   client.setQueryData(KEY, lesson);
   const onSave = mock((_lesson: Lesson) => Promise.resolve());
   const onBack = mock(() => {});
-  const onPresent = mock(() => {});
+  const onPresent = mock((_slide: number) => {});
   const utils = render(
     <QueryClientProvider client={client}>
       <TooltipProvider>

@@ -16,6 +16,7 @@ import { PanelSeparator } from "../kit/Panel";
 import { SaveIndicator } from "../kit/SaveIndicator";
 import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
+import { enterPresentFullscreen } from "../present/use-fullscreen";
 import { useHistory, useLesson } from "./document-context";
 import { useCompactChrome } from "./use-compact-chrome";
 import { useMobileEditor } from "./use-mobile-editor";
@@ -68,6 +69,8 @@ export function TopBar({
   const worksheetId = lesson.artefacts?.worksheetId;
 
   const present = async () => {
+    // Before the await: the fullscreen request needs this click's gesture (ruling 104).
+    enterPresentFullscreen();
     await autosave.flush();
     onPresent();
   };

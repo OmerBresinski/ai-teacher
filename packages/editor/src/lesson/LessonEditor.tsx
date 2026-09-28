@@ -78,8 +78,11 @@ export type LessonEditorProps = {
   /** Persist the document: the mock store today, `PUT /documents/:id` later. */
   onSave: (lesson: Lesson) => Promise<void>;
   onBack: () => void;
-  /** Called after the autosave has flushed, so present mode opens the deck as it is now. */
-  onPresent: () => void;
+  /**
+   * Called after the autosave has flushed, so present mode opens the deck as it is now, with the
+   * 1-based number of the slide the teacher is on (ruling 104).
+   */
+  onPresent: (slide: number) => void;
   /** Pexels search + pick for the Add image panel, injected by the app. */
   images?: ImageSearchClient;
   /** Where the export control sits once it exists (E1). */
@@ -399,7 +402,7 @@ export function LessonEditor({
                     >
                       <TopBar
                         onBack={onBack}
-                        onPresent={onPresent}
+                        onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
                         onOpenTheme={() => setThemeOpen(true)}
                         exportSlot={exportSlot}
                         onOpenWorksheet={onOpenWorksheet}
