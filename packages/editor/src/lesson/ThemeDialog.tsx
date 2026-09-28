@@ -2,6 +2,8 @@ import { SLIDE_W, type Slide, type ThemeTag } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@tj/ui";
 import { Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
+import { fitLessonToThemeReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { newSlide } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme, THEME_TAG_LABELS, THEMES } from "../model/themes";
@@ -32,7 +34,37 @@ const CONTENT_FIRST: Slide["kind"][] = ["objectives", "vocabulary"];
  * `setTheme` inside it (the canvas previews live, nothing is recorded or saved), Done ends it (one
  * undo step, one autosave), and Cancel — button, Esc, backdrop — rolls it back, so a browse through
  * the six themes leaves no trace in the history and costs no save.
+ *
+ * A theme is not paint only: its type ladder sets how tall each text box must be (TEACH-258). So
+ * Done on a new theme first waits for that theme's faces, then tidies every slide the linter flags
+ * under it (`fitLessonToTheme`) inside the same transaction: the theme and the re-fit are one undo
+ * step, and undo gives back the old theme with the old geometry.
  */
+
+/** How long Done waits for a theme's faces before it measures with what it has. */
+const FACES_TIMEOUT_MS = 1500;
+
+/**
+ * The new theme's faces, loaded before anything is measured in them: `null` when there is nothing
+ * to wait for (already loaded — the tiles drew them — or no font API), else a promise that never
+ * rejects and settles within `FACES_TIMEOUT_MS`.
+ */
+function themeFacesPending(themeId: string): Promise<unknown> | null {
+  const { fonts } = getTheme(themeId);
+  const faces = [`400 32px ${fonts.body}`, `700 32px ${fonts.title}`];
+  const api = typeof document === "undefined" ? undefined : document.fonts;
+  if (!api?.load) return null;
+  try {
+    if (faces.every((face) => api.check(face))) return null;
+  } catch {
+    return null;
+  }
+  return Promise.race([
+    Promise.all(faces.map((face) => api.load(face))).catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, FACES_TIMEOUT_MS)),
+  ]);
+}
+
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const lesson = useLesson();
   const history = useHistory();
@@ -60,10 +92,15 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
   const historyRef = useRef(history);
   historyRef.current = history;
   const tx = useRef<number | null>(null);
+  const opening = useRef<string | null>(null);
+  const lessonRef = useRef(lesson);
+  lessonRef.current = lesson;
+  const [applying, setApplying] = useState(false);
   useEffect(() => {
     if (!open) return;
     const h = historyRef.current;
     h.flushTransactions();
+    opening.current = lessonRef.current.themeId;
     tx.current = h.beginTransaction();
     return () => {
       if (tx.current !== null) h.rollbackTransaction(tx.current);
@@ -72,10 +109,32 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
   }, [open]);
 
   const setTheme = (id: string) => history.dispatch(reducers.setTheme, id);
-  const done = () => {
-    if (tx.current !== null) history.endTransaction(tx.current);
+  const commit = () => {
+    if (tx.current === null) return;
+    const themeId = lessonRef.current.themeId;
+    if (themeId !== opening.current) {
+      const theme = getTheme(themeId);
+      clearMeasureCache();
+      warmMeasurer(rethemeMeasureInputs(lessonRef.current), theme);
+      historyRef.current.dispatch(fitLessonToThemeReducer, createMeasurer(theme));
+    }
+    historyRef.current.endTransaction(tx.current);
     tx.current = null;
     onClose();
+  };
+  const done = () => {
+    if (tx.current === null || applying) return;
+    const pending =
+      lessonRef.current.themeId === opening.current
+        ? null
+        : themeFacesPending(lessonRef.current.themeId);
+    if (!pending) return commit();
+    setApplying(true);
+    void pending.then(() => {
+      setApplying(false);
+      // Cancelled while the faces loaded: the rollback already ran and `commit` does nothing.
+      commit();
+    });
   };
   const cancel = () => {
     if (tx.current !== null) history.rollbackTransaction(tx.current);
@@ -171,7 +230,7 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
           <Button variant="ghost" onClick={cancel}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={done}>
+          <Button variant="primary" disabled={applying} onClick={done}>
             Done
           </Button>
         </DialogFooter>

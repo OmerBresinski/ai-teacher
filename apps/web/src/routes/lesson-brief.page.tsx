@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CreateLessonSchema,
+  DEFAULT_THEME_ID,
   findNamePatterns,
   GUARD_MESSAGE,
   type Lesson,
@@ -81,6 +82,7 @@ function LessonIntake({
   const [step, setStep] = useState<"brief" | "objectives" | "worksheet">("brief");
   const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
   const [slideCount, setSlideCount] = useState("8");
+  const [themeId, setThemeId] = useState(last?.themeId || DEFAULT_THEME_ID);
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "initial", recipe: "knowledge-check", minutes: "10" },
   ]);
@@ -132,8 +134,9 @@ function LessonIntake({
     setSources(lesson.sources ?? []);
     setObjectives((lesson.facts?.objectives ?? []).map(({ id, text }) => ({ id, text })));
     setSlideCount(String(lesson.brief?.slideCount ?? 8));
+    setThemeId(last?.themeId || lesson.themeId || DEFAULT_THEME_ID);
     setStep("objectives");
-  }, [lesson, jobId, meta.isSuccess, navigate]);
+  }, [lesson, jobId, meta.isSuccess, navigate, last]);
 
   async function fail(cause: unknown) {
     setError(
@@ -157,7 +160,7 @@ function LessonIntake({
       const input = CreateLessonSchema.parse({
         brief: { topic: brief.topic.trim(), level: brief.level, slideCount: Number(slideCount) },
         yearGroup: brief.yearGroup,
-        ...(last?.themeId ? { themeId: last.themeId } : {}),
+        themeId,
         sourceIds: sources.map(({ id }) => id),
         skipPlanning: skip,
       });
@@ -197,7 +200,7 @@ function LessonIntake({
           subject: last?.subject ?? "",
           subjectOther: last?.subjectOther ?? "",
           yearGroup: brief.yearGroup,
-          themeId: last?.themeId ?? "",
+          themeId,
         });
         if (request.current.input.skipPlanning)
           await navigate({ to: "/l/$lessonId", params: { lessonId: ids.lessonId } });
@@ -221,6 +224,13 @@ function LessonIntake({
         expectedRevision: lesson.plan?.revision ?? 0,
         objectives: objectiveEdits(lesson, objectives),
         slideCount: Number(slideCount) as 6 | 8 | 10 | 12,
+        themeId,
+      });
+      writeLastClass({
+        subject: last?.subject ?? "",
+        subjectOther: last?.subjectOther ?? "",
+        yearGroup: brief.yearGroup,
+        themeId,
       });
       const worksheet = worksheets[0];
       rememberWorksheetIntent(
@@ -363,6 +373,8 @@ function LessonIntake({
                 onChange={setObjectives}
                 slideCount={slideCount}
                 onSlideCount={setSlideCount}
+                themeId={themeId}
+                onThemeId={setThemeId}
                 duration=""
                 onDuration={() => {}}
                 onBack={() => setStep("brief")}

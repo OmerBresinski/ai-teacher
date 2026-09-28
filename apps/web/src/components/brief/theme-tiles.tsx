@@ -6,7 +6,8 @@ import { LessonThumb } from "@/components/lesson-thumb";
 import { LIBRARY_THEMES } from "@/lib/library-themes";
 
 /*
- * The brief's theme picker (TEACH-177 item 5): six 16:9 tiles, each the title slide the lesson
+ * The theme picker on the objectives step (TEACH-177 item 5, TEACH-258, ruling 113): one compact
+ * row of six 16:9 tiles that scrolls sideways on a narrow screen, each the title slide the lesson
  * would open with in that theme, drawn with the topic the teacher has just typed. Native radios
  * keep the radio semantics (arrow keys move the choice, one tab stop); the chosen tile carries
  * the kit's two-tone focus band and a tick. `lessonFromBrief` yields no slides, so the tile
@@ -56,13 +57,14 @@ export function ThemeTiles({
     <div
       role="radiogroup"
       aria-labelledby={labelId}
-      className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+      // `p-1` keeps the 3px focus ring inside the scroller, which would otherwise clip it.
+      className="-m-1 flex gap-2 overflow-x-auto p-1"
       data-testid="theme-tiles"
     >
       {LIBRARY_THEMES.map((theme) => {
         const checked = theme.id === value;
         return (
-          <label key={theme.id} className="group relative block cursor-pointer">
+          <label key={theme.id} className="group relative block min-w-24 flex-1 cursor-pointer">
             <input
               type="radio"
               name={name}

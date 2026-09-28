@@ -71,4 +71,23 @@ describe("ThemeDialog", () => {
     expect(read().themeId).toBe(opening);
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
   });
+
+  test("Done on a new theme applies the theme and its re-fit as one undo step; undo restores the theme and every slide (TEACH-258)", async () => {
+    const { read } = renderEditor();
+    const before = read();
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const dialog = await screen.findByRole("dialog", { name: "Theme" });
+    const beacon = screen
+      .getAllByRole("radio")
+      .find((t) => t.getAttribute("data-theme-tile") === "beacon");
+    if (!beacon) throw new Error("no beacon tile");
+    fireEvent.click(beacon);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(read().themeId).toBe("beacon");
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(read().themeId).toBe(before.themeId);
+    expect(read().slides).toEqual(before.slides);
+    expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+  });
 });

@@ -15,6 +15,7 @@ import {
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Field } from "@/components/brief/field";
+import { ThemeTiles } from "@/components/brief/theme-tiles";
 
 export function ChoiceField({
   label,
@@ -213,6 +214,8 @@ export function ObjectivesStep({
   onChange,
   slideCount,
   onSlideCount,
+  themeId,
+  onThemeId,
   onBack,
   onGenerate,
 }: {
@@ -220,12 +223,16 @@ export function ObjectivesStep({
   objectives: ObjectiveDraft[];
   onChange: (objectives: ObjectiveDraft[]) => void;
   slideCount: string;
+  /** Ruling 113: the theme is picked here and travels with the confirm. */
+  themeId: string;
+  onThemeId: (themeId: string) => void;
   duration?: string;
   onSlideCount: (value: string) => void;
   onDuration?: (value: string) => void;
   onBack: () => void;
   onGenerate: () => void;
 }) {
+  const themeLabelId = useId();
   return (
     <form
       className="creation-form"
@@ -278,6 +285,18 @@ export function ObjectivesStep({
         >
           <Plus /> Add objective
         </Button>
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <p id={themeLabelId} className="creation-objective-instruction">
+          Theme
+        </p>
+        <ThemeTiles
+          labelId={themeLabelId}
+          topic={brief.topic}
+          subtitle={brief.yearGroup}
+          value={themeId}
+          onValueChange={onThemeId}
+        />
       </div>
       <div className="creation-step-footer">
         <div className="creation-generation-options">

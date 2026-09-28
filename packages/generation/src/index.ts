@@ -80,7 +80,7 @@ export {
   plannerOf,
   resumeFromObjectivesFirst,
 } from "./stages/objectives-first";
-export { materialiseObjectives, plan } from "./stages/plan";
+export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";
 export {
   type ImpactSet,
   impactSet,

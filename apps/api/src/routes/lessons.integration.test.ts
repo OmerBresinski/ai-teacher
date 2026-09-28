@@ -770,6 +770,29 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       expect(await errorOf(again)).toMatchObject({ reason: "generating", jobId });
     });
 
+    test("a theme sent with the confirm is stored on the lesson; none sent keeps it (ruling 113)", async () => {
+      const picked = await seedPlanned();
+      const before = (picked.row.body as Lesson).themeId;
+      expect(before).not.toBe("night-lab");
+      const res = await postJson(wsA, `/lessons/${picked.lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(picked.row.body as Lesson),
+        themeId: "night-lab",
+      });
+      expect(res.status).toBe(202);
+      expect((await bodyOf(wsA, picked.lessonId)).themeId).toBe("night-lab");
+
+      const unsent = await seedPlanned();
+      const kept = await postJson(wsA, `/lessons/${unsent.lessonId}/generate`, {
+        expectedRevision: 1,
+        objectives: objectivesOf(unsent.row.body as Lesson),
+      });
+      expect(kept.status).toBe(202);
+      expect((await bodyOf(wsA, unsent.lessonId)).themeId).toBe(
+        (unsent.row.body as Lesson).themeId,
+      );
+    });
+
     test("an objectives-first plan (objectives, no outline) confirms and queues lesson.generate (TEACH-93)", async () => {
       const { lessonId, row } = await seedPlanned({ objectivesOnly: true });
       const res = await postJson(wsA, `/lessons/${lessonId}/generate`, {
