@@ -35,6 +35,7 @@ import {
   type RateLimitConfig,
   rateLimitByWorkspace,
 } from "./rate-limit";
+import { authProviderRoutes } from "./routes/auth-providers";
 import { briefRoutes } from "./routes/briefs";
 import {
   DEV_JOB_PATHS,
@@ -244,6 +245,7 @@ function buildApp({
     .route("/", healthRoutes(db))
     .route("/", mailAssetRoutes())
     .route("/", helloRoutes)
+    .route("/", authProviderRoutes(auth))
     .route("/", meRoutes())
     .route("/", devJobRoutes(eventsRuntime))
     .route("/", jobRoutes(eventsRuntime))

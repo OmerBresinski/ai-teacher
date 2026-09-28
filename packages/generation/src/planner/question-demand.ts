@@ -130,8 +130,8 @@ export function sketchTaught(
 const TIERS = ["easy", "core", "stretch"] as const;
 
 /**
- * A placeholder's stem length. The outline's set and exit budgets are in characters
- * (`SET_CHARS`, `EXIT_CHARS`, `MC_LINE_MAX`), so a placeholder has to be as long as a real
+ * A placeholder's stem length. The outline's set budget is in characters and its exit budget in
+ * measured lines (`SET_CHARS`, `MC_LINE_MAX`, `fitsExitTicket`), so a placeholder has to be as long as a real
  * question, not a token: with one-line placeholders the fill placed four to a set and six on
  * the exit quiz, while the real questions (pw w1/b1, ten lessons, 160 questions) made a median
  * multiple-choice line of exactly `MC_LINE_MAX` and a median stem of 80 characters, and the
@@ -143,15 +143,25 @@ const TIERS = ["easy", "core", "stretch"] as const;
  */
 export const PLACEHOLDER_STEM_CHARS = 80;
 
+/**
+ * An exit placeholder is shorter (TEACH-172): the exit ticket keeps a line only when the ticket
+ * still fits one slide with its answers (`fitsExitTicket`), and three `MC_LINE_MAX` lines never
+ * do, so full-length placeholders would ask for one exit question a lesson. At this length three
+ * fit, so the demand asks one per objective first, up to `EXIT_QUIZ_MAX`, and the real questions
+ * are measured when they exist.
+ */
+export const EXIT_PLACEHOLDER_STEM_CHARS = 30;
+export const EXIT_PLACEHOLDER_LINE = 80;
+
 /** Pad `text` with a filler to `length` characters (or leave it when already longer). */
 const padTo = (text: string, length: number) =>
   text.length >= length ? text : `${text} ${"x".repeat(length - text.length - 1)}`;
 
 /**
  * A placeholder's options, sized so its multiple-choice line (`questionLine`: the stem, then the
- * four lettered options) is exactly `MC_LINE_MAX` characters long.
+ * four lettered options) is exactly `line` characters long (`MC_LINE_MAX` unless given).
  */
-function placeholderOptions(stem: string, n: number) {
+function placeholderOptions(stem: string, n: number, line = MC_LINE_MAX) {
   const probe = {
     stem,
     answer: `Answer ${n + 1}`,
@@ -163,7 +173,7 @@ function placeholderOptions(stem: string, n: number) {
     answer: "",
     distractors: probe.distractors.map(() => ({ text: "" })),
   }).text.length;
-  const room = Math.max(0, MC_LINE_MAX - fixed);
+  const room = Math.max(0, line - fixed);
   const each = Math.floor(room / 4);
   const extra = room - each * 4;
   return {
@@ -191,11 +201,11 @@ export function placeholderQuestions(
         const stem = padTo(
           // A tag of its own ("1.2"), so no two placeholders read as one question (`sameQuestion`).
           `${use} question ${o + 1}.${n + 1}?`,
-          PLACEHOLDER_STEM_CHARS,
+          use === "exit" ? EXIT_PLACEHOLDER_STEM_CHARS : PLACEHOLDER_STEM_CHARS,
         );
         questions.push({
           stem,
-          ...placeholderOptions(stem, n),
+          ...placeholderOptions(stem, n, use === "exit" ? EXIT_PLACEHOLDER_LINE : MC_LINE_MAX),
           reasoning: "Because.",
           tier: TIERS[n % TIERS.length] ?? "core",
           use,
