@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { type NextLesson, type PresentProgress, PresentView } from "@tj/editor/present";
+import {
+  type NextLesson,
+  type PresentProgress,
+  PresentView,
+  storedSlideId,
+  useFittedLesson,
+} from "@tj/editor/present";
 import { Spinner } from "@tj/ui";
 import { useCallback, useMemo } from "react";
 import { WrongKindPage } from "@/components/wrong-kind-page";
@@ -58,28 +64,32 @@ export function LessonPresentPage() {
   }, [navigate, seriesId, lessonId, from]);
 
   const lesson = data && isFullDocument(data) && "slides" in data ? data : null;
+  // A lesson stored under older floors is drawn re-fitted, as the editor would leave it; the stored
+  // copy is what progress is written onto (`useFittedLesson`: nothing else is saved from here).
+  const fitted = useFittedLesson(lesson);
 
   const onProgress = useCallback(
     ({ reachedSlideId, exitedPastFirst }: PresentProgress) => {
       if (!lesson) return;
       save({
         ...lesson,
-        reachedSlideId,
+        reachedSlideId: (fitted && storedSlideId(fitted, lesson, reachedSlideId)) ?? reachedSlideId,
         ...(exitedPastFirst ? { taughtAt: new Date().toISOString() } : {}),
       });
     },
-    [lesson, save],
+    [lesson, fitted, save],
   );
 
   if (!data || !isFullDocument(data)) return <Loading />;
   if (!lesson) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
   }
+  if (!fitted) return <Loading />;
 
   return (
     <PresentView
       key={lessonId}
-      lesson={lesson}
+      lesson={fitted}
       startIndex={slide ? slide - 1 : 0}
       onExit={onExit}
       next={next}

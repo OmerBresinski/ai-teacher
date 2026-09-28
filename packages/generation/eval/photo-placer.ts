@@ -8,7 +8,12 @@ import type { WorkspaceId } from "@tj/domain";
 import { createPexelsClient, storePhoto } from "@tj/images";
 import type { PhotoPlacer } from "../src";
 
-const EVAL_WORKSPACE = "eval" as WorkspaceId;
+/**
+ * A fixed, valid UUID: `storePhoto` builds its key with `storageKey`, which refuses anything else,
+ * so "eval" made every pick throw and no eval lesson ever carried a photograph. Nothing is written
+ * under it.
+ */
+const EVAL_WORKSPACE = "0e7a1000-0000-4000-8000-000000000e7a" as WorkspaceId;
 
 /** A `put`-only store that keeps nothing: `storePhoto` fetches the bytes and hands them here. */
 export function memoryStore(): { put: Parameters<typeof storePhoto>[0]["storage"]["put"] } {

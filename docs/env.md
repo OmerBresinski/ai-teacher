@@ -38,7 +38,7 @@ is set".
 | `ALLOW_CONSOLE_MAIL_IN_PRODUCTION` | api | config | — | both | n/a | manual | Acknowledges that with MAIL_PROVIDER=console in production every magic-link URL is printed to the api log. Not set anywhere since TEACH-35 (Railway runs MAIL_PROVIDER=resend) and never seeded by provision.sh; only for an emergency fallback to console mail. |
 | `GOOGLE_CLIENT_ID` | api | config | — | prod | n/a | manual | OAuth client id (F17). Unset disables Google sign-in (the api logs `Google sign-in disabled`). |
 | `GOOGLE_CLIENT_SECRET` | api | secret | — | prod | n/a | manual | OAuth client secret paired with GOOGLE_CLIENT_ID (F17). |
-| `MICROSOFT_CLIENT_ID` | api | config | — | prod | n/a | manual | OAuth application (client) id (F17). Unset disables Microsoft sign-in. |
+| `MICROSOFT_CLIENT_ID` | api | config | — | prod | n/a | manual | Entra application (client) id (F17, ADR 0008 amendment of 2026-09-28). Unset disables Microsoft sign-in and hides its button. |
 | `MICROSOFT_CLIENT_SECRET` | api | secret | — | prod | n/a | manual | OAuth client secret paired with MICROSOFT_CLIENT_ID (F17). |
 | `ENABLE_TEST_ROUTES` | api | config | — | n/a | n/a | manual | "1" mounts the test-only routes (`/__test/*`, TEACH-22) when NODE_ENV=test. Refused at boot when NODE_ENV=production; never set it on Railway. |
 | `ALLOW_WORKSPACE_HEADER_SHIM` | api | config | `1` | n/a | n/a | template | Development/test only: lets x-tj-workspace-id select a Workspace without a session. Refused at boot when NODE_ENV=production; never set it on Railway. |
@@ -91,7 +91,7 @@ is set".
 | `VITE_API_URL_FALLBACK` | web | config | — | n/a | preview | manual | Vercel Preview only. API origin for preview builds without a PR number (branch pushes) or without a template — point it at the Railway production api (`https://api.dayback.app`). Never in a local .env. |
 | `SITE_URL` | site | config | — | n/a | both | manual | Public origin of the marketing site, `https://dayback.app`: canonicals, Open Graph URLs and sitemap entries. `scripts/vercel-env.ts site` passes it to `homepage/build.mjs --site=`; required in production. |
 | `SITE_APP_URL` | site | config | — | n/a | both | manual | The app the hero form and every Create a lesson link go to, `https://teach.dayback.app` (`--app=`); required in production. |
-| `SITE_INDEXING` | site | config | — | n/a | prod | manual | `1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. Refused together with SITE_ALLOW_PROVISIONAL. |
+| `SITE_INDEXING` | site | config | — | n/a | prod | manual | `1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. With SITE_ALLOW_PROVISIONAL=1 too, the stand-in examples stay noindex and out of the sitemap. |
 | `SITE_ALLOW_PROVISIONAL` | site | config | — | n/a | prod | manual | `1` lets the production marketing build show example lessons whose assets are stand-ins (`--allow-provisional`); they are never indexable. Previews always show them. |
 | `E2E_VERBOSE` | web | config | — | n/a | n/a | manual | Any value makes `playwright.config.ts` pipe api/worker logs at level info instead of discarding them. Shell only. |
 | `CI` | ci | config | — | n/a | n/a | template | `true` on GitHub Actions. `test:db` then skips docker compose, Playwright uses CI settings, `bun test` enables coverage. |

@@ -400,7 +400,8 @@ const CONTRACT = [
     vercel: "n/a",
     setBy: "manual",
     files: ["api"],
-    description: "OAuth application (client) id (F17). Unset disables Microsoft sign-in.",
+    description:
+      "Entra application (client) id (F17, ADR 0008 amendment of 2026-09-28). Unset disables Microsoft sign-in and hides its button.",
   },
   {
     name: "MICROSOFT_CLIENT_SECRET",
@@ -1120,7 +1121,7 @@ const CONTRACT = [
     values: ["1"],
     runtimeOnly: true,
     description:
-      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. Refused together with SITE_ALLOW_PROVISIONAL.",
+      "`1` makes the production marketing build indexable (`--index`: no robots noindex, robots.txt names the sitemap). Unset = noindex. Previews are never indexable. With SITE_ALLOW_PROVISIONAL=1 too, the stand-in examples stay noindex and out of the sitemap.",
   },
   {
     name: "SITE_ALLOW_PROVISIONAL",
