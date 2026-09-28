@@ -218,7 +218,9 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
                 ? "Slides ready"
                 : stage.stage === "checking"
                   ? "Checking your slides…"
-                  : stage.stage === "planning"
+                  : // A confirmed plan already has its facts; the generate job's first events
+                    // still read as Planning, which is not what the teacher is waiting for.
+                    stage.stage === "planning" && !data.facts
                     ? "Planning your lesson…"
                     : "Making your slides…"
           }

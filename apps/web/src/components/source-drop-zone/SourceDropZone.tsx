@@ -100,13 +100,10 @@ export function SourceDropZone({
   const full = sources.length + queue.length >= MAX_SOURCES;
   const inert = disabled || full;
 
-  // Runs once, on mount, from the URL the page opened with (`?source=1`, TEACH-309).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only.
-  useEffect(() => {
-    if (!focusChooseFiles) return;
-    sectionRef.current?.scrollIntoView({ block: "nearest" });
-    chooseFilesRef.current?.focus();
-  }, []);
+  // `?source=1` (TEACH-309) opens the dialog focused on Choose files, once. It runs on the dialog's
+  // own auto-focus: a mount effect ran before the portalled content existed and lost to the
+  // dialog's default focus.
+  const choseFilesFocus = useRef(false);
 
   const notify = (message: string) => {
     setNotices((current) => [...current, { id: nextKey.current++, message }]);
@@ -266,6 +263,12 @@ export function SourceDropZone({
           size="xl"
           className="materials-dialog"
           data-has-materials={sources.length + queue.length > 0}
+          onOpenAutoFocus={(event) => {
+            if (!focusChooseFiles || choseFilesFocus.current || !chooseFilesRef.current) return;
+            choseFilesFocus.current = true;
+            event.preventDefault();
+            chooseFilesRef.current.focus();
+          }}
           onPaste={(event) => {
             const files = Array.from(event.clipboardData.files);
             if (files.length === 0) return;
