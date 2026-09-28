@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
+import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin, PERSONA_SPEED } from "./character-origin";
 import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
 
 /** Data drives the story; completed gestures hand over without holding up the editor. */
@@ -42,26 +42,36 @@ export function GenerationStory({
     };
     const inspectLoop = () => {
       if (cancelled) return;
+      // Once the lesson is ready the check is a quick, exact sign-off, not a performance.
+      const tail = latest.current.ready ? 1.7 : PERSONA_SPEED[3];
       actor.play(9, {
         withWorksheet: includedWorksheet,
+        speed: tail,
         onComplete: () => {
-          if (latest.current.ready) actor.play(10, { reset: false, onComplete: finish });
+          if (latest.current.ready)
+            actor.play(10, { reset: false, speed: 1.7, onComplete: finish });
           else inspectLoop();
         },
       });
     };
     const inspect = () => {
       if (cancelled) return;
+      // If the lesson is already ready, Check skips the inspection and signs off.
       actor.play(5, {
         handoff: { from: 1, to: 3 },
-        speed: 1.45,
-        onComplete: inspectLoop,
+        speed: latest.current.ready ? 1.7 : 1.45,
+        onComplete: () => {
+          if (latest.current.ready)
+            actor.play(10, { reset: false, speed: 1.7, onComplete: finish });
+          else inspectLoop();
+        },
       });
     };
     const work = (beat: number, reset = true) => {
       if (cancelled) return;
       actor.play(beat, {
         reset,
+        speed: PERSONA_SPEED[1],
         withWorksheet: includedWorksheet,
         onComplete: () => {
           if (latest.current.ready && !latest.current.checking) return finish();

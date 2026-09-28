@@ -3,6 +3,9 @@ import { loadGsap } from "@/lib/gsap";
 import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
 import { GenerationStory } from "./generation-story";
 
+/** Long enough for the worksheet-to-slides pass to read before the stage clears. */
+const CENTRE_MIN_SECONDS = 1.15;
+
 /** A persistent stage follows real editor slots across the generating→editable transition. */
 export function GenerationCompanion({
   destination,
@@ -45,15 +48,27 @@ export function GenerationCompanion({
   const scrim = useRef<HTMLDivElement>(null);
   const first = useRef(true);
   const finishing = useRef(false);
+  const centred = useRef(false);
+  const releaseWhenReady = useRef<() => void>(() => undefined);
+  // Anything to look at (a slide, a finished or stopped job) ends the centre-stage hold.
+  const hasContent = progress > 0 || ready || paused;
+  const latest = useRef(hasContent);
+  latest.current = hasContent;
+  useEffect(() => {
+    if (hasContent) releaseWhenReady.current();
+  }, [hasContent]);
   const flight = useRef<ReturnType<Awaited<ReturnType<typeof loadGsap>>["timeline"]> | null>(null);
   const exit = useRef<ReturnType<Awaited<ReturnType<typeof loadGsap>>["to"]> | null>(null);
   useLayoutEffect(() => {
     const actor = stage.current;
     if (!actor || !destination || !gsap) return;
     gsap.set(actor, { autoAlpha: 1 });
+    // A new slot (the editor replacing the generating shell) supersedes any pending release.
+    centred.current = false;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     const place = () => {
       flight.current?.kill();
+      centred.current = false;
       const box = destination.getBoundingClientRect();
       gsap.set(actor, { x: box.left, y: box.top, width: box.width, height: box.height, scale: 1 });
       gsap.set(scrim.current, { autoAlpha: 0 });
@@ -84,25 +99,38 @@ export function GenerationCompanion({
           : centre,
       );
       const travel = origin ? CHARACTER_ENTRY_SECONDS : 0;
-      flight.current = gsap.timeline({
-        onComplete: () => {
-          actor.dataset.handover = "settled";
-        },
-      });
+      // Centre stage only covers time with nothing to show. The characters step aside when the
+      // first slide lands (after a short beat so the pass reads), never on a fixed clock.
+      flight.current = gsap.timeline();
       if (origin) flight.current.to(actor, { ...centre, duration: travel, ease: "sine.inOut" }, 0);
       flight.current.call(
         () => {
-          actor.dataset.handover = "settling";
+          centred.current = true;
+          releaseWhenReady.current();
         },
         [],
-        2.05 + travel,
+        travel + CENTRE_MIN_SECONDS,
       );
-      flight.current.to(
-        actor,
-        { x: box.left, y: box.top, scale: 1, duration: 0.85, ease: "sine.inOut" },
-        2.05 + travel,
-      );
-      flight.current.to(scrim.current, { autoAlpha: 0, duration: 0.6 }, 2.05 + travel);
+      releaseWhenReady.current = () => {
+        if (!centred.current || !latest.current) return;
+        centred.current = false;
+        const slot = destination.getBoundingClientRect();
+        actor.dataset.handover = "settling";
+        flight.current = gsap
+          .timeline({
+            onComplete: () => {
+              actor.dataset.handover = "settled";
+            },
+          })
+          .to(actor, {
+            x: slot.left,
+            y: slot.top,
+            scale: 1,
+            duration: 0.65,
+            ease: "power2.inOut",
+          })
+          .to(scrim.current, { autoAlpha: 0, duration: 0.45, ease: "power1.out" }, 0);
+      };
     } else {
       const immediate = first.current || reduced.matches;
       first.current = false;
