@@ -139,6 +139,21 @@ the rest of the application keeps `X-Frame-Options: DENY`.
    instead of a silent CORS failure.
 4. Vercel's SSO protection does not affect the page's own XHR/SSE to the api once the page loaded.
 
+### Domain: `dayback.app` (TEACH-78, cutover planned 2026-09-28)
+
+Target: `dayback.app` serves the static marketing site from a second Vercel project rooted at
+`homepage/` (`homepage/vercel.json`: no SPA fallback, real 404, trailing slashes, `www` → apex in
+one 308; build flags from `bun scripts/vercel-env.ts site` and the `SITE_*` variables);
+`teach.dayback.app` is `teaching-journey-web` (on that host `/homepage/*` 308s to the public page);
+`api.dayback.app` is the Railway `api`. Production then runs `WEB_ORIGIN=https://teach.dayback.app`,
+`COOKIE_DOMAIN=.dayback.app`, `COOKIE_SAMESITE=lax`, the `BETTER_AUTH_URL` reference unchanged
+(check it renders `api.dayback.app`, and that the boot log has no "COOKIE_DOMAIN ignored"), and
+Vercel `VITE_API_URL=https://api.dayback.app`. The contract's `railwayValue`s already carry the
+new values, so do not run `provision.sh` against production before the cutover. Marketing
+indexing stays off until `SITE_INDEXING=1`. `bun run smoke:prod --target dayback --site
+https://dayback.app` checks both sides. Until the cutover the rows below are live; replace this
+paragraph with the final project ids and times once it is done.
+
 ### Domain: `app.bresinski.org` / `api.bresinski.org` (TEACH-36, 2026-09-12)
 
 The ADR 0008 target: web and api under one parent, `COOKIE_DOMAIN=.bresinski.org`,

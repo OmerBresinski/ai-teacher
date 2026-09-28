@@ -20,7 +20,12 @@ interface VercelConfig {
   installCommand: string;
   outputDirectory: string;
   ignoreCommand: string;
-  redirects: { source: string; destination: string; permanent: boolean }[];
+  redirects: {
+    source: string;
+    has?: { type: string; value: string }[];
+    destination: string;
+    permanent: boolean;
+  }[];
   rewrites: { source: string; destination: string }[];
   headers: { source: string; headers: Header[] }[];
 }
@@ -101,6 +106,37 @@ describe("vercel.json", () => {
     });
     const ignore = readFileSync(resolve(__dirname, "../scripts/vercel-ignore-build.sh"), "utf8");
     expect(ignore).toMatch(/\n {2}homepage\n/);
+  });
+
+  test("the app HTML is noindex; the public site lives on its own project", () => {
+    const html = readFileSync(resolve(__dirname, "..", "index.html"), "utf8");
+    expect(html).toContain('<meta name="robots" content="noindex" />');
+  });
+
+  test("on teach.dayback.app the legacy /homepage paths redirect once to the public site", () => {
+    const onTeach = config.redirects.filter((r) =>
+      r.has?.some((h) => h.type === "host" && h.value === "teach.dayback.app"),
+    );
+    expect(onTeach).toEqual([
+      {
+        source: "/homepage",
+        has: [{ type: "host", value: "teach.dayback.app" }],
+        destination: "https://dayback.app/",
+        permanent: true,
+      },
+      {
+        source: "/homepage/:path*",
+        has: [{ type: "host", value: "teach.dayback.app" }],
+        destination: "https://dayback.app/:path*",
+        permanent: true,
+      },
+    ]);
+    // Host-scoped rules come first, so /homepage on teach never takes the local trailing-slash hop.
+    expect(config.redirects.indexOf(onTeach[0] as (typeof config.redirects)[number])).toBe(0);
+    // Every other redirect stays host-agnostic and local, so app.bresinski.org is unchanged.
+    for (const r of config.redirects.filter((x) => !x.has)) {
+      expect(r.destination.startsWith("/")).toBe(true);
+    }
   });
 
   test("only the embedded homepage demo permits same-origin framing", () => {

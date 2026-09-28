@@ -90,6 +90,28 @@
   "redirects": [
     {
       "source": "/homepage",
+      "has": [
+        {
+          "type": "host",
+          "value": "teach.dayback.app"
+        }
+      ],
+      "destination": "https://dayback.app/",
+      "permanent": true
+    },
+    {
+      "source": "/homepage/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "teach.dayback.app"
+        }
+      ],
+      "destination": "https://dayback.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/homepage",
       "destination": "/homepage/",
       "permanent": true
     }
