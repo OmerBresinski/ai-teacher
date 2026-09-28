@@ -246,7 +246,7 @@ export function SignInPage() {
                     ref={googleButton}
                     type="button"
                     variant="default"
-                    className="h-12 w-full"
+                    className="h-12 w-full cursor-pointer"
                     disabled={opening || sending}
                     onClick={() => void onContinueWithGoogle()}
                   >
@@ -278,7 +278,7 @@ export function SignInPage() {
                         ref={submitButton}
                         variant="primary"
                         type="submit"
-                        className="h-12 sm:min-w-40"
+                        className="h-12 cursor-pointer sm:min-w-40"
                         disabled={sending || opening}
                       >
                         {sending ? "Sending…" : "Email me a link"}

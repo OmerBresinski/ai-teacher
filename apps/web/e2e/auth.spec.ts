@@ -160,6 +160,18 @@ test.describe("auth", () => {
     await expect(page.locator("[data-cast-stage]")).toHaveAttribute("aria-hidden", "true");
   });
 
+  test("/sign-in: both ways in show the pointer cursor", async ({ page }) => {
+    await page.goto("/sign-in");
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toHaveCSS(
+      "cursor",
+      "pointer",
+    );
+    await expect(page.getByRole("button", { name: "Email me a link" })).toHaveCSS(
+      "cursor",
+      "pointer",
+    );
+  });
+
   test("Continue with Google says it is not set up when the api has no Google client", async ({
     page,
   }) => {
