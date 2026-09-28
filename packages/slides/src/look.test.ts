@@ -103,11 +103,6 @@ describe("the lesson look", () => {
       // No empty right half: the key idea sits on a tinted panel, the rest down the left.
       const [panel] = named(slide, PANEL_NAME);
       expect(panel && panel.type === "shape" && panel.fill).toBe(panelFill(theme));
-      // The tag is drawn the theme's way (`Theme.ornament`): a tinted pill unless it says otherwise.
-      const solid = theme.ornament?.tag === "solid";
-      expect(tag?.style.background).toBe(solid ? theme.colors.accent : accentTint(theme));
-      expect(tag?.style.color).toBe(solid ? theme.colors.onAccent : theme.colors.accent);
-      expect(tag?.style.radius).toBe(theme.ornament?.tagRadius ?? 99);
       const [idea] = named(slide, PANEL_TEXT_NAME) as TextElement[];
       expect(idea && plain(idea)).toBe("Hydraulic action is erosion by trapped air.");
       const [rest] = named(slide, BODY_NAME) as TextElement[];

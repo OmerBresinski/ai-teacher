@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { THEMES } from "../model/themes";
 import { renderEditor } from "./test-harness";
 
 /*
@@ -108,7 +109,7 @@ describe("where the theme lives (ruling 116)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
     await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    expect(tiles).toHaveLength(6);
+    expect(tiles).toHaveLength(THEMES.length);
     for (const tile of tiles) expect(tile.querySelector("[data-slide-root]")).not.toBeNull();
   });
 });

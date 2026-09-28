@@ -370,7 +370,7 @@ export type CalloutTone = { fill: string; line: string; ink: string; icon: strin
 export type CalloutToneSet = Record<CalloutKind, CalloutTone>;
 
 /**
- * The callout tokens, a set per theme keyed by its id. Every kind keeps one family across the six
+ * The callout tokens, a set per theme keyed by its id. Every kind keeps one family across the ten
  * so a card is recognisable from theme to theme: a warm red for a common mistake (the family of
  * each theme's `incorrect`), a green for an example (its `correct`) and an amber for key words;
  * the theme then sets the temperature and depth of the tint to its own palette. Light themes: a
@@ -392,6 +392,26 @@ export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
     "watch-out": { fill: "#FFDFD8", line: "#F0AA9C", ink: "#661A10", icon: "#A6321F" },
     example: { fill: "#DAF3E2", line: "#9BD7B2", ink: "#154D2D", icon: "#256840" },
     "key-words": { fill: "#FFE9B8", line: "#F0C35C", ink: "#553700", icon: "#855000" },
+  },
+  crayon: {
+    "watch-out": { fill: "#FFDCD6", line: "#EFA095", ink: "#621812", icon: "#A31F2E" },
+    example: { fill: "#D9F1DD", line: "#97D1A4", ink: "#134A26", icon: "#1F6B35" },
+    "key-words": { fill: "#FFEBA8", line: "#EDC04E", ink: "#513500", icon: "#805000" },
+  },
+  splash: {
+    "watch-out": { fill: "#FDE1DC", line: "#EDADA1", ink: "#5E1B12", icon: "#A33424" },
+    example: { fill: "#D6F0E4", line: "#94CFB5", ink: "#11452E", icon: "#1B6A47" },
+    "key-words": { fill: "#FFEDBE", line: "#EAC25E", ink: "#4F3600", icon: "#7E5600" },
+  },
+  treehouse: {
+    "watch-out": { fill: "#F9DDD5", line: "#DFA597", ink: "#5A1D12", icon: "#A0382A" },
+    example: { fill: "#D7EDE8", line: "#9CCBBE", ink: "#124239", icon: "#1E6655" },
+    "key-words": { fill: "#F8E6B5", line: "#D9B863", ink: "#4C3605", icon: "#7E5A0A" },
+  },
+  studio: {
+    "watch-out": { fill: "#F8E0DE", line: "#DCA9A5", ink: "#561C19", icon: "#A03A33" },
+    example: { fill: "#DAEDE3", line: "#A2CDB6", ink: "#13432C", icon: "#1D6B48" },
+    "key-words": { fill: "#F5E7C4", line: "#D5BC78", ink: "#47370C", icon: "#7A580A" },
   },
   "reading-room": {
     "watch-out": { fill: "#EFDCD7", line: "#CDA79E", ink: "#54211A", icon: "#9A3B2E" },

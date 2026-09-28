@@ -10,21 +10,17 @@ import {
   themeArt,
 } from "./background";
 import { LAYOUT_CATALOGUE, layoutSlide, variantsFor } from "./layouts";
-import { applyLook, withDeckChrome } from "./look";
+import { applyLook } from "./look";
 import { materialiseSlide } from "./materialise";
 import type { SlideSpec } from "./specs";
 import { getTheme, THEMES } from "./themes";
 
-/** A slide as a deck shows it: laid out, the look applied, the deck line and counter set. */
+/** A slide as a deck shows it: laid out, the look applied. */
 function laidOut(kind: SlideKind, theme: Theme, variant: string): Slide {
   const laid = layoutSlide(kind, theme.id, variant);
   const slide: Slide = { id: "s", kind, elements: laid.elements };
   if (laid.question) slide.question = laid.question;
-  const [done] = withDeckChrome([applyLook(slide, theme), slide], theme, {
-    yearGroup: "Year 9",
-    subject: "Geography",
-  });
-  return done as Slide;
+  return applyLook(slide, theme);
 }
 
 /** The same slide with everything mirrored left-right: a picture on the right (TEACH-19). */
