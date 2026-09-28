@@ -45,6 +45,10 @@ function fakeApi(): typeof fetch {
         ? Response.json({ url: "https://accounts.google.com/o/oauth2/v2/auth", redirect: false })
         : Response.json({ code: "PROVIDER_NOT_FOUND" }, { status: 404 });
     }
+    // TEACH-223: the anonymous sign-in kill switch answers 403 while the flag is off.
+    if (url.pathname === "/auth/sign-in/anonymous") {
+      return Response.json({ error: { code: "anonymous_disabled" } }, { status: 403 });
+    }
     // TEACH-81: the dev-only ping routes answer 404 before the session guard in production.
     if (url.pathname === "/jobs/ai-ping" || url.pathname === "/jobs/ping") {
       return new Response("not found", { status: 404 });
@@ -57,7 +61,7 @@ describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
     expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(25);
+    expect(results.length).toBe(26);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {

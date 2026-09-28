@@ -123,6 +123,8 @@ export const EnvSchema = z
     ENABLE_TEST_ROUTES: optionalString,
     /** `"1"` enables the dev/test `x-tj-workspace-id` header shim. Never in production. */
     ALLOW_WORKSPACE_HEADER_SHIM: optionalString,
+    /** Kill switch for anonymous sessions (TEACH-223): anything but `true` refuses the endpoint. */
+    ANONYMOUS_LESSONS_ENABLED: z.enum(["true", "false"]).default("false"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {

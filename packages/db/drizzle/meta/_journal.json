@@ -64,6 +64,13 @@
       "when": 1790535390099,
       "tag": "0008_accounts_issuer",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790601509216,
+      "tag": "0009_users_is_anonymous",
+      "breakpoints": true
     }
   ]
 }

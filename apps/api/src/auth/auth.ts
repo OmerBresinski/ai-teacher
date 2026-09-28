@@ -4,6 +4,10 @@
  * and Microsoft when `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` are (amendment of
  * 2026-09-28: any Microsoft account, verified email only).
  *
+ * Anonymous sessions (`POST /auth/sign-in/anonymous`, TEACH-223) are registered but refused with
+ * 403 by `app.ts` until `ANONYMOUS_LESSONS_ENABLED=true`; an anonymous user gets its personal Workspace from
+ * the same `databaseHooks.user.create.after` hook as everyone else.
+ *
  * Mounted at `/auth/*` by `app.ts` (`basePath: "/auth"`), so the browser-facing endpoints are
  * `POST /auth/sign-in/magic-link`, `GET /auth/magic-link/verify`, `GET /auth/get-session`,
  * `POST /auth/sign-out`, … `requireSession` (`require-session.ts`) resolves the cookie into
@@ -13,7 +17,7 @@ import type { DbHandle } from "@tj/db";
 import { authSchema } from "@tj/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink } from "better-auth/plugins";
+import { anonymous, magicLink } from "better-auth/plugins";
 import { microsoft } from "better-auth/social-providers";
 import type { Env } from "../env";
 import type { Logger } from "../logger";
@@ -154,6 +158,9 @@ export function effectiveCookieDomain(
   return undefined;
 }
 
+/** The anonymous plugin's sign-in endpoint, relative to `AUTH_BASE_PATH` (TEACH-223). */
+export const ANONYMOUS_SIGN_IN_PATH = "/sign-in/anonymous";
+
 /**
  * Merged into every `accounts` write (`databaseHooks.account` `create.before` and
  * `update.before`): sign-in needs the provider's identity only, so its tokens are never stored
@@ -194,6 +201,9 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
           await mail.send({ to: email, ...magicLinkMail(link, env.BETTER_AUTH_URL) });
         },
       }),
+      // Linking must never delete the anonymous user: its workspace (and every lesson in it)
+      // cascades from `users.id`, and the claim step needs it alive (TEACH-223).
+      anonymous({ disableDeleteAnonymousUser: true }),
     ],
     socialProviders: socialProviders(env, logger),
     session: {

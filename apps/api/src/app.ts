@@ -16,13 +16,13 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
-import type { Auth } from "./auth/auth";
+import { ANONYMOUS_SIGN_IN_PATH, AUTH_BASE_PATH, type Auth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
 import { smallJsonBodyLimit } from "./body-limits";
 import type { AppEnv } from "./context";
 import { rejectCrossSiteRequests } from "./csrf";
 import type { Env } from "./env";
-import { classifyError, envelope } from "./errors";
+import { classifyError, envelope, errorResponse } from "./errors";
 import { createEventsRuntime, type EventsRuntime } from "./events/runtime";
 import { createLogger, type Logger } from "./logger";
 import type { CaptureMailSender } from "./mail";
@@ -60,7 +60,13 @@ import { type ExtractionRunner, InProcessExtractionRunner } from "./sources/runn
 export interface CreateAppOptions {
   env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "MAIL_PROVIDER" | "WEB_ORIGIN"> &
     Partial<
-      Pick<Env, "ALLOW_WORKSPACE_HEADER_SHIM" | "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">
+      Pick<
+        Env,
+        | "ALLOW_WORKSPACE_HEADER_SHIM"
+        | "ENABLE_TEST_ROUTES"
+        | "WEB_ORIGIN_PATTERNS"
+        | "ANONYMOUS_LESSONS_ENABLED"
+      >
     >;
   /**
    * `sql` for `/health` and the session guard; `unsafeDb` for the document routes, which scope it
@@ -195,6 +201,21 @@ function buildApp({
   if (auth) {
     // Count bytes without imposing JSON: OAuth POST callbacks may be URL-encoded forms.
     app.use("/auth/*", smallJsonBodyLimit());
+    // TEACH-223 kill switch: the anonymous plugin is registered, but its sign-in endpoint is
+    // refused before better-auth creates a user unless ANONYMOUS_LESSONS_ENABLED=true.
+    // Matched on the normalised path so a trailing slash or other casing cannot slip past it.
+    if (env.ANONYMOUS_LESSONS_ENABLED !== "true") {
+      const anonymousSignIn = `${AUTH_BASE_PATH}${ANONYMOUS_SIGN_IN_PATH}`;
+      app.use("/auth/*", async (c, next) => {
+        if (c.req.path.replace(/\/+$/, "").toLowerCase() !== anonymousSignIn) return next();
+        return errorResponse(
+          c,
+          403,
+          "anonymous_disabled",
+          "Signed-out lessons are not available yet.",
+        );
+      });
+    }
     app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   }
   const csrf = rejectCrossSiteRequests(allowed);

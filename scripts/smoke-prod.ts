@@ -83,6 +83,15 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // TEACH-223: the anonymous plugin is registered but ANONYMOUS_LESSONS_ENABLED is off in
+      // production until the signed-out guard lands; a 200 here means anyone can mint a user.
+      name: "anonymous sign-in is refused while the kill switch is off (403)",
+      method: "POST",
+      path: "/auth/sign-in/anonymous",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 403,
+    },
+    {
       // TEACH-81 (audit F05): the diagnostic ping routes are not mounted in production. The 404
       // comes before the session guard, so a 401 here means the dev-only routes are back.
       name: "dev-only ping route is absent in production (404, not 401)",

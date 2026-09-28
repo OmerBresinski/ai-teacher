@@ -21,6 +21,7 @@ export const ERROR_CODES = [
   "service_unavailable",
   "internal_error",
   "http_error",
+  "anonymous_disabled",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
