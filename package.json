@@ -55,7 +55,9 @@
     "prepare": "lefthook install",
     "homepage:build": "bun homepage/build.mjs --allow-provisional --app=https://app.bresinski.org",
     "homepage:check": "bun run homepage:build && bun homepage/check.mjs --allow-provisional --app=https://app.bresinski.org",
-    "homepage:check:site": "bun homepage/build.mjs --base=/ && bun homepage/check.mjs --base=/ && bun homepage/build.mjs --base=/ --index && bun homepage/check.mjs --base=/ --index",
+    "homepage:check:site": "bun homepage/build.mjs --base=/ && bun homepage/check.mjs --base=/ && bun homepage/build.mjs --base=/ --index && bun homepage/check.mjs --base=/ --index && bun run homepage:build:site",
+    "homepage:build:site": "bun homepage/build.mjs --base=/ --allow-provisional && bun homepage/check.mjs --base=/ --allow-provisional",
+    "homepage:dev:site": "bun run homepage:build:site && PORT=4190 bun homepage/serve.mjs --base=/",
     "homepage:dev": "bun run homepage:check && bun homepage/serve.mjs",
     "homepage:stage": "bun run homepage:check && bun homepage/stage.mjs",
     "homepage:lint": "biome check homepage"

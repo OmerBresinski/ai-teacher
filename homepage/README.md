@@ -100,7 +100,10 @@ resolves from `SITE_URL`, `SITE_APP_URL`, `SITE_INDEXING` and `SITE_ALLOW_PROVIS
 build (`--base=/`) writes `robots.txt` and `sitemap.xml`; `--site=` sets the canonical and Open
 Graph origin (default `https://dayback.app`); `--index` drops the noindex (never with
 `--allow-provisional` or a prefixed base; the 404 page and stand-in examples stay noindex).
-`bun run homepage:check:site` builds and checks both root variants. URLs keep their trailing slash.
+`bun run homepage:check:site` builds and checks the root variants and ends on the launch build
+(`homepage:build:site`: noindex, stand-in Top lessons shown), so `homepage/dist` is what dayback.app
+serves. `bun run homepage:dev:site` builds that and serves it at http://localhost:4190/. A root build
+without `--allow-provisional` has no Top lessons at all. URLs keep their trailing slash.
 
 The legacy copy below serves app.bresinski.org until the cutover.
 The existing `teaching-journey-web` Vercel project remains rooted at `apps/web`. Its build runs
