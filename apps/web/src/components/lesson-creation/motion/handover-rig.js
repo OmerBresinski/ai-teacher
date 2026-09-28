@@ -3,6 +3,25 @@ import { drawnBody, restBody, restingLife } from "./body-draw.js";
 import { fanRig } from "./fan-rig.js";
 import { buildBeat, buildReaction } from "./work-beats.js";
 
+const zeroBody = () => {
+  const z = restBody();
+  for (const k of Object.keys(z)) z[k] = 0;
+  return z;
+};
+const BODY = Object.keys(restBody());
+// Pose values that switch rather than move: never blended.
+const DISCRETE = new Set([
+  "tool",
+  "stroke",
+  "pending",
+  "sheet",
+  "paperFront",
+  "sheetFront",
+  "carryFront",
+  "contact",
+  "questions",
+]);
+
 // Original production rig: scoped geometry/contacts only. No demo UI, readiness, or global controller.
 let serial = 0;
 export function createHandoverRig(root, gsap) {
@@ -32,10 +51,13 @@ export function createHandoverRig(root, gsap) {
   const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2].map((owner) => ["", owner]);
   const ownerOf = () => handoff?.from ?? beats[current][1];
   const receiverOf = () => handoff?.to ?? ownerOf() + 1;
+  // `b` is the beat's pose; `r` is a reaction layered on top (deltas from rest), so a nod or a
+  // leap never fights the beat for the same values.
   const actors = names.map((_, i) => ({
     x: i === 0 ? 320 : 760,
     alpha: i === 0 ? 1 : 0,
     b: restBody(),
+    r: zeroBody(),
   }));
   // Persona blink spacing: Plan slow, Slides quick, Worksheet sometimes doubles, Check considered.
   const lives = [
@@ -248,41 +270,17 @@ export function createHandoverRig(root, gsap) {
     slideLength = slideInk.getTotalLength();
   slideInk.style.strokeDasharray = slideLength;
   // Resting life is drawn: a breath that swells each body from its planted base and random
-  // blinks. No whole-body bob or sway. The shake moves the stage, only from a contact.
+  // blinks. No whole-body bob or sway, and no screen shake (that is Slides' landing only).
   let calm = 1,
     calmTarget = 1,
     clock = 0;
   const lifeNow = actors.map(() => ({ breath: 0, lag: 0, blink: 0 }));
-  const shakes = [];
-  function shake(amp, dur) {
-    shakes.push({ at: clock, amp, dur });
-  }
   const dust = [...scene.querySelectorAll(`#${prefix}dust ellipse`)];
   const dustState = { at: -9, x: 320, size: 1 };
   function puff(x, size = 1) {
     Object.assign(dustState, { at: clock, x, size });
   }
   function paintFx() {
-    let dx = 0,
-      dy = 0;
-    for (let i = shakes.length - 1; i >= 0; i--) {
-      const s = shakes[i],
-        u = (clock - s.at) / s.dur;
-      if (u >= 1) {
-        shakes.splice(i, 1);
-        continue;
-      }
-      // Steps at 30 Hz, decaying linearly.
-      const step = Math.floor((clock - s.at) * 30);
-      const amp = s.amp * (1 - u) * 0.7;
-      dx += (step % 2 ? -1 : 1) * amp * 0.8;
-      dy += (step % 3 === 1 ? -1 : 1) * amp * 0.5;
-    }
-    const shift = dx || dy ? `translate(${dx.toFixed(1)} ${dy.toFixed(1)})` : "";
-    if (scene.getAttribute("data-shift") !== shift) {
-      scene.setAttribute("data-shift", shift);
-      $("#people").setAttribute("transform", shift);
-    }
     const u = (clock - dustState.at) / 0.5;
     dust.forEach((e, i) => {
       if (u < 0 || u >= 1) {
@@ -311,7 +309,12 @@ export function createHandoverRig(root, gsap) {
     });
     // Only the breath and blinks are changing: 20 paints a second is smooth for a 4 s breath.
     const acting =
-      tl?.isActive() || reaction?.isActive() || shakes.length || clock - dustState.at < 0.5;
+      tl?.isActive() ||
+      reaction?.isActive() ||
+      blend ||
+      settling ||
+      fan.t.isActive() ||
+      clock - dustState.at < 0.5;
     if (!acting && clock - lastPaint < 0.05) return;
     lastPaint = clock;
     const t0 = performance.now();
@@ -325,7 +328,18 @@ export function createHandoverRig(root, gsap) {
   const cost = { n: 0, total: 0, max: 0 };
   gsap.ticker.add(ambientTick);
   // Read-only view for the filmstrip and trace tooling.
-  root.__cast = { actors, p, lifeNow, cost };
+  root.__cast = {
+    actors,
+    p,
+    lifeNow,
+    cost,
+    get drawn() {
+      return drawn;
+    },
+    get clock() {
+      return clock;
+    },
+  };
 
   function point(x, y) {
     const r = (p.r * Math.PI) / 180;
@@ -355,7 +369,165 @@ export function createHandoverRig(root, gsap) {
     { x: 0, y: 0 },
   ]);
   let lagClock = 0;
+  // Blending (ANIMATION-PROCESS §5, §7): a new beat, a settle or a reset never cuts. The pose on
+  // screen when it starts is kept as an offset from the new beat's opening pose, and the offset
+  // eases to nothing (a cosine, so it starts and ends at rest). Chained changes blend from what is
+  // on screen, blend included.
+  const BLEND_P = Object.keys(p).filter((k) => !DISCRETE.has(k));
+  let blend = null;
+  const composed = actors.map(() => restBody());
+  const blendWeight = () => {
+    if (!blend || blend.at === null) return 0;
+    const u = Math.min(1, (clock - blend.at) / blend.dur);
+    return 0.5 * (1 + Math.cos(Math.PI * u));
+  };
+  /** The pose as it is drawn now: model, reaction layer and any blend offset. */
+  function drawnPose() {
+    const w = blendWeight(),
+      off = blend?.offsets;
+    const state = { p: {}, actors: [] };
+    for (const k of BLEND_P) state.p[k] = p[k] + (off?.p[k] ?? 0) * w;
+    actors.forEach((a, i) => {
+      const o = off?.actors[i];
+      const b = {};
+      for (const k of BODY) b[k] = a.b[k] + a.r[k] + (o?.b[k] ?? 0) * w;
+      state.actors.push({ shown: a.alpha > 0.5, x: a.x + (o?.x ?? 0) * w, b });
+    });
+    return state;
+  }
+  function beginBlend(dur = 0.32) {
+    if (reduced) {
+      blend = null;
+      return;
+    }
+    // A change before the last one has drawn keeps the pose that is really on screen.
+    if (blend && blend.at === null) blend.dur = dur;
+    else blend = { old: drawnPose(), dur, at: null, offsets: null };
+  }
+  function startBlend() {
+    const old = blend.old;
+    blend.offsets = null;
+    const now = drawnPose();
+    const offsets = { p: {}, actors: [] };
+    for (const k of BLEND_P) {
+      const d = old.p[k] - now.p[k];
+      if (Math.abs(d) > 1e-6) offsets.p[k] = d;
+    }
+    now.actors.forEach((a, i) => {
+      const was = old.actors[i];
+      const o = { x: 0, b: {} };
+      if (a.shown && was.shown) {
+        o.x = was.x - a.x;
+        for (const k of BODY) o.b[k] = was.b[k] - a.b[k];
+      }
+      offsets.actors.push(o);
+    });
+    blend.offsets = offsets;
+    blend.hands = null;
+    blend.at = clock;
+  }
+  // The smooth base: every drawn value follows the choreography through a critically damped
+  // spring (about 80 ms behind), so a cut, a kink or a change of hold never reaches the screen as a
+  // jump. It advances only with the clock, and it is bypassed under reduced motion.
+  const OMEGA = 24;
+  const springs = new Map();
+  let springClock = 0,
+    springDt = 0,
+    settling = false;
+  function follow(key, target, fresh) {
+    let s = springs.get(key);
+    if (!s || fresh || reduced) {
+      s = { y: target, v: 0 };
+      springs.set(key, s);
+      return target;
+    }
+    if (springDt > 0) {
+      const x = s.y - target,
+        e = Math.exp(-OMEGA * springDt),
+        k = (s.v + OMEGA * x) * springDt;
+      s.y = target + (x + k) * e;
+      s.v = (s.v - OMEGA * k) * e;
+    }
+    if (Math.abs(s.v) > 1e-3 || Math.abs(s.y - target) > 1e-3) settling = true;
+    return s.y;
+  }
+  const lastHands = actors.map(() => [null, null]);
+  function smoothHand(i, j, target, vis) {
+    const fresh = !vis || !lastHands[i][j];
+    // A hand whose owner or grip changed with the beat blends from where it was drawn.
+    if (blend?.at != null && !fresh) {
+      blend.hands ??= {};
+      const key = `${i}${j}`;
+      if (!(key in blend.hands))
+        blend.hands[key] = { x: lastHands[i][j].x - target.x, y: lastHands[i][j].y - target.y };
+      const o = blend.hands[key],
+        w = blendWeight();
+      target = { x: target.x + o.x * w, y: target.y + o.y * w };
+    }
+    const out = {
+      x: follow(`h${i}${j}x`, target.x, fresh),
+      y: follow(`h${i}${j}y`, target.y, fresh),
+    };
+    lastHands[i][j] = vis ? out : null;
+    return out;
+  }
+  const wasShown = actors.map((a) => a.alpha > 0.5);
+  // What was last put on screen, for the trace tooling.
+  const drawn = { actors: [], p: {} };
   function draw() {
+    springDt = Math.max(0, Math.min(0.05, clock - springClock));
+    springClock = clock;
+    if (springDt > 0) settling = false;
+    if (blend && blend.at === null) {
+      // Hold the last drawing until the new beat has rendered its opening frame.
+      if (tl && !reduced && !tl.paused() && tl.totalTime() === 0) return;
+      startBlend();
+    }
+    const w = blendWeight(),
+      off = blend?.offsets;
+    if (blend && w === 0) blend = null;
+    const savedP = {};
+    if (off && w)
+      for (const k in off.p) {
+        savedP[k] = p[k];
+        p[k] += off.p[k] * w;
+      }
+    const beats = actors.map((a, i) => {
+      const o = off && w ? off.actors[i] : null;
+      const c = composed[i];
+      for (const k of BODY) c[k] = a.b[k] + a.r[k] + (o?.b[k] ?? 0) * w;
+      c.shut = Math.min(1, Math.max(0, c.shut));
+      const x = a.x;
+      if (o) a.x += o.x * w;
+      const b = a.b;
+      a.b = c;
+      return { b, x };
+    });
+    for (const k of BLEND_P) {
+      if (!(k in savedP)) savedP[k] = p[k];
+      p[k] = follow(`p.${k}`, p[k], false);
+    }
+    actors.forEach((a, i) => {
+      const shown = a.alpha > 0.5,
+        fresh = !shown || !wasShown[i];
+      wasShown[i] = shown;
+      a.x = follow(`x${i}`, a.x, fresh);
+      const c = a.b;
+      for (const k of BODY) c[k] = follow(`b${i}${k}`, c[k], fresh);
+      drawn.actors[i] = { x: a.x, lean: c.lean, th: c.th };
+    });
+    drawn.p = { x: p.x, y: p.y };
+    try {
+      paint();
+    } finally {
+      actors.forEach((a, i) => {
+        a.b = beats[i].b;
+        a.x = beats[i].x;
+      });
+      for (const k in savedP) p[k] = savedP[k];
+    }
+  }
+  function paint() {
     root.dataset.beat = String(current);
     root.dataset.holder = names[ownerOf()];
 
@@ -594,10 +766,11 @@ export function createHandoverRig(root, gsap) {
         left = { x: a.x - 84 + dl.x, y: 255 + dl.y };
         right = { x: a.x + 86 + dr.x, y: 253 + dr.y - (i === owner ? 36 * p.gesture : 0) };
       }
-      for (const [j, h] of [
+      for (const [j, target] of [
         [0, left],
         [1, right],
       ]) {
+        const h = smoothHand(i, j, target, vis);
         const sh = shoulders[j],
           arm = armPaths[i][j],
           depth = transfer
@@ -725,6 +898,7 @@ export function createHandoverRig(root, gsap) {
   }
 
   function play(n, options = {}) {
+    beginBlend();
     tl?.kill();
     handoff = options.handoff ?? null;
     current = n;
@@ -763,7 +937,6 @@ export function createHandoverRig(root, gsap) {
         setFanMode(value) {
           fanMode = value;
         },
-        shake,
         puff,
         onComplete: options.onComplete,
       },
@@ -787,6 +960,8 @@ export function createHandoverRig(root, gsap) {
     }
     draw();
   }
+  const queued = [];
+  draw();
   function pause(value) {
     paused = value;
     [tl, ...faces].forEach((t) => {
@@ -795,8 +970,13 @@ export function createHandoverRig(root, gsap) {
     });
   }
   function settle(n) {
+    if (reduced) springs.clear();
+    beginBlend();
     tl?.kill();
     reaction?.kill();
+    reaction = null;
+    queued.length = 0;
+    for (const a of actors) Object.assign(a.r, zeroBody());
     handoff = null;
     current = n;
     canonical(n);
@@ -808,8 +988,8 @@ export function createHandoverRig(root, gsap) {
   const onReduce = () => {
     reduced = pref.matches;
     if (reduced) {
+      blend = null;
       tl?.pause();
-      shakes.length = 0;
       dustState.at = -9;
       settle(handoff ? ([0, 3, 7, 9][handoff.to] ?? current) : current);
     }
@@ -847,6 +1027,7 @@ export function createHandoverRig(root, gsap) {
         });
       }
       const offsetX = actors[active].x - 320;
+      const drawn = drawnPose();
       state.x -= offsetX;
       return {
         beat,
@@ -854,7 +1035,8 @@ export function createHandoverRig(root, gsap) {
         state,
         actors: actors.map((actor, index) => ({
           ...actor,
-          b: { ...actor.b },
+          b: drawn.actors[index].b,
+          r: undefined,
           x: index === active ? 320 : actor.x,
           alpha: index === active ? 1 : 0,
         })),
@@ -862,11 +1044,16 @@ export function createHandoverRig(root, gsap) {
     },
     restore(pose) {
       tl?.kill();
+      blend = null;
+      springs.clear();
       current = pose.beat;
       handoff = null;
       Object.assign(p, pose.state);
       actors.forEach((actor, i) => {
-        Object.assign(actor, pose.actors[i], { b: { ...(pose.actors[i].b ?? restBody()) } });
+        Object.assign(actor, pose.actors[i], {
+          b: { ...(pose.actors[i].b ?? restBody()) },
+          r: zeroBody(),
+        });
       });
       draw();
     },
@@ -881,9 +1068,13 @@ export function createHandoverRig(root, gsap) {
     },
     /** A persona reaction on the current holder: "nod", "leap" (flight), "leave" (exit). */
     react(name, options = {}) {
-      reaction?.kill();
       if (reduced) {
         options.onComplete?.();
+        return;
+      }
+      // Gestures queue: a reaction never cuts into one that is still playing.
+      if (reaction?.isActive()) {
+        queued.push(() => this.react(name, options));
         return;
       }
       // Reactions run beside the current gesture (they move only the body), except the exit.
@@ -896,11 +1087,13 @@ export function createHandoverRig(root, gsap) {
           p,
           actors,
           draw,
-          shake,
           puff,
           // Mid-pass, the reaction belongs to the character taking over.
           owner: handoff ? handoff.to : ownerOf(),
-          onComplete: options.onComplete,
+          onComplete: () => {
+            options.onComplete?.();
+            queued.shift()?.();
+          },
         },
         name,
         options,

@@ -65,20 +65,39 @@ export function GenerationCompanion({
   }, [hasContent]);
   const flight = useRef<ReturnType<Awaited<ReturnType<typeof loadGsap>>["timeline"]> | null>(null);
   const exit = useRef<ReturnType<Awaited<ReturnType<typeof loadGsap>>["to"]> | null>(null);
+  const slotRef = useRef(destination);
+  slotRef.current = destination;
   useLayoutEffect(() => {
     const actor = stage.current;
     if (!actor || !destination || !gsap) return;
     gsap.set(actor, { autoAlpha: 1 });
-    // A new slot (the editor replacing the generating shell) supersedes any pending release.
-    centred.current = false;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    // A scroll or resize keeps a settled character on its slot. Mid-flight, the flight is not cut:
+    // it lands where it was going and then eases onto the slot's new place.
     const place = () => {
-      flight.current?.kill();
-      centred.current = false;
+      if (reduced.matches) {
+        flight.current?.kill();
+        centred.current = false;
+        gsap.set(scrim.current, { autoAlpha: 0 });
+        actor.dataset.handover = "settled";
+      } else if (actor.dataset.handover !== "settled" || flight.current?.isActive()) return;
       const box = destination.getBoundingClientRect();
       gsap.set(actor, { x: box.left, y: box.top, width: box.width, height: box.height, scale: 1 });
-      gsap.set(scrim.current, { autoAlpha: 0 });
-      actor.dataset.handover = "settled";
+    };
+    const reseat = () => {
+      // The slot may have been replaced while the character was in the air.
+      const slot = (slotRef.current ?? destination).getBoundingClientRect();
+      const now = actor.getBoundingClientRect();
+      if (Math.abs(slot.left - now.left) < 0.5 && Math.abs(slot.top - now.top) < 0.5) return;
+      flight.current = gsap.timeline().to(actor, {
+        x: slot.left,
+        y: slot.top,
+        width: slot.width,
+        height: slot.height,
+        scale: 1,
+        duration: 0.4,
+        ease: "sine.inOut",
+      });
     };
     const box = destination.getBoundingClientRect();
     if (first.current && !reduced.matches && !skipIntro) {
@@ -120,7 +139,7 @@ export function GenerationCompanion({
       releaseWhenReady.current = () => {
         if (!centred.current || !latest.current) return;
         centred.current = false;
-        const slot = destination.getBoundingClientRect();
+        const slot = (slotRef.current ?? destination).getBoundingClientRect();
         actor.dataset.handover = "settling";
         // The character crouches and leaps with the flight when it is free to (not mid-pass).
         const leap = new CustomEvent("cast:leap", { detail: { flight: 0.65, accepted: false } });
@@ -129,6 +148,7 @@ export function GenerationCompanion({
           .timeline({
             onComplete: () => {
               actor.dataset.handover = "settled";
+              reseat();
             },
           })
           // The scrim clears at once; only the flight waits out the 130 ms crouch.
@@ -139,7 +159,7 @@ export function GenerationCompanion({
               y: slot.top,
               scale: 1,
               duration: 0.65,
-              ease: "power2.inOut",
+              ease: "sine.inOut",
             },
             leap.detail.accepted ? 0.13 : 0,
           )
@@ -148,18 +168,25 @@ export function GenerationCompanion({
     } else {
       const immediate = first.current || reduced.matches;
       first.current = false;
-      actor.dataset.handover = "settled";
-      gsap.set(scrim.current, { autoAlpha: 0 });
-      flight.current?.kill();
-      flight.current = gsap.timeline();
-      flight.current.to(actor, {
-        x: box.left,
-        y: box.top,
-        width: box.width,
-        height: box.height,
-        scale: 1,
-        duration: immediate ? 0 : 0.3,
-      });
+      // A flight in the air is never cut: it lands, then eases onto this slot (its onComplete).
+      const flying = !immediate && flight.current?.isActive();
+      if (!flying) {
+        // A new slot (the editor replacing the generating shell) supersedes any pending release.
+        centred.current = false;
+        actor.dataset.handover = "settled";
+        gsap.set(scrim.current, { autoAlpha: 0 });
+        flight.current?.kill();
+        flight.current = gsap.timeline();
+        flight.current.to(actor, {
+          x: box.left,
+          y: box.top,
+          width: box.width,
+          height: box.height,
+          scale: 1,
+          duration: immediate ? 0 : 0.45,
+          ease: "sine.inOut",
+        });
+      }
     }
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);

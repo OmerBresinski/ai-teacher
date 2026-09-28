@@ -14,6 +14,9 @@ function kit(tl) {
   const to = (target, values, from, until, ease) =>
     tl.to(target, { ...values, duration: s(until - from), ease }, s(from));
   const snap = (target, values, at) => tl.set(target, values, s(at));
+  /** A contact: a short eased move into the pose, never a one-frame cut (ruling 114, restraint). */
+  const hit = (target, values, at, dur = 90, ease = "power2.out") =>
+    tl.to(target, { ...values, duration: s(dur), ease }, s(at));
   /** A drawn walk or run: the stride swings `steps` times between two ms marks. */
   const stride = (b, from, until, steps, ease = "none") => {
     const phase = { v: 0 };
@@ -32,7 +35,7 @@ function kit(tl) {
     snap(b, { stride: 0 }, until);
   };
   const call = (fn, at) => tl.call(fn, [], s(at));
-  return { s, to, snap, stride, call };
+  return { s, to, snap, hit, stride, call };
 }
 
 /**
@@ -40,7 +43,7 @@ function kit(tl) {
  * is ready to take the prop and when its arrival has settled.
  */
 function arrive(k, ctx, who, a, t0, xm) {
-  const { to, snap, stride, call } = k;
+  const { to, snap, hit, stride, call } = k;
   const b = a.b;
   const x0 = xm + 220;
   if (who === WORKSHEET) {
@@ -49,13 +52,11 @@ function arrive(k, ctx, who, a, t0, xm) {
     snap(b, { lean: -9, th: -0.1, curl: -0.6, sy: 1.02, sx: 0.98 }, t0);
     to(a, { x: xm + 30 }, t0, t0 + 250, "none");
     stride(b, t0, t0 + 250, 3);
-    to(a, { x: xm + 6 }, t0 + 250, t0 + 300, "power3.out");
+    to(a, { x: xm }, t0 + 250, t0 + 330, "power3.out");
     to(b, { lean: 7, curl: -0.2, sy: 1.04, sx: 0.97 }, t0 + 250, t0 + 300, "power2.out");
-    snap(a, { x: xm }, t0 + 300);
-    snap(b, { lean: 0, sy: 0.9, sx: 1.08, bulge: 0.04, stride: 0 }, t0 + 300);
-    snap(b, { curl: 0.7 }, t0 + 317);
+    hit(b, { lean: 0, sy: 0.9, sx: 1.08, bulge: 0.04, stride: 0 }, t0 + 300);
+    hit(b, { curl: 0.7 }, t0 + 317);
     call(() => {
-      ctx.shake(3, 0.12);
       ctx.puff(xm, 0.9);
     }, t0 + 300);
     to(b, { sy: 0.93, sx: 1.05, bulge: 0.03 }, t0 + 350, t0 + 470, "sine.inOut");
@@ -67,28 +68,26 @@ function arrive(k, ctx, who, a, t0, xm) {
     // Bounds in: a first hop, a crouch, a bigger hop, an impact squash, a rebound, a second
     // smaller landing with shut eyes, a hero pop, rest. Units are the deck's (x1.2 on stage).
     snap(a, { x: x0, alpha: 1 }, t0);
-    snap(b, { ty: -60, sy: 1.16, sx: 0.88, tuck: 0.6, th: -0.04 }, t0);
+    snap(b, { ty: -32, sy: 1.1, sx: 0.92, tuck: 0.5, th: -0.04 }, t0);
     to(a, { x: xm + 105 }, t0, t0 + 200, "none");
-    to(b, { ty: 0 }, t0, t0 + 200, "power2.in");
-    snap(b, { sy: 0.82, sx: 1.14, bulge: 0.06, tuck: 0 }, t0 + 200);
-    to(b, { sy: 0.8, sx: 1.16 }, t0 + 233, t0 + 290, "power2.in");
-    to(a, { x: xm }, t0 + 290, t0 + 470, "none");
-    to(b, { ty: -44 }, t0 + 290, t0 + 380, "power2.out");
-    to(b, { ty: 0 }, t0 + 380, t0 + 470, "power2.in");
-    to(b, { sy: 1.14, sx: 0.9, bulge: 0, tuck: 0.5 }, t0 + 290, t0 + 330, "power2.out");
-    to(b, { sy: 1.2, sx: 0.86, tuck: 0.2 }, t0 + 380, t0 + 470, "power2.in");
-    snap(b, { sy: 0.72, sx: 1.24, bulge: 0.1, tuck: 0 }, t0 + 470);
+    to(b, { ty: 0 }, t0, t0 + 200, "sine.inOut");
+    // The first landing runs straight into the crouch for the second bound.
+    hit(b, { sy: 0.86, sx: 1.1, bulge: 0.04, tuck: 0 }, t0 + 170, 120, "sine.inOut");
+    to(a, { x: xm }, t0 + 290, t0 + 470, "power1.out");
+    to(b, { ty: -22 }, t0 + 290, t0 + 380, "sine.inOut");
+    to(b, { ty: 0 }, t0 + 380, t0 + 470, "sine.inOut");
+    to(b, { sy: 1.04, sx: 0.97, bulge: 0, tuck: 0.4 }, t0 + 290, t0 + 380, "sine.inOut");
+    to(b, { sy: 1.06, sx: 0.95, tuck: 0.2 }, t0 + 380, t0 + 470, "sine.inOut");
+    hit(b, { sy: 0.86, sx: 1.1, bulge: 0.05, tuck: 0 }, t0 + 440, 140, "sine.inOut");
     call(() => {
-      ctx.shake(5, 0.2);
       ctx.puff(xm, 1.2);
     }, t0 + 470);
-    to(b, { sy: 0.78, sx: 1.19, bulge: 0.08 }, t0 + 520, t0 + 600, "sine.inOut");
-    to(b, { ty: -14, sy: 1.08, sx: 0.95, bulge: 0 }, t0 + 600, t0 + 690, "power2.out");
-    to(b, { ty: 0, sy: 0.9, sx: 1.08, shut: 1 }, t0 + 690, t0 + 770, "power2.in");
-    call(() => ctx.shake(2, 0.09), t0 + 770);
-    to(b, { sy: 1.05, sx: 0.97, shut: 0 }, t0 + 770, t0 + 860, "power2.out");
+    to(b, { sy: 0.84, sx: 1.12, bulge: 0.05 }, t0 + 580, t0 + 640, "sine.inOut");
+    to(b, { ty: -14, sy: 1.06, sx: 0.96, bulge: 0 }, t0 + 640, t0 + 720, "sine.inOut");
+    to(b, { ty: 0, sy: 0.93, sx: 1.05, shut: 1 }, t0 + 720, t0 + 800, "sine.inOut");
+    to(b, { sy: 1.035, sx: 0.98, shut: 0 }, t0 + 800, t0 + 900, "sine.inOut");
     // Hero pose held long enough to read (a moving hold), then the settle to rest.
-    to(b, { sy: 1.035, sx: 0.98 }, t0 + 860, t0 + 1140, "sine.inOut");
+    to(b, { sy: 1.025, sx: 0.985 }, t0 + 900, t0 + 1140, "sine.inOut");
     to(b, { sy: 1, sx: 1, th: -0.03 }, t0 + 1140, t0 + 1240, "sine.inOut");
     return { ready: t0 + 780, end: t0 + 1240 };
   }
@@ -106,16 +105,15 @@ function arrive(k, ctx, who, a, t0, xm) {
   // an exact stop held three frames with the glasses trailing.
   snap(a, { x: x0, alpha: 1 }, t0);
   snap(b, { sy: 0.96, sx: 1.02 }, t0);
-  to(a, { x: xm + 108 }, t0 + 60, t0 + 280, "power2.inOut");
+  to(a, { x: xm + 108 }, t0 + 40, t0 + 300, "sine.inOut");
   to(b, { stride: 1, sy: 1 }, t0 + 60, t0 + 170, "power2.out");
   to(b, { stride: 0 }, t0 + 170, t0 + 280, "power2.in");
   to(b, { slip: 1.5 }, t0 + 140, t0 + 300, "power2.out");
-  snap(b, { sy: 0.96, sx: 1.02 }, t0 + 280);
-  to(a, { x: xm }, t0 + 330, t0 + 540, "power2.in");
+  hit(b, { sy: 0.96, sx: 1.02 }, t0 + 280);
+  to(a, { x: xm }, t0 + 300, t0 + 560, "sine.inOut");
   to(b, { stride: -1, sy: 1, sx: 1 }, t0 + 330, t0 + 440, "power2.out");
   to(b, { stride: 0 }, t0 + 440, t0 + 540, "power2.in");
-  snap(b, { sy: 0.94, sx: 1.03 }, t0 + 540);
-  call(() => ctx.shake(3, 0.11), t0 + 540);
+  hit(b, { sy: 0.94, sx: 1.03 }, t0 + 540);
   to(b, { slip: 3 }, t0 + 540, t0 + 620, "power2.out");
   to(b, { sy: 1, sx: 1, th: -0.05 }, t0 + 590, t0 + 700, "power2.out");
   return { ready: t0 + 600, end: t0 + 700 };
@@ -123,30 +121,30 @@ function arrive(k, ctx, who, a, t0, xm) {
 
 /** The giver leaves through the left edge on its own gait, starting at `t0`. Returns the end. */
 function leave(k, who, a, t0) {
-  const { to, snap, stride, call } = k;
+  const { to, snap, hit, stride, call } = k;
   const b = a.b;
   // Anticipation: turn away and crouch, then push off.
   to(b, { th: 0.1, sy: 0.94, sx: 1.03 }, t0 - 120, t0, "power2.in");
   if (who === WORKSHEET) {
-    snap(b, { lean: -9, sy: 1.02, sx: 0.98, curl: -0.5 }, t0);
+    hit(b, { lean: -9, sy: 1.02, sx: 0.98, curl: -0.5 }, t0);
     to(a, { x: -70 }, t0, t0 + 500, "power2.in");
     stride(b, t0, t0 + 500, 6);
   } else if (who === SLIDES) {
     to(b, { sy: 1.14, sx: 0.9, tuck: 0.5 }, t0, t0 + 60, "power2.out");
-    to(a, { x: a.x - 120 }, t0, t0 + 200, "none");
+    to(a, { x: a.x - 120 }, t0, t0 + 200, "power1.in");
     to(b, { ty: -36 }, t0, t0 + 100, "power2.out");
     to(b, { ty: 0 }, t0 + 100, t0 + 200, "power2.in");
-    snap(b, { sy: 0.84, sx: 1.12, tuck: 0 }, t0 + 200);
+    hit(b, { sy: 0.84, sx: 1.12, tuck: 0 }, t0 + 200);
     to(b, { sy: 1.14, sx: 0.9, tuck: 0.5 }, t0 + 233, t0 + 280, "power2.out");
     to(a, { x: -80 }, t0 + 233, t0 + 440, "none");
     to(b, { ty: -40 }, t0 + 233, t0 + 340, "power2.out");
     to(b, { ty: -10 }, t0 + 340, t0 + 440, "power2.in");
   } else if (who === PLAN) {
-    snap(b, { sy: 1, sx: 1, lean: -2 }, t0);
+    hit(b, { sy: 1, sx: 1, lean: -2 }, t0);
     to(a, { x: -60 }, t0, t0 + 460, "power2.in");
     stride(b, t0, t0 + 460, 4, "power2.in");
   } else {
-    snap(b, { sy: 1, sx: 1 }, t0);
+    hit(b, { sy: 1, sx: 1 }, t0);
     to(a, { x: a.x - 120 }, t0, t0 + 200, "power2.inOut");
     to(b, { stride: 1 }, t0, t0 + 100, "power2.out");
     to(b, { stride: 0 }, t0 + 100, t0 + 200, "power2.in");
@@ -161,32 +159,30 @@ function leave(k, who, a, t0) {
 }
 
 /** The receiver carries the prop to centre stage in its own way. */
-function carry(k, ctx, who, a, p, t0) {
-  const { to, snap, call } = k;
+function carry(k, who, a, p, t0) {
+  const { to, snap, hit } = k;
   const b = a.b;
   const x = { x: 320 };
   if (who === WORKSHEET) {
     to(b, { lean: -6, curl: -0.3 }, t0, t0 + 80, "power2.out");
-    to(a, x, t0, t0 + 300, "power3.in");
-    to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 300, "power3.in");
-    snap(b, { lean: 0, sy: 0.94, sx: 1.05 }, t0 + 300);
+    to(a, x, t0, t0 + 300, "power3.inOut");
+    to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 300, "power3.inOut");
+    hit(b, { lean: 0, sy: 0.94, sx: 1.05 }, t0 + 300);
     snap(p, { carryFront: 1 }, t0 + 300);
-    snap(b, { curl: 0.4 }, t0 + 317);
-    call(() => ctx.shake(2, 0.1), t0 + 300);
+    hit(b, { curl: 0.4 }, t0 + 317);
     to(b, { sy: 1, sx: 1, curl: 0, th: 0 }, t0 + 350, t0 + 480, "power3.out");
     return t0 + 480;
   }
   if (who === SLIDES) {
     to(b, { sy: 0.88, sx: 1.08 }, t0, t0 + 70, "power2.in");
-    to(a, x, t0 + 70, t0 + 330, "none");
-    to(p, { x: 320, gazeMix: 0 }, t0 + 70, t0 + 330, "none");
+    to(a, x, t0 + 70, t0 + 330, "power1.inOut");
+    to(p, { x: 320, gazeMix: 0 }, t0 + 70, t0 + 330, "power1.inOut");
     to(b, { ty: -26, sy: 1.1, sx: 0.92 }, t0 + 70, t0 + 200, "power2.out");
     to(p, { y: 251 - 31 }, t0 + 70, t0 + 200, "power2.out");
     to(b, { ty: 0, sy: 1.06 }, t0 + 200, t0 + 330, "power2.in");
     to(p, { y: 251 }, t0 + 200, t0 + 330, "power2.in");
-    snap(b, { sy: 0.86, sx: 1.12, bulge: 0.05 }, t0 + 330);
+    hit(b, { sy: 0.86, sx: 1.12, bulge: 0.05 }, t0 + 330);
     snap(p, { carryFront: 1 }, t0 + 330);
-    call(() => ctx.shake(3, 0.12), t0 + 330);
     to(b, { sy: 1, sx: 1, bulge: 0, th: 0 }, t0 + 380, t0 + 500, "power2.out");
     return t0 + 500;
   }
@@ -199,11 +195,11 @@ function carry(k, ctx, who, a, p, t0) {
     to(b, { sy: 1, sx: 1 }, t0 + 590, t0 + 720, "sine.out");
     return t0 + 720;
   }
-  to(a, x, t0, t0 + 300, "power2.in");
-  to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 300, "power2.in");
+  to(a, x, t0, t0 + 300, "power2.inOut");
+  to(p, { x: 320, y: 251, gazeMix: 0 }, t0, t0 + 300, "power2.inOut");
   to(b, { stride: 1 }, t0, t0 + 150, "power2.out");
   to(b, { stride: 0 }, t0 + 150, t0 + 300, "power2.in");
-  snap(b, { sy: 0.96, sx: 1.02 }, t0 + 300);
+  hit(b, { sy: 0.96, sx: 1.02 }, t0 + 300);
   snap(p, { carryFront: 1 }, t0 + 300);
   to(b, { sy: 1, sx: 1, th: 0 }, t0 + 350, t0 + 450, "power2.out");
   to(b, { slip: 0 }, t0 + 450, t0 + 700, "power2.out");
@@ -216,7 +212,7 @@ export function buildBeat(context, n, gsap) {
   const tl = gsap.timeline({ paused: true, onUpdate: draw, onComplete });
   const go = (v, t, d = 0.6, e = "sine.inOut") => tl.to(p, { ...v, duration: d, ease: e }, t);
   const k = kit(tl);
-  const { to, snap } = k;
+  const { to, snap, hit } = k;
   if (n === 0) {
     const b = actors[PLAN].b;
     // Sink before unfolding, rise with the unfold; the plan is lifted, read and set down with a plié.
@@ -228,7 +224,7 @@ export function buildBeat(context, n, gsap) {
     to(b, { th: -0.03 }, 1550, 2150, "sine.inOut");
     go({ y: 251 }, 2.75, 0.7, "power2.in");
     to(b, { th: 0 }, 2750, 3300, "sine.inOut");
-    snap(b, { sy: 0.92, sx: 1.04 }, 3450);
+    hit(b, { sy: 0.92, sx: 1.04 }, 3450);
     to(b, { sy: 1, sx: 1 }, 3500, 3700, "sine.out");
     tl.to({}, { duration: 0.2 }, 3.7);
   }
@@ -236,19 +232,19 @@ export function buildBeat(context, n, gsap) {
     const b = actors[PLAN].b;
     // Checks the plan: the eyes lead each look by 80 ms, then a content nod with shut eyes.
     go({ y: 242 }, 0, 0.7, "sine.out");
-    snap(p, { look: -2 }, 650);
+    hit(p, { look: -2 }, 650, 70);
     to(b, { th: -0.05 }, 730, 1000, "power2.out");
     to(b, { sy: 1.01 }, 1000, 1200, "sine.inOut");
-    snap(p, { look: 2 }, 1200);
+    hit(p, { look: 2 }, 1200, 70);
     to(b, { th: 0.05, sy: 1 }, 1280, 1550, "power2.out");
-    snap(p, { look: 0 }, 1900);
+    hit(p, { look: 0 }, 1900, 70);
     to(b, { th: 0 }, 1900, 2100, "power2.inOut");
     to(b, { sy: 1.02 }, 2000, 2060, "power2.out");
     to(b, { sy: 0.95, shut: 1 }, 2060, 2200, "power2.in");
     to(b, { sy: 1, shut: 0 }, 2450, 2600, "sine.out");
     go({ fold: 0 }, 2.6, 0.7, "power2.inOut");
     go({ y: 251 }, 2.6, 0.7, "power2.in");
-    snap(b, { sy: 0.93, sx: 1.03 }, 3300);
+    hit(b, { sy: 0.93, sx: 1.03 }, 3300);
     to(b, { sy: 1, sx: 1 }, 3350, 3550, "sine.out");
   }
   if ([2, 5, 8, 11].includes(n)) {
@@ -259,8 +255,8 @@ export function buildBeat(context, n, gsap) {
     if (n === 11) {
       // A declined worksheet: Worksheet acknowledges the choice and leaves empty-handed while
       // Slides arrives on the mark.
-      go({ gesture: 1, look: 2 }, 0, 0.25, "power2.out");
-      go({ gesture: 0, look: 0 }, 0.35, 0.3, "power2.inOut");
+      go({ gesture: 1, look: 2 }, 0, 0.35, "sine.inOut");
+      go({ gesture: 0, look: 0 }, 0.35, 0.3, "sine.inOut");
       leave(k, from, giver, 640);
       const { end } = arrive(k, context, into, taker, 600, 320);
       tl.to({}, { duration: 0.1 }, end / 1000);
@@ -296,13 +292,13 @@ export function buildBeat(context, n, gsap) {
       to(giver.b, { lean: 0 }, R + 470, R + 540, "sine.inOut");
       to(giver.b, { shut: 0 }, R + 560, R + 620, "power2.out");
       go({ y: 247 }, (R + 380) / 1000, 0.08, "power2.in");
-      snap(taker.b, { sy: 0.93, sx: 1.04, lean: 1 }, R + 460);
+      hit(taker.b, { sy: 0.93, sx: 1.04, lean: 1 }, R + 460);
       to(taker.b, { sy: 0.95, sx: 1.03 }, R + 510, R + 560, "sine.inOut");
       to(taker.b, { sy: 1, sx: 1, lean: 0 }, R + 560, R + 660, "power2.out");
       go({ y: 251 }, (R + 510) / 1000, 0.15, "sine.inOut");
       const out = ready + 660;
       leave(k, from, giver, out);
-      const end = carry(k, context, into, taker, p, out);
+      const end = carry(k, into, taker, p, out);
       tl.to({}, { duration: 0.1 }, end / 1000);
     }
   }
@@ -329,7 +325,7 @@ export function buildBeat(context, n, gsap) {
       to(b, { sy: 0.9, sx: 1.06 }, 3240, 3300, "power2.in");
       to(b, { ty: -12, sy: 1.08, sx: 0.95 }, 3300, 3420, "power2.out");
       to(b, { ty: 0, sy: 1.04 }, 3420, 3520, "power2.in");
-      snap(b, { sy: 0.88, sx: 1.08 }, 3520);
+      hit(b, { sy: 0.88, sx: 1.08 }, 3520);
       to(b, { sy: 1, sx: 1 }, 3570, 3700, "power2.out");
     }
     go({ sweep: 0 }, 3.5, 0.2);
@@ -400,7 +396,7 @@ export function buildBeat(context, n, gsap) {
       const end = questionNodes[i].getPointAtLength(questionLengths[i]);
       tl.set(p, { contact: 0, penX: end.x, penY: end.y }, at);
       // The full stop: a one-frame cut into a small squash, held, then released.
-      snap(actors[WORKSHEET].b, { sy: 0.95, sx: 1.03 }, at * 1000);
+      hit(actors[WORKSHEET].b, { sy: 0.95, sx: 1.03 }, at * 1000);
       to(actors[WORKSHEET].b, { sy: 1, sx: 1 }, at * 1000 + 50, at * 1000 + 160, "power2.out");
       go({ penY: end.y - 6 }, at, 0.14, "power2.out");
       at += 0.14;
@@ -425,20 +421,20 @@ export function buildBeat(context, n, gsap) {
     to(b, { th: -0.05 }, 1700, 1950, "power2.out");
     to(b, { th: 0 }, 2350, 2600, "power2.out");
     go({ extend: 0, gesture: 0, sheetGrip: 0, y: 251 }, 3.05, 0.6, "power2.in");
-    snap(b, { sy: 0.94, sx: 1.04, curl: 0.4 }, 3650);
+    hit(b, { sy: 0.94, sx: 1.04, curl: 0.4 }, 3650);
     to(b, { sy: 1, sx: 1, curl: 0 }, 3700, 3850, "power3.out");
   }
   if (n === 9) {
     const b = actors[3].b;
     go({ compare: 1, y: 249 }, 0, 0.85, "power2.out");
     // Eyes snap to each page first; the head follows 80 ms later and holds (a moving hold).
-    snap(p, { look: -3 }, 1200);
+    hit(p, { look: -3 }, 1200, 70);
     to(b, { th: -0.06 }, 1280, 1500, "power2.out");
     to(b, { sy: 1.012 }, 1500, 2000, "sine.inOut");
-    snap(p, { look: 3 }, 2000);
+    hit(p, { look: 3 }, 2000, 70);
     to(b, { th: 0.06, sy: 1 }, 2080, 2300, "power2.out");
     to(b, { sy: 1.012 }, 2300, 2800, "sine.inOut");
-    snap(p, { look: 0 }, 2800);
+    hit(p, { look: 0 }, 2800, 70);
     to(b, { th: 0, sy: 1 }, 2880, 3100, "power2.out");
     go({ compare: 0, y: 251 }, 3.5, 0.85, "power2.inOut");
   }
@@ -454,10 +450,7 @@ export function buildBeat(context, n, gsap) {
     go({ ry: 251 }, 1.35, 0.09, "power3.in");
     to(b, { sy: 1 }, 1350, 1440, "power3.in");
     tl.set(p, { seal: 1 }, 1.44);
-    snap(b, { sy: 0.93, sx: 1.04, shut: 0.5 }, 1440);
-    k.call(() => {
-      context.shake(3, 0.15);
-    }, 1440);
+    hit(b, { sy: 0.93, sx: 1.04, shut: 0.5 }, 1440);
     to(b, { sy: 0.95, sx: 1.03 }, 1490, 1610, "sine.inOut");
     to(b, { sy: 1, sx: 1, shut: 0 }, 1610, 1750, "power2.out");
     go({ rx: 365, ry: 226 }, 1.75, 0.4, "power2.out");
@@ -469,52 +462,51 @@ export function buildBeat(context, n, gsap) {
   return tl;
 }
 
-/** Reactions on the current holder: a nod, the leap that rides the flight, the exit. */
+/**
+ * Reactions on the current holder: a nod, the leap that rides the flight, the exit. They move the
+ * reaction layer `a.r` (deltas from rest, added to the beat's pose), so they never fight the beat.
+ */
 export function buildReaction(context, name, options, gsap) {
   const { actors, draw, owner, onComplete } = context;
   const tl = gsap.timeline({ paused: true, onUpdate: draw, onComplete });
   const k = kit(tl);
-  const { to, snap, call } = k;
+  const { to, snap } = k;
   const a = actors[owner],
-    b = a.b;
+    r = a.r;
   if (name === "nod") {
     // Rises a touch (anticipation), dips forward toward the form with shut eyes, holds, recovers.
-    to(b, { sy: 1.03, lean: -1 }, 0, 90, "power2.out");
-    to(b, { sy: 0.93, sx: 1.04, lean: 4, shut: 1 }, 90, 240, "power2.in");
-    to(b, { sy: 0.94, sx: 1.035 }, 270, 360, "sine.inOut");
-    to(b, { sy: 1, sx: 1, lean: 0, shut: 0 }, 360, 540, "sine.out");
+    to(r, { sy: 0.03, lean: -1 }, 0, 90, "power2.out");
+    to(r, { sy: -0.07, sx: 0.04, lean: 4, shut: 1 }, 90, 260, "sine.inOut");
+    to(r, { sy: -0.06, sx: 0.035 }, 260, 360, "sine.inOut");
+    to(r, { sy: 0, sx: 0, lean: 0, shut: 0 }, 360, 560, "sine.inOut");
   } else if (name === "leap") {
-    // Crouch (the flight waits for it), launch stretched and tucked, land with a squash.
+    // Crouch (the flight waits for it), launch stretched and tucked, land with a soft squash.
     const L = 130 + (options.flight ?? 0.65) * 1000;
-    to(b, { sy: 0.86, sx: 1.1, bulge: 0.04 }, 0, 130, "power2.in");
-    to(b, { sy: 1.12, sx: 0.9, bulge: 0, tuck: 0.5, ty: -20 }, 130, 250, "power2.out");
-    to(b, { sy: 1.06, sx: 0.95 }, 250, L - 120, "sine.inOut");
-    to(b, { ty: 0, sy: 1.14, sx: 0.88, tuck: 0.2 }, L - 120, L, "power2.in");
-    snap(b, { sy: 0.8, sx: 1.16, bulge: 0.06, tuck: 0 }, L);
-    call(() => {
-      context.shake(3, 0.12);
-      context.puff(a.x, 0.9);
-    }, L);
-    to(b, { sy: 0.84, sx: 1.13 }, L + 50, L + 150, "sine.inOut");
-    to(b, { ty: -8, sy: 1.05, sx: 0.97, bulge: 0 }, L + 150, L + 250, "power2.out");
-    to(b, { ty: 0, sy: 0.95, sx: 1.04 }, L + 250, L + 330, "power2.in");
-    to(b, { sy: 1, sx: 1 }, L + 330, L + 450, "power2.out");
+    to(r, { sy: -0.1, sx: 0.07, bulge: 0.03 }, 0, 130, "sine.inOut");
+    to(r, { sy: 0.1, sx: -0.08, bulge: 0, tuck: 0.4, ty: -16 }, 130, 260, "power2.out");
+    to(r, { sy: 0.05, sx: -0.04 }, 260, L - 140, "sine.inOut");
+    to(r, { ty: 0, sy: 0.08, sx: -0.07, tuck: 0.1 }, L - 140, L, "power2.in");
+    to(r, { sy: -0.14, sx: 0.1, bulge: 0.04, tuck: 0 }, L, L + 110, "power2.out");
+    k.call(() => context.puff(a.x, 0.8), L);
+    to(r, { ty: -6, sy: 0.04, sx: -0.02, bulge: 0 }, L + 110, L + 230, "sine.inOut");
+    to(r, { ty: 0, sy: -0.04, sx: 0.03 }, L + 230, L + 330, "sine.inOut");
+    to(r, { sy: 0, sx: 0 }, L + 330, L + 470, "sine.inOut");
   } else if (name === "leave") {
     // A pleased nod doubles as the anticipation, then two exact steps out through the edge.
-    to(b, { sy: 1.03 }, 0, 90, "power2.out");
-    to(b, { sy: 0.94, sx: 1.03, shut: 0.7 }, 90, 220, "power2.in");
-    to(b, { sy: 1, sx: 1, shut: 0, th: 0.08 }, 260, 340, "power2.out");
+    to(r, { sy: 0.03 }, 0, 90, "power2.out");
+    to(r, { sy: -0.06, sx: 0.03, shut: 0.7 }, 90, 220, "sine.inOut");
+    to(r, { sy: 0, sx: 0, shut: 0, th: 0.08 }, 220, 340, "sine.inOut");
     // It takes the finished deck with it: the prop travels in its hands.
     const lead = context.p.x - a.x;
-    to(a, { x: a.x + 110 }, 340, 540, "power2.inOut");
-    to(context.p, { x: a.x + 110 + lead }, 340, 540, "power2.inOut");
-    to(context.p, { x: 700 + lead }, 570, 780, "power2.in");
-    to(b, { stride: 1, slip: 1.5 }, 340, 440, "power2.out");
-    to(b, { stride: 0 }, 440, 540, "power2.in");
-    to(a, { x: 700 }, 570, 780, "power2.in");
-    to(b, { stride: -1 }, 570, 680, "power2.out");
-    to(b, { stride: 0 }, 680, 780, "power2.in");
-    snap(a, { alpha: 0 }, 780);
+    to(a, { x: a.x + 110 }, 340, 580, "sine.inOut");
+    to(context.p, { x: a.x + 110 + lead }, 340, 580, "sine.inOut");
+    to(context.p, { x: 700 + lead }, 600, 900, "sine.in");
+    to(r, { stride: 1, slip: 1.5 }, 340, 440, "power2.out");
+    to(r, { stride: 0 }, 440, 540, "power2.in");
+    to(a, { x: 700 }, 600, 900, "sine.in");
+    to(r, { stride: -1 }, 600, 750, "power2.out");
+    to(r, { stride: 0 }, 750, 900, "power2.in");
+    snap(a, { alpha: 0 }, 900);
   }
   return tl;
 }

@@ -107,8 +107,10 @@ export function CharacterHost({
     };
     document.addEventListener("input", typed, true);
     const restRange = REST[stage];
-    // Wait out the rest, then any typing burst, before the next gesture.
+    // One scheduler per character: a pending gesture is replaced, never doubled. Wait out the
+    // rest, then any typing burst, before the next gesture.
     const afterRest = (then: () => void, seconds: number) => {
+      window.clearTimeout(rest);
       rest = window.setTimeout(() => {
         const quiet = performance.now() - lastInput;
         if (quiet < TYPING_QUIET_MS) afterRest(then, (TYPING_QUIET_MS - quiet) / 1000);
@@ -117,6 +119,7 @@ export function CharacterHost({
     };
     const work = (beat: number, reset = true) => {
       if (cancelled) return;
+      window.clearTimeout(rest);
       actor.calm(false);
       actor.play(beat, {
         reset,
