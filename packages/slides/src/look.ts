@@ -7,6 +7,7 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { artOf } from "./art";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { PLACEHOLDER_IMAGE } from "./layouts";
@@ -141,6 +142,9 @@ export function accentTint(t: Theme): string {
   return t.colors.background;
 }
 
+/** The fill of the look's panels: the theme's own `panel`, or the accent tint. */
+export const panelFill = (t: Theme) => t.colors.panel ?? accentTint(t);
+
 /* ---------------------------------------------------------------- pieces */
 
 type Ids = () => string;
@@ -154,6 +158,7 @@ function tagHeight(t: Theme): number {
 function kindTag(ids: Ids, t: Theme, label: string): TextElement {
   // Caption is uppercase and tracked: about 0.78em a letter, plus the pill's inset.
   const w = Math.ceil(label.length * t.sizes.caption * 0.78) + TAG_PAD_X * 2;
+  const solid = t.ornament?.tag === "solid";
   return {
     id: ids(),
     type: "text",
@@ -165,10 +170,10 @@ function kindTag(ids: Ids, t: Theme, label: string): TextElement {
     doc: docFromText(label),
     style: {
       preset: "caption",
-      color: t.colors.accent,
+      color: solid ? t.colors.onAccent : t.colors.accent,
       fontWeight: 700,
-      background: accentTint(t),
-      radius: 99,
+      background: solid ? t.colors.accent : accentTint(t),
+      radius: t.ornament?.tagRadius ?? 99,
       padding: TAG_PAD_Y,
       align: "center",
       autoHeight: false,
@@ -227,6 +232,21 @@ function readableSoft(ink: string, accent: string): string {
 function cover(slide: Slide, t: Theme): Slide {
   // A title set beside a photograph keeps its own composition; the cover is the typographic one.
   if (slide.elements.some((e) => e.type === "image")) return slide;
+  // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
+  // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
+  if (artOf(t)?.title?.length) {
+    const elements = slide.elements.map((el): SlideElement => {
+      if (el.type === "shape")
+        return el.name === "Accent rule" ? { ...el, fill: t.colors.accent } : el;
+      if (el.type !== "text") return el;
+      if (el.style.preset === "caption")
+        return { ...el, style: { ...el.style, color: t.colors.accent, fontWeight: 700 } };
+      if (el.style.preset === "subtitle")
+        return { ...el, style: { ...el.style, color: t.colors.muted } };
+      return el;
+    });
+    return { ...slide, elements };
+  }
   const ink = t.colors.onAccent;
   const soft = readableSoft(ink, t.colors.accent);
   const elements = slide.elements.map((el): SlideElement => {
@@ -286,7 +306,7 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
     fontSize: size,
     lineHeight: leading,
     color: t.colors.ink,
-    background: accentTint(t),
+    background: panelFill(t),
     radius: t.radius,
     padding: CARD_PAD,
     autoHeight: true,
@@ -442,7 +462,7 @@ function roomyList(e: SlideElement, t: Theme): SlideElement {
 /** Tint the worked-example card and colour its label, the examples' "worked" panel. */
 function workedCard(els: SlideElement[], t: Theme): SlideElement[] {
   return els.map((e) => {
-    if (e.type === "shape" && e.name === "Working card") return { ...e, fill: accentTint(t) };
+    if (e.type === "shape" && e.name === "Working card") return { ...e, fill: panelFill(t) };
     if (e.type === "text" && e.style.preset === "caption")
       return { ...e, style: { ...e.style, color: t.colors.accent, fontWeight: 700 } };
     return e;

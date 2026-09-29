@@ -1,6 +1,12 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { isDiagramMark, withoutDiagramSlot, withSlotsShown } from "@tj/slides";
+import {
+  isDiagramMark,
+  slideArtVariant,
+  slideBackground,
+  withoutDiagramSlot,
+  withSlotsShown,
+} from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -193,10 +199,11 @@ export function SlideView({
         data-slide-root
         data-slide-id={slide.id}
         data-slide-mode={mode}
+        data-marker={theme.ornament?.marker}
         className={rootClass}
         style={rootStyle}
       >
-        <SlideBackground theme={theme} background={bg} />
+        <SlideBackground theme={theme} slide={slide} />
 
         {slide.elements.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
@@ -259,11 +266,12 @@ export function SlideView({
 /* Background                                                          */
 /* ------------------------------------------------------------------ */
 
-function SlideBackground({ theme, background }: { theme: Theme; background: Slide["background"] }) {
+function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
+  const background = slide.background;
   const image = useResolvedImageSrc(background?.image ?? "") || undefined;
-  // A slide's own background wins outright: theme art must never paint over a colour
-  // the teacher chose, or there would be no way to switch it off.
-  const themeImage = background?.color || image ? undefined : theme.backgroundImage;
+  // `slideBackground` is the one rule the PowerPoint export reads too (UX ruling 107): the theme's
+  // art for the slide's role, clear of its elements; none under a colour or image the teacher chose.
+  const themeImage = image ? undefined : slideBackground(theme, slide);
   if (!image && !themeImage) return null;
   return (
     <div
@@ -271,6 +279,8 @@ function SlideBackground({ theme, background }: { theme: Theme; background: Slid
       // The export paint gate (`waitForSlidePaint`) cannot see a CSS background through `<img>`
       // queries; it reads this attribute and preloads the picture before printing or capturing.
       data-background-image={image}
+      // Which theme art variant is drawn (UX ruling 107), for tests and the export's paint gate.
+      data-theme-art={themeImage ? slideArtVariant(slide) : undefined}
       style={{
         position: "absolute",
         inset: 0,

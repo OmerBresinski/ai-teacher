@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
+import { slideBackground } from "./background";
 import { SAFE } from "./grid";
+import { layoutSlide } from "./layouts";
 import {
   ACCENT_BAR_NAME,
   accentTint,
@@ -12,6 +14,7 @@ import {
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
   mix,
+  panelFill,
 } from "./look";
 import { materialiseSlide } from "./materialise";
 import { SAFE_BOTTOM } from "./metrics";
@@ -45,40 +48,37 @@ describe("the lesson look", () => {
     expect(accentTint(chalk)).not.toBe(chalk.colors.accent);
   });
 
+  test("a theme without title art keeps the cover on the accent, its text in the accent's ink", () => {
+    const bare = { ...getTheme("studio"), backgrounds: undefined };
+    const laid = layoutSlide("title", "studio");
+    const slide = applyLook({ id: "t", kind: "title", elements: laid.elements }, bare);
+    expect(slide.background?.color).toBe(bare.colors.accent);
+    const title = slide.elements.find(
+      (e): e is TextElement => e.type === "text" && e.style.preset === "title",
+    );
+    expect(title?.style.color).toBe(bare.colors.onAccent);
+  });
+
   for (const theme of THEMES) {
     test(`${theme.id}: accent text keeps 4.5:1 on the accent tint`, () => {
       expect(contrastRatio(theme.colors.accent, accentTint(theme))).toBeGreaterThanOrEqual(4.5);
     });
-
-    test(`${theme.id}: the cover's eyebrow and subtitle keep 4.5:1 on the accent`, () => {
-      const slide = materialiseSlide(
-        { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },
-        theme.id,
-        META,
-        counter(),
-      );
-      const texts = slide.elements.filter((e): e is TextElement => e.type === "text");
-      expect(texts.length).toBeGreaterThan(1);
-      for (const el of texts) {
-        const color = el.style.color ?? theme.colors.onAccent;
-        expect(contrastRatio(color, theme.colors.accent)).toBeGreaterThanOrEqual(4.5);
-      }
-    });
   }
 
   for (const theme of THEMES) {
-    test(`${theme.id}: the title is a cover on the accent, its text in the accent's ink`, () => {
+    test(`${theme.id}: the title is a cover on the ground under the theme's title art (ruling 107)`, () => {
       const slide = materialiseSlide(
         { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },
         theme.id,
         META,
         counter(),
       );
-      expect(slide.background?.color).toBe(theme.colors.accent);
+      expect(slide.background?.color).toBeUndefined();
+      expect(slideBackground(theme, slide)).toBeTruthy();
       const title = slide.elements.find(
         (e): e is TextElement => e.type === "text" && e.style.preset === "title",
       );
-      expect(title?.style.color).toBe(theme.colors.onAccent);
+      expect(title?.style.color).toBeUndefined();
       expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
     });
 
@@ -102,7 +102,7 @@ describe("the lesson look", () => {
       expect(heading?.y).toBe(SAFE.y);
       // No empty right half: the key idea sits on a tinted panel, the rest down the left.
       const [panel] = named(slide, PANEL_NAME);
-      expect(panel && panel.type === "shape" && panel.fill).toBe(accentTint(theme));
+      expect(panel && panel.type === "shape" && panel.fill).toBe(panelFill(theme));
       const [idea] = named(slide, PANEL_TEXT_NAME) as TextElement[];
       expect(idea && plain(idea)).toBe("Hydraulic action is erosion by trapped air.");
       const [rest] = named(slide, BODY_NAME) as TextElement[];

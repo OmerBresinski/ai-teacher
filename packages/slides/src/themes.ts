@@ -2,9 +2,12 @@ import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
 import { FONT_STACKS } from "./fonts";
 
 /**
- * Six classroom themes. Colours and type stops come from
- * docs/research/04-visual-direction.md (defined at 800x450) scaled by 1.2 to our
- * 960x540 space. Every ink/muted/accent pair on its background is WCAG AA or better.
+ * Ten classroom themes (look/themes, 26 Sept 2026): four clean (Studio, Exam Hall, Night Lab,
+ * Beacon), four playful (Playground, Crayon Box, Splash, Treehouse) and two between (Chalk & Cream,
+ * Reading Room). Type stops are defined at 800x450 (docs/research/04-visual-direction.md) and
+ * scaled by 1.2 to our 960x540 space. Every ink/muted/accent pair is WCAG AA or better on the
+ * background, the surface and every colour in the theme's art (`themes.test.ts`). A new theme's
+ * type must not narrow the content budgets (`content-shapes.test.ts`): set it no wider than Chalk.
  *
  * Preset mapping: title = research "display", subtitle = research "title",
  * heading = research "heading", body/small as is, caption = research "eyebrow".
@@ -26,7 +29,7 @@ function type(stops: Stops) {
   return { sizes, lineHeights };
 }
 
-export const THEMES: Theme[] = [
+const BASE: Theme[] = [
   {
     id: "chalk",
     name: "Chalk & Cream",
@@ -60,17 +63,21 @@ export const THEMES: Theme[] = [
   {
     id: "playground",
     name: "Playground",
-    suits: "Early years and KS1. Warm, one idea per slide.",
+    suits: "Reception and KS1. A sun and a rainbow, star bullets, white cards on butter yellow.",
     tags: ["early-learners"],
     colors: {
-      background: "#FFF7EF",
+      background: "#FFF6DA",
       surface: "#FFFFFF",
-      ink: "#33261D",
-      muted: "#7A6656",
-      accent: "#BF4315",
-      accent2: "#7048C4",
-      onAccent: "#FFF7EF",
-      line: "#F0DDCB",
+      ink: "#2B2118",
+      heading: "#6532BE",
+      muted: "#66533C",
+      // Purple, not a fourth rust: the old Playground was Chalk with a heavier title.
+      accent: "#6532BE",
+      accent2: "#B93D0B",
+      onAccent: "#FFFFFF",
+      line: "#F0D27C",
+      // White cards on the yellow ground, like stickers on a page.
+      panel: "#FFFFFF",
       correct: "#2E7D4F",
       incorrect: "#B8412F",
     },
@@ -85,25 +92,127 @@ export const THEMES: Theme[] = [
     ]),
     weights: { title: 700, heading: 700, body: 400 },
     titleTracking: "-0.015em",
-    radius: 18,
+    radius: 22,
+    ornament: { tag: "solid", marker: "star" },
+  },
+  {
+    id: "crayon",
+    name: "Crayon Box",
+    suits:
+      "KS1 and lower KS2. An exercise book: ruled lines, a red margin, handwriting letters, sticky-note cards.",
+    tags: ["early-learners"],
+    colors: {
+      background: "#FFFDF7",
+      surface: "#FFFFFF",
+      ink: "#232120",
+      heading: "#1A52A8",
+      muted: "#5C5752",
+      accent: "#A31F2E",
+      accent2: "#1A52A8",
+      onAccent: "#FFFFFF",
+      line: "#F5C9CF",
+      // A sticky note: the key idea is stuck on the page.
+      panel: "#FFF1A6",
+      correct: "#2E7D32",
+      incorrect: "#B3261E",
+    },
+    fonts: { title: FONT_STACKS.playpen, body: FONT_STACKS.playpen },
+    ...type([
+      [50, 1.12],
+      [42, 1.14],
+      [29, 1.22],
+      [24, 1.5],
+      [20, 1.5],
+      [14, 1.25],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.005em",
+    radius: 6,
+    ornament: { tag: "tint", tagRadius: 4, marker: "dash" },
+  },
+  {
+    id: "splash",
+    name: "Splash",
+    suits:
+      "KS1 and KS2. The seaside: waves along the foot, rising bubbles, diamond bullets; science and topic work.",
+    tags: ["early-learners"],
+    colors: {
+      background: "#EDF8FC",
+      surface: "#FFFFFF",
+      ink: "#10252F",
+      heading: "#0A5CA2",
+      muted: "#465F6B",
+      accent: "#0A5CA2",
+      accent2: "#B8175A",
+      onAccent: "#FFFFFF",
+      line: "#BFE1F0",
+      correct: "#1E7A4C",
+      incorrect: "#B3261E",
+    },
+    fonts: { title: FONT_STACKS.fredoka, body: FONT_STACKS.nunito },
+    ...type([
+      [56, 1.06],
+      [48, 1.1],
+      [32, 1.18],
+      [26, 1.5],
+      [22, 1.5],
+      [15, 1.25],
+    ]),
+    weights: { title: 600, heading: 600, body: 400 },
+    titleTracking: "0em",
+    radius: 26,
+    ornament: { tag: "tint", marker: "diamond" },
+  },
+  {
+    id: "treehouse",
+    name: "Treehouse",
+    suits:
+      "KS2. A storybook: serif headings, a hanging vine, leaf bullets and parchment cards; topic, science, geography.",
+    tags: ["early-learners"],
+    colors: {
+      background: "#F1F7EA",
+      surface: "#FFFFFF",
+      ink: "#1D291D",
+      heading: "#245F28",
+      muted: "#4E5E4B",
+      accent: "#245F28",
+      accent2: "#8A4B12",
+      onAccent: "#FFFFFF",
+      line: "#CBE0BA",
+      // Parchment, the page of the storybook.
+      panel: "#FBF5E3",
+      correct: "#245F28",
+      incorrect: "#B3401F",
+    },
+    fonts: { title: FONT_STACKS.literata, body: FONT_STACKS.nunito },
+    ...type([
+      [52, 1.08],
+      [44, 1.12],
+      [30, 1.18],
+      [26, 1.5],
+      [22, 1.5],
+      [15, 1.25],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 10,
+    ornament: { tag: "solid", tagRadius: 6, marker: "leaf" },
   },
   {
     id: "reading-room",
     name: "Reading Room",
-    suits: "Secondary English, history and RE. Serif titles.",
+    suits: "KS3 to KS5 English, history and RE. Serif titles on warm paper.",
     tags: ["low-stimulation"],
     colors: {
-      background: "#F2EFE8",
-      surface: "#FFFFFF",
-      ink: "#1F2328",
-      muted: "#656C77",
-      // Its own blue-grey, not a third rust. Chalk, Playground and Reading
-      // Room were three rust cards on three cream grounds in the picker, which
-      // read as one theme three times. 6.35:1 on this theme's background.
-      accent: "#3C5A6E",
+      background: "#F4EFE6",
+      surface: "#FFFCF6",
+      ink: "#22201C",
+      muted: "#5F584D",
+      // Library green: its own colour, not Exam Hall's navy or Chalk's rust.
+      accent: "#2C5A4D",
       accent2: "#7A3B2E",
-      onAccent: "#F2EFE8",
-      line: "#DFDBD1",
+      onAccent: "#F4EFE6",
+      line: "#DDD3C1",
       correct: "#2F6B44",
       incorrect: "#9A3B2E",
     },
@@ -118,26 +227,56 @@ export const THEMES: Theme[] = [
     ]),
     weights: { title: 600, heading: 600, body: 400 },
     titleTracking: "-0.015em",
-    radius: 10,
+    radius: 6,
+  },
+  {
+    id: "studio",
+    name: "Studio",
+    suits: "KS3 to KS5. Crisp and modern; science, computing, maths.",
+    tags: ["low-stimulation"],
+    colors: {
+      background: "#F7F9FB",
+      surface: "#FFFFFF",
+      ink: "#0F172A",
+      muted: "#4F5D6E",
+      accent: "#0B6E86",
+      accent2: "#6D35D6",
+      onAccent: "#FFFFFF",
+      line: "#D9E1EA",
+      correct: "#15803D",
+      incorrect: "#B91C1C",
+    },
+    fonts: { title: FONT_STACKS.outfit, body: FONT_STACKS.outfit },
+    ...type([
+      [54, 1.06],
+      [46, 1.1],
+      [30, 1.2],
+      [25, 1.45],
+      [21, 1.45],
+      [14, 1.2],
+    ]),
+    weights: { title: 600, heading: 600, body: 400 },
+    titleTracking: "-0.02em",
+    radius: 14,
   },
   {
     id: "exam-hall",
     name: "Exam Hall",
-    suits: "Exam prep. Dense and neutral, for mark schemes.",
+    suits: "GCSE and A level. White paper, black ink, navy and a red pen.",
     tags: ["low-stimulation", "adhd"],
     colors: {
-      background: "#F6F7F5",
-      surface: "#FFFFFF",
-      ink: "#16191C",
-      muted: "#5C646D",
-      accent: "#26418F",
-      accent2: "#9A3B2E",
-      onAccent: "#F6F7F5",
-      line: "#DFE2DE",
+      background: "#FFFFFF",
+      surface: "#F3F5F8",
+      ink: "#111418",
+      muted: "#505862",
+      accent: "#1B3A8C",
+      accent2: "#B42318",
+      onAccent: "#FFFFFF",
+      line: "#CFD5DD",
       correct: "#1F6B4A",
-      incorrect: "#9A3B2E",
+      incorrect: "#B42318",
     },
-    fonts: { title: FONT_STACKS.literata, body: FONT_STACKS.publicSans },
+    fonts: { title: FONT_STACKS.publicSans, body: FONT_STACKS.publicSans },
     ...type([
       [50, 1.08],
       [42, 1.14],
@@ -146,9 +285,9 @@ export const THEMES: Theme[] = [
       [20, 1.45],
       [13, 1.2],
     ]),
-    weights: { title: 600, heading: 600, body: 400 },
-    titleTracking: "-0.005em",
-    radius: 8,
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 4,
   },
   {
     id: "night-lab",
@@ -213,6 +352,9 @@ export const THEMES: Theme[] = [
   },
 ];
 
+/** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
+export const THEMES: Theme[] = BASE;
+
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
 /**
@@ -227,7 +369,7 @@ export type CalloutTone = { fill: string; line: string; ink: string; icon: strin
 export type CalloutToneSet = Record<CalloutKind, CalloutTone>;
 
 /**
- * The callout tokens, a set per theme keyed by its id. Every kind keeps one family across the six
+ * The callout tokens, a set per theme keyed by its id. Every kind keeps one family across the ten
  * so a card is recognisable from theme to theme: a warm red for a common mistake (the family of
  * each theme's `incorrect`), a green for an example (its `correct`) and an amber for key words;
  * the theme then sets the temperature and depth of the tint to its own palette. Light themes: a
@@ -249,6 +391,26 @@ export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
     "watch-out": { fill: "#FFDFD8", line: "#F0AA9C", ink: "#661A10", icon: "#A6321F" },
     example: { fill: "#DAF3E2", line: "#9BD7B2", ink: "#154D2D", icon: "#256840" },
     "key-words": { fill: "#FFE9B8", line: "#F0C35C", ink: "#553700", icon: "#855000" },
+  },
+  crayon: {
+    "watch-out": { fill: "#FFDCD6", line: "#EFA095", ink: "#621812", icon: "#A31F2E" },
+    example: { fill: "#D9F1DD", line: "#97D1A4", ink: "#134A26", icon: "#1F6B35" },
+    "key-words": { fill: "#FFEBA8", line: "#EDC04E", ink: "#513500", icon: "#805000" },
+  },
+  splash: {
+    "watch-out": { fill: "#FDE1DC", line: "#EDADA1", ink: "#5E1B12", icon: "#A33424" },
+    example: { fill: "#D6F0E4", line: "#94CFB5", ink: "#11452E", icon: "#1B6A47" },
+    "key-words": { fill: "#FFEDBE", line: "#EAC25E", ink: "#4F3600", icon: "#7E5600" },
+  },
+  treehouse: {
+    "watch-out": { fill: "#F9DDD5", line: "#DFA597", ink: "#5A1D12", icon: "#A0382A" },
+    example: { fill: "#D7EDE8", line: "#9CCBBE", ink: "#124239", icon: "#1E6655" },
+    "key-words": { fill: "#F8E6B5", line: "#D9B863", ink: "#4C3605", icon: "#7E5A0A" },
+  },
+  studio: {
+    "watch-out": { fill: "#F8E0DE", line: "#DCA9A5", ink: "#561C19", icon: "#A03A33" },
+    example: { fill: "#DAEDE3", line: "#A2CDB6", ink: "#13432C", icon: "#1D6B48" },
+    "key-words": { fill: "#F5E7C4", line: "#D5BC78", ink: "#47370C", icon: "#7A580A" },
   },
   "reading-room": {
     "watch-out": { fill: "#EFDCD7", line: "#CDA79E", ink: "#54211A", icon: "#9A3B2E" },

@@ -455,9 +455,19 @@ describe("callout after the fit", () => {
             );
           }
         } else {
-          const laid = trio(laidWith(spec, theme, variant));
-          const rect = ({ x, y, w, h }: SlideElement) => ({ x, y, w, h });
+          const laidSlide = laidWith(spec, theme, variant);
+          const laid = trio(laidSlide);
+          const rect = ({ x, w, h }: SlideElement) => ({ x, w, h });
           expect(rect(fitted.card), where).toEqual(rect(laid.card));
+          // The recipe's placeholder heading can wrap where the lesson's does not (Treehouse's
+          // serif), so the column restacks; the card keeps its place under the text all the same.
+          const textBottom = (els: SlideElement[]) =>
+            Math.max(
+              ...els.filter((e) => e.type === "text" && !isCalloutElement(e)).map((e) => e.y + e.h),
+            );
+          expect(fitted.card.y - textBottom(slide.elements), where).toBe(
+            laid.card.y - textBottom(laidSlide.elements),
+          );
         }
         expect(inside(fitted.label, fitted.card), where).toBe(true);
         expect(inside(fitted.text, fitted.card), where).toBe(true);

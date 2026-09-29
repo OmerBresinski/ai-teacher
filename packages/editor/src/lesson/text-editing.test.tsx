@@ -58,7 +58,9 @@ const proseMirror = (container: HTMLElement) =>
 const openEditor = async (container: HTMLElement) => {
   select(container);
   fireEvent.doubleClick(catcher(container), { clientX: 150, clientY: 150 });
-  await waitFor(() => expect(proseMirror(container)).not.toBeNull());
+  // The first open in a file also loads the lazy editor chunk, which takes longer than
+  // waitFor's 1 s default on a cold CI runner.
+  await waitFor(() => expect(proseMirror(container)).not.toBeNull(), { timeout: 5_000 });
   const pm = proseMirror(container) as HTMLElement;
   expect(pm.closest("[data-element-id='t1']")).not.toBeNull();
   return pm;

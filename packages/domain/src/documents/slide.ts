@@ -45,13 +45,26 @@ export type SlideKind =
   | "timer"
   | "plenary";
 
+/** A slide's choice of theme art: the layout's own (`auto`), a named variant, or none. */
+export type SlideArt = "auto" | "title" | "content" | "picture" | "plain";
+export const SLIDE_ART_VALUES = ["auto", "title", "content", "picture", "plain"] as const;
+
 export type TransitionId = "none" | "fade" | "push" | "morph";
 
 export type Slide = {
   id: Id;
   kind: SlideKind;
   /** Optional per-slide background override; theme background otherwise. */
-  background?: { color?: string; image?: string; imageFit?: "cover" | "contain" };
+  background?: {
+    color?: string;
+    image?: string;
+    imageFit?: "cover" | "contain";
+    /**
+     * Which of the theme's art variants the slide wears (UX ruling 107): `auto` (or absent) lets
+     * the slide's layout choose, `plain` is the ground alone. Ignored under a colour or image.
+     */
+    art?: SlideArt;
+  };
   /** Draw order = array order. Last is on top. */
   elements: SlideElement[];
   /** Presenter notes (plain text / markdown). */
@@ -658,6 +671,7 @@ export const SlideSchema = z
         color: z.string().optional(),
         image: z.string().optional(),
         imageFit: z.enum(["cover", "contain"]).optional(),
+        art: z.enum(SLIDE_ART_VALUES).optional(),
       })
       .optional(),
     elements: z.array(SlideElementSchema),

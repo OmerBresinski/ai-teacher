@@ -320,7 +320,7 @@ test.describe("first-experience design preview", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(390);
     await callout.click();
     const dialog = page.getByRole("dialog", { name: "Theme" });
-    await expect(dialog.locator("[data-theme-tile]")).toHaveCount(6);
+    await expect(dialog.locator("[data-theme-tile]")).toHaveCount(10);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
     const toolbar = page.locator("[data-topbar] [data-theme-callout]");

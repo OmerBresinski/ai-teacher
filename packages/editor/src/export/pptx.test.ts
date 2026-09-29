@@ -111,6 +111,8 @@ describe("fontFaceFor", () => {
     expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Source Serif 4");
     expect(fontFaceFor(getTheme("beacon").fonts.body)).toBe("Atkinson Hyperlegible Next");
     expect(fontFaceFor(getTheme("night-lab").fonts.title)).toBe("Bricolage Grotesque");
+    expect(fontFaceFor(getTheme("crayon").fonts.body)).toBe("Playpen Sans");
+    expect(fontFaceFor(getTheme("treehouse").fonts.title)).toBe("Literata");
   });
 
   it("falls back to the first real family, then to Arial", () => {
@@ -217,6 +219,11 @@ describe("paragraphsToTextProps", () => {
       content: [{ type: "listItem", content: [para([text("a")])] }],
     };
     expect(paragraphsToTextProps(docToRuns(doc([bullets])), style)[0]?.options?.bullet).toBe(true);
+    // A theme's own marker (Playground's star) goes out as its bullet character.
+    expect(
+      paragraphsToTextProps(docToRuns(doc([bullets])), { ...style, bulletCode: "2605" })[0]?.options
+        ?.bullet,
+    ).toEqual({ characterCode: "2605" });
   });
 
   it("uppercases only when the preset asks for it", () => {

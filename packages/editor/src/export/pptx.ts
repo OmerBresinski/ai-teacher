@@ -49,7 +49,7 @@ import type {
   TimerElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { type PathSegment, pathSegments, presentedSlide } from "@tj/slides";
+import { type PathSegment, pathSegments, presentedSlide, slideBackground } from "@tj/slides";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -126,6 +126,11 @@ export const FONT_FAMILIES: Record<string, string> = {
   bricolage: "Bricolage Grotesque",
   "instrument-sans": "Instrument Sans",
   atkinson: "Atkinson Hyperlegible Next",
+  fredoka: "Fredoka",
+  playpen: "Playpen Sans",
+  baloo: "Baloo 2",
+  nunito: "Nunito",
+  outfit: "Outfit",
   geist: "Geist",
 };
 
@@ -210,6 +215,16 @@ export type RunStyle = {
   /** Caption preset is uppercase in the renderer, so it is uppercase here too. */
   uppercase?: boolean;
   charSpacing?: number;
+  /** A theme's own bullet (`Theme.ornament.marker`) as a Unicode code point; PowerPoint's dot when absent. */
+  bulletCode?: string;
+};
+
+/** The nearest PowerPoint bullet character to each theme marker. */
+const MARKER_CODES: Record<string, string> = {
+  star: "2605",
+  dash: "2013",
+  diamond: "25C6",
+  leaf: "2766",
 };
 
 /**
@@ -237,7 +252,12 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
     // Only the paragraph that owns the list item carries the bullet: a bullet on a
     // soft continuation would start a fresh line in pptxgenjs and lose the break.
     if (para.list && !para.soft) {
-      paraOpts.bullet = para.list === "ordered" ? { type: "number" } : true;
+      paraOpts.bullet =
+        para.list === "ordered"
+          ? { type: "number" }
+          : style.bulletCode
+            ? { characterCode: style.bulletCode }
+            : true;
       if (para.level > 0) paraOpts.indentLevel = para.level;
     }
     if (para.soft) paraOpts.softBreakBefore = true;
@@ -287,6 +307,9 @@ const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
   align: r.align,
   uppercase: r.textTransform === "uppercase",
   charSpacing: trackingToPt(r.letterSpacing, r.fontSize),
+  ...(theme.ornament?.marker && MARKER_CODES[theme.ornament.marker]
+    ? { bulletCode: MARKER_CODES[theme.ornament.marker] }
+    : {}),
 });
 
 /** The box a text-ish element sits in: position, padding, fill, rotation. */
@@ -1264,8 +1287,10 @@ export async function exportLessonPptx(
       // A slide's own background wins outright, as in `SlideView`: theme art must
       // never paint over a colour the teacher chose, or there is no way off it.
       const own = slide.background;
-      const image = own?.image ?? (own?.color ? undefined : theme.backgroundImage);
-      if (image && !image.includes("gradient(")) {
+      const image = own?.image ?? slideBackground(theme, slide);
+      // Theme art is CSS (gradients, an inline SVG with its size and repeat): not a picture file.
+      const art = !own?.image && /gradient\(|url\(/.test(image ?? "");
+      if (image && !art) {
         const data = await toDataUrl(image, options.imageOrigin);
         if (data) {
           pptxSlide.addImage({

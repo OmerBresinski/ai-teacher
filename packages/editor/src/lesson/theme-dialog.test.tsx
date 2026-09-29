@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { demoLibrary } from "../model/starter";
+import { THEMES } from "../model/themes";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
 import { renderEditor } from "./test-harness";
 
@@ -129,7 +130,7 @@ describe("where the theme lives (ruling 123)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    expect(tiles).toHaveLength(6);
+    expect(tiles).toHaveLength(THEMES.length);
     for (const tile of tiles) expect(tile.querySelector("[data-slide-root]")).not.toBeNull();
   });
 });
@@ -199,4 +200,25 @@ describe("while the lesson is being made (ruling 123)", () => {
     );
     expect(changes).toEqual(["night-lab", opening ?? "", "night-lab"]);
   });
+});
+
+describe("the theme callout names every theme (TEACH-111)", () => {
+  for (const theme of THEMES) {
+    test(`${theme.id}: its name and its own ground and accent in the swatch`, () => {
+      const { container } = render(<ThemeCallout themeId={theme.id} onClick={() => {}} />);
+      expect(screen.getByRole("button", { name: `Theme: ${theme.name}` })).toBeTruthy();
+      const swatch = container.querySelector<HTMLElement>("[data-theme-swatch]");
+      const half = swatch?.firstElementChild as HTMLElement | null;
+      const hex = (css: string | undefined) => css?.toUpperCase().replace(/\s/g, "");
+      const rgb = (h: string) =>
+        `RGB(${[1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).join(",")})`;
+      for (const [el, want] of [
+        [swatch, theme.colors.background],
+        [half, theme.colors.accent],
+      ] as const) {
+        expect([want.toUpperCase(), rgb(want)]).toContain(hex(el?.style.background) ?? "");
+      }
+      cleanup();
+    });
+  }
 });

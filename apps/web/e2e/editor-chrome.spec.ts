@@ -121,7 +121,7 @@ test.describe("editor chrome", () => {
     const before = await root.evaluate((n) => getComputedStyle(n).backgroundColor);
     await page.getByRole("button", { name: "Theme" }).click();
     const dialog = page.getByRole("dialog", { name: "Theme" });
-    await expect(dialog.getByRole("radio")).toHaveCount(6);
+    await expect(dialog.getByRole("radio")).toHaveCount(10);
     await dialog.getByRole("radio", { name: "Playground" }).click();
     await expect(dialog.getByRole("radio", { name: "Playground" })).toHaveAttribute(
       "aria-checked",

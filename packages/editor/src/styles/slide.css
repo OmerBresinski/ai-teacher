@@ -85,6 +85,56 @@
 }
 
 /*
+ * A theme's own bullet (`Theme.ornament.marker`), set on the slide root as `data-marker`. Each is
+ * drawn in the list's indent like the dot, so the text measures and wraps exactly as before.
+ */
+[data-marker="star"] .td-rt ul > li::before {
+  left: -0.96em;
+  top: calc(0.5em * var(--td-lh) - 0.33em);
+  width: 0.64em;
+  height: 0.64em;
+  border-radius: 0;
+  clip-path: polygon(
+    50% 0%,
+    62% 35%,
+    98% 36%,
+    69% 58%,
+    79% 94%,
+    50% 72%,
+    21% 94%,
+    31% 58%,
+    2% 36%,
+    38% 35%
+  );
+}
+
+[data-marker="dash"] .td-rt ul > li::before {
+  left: -0.9em;
+  top: calc(0.5em * var(--td-lh) - 0.1em);
+  width: 0.52em;
+  height: 0.2em;
+  border-radius: 0.1em;
+  transform: rotate(-10deg);
+}
+
+[data-marker="diamond"] .td-rt ul > li::before {
+  left: -0.86em;
+  top: calc(0.5em * var(--td-lh) - 0.19em);
+  width: 0.38em;
+  height: 0.38em;
+  border-radius: 0.06em;
+  transform: rotate(45deg);
+}
+
+[data-marker="leaf"] .td-rt ul > li::before {
+  left: -0.9em;
+  top: calc(0.5em * var(--td-lh) - 0.26em);
+  width: 0.52em;
+  height: 0.52em;
+  border-radius: 0 75% 0 75%;
+}
+
+/*
  * Numbers sit in a filled accent disc (the lesson look, quality PRD "look", 26 Sept 2026), drawn in
  * the list's own indent. The disc is 0.86em in a 1.45em indent (the headless ruler's
  * `ORDERED_INDENT_EM`), leaving a 0.59em gap before the words (Greg, 27 Sept 2026, twice: the
