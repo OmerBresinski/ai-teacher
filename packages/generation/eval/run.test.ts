@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createAi, createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { objectiveVerbOf } from "../src/shapes";
-import { PLAN_SKELETONS, pipelineScript, routed, scriptedPipelineAi } from "../src/testing";
+import { PLAN_SKELETONS, pipelineScript, routed } from "../src/testing";
 import { evalBriefs, isSecondaryBrief } from "./briefs";
 import { RUBRIC_DIMENSIONS } from "./rubric-prompt";
 import {
