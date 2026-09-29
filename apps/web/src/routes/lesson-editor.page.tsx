@@ -1,8 +1,23 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
-import { LessonEditor, type LessonEditorHandle } from "@tj/editor/lesson";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  displayInTheme,
+  GeneratingThemeDialog,
+  LessonEditor,
+  type LessonEditorHandle,
+  ThemeCallout,
+} from "@tj/editor/lesson";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { stageOf } from "@/components/generating-lesson/stage";
 import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheets";
 import "@/components/lesson-creation/creation.css";
@@ -134,6 +149,27 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const editorRef = useRef<LessonEditorHandle | null>(null);
   const proposals = useProposalJobs(lessonId, editorRef, worksheetId);
 
+  // Ruling 123: a theme picked while the lesson is being made. The lesson is locked until Ready
+  // (ADR 0024 §18), so the pick is shown on the slides here, kept across a reload for this tab,
+  // and applied by the editor at Ready as one re-fitted, saved undo step.
+  const [pickedTheme, setPickedTheme] = useState<string | null>(() => readPickedTheme(lessonId));
+  const [themeOpen, setThemeOpen] = useState(false);
+  const pickTheme = useCallback(
+    (themeId: string) => {
+      setPickedTheme(themeId);
+      writePickedTheme(lessonId, themeId);
+    },
+    [lessonId],
+  );
+  const editing = !!data && isFullDocument(data) && !!meta && !meta.generatingJobId;
+  // A layout effect, so the editor's first paint is already in the picked theme.
+  useLayoutEffect(() => {
+    if (!editing || stoppedJobId || !pickedTheme || !editorRef.current) return;
+    editorRef.current.retheme(pickedTheme);
+    writePickedTheme(lessonId, null);
+    setPickedTheme(null);
+  }, [editing, stoppedJobId, pickedTheme, lessonId]);
+
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   const onOpenWorksheet = useCallback(
     (id: string) => void navigate({ to: "/w/$worksheetId", params: { worksheetId: id } }),
@@ -186,12 +222,22 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const companionSlot = showStory ? (
     <div ref={setDestination} className="creation-generation-anchor" />
   ) : undefined;
+  const shownLesson = displayInTheme(data, pickedTheme);
   const content = generatingJobId ? (
     <Suspense fallback={<RoutePendingPage />}>
+      <GeneratingThemeDialog
+        open={themeOpen}
+        lesson={shownLesson}
+        onChange={pickTheme}
+        onClose={() => setThemeOpen(false)}
+      />
       <GeneratingLesson
         key={generatingJobId}
-        lesson={data}
+        lesson={shownLesson}
         canvasCompanion={companionSlot}
+        themeCallout={
+          <ThemeCallout themeId={shownLesson.themeId} onClick={() => setThemeOpen(true)} />
+        }
         onStage={setStage}
         jobId={generatingJobId}
         onBack={onBack}
@@ -263,4 +309,24 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       ) : null}
     </div>
   );
+}
+
+/** The theme picked while `lessonId` was being made, for this tab (ruling 123). */
+const pickedThemeKey = (lessonId: string) => `tj:generating-theme:${lessonId}`;
+
+function readPickedTheme(lessonId: string): string | null {
+  try {
+    return window.sessionStorage.getItem(pickedThemeKey(lessonId));
+  } catch {
+    return null;
+  }
+}
+
+function writePickedTheme(lessonId: string, themeId: string | null) {
+  try {
+    if (themeId) window.sessionStorage.setItem(pickedThemeKey(lessonId), themeId);
+    else window.sessionStorage.removeItem(pickedThemeKey(lessonId));
+  } catch {
+    /* Storage can be blocked; the pick then lives for this visit only. */
+  }
 }

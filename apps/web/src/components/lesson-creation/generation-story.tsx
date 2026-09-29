@@ -1,10 +1,13 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
-import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
+import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin, PERSONA_SPEED } from "./character-origin";
+import type { HandoverRig } from "./motion/handover-rig.js";
+
+type RigModule = typeof import("./motion/handover-rig.js");
 
 /** Data drives the story; completed gestures hand over without holding up the editor. */
 export function GenerationStory({
   gsap,
+  rigModule,
   includedWorksheet,
   origin,
   progress,
@@ -15,6 +18,7 @@ export function GenerationStory({
   onFinished,
 }: {
   gsap: typeof import("gsap").gsap;
+  rigModule: RigModule;
   includedWorksheet: boolean;
   origin: CharacterOrigin | null;
   progress: number;
@@ -33,7 +37,7 @@ export function GenerationStory({
     if (!root) return;
     let cancelled = false;
     const context = gsap.context(() => {
-      rig.current = createHandoverRig(root, gsap);
+      rig.current = rigModule.createHandoverRig(root, gsap);
     });
     const actor = rig.current;
     if (!actor) return;
@@ -42,26 +46,36 @@ export function GenerationStory({
     };
     const inspectLoop = () => {
       if (cancelled) return;
+      // Once the lesson is ready the check is a quick, exact sign-off, not a performance.
+      const tail = latest.current.ready ? 1.7 : PERSONA_SPEED[3];
       actor.play(9, {
         withWorksheet: includedWorksheet,
+        speed: tail,
         onComplete: () => {
-          if (latest.current.ready) actor.play(10, { reset: false, onComplete: finish });
+          if (latest.current.ready)
+            actor.play(10, { reset: false, speed: 1.7, onComplete: finish });
           else inspectLoop();
         },
       });
     };
     const inspect = () => {
       if (cancelled) return;
+      // If the lesson is already ready, Check skips the inspection and signs off.
       actor.play(5, {
         handoff: { from: 1, to: 3 },
-        speed: 1.45,
-        onComplete: inspectLoop,
+        speed: latest.current.ready ? 1.7 : 1.45,
+        onComplete: () => {
+          if (latest.current.ready)
+            actor.play(10, { reset: false, speed: 1.7, onComplete: finish });
+          else inspectLoop();
+        },
       });
     };
     const work = (beat: number, reset = true) => {
       if (cancelled) return;
       actor.play(beat, {
         reset,
+        speed: PERSONA_SPEED[1],
         withWorksheet: includedWorksheet,
         onComplete: () => {
           if (latest.current.ready && !latest.current.checking) return finish();
@@ -76,7 +90,8 @@ export function GenerationStory({
       });
     };
     let entry: ReturnType<typeof gsap.delayedCall> | null = null;
-    root.dataset.entry = origin && !actor.reduced && !skipIntro ? "travelling" : "arrived";
+    root.dataset.entry =
+      origin && includedWorksheet && !actor.reduced && !skipIntro ? "travelling" : "arrived";
     if (actor.reduced) actor.settle(3);
     else if (skipIntro) {
       if (latest.current.ready && !latest.current.checking) finish();
@@ -85,18 +100,41 @@ export function GenerationStory({
         inspect();
       } else work(3);
     } else {
-      if (origin) actor.restore(origin.pose);
-      else actor.settle(7);
-      entry = gsap.delayedCall(origin ? CHARACTER_ENTRY_SECONDS : 0, () => {
+      // Only characters whose work was asked for appear: with slides only, Worksheet never comes
+      // on, and Slides enters on its own instead of being handed anything.
+      if (origin && includedWorksheet) actor.restore(origin.pose);
+      else actor.settle(includedWorksheet ? 7 : 12);
+      entry = gsap.delayedCall(origin && includedWorksheet ? CHARACTER_ENTRY_SECONDS : 0, () => {
         root.dataset.entry = "arrived";
-        actor.play(includedWorksheet ? 8 : 11, {
-          handoff: { from: 2, to: 1 },
+        handoverFrom = performance.now();
+        actor.play(includedWorksheet ? 8 : 12, {
+          handoff: includedWorksheet ? { from: 2, to: 1 } : undefined,
           speed: includedWorksheet ? 1.45 : 1,
-          onComplete: () => work(latest.current.ready ? 4 : 3),
+          onComplete: () => {
+            work(latest.current.ready ? 4 : 3);
+          },
         });
         actor.pause(latest.current.paused);
       });
     }
+    // The companion's flight and exit: the character leaps with the flight and walks out at the end.
+    const host = root.closest(".creation-generation-actor");
+    // The leap may join once the receiver has arrived and is carrying the work to centre.
+    let handoverFrom = !skipIntro && !actor.reduced ? Number.POSITIVE_INFINITY : 0;
+    const onLeap = (event: Event) => {
+      const detail = (event as CustomEvent<{ flight: number; accepted: boolean }>).detail;
+      if (actor.reduced || performance.now() - handoverFrom < 1500) return;
+      detail.accepted = true;
+      actor.react("leap", { flight: detail.flight });
+    };
+    const onLeave = (event: Event) => {
+      const detail = (event as CustomEvent<{ done: () => void; accepted: boolean }>).detail;
+      if (actor.reduced) return;
+      detail.accepted = true;
+      actor.react("leave", { onComplete: detail.done });
+    };
+    host?.addEventListener("cast:leap", onLeap);
+    host?.addEventListener("cast:leave", onLeave);
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const changed = () => {
       if (media.matches) {
@@ -111,11 +149,13 @@ export function GenerationStory({
       cancelled = true;
       entry?.kill();
       media.removeEventListener("change", changed);
+      host?.removeEventListener("cast:leap", onLeap);
+      host?.removeEventListener("cast:leave", onLeave);
       actor.dispose();
       rig.current = null;
       context.revert();
     };
-  }, [includedWorksheet, origin, skipIntro, gsap]);
+  }, [includedWorksheet, origin, skipIntro, gsap, rigModule]);
   useEffect(() => {
     rig.current?.pause(paused);
   }, [paused]);

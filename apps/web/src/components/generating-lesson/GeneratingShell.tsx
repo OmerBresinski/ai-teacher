@@ -58,6 +58,11 @@ export type GeneratingShellProps = {
   estimate?: ReactNode;
   /** Optional art-direction companion; stays mounted as the first slide arrives. */
   canvasCompanion?: ReactNode;
+  /**
+   * The selected-theme callout (ruling 123), under the slide stage: at the left of the lock line
+   * on a desktop, in the footer on a phone. Its place is kept, so it shifts nothing.
+   */
+  themeCallout?: ReactNode;
   onBack: () => void;
   onStop: () => void;
   /**
@@ -81,6 +86,7 @@ export function GeneratingShell({
   events,
   estimate,
   canvasCompanion,
+  themeCallout,
   onBack,
   onStop,
   stop,
@@ -159,6 +165,7 @@ export function GeneratingShell({
         line={line}
         lockLine={lockLine(state)}
         canvasCompanion={canvasCompanion}
+        themeCallout={themeCallout}
         onBack={onBack}
         onStop={onStop}
         stop={stop}
@@ -322,15 +329,25 @@ export function GeneratingShell({
           {/* Where the editor's zoom group sits, so the swap at Ready is a text change. While the
               teacher is on an earlier slide, the way back to the newest sits beside the line. */}
           <div
-            data-testid="generating-lock"
-            className="relative flex h-12 shrink-0 items-center justify-center gap-1.5 text-meta font-medium text-ink-3"
+            data-generating-bar
+            className="relative flex h-12 shrink-0 items-center justify-center"
           >
-            {state.terminal === "completed" ? (
-              <span aria-hidden className="size-[5px] rounded-full bg-success" />
-            ) : (
-              <Lock aria-hidden size={14} strokeWidth={1.5} />
-            )}
-            <span>{lockLine(state)}</span>
+            {themeCallout ? (
+              <div className="absolute left-3" data-generating-theme>
+                {themeCallout}
+              </div>
+            ) : null}
+            <div
+              data-testid="generating-lock"
+              className="flex items-center gap-1.5 text-meta font-medium text-ink-3"
+            >
+              {state.terminal === "completed" ? (
+                <span aria-hidden className="size-[5px] rounded-full bg-success" />
+              ) : (
+                <Lock aria-hidden size={14} strokeWidth={1.5} />
+              )}
+              <span>{lockLine(state)}</span>
+            </div>
             {!following && newest ? (
               <Button
                 variant="ghost"

@@ -1,7 +1,9 @@
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadGsap } from "@/lib/gsap";
-import type { CharacterCapture } from "./character-origin";
-import { createHandoverRig, type HandoverRig } from "./motion/handover-rig.js";
+import { type CharacterCapture, PERSONA_SPEED } from "./character-origin";
+import type { HandoverRig } from "./motion/handover-rig.js";
+
+type RigModule = typeof import("./motion/handover-rig.js");
 
 export type CharacterStage =
   | "brief"
@@ -19,6 +21,14 @@ const OWNER: Record<CharacterStage, number> = {
   complete: 3,
 };
 const BEAT = [0, 3, 6, 9];
+/** Between gestures on a form step the character rests (breath and blink only), so the teacher's
+ * peripheral vision is quiet while they type. Seconds, [min, max] before the next gesture. */
+const REST: Partial<Record<CharacterStage, [number, number]>> = {
+  brief: [7, 11],
+  objectives: [7, 11],
+  worksheet: [6, 9],
+};
+const TYPING_QUIET_MS = 2500;
 
 /** React owns lifetime; the original rig owns articulated hands and their actual props. */
 export function CharacterHost({
@@ -33,10 +43,13 @@ export function CharacterHost({
   slidesPhase?: "making" | "stacking";
 }) {
   const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
+  const rigModule = useRef<RigModule | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void loadGsap()
-      .then((runtime) => {
+    // The rig is lazy: the form never waits for the characters' chunk.
+    void Promise.all([loadGsap(), import("./motion/handover-rig.js")])
+      .then(([runtime, module]) => {
+        rigModule.current = module;
         if (!cancelled) setGsap(runtime);
       })
       .catch(() => {
@@ -70,7 +83,8 @@ export function CharacterHost({
     if (!element.current || !gsap) return;
     previous.current = initialStage;
     const context = gsap.context(() => {
-      rig.current = createHandoverRig(element.current as HTMLDivElement, gsap);
+      rig.current =
+        rigModule.current?.createHandoverRig(element.current as HTMLDivElement, gsap) ?? null;
     });
     return () => {
       rig.current?.dispose();
@@ -81,14 +95,35 @@ export function CharacterHost({
   useEffect(() => {
     const actor = rig.current;
     if (!actor || !gsap) return;
-    const from = OWNER[previous.current],
+    const prior = previous.current;
+    const from = OWNER[prior],
       to = OWNER[stage];
     previous.current = stage;
     let cancelled = false;
+    let rest: number | undefined;
+    let lastInput = 0;
+    const typed = () => {
+      lastInput = performance.now();
+    };
+    document.addEventListener("input", typed, true);
+    const restRange = REST[stage];
+    // One scheduler per character: a pending gesture is replaced, never doubled. Wait out the
+    // rest, then any typing burst, before the next gesture.
+    const afterRest = (then: () => void, seconds: number) => {
+      window.clearTimeout(rest);
+      rest = window.setTimeout(() => {
+        const quiet = performance.now() - lastInput;
+        if (quiet < TYPING_QUIET_MS) afterRest(then, (TYPING_QUIET_MS - quiet) / 1000);
+        else then();
+      }, seconds * 1000);
+    };
     const work = (beat: number, reset = true) => {
       if (cancelled) return;
+      window.clearTimeout(rest);
+      actor.calm(false);
       actor.play(beat, {
         reset,
+        speed: PERSONA_SPEED[to],
         onComplete: () => {
           if (stage === "complete") {
             if (beat === 9) work(10, false);
@@ -107,7 +142,10 @@ export function CharacterHost({
                   ? 4
                   : 3;
           // Finish the current creation gesture before sorting its completed deck.
-          work(next, to === 1 ? beat !== 3 : to === 2 && next === 6);
+          const go = () => work(next, to === 1 ? beat !== 3 : to === 2 && next === 6);
+          if (!restRange) return go();
+          actor.calm(true);
+          afterRest(go, restRange[0] + Math.random() * (restRange[1] - restRange[0]));
         },
       });
     };
@@ -121,6 +159,10 @@ export function CharacterHost({
         speed: 1.45,
         onComplete: () => work(BEAT[to] ?? 0),
       });
+    } else if (prior !== stage) {
+      // Same character, next step: it acknowledges the teacher's move with a nod, then carries on.
+      actor.react("nod");
+      work(stage === "objectives" ? 1 : (BEAT[to] ?? 0));
     } else work(stage === "objectives" ? 1 : (BEAT[to] ?? 0));
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const changed = () => {
@@ -130,6 +172,8 @@ export function CharacterHost({
     media.addEventListener("change", changed);
     return () => {
       cancelled = true;
+      window.clearTimeout(rest);
+      document.removeEventListener("input", typed, true);
       media.removeEventListener("change", changed);
     };
   }, [stage, gsap]);
