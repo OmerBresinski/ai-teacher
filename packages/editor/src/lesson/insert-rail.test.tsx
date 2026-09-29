@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { renderEditor } from "./test-harness";
+import { loadTextEditor, renderEditor } from "./test-harness";
 
 /* TEACH-105 row 7: every rail item inserts its element at the centre and selects it. */
 
+// The editor's lazy chunks load once here, not inside the first test's `waitFor`.
+beforeAll(loadTextEditor);
 afterEach(cleanup);
 
 const rail = () => screen.getByRole("toolbar", { name: "Insert" });
