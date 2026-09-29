@@ -138,7 +138,7 @@ test("each registered prompt uses its stage-specific deadline across version bum
 test("a Luna route (gateway or direct id) takes the measured fast bounds; Bedrock keeps the class table", () => {
   for (const id of ["openai/gpt-6-luna", "gpt-6-luna", "openai/gpt-5.6-luna"]) {
     expect(isFastModelId(id)).toBe(true);
-    expect(callTimeoutMs("generate-slide.v30", id)).toBe(45_000);
+    expect(callTimeoutMs("generate-slide.v31", id)).toBe(45_000);
     expect(callTimeoutMs("evaluate.v12", id)).toBe(90_000);
     expect(callTimeoutMs("verify-facts.v6", id)).toBe(30_000);
     expect(callTimeoutMs("repair.v15", id)).toBe(30_000);
@@ -148,7 +148,7 @@ test("a Luna route (gateway or direct id) takes the measured fast bounds; Bedroc
   }
   for (const id of ["us.openai.gpt-6-luna-v1:0", "openai/gpt-6-sol", "us.anthropic.claude-x"]) {
     expect(isFastModelId(id)).toBe(false);
-    expect(callTimeoutMs("generate-slide.v30", id)).toBe(180_000);
+    expect(callTimeoutMs("generate-slide.v31", id)).toBe(180_000);
     expect(callTimeoutMs("evaluate.v12", id)).toBe(300_000);
   }
   expect(callTimeoutMs("plan-question-set.v7", "us.anthropic.claude-x")).toBe(60_000);

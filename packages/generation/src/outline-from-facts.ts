@@ -155,10 +155,13 @@ const VOCABULARY_TERMS_MAX = 6;
 /** Unshown terms a content slide may carry alongside its key idea. */
 const TERMS_PER_CONTENT = 2;
 /**
- * Key ideas one content slide carries at most: `generate-slide` (v22) gives a content slide that
- * names two key ideas a body of up to 60 words, the first idea in one sentence, then the second.
+ * Key ideas one content slide carries: one (fit-lab, 29 Sep 2026). Two ideas plus a callout did
+ * not fit a normal slide (plants: the pollination callout had no room on 10/10 themes), and the
+ * writer was told to squeeze both into 60 words. The slide count stays fixed, so the outline
+ * chooses which ideas get slides (P1b: the first `CONTENT_PER_CYCLE` per objective; P6: the rest
+ * while budget is left) and names the others in `gaps`.
  */
-export const KEY_IDEAS_PER_CONTENT = 2;
+export const KEY_IDEAS_PER_CONTENT = 1;
 /** The longest question stem a shared practise slide takes: four have to fit on one slide. */
 const SHARED_STEM_MAX = 120;
 /** Objectives one shared practise slide covers at most: an `instructions` slide holds 1–4 steps. */
@@ -435,7 +438,18 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           : [],
       )
       .sort((a, b) => tierRank(a) - tierRank(b) || a - b)[0];
-  const unusedKeyIdeas = (o: number) => keyIdeasOf(o).filter((k) => !used.keyIdeas.has(k));
+  /**
+   * Objective `o`'s key ideas not yet on a slide, the ones most questions test first (one idea
+   * per slide: when the deck has no room for them all, the idea the checks rest on gets the slide).
+   */
+  const unusedKeyIdeas = (o: number) => {
+    const demand = (k: number) =>
+      facts.questions.filter((q, i) => q.use !== "worksheet" && testedKeyIdeas(i).includes(k))
+        .length;
+    return keyIdeasOf(o)
+      .filter((k) => !used.keyIdeas.has(k))
+      .sort((a, b) => demand(b) - demand(a) || a - b);
+  };
   /** Every key idea of objective `o` is on a slide (an objective with none has nothing left off). */
   const fullyTaught = (o: number) => unusedKeyIdeas(o).length === 0;
   /** The key ideas question `i` declares it tests (facts v11), or none when it declares none. */

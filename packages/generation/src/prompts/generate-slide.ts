@@ -94,6 +94,10 @@ import {
  * the writer wrote "the photograph does not show wall ruins"; the judge scored notes 1 and Evaluate
  * raised `image-fit` on that sentence. The notes now give the teacher a move instead. Shared with
  * Repair (v17).
+ *
+ * v31 (29 Sep 2026, fit-lab one-idea-per-slide): `outline-from-facts` puts exactly one key idea on
+ * a content slide (`KEY_IDEAS_PER_CONTENT` 1), so v22's two-idea sentence and the 60-word body
+ * are gone; the content body is the one-idea 40 words.
  */
 
 export type GenerateSlideInput = {
@@ -169,7 +173,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body" (≤ 40 words; ≤ 60 with two key ideas), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
@@ -224,14 +228,14 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
+    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
