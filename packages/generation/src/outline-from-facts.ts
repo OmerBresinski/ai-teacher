@@ -1058,11 +1058,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const ref = facts.workedExamples[s.workedExample]?.misconceptionRef;
         if (ref) confronted.add(ref.index);
       }
-      // A content slide's watch-out (below) takes its objective's first misconception.
-      if (s.kind === "content") {
-        const first = misconceptionsOf(s.primary).find((m) => !confronted.has(m));
-        if (first !== undefined) confronted.add(first);
-      }
+      // A content slide confronts none: one idea per slide, its misconception is in the notes.
     }
     facts.misconceptions.forEach((m, i) => {
       if (budget <= 0 || confronted.has(i)) return;
@@ -1497,8 +1493,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
         // One idea per slide: the key idea fills the slide (its panel and points), so a content
-        // slide carries no callout card; its objective's misconception is the body's closing
-        // sentence (`generate-slide`'s `ownMisconceptions`) and its terms are defined in the words.
+        // slide carries no callout card; its objective's misconception goes to the notes
+        // (`generate-slide` v32) and to a discussion or worked example (P7, below).
         break;
       }
       case "worked-example": {

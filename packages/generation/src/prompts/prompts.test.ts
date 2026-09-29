@@ -235,7 +235,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v31",
+    version: "generate-slide.v32",
     hash: "ff61844db9d588204f3e27267257460335f0f6e3a744af3246cdc728e5a62cba",
   },
   "generate-worksheet": {
@@ -1076,7 +1076,7 @@ describe("generate-slide v25: a teaching slide names its misconception", () => {
     } as typeof input;
     expect(ownMisconceptions(content)).toContain(misconception?.id ?? "");
     expect(generateSlidePrompt.user(content)).toContain(
-      `(${misconception?.id}): end the body with one sentence on what some pupils think and why it is wrong.`,
+      `(${misconception?.id}): say in \`notes\` what some pupils think and why it is wrong.`,
     );
   });
 

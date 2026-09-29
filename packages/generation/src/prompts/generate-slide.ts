@@ -98,6 +98,11 @@ import {
  * v31 (29 Sep 2026, fit-lab one-idea-per-slide): `outline-from-facts` puts exactly one key idea on
  * a content slide (`KEY_IDEAS_PER_CONTENT` 1), so v22's two-idea sentence and the 60-word body
  * are gone; the content body is the one-idea 40 words.
+ *
+ * v32 (29 Sep 2026, fit-lab one-idea-per-slide r4): the misconception a teaching slide used to
+ * close its body with (v25 `ownMisconceptions`) goes to `notes`; on the slide it was a second idea
+ * and the sentence that ran the one-idea slide over (r3: the first content slide flagged in 4 of 4
+ * decks). The outline confronts it on a discussion or worked-example slide instead.
  */
 
 export type GenerateSlideInput = {
@@ -228,7 +233,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v31",
+  version: "generate-slide.v32",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -319,7 +324,7 @@ export const generateSlidePrompt = {
     const misconceptions = ownMisconceptions(input);
     if (misconceptions.length > 0) {
       parts.push(
-        `Its misconception (${misconceptions.join(", ")}): end the body with one sentence on what some pupils think and why it is wrong.`,
+        `Its misconception (${misconceptions.join(", ")}): say in \`notes\` what some pupils think and why it is wrong.`,
       );
     }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
