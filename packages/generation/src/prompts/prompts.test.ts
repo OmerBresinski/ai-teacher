@@ -236,7 +236,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
     version: "generate-slide.v31",
-    hash: "5f26d181072d76467c4977b2dd29db59ed99fa031803f48c19c6295783aec830",
+    hash: "0e5a2749ef190208d1fadf8bb83adad031b61fe64d0b3b8844d26269177aaaf4",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
