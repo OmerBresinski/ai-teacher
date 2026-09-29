@@ -346,7 +346,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const exampleFits = (x: number) => {
     const example = facts.workedExamples[x];
     return (
-      example !== undefined && fitsPlanned(workedExampleProjection(example.problem, example.steps))
+      example !== undefined &&
+      fitsPlanned(workedExampleProjection(example.problem, example.steps, example.answer))
     );
   };
 

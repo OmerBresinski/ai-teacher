@@ -50,14 +50,27 @@ export function contentProjection(
   } as SlideSpec;
 }
 
-/** A worked example as its slide shows it: the problem, then one line per step. */
-export function workedExampleProjection(problem: string, steps: readonly string[]): SlideSpec {
+/**
+ * A worked example as its slide shows it: a heading that states the result, the problem, then one
+ * line per step and the answer as the concluding line (`generate-slide` ends the working with the
+ * conclusion; fit-lab r4, 29 Sep: three planned steps came back as four, the answer added, under a
+ * heading of 45 to 53 characters).
+ */
+export function workedExampleProjection(
+  problem: string,
+  steps: readonly string[],
+  answer?: string,
+): SlideSpec {
+  // Four steps already fill the card and end on the conclusion; fewer get the answer as a line.
+  const lines = [...steps, ...(answer && steps.length < 4 ? [answer] : [])]
+    .map((s) => s.trim())
+    .filter(Boolean);
   return {
     kind: "worked-example",
     factRefs: [],
-    heading: "Worked example",
+    heading: (answer ?? problem).trim().slice(0, 56),
     question: problem.trim(),
-    steps: steps.map((s) => s.trim()),
+    steps: lines,
   } as SlideSpec;
 }
 
