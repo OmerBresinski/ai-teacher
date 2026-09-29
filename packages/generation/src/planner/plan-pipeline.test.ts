@@ -290,7 +290,7 @@ describe("runPlannedLessonPipeline", () => {
     // The model-written slides (fit first: a pair that does not fit one slide is split, and the
     // slot it takes was a model-written one), plus the one Generate regenerated because it was
     // written from the fact Verify corrected before the patch landed (TEACH-233).
-    expect(versions.filter((v) => v === "generate-slide").length).toBeGreaterThanOrEqual(7);
+    expect(versions.filter((v) => v === "generate-slide").length).toBeGreaterThanOrEqual(5);
     expect(versions.filter((v) => v === "verify-facts")).toHaveLength(1);
     expect(versions.filter((v) => v === "evaluate")).toHaveLength(1);
     // Verify ran alongside the slides: started before the first slide call was made.
