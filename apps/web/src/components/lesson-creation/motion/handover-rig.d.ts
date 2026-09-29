@@ -15,6 +15,15 @@ export interface HandoverRig {
       onComplete?: () => void;
     },
   ): void;
+  /** Page px of Plan's rest artwork and its ground shadow, for its entrance (entrances/). */
+  restBox(): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    shadow: { left: number; top: number; width: number; height: number };
+  } | null;
+  present(actor: number, shown: boolean): void;
   snapshot(actor: number): RigPose;
   restore(pose: RigPose): void;
   settle(beat: number): void;

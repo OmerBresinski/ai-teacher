@@ -50,7 +50,9 @@ export function createHandoverRig(root, gsap) {
   const names = ["Plan", "Slides", "Worksheet", "Check"],
     keys = ["support", "slides", "activity", "answers"];
   // 12: Slides' own entrance when it is the first character making anything (slides only).
-  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2, 1].map((owner) => ["", owner]);
+  // 13-17: Plan reads the teacher's brief on the planning stage: picks it up, reads a line, turns
+  // the page (its check-through), looks up with a nod, lowers it.
+  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2, 1, 0, 0, 0, 0, 0].map((owner) => ["", owner]);
   const ownerOf = () => handoff?.from ?? beats[current][1];
   const receiverOf = () => handoff?.to ?? ownerOf() + 1;
   // `b` is the beat's pose; `r` is a reaction layered on top (deltas from rest), so a nod or a
@@ -132,6 +134,9 @@ export function createHandoverRig(root, gsap) {
     ambientGate: 1,
     outerRelease: 0,
     carryFront: 0,
+    hold: 1,
+    lie: 0,
+    gazeY: 0,
   };
   const parsed = {};
   for (const k of keys) {
@@ -642,7 +647,10 @@ export function createHandoverRig(root, gsap) {
       const gazeX = passing
         ? Math.max(-3, Math.min(3, (target - a.x) * 0.024)) * p.gazeMix
         : p.look + castFx[i].look;
-      const gazeY = (passing ? 1 + 0.7 * p.gazeMix : 1) + castFx[i].lookY * 0.7;
+      const gazeY =
+        (passing ? 1 + 0.7 * p.gazeMix : 1) +
+        castFx[i].lookY * 0.7 +
+        (i === ownerOf() ? p.gazeY : 0);
       if (i !== 1) q(".gaze", figures[i]).setAttribute("transform", `translate(${gazeX} ${gazeY})`);
       else if (!fanMode)
         q(".face", fanSVG).setAttribute("transform", `translate(${gazeX + 0.125} ${gazeY - 1})`);
@@ -676,6 +684,16 @@ export function createHandoverRig(root, gsap) {
       seg = width / 3;
     const briefMarkup = `<path d="M${-width / 2} ${-h}l${seg} ${-7 * p.fold} ${seg} ${7 * p.fold} ${seg} ${-7 * p.fold}v53l${-seg} ${7 * p.fold} ${-seg} ${-7 * p.fold} ${-seg} ${7 * p.fold}Z" fill="${worksheetSource ? "#faf5df" : "#d6e2bd"}"/><path d="M${-seg / 2} ${-h - 7 * p.fold}v53M${seg / 2} ${-h}v53" opacity="${p.fold}"/><path d="M${-width * 0.38} -10h${width * 0.22}M${-width * 0.38} 2h${width * 0.2}M${width * 0.08} -9h${width * 0.24}M${width * 0.08} 4h${width * 0.2}"/>`;
     // Rewriting markup is costly: only when the brief's shape changed.
+    // Lying on the floor (Plan's brief before it is picked up): the sheet projected flat about its
+    // foot, a prop view, never the characters.
+    const lie = Math.max(0, Math.min(1, p.lie));
+    const lieT = lie
+      ? `matrix(1 0 ${(-0.45 * lie).toFixed(3)} ${(1 - 0.84 * lie).toFixed(3)} ${(12 * lie).toFixed(2)} ${(26.5 * 0.84 * lie).toFixed(2)})`
+      : "";
+    if ((briefEl.getAttribute("transform") ?? "") !== lieT) {
+      if (lieT) briefEl.setAttribute("transform", lieT);
+      else briefEl.removeAttribute("transform");
+    }
     if (briefMarkup !== lastBrief) {
       lastBrief = briefMarkup;
       briefEl.innerHTML = briefMarkup;
@@ -717,6 +735,10 @@ export function createHandoverRig(root, gsap) {
     pendingEl.setAttribute("transform", `translate(${p.px} ${p.py}) rotate(${p.pr})`);
     q(".magic-window").setAttribute("width", 74.4 * p.magic);
     q(".reserve").setAttribute("transform", "translate(-2 5)");
+    // Planning: Plan reads the brief alone; the spare slide paper belongs to Slides' work.
+    const readingNow = current >= 13 && current <= 17;
+    if (q(".reserve").style.visibility !== (readingNow ? "hidden" : ""))
+      q(".reserve").style.visibility = readingNow ? "hidden" : "";
     if (p.tool === 1) {
       let tip = { x: p.penX, y: p.penY };
       if (p.contact && p.stroke >= 0)
@@ -797,6 +819,24 @@ export function createHandoverRig(root, gsap) {
       if (i === owner) {
         left = point(-hx, hy);
         right = point(hx, 12 - 6 * deckGrip);
+        if (i === 0 && p.hold < 1) {
+          // Plan's hands are free until it picks up the brief: where the artwork has them (arm
+          // ends (17, 151) and (281, 148) at 0.85), so the hand-over from its entrance does not
+          // move them.
+          const free = [
+            { x: a.x - 113 + dl.x, y: 193.4 + dl.y },
+            { x: a.x + 111.4 + dr.x, y: 190.8 + dr.y },
+          ];
+          const h = Math.max(0, p.hold);
+          left = {
+            x: free[0].x + (left.x - free[0].x) * h,
+            y: free[0].y + (left.y - free[0].y) * h,
+          };
+          right = {
+            x: free[1].x + (right.x - free[1].x) * h,
+            y: free[1].y + (right.y - free[1].y) * h,
+          };
+        }
         if (p.compare > 0) {
           const contact = (side) => {
             const a = (side * 5 * p.compare * Math.PI) / 180;
@@ -910,7 +950,8 @@ export function createHandoverRig(root, gsap) {
         rearPaths[i][j].setAttribute("d", arm.getAttribute("d"));
         const finger = q(j ? ".finger-r" : ".finger-l", fingers);
         // A hand reaching round behind the body is hidden with its arm.
-        finger.style.visibility = behind ? "hidden" : "";
+        // Free hands (before Plan takes the brief) are the artwork's plain arm ends: no fingers.
+        finger.style.visibility = behind || (i === owner && p.hold < 0.5) ? "hidden" : "";
         finger.setAttribute(
           "d",
           i === 1
@@ -939,7 +980,8 @@ export function createHandoverRig(root, gsap) {
   function canonical(beat) {
     // Slides' entrance starts from beat 3's work state, with Slides and its deck still off stage.
     const entering = beat === 12,
-      n = entering ? 3 : beat;
+      reading = beat >= 13 && beat <= 17,
+      n = entering ? 3 : reading ? 0 : beat;
     fanMode = false;
     Object.assign(p, {
       x: 320,
@@ -1028,6 +1070,10 @@ export function createHandoverRig(root, gsap) {
       p.sheet = 0;
       p.sy = 18;
     }
+    Object.assign(p, { hold: 1, lie: 0, gazeY: 0 });
+    // Reading: the brief as a small sheet at reading height; before the pick-up it lies at Plan's feet.
+    if (reading) Object.assign(p, { fold: 0.3, y: 238 });
+    if (beat === 13) Object.assign(p, { x: 404, y: 290, r: 0, hold: 0, lie: 1 });
     fan.t.pause(0);
   }
 
@@ -1155,6 +1201,7 @@ export function createHandoverRig(root, gsap) {
           fanMode = value;
         },
         puff,
+        clipMs: (id) => CAST_CLIPS[id]?.ms,
         cast: playCast,
         /** An accent at a point of the prop, in its own coordinates. */
         accentAt(kind, x, y, size) {
@@ -1300,6 +1347,30 @@ export function createHandoverRig(root, gsap) {
     },
     settle,
     pause,
+    /**
+     * Where a character's rest artwork sits on the page (px), so an entrance drawn by the cast's own
+     * engine (entrances/) can play exactly there and hand over to the rig without a jump.
+     */
+    restBox() {
+      const m = scene.getScreenCTM();
+      if (!m) return null;
+      // The figures' artwork at 0.85 from (x - 127.5, 65), in scene units; the rig's own ground
+      // shadow (cx 320, cy 305, rx 67, ry 5, 12 %), so the entrance layer's matches it.
+      const [x, y, w] = [320 - 127.5, 65, 255];
+      const shadow = {
+        left: m.e + 253 * m.a,
+        top: m.f + 300 * m.d,
+        width: 134 * m.a,
+        height: 10 * m.d,
+      };
+      return { left: m.e + x * m.a, top: m.f + y * m.d, width: w * m.a, height: w * m.d, shadow };
+    },
+    /** Hide or show a character (its entrance is being drawn elsewhere). Never faded. */
+    present(i, shown) {
+      actors[i].alpha = shown ? 1 : 0;
+      if (shown) actors[i].x = 320;
+      draw();
+    },
     /** Resting between gestures: ease the sway down to a breath. */
     calm(value) {
       calmTarget = value ? 0.45 : 1;

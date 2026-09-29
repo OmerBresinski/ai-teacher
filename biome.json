@@ -21,7 +21,9 @@
       "!**/.agents",
       "!**/.claude",
       "!**/.opencode",
-      "!**/skills-lock.json"
+      "!**/skills-lock.json",
+      "!**/lesson-creation/motion/entrances/characters.js",
+      "!**/lesson-creation/motion/entrances/plan"
     ]
   },
   "formatter": {
