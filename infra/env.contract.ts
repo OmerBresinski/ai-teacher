@@ -1036,7 +1036,7 @@ const CONTRACT = [
     name: "VITE_SHOW_SLOT_PLACEHOLDERS",
     services: ["web"],
     scope: "config",
-    local: "0",
+    local: "1",
     railway: "n/a",
     vercel: "n/a",
     setBy: "template",
@@ -1044,7 +1044,7 @@ const CONTRACT = [
     values: ["0", "1"],
     files: ["web"],
     description:
-      "`1` draws every slide's photo and diagram slots in present as placeholders naming what the model asked for, for demos and screenshots (look/image-slot). Off by default; ignored when VITE_APP_ENV is production.",
+      "`1` draws every slide's photo and diagram slots in present as placeholders naming what the model asked for, for testing and screenshots (look/image-slot). On by default while the image system is being built, production included; `0` turns them off.",
   },
   {
     name: "VITE_DEV_API_TARGET",

@@ -6,7 +6,7 @@ describe("parseEnv", () => {
     expect(parseEnv({}, false)).toEqual({
       VITE_API_URL: "/api",
       VITE_APP_ENV: "development",
-      VITE_SHOW_SLOT_PLACEHOLDERS: "0",
+      VITE_SHOW_SLOT_PLACEHOLDERS: "1",
     });
   });
 
@@ -23,22 +23,15 @@ describe("parseEnv", () => {
 });
 
 describe("slot placeholders (look/image-slot)", () => {
-  it("are off by default, on when asked, and never in production", () => {
-    expect(slotPlaceholdersEnabled(parseEnv({}, false))).toBe(false);
-    expect(slotPlaceholdersEnabled(parseEnv({ VITE_SHOW_SLOT_PLACEHOLDERS: "1" }, false))).toBe(
-      true,
+  it("are on by default, in production too, and off when set to 0", () => {
+    expect(slotPlaceholdersEnabled(parseEnv({}, false))).toBe(true);
+    expect(slotPlaceholdersEnabled(parseEnv({ VITE_SHOW_SLOT_PLACEHOLDERS: "0" }, false))).toBe(
+      false,
     );
     expect(
       slotPlaceholdersEnabled(
-        parseEnv(
-          {
-            VITE_SHOW_SLOT_PLACEHOLDERS: "1",
-            VITE_APP_ENV: "production",
-            VITE_API_URL: "https://api.example.test",
-          },
-          true,
-        ),
+        parseEnv({ VITE_APP_ENV: "production", VITE_API_URL: "https://api.example.test" }, true),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
