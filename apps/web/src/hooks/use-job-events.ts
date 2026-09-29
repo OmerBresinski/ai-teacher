@@ -121,6 +121,8 @@ export function useJobEvents(
       // `EventSource` retries automatically while `readyState` is CONNECTING; only a CLOSED
       // stream (e.g. 401/404) is a real error for the UI.
       if (source.readyState === EventSource.CLOSED) dispatch({ type: "status", status: "error" });
+      // A dropped stream reconnects as `connecting` then `open`, so callers can re-check on reconnect.
+      else dispatch({ type: "status", status: "connecting" });
     };
 
     return () => {

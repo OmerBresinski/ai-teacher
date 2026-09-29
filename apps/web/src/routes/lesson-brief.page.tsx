@@ -43,6 +43,9 @@ const NewDocumentDialog = lazy(() =>
   })),
 );
 
+/** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
+const JOB_POLL_MS = 3000;
+
 /** Shared production intake. The URL and stored plan own resume; local state owns unsaved edits. */
 export function LessonBriefPage() {
   const search = useSearch({ from: lessonBriefRoute.id });
@@ -115,6 +118,18 @@ function LessonIntake({
     void client.invalidateQueries({ queryKey: ["library", "document", lessonId] });
     void client.invalidateQueries({ queryKey: ["library", "document-meta", lessonId] });
   }, [terminal, lessonId, client]);
+  // Backup for a missed terminal event (the stream can drop and reconnect): while the job runs,
+  // re-read the lesson every few seconds and on every (re)connect. A read without the lock means
+  // the job ended, and the page moves on exactly as it would after the terminal event.
+  const running = !!lessonId && !!jobId && !terminal;
+  useEffect(() => {
+    if (!running) return;
+    const recheck = () =>
+      void client.invalidateQueries({ queryKey: ["library", "document", lessonId] });
+    if (stream.status === "open") recheck();
+    const timer = setInterval(recheck, JOB_POLL_MS);
+    return () => clearInterval(timer);
+  }, [running, stream.status, lessonId, client]);
   useEffect(() => {
     if (!lesson) return;
     if (lesson.plan?.state === "confirmed") {
