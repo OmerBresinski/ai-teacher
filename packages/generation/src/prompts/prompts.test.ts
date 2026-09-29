@@ -890,7 +890,7 @@ describe("prompt versions", () => {
       expect(render(kind)).not.toContain("Reserved for other slides");
     }
     const define = "Define each vocabulary term in a few words where the slide first uses it";
-    expect(render("content")).toContain(define);
+    expect(render("content")).toContain("Define each vocabulary term the slide uses in `notes`.");
     expect(render("vocabulary")).not.toContain(define);
     const noVocabulary = PROMPTS["generate-slide"].user({
       ...base,
