@@ -211,7 +211,9 @@ export function placeholderQuestions(
           use,
           demand: applies ? "apply" : "recall",
           forms: ["multiple-choice", "open-response"],
-          keyIdeaRefs,
+          // One key idea each, round the objective's ideas: with one idea per content slide an
+          // objective can be partly taught, and a question on a taught idea is still fair.
+          keyIdeaRefs: keyIdeaRefs.length > 0 ? [keyIdeaRefs[n % keyIdeaRefs.length]!] : [],
           objectiveRefs: [obj(o)],
         });
       }

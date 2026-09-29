@@ -646,9 +646,18 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const ks = unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT);
     if (ks.length > 0) place(contentSlot(o, ks));
   }
-  // One idea per slide (fit-lab): an objective's further key ideas no longer take slides before
-  // the shape's kinds, floors and checks (P1b is gone). They get P6's spare slots, the ideas most
-  // questions test first; the rest are named in `gaps` and their questions held back.
+  // P1b: an objective's further key ideas, one per slide, the ideas most questions test first,
+  // before the shape's kinds and floors — while the starter, a check for every objective (the last
+  // one's included) and the worked example the shape requires keep their slots. The rest wait for
+  // P6's spare slots, else a gap names them and their questions are held back.
+  const keptForP1b = () => 1 + (needWorkedExample && !has("worked-example") ? 1 : 0);
+  for (
+    let next = nextKeyIdeas();
+    budget > reserve(true) + keptForP1b() && next !== undefined;
+    next = nextKeyIdeas()
+  ) {
+    place(contentSlot(next[0], next[1]));
+  }
 
   // Four objectives in a six-slide deck: the budget runs out inside P1. Said per objective, so
   // the plan screen can name the one that is not taught rather than the teacher finding out.
