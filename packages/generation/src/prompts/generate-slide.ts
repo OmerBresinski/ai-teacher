@@ -176,7 +176,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body", "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body" (the example of each key idea), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
@@ -238,7 +238,7 @@ export const generateSlidePrompt = {
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading and its example, as the facts give it, in the body; the explanation and any analogy are for the teacher to say, in `notes`. With two key ideas, the heading says what joins them and the body gives each idea's example in its own paragraph. Question slides use the supplied question, answer and distractors verbatim.",
+    "Follow the supplied objective verb. A content slide shows the class the key idea's statement, in the heading, and its example as the facts give it, in the body; with two key ideas, the heading says what joins them and the body gives each idea's example in its own paragraph. Everything else the verb asks of a content slide — the explanation, the mechanism, any analogy or definition — is what the teacher says, in `notes`. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
     "For a `worked-example`, the steps are the facts' steps as given, one per line, ending with the conclusion; the reasoning behind each step goes in `notes`.",
     "`notes`: what the teacher says — the explanation behind what the slide shows, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
@@ -337,7 +337,9 @@ export const generateSlidePrompt = {
     }
     if (input.entry.kind !== "vocabulary" && input.referenced.vocabulary.length > 0) {
       parts.push(
-        "Define each vocabulary term in a few words where the slide first uses it, or in `notes` if that will not fit.",
+        input.entry.kind === "content"
+          ? "Define each vocabulary term the slide uses in `notes`."
+          : "Define each vocabulary term in a few words where the slide first uses it, or in `notes` if that will not fit.",
       );
     }
     if (input.reservedStems.length > 0 && STEM_KINDS.has(input.entry.kind)) {
