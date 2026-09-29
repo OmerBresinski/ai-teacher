@@ -94,6 +94,12 @@ import {
  * the writer wrote "the photograph does not show wall ruins"; the judge scored notes 1 and Evaluate
  * raised `image-fit` on that sentence. The notes now give the teacher a move instead. Shared with
  * Repair (v17).
+ *
+ * v31 (lab fit-7, pick material that fits; 29 Sept 2026): the plan now picks, from candidates, the
+ * key-idea framing and the worked example whose slide fits on every theme (planner/pick-fitting.ts).
+ * The writer presents that material instead of compressing it: a content body is the explanation
+ * then the example in the facts' own words (the 40-word cap goes; 60 stays for two ideas), and a
+ * worked example keeps its steps as written, joining neighbours only past four.
  */
 
 export type GenerateSlideInput = {
@@ -169,7 +175,7 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body" (≤ 40 words; ≤ 60 with two key ideas), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body" (≤ 60 words with two key ideas), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
@@ -224,16 +230,16 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
+    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up from the key idea's explanation, then its example, in the facts' own words, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
-    "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
+    "For a `worked-example`, the steps are the worked example's steps as written, one per line, then its answer as the last line (join neighbours only past four). Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
@@ -268,8 +274,7 @@ export const generateSlidePrompt = {
         "Ask for a show of hands before revealing. Watch for pupils who imagine a gas as a crowd of particles pressed together. Ask: What would happen to the balloon if the particles inside were as close as in a liquid?",
     }),
     "",
-    "Example for a worked-example slide: five source steps compressed into four short lines, retaining the conclusion.",
-    "Source working: Split 84 into 80 and 4. Divide 80 by 4 to get 20. Divide 4 by 4 to get 1. Add 20 and 1 to get 21. Conclude that 84 divided by 4 is 21.",
+    "Example for a worked-example slide, its steps as the facts give them:",
     example({
       kind: "worked-example",
       heading: "Divide by partitioning",

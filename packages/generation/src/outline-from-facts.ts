@@ -20,6 +20,7 @@ import {
   STARTER_MAX,
   sameQuestion,
 } from "./planner/coded-slides";
+import { calloutFits } from "./planner/pick-fitting";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
 import {
@@ -1481,26 +1482,44 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
+        // The callout candidates in order (the unused watch-out, the key words, the example); the
+        // first whose slide fits is kept (pick-fitting.ts), else the first as before. A watch-out
+        // passed over stays free for a later slide.
         const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
+        const candidates: Callout[] = [];
         if (watch !== undefined) {
-          usedMisconceptions.add(watch);
-          callouts[position] = {
+          candidates.push({
             kind: "watch-out",
             ref: { type: "misconception", index: watch },
             text: facts.misconceptions[watch]?.belief ?? "",
-          };
-        } else if (terms.length > 0) {
-          callouts[position] = {
+          });
+        }
+        if (terms.length > 0) {
+          candidates.push({
             kind: "key-words",
             ref: { type: "vocabulary", index: terms[0] ?? 0 },
             text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
-          };
-        } else if (idea) {
-          callouts[position] = {
+          });
+        }
+        if (idea) {
+          candidates.push({
             kind: "example",
             ref: { type: "keyIdea", index: k },
             text: idea.example,
-          };
+          });
+        }
+        const heading = ks.map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ");
+        const body = ks
+          .map((j) => `${facts.keyIdeas[j]?.explanation ?? ""} ${facts.keyIdeas[j]?.example ?? ""}`)
+          .join("\n\n");
+        const chosen =
+          candidates.find((c) => calloutFits(heading, body, { kind: c.kind, text: c.text })) ??
+          candidates[0];
+        if (chosen) {
+          if (chosen.kind === "watch-out" && chosen.ref.type === "misconception") {
+            usedMisconceptions.add(chosen.ref.index);
+          }
+          callouts[position] = chosen;
         }
         break;
       }

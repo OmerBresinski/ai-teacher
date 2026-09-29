@@ -21,7 +21,7 @@ import {
 import {
   type PlanTeachObjectiveInput,
   type PlanTeachObjectiveOutput,
-  planTeachObjectiveOutputSchemaFor,
+  planTeachObjectiveCandidatesSchemaFor,
   planTeachObjectivePrompt,
 } from "../prompts/plan-teach-objective";
 import { askableAsStem, distractorsEchoingAnswer, type PlanFactsLike } from "../specs";
@@ -38,6 +38,7 @@ import { repair } from "../stages/repair";
 import { type audienceOf, retrievalInput, type shapeOf } from "../stages/shared";
 import { BudgetExceeded, type PipelineDeps, type PipelineState, StageFailure } from "../types";
 import { fitsLine, questionLine, sameQuestion } from "./coded-slides";
+import { pickFitting } from "./pick-fitting";
 import { type ObjectiveQuestionDemand, questionDemand, sketchTaught } from "./question-demand";
 
 /*
@@ -557,14 +558,20 @@ export async function runWaves(
           effort,
           prompt: planTeachObjectivePrompt,
           input: teachInput,
-          schema: planTeachObjectiveOutputSchemaFor(teachInput),
-          soft: planTeachObjectiveOutputSchemaFor(teachInput, { soft: true }),
+          schema: planTeachObjectiveCandidatesSchemaFor(teachInput),
+          soft: planTeachObjectiveCandidatesSchemaFor(teachInput, { soft: true }),
           maxOutputTokens: MAX_OUTPUT_TOKENS_TEACH,
         });
         for (const miss of call.editorialMisses)
           sink.findings.push(specRuleFinding(miss, {}, "warning"));
         editorialMisses += call.editorialMisses.length;
-        taught = call.output;
+        // v4: the call writes candidates; keep the ones whose slides fit (pick-fitting.ts).
+        const fitted = pickFitting(call.output);
+        deps.logger.info(
+          { stage: "plan", call: "teach", target, picks: fitted.picks },
+          "fit picks",
+        );
+        taught = fitted.output;
       } catch (error) {
         sink.factsFailed.push(target);
         recordFailure(error, target, "teach");
