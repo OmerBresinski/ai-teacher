@@ -101,11 +101,11 @@ const trustSections = [
   ],
   [
     "Which AI, and where it runs",
-    "<p>The models are OpenAI’s GPT models. We do not call OpenAI directly: every call goes through Amazon Bedrock, which does not retain the text sent to it and does not train on it. Bedrock processes those calls in the United States.</p>",
+    "<p>The models are OpenAI’s GPT models, called directly through the OpenAI API. OpenAI does not train its models on what we send through the API. It may keep that text for up to 30 days to check for abuse, then deletes it. The calls are processed in the United States.</p>",
   ],
   [
     "Where your lessons live",
-    "<p>The application, the database and the files you upload are hosted in the European Union, in Amsterdam. The website you are reading is served from Vercel’s network. The AI call is the one part that leaves the EU, and nothing is kept at the other end.</p>",
+    "<p>The application, the database and the files you upload are hosted in the European Union, in Amsterdam. The website you are reading is served from Vercel’s network. The AI call is the one part that leaves the EU, and OpenAI keeps it for no more than 30 days.</p>",
   ],
   [
     "What we log",
