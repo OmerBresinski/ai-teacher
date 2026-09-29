@@ -1,0 +1,3816 @@
+{
+  "source": "e49 B runs, fit on master aa628bf8",
+  "lessons": [
+    {
+      "name": "B-cb-y5-fractions-p1",
+      "themeId": "chalk",
+      "slides": [
+        {
+          "id": "e6lmuirhm4q",
+          "kind": "title",
+          "elements": [
+            {
+              "id": "e6hmuirhm4q",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 139,
+              "w": 67,
+              "h": 4,
+              "fill": "#A94A18",
+              "name": "Accent rule",
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:07:22.825Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e6imuirhm4q",
+              "type": "text",
+              "x": 58,
+              "y": 168,
+              "w": 844,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:07:22.825Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e6jmuirhm4q",
+              "type": "text",
+              "x": 58,
+              "y": 201,
+              "w": 773,
+              "h": 68,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Fractions of amounts" }]
+                  }
+                ]
+              },
+              "style": { "preset": "title", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:07:22.825Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e6kmuirhm4q",
+              "type": "text",
+              "x": 58,
+              "y": 286,
+              "w": 629,
+              "h": 60,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Year 5 · Maths" }] }
+                ]
+              },
+              "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:07:22.825Z"
+              },
+              "authoredBy": "ai"
+            }
+          ]
+        },
+        {
+          "id": "e6pmuirhm4q",
+          "kind": "objectives",
+          "elements": [
+            {
+              "id": "e7umuiri1ev",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 44,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:42.631Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e7vmuiri1ev",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:42.631Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e7wmuiri1ev",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 216,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "explain the divide-by-denominator, multiply-by-numerator method for finding a fraction of an amount"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:42.631Z"
+              },
+              "authoredBy": "ai"
+            }
+          ]
+        },
+        {
+          "id": "e82muiri1ex",
+          "kind": "starter",
+          "elements": [
+            {
+              "id": "e7ymuiri1ex",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 44,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.633Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e7zmuiri1ex",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.633Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e80muiri1ex",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 143,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "What is the numerator of a fraction?" }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "What is the denominator of a fraction?" }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [{ "type": "text", "text": "What is 6 × 4?" }]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.633Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e81muiri1ex",
+              "type": "text",
+              "x": 58,
+              "y": 291,
+              "w": 844,
+              "h": 206,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 The top number  ·  2 The bottom number  ·  3 24"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.633Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. The top number 2. The bottom number 3. 24"
+        },
+        {
+          "id": "e9jmuiri4q0",
+          "kind": "content",
+          "elements": [
+            {
+              "id": "e9gmuiri4q0",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 86,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Find a fraction of an amount: divide, then multiply"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "k1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.920Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9hmuiri4q0",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 161,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "k1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.920Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9imuiri4q0",
+              "type": "text",
+              "x": 58,
+              "y": 196,
+              "w": 629,
+              "h": 225,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "The denominator tells you how many equal parts to split the amount into, so divide to find one part. The numerator tells you how many parts to take, so multiply: 20 ÷ 4 = 5, then 5 × 3 = 15 counters."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "k1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.920Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Explain that dividing by the denominator finds the size of one equal part; multiplying by the numerator counts the parts needed. Watch for pupils multiplying by the denominator first. Ask: How would you check that 15 is 3/4 of 20?"
+        },
+        {
+          "id": "e9fmuiri4l8",
+          "kind": "worked-example",
+          "elements": [
+            {
+              "id": "e99muiri4l8",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "Find three fifths by dividing, then multiplying" }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.748Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9amuiri4l8",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.748Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9bmuiri4l8",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 844,
+              "h": 40,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "What is 3/5 of 20 beads?" }]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.748Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9cmuiri4l8",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 196,
+              "w": 844,
+              "h": 291,
+              "fill": "#FFFBF0",
+              "radius": 14,
+              "name": "Working card",
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.748Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9dmuiri4l8",
+              "type": "text",
+              "x": 72,
+              "y": 210,
+              "w": 816,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.748Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e9emuiri4l8",
+              "type": "text",
+              "x": 72,
+              "y": 237,
+              "w": 816,
+              "h": 139,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Divide 20 beads by 5: each part has 4 beads."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "Take 3 parts: 4 beads × 3 = 12 beads." }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "So 3/5 of 20 beads is 12 beads." }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "revealStep": 1,
+              "reveal": "rise",
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.748Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Remind pupils: divide by the denominator first, then multiply by the numerator. Explain that dividing makes five equal parts, and multiplying by 3 counts three of those parts. Watch for pupils multiplying by 5 first. Ask: How would you find 2/5 of 20 beads?"
+        },
+        {
+          "id": "e8wmuiri3kl",
+          "kind": "open-response",
+          "elements": [
+            {
+              "id": "e8tmuiri3kl",
+              "type": "text",
+              "x": 58,
+              "y": 58,
+              "w": 844,
+              "h": 92,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A beach collector finds 30 shells. Explain how to find 3/5 of the shells, and give the answer."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.429Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8umuiri3kl",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 200,
+              "w": 844,
+              "h": 240,
+              "fill": "#FFFBF0",
+              "stroke": "#E7DCC4",
+              "strokeWidth": 1,
+              "radius": 14,
+              "name": "Answer space",
+              "generatedFrom": {
+                "factRefs": ["o1", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.429Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8vmuiri3kl",
+              "type": "text",
+              "x": 58,
+              "y": 459,
+              "w": 844,
+              "h": 38,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Write your answer" }]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.429Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "question": {
+            "type": "open-response",
+            "modelAnswer": "The denominator, 5, tells us to split 30 shells into 5 equal parts. 30 ÷ 5 = 6 shells in each part. The numerator, 3, tells us to take 3 parts, so 6 × 3 = 18 shells."
+          },
+          "notes": "Watch for pupils multiplying 30 by 5 and then dividing by 3. Ask: Why does the denominator tell us how many equal parts to make?"
+        },
+        {
+          "id": "e8smuiri3jb",
+          "kind": "multiple-choice",
+          "elements": [
+            {
+              "id": "e8nmuiri3jb",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 92,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A box has 28 cubes. What is 1/4 of the cubes? Give the answer in its finished form."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "q1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.383Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8omuiri3jb",
+              "type": "option",
+              "x": 58,
+              "y": 147,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "112 cubes" }] }
+                ]
+              },
+              "label": "A",
+              "generatedFrom": {
+                "factRefs": ["o1", "q1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.383Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8pmuiri3jb",
+              "type": "option",
+              "x": 489,
+              "y": 147,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "4 cubes" }] }
+                ]
+              },
+              "label": "B",
+              "generatedFrom": {
+                "factRefs": ["o1", "q1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.383Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8qmuiri3jb",
+              "type": "option",
+              "x": 58,
+              "y": 260,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "7 cubes" }] }
+                ]
+              },
+              "label": "C",
+              "generatedFrom": {
+                "factRefs": ["o1", "q1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.383Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8rmuiri3jb",
+              "type": "option",
+              "x": 489,
+              "y": 260,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "28 cubes" }] }
+                ]
+              },
+              "label": "D",
+              "generatedFrom": {
+                "factRefs": ["o1", "q1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:45.383Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "question": {
+            "type": "multiple-choice",
+            "options": [
+              { "id": "e8omuiri3jb", "correct": false },
+              { "id": "e8pmuiri3jb", "correct": false },
+              { "id": "e8qmuiri3jb", "correct": true },
+              { "id": "e8rmuiri3jb", "correct": false }
+            ],
+            "explanation": "Divide 28 by 4 to find one equal part: 7 cubes. Take 1 part, so the answer is 7 cubes."
+          },
+          "notes": "Watch for pupils who multiply by the denominator first. Ask: How would you check that 7 cubes is one quarter of 28?"
+        },
+        {
+          "id": "e92muiri439",
+          "kind": "multiple-choice",
+          "elements": [
+            {
+              "id": "e8xmuiri439",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 92,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A pencil pot has 18 pencils. What is 2/3 of the pencils? Give the answer in its finished form."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "q2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.101Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8ymuiri439",
+              "type": "option",
+              "x": 58,
+              "y": 147,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "12 pencils" }] }
+                ]
+              },
+              "label": "A",
+              "generatedFrom": {
+                "factRefs": ["o1", "q2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.101Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e8zmuiri439",
+              "type": "option",
+              "x": 489,
+              "y": 147,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "6 pencils" }] }
+                ]
+              },
+              "label": "B",
+              "generatedFrom": {
+                "factRefs": ["o1", "q2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.101Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e90muiri439",
+              "type": "option",
+              "x": 58,
+              "y": 260,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "9 pencils" }] }
+                ]
+              },
+              "label": "C",
+              "generatedFrom": {
+                "factRefs": ["o1", "q2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.101Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e91muiri439",
+              "type": "option",
+              "x": 489,
+              "y": 260,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "27 pencils" }] }
+                ]
+              },
+              "label": "D",
+              "generatedFrom": {
+                "factRefs": ["o1", "q2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.101Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "question": {
+            "type": "multiple-choice",
+            "options": [
+              { "id": "e8ymuiri439", "correct": true },
+              { "id": "e8zmuiri439", "correct": false },
+              { "id": "e90muiri439", "correct": false },
+              { "id": "e91muiri439", "correct": false }
+            ],
+            "explanation": "Divide 18 by 3 to find one equal part: 6. Then multiply by 2 to find two parts: 12 pencils."
+          },
+          "notes": "Listen for pupils who multiply by 3 before dividing by 2. Remind them to divide by the denominator first to find one equal part, then multiply by the numerator. Ask: How would you check your answer?"
+        },
+        {
+          "id": "e98muiri47y",
+          "kind": "multiple-choice",
+          "elements": [
+            {
+              "id": "e93muiri47y",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 92,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A shop has 42 stickers. What is 5/6 of the stickers? Give the answer in its finished form."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "q4"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e94muiri47y",
+              "type": "option",
+              "x": 58,
+              "y": 147,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "7 stickers" }] }
+                ]
+              },
+              "label": "A",
+              "generatedFrom": {
+                "factRefs": ["o1", "q4"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e95muiri47y",
+              "type": "option",
+              "x": 489,
+              "y": 147,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "50.4 stickers" }] }
+                ]
+              },
+              "label": "B",
+              "generatedFrom": {
+                "factRefs": ["o1", "q4"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e96muiri47y",
+              "type": "option",
+              "x": 58,
+              "y": 260,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "30 stickers" }] }
+                ]
+              },
+              "label": "C",
+              "generatedFrom": {
+                "factRefs": ["o1", "q4"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e97muiri47y",
+              "type": "option",
+              "x": 489,
+              "y": 260,
+              "w": 413,
+              "h": 99,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "35 stickers" }] }
+                ]
+              },
+              "label": "D",
+              "generatedFrom": {
+                "factRefs": ["o1", "q4"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:46.270Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "question": {
+            "type": "multiple-choice",
+            "options": [
+              { "id": "e94muiri47y", "correct": false },
+              { "id": "e95muiri47y", "correct": false },
+              { "id": "e96muiri47y", "correct": false },
+              { "id": "e97muiri47y", "correct": true }
+            ],
+            "explanation": "Divide 42 by 6 to find one equal part: 7. Multiply 7 by 5 to find five parts: 35 stickers."
+          },
+          "notes": "Watch for pupils multiplying by 6 first; dividing by 5 afterwards does not find five sixths. Ask: Why does dividing by 6 find one sixth of the stickers?"
+        },
+        {
+          "id": "e87muiri1ez",
+          "kind": "exit-ticket",
+          "elements": [
+            {
+              "id": "e83muiri1ez",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Exit ticket" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "q5", "q6", "q7", "q8"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.635Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e84muiri1ez",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "q5", "q6", "q7", "q8"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.635Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e85muiri1ez",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 293,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A classroom has 24 cards. Explain why you divide by 3 and then multiply by 1 to find 1/3 of the cards. Give the answer."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A bag has 27 marbles. Explain how to find 2/3 of them, then give the answer."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A tray has 35 biscuits. Explain how to find 4/7 of them, then give the answer."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A roll has 48 metres of ribbon. Explain why you divide by 6 before multiplying by 5 to find 5/6 of the ribbon."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "q5", "q6", "q7", "q8"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.635Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e86muiri1ez",
+              "type": "text",
+              "x": 58,
+              "y": 441,
+              "w": 844,
+              "h": 235,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 Divide by 3 to split the 24 cards into 3 equal parts, then take 1 part: 8 cards  ·  2 18 marbles  ·  3 20 biscuits  ·  4 40 metres"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "q5", "q6", "q7", "q8"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:07:42.635Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. Divide by 3 to split the 24 cards into 3 equal parts, then take 1 part: 8 cards 2. 18 marbles 3. 20 biscuits 4. 40 metres"
+        }
+      ],
+      "masterFit": [
+        "64c7f7287804b27d",
+        "2c666c8ef02d30f4",
+        "4dfe93a35aff8da3",
+        "0ff656281bc6ec3c",
+        "f451114cb80df24d",
+        "8ceef9fcf42bc0b1",
+        "312126348757a232",
+        "7fdd42c9c7f2572b",
+        "2ead498cc891ccf4",
+        "42a12cac97f59df8"
+      ]
+    },
+    {
+      "name": "B-cb-y11-rates-p1",
+      "themeId": "chalk",
+      "slides": [
+        {
+          "id": "e3bmuirgivu",
+          "kind": "title",
+          "elements": [
+            {
+              "id": "e37muirgivu",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 139,
+              "w": 67,
+              "h": 4,
+              "fill": "#A94A18",
+              "name": "Accent rule",
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:06:31.962Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e38muirgivu",
+              "type": "text",
+              "x": 58,
+              "y": 168,
+              "w": 844,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:06:31.962Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e39muirgivu",
+              "type": "text",
+              "x": 58,
+              "y": 201,
+              "w": 773,
+              "h": 68,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Rates of reaction" }]
+                  }
+                ]
+              },
+              "style": { "preset": "title", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:06:31.962Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e3amuirgivu",
+              "type": "text",
+              "x": 58,
+              "y": 286,
+              "w": 629,
+              "h": 60,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Year 11 · Chemistry" }]
+                  }
+                ]
+              },
+              "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:06:31.962Z"
+              },
+              "authoredBy": "ai"
+            }
+          ]
+        },
+        {
+          "id": "e3fmuirgivv",
+          "kind": "objectives",
+          "elements": [
+            {
+              "id": "e4gmuirgyuf",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 43,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:52.647Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4hmuirgyuf",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:52.647Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4imuirgyuf",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 335,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "explain collision theory using collision frequency and activation energy"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "explain how temperature, concentration, pressure, surface area and catalysts affect reaction rates"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "explain how the gradient of a reaction graph shows its rate"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:52.647Z"
+              },
+              "authoredBy": "ai"
+            }
+          ]
+        },
+        {
+          "id": "e4omuirgyui",
+          "kind": "starter",
+          "elements": [
+            {
+              "id": "e4kmuirgyui",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.650Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4lmuirgyui",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.650Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4mmuirgyui",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 117,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [{ "type": "text", "text": "What is activation energy?" }]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What happens to the concentration of a solution when it is diluted?"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What does the gradient of a graph measure?"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.650Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4nmuirgyui",
+              "type": "text",
+              "x": 58,
+              "y": 265,
+              "w": 844,
+              "h": 306,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 The minimum energy particles need for a reaction to occur  ·  2 It decreases  ·  3 How quickly one quantity changes compared with another"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.650Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. The minimum energy particles need for a reaction to occur 2. It decreases 3. How quickly one quantity changes compared with another"
+        },
+        {
+          "id": "e60muirh40i",
+          "kind": "content",
+          "elements": [
+            {
+              "id": "e5xmuirh40i",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 70,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Successful collisions need enough energy, and more collisions can speed reactions"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 29 },
+              "generatedFrom": {
+                "factRefs": ["o1", "k1", "k2", "v1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:59.346Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5ymuirh40i",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 147,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "k1", "k2", "v1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:59.346Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5zmuirh40i",
+              "type": "text",
+              "x": 58,
+              "y": 182,
+              "w": 629,
+              "h": 242,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Only collisions with enough energy to overcome activation energy (the minimum needed to react) can form products. Collision frequency is how often particles hit. More collisions can mean more successful collisions each second; hydrogen and oxygen can then form water."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "k1", "k2", "v1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:59.346Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Explain that more collisions give more chances for particles to meet the energy requirement; they do not make every collision successful. Watch for the idea that every collision causes a reaction. Ask: What must be true of a collision for water to form?"
+        },
+        {
+          "id": "e52muirh09i",
+          "kind": "open-response",
+          "elements": [
+            {
+              "id": "e4zmuirh09i",
+              "type": "text",
+              "x": 58,
+              "y": 58,
+              "w": 844,
+              "h": 130,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A pupil says every collision between particles causes a reaction. Is this correct? Explain why or why not."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:54.486Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e50muirh09i",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 245,
+              "w": 844,
+              "h": 240,
+              "fill": "#FFFBF0",
+              "stroke": "#E7DCC4",
+              "strokeWidth": 1,
+              "radius": 14,
+              "name": "Answer space",
+              "generatedFrom": {
+                "factRefs": ["o1", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:54.486Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e51muirh09i",
+              "type": "text",
+              "x": 58,
+              "y": 511,
+              "w": 844,
+              "h": 37,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Write your answer" }]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:54.486Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "question": {
+            "type": "open-response",
+            "modelAnswer": "No. A collision causes a reaction only if the particles have enough energy to overcome the activation energy, the minimum energy needed for a reaction. Collisions without enough energy are unsuccessful."
+          },
+          "notes": "Listen for the idea that particles need enough energy for a successful collision, not merely to collide. Ask: What makes a collision successful?"
+        },
+        {
+          "id": "e68muirh6hn",
+          "kind": "content",
+          "elements": [
+            {
+              "id": "e65muirh6hn",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Reaction rates rise when more collisions can succeed"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o2", "k3", "k4", "v2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:02.555Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e66muirh6hn",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o2", "k3", "k4", "v2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:02.555Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e67muirh6hn",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 629,
+              "h": 452,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Hotter particles move faster; more collide and have activation energy (energy needed to react). More concentration means more particles per volume; pressure packs gases closer; larger solid area exposes more particles. In the Haber process, pressure brings nitrogen and hydrogen closer."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A catalyst (speeds reaction, not used up) lowers activation energy, so more collisions succeed; manganese dioxide speeds hydrogen peroxide decomposition."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o2", "k3", "k4", "v2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:07:02.555Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Recall that not every collision causes a reaction: it needs enough energy. A catalyst lowers the energy needed; it does not increase particle energy or speed. Ask: Why might breaking a solid into smaller pieces increase its reaction rate?"
+        },
+        {
+          "id": "e4tmuirgyuo",
+          "kind": "instructions",
+          "elements": [
+            {
+              "id": "e4pmuirgyuo",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o2", "q5", "q6", "q7"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.656Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4qmuirgyuo",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o2", "q5", "q6", "q7"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.656Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4rmuirgyuo",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 287,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Suppose a reaction mixture is warmed. Explain how the higher temperature affects the particles and the reaction rate."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Suppose a gas reaction is run at higher pressure, and a solid reactant is broken into smaller pieces. Explain how each change affects the reaction rate."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Suppose a catalyst is added to a reaction. Explain why the reaction rate increases, and state whether the catalyst makes particles move faster or is used up."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o2", "q5", "q6", "q7"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.656Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4smuirgyuo",
+              "type": "text",
+              "x": 58,
+              "y": 435,
+              "w": 844,
+              "h": 420,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 Particles move faster, collide more often, and a greater proportion of collisions have at least the activation energy, so the reaction rate increases.  ·  2 Higher pressure brings gas particles closer together, increasing collisions. Smaller pieces expose more solid surface area to collisions. Both increase the reaction rate.  ·  3 It lowers the activation energy, so a greater proportion of collisions can lead to reaction. It does not make particles move faster and is not used up."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o2", "q5", "q6", "q7"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.656Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. Particles move faster, collide more often, and a greater proportion of collisions have at least the activation energy, so the reaction rate increases. 2. Higher pressure brings gas particles closer together, increasing collisions. Smaller pieces expose more solid surface area to collisions. Both increase the reaction rate. 3. It lowers the activation energy, so a greater proportion of collisions can lead to reaction. It does not make particles move faster and is not used up."
+        },
+        {
+          "id": "e5wmuirh3wd",
+          "kind": "content",
+          "elements": [
+            {
+              "id": "e5tmuirh3wd",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 43,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "A graph’s gradient shows the reaction rate" }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o3", "k5"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:59.197Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5umuirh3wd",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o3", "k5"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:59.197Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5vmuirh3wd",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 629,
+              "h": 270,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Gradient is change in gas volume divided by change in time: it shows how quickly gas forms. A steeper gradient means a faster rate. With magnesium and hydrochloric acid, hydrogen volume rises, then becomes flat when the reaction stops."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o3", "k5"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:59.197Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Emphasise that gradient compares how much the vertical quantity changes with how much time passes. Watch for pupils who assume a higher point always means a faster reaction. Ask: How would you calculate the average rate between two points on a rising section?"
+        },
+        {
+          "id": "e5kmuirh2rm",
+          "kind": "worked-example",
+          "elements": [
+            {
+              "id": "e5emuirh2rm",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 35,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "The graph’s gradient gives the average rate" }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 29 },
+              "generatedFrom": {
+                "factRefs": ["o3", "x1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:57.730Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5fmuirh2rm",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o3", "x1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:57.730Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5gmuirh2rm",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 844,
+              "h": 81,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Gas volume rises from 0 cm³ at 0 s to 40 cm³ at 20 s. What is the average rate?"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o3", "x1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:57.730Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5hmuirh2rm",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 238,
+              "w": 844,
+              "h": 249,
+              "fill": "#FFFBF0",
+              "radius": 14,
+              "name": "Working card",
+              "generatedFrom": {
+                "factRefs": ["o3", "x1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:57.730Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5imuirh2rm",
+              "type": "text",
+              "x": 72,
+              "y": 252,
+              "w": 816,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o3", "x1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:57.730Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e5jmuirh2rm",
+              "type": "text",
+              "x": 72,
+              "y": 279,
+              "w": 816,
+              "h": 189,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "Change in volume = 40 − 0 = 40 cm³." }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "Change in time = 20 − 0 = 20 s." }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "Gradient = 40 cm³ ÷ 20 s = 2 cm³/s." }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "So the average rate is 2 cm³/s." }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "revealStep": 1,
+              "reveal": "rise",
+              "generatedFrom": {
+                "factRefs": ["o3", "x1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:06:57.730Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "The gradient is the change in gas volume divided by the time taken. A higher point on the graph shows a greater volume, not necessarily a faster reaction; a steeper section means a faster rate. Ask: What would the average rate be if the same volume increase took 40 seconds?"
+        },
+        {
+          "id": "e4ymuirgyup",
+          "kind": "exit-ticket",
+          "elements": [
+            {
+              "id": "e4umuirgyup",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Exit ticket" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.657Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4vmuirgyup",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.657Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4wmuirgyup",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 322,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "What does collision frequency mean?" }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A gas has 12 collisions in a second; 4 collisions have enough energy to overcome activation energy. How many can cause a reaction?"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A reaction uses magnesium ribbon and acid. Explain how using more concentrated acid affects the reaction rate."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A: 60 to 80 cm³ in 10 s; B: 10 to 30 cm³ in 5 s. Which section has the faster rate? A Section B, at 4 cm³/s  B Both sections, at 2 cm³/s  C Section B, at 20 cm³/s  D Section A, at 2 cm³/s"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.657Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "e4xmuirgyup",
+              "type": "text",
+              "x": 58,
+              "y": 470,
+              "w": 844,
+              "h": 323,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 How often particles hit each other in a given time  ·  2 4 collisions in a second  ·  3 More acid particles are present in a given volume, so collisions happen more often and the reaction rate increases.  ·  4 A (Section B, at 4 cm³/s)"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:06:52.657Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. How often particles hit each other in a given time 2. 4 collisions in a second 3. More acid particles are present in a given volume, so collisions happen more often and the reaction rate increases. 4. A (Section B, at 4 cm³/s)"
+        }
+      ],
+      "masterFit": [
+        "d2319a7609cc3c29",
+        "cbc38eccea7d351a",
+        "58ce61c7c1d26211",
+        "7a3877295801f7e0",
+        "c752214a1e29d30c",
+        "f2567d2ee9573cbd",
+        "e2f5a3510b07c09d",
+        "be601c378de92391",
+        "3f25e1ae7d069827",
+        "88a27e262e3320de"
+      ]
+    },
+    {
+      "name": "B-h-y7-ratio-p1",
+      "themeId": "chalk",
+      "slides": [
+        {
+          "id": "edamuirjhlq",
+          "kind": "title",
+          "elements": [
+            {
+              "id": "ed6muirjhlq",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 111,
+              "w": 67,
+              "h": 4,
+              "fill": "#A94A18",
+              "name": "Accent rule",
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:08:50.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ed7muirjhlq",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 844,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:08:50.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ed8muirjhlq",
+              "type": "text",
+              "x": 58,
+              "y": 173,
+              "w": 773,
+              "h": 136,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Simplifying and sharing in a ratio" }]
+                  }
+                ]
+              },
+              "style": { "preset": "title", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:08:50.270Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ed9muirjhlq",
+              "type": "text",
+              "x": 58,
+              "y": 326,
+              "w": 629,
+              "h": 60,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Year 7 · Maths" }] }
+                ]
+              },
+              "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": [],
+                "promptVersion": "brief",
+                "model": "none",
+                "at": "2026-09-26T19:08:50.270Z"
+              },
+              "authoredBy": "ai"
+            }
+          ]
+        },
+        {
+          "id": "edemuirjhlq",
+          "kind": "objectives",
+          "elements": [
+            {
+              "id": "edwmuirjtpg",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 44,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:05.956Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "edxmuirjtpg",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "o2"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:05.956Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "edymuirjtpg",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 216,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "explain how to simplify a ratio by dividing each part by the same factor"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "explain sharing in a ratio using total parts and the value of one part"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2"],
+                "promptVersion": "plan-objectives.v18",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:05.956Z"
+              },
+              "authoredBy": "ai"
+            }
+          ]
+        },
+        {
+          "id": "ee4muirjtpk",
+          "kind": "starter",
+          "elements": [
+            {
+              "id": "ee0muirjtpk",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 43,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.960Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ee1muirjtpk",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.960Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ee2muirjtpk",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 164,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What is the highest common factor of 8 and 12?"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "How many groups are there altogether if there are 2 groups and 3 groups?"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What is 20 divided equally into 4 groups?"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.960Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ee3muirjtpk",
+              "type": "text",
+              "x": 58,
+              "y": 312,
+              "w": 844,
+              "h": 184,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Answers: 1 4  ·  2 5 groups  ·  3 5" }]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.960Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. 4 2. 5 groups 3. 5"
+        },
+        {
+          "id": "eemmuirjxdt",
+          "kind": "content",
+          "elements": [
+            {
+              "id": "eejmuirjxdt",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 43,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "Divide every part of a ratio by the same factor" }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "k1", "v1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.721Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eekmuirjxdt",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "k1", "v1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.721Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eelmuirjxdt",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 629,
+              "h": 270,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A ratio compares amounts. Divide every part by the same factor: 8:12 ÷ 4 = 2:3. The comparison stays the same because both amounts are scaled equally. This is simplest form: the smallest whole numbers keeping the same comparison."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o1", "k1", "v1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.721Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Remind pupils: a ratio compares amounts. Watch for pupils who divide only one part. Ask: What shared factor would simplify 15:20?"
+        },
+        {
+          "id": "eetmuirjxfk",
+          "kind": "worked-example",
+          "elements": [
+            {
+              "id": "eenmuirjxfk",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Simplify by dividing every part by the same factor"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.784Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eeomuirjxfk",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.784Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eepmuirjxfk",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 844,
+              "h": 40,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Suppose a ratio is 18 parts:24 parts. Simplify it."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.784Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eeqmuirjxfk",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 196,
+              "w": 844,
+              "h": 291,
+              "fill": "#FFFBF0",
+              "radius": 14,
+              "name": "Working card",
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.784Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eermuirjxfk",
+              "type": "text",
+              "x": 72,
+              "y": 210,
+              "w": 816,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.784Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eesmuirjxfk",
+              "type": "text",
+              "x": 72,
+              "y": 237,
+              "w": 816,
+              "h": 189,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "6 is the highest common factor of 18 and 24."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "Divide both parts by 6: 18 ÷ 6 = 3." }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "24 ÷ 6 = 4; using the same divisor keeps the ratio equivalent."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "So 18 parts:24 parts = 3 parts:4 parts." }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "revealStep": 1,
+              "reveal": "rise",
+              "generatedFrom": {
+                "factRefs": ["o1", "x1", "m1"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:10.784Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Explain that dividing only one part would change the comparison, so both parts must be divided by the same factor. Ask: How could you check that 3:4 is equivalent to 18:24?"
+        },
+        {
+          "id": "ee9muirjtpm",
+          "kind": "instructions",
+          "elements": [
+            {
+              "id": "ee5muirjtpm",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "q1", "q2", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.962Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ee6muirjtpm",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "q1", "q2", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.962Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ee7muirjtpm",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 174,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A ratio is 6 parts:9 parts. Simplify it to its simplest form."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A ratio is 14 parts:35 parts. What is it in its simplest form?"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "A ratio is 21 parts:28 parts. Explain how to write it in its simplest form."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "q1", "q2", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.962Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "ee8muirjtpm",
+              "type": "text",
+              "x": 58,
+              "y": 322,
+              "w": 844,
+              "h": 211,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 2 parts:3 parts  ·  2 2 parts:5 parts  ·  3 Divide both parts by 7 to get 3 parts:4 parts."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "q1", "q2", "q3"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.962Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. 2 parts:3 parts 2. 2 parts:5 parts 3. Divide both parts by 7 to get 3 parts:4 parts."
+        },
+        {
+          "id": "efnmuirjzip",
+          "kind": "content",
+          "elements": [
+            {
+              "id": "efkmuirjzip",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 43,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "Share by finding the value of one part" }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o2", "k2", "v2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:13.489Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eflmuirjzip",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o2", "k2", "v2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:13.489Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "efmmuirjzip",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 629,
+              "h": 225,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Add ratio numbers for total parts; divide the amount by this to find the value of one part (one equal share). Multiply by each ratio number: 2:3 has 5 parts; at 4 counters each, shares are 8 and 12 counters."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o2", "k2", "v2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:13.489Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Emphasise that dividing finds the size of one equal part; multiplying gives each share. Ask: Why do we divide the total by the sum of the ratio numbers?"
+        },
+        {
+          "id": "ef0muirjxo0",
+          "kind": "worked-example",
+          "elements": [
+            {
+              "id": "eeumuirjxo0",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 35,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Use total parts to find each share" }]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 29 },
+              "generatedFrom": {
+                "factRefs": ["o2", "x2", "m2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:11.088Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eevmuirjxo0",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o2", "x2", "m2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:11.088Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eewmuirjxo0",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 844,
+              "h": 81,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Suppose 30 counters are shared in the ratio 2:3. How many counters does each share get?"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o2", "x2", "m2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:11.088Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eexmuirjxo0",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 238,
+              "w": 844,
+              "h": 249,
+              "fill": "#FFFBF0",
+              "radius": 14,
+              "name": "Working card",
+              "generatedFrom": {
+                "factRefs": ["o2", "x2", "m2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:11.088Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eeymuirjxo0",
+              "type": "text",
+              "x": 72,
+              "y": 252,
+              "w": 816,
+              "h": 21,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                ]
+              },
+              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o2", "x2", "m2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:11.088Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eezmuirjxo0",
+              "type": "text",
+              "x": 72,
+              "y": 279,
+              "w": 816,
+              "h": 189,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [{ "type": "text", "text": "2 + 3 = 5 parts altogether." }]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [{ "type": "text", "text": "30 ÷ 5 = 6 counters per part." }]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              { "type": "text", "text": "2 × 6 = 12; 3 × 6 = 18 counters." }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "The shares are 12 and 18 counters; together, 30."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "revealStep": 1,
+              "reveal": "rise",
+              "generatedFrom": {
+                "factRefs": ["o2", "x2", "m2"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:11.088Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "notes": "Explain that 2:3 describes how many equal-sized parts each share gets. We add the parts, divide the total to find one part, then multiply by each ratio number. Watch for pupils sharing 30 equally between the two shares instead. Ask: How could you check that the shares match the ratio?"
+        },
+        {
+          "id": "eeimuirjwia",
+          "kind": "open-response",
+          "elements": [
+            {
+              "id": "eefmuirjwia",
+              "type": "text",
+              "x": 58,
+              "y": 58,
+              "w": 844,
+              "h": 130,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Explain how to find the total number of parts and the value of one part when 24 beads are shared in the ratio 1:3."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true },
+              "generatedFrom": {
+                "factRefs": ["o2", "q6"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:09.585Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eegmuirjwia",
+              "type": "shape",
+              "shape": "rounded",
+              "x": 58,
+              "y": 245,
+              "w": 844,
+              "h": 240,
+              "fill": "#FFFBF0",
+              "stroke": "#E7DCC4",
+              "strokeWidth": 1,
+              "radius": 14,
+              "name": "Answer space",
+              "generatedFrom": {
+                "factRefs": ["o2", "q6"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:09.585Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eehmuirjwia",
+              "type": "text",
+              "x": 58,
+              "y": 511,
+              "w": 844,
+              "h": 37,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Write your answer" }]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o2", "q6"],
+                "promptVersion": "generate-slide.v25",
+                "model": "gpt-6-luna",
+                "at": "2026-09-26T19:09:09.585Z"
+              },
+              "authoredBy": "ai"
+            }
+          ],
+          "question": {
+            "type": "open-response",
+            "modelAnswer": "The ratio has 1 part and 3 parts, so there are 4 parts altogether. Divide 24 beads by 4 to find that one part is worth 6 beads."
+          },
+          "notes": "Listen for pupils adding the ratio parts, then dividing the total by that number. Watch for the misconception that the 24 beads should be shared equally between the two ratio numbers. Ask: How many beads would each person get?"
+        },
+        {
+          "id": "eeemuirjtpo",
+          "kind": "exit-ticket",
+          "elements": [
+            {
+              "id": "eeamuirjtpo",
+              "type": "text",
+              "x": 58,
+              "y": 43,
+              "w": 844,
+              "h": 31,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  { "type": "paragraph", "content": [{ "type": "text", "text": "Exit ticket" }] }
+                ]
+              },
+              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.964Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eebmuirjtpo",
+              "type": "shape",
+              "shape": "rect",
+              "x": 58,
+              "y": 112,
+              "w": 844,
+              "h": 1,
+              "fill": "#E7DCC4",
+              "name": "Rule",
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.964Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eecmuirjtpo",
+              "type": "text",
+              "x": 58,
+              "y": 140,
+              "w": 701,
+              "h": 208,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "orderedList",
+                    "attrs": { "start": 1 },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Simplify 9 parts:12 parts to its simplest form."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Explain how to simplify 24 parts:40 parts to its simplest form."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Suppose 35 stickers are shared in the ratio 2:5. How many stickers does each share get?"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Suppose 42 counters are shared in the ratio 4:3. Explain how to find each share."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.964Z"
+              },
+              "authoredBy": "ai"
+            },
+            {
+              "id": "eedmuirjtpo",
+              "type": "text",
+              "x": 58,
+              "y": 356,
+              "w": 844,
+              "h": 269,
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 3 parts:4 parts  ·  2 Divide both parts by their highest common factor, 8, to get 3 parts:5 parts.  ·  3 10 stickers and 25 stickers  ·  4 4 + 3 = 7 parts; 42 counters ÷ 7 parts = 6 counters per part; the shares are 24 counters and 18 counters."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "generatedFrom": {
+                "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
+                "promptVersion": "generate-slide.v25",
+                "model": "code",
+                "at": "2026-09-26T19:09:05.964Z"
+              },
+              "authoredBy": "ai",
+              "name": "Answers",
+              "revealStep": 1,
+              "reveal": "fade"
+            }
+          ],
+          "notes": "Answers: 1. 3 parts:4 parts 2. Divide both parts by their highest common factor, 8, to get 3 parts:5 parts. 3. 10 stickers and 25 stickers 4. 4 + 3 = 7 parts; 42 counters ÷ 7 parts = 6 counters per part; the shares are 24 counters and 18 counters."
+        }
+      ],
+      "masterFit": [
+        "7c6ddad3bc3a3fa7",
+        "79133bd1cd275d49",
+        "0a3e4aa4c193254b",
+        "fd23fd2802df5626",
+        "2626b7c33eb3a799",
+        "cf69ba97fe356c28",
+        "0f21a992496acf58",
+        "76cf9efe7ddd8955",
+        "921b1262e466624d",
+        "b182e47d4a59c1a9"
+      ]
+    }
+  ]
+}

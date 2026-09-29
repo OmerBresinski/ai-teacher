@@ -278,6 +278,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       meta(call.modelId),
       deps.ids,
       undefined,
+      {},
       (note) => deps.logger.warn({ stage: "generate", call: "slide", index: i }, note),
     );
     return { slide, misses: call.editorialMisses, builtFrom };

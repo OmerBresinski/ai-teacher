@@ -16,6 +16,7 @@ import * as reducers from "../../model/reducers";
 import { hint } from "../keys";
 import { useSessionActions } from "../use-editor-session";
 import { MoreDrawer } from "./MoreDrawer";
+import { SlotSideControl, type SlotSideProps } from "./SlotSideControl";
 import { ICON, OpacityControl, useElementWrites, useThemePalette } from "./shared";
 
 /**
@@ -26,10 +27,13 @@ export const OtherToolbar = memo(function OtherToolbar({
   element,
   theme,
   slideId,
+  slot,
 }: {
   element: SlideElement;
   theme: Theme;
   slideId: string;
+  /** Set when this element is its slide\'s slot (a diagram zone or its figure). */
+  slot?: SlotSideProps;
 }) {
   const { history, update, scrub, end } = useElementWrites(slideId);
   const { select } = useSessionActions();
@@ -38,6 +42,7 @@ export const OtherToolbar = memo(function OtherToolbar({
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Element" data-other-toolbar>
+      {slot ? <SlotSideControl slideId={slideId} {...slot} /> : null}
       {element.type === "group" ? (
         <>
           <Tooltip label="Ungroup" shortcut={hint("$mod+Shift+g")}>

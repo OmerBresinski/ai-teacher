@@ -108,3 +108,15 @@ export function resolveTextStyle(
     autoHeight: style?.autoHeight !== false,
   };
 }
+
+/**
+ * Running text on a teaching slide (a lead, its points, a paragraph, a compare card): the theme's
+ * body size, clamped to the projector floor (SPEC §7), and the lead set at that size in a heavier
+ * weight rather than a step above it. Readable from the back of a classroom first (Greg, 26 Sept
+ * 2026): the homepage examples set text smaller (a lead's cap height 2.8% of the slide's height,
+ * ours 3.7% at 29), and we do not shrink to match them. Room comes from the leading instead.
+ */
+export const readingSize = (t: Theme): number => resolveFontSize(t, "body");
+
+/** The leading of running text on a teaching slide: the theme's, at most 1.4 (the examples' ~1.44). */
+export const readingLeading = (t: Theme): number => Math.min(t.lineHeights.body, 1.4);

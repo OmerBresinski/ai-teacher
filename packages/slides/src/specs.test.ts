@@ -638,9 +638,9 @@ describe("TEACH-263: unknown spec keys are stripped without relaxing shape rules
         heading: "Method",
         body: "Add the tens first.",
       };
-      expect(slideSpecSchemaFor("content", { soft })?.parse({ ...content, steps: ["a"] })).toEqual(
-        content,
-      );
+      expect(
+        slideSpecSchemaFor("content", { soft })?.parse({ ...content, sequence: ["a"] }),
+      ).toEqual(content);
       const question: BlockSpec = {
         type: "question",
         ...base,
@@ -653,9 +653,9 @@ describe("TEACH-263: unknown spec keys are stripped without relaxing shape rules
       expect(block?.safeParse({ ...question, type: "queston" }).success).toBe(false);
       expect(block?.safeParse({ ...question, answer: undefined }).success).toBe(false);
       const image: SlideSpec = { ...content, kind: "image-text" };
-      expect(imageTextSpecSchemaFor("none", { soft })?.parse({ ...image, steps: ["a"] })).toEqual(
-        image,
-      );
+      expect(
+        imageTextSpecSchemaFor("none", { soft })?.parse({ ...image, sequence: ["a"] }),
+      ).toEqual(image);
     });
 
     test(`nested item objects strip extra fields too (soft: ${soft})`, () => {

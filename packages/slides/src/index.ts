@@ -12,6 +12,7 @@
 
 export * from "./callout";
 export * from "./choose-variant";
+export * from "./content-shapes";
 export * from "./demo-lesson";
 export * from "./explanation-metrics";
 export * from "./factories";
@@ -21,11 +22,13 @@ export * from "./fonts";
 export * from "./geometry";
 export * from "./grid";
 export * from "./layouts";
+export * from "./look";
 export * from "./materialise";
 export * from "./metrics";
 export * from "./path";
 export * from "./reflow";
 export * from "./specs";
+export * from "./structure";
 export * from "./text-measure";
 export * from "./text-style";
 export * from "./themes";
