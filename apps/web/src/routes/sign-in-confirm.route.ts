@@ -13,6 +13,10 @@ export const signInConfirmSearchSchema = z.object({
   token: z.string().optional().catch(undefined),
   callbackURL: z.string().optional().catch(undefined),
   errorCallbackURL: z.string().optional().catch(undefined),
+  // Shown as "Continue as <email>" (UX ruling 126); display only, the token decides the account.
+  email: z.email().optional().catch(undefined),
+  // better-auth's code when verify fails and sends the teacher back here (TEACH-214).
+  error: z.string().optional().catch(undefined),
 });
 
 /**

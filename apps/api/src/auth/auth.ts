@@ -188,8 +188,11 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
         // The email links to the web's confirm page, not to the verify endpoint: a mail scanner's
         // GET must not spend the single-use token (TEACH-246).
         sendMagicLink: async ({ email, url }, ctx) => {
-          const link = confirmPageUrl(url, env.WEB_ORIGIN[0] as string, (origin) =>
-            Boolean(ctx?.context.isTrustedOrigin(origin)),
+          const link = confirmPageUrl(
+            url,
+            env.WEB_ORIGIN[0] as string,
+            (origin) => Boolean(ctx?.context.isTrustedOrigin(origin)),
+            email,
           );
           await mail.send({ to: email, ...magicLinkMail(link, env.BETTER_AUTH_URL) });
         },

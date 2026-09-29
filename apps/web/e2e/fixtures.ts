@@ -59,7 +59,8 @@ export async function lastMagicLink(request: APIRequestContext, email: string): 
  */
 export async function openMagicLink(page: Page, link: string): Promise<void> {
   await page.goto(link);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  // The confirm sheet's one button; its words follow the destination (UX ruling 126).
+  await page.getByRole("dialog").getByRole("button").click();
 }
 
 /** Full sign-in: request link → read it back → open it and press Sign in → land on `callbackPath`. */

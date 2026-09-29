@@ -93,15 +93,12 @@ test.describe("auth", () => {
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
 
     await page.goto(await lastMagicLink(request, email));
-    // The confirm page's one button is reachable by Tab and Enter presses it (TEACH-246).
-    const signInButton = page.getByRole("button", { name: "Sign in", exact: true });
-    for (
-      let i = 0;
-      i < 5 && !(await signInButton.evaluate((el) => el === document.activeElement));
-      i++
-    ) {
-      await page.keyboard.press("Tab");
-    }
+    // The confirm sheet opens with focus on itself; one Tab reaches its button, and nothing in the
+    // inert preview behind it takes a tab stop (TEACH-246, UX ruling 126).
+    const sheet = page.getByRole("dialog");
+    const signInButton = sheet.getByRole("button", { name: "Open my lessons" });
+    await expect(sheet).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(signInButton).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
@@ -221,31 +218,120 @@ test.describe("auth", () => {
     expect(new URL(page.url()).searchParams.get("redirect")).toBe("/");
   });
 
-  test("a used magic link sends you to /sign-in with an explanation", async ({ page, request }) => {
-    const email = await signIn(page, request);
+  test("a used link shows the expired sheet over the same preview, with the resend form (TEACH-214)", async ({
+    page,
+    request,
+  }) => {
+    const email = await signIn(page, request, uniqueEmail("used"), "/lessons/new?topic=Volcanoes");
     const link = await lastMagicLink(request, email);
+    await page.goto("/");
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
 
-    // Tokens are single-use: pressing Sign in on the used link fails verification and better-auth
-    // redirects to our errorCallbackURL with `?error=INVALID_TOKEN` (TEACH-68).
+    // Tokens are single-use: the used link fails verification and better-auth sends the teacher
+    // back to the confirm page with `?error=INVALID_TOKEN` and no token.
     await openMagicLink(page, link);
-    await expect(page).toHaveURL(/\/sign-in\?/);
+    await expect(page).toHaveURL(/\/sign-in\/confirm\?/);
     const search = new URL(page.url()).searchParams;
     expect(search.get("error")).toBe("INVALID_TOKEN");
-    expect(search.get("redirect")).toBe("/");
-    await expect(page.getByRole("alert")).toHaveText(
-      "That sign-in link has expired or was already used. Request a new one below.",
-    );
+    expect(search.has("token")).toBe(false);
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByRole("heading", { name: "This link has expired" })).toBeVisible();
+    await expect(page.locator('[data-confirm-preview="new-lesson"]')).toContainText("Volcanoes");
+    await expect(sheet.getByLabel("Email address")).toHaveValue(email);
 
-    // Requesting a fresh link from here must not carry the error into the next callback.
+    // A fresh link from the sheet keeps the destination and drops the error.
+    await sheet.getByRole("button", { name: "Email me a new link" }).click();
+    await expect(sheet.getByRole("status")).toContainText("Check your inbox");
+    await openMagicLink(page, await lastMagicLink(request, email));
+    await expect(page).toHaveURL(/\/lessons\/new\?topic=Volcanoes$/);
+  });
+
+  test("a new-lesson link previews the topic and lands on the brief with it (TEACH-214)", async ({
+    page,
+    request,
+  }) => {
+    const email = uniqueEmail("topic");
+    await page.goto("/sign-in?redirect=%2Flessons%2Fnew%3Ftopic%3DVolcanoes%2Band%2Bplates");
     await page.getByLabel("Email address").fill(email);
     await page.getByRole("button", { name: "Email me a link" }).click();
     await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
-    await openMagicLink(page, await lastMagicLink(request, email));
+
+    await page.goto(await lastMagicLink(request, email));
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByRole("heading", { name: `Continue as ${email}` })).toBeVisible();
+    await expect(page.locator('[data-confirm-preview="new-lesson"]')).toContainText(
+      "Volcanoes and plates",
+    );
+    await sheet.getByRole("button", { name: "Start my lesson" }).click();
+    await expect(page).toHaveURL(/\/lessons\/new\?topic=Volcanoes\+and\+plates$/);
+    await expect(page.getByLabel("Topic")).toHaveValue("Volcanoes and plates");
+  });
+
+  test("a link whose callback was changed to another origin lands on this origin (TEACH-214)", async ({
+    page,
+    request,
+  }) => {
+    const email = uniqueEmail("tamper");
+    await page.goto("/sign-in");
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Email me a link" }).click();
+    await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+    const tampered = new URL(await lastMagicLink(request, email));
+    tampered.searchParams.set("callbackURL", "https://evil.example/steal");
+
+    await openMagicLink(page, tampered.toString());
     await expect(page).toHaveURL(new RegExp(`^${escapeRegExp(E2E_WEB_URL)}/$`));
     await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   });
+
+  for (const [width, height] of [
+    [390, 844],
+    [1440, 900],
+  ] as const) {
+    test(`the confirm sheet fits ${width}: no sideways scroll, no layout shift, preview inert (TEACH-214)`, async ({
+      page,
+      request,
+    }) => {
+      await page.setViewportSize({ width, height });
+      const email = uniqueEmail(`fit${width}`);
+      await page.goto("/sign-in");
+      await page.getByLabel("Email address").fill(email);
+      await page.getByRole("button", { name: "Email me a link" }).click();
+      await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
+
+      await page.addInitScript(() => {
+        (window as unknown as { __cls: number }).__cls = 0;
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries() as unknown as {
+            value: number;
+            hadRecentInput: boolean;
+          }[]) {
+            if (!entry.hadRecentInput)
+              (window as unknown as { __cls: number }).__cls += entry.value;
+          }
+        }).observe({ type: "layout-shift", buffered: true });
+      });
+      await page.goto(await lastMagicLink(request, email));
+      const button = page.getByRole("dialog").getByRole("button", { name: "Open my lessons" });
+      await expect(button).toBeInViewport({ ratio: 1 });
+      await page.waitForTimeout(1000);
+      const { scrollWidth, innerWidth, cls } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+        cls: (window as unknown as { __cls: number }).__cls,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
+      expect(cls).toBeLessThan(0.02);
+      const preview = page.locator('[data-confirm-preview="dashboard"]');
+      await expect(preview).toHaveAttribute("aria-hidden", "true");
+      expect(await preview.evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+
+      await button.click();
+      await expect(page).toHaveURL(new RegExp(`^${escapeRegExp(E2E_WEB_URL)}/$`));
+      await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    });
+  }
 
   test("a mail scanner that fetches the link does not use it up (TEACH-246)", async ({
     page,
@@ -269,7 +355,7 @@ test.describe("auth", () => {
     });
     await scanned.goto(link);
     await expect(
-      scanned.getByRole("heading", { level: 1, name: "Sign in to DayBack" }),
+      scanned.getByRole("heading", { level: 1, name: `Continue as ${email}` }),
     ).toBeVisible();
     await scanned.waitForLoadState("networkidle");
     expect(verifyHits).toEqual([]);

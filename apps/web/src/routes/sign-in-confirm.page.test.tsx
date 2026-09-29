@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // `mock.module` is not hoisted like `vi.mock`, so register it before the page's dynamic import.
-let search: { token?: string; callbackURL?: string; errorCallbackURL?: string } = {};
+let search: { token?: string; callbackURL?: string; email?: string; error?: string } = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
@@ -15,6 +15,7 @@ mock.module("@tanstack/react-router", () => ({
 }));
 
 const { SignInConfirmPage, magicLinkVerifyUrl } = await import("./sign-in-confirm.page");
+const { confirmDestination } = await import("@/lib/confirm-destination");
 
 const ORIGIN = window.location.origin;
 const API = "https://api.test";
@@ -25,33 +26,52 @@ describe("magicLinkVerifyUrl", () => {
       magicLinkVerifyUrl(API, ORIGIN, {
         token: "tok",
         callbackURL: `${ORIGIN}/lessons/new?topic=The+cycle`,
-        errorCallbackURL: "/sign-in?redirect=%2Flessons",
+        email: "t@school.test",
       }),
     );
     expect(url.origin + url.pathname).toBe(`${API}/auth/magic-link/verify`);
     expect(url.searchParams.get("token")).toBe("tok");
     expect(url.searchParams.get("callbackURL")).toBe(`${ORIGIN}/lessons/new?topic=The+cycle`);
-    expect(url.searchParams.get("errorCallbackURL")).toBe(`${ORIGIN}/sign-in?redirect=%2Flessons`);
+    // A failed verify comes back to the confirm sheet with the same destination, no token.
+    const error = new URL(String(url.searchParams.get("errorCallbackURL")));
+    expect(error.origin + error.pathname).toBe(`${ORIGIN}/sign-in/confirm`);
+    expect(error.searchParams.get("callbackURL")).toBe("/lessons/new?topic=The+cycle");
+    expect(error.searchParams.get("email")).toBe("t@school.test");
+    expect(error.searchParams.has("token")).toBe(false);
   });
 
   it("collapses a callback on another origin to this origin", () => {
     const url = new URL(
-      magicLinkVerifyUrl(API, ORIGIN, {
-        token: "tok",
-        callbackURL: "https://evil.example/steal",
-        errorCallbackURL: "//evil.example/sign-in",
-      }),
+      magicLinkVerifyUrl(API, ORIGIN, { token: "tok", callbackURL: "https://evil.example/steal" }),
     );
     expect(url.searchParams.get("callbackURL")).toBe(`${ORIGIN}/`);
-    expect(url.searchParams.get("errorCallbackURL")).toBe(`${ORIGIN}/sign-in?redirect=%2F`);
+    expect(url.searchParams.get("errorCallbackURL")).toBe(
+      `${ORIGIN}/sign-in/confirm?callbackURL=%2F`,
+    );
   });
 
-  it("strips a stale error from the callback and defaults the error callback to /sign-in", () => {
+  it("strips a stale error from the callback", () => {
     const url = new URL(
       magicLinkVerifyUrl(API, ORIGIN, { token: "tok", callbackURL: "/?error=INVALID_TOKEN" }),
     );
     expect(url.searchParams.get("callbackURL")).toBe(`${ORIGIN}/`);
-    expect(url.searchParams.get("errorCallbackURL")).toBe(`${ORIGIN}/sign-in?redirect=%2F`);
+  });
+});
+
+describe("confirmDestination", () => {
+  it("reads the preview from the callback alone", () => {
+    expect(confirmDestination(undefined, ORIGIN)).toEqual({ kind: "dashboard" });
+    expect(confirmDestination(`${ORIGIN}/`, ORIGIN)).toEqual({ kind: "dashboard" });
+    expect(confirmDestination(`${ORIGIN}/lessons/new?topic=Volcanoes`, ORIGIN)).toEqual({
+      kind: "new-lesson",
+      topic: "Volcanoes",
+    });
+    expect(confirmDestination("/lessons/new", ORIGIN)).toEqual({ kind: "other" });
+    expect(confirmDestination("/series", ORIGIN)).toEqual({ kind: "other" });
+    // Another origin previews what the click would do: this origin's dashboard.
+    expect(confirmDestination("https://evil.example/lessons/new?topic=x", ORIGIN)).toEqual({
+      kind: "dashboard",
+    });
   });
 });
 
@@ -71,43 +91,70 @@ describe("SignInConfirmPage", () => {
   });
 
   it("makes no request on load and holds no link or image that reaches the verify URL", () => {
-    search = { token: "tok", callbackURL: `${ORIGIN}/lessons` };
+    search = { token: "tok", callbackURL: `${ORIGIN}/`, email: "t@school.test" };
     const { container } = render(<SignInConfirmPage />);
-    expect(screen.getByRole("heading", { level: 1, name: "Sign in to DayBack" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Continue as t@school.test" }),
+    ).toBeVisible();
+    expect(screen.getByRole("dialog")).toContainElement(
+      screen.getByRole("button", { name: "Open my lessons" }),
+    );
+    expect(screen.getByRole("dialog")).toHaveFocus();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
     expect(container.innerHTML).not.toContain("tok");
     expect(container.querySelectorAll("a, img, link, form, iframe")).toHaveLength(0);
+    const preview = container.querySelector("[data-confirm-preview]");
+    expect(preview).toHaveAttribute("aria-hidden", "true");
+    expect(preview).toHaveAttribute("inert");
   });
 
-  it("the Sign in button opens the verify URL in this window, with a sanitised callback", async () => {
-    search = {
-      token: "tok",
-      callbackURL: "https://evil.example/",
-      errorCallbackURL: `${ORIGIN}/sign-in?redirect=%2F`,
-    };
+  it("previews the new-lesson flow with the topic and says Start my lesson", () => {
+    search = { token: "tok", callbackURL: `${ORIGIN}/lessons/new?topic=Volcanoes` };
+    const { container } = render(<SignInConfirmPage />);
+    expect(container.querySelector("[data-confirm-preview]")).toHaveAttribute(
+      "data-confirm-preview",
+      "new-lesson",
+    );
+    expect(container.querySelector("[data-confirm-preview]")).toHaveTextContent("Volcanoes");
+    expect(screen.getByRole("button", { name: "Start my lesson" })).toBeEnabled();
+  });
+
+  it("the button opens the verify URL in this window, with a sanitised callback", async () => {
+    search = { token: "tok", callbackURL: "https://evil.example/" };
     const user = userEvent.setup();
     render(<SignInConfirmPage />);
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.click(screen.getByRole("button", { name: "Open my lessons" }));
 
     expect(assign).toHaveBeenCalledTimes(1);
     const target = new URL(String(assign.mock.calls[0]?.[0]));
     expect(target.pathname).toBe("/api/auth/magic-link/verify");
     expect(target.searchParams.get("token")).toBe("tok");
     expect(target.searchParams.get("callbackURL")).toBe(`${ORIGIN}/`);
-    expect(target.searchParams.get("errorCallbackURL")).toBe(`${ORIGIN}/sign-in?redirect=%2F`);
     expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("an expired link shows the resend form in the same sheet over the same preview", () => {
+    search = {
+      callbackURL: "/lessons/new?topic=Volcanoes",
+      email: "t@school.test",
+      error: "INVALID_TOKEN",
+    };
+    const { container } = render(<SignInConfirmPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "This link has expired" })).toBeVisible();
+    expect(screen.getByLabelText("Email address")).toHaveValue("t@school.test");
+    expect(screen.getByRole("button", { name: "Email me a new link" })).toBeEnabled();
+    expect(container.querySelector("[data-confirm-preview]")).toHaveTextContent("Volcanoes");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("a link without a token says so and offers a new one", () => {
     render(<SignInConfirmPage />);
-    expect(screen.getByRole("alert")).toHaveTextContent("This sign-in link is incomplete.");
-    expect(screen.getByRole("link", { name: "Get a new link" })).toHaveAttribute(
-      "href",
-      "/sign-in",
-    );
-    expect(screen.queryByRole("button", { name: "Sign in" })).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "This link is incomplete" }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Email me a new link" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Open my lessons" })).toBeNull();
   });
 });

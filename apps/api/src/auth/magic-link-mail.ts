@@ -49,11 +49,14 @@ function trustedCallback(
  * `callbackURL`'s, when `isTrustedOrigin` accepts it, so a preview api mails its own preview web)
  * and otherwise on `fallbackOrigin` (`WEB_ORIGIN[0]`). An untrusted `callbackURL` becomes `/` and
  * an untrusted `errorCallbackURL` is left out (the page defaults it to `/sign-in`).
+ * `email` is the address the link is mailed to; the page shows it as "Continue as <email>"
+ * without a request (UX ruling 126, TEACH-214).
  */
 export function confirmPageUrl(
   verifyUrl: string,
   fallbackOrigin: string,
   isTrustedOrigin: (origin: string) => boolean,
+  email?: string,
 ): string {
   const verify = new URL(verifyUrl);
   const callback = trustedCallback(verify.searchParams.get("callbackURL"), isTrustedOrigin) ?? "/";
@@ -66,6 +69,7 @@ export function confirmPageUrl(
   confirm.searchParams.set("token", verify.searchParams.get("token") ?? "");
   confirm.searchParams.set("callbackURL", callback);
   if (errorCallback !== undefined) confirm.searchParams.set("errorCallbackURL", errorCallback);
+  if (email) confirm.searchParams.set("email", email);
   return confirm.toString();
 }
 

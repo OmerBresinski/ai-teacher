@@ -88,6 +88,17 @@ Links sent just before a domain switch point at the old web host, so that host m
 (or redirect with the query string intact) for at least the 15-minute expiry. The confirm page is
 served with `Referrer-Policy: no-referrer` so the token never leaves in a Referer header.
 
+TEACH-214 (UX ruling 126) keeps the one click and changes what surrounds it. The confirm link also
+carries the recipient's `email`, for display only ("Continue as …"; the token alone decides the
+account). The page draws a skeleton of the destination read from `callbackURL`
+(`apps/web/src/lib/confirm-destination.ts`) and still makes no request on load. The verify URL's
+`errorCallbackURL` is now the confirm page itself, with the sanitised callback and no token, so an
+expired or used link shows the resend form over the same preview; the email's `errorCallbackURL` is
+no longer followed. The navigation still passes through the api origin, which rules out a
+cross-document view transition; instead the confirm page leaves a `sessionStorage` hint (preview kind
+and path, never the token or email) that `RoutePendingPage` uses to paint the same preview while the
+destination loads.
+
 ## Amendment (2026-09-28, TEACH-206): Microsoft sign-in
 
 Greg approved switching Microsoft on. This amendment gives it the linking rule the Google
