@@ -24,14 +24,22 @@ export type IdeaText = { statement: string; explanation: string; example?: strin
 export type CalloutText = { kind: "watch-out" | "key-words" | "example"; text: string };
 
 /**
- * A content slide as the writer builds it: a heading the length of the first idea's statement,
+ * A content slide as the writer builds it (`misconception`: the sentence `generate-slide` ends the
+ * body with when the slide has no watch-out callout, `ownMisconceptions`): a heading the length of the first idea's statement,
  * then one paragraph per idea, its explanation and its example (fit-lab r1, 29 Sep: a one-idea
  * body came back at 394 characters, explanation and example both written out).
  */
-export function contentProjection(ideas: readonly IdeaText[], callout?: CalloutText): SlideSpec {
+export function contentProjection(
+  ideas: readonly IdeaText[],
+  callout?: CalloutText,
+  misconception?: string,
+): SlideSpec {
   const heading = ideas[0]?.statement.trim() ?? "";
-  const body = ideas
-    .map((k) => [k.explanation.trim(), k.example?.trim() ?? ""].filter(Boolean).join(" "))
+  const body = [
+    ...ideas.map((k) => [k.explanation.trim(), k.example?.trim() ?? ""].filter(Boolean).join(" ")),
+    misconception?.trim() ?? "",
+  ]
+    .filter(Boolean)
     .join("\n\n");
   return {
     kind: "content",

@@ -310,8 +310,25 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       explanation: facts.keyIdeas[k]?.explanation ?? "",
       example: facts.keyIdeas[k]?.example ?? "",
     }));
+  /**
+   * Without a watch-out callout the writer ends the body with a sentence on the objective's
+   * misconception (`generate-slide` `ownMisconceptions`): measured as its belief and correction.
+   */
+  const ownMisconception = (ks: readonly number[]) => {
+    const objectives = new Set(ks.flatMap((k) => refIndices(facts.keyIdeas[k]?.objectiveRefs)));
+    const m = facts.misconceptions.find((x) =>
+      refIndices(x.objectiveRefs).some((o) => objectives.has(o)),
+    );
+    return m === undefined ? undefined : `${m.belief} ${m.correction}`;
+  };
   const ideasFit = (ks: readonly number[], callout?: CalloutText) =>
-    fitsPlanned(contentProjection(ideaTexts(ks), callout));
+    fitsPlanned(
+      contentProjection(
+        ideaTexts(ks),
+        callout,
+        callout?.kind === "watch-out" ? undefined : ownMisconception(ks),
+      ),
+    );
   /**
    * Up to `KEY_IDEAS_PER_CONTENT` of `ks`: both when they fit one slide together, else the first
    * alone when the deck keeps a slot for the second (`later` slots are still owed, the practice

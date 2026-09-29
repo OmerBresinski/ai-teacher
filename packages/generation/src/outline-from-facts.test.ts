@@ -478,7 +478,8 @@ describe("outlineFromFacts: callouts", () => {
       ref: mis(0),
       text: "Wrong belief about objective 1",
     });
-    expect(r.result.callouts[positions[1] ?? -1]?.kind).toBe("example");
+    // Fit first: planned only when it fits beside the words and the misconception sentence.
+    expect([undefined, "example"]).toContain(r.result.callouts[positions[1] ?? -1]?.kind);
   });
 
   test("terms no vocabulary slide shows ride on the content slide as key-words", () => {
