@@ -102,7 +102,9 @@ import {
  * five-into-four example: the teach call (v4) now writes material at that size, so the writer
  * presents it rather than compressing it. A content body is the key idea's explanation then its
  * example "in the facts' words" (was "builds it up ... and any useful analogy": in lab round 3
- * the writer turned ~100 characters of sized facts into a 523-character body).
+ * the writer turned ~100 characters of sized facts into a 523-character body). Round 5 puts
+ * v30's step-merge rule back: without it, worked-example slides flagged 4-6 per four decks
+ * against 1 on master, because the teach call's steps still ran past one line.
  */
 
 export type GenerateSlideInput = {
@@ -242,7 +244,7 @@ export const generateSlidePrompt = {
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
     "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body is its explanation then its example, in the facts' words. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
-    "For a `worked-example`, show the facts' steps in order, one line each, conclusion included. Put fuller working in `notes`.",
+    "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,

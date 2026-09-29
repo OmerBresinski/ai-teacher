@@ -236,7 +236,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
     version: "generate-slide.v31",
-    hash: "0e5a2749ef190208d1fadf8bb83adad031b61fe64d0b3b8844d26269177aaaf4",
+    hash: "11331c7d8cc8dbc5ae54b61b321f585a60d155b7e3b860ef0acd6834c7646dd9",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -775,8 +775,8 @@ describe("prompt versions", () => {
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
     const system = PROMPTS["generate-slide"].system;
-    // v31: the steps arrive at slide size (teach v4) and are shown as written, conclusion included.
-    expect(system).toContain("show the facts' steps in order, one line each, conclusion included");
+    expect(system).toContain("merge neighbouring steps");
+    expect(system).toContain("never drop it");
     expect(system).toContain("not already on the slide");
     // TEACH-246: footnote is for pupils; teacher text belongs in notes.
     expect(system).toContain("`footnote` is one short line pupils read");
