@@ -121,3 +121,11 @@ Bedrock stays the production provider. ADR 0031 adds an opt-in direct OpenAI rou
 model class is switched to an `openai/` id; `DEFAULT_MODEL_IDS`, this ADR's mechanism and the
 Bedrock key are unchanged. Whether production leaves Bedrock is decided later, depending on the
 `us.openai.gpt-6-*` profiles on Bedrock (ADR 0031, Consequences).
+
+## Amendment 2026-09-29 — defaults move to GPT-6 Luna on OpenAI direct
+
+The decision of 25–26 Sept 2026 (SHIP-H-PLAN §3 item 9, ticket G) replaces the 9 Sept Bedrock
+defaults: `DEFAULT_MODEL_IDS` is `openai/gpt-6-luna` for all three classes, served by OpenAI
+directly with `OPENAI_API_KEY` (ADR 0031), with the worker's reasoning effort `low` and the
+objectives-first planner (ADR 0033) by default. A Bedrock `us.openai.*` id in `AI_MODEL_*` still
+routes to Bedrock with `AWS_BEARER_TOKEN_BEDROCK`; a value set on Railway overrides the default.

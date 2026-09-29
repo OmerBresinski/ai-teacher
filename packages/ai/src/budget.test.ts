@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createBudget } from "./budget";
-import { DEFAULT_MODEL_IDS } from "./create-ai";
 import { costUsd, PRICES } from "./prices";
 
-const STANDARD = DEFAULT_MODEL_IDS.standard;
+/** Bedrock Terra: its short/long-context rows are what these budget sums are written against. */
+const STANDARD = "us.openai.gpt-5.6-terra";
 const price = PRICES[STANDARD];
 if (!price) throw new Error("standard is unpriced");
 

@@ -19,7 +19,7 @@ describe("effortOverride (AI_REASONING_EFFORT, TEACH-72)", () => {
     expect(effortFor()).toBe("low");
   });
 
-  test("createWorkerDeps carries the env value, and nothing when unset", () => {
+  test("createWorkerDeps carries the env value, and `low` when unset", () => {
     const set = createWorkerDeps(
       parseEnv({ DATABASE_URL: DB, AI_REASONING_EFFORT: "xhigh" }),
       quiet,
@@ -27,6 +27,6 @@ describe("effortOverride (AI_REASONING_EFFORT, TEACH-72)", () => {
     );
     expect(set.reasoningEffort).toBe("xhigh");
     const unset = createWorkerDeps(parseEnv({ DATABASE_URL: DB }), quiet, noDb);
-    expect("reasoningEffort" in unset).toBe(false);
+    expect(unset.reasoningEffort).toBe("low");
   });
 });

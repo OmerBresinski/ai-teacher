@@ -22,8 +22,9 @@ describe("worker env", () => {
       AI_LESSON_COST_CAP_USD: 0.5,
       AI_LESSON_TOKEN_CAP: 300_000,
       AI_WORKSHEET_COST_CAP_USD: 0.1,
-      AI_LESSON_PLANNER: "legacy",
+      AI_LESSON_PLANNER: "objectives-first",
       AI_LESSON_COST_WARN_USD: 0.03,
+      AI_REASONING_EFFORT: "low",
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
       AI_FAKE_SCRIPT: undefined,
@@ -164,10 +165,10 @@ describe("worker env", () => {
   });
 
   describe("AI_REASONING_EFFORT (TEACH-72)", () => {
-    test("unset or blank leaves every stage at its own effort", () => {
-      expect(parseEnv({ DATABASE_URL: DB }).AI_REASONING_EFFORT).toBeUndefined();
+    test("unset or blank is `low`, the shipped effort (decision 25–26 Sept 2026)", () => {
+      expect(parseEnv({ DATABASE_URL: DB }).AI_REASONING_EFFORT).toBe("low");
       expect(parseEnv({ DATABASE_URL: DB, AI_REASONING_EFFORT: "  " }).AI_REASONING_EFFORT).toBe(
-        undefined,
+        "low",
       );
     });
 
@@ -200,19 +201,19 @@ describe("worker env", () => {
   });
 
   describe("AI_LESSON_PLANNER and AI_LESSON_COST_WARN_USD (TEACH-93)", () => {
-    test("unset: the legacy planner and a 0.03 cost target", () => {
+    test("unset: the objectives-first planner and a 0.03 cost target", () => {
       const env = parseEnv({ DATABASE_URL: DB });
-      expect(env.AI_LESSON_PLANNER).toBe("legacy");
+      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
       expect(env.AI_LESSON_COST_WARN_USD).toBe(0.03);
     });
 
-    test("accepts objectives-first and a numeric target", () => {
+    test("accepts legacy and a numeric target", () => {
       const env = parseEnv({
         DATABASE_URL: DB,
-        AI_LESSON_PLANNER: "objectives-first",
+        AI_LESSON_PLANNER: "legacy",
         AI_LESSON_COST_WARN_USD: "0",
       });
-      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
+      expect(env.AI_LESSON_PLANNER).toBe("legacy");
       expect(env.AI_LESSON_COST_WARN_USD).toBe(0);
     });
 

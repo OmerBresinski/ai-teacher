@@ -18,7 +18,7 @@ slides stream in, Check finishes after.
 ## Decision
 
 1. **A worker flag picks the planner for a new lesson.** `AI_LESSON_PLANNER` is `legacy`
-   (default) or `objectives-first`. `lesson.plan` passes it as `PipelineOptions.planner`. The API
+   or `objectives-first` (the default since 25–26 Sept 2026, see the amendment below). `lesson.plan` passes it as `PipelineOptions.planner`. The API
    never reads it.
 2. **A second workflow.** `objectivesFirstWorkflow` runs check-input → objectives → facts →
    generate → illustrate → evaluate → repair. Its steps order and resume on their own table
@@ -58,3 +58,10 @@ slides stream in, Check finishes after.
   that way.
 - The lab and production run one implementation: `planFromObjectives` calls the two steps.
 - The flag stays unset in every Railway environment until the blind judging of the parity run.
+
+## Amendment 2026-09-29 — objectives-first is the default
+
+The decision of 25–26 Sept 2026 (SHIP-H-PLAN §3 item 9, ticket G) ships objectives-first, so the
+worker's `AI_LESSON_PLANNER` now defaults to `objectives-first` when unset. Rollback is setting
+`AI_LESSON_PLANNER=legacy`, not unsetting it. The e2e worker pins `legacy`: its scripted fake
+answers the legacy planner's prompts only.

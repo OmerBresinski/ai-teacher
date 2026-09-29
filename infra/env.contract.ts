@@ -106,9 +106,9 @@ const PG_LOCAL_TEST = "postgres://postgres:postgres@localhost:5432/teaching_jour
 // @tj/ai's exported defaults.
 const AI_DEFAULT_REGION = "us-east-1";
 const AI_DEFAULT_MODEL_IDS = {
-  frontier: "us.openai.gpt-5.6-sol",
-  standard: "us.openai.gpt-5.6-terra",
-  small: "us.openai.gpt-5.6-luna",
+  frontier: "openai/gpt-6-luna",
+  standard: "openai/gpt-6-luna",
+  small: "openai/gpt-6-luna",
 } as const;
 /** Railway reference syntax (`${"{{"}service.VAR}}`), resolved by Railway, not a JS template. */
 const RAILWAY_DB_REF = [
@@ -569,7 +569,7 @@ const CONTRACT = [
     format: "string",
     files: ["api", "worker"],
     description:
-      "OpenAI API key for the opt-in direct route (ADR 0031): serves every `openai/<model>` model id directly, and changes nothing until a model class is switched to such an id. Required in production unless `AWS_BEARER_TOKEN_BEDROCK` is set; when unset in development/test those ids fail fast at `model()`. Set on Railway (api and worker), never on Vercel, never in git.",
+      "OpenAI API key for the direct route (ADR 0031): serves every `openai/<model>` model id directly, and so every default model class (`openai/gpt-6-luna`, decision 25–26 Sept 2026). Required in production unless `AWS_BEARER_TOKEN_BEDROCK` is set (and then every `AI_MODEL_*` must name a Bedrock id); when unset in development/test those ids fail fast at `model()`. Set on Railway (api and worker), never on Vercel, never in git.",
   },
   {
     name: "AI_GATEWAY_API_KEY",
@@ -610,7 +610,7 @@ const CONTRACT = [
     files: ["api", "worker"],
     railwayValue: AI_DEFAULT_MODEL_IDS.frontier,
     description:
-      "Bedrock model ID for the F13 §7 frontier class: planning, adaptation and coherence.",
+      "Model ID for the F13 §7 frontier class (the eval judge). Default `openai/gpt-6-luna` on every class, served by OpenAI directly with `OPENAI_API_KEY` (decision 25–26 Sept 2026, SHIP-H-PLAN §3 item 9); a Bedrock `us.openai.*` id routes to Bedrock instead. A value set on Railway overrides the default.",
   },
   {
     name: "AI_MODEL_STANDARD",
@@ -624,7 +624,7 @@ const CONTRACT = [
     files: ["api", "worker"],
     railwayValue: AI_DEFAULT_MODEL_IDS.standard,
     description:
-      "Bedrock model ID for the F13 §7 standard class: plan, notes and slide outline generation.",
+      "Model ID for the F13 §7 standard class: plan, notes and slide outline generation. Default `openai/gpt-6-luna` (OpenAI direct, `OPENAI_API_KEY`); a value set on Railway overrides it.",
   },
   {
     name: "AI_MODEL_SMALL",
@@ -638,7 +638,7 @@ const CONTRACT = [
     files: ["api", "worker"],
     railwayValue: AI_DEFAULT_MODEL_IDS.small,
     description:
-      "Bedrock model ID for the F13 §7 small class: items, glossary, variants and summaries.",
+      "Model ID for the F13 §7 small class: items, glossary, variants and summaries. Default `openai/gpt-6-luna` (OpenAI direct, `OPENAI_API_KEY`); a value set on Railway overrides it.",
   },
 
   // --- images (Pexels, Images project) ----------------------------------------------------------
@@ -738,7 +738,7 @@ const CONTRACT = [
     values: ["none", "low", "medium", "high", "xhigh"],
     files: ["worker"],
     description:
-      "Reasoning effort every model call in the worker runs at (lesson pipeline and worksheet), through `effortFor` (TEACH-72). One of none | low | medium | high | xhigh; anything else stops the worker at boot. Unset: each stage keeps its own effort. Changes no model id. Not set on Railway until a rollout chooses the value.",
+      "Reasoning effort every model call in the worker runs at (lesson pipeline and worksheet), through `effortFor` (TEACH-72). One of none | low | medium | high | xhigh; anything else stops the worker at boot. Unset or blank: `low` (decision 25–26 Sept 2026, SHIP-H-PLAN §3 item 9). Changes no model id. Not set on Railway: the default is the shipped value.",
   },
   {
     name: "AI_LESSON_PLANNER",
@@ -752,7 +752,7 @@ const CONTRACT = [
     values: ["legacy", "objectives-first"],
     files: ["worker"],
     description:
-      "Which planner plans a new lesson (TEACH-93, ADR 0033). `legacy` (default): the skeleton and facts calls in `lesson.plan`. `objectives-first`: `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. Anything else stops the worker at boot. Not set on Railway until the blind judging says go; rollback is unsetting it.",
+      "Which planner plans a new lesson (TEACH-93, ADR 0033). `objectives-first` (default since the decision of 25–26 Sept 2026, SHIP-H-PLAN §3 item 9): `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. `legacy`: the skeleton and facts calls in `lesson.plan`. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `legacy`.",
   },
   {
     name: "AI_LESSON_COST_WARN_USD",

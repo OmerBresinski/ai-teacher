@@ -37,15 +37,19 @@ export const EnvSchema = z
     /** Plan on the frontier class from this year group up (TEACH-259); unset keeps every Plan call `standard`. */
     AI_PLAN_FRONTIER_FROM_YEAR: z.coerce.number().int().min(1).max(13).optional(),
     /**
-     * Which planner plans a new lesson (TEACH-93, ADR 0033): `legacy` (skeleton + facts calls) or
-     * `objectives-first` (the objectives call, then the facts waves in the generate job). A lesson
-     * already planned keeps the planner its stamp names whatever this says.
+     * Which planner plans a new lesson (TEACH-93, ADR 0033): `objectives-first` (default, decision
+     * 25–26 Sept 2026: the objectives call, then the facts waves in the generate job) or `legacy`
+     * (skeleton + facts calls). A lesson already planned keeps the planner its stamp names whatever
+     * this says.
      */
-    AI_LESSON_PLANNER: z.enum(PLANNERS).default("legacy"),
+    AI_LESSON_PLANNER: z.enum(PLANNERS).default("objectives-first"),
     /** A finished lesson above this cost logs `lesson cost above target` (TEACH-93); never a stop. */
     AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.03),
-    /** Every model call runs at this reasoning effort (TEACH-72); unset keeps each stage's own. */
-    AI_REASONING_EFFORT: optionalString.pipe(z.enum(REASONING_EFFORTS).optional()),
+    /**
+     * Every model call runs at this reasoning effort (TEACH-72). Unset or blank: `low`, the
+     * shipped setting (decision 25–26 Sept 2026, SHIP-H-PLAN §3 item 9).
+     */
+    AI_REASONING_EFFORT: optionalString.pipe(z.enum(REASONING_EFFORTS).default("low")),
     MASTRA_TELEMETRY_DISABLED: optionalString,
     // --- Images (Pexels, Images project) -------------------------------------------------
     /**

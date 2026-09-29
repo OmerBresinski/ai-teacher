@@ -74,7 +74,7 @@ describe("createAi", () => {
   });
 
   test("model(cls, context) is accepted with and without a context on both client kinds", () => {
-    const configured = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+    const configured = createAi({ OPENAI_API_KEY: "test-key" });
     expect(configured.model("small")).toBeDefined();
     expect(configured.model("small", { lessonId: "l1", stage: "plan" })).toBeDefined();
     const unconfigured = createAi({});
@@ -125,11 +125,15 @@ describe("Vercel AI Gateway ids (the lab's model bench)", () => {
   });
 
   test("a gateway key alone configures the client as `gateway`; a Bedrock id then fails at model()", () => {
-    const ai = createAi({ AI_GATEWAY_API_KEY: "gw-key", AI_MODEL_SMALL: "openai/gpt-5.6-luna" });
+    const ai = createAi({
+      AI_GATEWAY_API_KEY: "gw-key",
+      AI_MODEL_SMALL: "openai/gpt-5.6-luna",
+      AI_MODEL_STANDARD: "us.openai.gpt-5.6-terra",
+    });
     expect(ai.kind).toBe("gateway");
     expect(ai.model("small")).toBeDefined();
     try {
-      ai.model("standard"); // the default Bedrock id, no Bedrock key
+      ai.model("standard"); // a Bedrock id, no Bedrock key
       throw new Error("Expected ai.model to throw");
     } catch (error) {
       expect(isAiError(error, "unconfigured")).toBe(true);
@@ -167,6 +171,7 @@ describe("Vercel AI Gateway ids (the lab's model bench)", () => {
         AWS_BEARER_TOKEN_BEDROCK: "test-key",
         AI_GATEWAY_API_KEY: "gw-key",
         AI_MODEL_SMALL: "google/gemini-3.8-flash",
+        AI_MODEL_STANDARD: "us.openai.gpt-5.6-terra",
       });
       expect(ai.kind).toBe("bedrock");
       await generateText({ model: ai.model("small"), prompt: "x", maxRetries: 0 }).catch(
@@ -237,7 +242,8 @@ describe("OpenAI direct (`openai/<model>` ids, ADR 0031)", () => {
     expect(OPENAI_PREFIX).toBe("openai/");
     expect(isOpenAiModelId("openai/gpt-5.6-luna")).toBe(true);
     expect(isOpenAiModelId("openai/gpt-6-sol")).toBe(true);
-    for (const id of [DEFAULT_MODEL_IDS.small, "google/gemini-3.8-flash", "openai.gpt-5.6-luna"])
+    expect(isOpenAiModelId(DEFAULT_MODEL_IDS.small)).toBe(true);
+    for (const id of ["us.openai.gpt-5.6-luna", "google/gemini-3.8-flash", "openai.gpt-5.6-luna"])
       expect(isOpenAiModelId(id)).toBe(false);
   });
 
@@ -262,8 +268,12 @@ describe("OpenAI direct (`openai/<model>` ids, ADR 0031)", () => {
     expect(request?.headers.authorization).toBe("Bearer k");
   });
 
-  test("A2: the same client rejects the default Bedrock id at model(), naming the Bedrock variable", () => {
-    const ai = createAi({ OPENAI_API_KEY: "k", AI_MODEL_SMALL: "openai/gpt-5.6-luna" });
+  test("A2: the same client rejects a Bedrock id at model(), naming the Bedrock variable", () => {
+    const ai = createAi({
+      OPENAI_API_KEY: "k",
+      AI_MODEL_SMALL: "openai/gpt-5.6-luna",
+      AI_MODEL_STANDARD: "us.openai.gpt-5.6-terra",
+    });
     try {
       ai.model("standard");
       throw new Error("Expected ai.model to throw");
@@ -301,6 +311,7 @@ describe("OpenAI direct (`openai/<model>` ids, ADR 0031)", () => {
         AWS_BEARER_TOKEN_BEDROCK: "b",
         AI_MODEL_SMALL: "openai/gpt-5.6-luna",
         AI_MODEL_FRONTIER: "google/gemini-3.8-flash",
+        AI_MODEL_STANDARD: "us.openai.gpt-5.6-terra",
       });
       expect(ai.kind).toBe("openai");
       for (const cls of ["small", "frontier", "standard"] as const) {
@@ -378,7 +389,7 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       "us.amazon.nova-micro-v1:0",
       "meta.llama3-70b-instruct-v1:0",
       "anthropicx.y",
-      // Every default is a GPT-5.6 id (TEACH-205, TEACH-208): none may receive Anthropic settings.
+      // Every default is a GPT id (GPT-6 Luna since 25–26 Sept 2026): none gets Anthropic settings.
       DEFAULT_MODEL_IDS.small,
       DEFAULT_MODEL_IDS.standard,
       DEFAULT_MODEL_IDS.frontier,
@@ -435,7 +446,7 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
     });
   });
 
-  test("a default class (GPT-5.6, TEACH-208) is sent no Anthropic fields", async () => {
+  test("a Bedrock GPT-5.6 class (TEACH-208) is sent no Anthropic fields", async () => {
     let body: Record<string, unknown> | undefined;
     const realFetch = globalThis.fetch;
     globalThis.fetch = (async (_url: string, init: RequestInit) => {
@@ -443,7 +454,10 @@ describe("thinking is off for Anthropic models on Bedrock", () => {
       return new Response(JSON.stringify({ message: "captured" }), { status: 500 });
     }) as unknown as typeof globalThis.fetch;
     try {
-      const ai = createAi({ AWS_BEARER_TOKEN_BEDROCK: "test-key" });
+      const ai = createAi({
+        AWS_BEARER_TOKEN_BEDROCK: "test-key",
+        AI_MODEL_STANDARD: "us.openai.gpt-5.6-terra",
+      });
       await generateText({ model: ai.model("standard"), prompt: "x", maxRetries: 0 }).catch(
         () => undefined,
       );

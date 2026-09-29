@@ -389,7 +389,10 @@ describe("callStructured", () => {
   });
 
   test("the effort travels to the provider as Bedrock's reasoningConfig and into the call context", async () => {
-    const ai = createFakeAi({ script: [JSON.stringify({ answer: "42" })] });
+    const ai = createFakeAi({
+      script: [JSON.stringify({ answer: "42" })],
+      modelIds: { standard: "us.openai.gpt-5.6-terra" },
+    });
     const d = deps(ai);
     await callStructured({
       deps: d,

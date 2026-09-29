@@ -30,7 +30,7 @@ export type WorkerDeps = {
   worksheetCapUsd: number;
   /** `AI_PLAN_FRONTIER_FROM_YEAR` (TEACH-259): Plan on `frontier` from this year group; unset → `standard`. */
   planFrontierFromYear?: number;
-  /** `AI_REASONING_EFFORT` (TEACH-72): every call's effort; unset → each stage's own. */
+  /** `AI_REASONING_EFFORT` (TEACH-72): every call's effort; `low` when unset (25–26 Sept 2026). */
   reasoningEffort?: ReasoningEffort;
   /** `AI_LESSON_PLANNER` (TEACH-93): the planner a lesson with no checkpoint is planned with. */
   planner?: Planner;
