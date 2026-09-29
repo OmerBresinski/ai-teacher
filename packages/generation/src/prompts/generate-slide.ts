@@ -94,6 +94,20 @@ import {
  * the writer wrote "the photograph does not show wall ruins"; the judge scored notes 1 and Evaluate
  * raised `image-fit` on that sentence. The notes now give the teacher a move instead. Shared with
  * Repair (v17).
+ *
+ * v31 (fit-lab, facts sized at source, 29 Sept 2026; `scratchpad/fit-first/PLAN.md` step C): the
+ * teach call now writes each key idea and worked example at slide size (`plan-teach-objective` v4)
+ * and the outline gives each key idea its own slide, so the writer shows the planned material as
+ * given instead of compressing it. Dropped: the body word caps, the two-idea paragraph rule, and
+ * "merge neighbouring steps into at most four short lines" with its five-into-four example.
+ * Round 3: with "as the facts give them" the writer still added material (an 84-word body with a
+ * "roots have already been explained" lead; worked-example steps each given a reason clause), so
+ * the body is "in the facts' words, adding only what this slide's lines ask for" (the misconception
+ * sentence, term definitions) and steps are "word for word". The later-questions line reads "from
+ * this slide's facts" instead of "within this slide's limits": the question sets are written from
+ * the same facts, so what an answer rests on is already in them. Round 4: the v25 closing
+ * misconception sentence took slide-sized bodies to 60–64 words and past the layout; it now goes
+ * to `notes` (the watch-out callout still carries a misconception on the slide).
  */
 
 export type GenerateSlideInput = {
@@ -169,11 +183,11 @@ const SHAPES = {
   vocabulary:
     '{ "kind": "vocabulary", "entries": [{ "term", "definition" }] (1–slots), "factRefs", "notes"? }',
   content:
-    '{ "kind": "content", "heading", "body" (≤ 40 words; ≤ 60 with two key ideas), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "content", "heading", "body", "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "image-text":
     '{ "kind": "image-text", "heading", "body" (≤ 40 words), "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   "worked-example":
-    '{ "kind": "worked-example", "heading"?, "question" (one or two lines), "steps": [1–4 strings, each one short line of about 56 characters], "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
+    '{ "kind": "worked-example", "heading"?, "question" (one or two lines), "steps": [1–4 strings], "callout"?: { "kind", "text" }, "factRefs", "notes"? }',
   instructions:
     '{ "kind": "instructions", "heading"?, "steps": [1–4 strings], "footnote"?, "factRefs", "notes"? }',
   discussion: '{ "kind": "discussion", "prompt", "footnote"?, "factRefs", "notes"? }',
@@ -224,16 +238,16 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
-    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
+    "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body is its explanation, then its example, in the facts' words, adding only what this slide's lines below ask for. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
-    "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
+    "For a `worked-example`, the question is the problem and the steps are its steps, word for word. Put fuller working in `notes`.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
@@ -268,8 +282,7 @@ export const generateSlidePrompt = {
         "Ask for a show of hands before revealing. Watch for pupils who imagine a gas as a crowd of particles pressed together. Ask: What would happen to the balloon if the particles inside were as close as in a liquid?",
     }),
     "",
-    "Example for a worked-example slide: five source steps compressed into four short lines, retaining the conclusion.",
-    "Source working: Split 84 into 80 and 4. Divide 80 by 4 to get 20. Divide 4 by 4 to get 1. Add 20 and 1 to get 21. Conclude that 84 divided by 4 is 21.",
+    "Example for a worked-example slide:",
     example({
       kind: "worked-example",
       heading: "Divide by partitioning",
@@ -315,7 +328,7 @@ export const generateSlidePrompt = {
     const misconceptions = ownMisconceptions(input);
     if (misconceptions.length > 0) {
       parts.push(
-        `Its misconception (${misconceptions.join(", ")}): end the body with one sentence on what some pupils think and why it is wrong.`,
+        `Its misconception (${misconceptions.join(", ")}): in \`notes\`, tell the teacher what some pupils think and why it is wrong.`,
       );
     }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));
@@ -342,7 +355,7 @@ export const generateSlidePrompt = {
       parts.push("", "Asked of pupils later in the lesson, on later slides (shown for reference):");
       for (const q of input.laterQuestions) parts.push(`  - ${q.stem} — answer: ${q.answer}`);
       parts.push(
-        "Teach here, within this slide's limits, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions.",
+        "Show here, from this slide's facts, what each answer rests on — the name, quotation, reason, example or step a pupil needs — without naming these questions.",
       );
     }
     parts.push("", `Answer with the JSON for a "${input.entry.kind}" slide.`);

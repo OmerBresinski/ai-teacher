@@ -50,12 +50,39 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * v4 (fit-lab, facts sized at source, 29 Sept 2026; `scratchpad/fit-first/PLAN.md` step A): the
+ * material is written at slide size, because the slide writer now shows it as given
+ * (`generate-slide` v31) and the outline gives each key idea a slide of its own. A key idea is one
+ * slide: the statement is the heading (the heading's cap), the explanation one or two sentences,
+ * the example one. A worked example is one slide: a problem of one or two lines and at most four
+ * steps of one line each (`SPEC_LIMITS.step`), with a problem chosen small enough to finish in
+ * them. The plants diag measured four one-line steps fitting every theme and two wrapping steps
+ * overflowing every theme. Schema caps unchanged except at most four steps. The user turn says how
+ * many key ideas the objective has slides for (`keyIdeaRoom`): in round 1, three objectives in a
+ * ten-slide deck wrote five or six slide-sized ideas, and the outline left ideas, worked examples
+ * and the questions on them unplaced.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
   /** The starter's retrieval questions (C1): earlier learning, not taught here. Optional. */
   retrieval?: Retrieval | undefined;
+  /**
+   * v4: how many key ideas this objective has slides for (`keyIdeaRoom`); each takes a slide of its
+   * own. Absent: one or two, as v3.
+   */
+  keyIdeas?: 1 | 2 | undefined;
 };
+
+/**
+ * v4: one key idea per objective when the deck has no room to give each objective two teaching
+ * slides: the slide count less title, objectives, starter and exit, and one practise or worked
+ * example slide per objective, must hold two per objective.
+ */
+export function keyIdeaRoom(slideCount: number, objectiveCount: number): 1 | 2 {
+  const room = slideCount - 4 - objectiveCount;
+  return room >= 2 * objectiveCount ? 2 : 1;
+}
 
 /** A text slot as `specs.ts` builds one; the soft build drops the cap only (see v14 `lineFor`). */
 const lineFor =
@@ -112,7 +139,7 @@ const vocabularySchema = (line: Line) =>
 const workedExampleSchema = (line: Line, objectiveCount?: number) =>
   z.object({
     problem: line(SPEC_LIMITS.body),
-    steps: z.array(line(SPEC_LIMITS.item)).min(1).max(6),
+    steps: z.array(line(SPEC_LIMITS.item)).min(1).max(4),
     answer: line(SPEC_LIMITS.answer),
     objectiveRefs: z.array(objectiveOrdinalSchema(objectiveCount)).min(1),
     misconceptionRef: MisconceptionOrdinalSchema.optional(),
@@ -177,15 +204,23 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 /** The house rules less the `factRefs` line (no ids here) and the language-only pitch line (v14). */
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
-/** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+/**
+ * v4: a key idea's explanation and example together are one teaching slide's body: an explain slide
+ * holds about 50 words across the measure (`COMPOSITION_BUDGETS`, lead 18 + body 32), about 300
+ * characters. Round 2 without these numbers: "one or two sentences" came back as four (62 and 80+
+ * words on one slide). The schema keeps `SPEC_LIMITS.body` as the safety cap, so no retry.
+ */
+const KEY_IDEA_EXPLANATION = 180;
+const KEY_IDEA_EXAMPLE = 120;
+/** v14's limits line, the question fields removed; v4: the slide-shown fields at the slide's own caps. */
+const LENGTH_LIMITS = `Length limits (characters): statement ${SPEC_LIMITS.heading}; problem ${SPEC_LIMITS.question}; step ${SPEC_LIMITS.step}; explanation ${KEY_IDEA_EXPLANATION}; example ${KEY_IDEA_EXAMPLE}; belief ${SPEC_LIMITS.item}; correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v3",
+  version: "plan-teach-objective.v4",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -193,13 +228,14 @@ export const planTeachObjectivePrompt = {
     "Rules:",
     TEACH_HOUSE_RULES,
     "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
-    "Write one or two key ideas, one misconception and up to two vocabulary terms.",
+    "Write the key ideas the brief's key-ideas line asks for, one misconception and up to two vocabulary terms.",
+    "Each key idea is what a teacher shows on one slide, as you write it: the statement is the slide's heading; the explanation, one or two sentences, gives the reason it holds; the example is one sentence.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
-    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form, shown on one slide as you write it: at most four steps, each one short line of working. Choose a problem small enough to finish in those steps; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,
     "",
@@ -219,6 +255,7 @@ export const planTeachObjectivePrompt = {
       "",
       `Write what the lesson teaches for objective ${input.target}: ${target?.text ?? ""}`,
     );
+    parts.push(input.keyIdeas === 1 ? "Key ideas: one." : "Key ideas: one or two.");
     const workedExample = workedExampleLine(input);
     if (workedExample) parts.push(workedExample);
     if (input.curriculum) parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text);

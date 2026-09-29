@@ -155,10 +155,11 @@ const VOCABULARY_TERMS_MAX = 6;
 /** Unshown terms a content slide may carry alongside its key idea. */
 const TERMS_PER_CONTENT = 2;
 /**
- * Key ideas one content slide carries at most: `generate-slide` (v22) gives a content slide that
- * names two key ideas a body of up to 60 words, the first idea in one sentence, then the second.
+ * Key ideas one content slide carries at most. Was 2 (`generate-slide` v22, a 60-word two-idea
+ * body). Fit-lab (29 Sept 2026): `plan-teach-objective` v4 writes each key idea as one slide's
+ * worth and `generate-slide` v31 shows it as written, so a slide carries one.
  */
-export const KEY_IDEAS_PER_CONTENT = 2;
+export const KEY_IDEAS_PER_CONTENT = 1;
 /** The longest question stem a shared practise slide takes: four have to fit on one slide. */
 const SHARED_STEM_MAX = 120;
 /** Objectives one shared practise slide covers at most: an `instructions` slide holds 1–4 steps. */

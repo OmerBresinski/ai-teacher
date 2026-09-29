@@ -19,6 +19,7 @@ import {
   type QuestionSetUse,
 } from "../prompts/plan-question-set";
 import {
+  keyIdeaRoom,
   type PlanTeachObjectiveInput,
   type PlanTeachObjectiveOutput,
   planTeachObjectiveOutputSchemaFor,
@@ -546,6 +547,7 @@ export async function runWaves(
         priorKnowledge: input.priorKnowledge,
         curriculum: input.curriculum,
         ...retrievalInput(input),
+        keyIdeas: keyIdeaRoom(input.slideCount, objectives.length),
       };
       deps.logger.info({ stage: "plan", call: "teach", target, cls }, "plan call");
       let taught: PlanTeachObjectiveOutput;

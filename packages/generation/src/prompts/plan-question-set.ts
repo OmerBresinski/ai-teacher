@@ -272,6 +272,8 @@ export const QUESTION_SET_SHAPE_SKETCH =
 const EXIT_MC_STEM = 100;
 /** Four options share what the stem leaves of the line, less the letters and separators (16). */
 const EXIT_OPTION = Math.floor((MC_LINE_MAX - EXIT_MC_STEM - 16) / 4 / 5) * 5;
+/** v8: a slide question's stem, two lines of a question slide's heading. */
+const SLIDE_STEM = 120;
 export const EXIT_LINE = `Each is one line of the exit quiz: either multiple choice, with a stem of at most ${EXIT_MC_STEM} characters and the answer and each distractor at most ${EXIT_OPTION}; or "forms" ["open-response"] with no distractors and a stem of at most ${LINE_MAX} characters. These caps replace the general length limits.`;
 
 /*
@@ -304,8 +306,15 @@ export const EXIT_LINE = `Each is one line of the exit quiz: either multiple cho
  * items (the objectives call writes them; plan-objectives v21) or one-offs with no shared shape, so
  * nothing else is added here.
  */
+/**
+ * v8 (fit-lab, facts sized at source, 29 Sept 2026): a slide question is written at the size its
+ * slide shows. Round 4 of the lab had 30–37-word open-response and multiple-choice stems (the
+ * general 200-character cap) overflowing their slides; the exit line already sized exit stems.
+ */
+export const SLIDE_LINE = `Each is shown as a question slide or one line of a quick check: a stem of at most ${SLIDE_STEM} characters.`;
+
 export const planQuestionSetPrompt = {
-  version: "plan-question-set.v7",
+  version: "plan-question-set.v8",
   system: [
     "You are an experienced UK teacher writing the questions for one objective of a lesson, for one use, from the text its slides will teach.",
     "",
@@ -344,6 +353,7 @@ export const planQuestionSetPrompt = {
     const noun = input.count === 1 ? "question" : "questions";
     parts.push("", `Write ${input.count} "${input.use}" ${noun}.`, tierLine(input.count));
     if (input.use === "exit") parts.push(EXIT_LINE);
+    if (input.use === "slide") parts.push(SLIDE_LINE);
     return parts.join("\n");
   },
 } as const;
