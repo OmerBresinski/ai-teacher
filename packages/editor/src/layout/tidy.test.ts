@@ -49,6 +49,51 @@ function lessonWith(elements: TextElement[]): Lesson {
 }
 
 describe("tidySlide", () => {
+  test("a divider struck through a heading that grew two lines is flagged, then moved below it", () => {
+    const long = "A heading that runs well past a single line of the slide at the projector size";
+    // Stored at the height its two lines need, so nothing overflows: only the rule is wrong.
+    const heading = text("h", 43, 20, long, "heading");
+    heading.h = ruler({
+      doc: heading.doc,
+      width: heading.w,
+      style: heading.style,
+      preset: "heading",
+      inset: 0,
+      chrome: 0,
+    });
+    const mid = heading.y + heading.h / 2;
+    const rule: ShapeElement = {
+      id: "rule",
+      type: "shape",
+      shape: "rect",
+      x: 58,
+      y: mid,
+      w: 844,
+      h: 1,
+    };
+    const body = text("b", heading.y + heading.h + 20, 0, "Body copy.");
+    body.h = ruler({
+      doc: body.doc,
+      width: body.w,
+      style: body.style,
+      preset: "body",
+      inset: 0,
+      chrome: 0,
+    });
+    const lesson = lessonWith([heading, body]);
+    const slide = lesson.slides[0];
+    if (!slide) throw new Error("seed");
+    slide.elements = [slide.elements[0] as SlideElement, rule, slide.elements[1] as SlideElement];
+    // Nothing else is wrong on the slide, so the fit migration tidies it only if the rule counts.
+    expect(lintSlide(slide, ruler).overlaps).toEqual([["h", "rule"]]);
+    const out = tidySlide(lesson, slide.id, ruler);
+    const els = out.lesson.slides[0]?.elements ?? [];
+    const h = els.find((el) => el.id === "h");
+    const r = els.find((el) => el.id === "rule");
+    expect(h && r && r.y >= h.y + h.h - 4).toBe(true);
+    expect(lintSlide(out.lesson.slides[0] as never, ruler).overlaps).toEqual([]);
+  });
+
   test("is idempotent: a second tidy returns the same lesson object and changed: false", () => {
     const lesson = lessonWith([
       text("a", 43, 60, "Heading", "heading"),
