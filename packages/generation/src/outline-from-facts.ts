@@ -20,6 +20,12 @@ import {
   STARTER_MAX,
   sameQuestion,
 } from "./planner/coded-slides";
+import {
+  type CalloutText,
+  contentProjection,
+  fitsPlanned,
+  workedExampleProjection,
+} from "./planner/slide-capacity";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
 import {
@@ -290,6 +296,42 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     return true;
   };
 
+  /*
+   * Fit first (29 Sep): a slide's material is measured on the real layout as it is planned
+   * (`slide-capacity.ts`), never counted. Two key ideas share a slide only when both fit it; the
+   * second then waits for a slide of its own, which P1b and the floors give it ahead of the
+   * shape's extras (a key idea taught outranks them), and a gap names it when none is left. A
+   * callout is planned only where it fits beside the words, and a worked example that fits is
+   * picked over one that does not.
+   */
+  const ideaTexts = (ks: readonly number[]) =>
+    ks.map((k) => ({
+      statement: facts.keyIdeas[k]?.statement ?? "",
+      explanation: facts.keyIdeas[k]?.explanation ?? "",
+    }));
+  const ideasFit = (ks: readonly number[], callout?: CalloutText) =>
+    fitsPlanned(contentProjection(ideaTexts(ks), callout));
+  /**
+   * Up to `KEY_IDEAS_PER_CONTENT` of `ks`: both when they fit one slide together, else the first
+   * alone when the deck keeps a slot for the second (`later` slots are still owed, the practice
+   * reserve counted). With no slot left the pair stays and a gap says it overruns: leaving a key
+   * idea off would also hold back every question on its objective.
+   */
+  const fitting = (ks: number[], later = 0) => {
+    if (ks.length < 2 || ideasFit(ks)) return ks;
+    if (budget - 1 - later > reserve(true)) return ks.slice(0, 1);
+    gap(
+      `Key ideas ${ks.map((k) => k + 1).join(" and ")} share a slide that does not hold both on every theme: a ${slideCount}-slide deck has no room to give each its own.`,
+    );
+    return ks;
+  };
+  const exampleFits = (x: number) => {
+    const example = facts.workedExamples[x];
+    return (
+      example !== undefined && fitsPlanned(workedExampleProjection(example.problem, example.steps))
+    );
+  };
+
   const contentSlot = (o: number, ks: number[]): Slot => ({
     kind: "content",
     phase: "explain",
@@ -527,7 +569,14 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   };
   const pickWorkedExample = (among: number[]) => {
     const free = among.filter((x) => !used.workedExamples.has(x));
-    return free.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? free[0];
+    const fits = free.filter(exampleFits);
+    const pool = fits.length > 0 ? fits : free;
+    const x = pool.find((y) => facts.workedExamples[y]?.misconceptionRef !== undefined) ?? pool[0];
+    if (x !== undefined && fits.length === 0)
+      gap(
+        `Worked example ${x + 1} is longer than one slide holds on every theme, and no other worked example for its objective fits.`,
+      );
+    return x;
   };
   /**
    * The next key ideas to teach: the objective with the fewest content slides that still has one,
@@ -538,7 +587,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       .filter((candidate) => unusedKeyIdeas(candidate).length > 0)
       .sort((a, b) => contentSlidesOf(a) - contentSlidesOf(b) || a - b)[0];
     if (o === undefined) return undefined;
-    return [o, unusedKeyIdeas(o).slice(0, single ? 1 : KEY_IDEAS_PER_CONTENT)];
+    return [o, fitting(unusedKeyIdeas(o).slice(0, single ? 1 : KEY_IDEAS_PER_CONTENT))];
   };
   /** A content slide carrying two key ideas, the objective with the fewest content slides first. */
   const pairedSlot = () =>
@@ -552,6 +601,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
    * slide split in two. `none` when every key idea already has a slide to itself.
    */
   const teachMore = (): "placed" | "full" | "none" => {
+    // Never the slot kept for practice: with fit first more key ideas take a slide of their own.
+    if (budget <= practiseReserve()) return nextKeyIdeas(true) || pairedSlot() ? "full" : "none";
     const next = nextKeyIdeas(true);
     if (next !== undefined) return place(contentSlot(next[0], next[1])) ? "placed" : "full";
     const paired = pairedSlot();
@@ -629,7 +680,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // content slide; the objective's key ideas then went untaught, so it no longer does.)
   for (const o of all) {
     if (taught(o)) continue;
-    const ks = unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT);
+    const owed = all.filter((p) => p > o && !taught(p) && keyIdeasOf(p).length > 0).length;
+    const ks = fitting(unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT), owed);
     if (ks.length > 0) place(contentSlot(o, ks));
   }
   // P1b: every key idea taught — an objective with more than one slide's worth gets another,
@@ -641,6 +693,23 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     next = nextKeyIdeas()
   ) {
     place(contentSlot(next[0], next[1]));
+  }
+  // Fit first: a key idea split off for want of room that then found no slot of its own goes back
+  // beside its objective's single idea (it overruns, the last resort) rather than off the lesson.
+  for (const k of facts.keyIdeas.keys()) {
+    if (used.keyIdeas.has(k)) continue;
+    const host = slots.find(
+      (s) =>
+        s.kind === "content" &&
+        s.keyIdeas?.length === 1 &&
+        refIndices(facts.keyIdeas[k]?.objectiveRefs).includes(s.primary),
+    );
+    if (!host) continue;
+    host.keyIdeas = [...(host.keyIdeas ?? []), k];
+    used.keyIdeas.add(k);
+    gap(
+      `Key ideas ${(host.keyIdeas ?? []).map((j) => j + 1).join(" and ")} share a slide that does not hold both on every theme: a ${slideCount}-slide deck has no room to give each its own.`,
+    );
   }
   // Four objectives in a six-slide deck: the budget runs out inside P1. Said per objective, so
   // the plan screen can name the one that is not taught rather than the teacher finding out.
@@ -1481,26 +1550,42 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
+        // The first callout that fits beside the words, else none: a watch-out left off stays
+        // for a later slide (a discussion or a true/false confronts it).
         const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
-        if (watch !== undefined) {
-          usedMisconceptions.add(watch);
-          callouts[position] = {
-            kind: "watch-out",
-            ref: { type: "misconception", index: watch },
-            text: facts.misconceptions[watch]?.belief ?? "",
-          };
-        } else if (terms.length > 0) {
-          callouts[position] = {
-            kind: "key-words",
-            ref: { type: "vocabulary", index: terms[0] ?? 0 },
-            text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
-          };
-        } else if (idea) {
-          callouts[position] = {
-            kind: "example",
-            ref: { type: "keyIdea", index: k },
-            text: idea.example,
-          };
+        const candidates: Callout[] = [
+          ...(watch === undefined
+            ? []
+            : [
+                {
+                  kind: "watch-out" as const,
+                  ref: { type: "misconception" as const, index: watch },
+                  text: facts.misconceptions[watch]?.belief ?? "",
+                },
+              ]),
+          ...(terms.length > 0
+            ? [
+                {
+                  kind: "key-words" as const,
+                  ref: { type: "vocabulary" as const, index: terms[0] ?? 0 },
+                  text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
+                },
+              ]
+            : []),
+          ...(idea && watch === undefined && terms.length === 0
+            ? [
+                {
+                  kind: "example" as const,
+                  ref: { type: "keyIdea" as const, index: k },
+                  text: idea.example,
+                },
+              ]
+            : []),
+        ];
+        const chosen = candidates.find((c) => ideasFit(ks, { kind: c.kind, text: c.text }));
+        if (chosen) {
+          if (chosen.kind === "watch-out") usedMisconceptions.add(chosen.ref.index);
+          callouts[position] = chosen;
         }
         break;
       }
@@ -1509,17 +1594,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const example = facts.workedExamples[x];
         refs.push({ type: "workedExample", index: x });
         const m = example?.misconceptionRef?.index;
-        if (m !== undefined) {
-          refs.push({ type: "misconception", index: m });
-          if (!usedMisconceptions.has(m)) {
-            usedMisconceptions.add(m);
-            callouts[position] = {
-              kind: "watch-out",
-              ref: { type: "misconception", index: m },
-              text: facts.misconceptions[m]?.belief ?? "",
-            };
-          }
-        }
+        // No callout: the working card has no room for one on any theme and the recipe leaves
+        // it off (`applyCallout`), so none is planned; the misconception is in the refs.
+        if (m !== undefined) refs.push({ type: "misconception", index: m });
         adds = `Works through: ${example?.problem ?? ""}`;
         break;
       }
