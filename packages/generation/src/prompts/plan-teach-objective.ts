@@ -206,7 +206,7 @@ export const planTeachObjectivePrompt = {
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
-    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form, on one slide: the problem is what pupils read, and each step is one short line of working as written on the board, at most four, the teacher saying why each step follows; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form, on one slide: the problem is one short line pupils read, and each step is the working only, as written on the board (a calculation or a short phrase, not a sentence), at most four, the teacher saying why each step follows; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,
     "",
