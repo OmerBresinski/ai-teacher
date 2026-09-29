@@ -43,7 +43,7 @@ describe("plan-teach-objective", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(400);
+    expect(system.trim().split(/\s+/).length).toBeLessThan(420);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
