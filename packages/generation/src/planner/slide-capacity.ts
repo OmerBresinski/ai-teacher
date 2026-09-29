@@ -19,18 +19,20 @@ import {
 
 const META = { promptVersion: "fit", model: "fit", at: "1970-01-01T00:00:00.000Z" };
 
-/** The facts a content slide shows: each key idea's statement and explanation. */
-export type IdeaText = { statement: string; explanation: string };
+/** The facts a content slide shows: each key idea's statement, explanation and example. */
+export type IdeaText = { statement: string; explanation: string; example?: string };
 export type CalloutText = { kind: "watch-out" | "key-words" | "example"; text: string };
 
 /**
  * A content slide as the writer builds it: a heading the length of the first idea's statement,
- * then one paragraph per idea, its explanation. The writer's body runs to about the explanations'
- * length (lab decks, 29 Sep: 350 characters written for 302 of explanation), the example woven in.
+ * then one paragraph per idea, its explanation and its example (fit-lab r1, 29 Sep: a one-idea
+ * body came back at 394 characters, explanation and example both written out).
  */
 export function contentProjection(ideas: readonly IdeaText[], callout?: CalloutText): SlideSpec {
   const heading = ideas[0]?.statement.trim() ?? "";
-  const body = ideas.map((k) => k.explanation.trim()).join("\n\n");
+  const body = ideas
+    .map((k) => [k.explanation.trim(), k.example?.trim() ?? ""].filter(Boolean).join(" "))
+    .join("\n\n");
   return {
     kind: "content",
     factRefs: [],

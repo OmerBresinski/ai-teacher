@@ -247,7 +247,11 @@ describe("outlineFromFacts over the five lab briefs", () => {
       const refs = result.outlineFactRefs.find((r) => r.index === Number(position))?.factRefs ?? [];
       const ideas = refs.flatMap((r) => (r.type === "keyIdea" ? [facts.keyIdeas[r.index]] : []));
       const spec = contentProjection(
-        ideas.map((k) => ({ statement: k?.statement ?? "", explanation: k?.explanation ?? "" })),
+        ideas.map((k) => ({
+          statement: k?.statement ?? "",
+          explanation: k?.explanation ?? "",
+          example: k?.example ?? "",
+        })),
         { kind: callout.kind, text: callout.text },
       );
       expect(fitsPlanned(spec)).toBe(true);

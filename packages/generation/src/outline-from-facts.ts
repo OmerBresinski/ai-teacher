@@ -308,6 +308,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     ks.map((k) => ({
       statement: facts.keyIdeas[k]?.statement ?? "",
       explanation: facts.keyIdeas[k]?.explanation ?? "",
+      example: facts.keyIdeas[k]?.example ?? "",
     }));
   const ideasFit = (ks: readonly number[], callout?: CalloutText) =>
     fitsPlanned(contentProjection(ideaTexts(ks), callout));

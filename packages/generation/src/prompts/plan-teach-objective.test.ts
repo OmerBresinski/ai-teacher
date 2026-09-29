@@ -43,7 +43,7 @@ describe("plan-teach-objective", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    expect(system.trim().split(/\s+/).length).toBeLessThan(350); // v4 (fit first): two slide-grain clauses
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -60,9 +60,9 @@ describe("plan-teach-objective", () => {
       expect(v14).toContain(kept);
       expect(system).toContain(kept);
     }
-    // v3 (l6j): the worked-example rule departs from v14 by "taken to its finished form".
+    // v3 (l6j): the worked-example rule departs from v14 by "taken to its finished form"; v4 sizes its steps to one slide.
     expect(system).toContain(
-      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its steps fit one slide: up to four short lines. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     );
     // v2 (audit B1): prior knowledge is read from the audience block.
     expect(system).toContain(
