@@ -1,5 +1,6 @@
 import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
+import { FULL_SLIDES_BLOCK } from "./full-slides";
 import {
   carriesWorkedExample,
   type PlanFactsObjectiveInput,
@@ -50,6 +51,14 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * v4 (lab fit-calibrate-by-example, 29 Sept 2026; `scratchpad/fit-first/PLAN.md`): the slides
+ * show this call's key ideas and worked example as written, but the call was sized by character
+ * caps (explanation and example 400 each, steps 160, up to six), so a content slide was handed far
+ * more than it holds and the writer compressed. The size now comes from three full slides
+ * (`full-slides.ts`, measured at capacity on every theme) with one sentence tying each field to
+ * its place on them; the caps for explanation, example, problem and step leave the prompt (the
+ * schema keeps them as walls). No per-field numbers replace them.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -178,14 +187,21 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): statement and belief ${SPEC_LIMITS.item}; correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+
+/** v4: what one slide holds, shown rather than counted (`full-slides.ts`). */
+const SLIDE_SIZE = [
+  "Each key idea and worked example is shown to the class on a slide, as you write it. These slides are full: each holds as much as one slide can.",
+  FULL_SLIDES_BLOCK,
+  "Write each key idea so its statement is the heading and its explanation and example together are the text of a slide like these; write the worked example so its problem and steps, one line each, fill a slide like the last one.",
+].join("\n");
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v3",
+  version: "plan-teach-objective.v4",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -202,6 +218,8 @@ export const planTeachObjectivePrompt = {
     'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,
+    "",
+    SLIDE_SIZE,
     "",
     "JSON, in this shape:",
     TEACH_SHAPE_SKETCH,

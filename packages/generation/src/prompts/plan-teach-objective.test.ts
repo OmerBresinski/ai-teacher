@@ -42,8 +42,8 @@ describe("plan-teach-objective", () => {
   test("the system text is v14's teach rules and nothing about questions", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
-    // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    // v14 is 487 words; the questions took their rules with them. v4 adds the full slides (~270 words). The alarm follows the count.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(600);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -98,8 +98,10 @@ describe("plan-teach-objective", () => {
       expect(system.toLowerCase()).not.toContain(gone);
     }
     expect(system).toContain(
-      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
+      `Length limits (characters): statement and belief ${SPEC_LIMITS.item}; correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
     );
+    // v4: explanation, example, problem and step are sized by the full slides, not a number.
+    expect(system).toContain("These slides are full: each holds as much as one slide can.");
     // The sketch is v14's without its `questions` list; `misconceptionRef` stays out of it (v7).
     expect(TEACH_SHAPE_SKETCH).not.toContain("questions");
     expect(TEACH_SHAPE_SKETCH).not.toContain("misconceptionRef");

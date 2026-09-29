@@ -219,8 +219,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v3",
-    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+    version: "plan-teach-objective.v4",
+    hash: "d1477cea88a038eab7f7daac503d3630432e7dac487157a025c9512518bed089",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -235,8 +235,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v30",
-    hash: "34723eafd7ccf5c5a94b0bfec02939dff407b96bb96d0a832669c7401ea9d319",
+    version: "generate-slide.v31",
+    hash: "48acca6bc27210a922fcb582911eafc0ab9af3c16582bd95c65d6ed4d91a2505",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -326,8 +326,9 @@ describe("prompt versions", () => {
     const budgets = {
       // v19 was 990 words; v20 (minimalism rubric, 23 Sep 2026) is 956. v22 (+15: the two-key-idea
       // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
-      // order, luna-direct FM3) is 979.
-      "generate-slide": 980,
+      // order, luna-direct FM3) is 979. v31 (+~130: the full slides shown for size, lab
+      // fit-calibrate-by-example) replaces word and character numbers with three measured slides.
+      "generate-slide": 1140,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-
@@ -774,13 +775,13 @@ describe("prompt versions", () => {
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
     const system = PROMPTS["generate-slide"].system;
-    expect(system).toContain("merge neighbouring steps");
-    expect(system).toContain("never drop it");
+    // v31: the steps arrive at slide size (teach v4) and are shown as written, conclusion included.
+    expect(system).toContain("show the facts' steps in order, one line each, conclusion included");
     expect(system).toContain("not already on the slide");
     // TEACH-246: footnote is for pupils; teacher text belongs in notes.
     expect(system).toContain("`footnote` is one short line pupils read");
     // TEACH-247: steps are capped to what the working card holds.
-    expect(system).toContain("each one short line of about 56 characters");
+    expect(system).toContain("each one short line]");
     // TEACH-255: the limits are aims; the schema ceiling is higher and not advertised.
     expect(system).toContain("option ≤ 80");
     expect(system).toContain("term ≤ 60");
