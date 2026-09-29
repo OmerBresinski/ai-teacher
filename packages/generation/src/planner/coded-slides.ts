@@ -254,18 +254,20 @@ export function misconceptionLine(m: Pick<Misconception, "belief" | "correction"
 
 export const fitsLine = (line: Line) => line.text.length <= (line.mc ? MC_LINE_MAX : LINE_MAX);
 
-/** The lines a set keeps: each fits, at most `max`, within `SET_CHARS` together, in order. */
+/**
+ * The lines a set keeps, in order: each within its line cap, at most `max`, and each only while
+ * the set with its answers still fits one slide on every theme (`fitsSet`, slot-first packing).
+ * A line that does not fit is passed over for a later one; it is left off, never shortened.
+ */
 export function keptLines<T extends Line>(
   lines: readonly T[],
   max: number,
-  chars_ = SET_CHARS,
+  kind: "starter" | "instructions" = "instructions",
 ): T[] {
   const kept: T[] = [];
-  let chars = 0;
   for (const line of lines) {
-    if (!fitsLine(line) || kept.length >= max || chars + line.text.length > chars_) continue;
-    kept.push(line);
-    chars += line.text.length;
+    if (!fitsLine(line) || kept.length >= max) continue;
+    if (fitsSet(kind, [...kept, line])) kept.push(line);
   }
   return kept;
 }
@@ -316,7 +318,9 @@ export function codedSetSpec(
   // knowledge retrieved); the exit quiz is code's whenever it has a line.
   if ((entry.kind !== "exit-ticket" && asked === 0) || lines.length === 0) return undefined;
   const kept =
-    entry.kind === "exit-ticket" ? exitLines(lines) : keptLines(lines, coded.max, SET_CHARS);
+    entry.kind === "exit-ticket"
+      ? exitLines(lines)
+      : keptLines(lines, coded.max, entry.kind === "starter" ? "starter" : "instructions");
   if (kept.length === 0) return undefined;
   const answers = kept.map((l) => l.answer);
   const footnote = answersLine(answers);
@@ -404,13 +408,25 @@ function laidOutFits(slide: Slide, theme: Theme): boolean | undefined {
  * Every theme, because a teacher can change the look after the lesson is written.
  */
 export function fitsExitTicket(lines: readonly Line[]): boolean {
-  const spec: SlideSpec = {
-    kind: "exit-ticket",
+  return fitsSet("exit-ticket", lines);
+}
+
+/**
+ * Slot-first packing (fit lab): any set the lab prints in code — a starter, a check, the exit
+ * ticket — fits one slide with its answers on every theme, measured as the exit ticket is.
+ */
+export function fitsSet(
+  kind: "starter" | "instructions" | "exit-ticket",
+  lines: readonly Line[],
+): boolean {
+  const items = lines.map((l) => l.text);
+  const base = {
     factRefs: [],
-    heading: "Exit ticket",
-    items: lines.map((l) => l.text),
+    heading: CODED[kind]?.heading ?? "",
     footnote: answersLine(lines.map((l) => l.answer)),
   };
+  const spec: SlideSpec =
+    kind === "instructions" ? { kind, ...base, steps: items } : { kind, ...base, items };
   return THEMES.every((theme) => {
     const slide = materialiseSlide(spec, theme.id, EXIT_META);
     const laid = laidOutFits(slide, theme);

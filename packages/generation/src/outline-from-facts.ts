@@ -20,6 +20,7 @@ import {
   STARTER_MAX,
   sameQuestion,
 } from "./planner/coded-slides";
+import { contentFits, type IdeaText, type TermText, workedExampleFits } from "./planner/slide-room";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
 import {
@@ -183,6 +184,8 @@ type Slot = {
   objectives: number[];
   /** A content slide's key ideas, one objective's, at most `KEY_IDEAS_PER_CONTENT`. */
   keyIdeas?: number[];
+  /** Key ideas on this slide whose example has no room beside the explanation: it goes in the notes. */
+  bare?: number[];
   workedExample?: number;
   question?: number;
   /** The shared practise slide's questions, one per objective it covers (ruling 81). */
@@ -208,6 +211,26 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     if (!gaps.includes(sentence)) gaps.push(sentence);
   };
   const nth = (o: number) => `Objective ${o + 1}`;
+
+  const ideaText = (k: number): IdeaText => {
+    const idea = facts.keyIdeas[k];
+    return {
+      statement: idea?.statement ?? "",
+      explanation: idea?.explanation ?? "",
+      example: idea?.example ?? "",
+    };
+  };
+  const termText = (t: number): TermText => ({
+    term: facts.vocabulary[t]?.term ?? "",
+    definition: facts.vocabulary[t]?.definition ?? "",
+  });
+  const exampleFits = (x: number) => {
+    const example = facts.workedExamples[x];
+    return (
+      example !== undefined &&
+      workedExampleFits(example.problem, example.steps, example.answer ?? "")
+    );
+  };
 
   const refIndices = (refs: readonly OrdinalRef[] | undefined) =>
     dedupe((refs ?? []).map((r) => r.index));
@@ -290,15 +313,40 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     return true;
   };
 
-  const contentSlot = (o: number, ks: number[]): Slot => ({
-    kind: "content",
-    phase: "explain",
-    primary: o,
-    objectives: dedupe(ks.flatMap((k) => refIndices(facts.keyIdeas[k]?.objectiveRefs))),
-    keyIdeas: ks,
-    rank: [1, o, 0, ks[0] ?? 0],
-  });
-  const workedExampleSlot = (o: number, x: number): Slot => ({
+  // Slot-first packing (`planner/slide-room.ts`): a slot takes its next key idea only while the
+  // slide projected from the facts still fits; the one left over waits for a slot of its own.
+  const contentSlot = (o: number, wanted: number[]): Slot => {
+    const ks: number[] = [];
+    for (const k of wanted) {
+      if (ks.length === 0 || contentFits([...ks, k].map(ideaText))) ks.push(k);
+    }
+    const first = ks[0] ?? 0;
+    const bare = ks.length === 1 && !contentFits([ideaText(first)]) ? [first] : [];
+    if (bare.length > 0) {
+      gap(
+        `Key idea ${first + 1}'s example has no room beside its explanation; it goes in the notes.`,
+      );
+      if (!contentFits([{ ...ideaText(first), example: "" }])) {
+        gap(`Key idea ${first + 1}'s explanation needs more room than one slide has.`);
+      }
+    }
+    return {
+      ...(bare.length > 0 ? { bare } : {}),
+      kind: "content",
+      phase: "explain",
+      primary: o,
+      objectives: dedupe(ks.flatMap((k) => refIndices(facts.keyIdeas[k]?.objectiveRefs))),
+      keyIdeas: ks,
+      rank: [1, o, 0, first],
+    };
+  };
+  const workedExampleSlot = (o: number, x: number): Slot => {
+    if (!exampleFits(x)) {
+      gap(`Worked example ${x + 1}'s problem and steps need more room than one slide has.`);
+    }
+    return workedExampleSlotOf(o, x);
+  };
+  const workedExampleSlotOf = (o: number, x: number): Slot => ({
     kind: "worked-example",
     phase: "explain",
     primary: o,
@@ -527,7 +575,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   };
   const pickWorkedExample = (among: number[]) => {
     const free = among.filter((x) => !used.workedExamples.has(x));
-    return free.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? free[0];
+    const fitting = free.filter(exampleFits);
+    const pool = fitting.length > 0 ? fitting : free;
+    return pool.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? pool[0];
   };
   /**
    * The next key ideas to teach: the objective with the fewest content slides that still has one,
@@ -1467,10 +1517,56 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const k = ks[0] ?? 0;
         const idea = facts.keyIdeas[k];
         refs.push(...ks.map((index): OrdinalRef => ({ type: "keyIdea", index })));
-        const terms = facts.vocabulary
+        const offered = facts.vocabulary
           .flatMap((v, t) => (names(v.objectiveRefs, slot.primary) ? [t] : []))
           .filter((t) => !shownTerms.has(t) && !handedTerms.has(t))
           .slice(0, TERMS_PER_CONTENT);
+        // Packed after the key ideas: the first callout that fits beside them (a watch-out, else
+        // the key words, else the example), then each term whose definition still fits. What is
+        // left off is named in a gap: a watch-out goes to the notes, a term to the vocabulary slide.
+        const ideas = ks.map((j) =>
+          slot.bare?.includes(j) ? { ...ideaText(j), example: "" } : ideaText(j),
+        );
+        const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
+        const candidates: Callout[] = [];
+        if (watch !== undefined) {
+          candidates.push({
+            kind: "watch-out",
+            ref: { type: "misconception", index: watch },
+            text: facts.misconceptions[watch]?.belief ?? "",
+          });
+        }
+        if (offered.length > 0) {
+          candidates.push({
+            kind: "key-words",
+            ref: { type: "vocabulary", index: offered[0] ?? 0 },
+            text: offered.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
+          });
+        }
+        if (idea)
+          candidates.push({
+            kind: "example",
+            ref: { type: "keyIdea", index: k },
+            text: idea.example,
+          });
+        const chosen = candidates.find((c) =>
+          contentFits(ideas, c.kind === "key-words" ? offered.map(termText) : [], c),
+        );
+        if (watch !== undefined && chosen?.kind !== "watch-out") {
+          gap(
+            `Slide ${position + 1} has no room for its watch-out callout; the misconception goes in the notes.`,
+          );
+        }
+        const terms: number[] = [];
+        for (const t of offered) {
+          if (contentFits(ideas, [...terms, t].map(termText), chosen)) terms.push(t);
+        }
+        if (chosen?.kind === "key-words" && terms.length === 0) terms.push(...offered);
+        if (terms.length < offered.length) {
+          gap(
+            `Slide ${position + 1} has no room to define every key word; the rest go to the vocabulary slide or the notes.`,
+          );
+        }
         for (const t of terms) {
           handedTerms.add(t);
           refs.push({ type: "vocabulary", index: t });
@@ -1481,26 +1577,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
-        const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
-        if (watch !== undefined) {
-          usedMisconceptions.add(watch);
-          callouts[position] = {
-            kind: "watch-out",
-            ref: { type: "misconception", index: watch },
-            text: facts.misconceptions[watch]?.belief ?? "",
-          };
-        } else if (terms.length > 0) {
-          callouts[position] = {
-            kind: "key-words",
-            ref: { type: "vocabulary", index: terms[0] ?? 0 },
-            text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
-          };
-        } else if (idea) {
-          callouts[position] = {
-            kind: "example",
-            ref: { type: "keyIdea", index: k },
-            text: idea.example,
-          };
+        if (slot.bare?.length) {
+          avoids = `Show the key idea's example on the slide; it goes in the notes.${avoids ? ` ${avoids}` : ""}`;
+        }
+        if (chosen) {
+          if (chosen.kind === "watch-out") usedMisconceptions.add(chosen.ref.index);
+          callouts[position] = chosen;
         }
         break;
       }
@@ -1511,14 +1593,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const m = example?.misconceptionRef?.index;
         if (m !== undefined) {
           refs.push({ type: "misconception", index: m });
-          if (!usedMisconceptions.has(m)) {
-            usedMisconceptions.add(m);
-            callouts[position] = {
-              kind: "watch-out",
-              ref: { type: "misconception", index: m },
-              text: facts.misconceptions[m]?.belief ?? "",
-            };
-          }
+          // The layout leaves a worked example's callout off by design (`applyCallout`): its
+          // misconception is in the refs for the notes, and no callout is planned.
+          usedMisconceptions.add(m);
         }
         adds = `Works through: ${example?.problem ?? ""}`;
         break;

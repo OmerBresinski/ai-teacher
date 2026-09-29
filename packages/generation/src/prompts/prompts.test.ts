@@ -219,12 +219,12 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v3",
-    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+    version: "plan-teach-objective.v4",
+    hash: "ebfddbd71942d07183cd1fc9a12048a8c2ab764e755e775394599f2b2a80f4fa",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
-    hash: "5cf0f133c71c328ce0c72ceb9be2e3b4a93cbc81fb4be0234d9b068c9dce8e64",
+    hash: "14af495c488cc0f1bca99908d6b3400f8f7419983763902eae0d58c43358c920",
   },
   "verify-facts": {
     version: "verify-facts.v7",
@@ -235,8 +235,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v30",
-    hash: "34723eafd7ccf5c5a94b0bfec02939dff407b96bb96d0a832669c7401ea9d319",
+    version: "generate-slide.v31",
+    hash: "674cc0924248ff522915df8eb543ef4a1bf90e8c361dd108e08b427dd54f12d3",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",

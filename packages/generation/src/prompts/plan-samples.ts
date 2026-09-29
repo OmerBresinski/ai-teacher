@@ -86,7 +86,7 @@ export const PLAN_TAUGHT_SAMPLE = PlanTeachObjectiveOutputSchema.parse({
     {
       problem: "Why did the Romans build a road from Dover to London?",
       steps: ["Dover is where soldiers landed.", "London was the biggest town."],
-      answer: "So soldiers and supplies could reach the biggest town quickly.",
+      answer: "So troops and supplies reached the biggest town fast.",
       objectiveRefs: [{ type: "objective", index: 1 }],
     },
   ],
