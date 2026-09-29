@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson, RichDoc, TextElement } from "@tj/domain/documents";
 import { EXPLANATION_PLACEHOLDER, explanationLayout } from "../layout/explanation";
 import { newSlide } from "../model/factories";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
-import { catcher, pointer, renderEditor, seededLesson } from "./test-harness";
+import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "./test-harness";
 
 /*
  * Text editing on the real shell (TEACH-104 rows 2, 4, 5, 6, 10): double-click opens Tiptap in
@@ -13,6 +13,8 @@ import { catcher, pointer, renderEditor, seededLesson } from "./test-harness";
  * out of the way while typing. Pointer/selection fidelity is Playwright's (`editor-text.spec.ts`).
  */
 
+// The editor's lazy chunks load once here, not inside the first test's `waitFor`.
+beforeAll(loadTextEditor);
 afterEach(cleanup);
 
 const para = (text: string): RichDoc => ({

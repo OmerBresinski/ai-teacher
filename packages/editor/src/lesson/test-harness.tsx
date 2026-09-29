@@ -95,3 +95,16 @@ export const pointer = (x: number, y: number, extra: Record<string, unknown> = {
 
 /** Let the transform layer's requestAnimationFrame flush run. */
 export const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+/**
+ * Loads the two lazy chunks behind a text element's editor (`EditableText`, then `TextEditor` with
+ * Tiptap and ProseMirror). Call it from `beforeAll` in any file that waits for `.ProseMirror`: the
+ * first cold load of those modules can take longer than `waitFor`'s one-second window on a busy CI
+ * runner, so without this the first test in the file fails and every later one passes.
+ */
+export async function loadTextEditor(): Promise<void> {
+  await Promise.all([
+    import("../slide/elements/EditableText"),
+    import("../slide/elements/TextEditor"),
+  ]);
+}
