@@ -276,6 +276,43 @@ function markContinued(slide: Slide): void {
 }
 
 /**
+ * A continuation's heading keeps the lines its source heading had: " (continued)" can wrap it onto
+ * a second line, which pushes the carried body down and leaves less room than the split planned
+ * for. The heading steps down (to three quarters of its size at most) until it fits again; the
+ * chain is levelled to that size afterwards (`levelHeadings`).
+ */
+function keepHeadingLines(slide: Slide, authored: SlideElement[], measure: Measurer): void {
+  const source = authored.find(isHeadingText);
+  const heading = slide.elements.find(isHeadingText);
+  if (!source || heading?.type !== "text") return;
+  const parts = textPartsOf(heading);
+  const sourceParts = textPartsOf(source);
+  if (!parts?.autoHeight || !sourceParts) return;
+  const need = (fontSize: number | undefined, p = parts) =>
+    measure({
+      doc: p.doc,
+      width: heading.w,
+      style: p.style,
+      preset: p.preset,
+      role: p.role,
+      fontSize,
+      inset: p.inset,
+      chrome: p.chrome,
+    });
+  const size = parts.style?.fontSize;
+  const room = need(sourceParts.style?.fontSize, sourceParts);
+  if (size === undefined || need(size) <= room + EPS) return;
+  for (let s = size - 1; s >= Math.ceil(size * 0.75); s--) {
+    const h = need(s);
+    if (h <= room + EPS) {
+      heading.style = { ...heading.style, fontSize: s };
+      heading.h = Math.max(1, Math.round(h));
+      return;
+    }
+  }
+}
+
+/**
  * The floor the fit test works to: a true-false or multiple-choice slide owes a lane at the foot of
  * the safe area to its "Why?" panel, so the engine keeps that lane clear.
  */
@@ -542,6 +579,7 @@ function buildPlan(
 
   const continuation = cloneSlide({ ...slide, elements });
   markContinued(continuation);
+  keepHeadingLines(continuation, authored, measure);
 
   if (mode === "move") {
     // Only worth it when the box lands higher than it stood here; otherwise the next round would
