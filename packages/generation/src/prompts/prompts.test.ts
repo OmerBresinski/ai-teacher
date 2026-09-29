@@ -220,7 +220,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v4",
-    hash: "d1477cea88a038eab7f7daac503d3630432e7dac487157a025c9512518bed089",
+    hash: "6be09c598d31d1ee457ee17342d5faade9d51141b78873a8d163656c12b00b3e",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -236,7 +236,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
     version: "generate-slide.v31",
-    hash: "48acca6bc27210a922fcb582911eafc0ab9af3c16582bd95c65d6ed4d91a2505",
+    hash: "32bc736bffadde80ec2d9e941fb4adc09f316056d6f7d28313997b25b2edfe77",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",

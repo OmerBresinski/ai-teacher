@@ -1,6 +1,6 @@
 import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
-import { FULL_SLIDES_BLOCK } from "./full-slides";
+import { FULL_SLIDES_WITH_FACTS_BLOCK } from "./full-slides";
 import {
   carriesWorkedExample,
   type PlanFactsObjectiveInput,
@@ -192,7 +192,7 @@ const LENGTH_LIMITS = `Length limits (characters): statement and belief ${SPEC_L
 /** v4: what one slide holds, shown rather than counted (`full-slides.ts`). */
 const SLIDE_SIZE = [
   "Each key idea and worked example is shown to the class on a slide, as you write it. These slides are full: each holds as much as one slide can.",
-  FULL_SLIDES_BLOCK,
+  FULL_SLIDES_WITH_FACTS_BLOCK,
   "Write each key idea so its statement is the heading and its explanation and example together are the text of a slide like these; write the worked example so its problem and steps, one line each, fill a slide like the last one.",
 ].join("\n");
 

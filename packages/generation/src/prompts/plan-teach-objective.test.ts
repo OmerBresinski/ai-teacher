@@ -42,8 +42,8 @@ describe("plan-teach-objective", () => {
   test("the system text is v14's teach rules and nothing about questions", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
-    // v14 is 487 words; the questions took their rules with them. v4 adds the full slides (~270 words). The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(600);
+    // v14 is 487 words; the questions took their rules with them. v4 adds the full slides and their fields (~380 words). The alarm follows the count.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(720);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
