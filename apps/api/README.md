@@ -437,7 +437,8 @@ data: {"type":"progress","jobId":"…","workspaceId":"…","at":"…","progress"
 - **Terminal close**: `GET /jobs/:id/events` ends after `completed`, `failed` or `cancelled`.
   `GET /events` stays open.
 - **Heartbeat**: a `: ping` comment every `EVENTS_HEARTBEAT_MS` keeps proxies from idling the
-  connection out. Headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`,
+  connection out. Bun's own idle timeout (10 s) is switched off for each stream request
+  (`server.timeout(req, 0)`), and the 5 s heartbeat stays under it as a second guard. Headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`,
   `X-Accel-Buffering: no`, `Connection: keep-alive`; CORS (credentials) applies as elsewhere and
   `Last-Event-ID` is an allowed request header.
 - **Degraded mode**: if `LISTEN` cannot be established the listener retries with backoff
@@ -463,7 +464,7 @@ data: {"type":"progress","jobId":"…","workspaceId":"…","at":"…","progress"
 ### Config knobs (`src/events/config.ts`)
 
 Read from `process.env` with Zod defaults (`EVENTS_MAX_STREAMS_PER_WORKSPACE` 20,
-`EVENTS_REPLAY_LIMIT` 500, `EVENTS_HEARTBEAT_MS` 15000, `EVENTS_POLL_MS` 1000); declared in the env
+`EVENTS_REPLAY_LIMIT` 500, `EVENTS_HEARTBEAT_MS` 5000, `EVENTS_POLL_MS` 1000); declared in the env
 contract ([`docs/env.md`](../../docs/env.md)) and documented commented-out in `.env.example`.
 
 Integration tests (`src/routes/jobs.integration.test.ts`) run a real pg-boss on schema

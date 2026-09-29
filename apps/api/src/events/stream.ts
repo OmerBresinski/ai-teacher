@@ -6,7 +6,8 @@
  * them) are replayed from the table, then live rows are forwarded as the hub announces them.
  * Every live notification triggers a re-read by id (`afterId: lastSent`), so the payload on the
  * wire always comes from the table and duplicates are impossible. A `: ping` comment goes out
- * every `heartbeatMs`. Per-job streams close after a terminal event; the firehose never closes.
+ * every `heartbeatMs`. Bun closes a connection idle for `idleTimeout` (10 s by default), so the
+ * stream turns that timeout off for its own request (`keepConnectionOpen`). Per-job streams close after a terminal event; the firehose never closes.
  * While the LISTEN connection is down (hub degraded) the stream polls the table every `pollMs`.
  */
 import { type JobEventRow, listJobEvents } from "@tj/db";
@@ -51,6 +52,7 @@ export function streamJobEvents(
   const { hub, config, jobs } = runtime;
   const log = c.get("logger") ?? runtime.logger;
   c.header("X-Accel-Buffering", "no");
+  keepConnectionOpen(c);
 
   return streamSSE(
     c,
@@ -197,6 +199,21 @@ export function streamJobEvents(
       log.error({ err }, "sse stream error");
     },
   );
+}
+
+/** The part of Bun's `Server` that Hono hands over as `c.env` when `Bun.serve` runs `app.fetch`. */
+interface IdleTimeoutControl {
+  timeout?: (request: Request, seconds: number) => void;
+}
+
+/**
+ * Turn off Bun's per-connection idle timeout (default 10 s) for this request. Without it Bun drops
+ * an SSE stream after any quiet gap longer than the timeout, whatever the heartbeat does. A no-op
+ * outside `Bun.serve` (e.g. `app.request()` in tests).
+ */
+export function keepConnectionOpen(c: Context): void {
+  const server = c.env as IdleTimeoutControl | undefined;
+  if (typeof server?.timeout === "function") server.timeout(c.req.raw, 0);
 }
 
 async function writeComment(stream: SSEStreamingApi, text: string): Promise<void> {

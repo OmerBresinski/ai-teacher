@@ -272,6 +272,24 @@ export const libraryCache = {
     return undefined;
   },
   /**
+   * Whether generation job `jobId` still holds the lesson, read from the row without touching the
+   * cache: the generating view's backup for a terminal event the stream never delivered. A job
+   * that released the lock `completed` when the body's generation stamp is that job's and done;
+   * otherwise it `stopped` (failed or cancelled). `null` when the lesson is gone.
+   */
+  jobOutcome: async (
+    queryClient: QueryClient,
+    id: string,
+    jobId: string,
+  ): Promise<"running" | "completed" | "stopped" | null> => {
+    const document = await fetchDocument(queryClient, id);
+    assertCurrentSession(queryClient);
+    if (document === null || document.deletedAt !== null || document.kind === "series") return null;
+    if (document.generatingJobId === jobId) return "running";
+    const generation = (document.body as Partial<Lesson>).generation;
+    return generation?.jobId === jobId && generation.completedAt ? "completed" : "stopped";
+  },
+  /**
    * The finished document, in one step (TEACH-251): the generating view calls this at the job's
    * terminal event. Any debounced body refetch still in flight is cancelled, the row is read once,
    * and the body and its row state are written in a single notification batch, so the page sees

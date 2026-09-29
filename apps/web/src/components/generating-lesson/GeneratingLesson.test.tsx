@@ -9,7 +9,7 @@ import { queryKeys } from "@/lib/query";
 import { installFakeApi } from "@/test/fake-api";
 import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 import { bodyAt, generationRun, runEvent } from "@/test/play-run";
-import { GeneratingLesson } from "./GeneratingLesson";
+import { GeneratingLesson, JOB_POLL_MS } from "./GeneratingLesson";
 
 /*
  * The handoff at the terminal event (TEACH-251): `libraryCache.handOverDocument` reads the finished
@@ -36,11 +36,13 @@ function Harness({
   jobId,
   client,
   onUnlocked,
+  onStopped = noop,
 }: {
   lessonId: string;
   jobId: string;
   client: QueryClient;
   onUnlocked: (slides: number) => void;
+  onStopped?: (jobId: string) => void;
 }) {
   const { data } = useQuery(libraryQueries.document(lessonId, client));
   const { data: meta } = useQuery({
@@ -52,7 +54,7 @@ function Harness({
     onUnlocked(data.slides.length);
     return null;
   }
-  return <GeneratingLesson lesson={data} jobId={jobId} onBack={noop} onStopped={noop} />;
+  return <GeneratingLesson lesson={data} jobId={jobId} onBack={noop} onStopped={onStopped} />;
 }
 
 afterEach(() => {
@@ -128,6 +130,106 @@ describe("GeneratingLesson at the terminal event", () => {
     expect(partial.slides.length).toBeLessThan(full.slides.length);
 
     globalThis.fetch = fakeFetch;
+    restore();
+  });
+});
+
+/*
+ * The stream can miss the end: Bun used to drop quiet SSE connections after 10 s, and behind a
+ * proxy the page never saw the close. The view then re-reads the lesson every `JOB_POLL_MS` and on
+ * each reconnect, and ends the same way the terminal event would.
+ */
+describe("GeneratingLesson without a terminal event", () => {
+  function setup() {
+    const { fakeApi, restore } = installFakeApi();
+    installFakeEventSource();
+    const lessonId = generationRun.lesson;
+    const jobId = generationRun.jobId;
+    const row = fakeApi.get(lessonId);
+    if (!row) throw new Error("fixture missing");
+    const partial = bodyAt(generationRun, 3, full);
+    row.body = partial;
+    fakeApi.setGenerating(lessonId, jobId);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(queryKeys.libraryDocument(lessonId), partial);
+    client.setQueryData(queryKeys.libraryDocumentMeta(lessonId), {
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      deletedAt: null,
+      generatingJobId: jobId,
+    });
+    const slidesWhenUnlocked: number[] = [];
+    const stopped: string[] = [];
+    render(
+      <QueryClientProvider client={client}>
+        <TooltipProvider>
+          <Harness
+            lessonId={lessonId}
+            jobId={jobId}
+            client={client}
+            onUnlocked={(n) => slidesWhenUnlocked.push(n)}
+            onStopped={(id) => stopped.push(id)}
+          />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    act(() => FakeEventSource.latest.open());
+    /** The worker's end, written to the row with no event on the stream. */
+    const finish = (completed: boolean) => {
+      const generation = {
+        jobId,
+        stage: "repaired" as const,
+        startedAt: "2026-09-29T10:00:00.000Z",
+        ...(completed ? { completedAt: "2026-09-29T10:00:40.000Z" } : {}),
+        promptVersions: {},
+        usage: { calls: 1, inputTokens: 1, outputTokens: 1, costUsd: 0 },
+        findings: [],
+      };
+      row.body = { ...(completed ? full : partial), generation };
+      fakeApi.touch(lessonId);
+      fakeApi.setGenerating(lessonId, null);
+    };
+    return { restore, finish, slidesWhenUnlocked, stopped, jobId };
+  }
+
+  it("hands over the finished lesson when a reconnect finds the lock released", async () => {
+    const { restore, finish, slidesWhenUnlocked, stopped } = setup();
+    finish(true);
+    // The stream drops and reopens; the terminal event is never replayed to it.
+    act(() => {
+      FakeEventSource.latest.readyState = FakeEventSource.CONNECTING;
+      FakeEventSource.latest.onerror?.(new Event("error"));
+    });
+    act(() => FakeEventSource.latest.open());
+    await waitFor(() => expect(slidesWhenUnlocked.length).toBeGreaterThan(0));
+    expect(slidesWhenUnlocked[0]).toBe(full.slides.length);
+    expect(stopped).toEqual([]);
+    restore();
+  });
+
+  it(
+    "ends a silently dead stream on the next poll",
+    async () => {
+      const { restore, finish, slidesWhenUnlocked } = setup();
+      finish(true);
+      await waitFor(() => expect(slidesWhenUnlocked.length).toBeGreaterThan(0), {
+        timeout: JOB_POLL_MS + 2000,
+      });
+      expect(slidesWhenUnlocked[0]).toBe(full.slides.length);
+      restore();
+    },
+    JOB_POLL_MS + 5000,
+  );
+
+  it("reports a job that released the lock without completing as stopped", async () => {
+    const { restore, finish, stopped, jobId } = setup();
+    finish(false);
+    act(() => {
+      FakeEventSource.latest.readyState = FakeEventSource.CONNECTING;
+      FakeEventSource.latest.onerror?.(new Event("error"));
+    });
+    act(() => FakeEventSource.latest.open());
+    await waitFor(() => expect(stopped).toEqual([jobId]));
     restore();
   });
 });

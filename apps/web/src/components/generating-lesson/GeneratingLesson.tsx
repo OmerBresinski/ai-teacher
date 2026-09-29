@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Id, Lesson } from "@tj/domain/documents";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
 import { libraryCache } from "@/lib/library";
@@ -15,6 +15,7 @@ import { type StageState, stageOf } from "./stage";
  * `documentUpdatedAt` refetches the body, debounced by `REFETCH_DEBOUNCE_MS` to match the worker's
  * emitter, so slides appear as they are written; the terminal event reads the finished row once
  * and writes the body with its released lock, which hands the page back to the editor in place.
+ * A poll every `JOB_POLL_MS` (and on each reconnect) backs up a terminal event the stream missed.
  * `failed` and `cancelled`
  * keep the partial slides visible under their message with a way back to the library; Stop
  * cancels the job through `POST /jobs/:id/cancel`.
@@ -22,6 +23,9 @@ import { type StageState, stageOf } from "./stage";
 
 /** The worker coalesces persist → progress at this cadence; a burst of events is one refetch. */
 export const REFETCH_DEBOUNCE_MS = 250;
+
+/** How often the generating view re-reads the lesson in case the stream missed the job's end. */
+export const JOB_POLL_MS = 3000;
 
 export function GeneratingLesson({
   lesson,
@@ -56,7 +60,13 @@ export function GeneratingLesson({
   // The last `documentUpdatedAt` the stream carried, whichever event it rode in on: a `progress`
   // without one (a message-only tick) must not reset the value and re-trigger a refetch.
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
-  const terminal = stream.terminal;
+  // The job's end: the terminal event, or the backup poll below when the stream missed it.
+  const [polledEnd, setPolledEnd] = useState<"completed" | "stopped" | null>(null);
+  const ended = stream.terminal
+    ? stream.terminal.type === "completed"
+      ? "completed"
+      : "stopped"
+    : polledEnd;
   useEffect(() => {
     onStage?.(
       stageOf(
@@ -77,7 +87,31 @@ export function GeneratingLesson({
     );
     return () => window.clearTimeout(timer);
   }, [documentUpdatedAt, lesson.id, queryClient]);
-  // The terminal event hands the page to the editor: `handOverDocument` reads the finished row
+  // Backup for a missed terminal event (a stream can drop, or die silently behind a proxy): while
+  // the job runs, re-read the lesson every `JOB_POLL_MS` and on every (re)connect, as the plan
+  // screen does (#373). Once the job no longer holds the lock, the view ends exactly as it would
+  // at the terminal event.
+  const running = ended === null;
+  useEffect(() => {
+    if (!running) return;
+    let live = true;
+    const recheck = () =>
+      void libraryCache
+        .jobOutcome(queryClient, lesson.id, jobId)
+        .then((outcome) => {
+          if (live && (outcome === "completed" || outcome === "stopped")) setPolledEnd(outcome);
+        })
+        .catch(() => {
+          /* A failed read is retried at the next tick. */
+        });
+    if (stream.status === "open") recheck();
+    const timer = window.setInterval(recheck, JOB_POLL_MS);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, [running, stream.status, lesson.id, jobId, queryClient]);
+  // The job's end hands the page to the editor: `handOverDocument` reads the finished row
   // once and writes the body and its released lock together, so the editor mounts on the finished
   // document and never on the last debounced copy (TEACH-251 — the fit migration used to run on
   // that copy and be spent when the real body landed at `fitVersion: 0`). A `failed` /
@@ -85,8 +119,8 @@ export function GeneratingLesson({
   // partial slides, the way back — rather than opening the editor on the unlocked row; the next
   // visit reads the row afresh and edits what was written.
   useEffect(() => {
-    if (terminal === null || !sessionIsCurrent(queryClient)) return;
-    if (terminal.type !== "completed") onStopped(jobId);
+    if (ended === null || !sessionIsCurrent(queryClient)) return;
+    if (ended !== "completed") onStopped(jobId);
     void libraryCache
       .handOverDocument(queryClient, lesson.id)
       .then(() => {
@@ -96,7 +130,7 @@ export function GeneratingLesson({
       .catch(() => {
         /* The session may have ended while handing over the document. */
       });
-  }, [terminal, lesson.id, jobId, queryClient, onStopped]);
+  }, [ended, lesson.id, jobId, queryClient, onStopped]);
 
   const cancel = useMutation(
     sessionMutation(queryClient, {

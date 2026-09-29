@@ -26,7 +26,7 @@ describe("loadEventsConfig", () => {
     expect(loadEventsConfig({})).toEqual({
       maxStreamsPerWorkspace: 20,
       replayLimit: 500,
-      heartbeatMs: 15_000,
+      heartbeatMs: 5_000,
       pollMs: 1_000,
     });
   });

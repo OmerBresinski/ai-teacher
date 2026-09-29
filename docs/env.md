@@ -71,7 +71,7 @@ is set".
 | `MASTRA_TELEMETRY_DISABLED` | api, worker | config | `1` | prod | n/a | template | Mastra core is used in-process by @tj/generation (ADR 0025 §21); its anonymous telemetry (`posthog-node`) is disabled. |
 | `EVENTS_MAX_STREAMS_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Concurrent SSE streams per Workspace before `429 rate_limited` (default 20). |
 | `EVENTS_REPLAY_LIMIT` | api | config | — | n/a | n/a | template | Most `job_events` rows replayed when a stream opens (default 500, max 5000). |
-| `EVENTS_HEARTBEAT_MS` | api | config | — | n/a | n/a | template | Interval of the `: ping` SSE comment that keeps proxies awake (default 15000). |
+| `EVENTS_HEARTBEAT_MS` | api | config | — | n/a | n/a | template | Interval of the `: ping` SSE comment that keeps proxies and Bun's 10 s idle timeout from closing the stream (default 5000). |
 | `EVENTS_POLL_MS` | api | config | — | n/a | n/a | template | Poll interval while the LISTEN connection is down — degraded mode (default 1000). |
 | `AI_RATE_LIMIT_PER_WORKSPACE` | api | config | — | n/a | n/a | template | Model-call requests per Workspace per window on `POST /jobs/ai-ping`, `POST /lessons` and the lesson job routes before `429 rate_limited` (default 30). |
 | `AI_RATE_LIMIT_WINDOW_S` | api | config | — | n/a | n/a | template | Window length in seconds for `AI_RATE_LIMIT_PER_WORKSPACE` (default 60). |

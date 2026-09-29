@@ -9,8 +9,11 @@ export const EventsConfigSchema = z.object({
   EVENTS_MAX_STREAMS_PER_WORKSPACE: z.coerce.number().int().positive().default(20),
   /** Most rows replayed when a stream opens (`Last-Event-ID` or from the start). */
   EVENTS_REPLAY_LIMIT: z.coerce.number().int().positive().max(5_000).default(500),
-  /** Interval of the `: ping` comment that keeps proxies from idling the connection out. */
-  EVENTS_HEARTBEAT_MS: z.coerce.number().int().positive().default(15_000),
+  /**
+   * Interval of the `: ping` comment that keeps proxies from idling the connection out. Kept well
+   * under Bun's 10 s idle timeout as a second guard beside `keepConnectionOpen`.
+   */
+  EVENTS_HEARTBEAT_MS: z.coerce.number().int().positive().default(5_000),
   /** Poll interval used while the LISTEN connection is down (degraded mode). */
   EVENTS_POLL_MS: z.coerce.number().int().positive().default(1_000),
 });
