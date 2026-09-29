@@ -858,7 +858,8 @@ const CONTRACT = [
     setBy: "template",
     format: "int",
     files: ["api"],
-    description: "Interval of the `: ping` SSE comment that keeps proxies awake (default 15000).",
+    description:
+      "Interval of the `: ping` SSE comment that keeps proxies and Bun's 10 s idle timeout from closing the stream (default 5000).",
   },
   {
     name: "EVENTS_POLL_MS",
