@@ -15,6 +15,7 @@ import {
   type WorksheetDraft,
   WorksheetStep,
 } from "@/components/lesson-creation/step-fields";
+import { startingTheme } from "@/lib/default-theme";
 
 const loadEditorPreview = () =>
   import("@/components/lesson-creation/editor-preview").then((m) => ({ default: m.EditorPreview }));
@@ -78,9 +79,12 @@ export function DevFirstExperiencePage() {
   const [characterOrigin, setCharacterOrigin] = useState<CharacterOrigin | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const transition = useRef<ViewTransition | null>(null);
-  function go(next: Stage) {
+  function go(next: Stage, withWorksheet = true) {
     transition.current?.skipTransition();
-    if (next === "generating") setCharacterOrigin(character.current?.capture() ?? null);
+    // The worksheet character flies on only when a worksheet is being made; slides only starts
+    // with Slides' own entrance.
+    if (next === "generating")
+      setCharacterOrigin(withWorksheet ? (character.current?.capture() ?? null) : null);
     const update = () => {
       flushSync(() => setStage(next));
       window.scrollTo({ top: 0, behavior: "instant" });
@@ -144,12 +148,14 @@ export function DevFirstExperiencePage() {
   );
   if (stage === "generating")
     return (
-      <Suspense fallback={<div className="creation-shell">Opening your lesson…</div>}>
+      <Suspense fallback={<div className="creation-shell" aria-busy="true" />}>
         <EditorPreview
           characterOrigin={characterOrigin}
           onBack={() => go("worksheet")}
           onRestart={() => go("brief")}
           worksheetCount={includeWorksheets ? worksheets.length : 0}
+          // No theme question before generation: the class picks one, the rail changes it.
+          themeId={startingTheme(undefined, "Science", brief.yearGroup)}
         />
       </Suspense>
     );
@@ -189,7 +195,7 @@ export function DevFirstExperiencePage() {
             }}
             onSkip={() => {
               setIncludeWorksheets(false);
-              go("generating");
+              go("generating", false);
             }}
           />
         ) : null}

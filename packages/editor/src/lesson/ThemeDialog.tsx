@@ -1,16 +1,6 @@
 import { type Lesson, SLIDE_W, type Slide } from "@tj/domain/documents";
-import {
-  Button,
-  cn,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@tj/ui";
-import { Check, Palette } from "lucide-react";
+import { Button, cn, Dialog, DialogContent, DialogHeader, DialogTitle } from "@tj/ui";
+import { Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
@@ -23,9 +13,10 @@ import { useHistory, useLesson } from "./document-context";
 const PREVIEW_W = 132;
 
 /*
- * The theme picker (TEACH-258, ruling 116). One quiet entry point beside the slides — how the
- * lesson looks lives with the slides, not in the top bar — opening a compact set of themes, each
- * drawn as the teacher's own title slide.
+ * The theme picker (TEACH-258, ruling 116; its entry point is ruling 123). One quiet callout names
+ * the selected theme — under the slide stage while the lesson is made, in the editor's top bar once
+ * it is editable — and opens a compact set of themes in a modal, each drawn as the teacher's own
+ * title slide.
  *
  * The whole browse is one history transaction: it opens when the panel mounts; every tile click
  * re-themes the lesson *from the one it opened with* and re-fits it (`rethemeLesson`), so the
@@ -74,7 +65,6 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   lessonRef.current = lesson;
   // The lesson as the picker found it: every preview starts from here, so browsing never stacks.
   const [opening] = useState(lesson);
-  const cover = useMemo(() => coverOf(opening), [opening]);
   const tx = useRef<number | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -130,10 +120,44 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
+    <ThemeChoices
+      opening={opening}
+      selectedId={lesson.themeId}
+      onPick={preview}
+      onCancel={cancel}
+      onDone={done}
+      applying={applying}
+    />
+  );
+}
+
+/** The six themes drawn as the lesson's title slide, with Cancel and Done. Stateless. */
+function ThemeChoices({
+  opening,
+  selectedId,
+  onPick,
+  onCancel,
+  onDone,
+  applying = false,
+}: {
+  /** The lesson as the picker found it: the tiles draw its cover, recoloured from its theme. */
+  opening: Lesson;
+  selectedId: string;
+  onPick: (themeId: string) => void;
+  onCancel: () => void;
+  onDone: () => void;
+  applying?: boolean;
+}) {
+  const cover = useMemo(() => coverOf(opening), [opening]);
+  return (
     <div className="flex flex-col gap-3">
-      <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-2">
+      <div
+        role="radiogroup"
+        aria-label="Theme"
+        className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-2"
+      >
         {THEMES.map((theme) => {
-          const selected = theme.id === lesson.themeId;
+          const selected = theme.id === selectedId;
           return (
             <Button
               key={theme.id}
@@ -142,7 +166,7 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
               aria-checked={selected}
               aria-label={theme.name}
               data-theme-tile={theme.id}
-              onClick={() => preview(theme.id)}
+              onClick={() => onPick(theme.id)}
               className="group/theme h-auto w-full items-stretch justify-start rounded-control p-0 text-left font-normal"
             >
               <span className="flex w-full flex-col items-stretch gap-1 self-start">
@@ -176,10 +200,10 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
         })}
       </div>
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={cancel}>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="primary" size="sm" disabled={applying} onClick={done}>
+        <Button variant="primary" size="sm" disabled={applying} onClick={onDone}>
           Done
         </Button>
       </div>
@@ -188,43 +212,61 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * The desktop entry point: a quiet button at the head of the slide rail showing the lesson's
- * theme, opening the picker beside the slides.
+ * The selected-theme callout (ruling 123): the lesson's theme named beside its swatch, read as
+ * information rather than a question. It has no motion of its own. A click opens the picker. It
+ * sits under the slide stage while the lesson is made and in the editor's top bar once it is
+ * editable; nothing else opens the picker.
  */
-export function ThemeButton({ compact = false }: { compact?: boolean }) {
-  const lesson = useLesson();
-  const [open, setOpen] = useState(false);
-  const theme = getTheme(lesson.themeId);
+export function ThemeCallout({
+  themeId,
+  onClick,
+  compact = false,
+  className,
+}: {
+  themeId: string;
+  onClick: () => void;
+  /** Just the swatch and the name, for a phone's top bar. */
+  compact?: boolean;
+  className?: string;
+}) {
+  const theme = getTheme(themeId);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          data-theme-button
-          aria-label="Theme"
-          title={compact ? `Theme: ${theme.name}` : undefined}
-          className="h-6 w-full min-w-0 justify-start gap-1.5 px-1.5 font-normal text-ink-2"
-        >
-          <Palette aria-hidden size={16} strokeWidth={1.5} />
-          {compact ? null : <span className="truncate">{theme.name}</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        side="right"
-        align="start"
-        aria-label="Theme"
-        role="dialog"
-        className="w-auto p-3"
-        // Esc and a click outside close through `onOpenChange`; the panel's unmount rolls back.
+    <Button
+      variant="ghost"
+      size="sm"
+      data-theme-callout={theme.id}
+      aria-label={`Theme: ${theme.name}`}
+      aria-haspopup="dialog"
+      onClick={onClick}
+      className={cn("h-7 min-w-0 gap-1.5 px-2 font-normal text-ink-2", className)}
+    >
+      <span
+        aria-hidden
+        data-theme-swatch
+        className="relative size-3.5 shrink-0 overflow-hidden rounded-full shadow-[0_0_0_1px_var(--border-strong)]"
+        style={{ background: theme.colors.background }}
       >
-        {open ? <ThemePanel onClose={() => setOpen(false)} /> : null}
-      </PopoverContent>
-    </Popover>
+        <span
+          className="absolute inset-y-0 right-0 w-1/2"
+          style={{ background: theme.colors.accent }}
+        />
+      </span>
+      <span className="truncate">
+        {compact ? null : (
+          <>
+            <span className="text-ink-3">Theme</span>
+            <span aria-hidden className="text-ink-3">
+              {" · "}
+            </span>
+          </>
+        )}
+        {theme.name}
+      </span>
+    </Button>
   );
 }
 
-/** The phone entry point (no slide rail): the same picker in a dialog, from the More menu. */
+/** The picker in a modal, editing the open lesson as one undo step (the editor's top bar). */
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -236,4 +278,64 @@ export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => v
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * The same modal while the lesson is still being made (ruling 123). There is no editor history
+ * yet, so the app holds the theme: every tile click calls `onChange` and the app re-draws the
+ * slides made and still arriving in it; Done keeps it; Cancel, Esc or a click outside puts back
+ * the theme the picker opened on.
+ */
+export function GeneratingThemeDialog({
+  open,
+  lesson,
+  onChange,
+  onClose,
+}: {
+  open: boolean;
+  /** The lesson as shown, in the theme it is shown in. */
+  lesson: Lesson;
+  onChange: (themeId: string) => void;
+  onClose: () => void;
+}) {
+  const [opening, setOpening] = useState<Lesson | null>(null);
+  if (open && !opening) setOpening(lesson);
+  if (!open && opening) setOpening(null);
+  const cancel = () => {
+    if (opening && lesson.themeId !== opening.themeId) onChange(opening.themeId);
+    onClose();
+  };
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && cancel()}>
+      <DialogContent size="lg" data-theme-dialog>
+        <DialogHeader>
+          <DialogTitle>Theme</DialogTitle>
+        </DialogHeader>
+        {open && opening ? (
+          <ThemeChoices
+            opening={opening}
+            selectedId={lesson.themeId}
+            onPick={onChange}
+            onCancel={cancel}
+            onDone={onClose}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * The lesson drawn in `themeId` while it is still being made: the theme set and the recipes'
+ * palette recoloured by role (`recolourSlide`), without the re-fit, which runs once at Ready.
+ */
+export function displayInTheme<L extends Lesson>(lesson: L, themeId: string | null | undefined): L {
+  if (!themeId || themeId === lesson.themeId) return lesson;
+  const from = getTheme(lesson.themeId);
+  const to = getTheme(themeId);
+  return {
+    ...lesson,
+    themeId: to.id,
+    slides: lesson.slides.map((slide) => recolourSlide(slide, from, to)),
+  };
 }

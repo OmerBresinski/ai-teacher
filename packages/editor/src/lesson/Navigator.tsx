@@ -34,7 +34,6 @@ import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
 import { addSlideAfter, duplicateSlide, insertSlideAfter, regenerateSlide } from "./slide-commands";
-import { ThemeButton } from "./ThemeDialog";
 import { useCompactChrome } from "./use-compact-chrome";
 import { useActiveSlideId, useSessionActions, useSessionUi } from "./use-editor-session";
 
@@ -405,9 +404,6 @@ export function Navigator() {
       className="flex shrink-0 flex-col border-border border-r bg-background"
       style={{ width: navigatorWidthVar(mode) }}
     >
-      <div className="flex h-8 shrink-0 items-center border-border border-b px-1.5">
-        <ThemeButton compact={mode !== "full"} />
-      </div>
       <div
         ref={scroller}
         role="listbox"

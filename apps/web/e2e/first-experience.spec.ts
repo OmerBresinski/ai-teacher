@@ -121,13 +121,10 @@ test.describe("first-experience design preview", () => {
     const scene = page.locator(".handover-stage .production-scene");
     await expect(scene).toHaveCount(1);
     await expect(scene.locator("#package, [id$='package']")).toHaveCount(1);
-    const visibleOwners = await scene
-      .locator(".person")
-      .evaluateAll(
-        (actors) =>
-          actors.filter((actor) => Number.parseFloat(getComputedStyle(actor).opacity) > 0.05)
-            .length,
-      );
+    const visibleOwners = await scene.locator(".person").evaluateAll(
+      // Characters are never faded: an off-stage actor is hidden with `visibility`.
+      (actors) => actors.filter((actor) => getComputedStyle(actor).visibility !== "hidden").length,
+    );
     expect(visibleOwners).toBe(1);
   });
 
@@ -203,6 +200,136 @@ test.describe("first-experience design preview", () => {
     await expect(page.getByTestId("creation-worksheet")).toBeVisible();
     await page.waitForTimeout(5_200);
     await expect(page.getByTestId("creation-generating")).toHaveCount(0);
+  });
+
+  test("only the characters whose work was asked for appear: slides only is Slides' own entrance", async ({
+    page,
+  }) => {
+    await openGenerating(page);
+    const stage = page.locator(".creation-generation-actor .handover-stage");
+    // Slides enters on its own (beat 12); Worksheet never comes on and nothing is handed over.
+    await expect(stage).toHaveAttribute("data-beat", "12");
+    await expect(stage).toHaveAttribute("data-holder", "Slides");
+    const worksheetSeen = await stage.evaluate(
+      (root) =>
+        new Promise<boolean>((resolve) => {
+          let seen = false;
+          const end = performance.now() + 2_000;
+          const look = () => {
+            const worksheet = root.querySelector('[data-actor="2"]');
+            if (worksheet && getComputedStyle(worksheet).visibility !== "hidden") {
+              const figure = worksheet.querySelector(".figure");
+              if (figure && getComputedStyle(figure).visibility !== "hidden") seen = true;
+            }
+            if (performance.now() < end) requestAnimationFrame(look);
+            else resolve(seen);
+          };
+          look();
+        }),
+    );
+    expect(worksheetSeen).toBe(false);
+    await expect(stage).toHaveAttribute("data-beat", "3", { timeout: 4_000 });
+  });
+
+  test("a worksheet being made is handed to Slides by Worksheet", async ({ page }) => {
+    await openWorksheets(page);
+    await page.getByRole("button", { name: /^Include/ }).click();
+    const stage = page.locator(".creation-generation-actor .handover-stage");
+    await expect(stage).toHaveAttribute("data-beat", "8");
+    await expect(stage).toHaveAttribute("data-holder", "Worksheet");
+  });
+
+  test("Check stays with the finished lesson until the teacher starts working", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const preview = await openGenerating(page);
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
+    await page.waitForTimeout(8_000);
+    // The sign-off is done, but Check has not walked off on its own and its column is still there.
+    await expect(page.locator(".creation-generation-actor")).toHaveCount(1);
+    await expect(preview).toHaveAttribute("data-story-finished", "false");
+    await page.locator("[data-canvas]").click();
+    await expect(preview).toHaveAttribute("data-story-finished", "true");
+    await expect(page.locator(".creation-generation-actor")).toHaveCount(0, { timeout: 3_000 });
+  });
+
+  test("the selected-theme callout under the stage opens the picker and re-themes made and arriving slides", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const preview = await openGenerating(page);
+    const callout = page.locator("[data-generating-theme] [data-theme-callout]");
+    await expect(callout).toBeVisible({ timeout: 15_000 });
+    await expect(callout).toHaveText(/^Theme · /);
+    // Nothing else opens the picker: no rail entry while the lesson is made.
+    await expect(page.locator("[data-theme-callout]")).toHaveCount(1);
+    const slideBg = () =>
+      page
+        .locator("[data-canvas] [data-slide-root]")
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+    await expect(page.locator("[data-canvas-slide]")).toBeVisible({ timeout: 15_000 });
+    const before = await slideBg();
+    await callout.click();
+    const dialog = page.getByRole("dialog", { name: "Theme" });
+    await expect(dialog).toBeVisible();
+    await dialog.locator('[data-theme-tile="night-lab"]').click();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(callout).toHaveAttribute("data-theme-callout", "night-lab");
+    await expect.poll(slideBg).not.toBe(before);
+    const nightLab = await slideBg();
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    // Editable: the same callout sits in the top bar and the slide rail has none.
+    const toolbar = page.locator("[data-topbar] [data-theme-callout]");
+    await expect(toolbar).toBeVisible({ timeout: 5_000 });
+    await expect(toolbar).toHaveAttribute("data-theme-callout", "night-lab");
+    await expect(page.locator("[data-navigator] [data-theme-callout]")).toHaveCount(0);
+    await expect.poll(slideBg).toBe(nightLab);
+    await toolbar.click();
+    await expect(page.getByRole("dialog", { name: "Theme" })).toBeVisible();
+  });
+
+  test("Cancel in the picker goes back to the theme the callout named", async ({ page }) => {
+    await openGenerating(page);
+    const callout = page.locator("[data-generating-theme] [data-theme-callout]");
+    await expect(callout).toBeVisible({ timeout: 15_000 });
+    const opening = await callout.getAttribute("data-theme-callout");
+    const other = opening === "night-lab" ? "playground" : "night-lab";
+    await callout.click();
+    const dialog = page.getByRole("dialog", { name: "Theme" });
+    await dialog.locator(`[data-theme-tile="${other}"]`).click();
+    await expect(callout).toHaveAttribute("data-theme-callout", other);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(callout).toHaveAttribute("data-theme-callout", opening ?? "");
+  });
+
+  test("on a phone the callout is visible under the slides and in the top bar, never in More", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const preview = await openGenerating(page);
+    const callout = page.locator("[data-generating-theme] [data-theme-callout]");
+    await expect(callout).toBeVisible({ timeout: 15_000 });
+    const box = await callout.boundingBox();
+    if (!box) throw new Error("theme callout missing");
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    await callout.click();
+    const dialog = page.getByRole("dialog", { name: "Theme" });
+    await expect(dialog.locator("[data-theme-tile]")).toHaveCount(6);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    const toolbar = page.locator("[data-topbar] [data-theme-callout]");
+    await expect(toolbar).toBeVisible({ timeout: 5_000 });
+    const bar = await toolbar.boundingBox();
+    if (!bar) throw new Error("top bar callout missing");
+    expect(bar.x + bar.width).toBeLessThanOrEqual(390);
+    await page.getByRole("button", { name: "More lesson actions" }).click();
+    await expect(page.getByRole("dialog", { name: "Lesson actions" })).not.toContainText("Theme");
   });
 
   test("long objectives grow on mobile without losing focus or overflowing", async ({ page }) => {

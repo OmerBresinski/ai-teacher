@@ -13,6 +13,12 @@ export {
   readNavigatorMode,
 } from "./Navigator";
 export { ALL_SHORTCUTS, HELP_GROUPS, type HelpShortcut, SHELL_SHORTCUTS } from "./shortcuts";
+export {
+  displayInTheme,
+  GeneratingThemeDialog,
+  ThemeCallout,
+  ThemeDialog,
+} from "./ThemeDialog";
 export { CropBar, type CropBarProps } from "./toolbar/CropToolbar";
 export {
   CANVAS_SHORTCUTS,
