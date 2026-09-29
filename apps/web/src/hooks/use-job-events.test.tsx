@@ -130,6 +130,19 @@ describe("useJobEvents", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("error");
   });
 
+  it("reports a dropped stream as connecting until it reopens", () => {
+    render(<Harness jobId={JOB_ID} />);
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    act(() => {
+      source.readyState = FakeEventSource.CONNECTING;
+      source.onerror?.(new Event("error"));
+    });
+    expect(screen.getByTestId("status")).toHaveTextContent("connecting");
+    act(() => source.open());
+    expect(screen.getByTestId("status")).toHaveTextContent("open");
+  });
+
   it("session retirement closes the source and discards late terminal events", () => {
     const client = new QueryClient();
     render(<Harness jobId={JOB_ID} client={client} />);
