@@ -4,10 +4,9 @@ import { MockLanguageModelV4 } from "ai/test";
 import { createBudget } from "./budget";
 import { estimatePreparedCall, MAX_IMAGE_INPUT_TOKENS, type PreparedCall } from "./budget-estimate";
 import { BudgetReservationError, withGenerationBudget } from "./budget-middleware";
-import { DEFAULT_MODEL_IDS } from "./create-ai";
 import { costUsd } from "./prices";
 
-const id = DEFAULT_MODEL_IDS.standard;
+const id = "us.openai.gpt-5.6-terra";
 const params: PreparedCall = {
   maxOutputTokens: 100,
   prompt: [
@@ -157,6 +156,10 @@ describe("prepared request estimates", () => {
       MAX_IMAGE_INPUT_TOKENS - 1230,
     );
     expect(estimatePreparedCall("unknown-model", withImage(png))).toBeNull();
+    // The default (GPT-6 Luna, OpenAI direct) is estimable with an image, so the judge can run.
+    expect(estimatePreparedCall("openai/gpt-6-luna", withImage(png))?.inputTokens).toBe(
+      known?.inputTokens,
+    );
     expect(estimatePreparedCall("unknown-model", params)).not.toBeNull();
   });
 });

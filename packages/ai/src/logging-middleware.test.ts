@@ -4,9 +4,12 @@ import { generateText, streamText, wrapLanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { PROVIDER_FAILURE_MESSAGE } from "./errors";
-import { AiError, DEFAULT_MODEL_IDS, isAiError, PRICES } from "./index";
+import { AiError, isAiError, PRICES } from "./index";
 import { createLoggingMiddleware } from "./logging-middleware";
 import { createFakeAi } from "./testing";
+
+/** Bedrock Luna: the test reads its long-context row. */
+const BEDROCK_LUNA = "us.openai.gpt-5.6-luna";
 
 function createMemoryLogger() {
   const lines: string[] = [];
@@ -24,7 +27,7 @@ function createScriptedStreamModel(
   logger: pino.Logger,
   script: { midStreamError?: Error; cancelError?: Error },
 ) {
-  const modelId = DEFAULT_MODEL_IDS.small;
+  const modelId = BEDROCK_LUNA;
   const inner = new MockLanguageModelV4({
     provider: "bedrock",
     modelId,
@@ -54,6 +57,7 @@ describe("AI logging middleware", () => {
     const completion = "private completion text";
     const ai = createFakeAi({
       logger,
+      modelIds: { small: BEDROCK_LUNA },
       text: completion,
       usage: { inputTokens: 11, outputTokens: 7, cachedInputTokens: 3 },
     });
@@ -65,7 +69,7 @@ describe("AI logging middleware", () => {
     const record = JSON.parse(lines[0] ?? "") as { ai: Record<string, unknown> };
     expect(record.ai).toMatchObject({
       class: "small",
-      modelId: DEFAULT_MODEL_IDS.small,
+      modelId: BEDROCK_LUNA,
       provider: "bedrock",
       inputTokens: 11,
       outputTokens: 7,
@@ -80,7 +84,11 @@ describe("AI logging middleware", () => {
   test("carries the call context and the list-price cost, and nothing else (ADR 0025 §16)", async () => {
     const { lines, logger } = createMemoryLogger();
     const prompt = "private prompt text";
-    const ai = createFakeAi({ logger, usage: { inputTokens: 1_000_000, outputTokens: 0 } });
+    const ai = createFakeAi({
+      logger,
+      modelIds: { small: BEDROCK_LUNA },
+      usage: { inputTokens: 1_000_000, outputTokens: 0 },
+    });
     const context = {
       lessonId: "0192f7a0-0000-7000-8000-000000000042",
       jobId: "0192f7a0-0000-7000-8000-0000000000aa",
@@ -95,8 +103,8 @@ describe("AI logging middleware", () => {
     expect(record.ai).toMatchObject({
       ...context,
       class: "small",
-      modelId: DEFAULT_MODEL_IDS.small,
-      costUsd: PRICES[DEFAULT_MODEL_IDS.small]?.longContext?.inputPerMTok,
+      modelId: BEDROCK_LUNA,
+      costUsd: PRICES[BEDROCK_LUNA]?.longContext?.inputPerMTok,
     });
     expect(JSON.stringify(record)).not.toContain(prompt);
   });

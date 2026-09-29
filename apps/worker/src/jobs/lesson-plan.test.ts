@@ -572,11 +572,18 @@ describeDb("lesson.plan job", () => {
   test("a pre-skeleton reservation refusal retains the title and releases the lock without retry", async () => {
     const jobId = newId<JobId>();
     const lessonId = await briefLesson(jobId);
-    const ai = scriptedPipelineAi();
+    // Bedrock GPT-5.6 ids: the cap below sits between Luna's and Terra's prices, which the
+    // default (GPT-6 Luna on every class) no longer has.
+    const modelIds = {
+      frontier: "us.openai.gpt-5.6-sol",
+      standard: "us.openai.gpt-5.6-terra",
+      small: "us.openai.gpt-5.6-luna",
+    } as const;
+    const fakeUsage = { inputTokens: 1000, outputTokens: 400 };
+    const ai = createFakeAi({ script: routed(pipelineScript()), usage: fakeUsage, modelIds });
 
     // This once overshot the cap on the skeleton call. Admission now refuses that call instead.
-    const fakeUsage = { inputTokens: 1000, outputTokens: 400 };
-    const callUsd = (cls: "small" | "standard") => costUsd(DEFAULT_MODEL_IDS[cls], fakeUsage) ?? 0;
+    const callUsd = (cls: "small" | "standard") => costUsd(modelIds[cls], fakeUsage) ?? 0;
     const capUsd = callUsd("small") + callUsd("standard") / 2;
     await expect(
       lessonPlanJob(ctx(jobId, lessonId, depsWith(ai, { capUsd, capTokens: 1_000_000 })).ctx),

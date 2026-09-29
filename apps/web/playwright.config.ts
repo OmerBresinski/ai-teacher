@@ -121,6 +121,9 @@ export default defineConfig({
         WORKER_CONCURRENCY: "2",
         AI_FAKE_SCRIPT: "pipeline",
         AI_FAKE_DELAY_MS: "250",
+        // The fake answers the legacy planner's prompts (skeleton + facts) only; the worker's
+        // default is objectives-first since 25–26 Sept 2026, so the e2e run pins legacy.
+        AI_LESSON_PLANNER: "legacy",
         STORAGE_ROOT: E2E_STORAGE_ROOT,
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },

@@ -2,12 +2,19 @@ import { describe, expect, test } from "bun:test";
 import { DEFAULT_MODEL_IDS } from "./create-ai";
 import { costUsd, isPriced, PRICES } from "./prices";
 
+/** The Bedrock GPT-5.6 ids (the defaults until 25–26 Sept 2026): the long-context rows. */
+const BEDROCK = {
+  frontier: "us.openai.gpt-5.6-sol",
+  standard: "us.openai.gpt-5.6-terra",
+  small: "us.openai.gpt-5.6-luna",
+} as const;
+
 describe("PRICES", () => {
-  test("has a row for exactly the three default model ids", () => {
-    // Every default id has a row; gateway ids (the model bench) may have rows too.
+  test("has a row for every default model id, and every row is a provider/model or Bedrock id", () => {
+    // Every default id has a row; the Bedrock GPT-5.6 rows stay for an `AI_MODEL_*` override.
     for (const id of Object.values(DEFAULT_MODEL_IDS)) expect(Object.keys(PRICES)).toContain(id);
     for (const id of Object.keys(PRICES))
-      expect(id.includes("/") || Object.values(DEFAULT_MODEL_IDS).includes(id as never)).toBe(true);
+      expect(id.includes("/") || Object.values(BEDROCK).includes(id as never)).toBe(true);
     for (const price of Object.values(PRICES)) {
       expect(price.inputPerMTok).toBeGreaterThan(0);
       expect(price.outputPerMTok).toBeGreaterThan(price.inputPerMTok);
@@ -32,14 +39,14 @@ describe("PRICES", () => {
 
 describe("costUsd", () => {
   test("a million input tokens use the long-context price", () => {
-    const price = PRICES[DEFAULT_MODEL_IDS.standard];
-    expect(costUsd(DEFAULT_MODEL_IDS.standard, { inputTokens: 1_000_000, outputTokens: 0 })).toBe(
+    const price = PRICES[BEDROCK.standard];
+    expect(costUsd(BEDROCK.standard, { inputTokens: 1_000_000, outputTokens: 0 })).toBe(
       price?.longContext?.inputPerMTok as number,
     );
   });
 
   test("the long-context threshold applies to the whole call, including output and cache writes", () => {
-    const model = DEFAULT_MODEL_IDS.standard;
+    const model = BEDROCK.standard;
     expect(costUsd(model, { inputTokens: 272_000, outputTokens: 1000 })).toBeCloseTo(
       (272_000 * 2.2 + 1000 * 13.2) / 1_000_000,
       12,

@@ -5,8 +5,9 @@
  * read on 2026-09-09 (TEACH-205 for Luna, TEACH-208 for Terra and Sol), cross-checked against the
  * Bedrock pricing page (https://aws.amazon.com/bedrock/pricing/, OpenAI models, US East) — that
  * page renders its table client-side and the public Price List API does not carry these models,
- * so there is no machine-readable AWS source. One row per `DEFAULT_MODEL_IDS` entry in
- * `create-ai.ts`. A configured model id with no row here is unpriced: `costUsd` returns `null`
+ * so there is no machine-readable AWS source. These were the defaults until 25–26 Sept 2026; the
+ * default is now `openai/gpt-6-luna` (its row is below), and every `DEFAULT_MODEL_IDS` entry in
+ * `create-ai.ts` must have a row. A configured model id with no row here is unpriced: `costUsd` returns `null`
  * and the budget falls back to its token cap. Long-context and cache-write rows verified against
  * the AWS model cards on 2026-09-13 (links in ADR 0025's TEACH-280 amendment).
  */

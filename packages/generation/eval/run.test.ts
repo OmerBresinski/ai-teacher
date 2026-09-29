@@ -48,7 +48,17 @@ describe("eval:paid", () => {
     const briefs = evalBriefs().slice(0, 3);
     // The input check fits; the next call cannot reserve its maximum, so the loop must stop.
     const budget = createBudget({ capUsd: 0.01, capTokens: 10_000_000 });
-    const rows = await runPaidEval(scriptedPipelineAi(), budget, briefs);
+    // Priced as Bedrock GPT-5.6: at GPT-6 Luna's prices (the default) the cap would fit more.
+    const ai = createFakeAi({
+      script: routed(pipelineScript()),
+      usage: { inputTokens: 1000, outputTokens: 400 },
+      modelIds: {
+        frontier: "us.openai.gpt-5.6-sol",
+        standard: "us.openai.gpt-5.6-terra",
+        small: "us.openai.gpt-5.6-luna",
+      },
+    });
+    const rows = await runPaidEval(ai, budget, briefs);
     expect(rows.length).toBeLessThan(briefs.length);
     const totals = summarise(rows, briefs, budget);
     expect(totals.stoppedBy).toBe("usd");

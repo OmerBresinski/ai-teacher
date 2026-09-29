@@ -27,9 +27,9 @@ const result = await generateText({
 | `AWS_BEARER_TOKEN_BEDROCK` | Bedrock bearer API key: serves ids without a slash. A blank value is unset. |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key: serves other `provider/model` ids, and `openai/` ids when no OpenAI key is set. Optional fallback. |
 | `AWS_REGION` | Bedrock region. Defaults to `us-east-1`. |
-| `AI_MODEL_FRONTIER` | `frontier` model ID. Default `us.openai.gpt-5.6-sol`. |
-| `AI_MODEL_STANDARD` | `standard` model ID. Default `us.openai.gpt-5.6-terra`. |
-| `AI_MODEL_SMALL` | `small` model ID. Default `us.openai.gpt-5.6-luna`. |
+| `AI_MODEL_FRONTIER` | `frontier` model ID. Default `openai/gpt-6-luna` (OpenAI direct; decision 25–26 Sept 2026). |
+| `AI_MODEL_STANDARD` | `standard` model ID. Default `openai/gpt-6-luna` (OpenAI direct; decision 25–26 Sept 2026). |
+| `AI_MODEL_SMALL` | `small` model ID. Default `openai/gpt-6-luna` (OpenAI direct; decision 25–26 Sept 2026). |
 
 Model classes are defined in `@tj/domain`: `frontier` is for planning and adaptation, `standard`
 for plans and outlines, and `small` for items, variants, and summaries. Callers select a class, not
