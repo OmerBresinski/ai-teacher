@@ -58,7 +58,8 @@ export function estimatePreparedCall(modelId: string, params: PreparedCall): Tok
   let images = 0;
   const prompt: unknown[] = [];
   for (const message of params.prompt) {
-    if (message.role === "system") {
+    // A tool loop's turns (lab fit-5): text and JSON only, counted by their bytes like the rest.
+    if (message.role === "system" || message.role === "assistant" || message.role === "tool") {
       prompt.push(message);
       continue;
     }

@@ -12,7 +12,9 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
+  getTheme,
   imageTextSpecSchemaFor,
+  lookAndFitPages,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
@@ -479,7 +481,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
     extra.push(...outcome.findings);
     if (outcome.kind === "slide") {
       const original = base.slides[outcome.index] as Slide;
-      const fresh: Slide = keepPhoto(original, {
+      const candidate: Slide = keepPhoto(original, {
         ...materialiseSlide(
           withImageCaption(outcome.spec, base.facts?.outline[outcome.index]),
           lesson.themeId,
@@ -491,6 +493,21 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
         ),
         id: original.id,
       });
+      // Lab fit-5: a teaching slide planned to fit keeps its words when the rewrite would need a
+      // second page on the lesson's theme; the finding stays a residual.
+      const theme = getTheme(lesson.themeId);
+      const pagesOf = (slide: Slide) =>
+        lookAndFitPages(slide, theme, deps.ids, {}, { pages: true }).length;
+      const splits =
+        (original.kind === "content" || original.kind === "worked-example") &&
+        pagesOf(candidate) > pagesOf(original);
+      if (splits) {
+        deps.logger.warn(
+          { stage: "repair", index: outcome.index },
+          "repair kept out: the rewrite would split a slide planned to fit",
+        );
+      }
+      const fresh = splits ? original : candidate;
       lesson = {
         ...lesson,
         slides: lesson.slides.map((s, i) => (i === outcome.index ? fresh : s)),

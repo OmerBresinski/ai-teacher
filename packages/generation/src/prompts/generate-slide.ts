@@ -94,6 +94,11 @@ import {
  * the writer wrote "the photograph does not show wall ruins"; the judge scored notes 1 and Evaluate
  * raised `image-fit` on that sentence. The notes now give the teacher a move instead. Shared with
  * Repair (v17).
+ *
+ * v31 (lab fit-5, planner with a measure tool): a teaching slide may arrive with planned words
+ * (`planned`), drafted by `plan-fit` from the facts and measured on the real layout. The user turn
+ * gives them and says to use them as written; the misconception and vocabulary lines, which add
+ * words the plan did not measure, are left out on a planned slide. The system text is unchanged.
  */
 
 export type GenerateSlideInput = {
@@ -132,6 +137,17 @@ export type GenerateSlideInput = {
   /** How many vocabulary entries the theme's grid shows (`vocabularySlots`). */
   vocabularySlots: number;
   lessonTitle: string;
+  /** Lab fit-5: the teaching slide's words as planned and measured to fit (`plan-fit`). */
+  planned?:
+    | {
+        heading?: string | undefined;
+        body?: string | undefined;
+        question?: string | undefined;
+        steps?: string[] | undefined;
+        callout?: { kind: string; text: string } | undefined;
+        notes?: string | undefined;
+      }
+    | undefined;
 };
 
 export type SlidePhoto = {
@@ -224,7 +240,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -312,7 +328,20 @@ export const generateSlidePrompt = {
         `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
       );
     }
-    const misconceptions = ownMisconceptions(input);
+    const { planned } = input;
+    if (planned) {
+      const words: Record<string, unknown> = Object.fromEntries(
+        (["heading", "body", "question", "steps"] as const).flatMap((k) =>
+          planned[k] ? [[k, planned[k]]] : [],
+        ),
+      );
+      if (planned.callout) words.callout = planned.callout;
+      parts.push(
+        `Its words are planned and measured to fit this slide. Use them as written: ${JSON.stringify(words)}`,
+      );
+      if (planned.notes) parts.push(`Also cover this in \`notes\`: ${planned.notes}`);
+    }
+    const misconceptions = planned ? [] : ownMisconceptions(input);
     if (misconceptions.length > 0) {
       parts.push(
         `Its misconception (${misconceptions.join(", ")}): end the body with one sentence on what some pupils think and why it is wrong.`,
@@ -329,7 +358,7 @@ export const generateSlidePrompt = {
         `This theme shows at most ${input.vocabularySlots} vocabulary entries. When there are more terms than that, keep every term another shown definition uses, then the terms the objectives name; put the rest in \`notes\` with their definitions.`,
       );
     }
-    if (input.entry.kind !== "vocabulary" && input.referenced.vocabulary.length > 0) {
+    if (!planned && input.entry.kind !== "vocabulary" && input.referenced.vocabulary.length > 0) {
       parts.push(
         "Define each vocabulary term in a few words where the slide first uses it, or in `notes` if that will not fit.",
       );

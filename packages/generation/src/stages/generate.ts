@@ -20,6 +20,7 @@ import {
   withAnswersReveal,
   withShuffledOptions,
 } from "../planner/coded-slides";
+import { planFit } from "../planner/fit-plan";
 import { laterQuestionsFor } from "../planner/later-questions";
 import {
   generateSlidePrompt,
@@ -27,6 +28,7 @@ import {
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
+import type { GenerateSlideInput } from "../prompts/generate-slide";
 import {
   isOutlineFromFacts,
   retrievalIndexOf,
@@ -175,6 +177,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   }
   if (resumedVerify) await verified;
 
+  // Lab fit-5: the teaching slides' words are planned against the real layout before they are
+  // written (`planner/fit-plan.ts`); the other slides start at once, the teaching ones wait for it.
+  const fitPlan = calloutsAssigned
+    ? planFit(facts, { lessonTitle: lesson.title, audience, themeId: lesson.themeId }, deps)
+    : Promise.resolve(new Map<number, never>());
+
   // Resume support: slides already present (Plan's two, or a partial earlier attempt) stay.
   const first = lesson.slides.length;
   const indices = Array.from({ length: Math.max(0, total - first) }, (_, k) => first + k);
@@ -203,6 +211,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     i: number,
     entry: OutlineEntry,
     photo: SlidePhoto | "none" | undefined,
+    planned?: GenerateSlideInput["planned"],
   ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
     const builtFrom = facts;
     // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
@@ -260,6 +269,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         phase: entry.phase,
         ...(photo !== undefined ? { photo } : {}),
         ...(laterQuestions ? { laterQuestions } : {}),
+        ...(planned ? { planned } : {}),
         ...(factFigure ? { figure: factFigure } : {}),
         audience,
         vocabularySlots: vocabularySlots(lesson.themeId),
@@ -270,7 +280,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
-    const answer = withFactFigure(call.output, factFigure);
+    const answer = withPlannedWords(withFactFigure(call.output, factFigure), planned);
     const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
     const slide = materialiseSlide(
       withImageCaption(spec, entry),
@@ -292,14 +302,19 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       release(i);
       return;
     }
-    const entry = entries[i] as (typeof entries)[number];
+    const plan =
+      entries[i]?.kind === "content" || entries[i]?.kind === "worked-example"
+        ? (await fitPlan).get(i)
+        : undefined;
+    const entry = plan?.entry ?? (entries[i] as (typeof entries)[number]);
+    const planned = plan ? { ...plan.planned, notes: plan.notes } : undefined;
     let slide: Slide | undefined;
     let picked: PickedPhoto | undefined;
     try {
       picked = await picks.get(i);
       if (picked && picked.outcome !== "busy") judged = true;
       const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
-      let written = await writeSlide(i, entry, photo);
+      let written = await writeSlide(i, entry, photo, planned);
       // The patch landed while this slide was being written: a slide built from a fact Verify
       // corrected is written again from the corrected facts (TEACH-233). A cap stop on that second
       // call drops the slide — it was built from unverified facts and may not reach the checkpoint;
@@ -310,7 +325,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
           { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
           "slide regenerated from corrected facts",
         );
-        written = await writeSlide(i, entry, photo);
+        written = await writeSlide(i, entry, photo, planned);
       }
       slide = written.slide;
       for (const miss of written.misses) {
@@ -368,6 +383,17 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // One budget residual per lesson: when Plan's facts call was already the stop, this is the same
   // stop seen again, not a second one.
   if (stopped && !findings.some((f) => f.check === "budget")) findings.push(stopped);
+  // The outline as the fit plan left it: key ideas moved and callouts taken off are the plan.
+  const plans = await fitPlan;
+  if (plans.size > 0 && lesson.facts) {
+    lesson = {
+      ...lesson,
+      facts: {
+        ...lesson.facts,
+        outline: lesson.facts.outline.map((e, i) => plans.get(i)?.entry ?? e),
+      },
+    };
+  }
   lesson = withUsage(
     {
       ...lesson,
@@ -390,6 +416,40 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
   const { pendingVerify: _settled, ...rest } = state;
   return { ...rest, lesson };
+}
+
+/**
+ * Lab fit-5: a teaching slide's words are the plan's, measured to fit; the writer's answer
+ * contributes the rest (notes, refs). What the plan left out (a worked example's heading, a
+ * callout it took off) stays out.
+ */
+function withPlannedWords<T extends SlideSpec | DiagramTextSpec>(
+  spec: T,
+  planned: GenerateSlideInput["planned"],
+): T {
+  if (!planned || (spec.kind !== "content" && spec.kind !== "worked-example")) return spec;
+  // A content slide's bullets, compare cards or strip were not in the measured draft either.
+  const {
+    heading: _h,
+    callout: _c,
+    points: _p,
+    compare: _cmp,
+    steps: _s,
+    ...rest
+  } = spec as T & Record<"heading" | "callout" | "points" | "compare" | "steps", unknown>;
+  const words =
+    spec.kind === "content"
+      ? { heading: planned.heading ?? "", body: planned.body ?? "" }
+      : {
+          ...(planned.heading ? { heading: planned.heading } : {}),
+          question: planned.question ?? "",
+          steps: planned.steps ?? [],
+        };
+  return {
+    ...rest,
+    ...words,
+    ...(planned.callout ? { callout: planned.callout } : {}),
+  } as unknown as T;
 }
 
 /** Whether Generate has already applied (or recorded the outcome of) Verify for this lesson. */
