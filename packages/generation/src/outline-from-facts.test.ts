@@ -468,7 +468,7 @@ describe("outlineFromFacts: briefs", () => {
 });
 
 describe("outlineFromFacts: callouts", () => {
-  test("a content slide gets its objective's misconception as a watch-out, the next one the example", () => {
+  test("a one-idea content slide gets its objective's misconception as a watch-out, the next one no card", () => {
     const r = run({ n: 1, slideCount: 8, options: { keyIdeasPer: 2, vocabulary: false } });
     const positions = r.result.skeleton.outline
       .map((e, i) => (e.kind === "content" ? i : -1))
@@ -478,7 +478,7 @@ describe("outlineFromFacts: callouts", () => {
       ref: mis(0),
       text: "Wrong belief about objective 1",
     });
-    expect(r.result.callouts[positions[1] ?? -1]?.kind).toBe("example");
+    expect(r.result.callouts[positions[1] ?? -1]).toBeUndefined();
   });
 
   test("terms no vocabulary slide shows ride on the content slide as key-words", () => {

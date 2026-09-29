@@ -1464,8 +1464,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       }
       case "content": {
         const ks = slot.keyIdeas ?? [];
-        const k = ks[0] ?? 0;
-        const idea = facts.keyIdeas[k];
         refs.push(...ks.map((index): OrdinalRef => ({ type: "keyIdea", index })));
         const terms = facts.vocabulary
           .flatMap((v, t) => (names(v.objectiveRefs, slot.primary) ? [t] : []))
@@ -1481,8 +1479,13 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
+        // Teacher-notes-absorb: the body shows each idea's example and the teacher says the
+        // explanation, so a two-idea slide has no room for a card; its misconception goes to the
+        // notes (the writer's `ownMisconceptions` line), and an example card would repeat the body.
         const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
-        if (watch !== undefined) {
+        if (ks.length > 1) {
+          // No card beside two examples.
+        } else if (watch !== undefined) {
           usedMisconceptions.add(watch);
           callouts[position] = {
             kind: "watch-out",
@@ -1494,12 +1497,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
             kind: "key-words",
             ref: { type: "vocabulary", index: terms[0] ?? 0 },
             text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
-          };
-        } else if (idea) {
-          callouts[position] = {
-            kind: "example",
-            ref: { type: "keyIdea", index: k },
-            text: idea.example,
           };
         }
         break;

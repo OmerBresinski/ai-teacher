@@ -43,7 +43,7 @@ describe("plan-teach-objective", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    expect(system.trim().split(/\s+/).length).toBeLessThan(400);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -52,7 +52,6 @@ describe("plan-teach-objective", () => {
     expect(system).not.toContain("minute");
     // v14's teach rules, byte for byte where the sentence concerns only these fields.
     for (const kept of [
-      "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers)",
       "a key idea's date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.",
       "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
       "A quotation is one line, cut with an ellipsis.",
@@ -62,7 +61,7 @@ describe("plan-teach-objective", () => {
     }
     // v3 (l6j): the worked-example rule departs from v14 by "taken to its finished form".
     expect(system).toContain(
-      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form, on one slide: the problem is what pupils read, and each step is one short line of working as written on the board, at most four, the teacher saying why each step follows; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     );
     // v2 (audit B1): prior knowledge is read from the audience block.
     expect(system).toContain(

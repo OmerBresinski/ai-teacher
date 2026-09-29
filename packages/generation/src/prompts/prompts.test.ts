@@ -219,8 +219,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v3",
-    hash: "c74a0723399b8f7cd3c5fc7256bbd9d3345f450b00d48590e6e1f1f970d7fd2c",
+    version: "plan-teach-objective.v4",
+    hash: "4a720acc5e654ef578451aff6cc110b8cca63a9617111cc8cae7df4d7dd812b7",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -235,8 +235,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v30",
-    hash: "34723eafd7ccf5c5a94b0bfec02939dff407b96bb96d0a832669c7401ea9d319",
+    version: "generate-slide.v31",
+    hash: "61b26df796467761f7ebac525b84c8454d48e5e4da075b429f0736a10c6fc79c",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -774,8 +774,7 @@ describe("prompt versions", () => {
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
     const system = PROMPTS["generate-slide"].system;
-    expect(system).toContain("merge neighbouring steps");
-    expect(system).toContain("never drop it");
+    expect(system).toContain("ending with the conclusion");
     expect(system).toContain("not already on the slide");
     // TEACH-246: footnote is for pupils; teacher text belongs in notes.
     expect(system).toContain("`footnote` is one short line pupils read");
@@ -1076,7 +1075,7 @@ describe("generate-slide v25: a teaching slide names its misconception", () => {
     } as typeof input;
     expect(ownMisconceptions(content)).toContain(misconception?.id ?? "");
     expect(generateSlidePrompt.user(content)).toContain(
-      `(${misconception?.id}): end the body with one sentence on what some pupils think and why it is wrong.`,
+      `(${misconception?.id}): say in \`notes\` what some pupils think and why it is wrong.`,
     );
   });
 

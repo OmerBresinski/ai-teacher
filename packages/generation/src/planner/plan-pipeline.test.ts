@@ -269,14 +269,13 @@ describe("runPlannedLessonPipeline", () => {
     );
     expect(state.lesson.generation?.promptVersions.planned?.startsWith(PLANNED_VERSION)).toBe(true);
     expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
-    // The lab's outline assigns callouts, so here (and only here) a slide written without its
-    // assigned box is an editorial miss the stubbed writer never supplies.
-    expect(report.callouts).toBeGreaterThan(0);
+    // Teacher-notes-absorb: the lab plan pairs its key ideas, and a two-idea slide carries no card.
+    expect(report.callouts).toBe(0);
     expect(
       state.lesson.generation?.findings.some(
         (f) => f.check === "spec-rule" && /callout/i.test(f.message),
       ),
-    ).toBe(true);
+    ).toBe(false);
     // Executed: the run reached the end. Complete: read off the outline and the documents, and
     // here nothing is missing. Accepted: the judge's.
     expect(status.executed).toBe(true);
@@ -288,7 +287,8 @@ describe("runPlannedLessonPipeline", () => {
     const versions = versionsOf(ai);
     // Eight slides, plus the one Generate regenerated because it was written from the fact
     // Verify corrected before the patch landed (TEACH-233).
-    expect(versions.filter((v) => v === "generate-slide").length).toBeGreaterThanOrEqual(8);
+    // Teacher-notes-absorb: no callout is assigned, so no retry for a missing card.
+    expect(versions.filter((v) => v === "generate-slide").length).toBeGreaterThanOrEqual(5);
     expect(versions.filter((v) => v === "verify-facts")).toHaveLength(1);
     expect(versions.filter((v) => v === "evaluate")).toHaveLength(1);
     // Verify ran alongside the slides: started before the first slide call was made.

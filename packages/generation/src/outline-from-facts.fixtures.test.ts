@@ -239,12 +239,15 @@ describe("outlineFromFacts over the five lab briefs", () => {
     }
   }
 
-  test("a watch-out callout is placed for every misconception the outline has room for", () => {
-    const { input, facts } = inputFor(romans, 12);
-    const watchOuts = Object.values(outlineFromFacts(input).callouts).filter(
-      (c) => c.kind === "watch-out",
-    );
-    expect(watchOuts.length).toBe(Math.min(facts.misconceptions.length, 3));
-    expect(new Set(watchOuts.map((c) => c.ref.index)).size).toBe(watchOuts.length);
+  test("a watch-out callout rides only on a one-idea content slide or a worked example", () => {
+    const { input } = inputFor(romans, 12);
+    const out = outlineFromFacts(input);
+    const watchOuts = Object.entries(out.callouts).filter(([, c]) => c.kind === "watch-out");
+    for (const [position] of watchOuts) {
+      const refs = out.outlineFactRefs.find((r) => r.index === Number(position))?.factRefs ?? [];
+      expect(refs.filter((r) => r.type === "keyIdea").length).toBeLessThanOrEqual(1);
+    }
+    const watchOutsOnly = watchOuts.map(([, c]) => c);
+    expect(new Set(watchOutsOnly.map((c) => c.ref.index)).size).toBe(watchOutsOnly.length);
   });
 });
