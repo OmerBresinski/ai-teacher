@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { landingFor, rememberLanding } from "./confirm-destination";
+import {
+  landingFor,
+  rememberLanding,
+  rememberRequestedEmail,
+  requestedEmail,
+} from "./confirm-destination";
 
 describe("landingFor (TEACH-214)", () => {
   afterEach(() => sessionStorage.clear());
@@ -21,5 +26,17 @@ describe("landingFor (TEACH-214)", () => {
   it("ignores anything it did not write", () => {
     sessionStorage.setItem("tj:confirm-landing", "{not json");
     expect(landingFor("/")).toBeNull();
+  });
+});
+
+describe("requestedEmail (TEACH-214)", () => {
+  afterEach(() => localStorage.clear());
+
+  it("offers the address this browser asked a link for, for the link's 15 minutes only", () => {
+    expect(requestedEmail()).toBe("");
+    rememberRequestedEmail("t@school.test");
+    expect(requestedEmail()).toBe("t@school.test");
+    expect(requestedEmail(Date.now() + 16 * 60_000)).toBe("");
+    expect(localStorage.getItem("tj:magic-link-email")).toBeNull();
   });
 });

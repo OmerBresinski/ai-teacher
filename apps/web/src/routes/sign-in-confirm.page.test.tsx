@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // `mock.module` is not hoisted like `vi.mock`, so register it before the page's dynamic import.
-let search: { token?: string; callbackURL?: string; email?: string; error?: string } = {};
+let search: { token?: string; callbackURL?: string; error?: string } = {};
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
   ...actualRouter,
@@ -15,7 +15,7 @@ mock.module("@tanstack/react-router", () => ({
 }));
 
 const { SignInConfirmPage, magicLinkVerifyUrl } = await import("./sign-in-confirm.page");
-const { confirmDestination } = await import("@/lib/confirm-destination");
+const { confirmDestination, rememberRequestedEmail } = await import("@/lib/confirm-destination");
 
 const ORIGIN = window.location.origin;
 const API = "https://api.test";
@@ -26,7 +26,6 @@ describe("magicLinkVerifyUrl", () => {
       magicLinkVerifyUrl(API, ORIGIN, {
         token: "tok",
         callbackURL: `${ORIGIN}/lessons/new?topic=The+cycle`,
-        email: "t@school.test",
       }),
     );
     expect(url.origin + url.pathname).toBe(`${API}/auth/magic-link/verify`);
@@ -36,7 +35,7 @@ describe("magicLinkVerifyUrl", () => {
     const error = new URL(String(url.searchParams.get("errorCallbackURL")));
     expect(error.origin + error.pathname).toBe(`${ORIGIN}/sign-in/confirm`);
     expect(error.searchParams.get("callbackURL")).toBe("/lessons/new?topic=The+cycle");
-    expect(error.searchParams.get("email")).toBe("t@school.test");
+    expect(error.searchParams.has("email")).toBe(false);
     expect(error.searchParams.has("token")).toBe(false);
   });
 
@@ -91,11 +90,9 @@ describe("SignInConfirmPage", () => {
   });
 
   it("makes no request on load and holds no link or image that reaches the verify URL", () => {
-    search = { token: "tok", callbackURL: `${ORIGIN}/`, email: "t@school.test" };
+    search = { token: "tok", callbackURL: `${ORIGIN}/` };
     const { container } = render(<SignInConfirmPage />);
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Continue as t@school.test" }),
-    ).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Continue to DayBack" })).toBeVisible();
     expect(screen.getByRole("dialog")).toContainElement(
       screen.getByRole("button", { name: "Open my lessons" }),
     );
@@ -136,11 +133,9 @@ describe("SignInConfirmPage", () => {
   });
 
   it("an expired link shows the resend form in the same sheet over the same preview", () => {
-    search = {
-      callbackURL: "/lessons/new?topic=Volcanoes",
-      email: "t@school.test",
-      error: "INVALID_TOKEN",
-    };
+    // The address comes from this browser's own request, never from the URL.
+    rememberRequestedEmail("t@school.test");
+    search = { callbackURL: "/lessons/new?topic=Volcanoes", error: "INVALID_TOKEN" };
     const { container } = render(<SignInConfirmPage />);
     expect(screen.getByRole("heading", { level: 1, name: "This link has expired" })).toBeVisible();
     expect(screen.getByLabelText("Email address")).toHaveValue("t@school.test");
@@ -149,8 +144,10 @@ describe("SignInConfirmPage", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("a link without a token says so and offers a new one", () => {
+  it("a link without a token says so and offers a new one, with an empty field in a new browser", () => {
+    localStorage.clear();
     render(<SignInConfirmPage />);
+    expect(screen.getByLabelText("Email address")).toHaveValue("");
     expect(
       screen.getByRole("heading", { level: 1, name: "This link is incomplete" }),
     ).toBeVisible();

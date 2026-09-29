@@ -96,16 +96,6 @@ describe("confirmPageUrl (TEACH-246)", () => {
     );
   });
 
-  test("carries the recipient's address for the sheet's \"Continue as\" line (TEACH-214)", () => {
-    const link = new URL(
-      confirmPageUrl(verify, "https://fallback.test", trusted, "a+b@school.test"),
-    );
-    expect(link.searchParams.get("email")).toBe("a+b@school.test");
-    expect(
-      new URL(confirmPageUrl(verify, "https://fallback.test", trusted)).searchParams.has("email"),
-    ).toBe(false);
-  });
-
   test("a relative callback falls back to the configured web origin", () => {
     const relative = "https://api.test/auth/magic-link/verify?token=t&callbackURL=%2F";
     expect(confirmPageUrl(relative, "https://fallback.test", trusted)).toBe(

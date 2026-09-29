@@ -94,3 +94,34 @@ export function landingFor(pathname: string, now = Date.now()): ConfirmDestinati
     return null;
   }
 }
+
+/**
+ * The address this browser last asked a link for, so the expired sheet can offer it again. Kept
+ * client-side only (never in a URL: mail scanners, proxies and logs capture query strings), in
+ * local storage because the email link usually opens a new tab, and only for a link's lifetime.
+ */
+const REQUESTED_EMAIL_KEY = "tj:magic-link-email";
+const REQUESTED_EMAIL_TTL_MS = 15 * 60_000;
+
+export function rememberRequestedEmail(email: string): void {
+  try {
+    localStorage.setItem(REQUESTED_EMAIL_KEY, JSON.stringify({ email, at: Date.now() }));
+  } catch {
+    // Storage blocked: the expired sheet starts with an empty field.
+  }
+}
+
+export function requestedEmail(now = Date.now()): string {
+  try {
+    const raw = localStorage.getItem(REQUESTED_EMAIL_KEY);
+    if (!raw) return "";
+    const { email, at } = JSON.parse(raw) as { email?: unknown; at?: unknown };
+    if (typeof email !== "string" || typeof at !== "number" || now - at > REQUESTED_EMAIL_TTL_MS) {
+      localStorage.removeItem(REQUESTED_EMAIL_KEY);
+      return "";
+    }
+    return email;
+  } catch {
+    return "";
+  }
+}

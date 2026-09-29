@@ -238,7 +238,10 @@ test.describe("auth", () => {
     const sheet = page.getByRole("dialog");
     await expect(sheet.getByRole("heading", { name: "This link has expired" })).toBeVisible();
     await expect(page.locator('[data-confirm-preview="new-lesson"]')).toContainText("Volcanoes");
-    await expect(sheet.getByLabel("Email address")).toHaveValue(email);
+    // This browser never asked for a link through the form (signIn used the api), so nothing
+    // prefills it: the email is never read from the URL.
+    await expect(sheet.getByLabel("Email address")).toHaveValue("");
+    await sheet.getByLabel("Email address").fill(email);
 
     // A fresh link from the sheet keeps the destination and drops the error.
     await sheet.getByRole("button", { name: "Email me a new link" }).click();
@@ -259,7 +262,9 @@ test.describe("auth", () => {
 
     await page.goto(await lastMagicLink(request, email));
     const sheet = page.getByRole("dialog");
-    await expect(sheet.getByRole("heading", { name: `Continue as ${email}` })).toBeVisible();
+    await expect(sheet.getByRole("heading", { name: "Continue to DayBack" })).toBeVisible();
+    // No personal data in the link: the address is not in the URL, encoded or not.
+    expect(page.url()).not.toMatch(/@|%40/);
     await expect(page.locator('[data-confirm-preview="new-lesson"]')).toContainText(
       "Volcanoes and plates",
     );
@@ -355,7 +360,7 @@ test.describe("auth", () => {
     });
     await scanned.goto(link);
     await expect(
-      scanned.getByRole("heading", { level: 1, name: `Continue as ${email}` }),
+      scanned.getByRole("heading", { level: 1, name: "Continue to DayBack" }),
     ).toBeVisible();
     await scanned.waitForLoadState("networkidle");
     expect(verifyHits).toEqual([]);

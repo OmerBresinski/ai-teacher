@@ -19,6 +19,7 @@ import { useContentHeight } from "@/hooks/use-content-height";
 import { authClient } from "@/lib/auth";
 import { fetchAuthProviders } from "@/lib/auth-providers";
 import { callbackUrl, errorCallbackUrl } from "@/lib/auth-redirect";
+import { rememberRequestedEmail } from "@/lib/confirm-destination";
 import { sessionBoundary } from "@/lib/session-boundary";
 
 const route = getRouteApi("/sign-in");
@@ -188,6 +189,7 @@ export function SignInPage() {
         callbackURL: callbackUrl(window.location.origin, redirect),
         errorCallbackURL: errorCallbackUrl(window.location.origin, redirect),
       });
+      if (!error) rememberRequestedEmail(address);
       setStatus(error ? { kind: "error" } : { kind: "sent", email: address });
     } catch {
       // A network failure rejects instead of resolving with `error`. Left in "sending", the page

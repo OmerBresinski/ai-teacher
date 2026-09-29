@@ -26,15 +26,16 @@ import {
   confirmActionLabel,
   confirmDestination,
   rememberLanding,
+  rememberRequestedEmail,
+  requestedEmail,
 } from "@/lib/confirm-destination";
 
 const route = getRouteApi("/sign-in/confirm");
 
 /** Where better-auth sends a failed verify: back to this page, without the token (TEACH-214). */
-export function confirmErrorUrl(origin: string, redirect: string, email?: string): string {
+export function confirmErrorUrl(origin: string, redirect: string): string {
   const url = new URL("/sign-in/confirm", origin);
   url.searchParams.set("callbackURL", redirect);
-  if (email) url.searchParams.set("email", email);
   return url.toString();
 }
 
@@ -48,13 +49,13 @@ export function confirmErrorUrl(origin: string, redirect: string, email?: string
 export function magicLinkVerifyUrl(
   apiBase: string,
   origin: string,
-  query: { token: string; callbackURL?: string; email?: string },
+  query: { token: string; callbackURL?: string },
 ): string {
   const redirect = sanitiseRedirectPath(pathOnOrigin(query.callbackURL, origin));
   const url = new URL(`${apiBase}/auth/magic-link/verify`);
   url.searchParams.set("token", query.token);
   url.searchParams.set("callbackURL", callbackUrl(origin, redirect));
-  url.searchParams.set("errorCallbackURL", confirmErrorUrl(origin, redirect, query.email));
+  url.searchParams.set("errorCallbackURL", confirmErrorUrl(origin, redirect));
   return url.toString();
 }
 
@@ -78,7 +79,7 @@ type Resend = { kind: "idle" } | { kind: "sending" } | { kind: "sent" } | { kind
  * every tab stop.
  */
 export function SignInConfirmPage() {
-  const { token, callbackURL, email, error } = route.useSearch();
+  const { token, callbackURL, error } = route.useSearch();
   const origin = window.location.origin;
   const destination = useMemo(() => confirmDestination(callbackURL, origin), [callbackURL, origin]);
   const [signingIn, setSigningIn] = useState(false);
@@ -110,7 +111,6 @@ export function SignInConfirmPage() {
       magicLinkVerifyUrl(resolveApiBaseUrl(env.VITE_API_URL, origin), origin, {
         token,
         callbackURL,
-        email,
       }),
     );
   }
@@ -150,7 +150,6 @@ export function SignInConfirmPage() {
           {live ? (
             <ContinueSheet
               titleId={titleId}
-              email={email}
               destination={destination}
               signingIn={signingIn}
               onContinue={onContinue}
@@ -158,7 +157,6 @@ export function SignInConfirmPage() {
           ) : (
             <ExpiredSheet
               titleId={titleId}
-              email={email}
               redirect={sanitiseRedirectPath(pathOnOrigin(callbackURL, origin))}
               incomplete={!token && !error}
             />
@@ -171,13 +169,11 @@ export function SignInConfirmPage() {
 
 function ContinueSheet({
   titleId,
-  email,
   destination,
   signingIn,
   onContinue,
 }: {
   titleId: string;
-  email?: string;
   destination: ConfirmDestination;
   signingIn: boolean;
   onContinue: () => void;
@@ -189,16 +185,7 @@ function ContinueSheet({
           id={titleId}
           className="text-[26px] leading-[1.15] font-[750] tracking-[-0.03em] text-foreground"
         >
-          {email ? (
-            <>
-              Continue as{" "}
-              <span className="block text-[20px] leading-[1.25] font-[650] tracking-[-0.01em] [overflow-wrap:anywhere]">
-                {email}
-              </span>
-            </>
-          ) : (
-            "Continue to DayBack"
-          )}
+          Continue to DayBack
         </h1>
         <p className="text-body text-ink-2">
           {destination.kind === "new-lesson"
@@ -225,16 +212,16 @@ function ContinueSheet({
  */
 function ExpiredSheet({
   titleId,
-  email: initialEmail,
   redirect,
   incomplete,
 }: {
   titleId: string;
-  email?: string;
   redirect: string;
   incomplete: boolean;
 }) {
-  const [email, setEmail] = useState(initialEmail ?? "");
+  // Never from the URL (no personal data in query strings): only an address this browser asked a
+  // link for, within the link's lifetime.
+  const [email, setEmail] = useState(requestedEmail);
   const [status, setStatus] = useState<Resend>({ kind: "idle" });
   const fieldId = useId();
 
@@ -250,6 +237,7 @@ function ExpiredSheet({
         callbackURL: callbackUrl(origin, redirect),
         errorCallbackURL: errorCallbackUrl(origin, redirect),
       });
+      if (!error) rememberRequestedEmail(address);
       setStatus(error ? { kind: "error" } : { kind: "sent" });
     } catch {
       setStatus({ kind: "error" });
