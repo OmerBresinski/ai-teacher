@@ -61,7 +61,7 @@ describe("plan-teach-objective", () => {
     }
     // v3 (l6j): the worked-example rule departs from v14 by "taken to its finished form".
     expect(system).toContain(
-      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form, on one slide: the problem is one short line pupils read, and each step is the working only, as written on the board (a calculation or a short phrase, not a sentence), at most four, the teacher saying why each step follows; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+      'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form, on one slide: the problem is one short line pupils read, and each step is the working only, as written on the board (a calculation or a short phrase, not a sentence), at most four, the last being the answer, the teacher saying why each step follows; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     );
     // v2 (audit B1): prior knowledge is read from the audience block.
     expect(system).toContain(

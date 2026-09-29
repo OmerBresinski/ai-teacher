@@ -220,7 +220,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v4",
-    hash: "33e7c39b268341313d4292d931b82cbcf7e182cfb3b8a47bc77c4343760bbf00",
+    hash: "af20cbfbe30e651f513f94e4ee090b7332d137850512de49b8cc7d64a1b201b3",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -236,7 +236,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
     version: "generate-slide.v31",
-    hash: "0dbb5b1b7617eeadc8924d22abda1256484bbc83ce768343570b05f476025e44",
+    hash: "4aae192963598e28ca929b28b7db56adb46fed1e8dfd79ff64426a32df23b404",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -774,7 +774,7 @@ describe("prompt versions", () => {
 
   test("TEACH-245: the slide writer keeps the last step, the terms definitions need, and asks what the slide does not say", () => {
     const system = PROMPTS["generate-slide"].system;
-    expect(system).toContain("ending with the conclusion");
+    expect(system).toContain("the last reaching the answer");
     expect(system).toContain("not already on the slide");
     // TEACH-246: footnote is for pupils; teacher text belongs in notes.
     expect(system).toContain("`footnote` is one short line pupils read");
