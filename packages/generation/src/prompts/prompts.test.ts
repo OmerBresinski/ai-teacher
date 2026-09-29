@@ -260,13 +260,13 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   evaluate: {
     // v9 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
-    version: "evaluate.v9",
-    hash: "6207e235c290272a2b5c20309f9ab92655be19f0ca67b18416b8a6998e1d73ff",
+    version: "evaluate.v10",
+    hash: "5493a098ef438365cb987e3324d3fc20f1e87eedb6f3cb1166c6eb64dd6b3ef8",
   },
   repair: {
     // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
-    version: "repair.v17",
-    hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
+    version: "repair.v18",
+    hash: "467a9029a8c23b00740ac57d9d8b9d82cca37162512a589b03a49fbb0e83788e",
   },
   "repair-fact": {
     version: "repair-fact.v6",

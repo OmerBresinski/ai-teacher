@@ -14,7 +14,8 @@ import {
  * Repair (ADR 0025 §12; Generation quality §4, TEACH-216): regenerate one slide or block spec with
  * the findings about it in context — each quoting the text it is about — so the fix is targeted.
  * Same shapes as Generate, so the same materialiser places the result; the spec sanitiser refuses
- * repair commentary in `notes`. Since TEACH-230 it is given the same verb block Generate had, so a
+ * repair commentary in `notes`. v18 (fit-lab teacher-notes-absorb): a content slide's missing explanation goes in `notes`, not the body.
+ * Since TEACH-230 it is given the same verb block Generate had, so a
  * rewritten slide is written to the objective verb too. Since lab round 1 (v14) a slide call is
  * also shown up to six other slides read-only, and the verb-fit, repetition and tested-not-taught
  * warnings arrive with the errors (scratchpad/quality-prd/lab/r1/checks.md §3).
@@ -90,7 +91,7 @@ export type RepairInput = {
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v17",
+  version: "repair.v18",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",
@@ -101,7 +102,7 @@ export const repairPrompt = {
     "Fix every problem listed — errors, then warnings — changing only the text each quotes and what depends on it; other items and headings stay. `notes` are classroom guidance, never a change log, and keep their answer lines.",
     "Make each point, example and quotation once: where another slide shown already makes it, take a different one from the facts.",
     "A question, task or model answer asks only what the slides marked taught earlier and the target's facts state; for tested-not-taught, narrow the task to that.",
-    "Write to the supplied objective verb. A verb-fit problem is fixed by changing the task, not the kind, at the class's level: in Years 1 and 2 an explain item may keep its naming question and add the reason, answered in one short sentence aloud or on one line.",
+    "Write to the supplied objective verb. A verb-fit problem is fixed by changing the task, not the kind, at the class's level: in Years 1 and 2 an explain item may keep its naming question and add the reason, answered in one short sentence aloud or on one line. On a content slide, the body keeps its example and the missing explanation goes in `notes`, for the teacher to say.",
     "An unanchored task such as 'Explain your decision' needs its question first: 'Is a guinea pig a rodent? Explain your decision.'",
     "",
     "Example answer for a multiple-choice slide:",
