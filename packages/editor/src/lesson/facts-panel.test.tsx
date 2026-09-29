@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { Proposal } from "@tj/domain";
 import type { Lesson, TextElement } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { createRef } from "react";
 import type { LessonEditorHandle } from "./LessonEditor";
-import { catcher, pointer, renderEditor } from "./test-harness";
+import { catcher, loadTextEditor, pointer, renderEditor } from "./test-harness";
 
 /*
  * TEACH-134 on the real shell: the facts panel (typing is one undo step, commits coalesce into
@@ -13,6 +13,8 @@ import { catcher, pointer, renderEditor } from "./test-harness";
  * text edit or typing session first — and the regenerate entry points and dialog.
  */
 
+// The editor's lazy chunks load once here, not inside the first test's `waitFor`.
+beforeAll(loadTextEditor);
 afterEach(cleanup);
 
 const GENERATED_FROM = {
