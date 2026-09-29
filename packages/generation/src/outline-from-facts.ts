@@ -646,16 +646,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const ks = unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT);
     if (ks.length > 0) place(contentSlot(o, ks));
   }
-  // P1b: every key idea taught — an objective with more than one slide's worth gets another,
-  // before the shape's kinds and floors, keeping one slot for practice. A question on an untaught
-  // key idea is worse than a missing vocabulary slide or worked example, which are only gaps.
-  for (
-    let next = nextKeyIdeas();
-    budget > reserve(true) && next !== undefined;
-    next = nextKeyIdeas()
-  ) {
-    place(contentSlot(next[0], next[1]));
-  }
+  // One idea per slide (fit-lab): an objective's further key ideas no longer take slides before
+  // the shape's kinds, floors and checks (P1b is gone). They get P6's spare slots, the ideas most
+  // questions test first; the rest are named in `gaps` and their questions held back.
+
   // Four objectives in a six-slide deck: the budget runs out inside P1. Said per objective, so
   // the plan screen can name the one that is not taught rather than the teacher finding out.
   for (const o of all) {
@@ -1478,8 +1472,6 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       }
       case "content": {
         const ks = slot.keyIdeas ?? [];
-        const k = ks[0] ?? 0;
-        const idea = facts.keyIdeas[k];
         refs.push(...ks.map((index): OrdinalRef => ({ type: "keyIdea", index })));
         const terms = facts.vocabulary
           .flatMap((v, t) => (names(v.objectiveRefs, slot.primary) ? [t] : []))
@@ -1495,27 +1487,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
-        const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
-        if (watch !== undefined) {
-          usedMisconceptions.add(watch);
-          callouts[position] = {
-            kind: "watch-out",
-            ref: { type: "misconception", index: watch },
-            text: facts.misconceptions[watch]?.belief ?? "",
-          };
-        } else if (terms.length > 0) {
-          callouts[position] = {
-            kind: "key-words",
-            ref: { type: "vocabulary", index: terms[0] ?? 0 },
-            text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
-          };
-        } else if (idea) {
-          callouts[position] = {
-            kind: "example",
-            ref: { type: "keyIdea", index: k },
-            text: idea.example,
-          };
-        }
+        // One idea per slide: the key idea fills the slide (its panel and points), so a content
+        // slide carries no callout card; its objective's misconception is the body's closing
+        // sentence (`generate-slide`'s `ownMisconceptions`) and its terms are defined in the words.
         break;
       }
       case "worked-example": {
