@@ -26,8 +26,55 @@ export function withGenerationBudget(model: LanguageModel, modelId: string, budg
   return wrapLanguageModel({
     model,
     middleware: {
-      wrapStream: async () => {
-        throw new UnestimableCallError();
+      // Lab fit-single-writer: a stream is reserved like a generate call and settled from its
+      // `finish` part; a stream that ends without usage (or errors) is marked uncertain.
+      wrapStream: async ({ doStream, params }) => {
+        params.abortSignal?.throwIfAborted();
+        const estimate = estimatePreparedCall(modelId, params);
+        if (!estimate) throw new UnestimableCallError();
+        const admitted = budget.reserve(modelId, estimate);
+        if ("by" in admitted) throw new BudgetReservationError(admitted.by);
+        const { reservation } = admitted;
+        let settled = false;
+        const uncertain = () => {
+          if (settled) return;
+          settled = true;
+          budget.markUncertain(reservation);
+        };
+        let result: Awaited<ReturnType<typeof doStream>>;
+        try {
+          result = await doStream();
+        } catch (error) {
+          uncertain();
+          throw error;
+        }
+        const settle = new TransformStream({
+          transform(part, controller) {
+            const p = part as {
+              type?: string;
+              usage?: {
+                inputTokens: { total?: number; cacheRead?: number; cacheWrite?: number };
+                outputTokens: { total?: number };
+              };
+            };
+            if (p.type === "finish" && p.usage && !settled) {
+              const input = p.usage.inputTokens;
+              const output = p.usage.outputTokens;
+              if (count(input.total) && count(output.total)) {
+                settled = true;
+                budget.settle(reservation, {
+                  inputTokens: input.total,
+                  outputTokens: output.total,
+                  cachedInputTokens: count(input.cacheRead) ? input.cacheRead : 0,
+                  cacheWriteInputTokens: count(input.cacheWrite) ? input.cacheWrite : 0,
+                });
+              }
+            }
+            controller.enqueue(part);
+          },
+          flush: uncertain,
+        });
+        return { ...result, stream: result.stream.pipeThrough(settle) } as typeof result;
       },
       wrapGenerate: async ({ doGenerate, params }) => {
         params.abortSignal?.throwIfAborted();

@@ -161,7 +161,7 @@ export function photoBlock(photo: SlidePhoto | "none"): string[] {
 export const IMAGE_TEXT_RULE =
   "An `image-text` slide is written to its photograph. Say 'the photograph' (singular when there is one). A task — spot, find, count, point to, look for, identify, circle, label — may name only items listed as visible. Describe only what the caption and the visible list say is there; never name a kind of animal, plant, object or place the caption does not name. If a required item is not visible, `notes` tell the teacher to say or show it another way; never say what the photograph does not show. If there is no photograph, do not mention a picture at all.";
 
-const SHAPES = {
+export const SHAPES = {
   title: '{ "kind": "title", "title", "subtitle", "factRefs", "notes"? }',
   objectives: '{ "kind": "objectives", "items": [1–4 strings], "factRefs", "notes"? }',
   starter:

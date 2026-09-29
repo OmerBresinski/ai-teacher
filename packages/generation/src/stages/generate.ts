@@ -27,6 +27,7 @@ import {
   type SlidePhoto,
   verifyFactsPrompt,
 } from "../prompts";
+import { type DeckSlideLine, writeDeckPrompt } from "../prompts/write-deck";
 import {
   isOutlineFromFacts,
   retrievalIndexOf,
@@ -56,6 +57,7 @@ import {
   withImageCaption,
 } from "./shared";
 import { runVerify } from "./verify";
+import { type DeckStream, type StreamedSlide, startDeckStream } from "./write-deck";
 
 /*
  * Generate (ADR 0025 §4, §7, §8, §15; Generation quality §3, TEACH-213): one `small` call per
@@ -114,8 +116,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   const findings: Finding[] = [...generation.findings];
   const entries = facts.outline;
   const total = entries.length;
-  const meta = (modelId: string): MaterialiseMeta => ({
-    promptVersion: generateSlidePrompt.version,
+  const meta = (
+    modelId: string,
+    promptVersion: string = generateSlidePrompt.version,
+  ): MaterialiseMeta => ({
+    promptVersion,
     model: modelId,
     at: deps.now().toISOString(),
   });
@@ -135,6 +140,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   // A worker that failed (two schema misses) fails the stage; the others start nothing more, so a
   // failed lesson does not keep paying for slides it will never write.
   let failed = false;
+  const generateStarted = Date.now();
+  let deck: DeckStream | undefined;
+  let redeck: Promise<DeckStream | undefined> | undefined;
+  let deckFacts: LessonFacts | undefined;
+  let fallbacks = 0;
 
   // Verify (TEACH-233): Plan started the call and handed the promise over; slides begin from the
   // unverified facts and every persist waits for the patch. A resumed lesson has no promise — its
@@ -198,13 +208,41 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   const turnOf = (i: number) => gates.get(i - 1)?.promise ?? Promise.resolve();
   const release = (i: number) => gates.get(i)?.open();
 
+  const schemaFor = (
+    entry: OutlineEntry,
+    photo: SlidePhoto | "none" | undefined,
+    factFigure: ReturnType<typeof figureOfEntry> | undefined,
+    soft: boolean,
+  ): z.ZodType<SlideSpec | DiagramTextSpec> | undefined => {
+    if (factFigure) return diagramTextSpecSchemaFor({ soft });
+    const base =
+      entry.kind === "image-text"
+        ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
+            soft,
+          })
+        : entry.kind === "diagram"
+          ? entry.figureBrief && diagramSpecSchemaFor(entry.figureBrief.template, { soft })
+          : slideSpecSchemaFor(entry.kind, { soft });
+    return base && (calloutsAssigned ? withAssignedCallout(base, entry.callout, { soft }) : base);
+  };
+
   /** One `generate-slide` call for entry `i`, from the facts as they stand when it starts. */
   const writeSlide = async (
     i: number,
     entry: OutlineEntry,
     photo: SlidePhoto | "none" | undefined,
+    streamed?: Promise<StreamedSlide | undefined>,
   ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
-    const builtFrom = facts;
+    const fromStream = streamed ? await streamed : undefined;
+    if (streamed && !fromStream) {
+      fallbacks += 1;
+      deps.logger.info(
+        { stage: "generate", call: "slide", index: i },
+        "write-deck slide fell back to a per-slide call",
+      );
+    }
+    // A streamed slide was written from the facts as they stood when the deck call started.
+    const builtFrom = fromStream && deckFacts ? deckFacts : facts;
     // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
     // facts in code, answers revealed on the slide; no model call, so no item is invented.
     const coded = calloutsAssigned
@@ -223,59 +261,54 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     const factFigure = entry.kind === "diagram" ? figureOfEntry(builtFrom, entry) : undefined;
     // `OutlineEntrySchema` only admits generatable kinds and a diagram entry always carries its
     // figure brief, so the throw below never fires; it keeps the type.
-    const specSchema = (soft: boolean): z.ZodType<SlideSpec | DiagramTextSpec> | undefined => {
-      if (factFigure) return diagramTextSpecSchemaFor({ soft });
-      const base =
-        entry.kind === "image-text"
-          ? imageTextSpecSchemaFor(photo === "none" ? "none" : sanitiserPhoto(entry, photo), {
-              soft,
-            })
-          : entry.kind === "diagram"
-            ? entry.figureBrief && diagramSpecSchemaFor(entry.figureBrief.template, { soft })
-            : slideSpecSchemaFor(entry.kind, { soft });
-      return base && (calloutsAssigned ? withAssignedCallout(base, entry.callout, { soft }) : base);
-    };
+    const specSchema = (soft: boolean) => schemaFor(entry, photo, factFigure, soft);
     const schema = specSchema(false);
     if (!schema) throw new Error(`generate: no spec schema for slide kind "${entry.kind}"`);
     // Lab only (r3): a teaching slide sees the later questions that test its key ideas.
     const laterQuestions = calloutsAssigned
       ? laterQuestionsFor(builtFrom, i, lesson.id)
       : undefined;
-    const call = await callStructured({
-      deps,
-      stage: "generate",
-      cls: "small",
-      effort: "low",
-      prompt: generateSlidePrompt,
-      input: {
-        referenced: referencedFacts(builtFrom, entry),
-        entry,
-        shape,
-        position: { index: i + 1, total },
-        neighbours: {
-          previous: entries[i - 1]?.brief?.adds,
-          next: entries[i + 1]?.brief?.adds,
-        },
-        reservedStems: stems.reservedFor(i),
-        phase: entry.phase,
-        ...(photo !== undefined ? { photo } : {}),
-        ...(laterQuestions ? { laterQuestions } : {}),
-        ...(factFigure ? { figure: factFigure } : {}),
-        audience,
-        vocabularySlots: vocabularySlots(lesson.themeId),
-        lessonTitle: lesson.title,
-      },
-      schema,
-      soft: specSchema(true),
-      maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
-    });
+    const call = fromStream
+      ? {
+          output: fromStream.output as SlideSpec | DiagramTextSpec,
+          modelId: fromStream.modelId,
+          editorialMisses: fromStream.misses,
+        }
+      : await callStructured({
+          deps,
+          stage: "generate",
+          cls: "small",
+          effort: "low",
+          prompt: generateSlidePrompt,
+          input: {
+            referenced: referencedFacts(builtFrom, entry),
+            entry,
+            shape,
+            position: { index: i + 1, total },
+            neighbours: {
+              previous: entries[i - 1]?.brief?.adds,
+              next: entries[i + 1]?.brief?.adds,
+            },
+            reservedStems: stems.reservedFor(i),
+            phase: entry.phase,
+            ...(photo !== undefined ? { photo } : {}),
+            ...(laterQuestions ? { laterQuestions } : {}),
+            ...(factFigure ? { figure: factFigure } : {}),
+            audience,
+            vocabularySlots: vocabularySlots(lesson.themeId),
+            lessonTitle: lesson.title,
+          },
+          schema,
+          soft: specSchema(true),
+          maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
+        });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
     const answer = withFactFigure(call.output, factFigure);
     const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
     const slide = materialiseSlide(
       withImageCaption(spec, entry),
       lesson.themeId,
-      meta(call.modelId),
+      meta(call.modelId, fromStream ? writeDeckPrompt.version : generateSlidePrompt.version),
       deps.ids,
       undefined,
       {},
@@ -299,18 +332,27 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       picked = await picks.get(i);
       if (picked && picked.outcome !== "busy") judged = true;
       const photo = entry.kind === "image-text" ? photoFor(entry, picked) : undefined;
-      let written = await writeSlide(i, entry, photo);
+      let written = await writeSlide(i, entry, photo, deck?.slides.get(i));
       // The patch landed while this slide was being written: a slide built from a fact Verify
       // corrected is written again from the corrected facts (TEACH-233). A cap stop on that second
       // call drops the slide — it was built from unverified facts and may not reach the checkpoint;
       // the lesson stops here as it does for any slide the cap refuses.
       await verified;
-      if (written.builtFrom !== facts && touchesCorrected(entry, written.slide, corrected)) {
+      // Lab fit-single-writer: a streamed slide is rewritten only when a fact it names (its entry's,
+      // its callout's or its elements') was corrected, not for any corrected misconception.
+      const streamedSlide = written.slide.elements.some(
+        (e) => e.generatedFrom?.promptVersion === writeDeckPrompt.version,
+      );
+      const touched = streamedSlide
+        ? touchesNamed(entry, corrected)
+        : touchesCorrected(entry, written.slide, corrected);
+      if (written.builtFrom !== facts && touched) {
         deps.logger.info(
           { stage: "generate", call: "slide", index: i, reason: "fact-verify" },
           "slide regenerated from corrected facts",
         );
-        written = await writeSlide(i, entry, photo);
+        const again = streamedSlide ? (await redeck)?.slides.get(i) : undefined;
+        written = await writeSlide(i, entry, photo, again);
       }
       slide = written.slide;
       for (const miss of written.misses) {
@@ -347,6 +389,10 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     if (slide && lesson.slides.length === i && !deps.signal.aborted && !failed) {
       lesson = withUsage({ ...lesson, slides: [...lesson.slides, slide] }, deps);
       const { updatedAt } = await deps.persist(lesson);
+      deps.logger.info(
+        { stage: "generate", call: "persist", index: i, ms: Date.now() - generateStarted },
+        "slide persisted",
+      );
       await deps.onProgress(
         Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * (i + 1)) / total),
         `Slide ${i + 1} of ${total}`,
@@ -356,6 +402,105 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     }
     release(i);
   };
+
+  // Lab fit-single-writer: on the code-written outline, one streamed call writes every slide the
+  // model writes; question sets stay code, and an entry waiting on a photograph keeps its own call.
+  // `only`: a second deck call after Verify, writing just the slides built from a corrected fact.
+  const openDeck = (only?: Set<number>): DeckStream | undefined => {
+    const lines: DeckSlideLine[] = [];
+    const schemas = new Map<
+      number,
+      { schema: z.ZodType<unknown>; soft: z.ZodType<unknown> | undefined }
+    >();
+    entries.forEach((entry, i) => {
+      if (i < first) {
+        lines.push({ index: i, entry, mode: "made" });
+        return;
+      }
+      const coded = codedSetSpec(entry, facts, `${lesson.id}:${i}`);
+      if (coded) {
+        lines.push({
+          index: i,
+          entry,
+          mode: "made",
+          shows:
+            coded.questionRefs.length > 0
+              ? `Questions ${coded.questionRefs.join(", ")}, answers shown.`
+              : "Retrieval questions on earlier learning, answers shown.",
+        });
+        return;
+      }
+      if (picks.has(i)) {
+        lines.push({
+          index: i,
+          entry,
+          mode: "made",
+          shows: "Written separately around its photograph.",
+        });
+        return;
+      }
+      if (only && !only.has(i)) {
+        lines.push({
+          index: i,
+          entry,
+          mode: "made",
+          shows: `Written already, from ${entry.factRefs.join(", ")}.`,
+        });
+        return;
+      }
+      const factFigure = entry.kind === "diagram" ? figureOfEntry(facts, entry) : undefined;
+      const photo = entry.kind === "image-text" ? ("none" as const) : undefined;
+      const schema = schemaFor(entry, photo, factFigure, false);
+      if (!schema) {
+        lines.push({ index: i, entry, mode: "made" });
+        return;
+      }
+      schemas.set(i, { schema, soft: schemaFor(entry, photo, factFigure, true) });
+      lines.push({
+        index: i,
+        entry,
+        mode: "write",
+        reservedStems: stems.reservedFor(i),
+        ...(photo ? { photo } : {}),
+        ...(factFigure ? { figure: factFigure } : {}),
+      });
+    });
+    if (schemas.size === 0) return undefined;
+    return startDeckStream({
+      deps,
+      input: {
+        lessonTitle: lesson.title,
+        audience,
+        shape,
+        facts,
+        slides: lines,
+        vocabularySlots: vocabularySlots(lesson.themeId),
+      },
+      schemas,
+    });
+  };
+  if (calloutsAssigned && !deps.signal.aborted) {
+    deckFacts = facts;
+    deck = openDeck();
+    // One re-deck for every streamed slide whose entry names a corrected fact, opened once the
+    // patch lands; `touchesNamed` is the same test slideWork applies.
+    redeck = deck
+      ? verified.then(() => {
+          const only = new Set(
+            [...(deck?.slides.keys() ?? [])].filter((i) => {
+              const entry = entries[i];
+              return entry !== undefined && touchesNamed(entry, corrected);
+            }),
+          );
+          if (only.size === 0) return undefined;
+          deps.logger.info(
+            { stage: "generate", call: "write-deck", slides: [...only] },
+            "write-deck re-deck after verify",
+          );
+          return openDeck(only);
+        })
+      : undefined;
+  }
 
   throwIfAborted(deps.signal);
   // `runBounded` settles every worker before it rethrows: a rejection never leaves the others
@@ -377,9 +522,11 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         promptVersions: {
           ...generationOf(lesson).promptVersions,
           // The photo judge has no checkpoint of its own; its version rides on `generated`.
-          generated: judged
-            ? joinVersions(generateSlidePrompt.version, pickOrRequeryPrompt.version)
-            : generateSlidePrompt.version,
+          generated: [
+            ...(deck ? [writeDeckPrompt.version] : []),
+            ...(!deck || fallbacks > 0 ? [generateSlidePrompt.version] : []),
+            ...(judged ? [pickOrRequeryPrompt.version] : []),
+          ].join("+"),
         },
         findings,
       },
@@ -439,6 +586,12 @@ export function touchesCorrected(
   }
   if (entry.factRefs.some((id) => corrected.has(id))) return true;
   return slide.elements.some((e) => e.generatedFrom?.factRefs.some((id) => corrected.has(id)));
+}
+
+/** Whether a slide's entry names a corrected fact: its own refs or its callout's. */
+function touchesNamed(entry: OutlineEntry, corrected: Set<string>): boolean {
+  if (corrected.size === 0) return false;
+  return [...entry.factRefs, ...(entry.callout?.factRefs ?? [])].some((id) => corrected.has(id));
 }
 
 /** What the slide prompt is told about its photograph (TEACH-220). */
