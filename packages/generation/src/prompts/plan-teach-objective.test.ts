@@ -97,7 +97,7 @@ describe("plan-teach-objective", () => {
       expect(system.toLowerCase()).not.toContain(gone);
     }
     expect(system).toContain(
-      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
+      `Length limits (characters): statement, belief, example, problem and step ${SPEC_LIMITS.item}; explanation and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
     );
     // The sketch is v14's without its `questions` list; `misconceptionRef` stays out of it (v7).
     expect(TEACH_SHAPE_SKETCH).not.toContain("questions");
