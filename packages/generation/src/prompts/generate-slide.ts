@@ -259,7 +259,7 @@ export const generateSlidePrompt = {
       notes: SPEC_LIMITS.notes,
     }),
     "",
-    "These slides are full: each holds as much as one slide can. Write each slide to the size of the full slide of its kind.",
+    "These slides are full: each holds as much as one slide can. A slide you write is no longer than the full slide of its kind: a content body no longer than the Text of the full slide with as many key ideas, each worked-example step no longer than one of its Steps.",
     FULL_SLIDES_BLOCK,
     "",
     "The JSON shape per kind (`callout`, where shown, only when the slide line assigns one):",

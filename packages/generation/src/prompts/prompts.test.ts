@@ -220,7 +220,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v4",
-    hash: "6be09c598d31d1ee457ee17342d5faade9d51141b78873a8d163656c12b00b3e",
+    hash: "51b377bdb04bafac6c7524ec43864fe6ea512079860351954b6f5c7ce1d24238",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -236,7 +236,7 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
     version: "generate-slide.v31",
-    hash: "32bc736bffadde80ec2d9e941fb4adc09f316056d6f7d28313997b25b2edfe77",
+    hash: "5f26d181072d76467c4977b2dd29db59ed99fa031803f48c19c6295783aec830",
   },
   "generate-worksheet": {
     version: "generate-worksheet.v10",
@@ -328,7 +328,7 @@ describe("prompt versions", () => {
       // content rule and its 60-word body) is 971 and must stay under this. v25 (the build-up
       // order, luna-direct FM3) is 979. v31 (+~130: the full slides shown for size, lab
       // fit-calibrate-by-example) replaces word and character numbers with three measured slides.
-      "generate-slide": 1140,
+      "generate-slide": 1165,
       "generate-worksheet": 639,
       "generate-worksheet-fill": 639,
       // v13 was 415 words. v14 (lab round 1, +97: errors first and answer lines kept, once-in-the-

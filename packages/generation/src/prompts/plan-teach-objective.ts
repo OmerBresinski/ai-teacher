@@ -193,7 +193,7 @@ const LENGTH_LIMITS = `Length limits (characters): statement and belief ${SPEC_L
 const SLIDE_SIZE = [
   "Each key idea and worked example is shown to the class on a slide, as you write it. These slides are full: each holds as much as one slide can.",
   FULL_SLIDES_WITH_FACTS_BLOCK,
-  "Write each key idea so its statement is the heading and its explanation and example together are the text of a slide like these; write the worked example so its problem and steps, one line each, fill a slide like the last one.",
+  "Write each key idea so its statement is the heading and its explanation and example together are no longer than the Text of the first slide. Write the worked example so its problem is no longer than that Question and each step no longer than one of those Steps, with no more steps.",
 ].join("\n");
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
