@@ -4,7 +4,6 @@ import { MailCheck } from "lucide-react";
 import {
   type CSSProperties,
   type FormEvent,
-  type RefObject,
   useEffect,
   useId,
   useMemo,
