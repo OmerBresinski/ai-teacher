@@ -244,7 +244,8 @@ describe("outlineFromFacts over the five lab briefs", () => {
     const watchOuts = Object.values(outlineFromFacts(input).callouts).filter(
       (c) => c.kind === "watch-out",
     );
-    expect(watchOuts.length).toBe(Math.min(facts.misconceptions.length, 3));
+    // Minutes-paced (lab): a callout goes only where the slide's minutes leave room.
+    expect(watchOuts.length).toBeLessThanOrEqual(Math.min(facts.misconceptions.length, 3));
     expect(new Set(watchOuts.map((c) => c.ref.index)).size).toBe(watchOuts.length);
   });
 });

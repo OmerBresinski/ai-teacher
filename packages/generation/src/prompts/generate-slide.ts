@@ -224,7 +224,7 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -233,7 +233,7 @@ export const generateSlidePrompt = {
     "Write what the slide line says this slide adds, from the facts it names; do not repeat its neighbours.",
     "Follow the supplied objective verb. On content slides put the key idea's statement in the heading; the body builds it up: the reason it holds, then the example showing it, and any useful analogy. With two key ideas, teach both: the heading says what joins them, the body is two short paragraphs, one per idea. Question slides use the supplied question, answer and distractors verbatim.",
     'When an `instructions` slide\'s facts include questions, it is shared practise: `heading` "Your turn"; each step is one of those questions\' stems verbatim, in the order this slide\'s facts name them, with no number (the layout numbers them). `notes` gives each answer on its own line ("1. <answer>"), then the misconception to watch for. `footnote` may say how pupils answer (mini-whiteboards or books).',
-    "For a `worked-example`, merge neighbouring steps into at most four short lines; keep the conclusion, never drop it. Put fuller working in `notes`.",
+    "For a `worked-example`, show each step of the source working as one line, in order, ending with the conclusion.",
     "`notes`: what to say, the misconception in words rather than ids, and a question whose answer is not already on the slide.",
     "`footnote` is one short line pupils read — how long they have, where to write, what to do when finished. Anything addressed to the teacher goes in `notes`; leave `footnote` out rather than fill it.",
     IMAGE_TEXT_RULE,
@@ -268,8 +268,8 @@ export const generateSlidePrompt = {
         "Ask for a show of hands before revealing. Watch for pupils who imagine a gas as a crowd of particles pressed together. Ask: What would happen to the balloon if the particles inside were as close as in a liquid?",
     }),
     "",
-    "Example for a worked-example slide: five source steps compressed into four short lines, retaining the conclusion.",
-    "Source working: Split 84 into 80 and 4. Divide 80 by 4 to get 20. Divide 4 by 4 to get 1. Add 20 and 1 to get 21. Conclude that 84 divided by 4 is 21.",
+    "Example for a worked-example slide: four source steps, one line each.",
+    "Source working: Split 84 into 80 and 4. Divide 80 by 4 to get 20 and 4 by 4 to get 1. Add 20 and 1 to get 21. So 84 divided by 4 is 21.",
     example({
       kind: "worked-example",
       heading: "Divide by partitioning",
@@ -315,7 +315,7 @@ export const generateSlidePrompt = {
     const misconceptions = ownMisconceptions(input);
     if (misconceptions.length > 0) {
       parts.push(
-        `Its misconception (${misconceptions.join(", ")}): end the body with one sentence on what some pupils think and why it is wrong.`,
+        `Its misconception (${misconceptions.join(", ")}): in \`notes\`, say what some pupils think and why it is wrong.`,
       );
     }
     if (input.photo !== undefined) parts.push(...photoBlock(input.photo));

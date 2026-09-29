@@ -43,13 +43,13 @@ describe("plan-teach-objective", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
     // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    expect(system.trim().split(/\s+/).length).toBeLessThan(390);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
     expect(system).toContain("Other calls write the questions and the other objectives");
     expect(system).not.toContain("outline");
-    expect(system).not.toContain("minute");
+    // Minutes-paced (lab): the teach call sizes material in class minutes on purpose.
     // v14's teach rules, byte for byte where the sentence concerns only these fields.
     for (const kept of [
       "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers)",

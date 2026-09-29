@@ -20,6 +20,13 @@ import {
   STARTER_MAX,
   sameQuestion,
 } from "./planner/coded-slides";
+import {
+  calloutMinutes,
+  fitsMinutes,
+  keyIdeaMinutes,
+  termMinutes,
+  workedExampleMinutes,
+} from "./planner/slide-minutes";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
 import {
@@ -527,7 +534,21 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   };
   const pickWorkedExample = (among: number[]) => {
     const free = among.filter((x) => !used.workedExamples.has(x));
-    return free.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? free[0];
+    // Minutes-paced: one a teacher models in a slide's minutes first, then one heading off a misconception.
+    const fitting = free.filter((x) => fitsMinutes(workedExampleMinutes(facts.workedExamples[x])));
+    const pool = fitting.length > 0 ? fitting : free;
+    return pool.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? pool[0];
+  };
+  /**
+   * Minutes-paced: the key ideas one content slide teaches — the first unplaced one, and a second
+   * only when both fit a teaching slide's minutes (`single`: never a second).
+   */
+  const ideasFor = (o: number, single = false): number[] => {
+    const [first, second] = unusedKeyIdeas(o);
+    if (first === undefined) return [];
+    if (single || second === undefined) return [first];
+    const minutes = keyIdeaMinutes(facts.keyIdeas[first]) + keyIdeaMinutes(facts.keyIdeas[second]);
+    return fitsMinutes(minutes) ? [first, second] : [first];
   };
   /**
    * The next key ideas to teach: the objective with the fewest content slides that still has one,
@@ -538,7 +559,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       .filter((candidate) => unusedKeyIdeas(candidate).length > 0)
       .sort((a, b) => contentSlidesOf(a) - contentSlidesOf(b) || a - b)[0];
     if (o === undefined) return undefined;
-    return [o, unusedKeyIdeas(o).slice(0, single ? 1 : KEY_IDEAS_PER_CONTENT)];
+    return [o, ideasFor(o, single)];
   };
   /** A content slide carrying two key ideas, the objective with the fewest content slides first. */
   const pairedSlot = () =>
@@ -629,7 +650,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // content slide; the objective's key ideas then went untaught, so it no longer does.)
   for (const o of all) {
     if (taught(o)) continue;
-    const ks = unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT);
+    const ks = ideasFor(o);
     if (ks.length > 0) place(contentSlot(o, ks));
   }
   // P1b: every key idea taught — an objective with more than one slide's worth gets another,
@@ -641,6 +662,19 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     next = nextKeyIdeas()
   ) {
     place(contentSlot(next[0], next[1]));
+  }
+  // Minutes-paced last resort: a key idea with no slide left joins its objective's one-idea
+  // content slide, over the slide's minutes, rather than going untaught (P6 splits it again when
+  // budget is left).
+  for (const o of all) {
+    for (const k of unusedKeyIdeas(o)) {
+      const single = slots.find(
+        (s) => s.kind === "content" && s.primary === o && (s.keyIdeas?.length ?? 0) === 1,
+      );
+      if (single === undefined) break;
+      single.keyIdeas = [...(single.keyIdeas ?? []), k];
+      used.keyIdeas.add(k);
+    }
   }
   // Four objectives in a six-slide deck: the budget runs out inside P1. Said per objective, so
   // the plan screen can name the one that is not taught rather than the teacher finding out.
@@ -1467,10 +1501,18 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const k = ks[0] ?? 0;
         const idea = facts.keyIdeas[k];
         refs.push(...ks.map((index): OrdinalRef => ({ type: "keyIdea", index })));
+        // Minutes-paced: terms and a callout join the slide only while its minutes fit.
+        let minutes = ks.reduce((sum, j) => sum + keyIdeaMinutes(facts.keyIdeas[j]), 0);
         const terms = facts.vocabulary
           .flatMap((v, t) => (names(v.objectiveRefs, slot.primary) ? [t] : []))
           .filter((t) => !shownTerms.has(t) && !handedTerms.has(t))
-          .slice(0, TERMS_PER_CONTENT);
+          .slice(0, TERMS_PER_CONTENT)
+          .filter(() => {
+            if (!fitsMinutes(minutes + termMinutes(1))) return false;
+            minutes += termMinutes(1);
+            return true;
+          });
+        const roomForCallout = fitsMinutes(minutes + calloutMinutes);
         for (const t of terms) {
           handedTerms.add(t);
           refs.push({ type: "vocabulary", index: t });
@@ -1482,7 +1524,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
         const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
-        if (watch !== undefined) {
+        if (!roomForCallout) {
+          // No callout: the slide's minutes are spent on its key ideas.
+        } else if (watch !== undefined) {
           usedMisconceptions.add(watch);
           callouts[position] = {
             kind: "watch-out",
@@ -1511,7 +1555,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const m = example?.misconceptionRef?.index;
         if (m !== undefined) {
           refs.push({ type: "misconception", index: m });
-          if (!usedMisconceptions.has(m)) {
+          if (
+            !usedMisconceptions.has(m) &&
+            fitsMinutes(workedExampleMinutes(example) + calloutMinutes)
+          ) {
             usedMisconceptions.add(m);
             callouts[position] = {
               kind: "watch-out",
