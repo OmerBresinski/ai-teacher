@@ -2,7 +2,7 @@ import { contactEmail, href, legalEntity, pageHero } from "../components.mjs";
 
 const page = (route, title, description, body) => ({ route, title, description, body });
 const mail = `<a href="mailto:${contactEmail}">${contactEmail}</a>`;
-const updated = "27 September 2026";
+const updated = "29 September 2026";
 const reading = (body) =>
   `${pageHero({ title: body.heading, description: body.lead })}<section class="section container reading">${body.content}</section>`;
 const table = (headings, rows) =>
@@ -99,9 +99,9 @@ ${table(
       "EU-West (Amsterdam), Netherlands",
     ],
     [
-      "Amazon Web Services (Amazon Bedrock)",
-      "Runs the AI models that write your lesson. We use OpenAI’s GPT models through Bedrock",
-      "United States (us-east-1)",
+      "OpenAI (OpenAI API)",
+      "Runs the AI models that write your lesson. We call OpenAI’s GPT models directly through the OpenAI API",
+      "United States",
     ],
     ["Resend", "Sends your sign-in link and any service email", "European Union region"],
     [
@@ -115,8 +115,8 @@ ${table(
 
 <h2>International transfers</h2>
 <p>Everything we store stays in the European Economic Area: our database, our file storage and our email provider all run in the EU.</p>
-<p><strong>One step leaves the UK and the EEA: the AI call.</strong> When you generate a lesson, your brief, and the text of any file you uploaded, is sent to Amazon Bedrock in the United States, which returns the lesson. Nothing is kept there. Amazon Bedrock does not retain the inputs or outputs of an API call and does not use them to train models. We do not enable request logging in our AWS account.</p>
-<p>That transfer is made under the UK International Data Transfer Addendum to the EU Standard Contractual Clauses, as part of our agreement with Amazon Web Services. You can ask us for a copy of the safeguards that apply.</p>
+<p><strong>One step leaves the UK and the EEA: the AI call.</strong> When you generate a lesson, your brief, and the text of any file you uploaded, is sent to OpenAI’s API in the United States, which returns the lesson. OpenAI does not use data sent through its API to train its models. It may keep the inputs and outputs of an API call for up to 30 days to monitor for abuse, then deletes them.</p>
+<p>That transfer is made under the UK International Data Transfer Addendum to the EU Standard Contractual Clauses, as part of OpenAI’s Data Processing Addendum. You can ask us for a copy of the safeguards that apply.</p>
 
 <h2>Pupils</h2>
 <p><strong>DayBack is for teachers, and we do not want any pupil’s personal data in it.</strong></p>
@@ -151,6 +151,10 @@ ${table(
     ],
     ["Technical logs", "30 days"],
     ["Records of a sign-in email being sent", "30 days at our email provider"],
+    [
+      "Text sent to our AI provider to write a lesson",
+      "Up to 30 days at OpenAI for abuse monitoring, then deleted",
+    ],
     ["Emails you send us, and our reply", "24 months"],
     ["Records we must keep by law", "For as long as the law requires"],
   ],
