@@ -99,7 +99,7 @@ export function SlideView({
    * (`@tj/slides` `withoutDiagramSlot`). The editor keeps the placeholder.
    */
   /**
-   * The demo switch (`slot-placeholders.ts`, off by default and never in production) draws every
+   * The demo switch (`slot-placeholders.ts`, set by the web app's VITE_SHOW_SLOT_PLACEHOLDERS) draws every
    * slot instead, with what the model asked for; capture (export, print) never does.
    */
   const demo = mode !== "edit" && mode !== "capture" && slotPlaceholdersOn();
