@@ -278,32 +278,35 @@ function markContinued(slide: Slide): void {
 /**
  * A continuation's heading keeps the lines its source heading had: " (continued)" can wrap it onto
  * a second line, which pushes the carried body down and leaves less room than the split planned
- * for. The heading steps down (to three quarters of its size at most) until it fits again; the
- * chain is levelled to that size afterwards (`levelHeadings`).
+ * for. The heading steps down (to three quarters of its size at most, and never under the size the
+ * engine will set a heading at) until it fits again; the chain is levelled to that size afterwards
+ * (`levelHeadings`). A heading already at its floor keeps its size and wraps.
  */
-function keepHeadingLines(slide: Slide, authored: SlideElement[], measure: Measurer): void {
-  const source = authored.find(isHeadingText);
-  const heading = slide.elements.find(isHeadingText);
-  if (!source || heading?.type !== "text") return;
-  const parts = textPartsOf(heading);
-  const sourceParts = textPartsOf(source);
-  if (!parts?.autoHeight || !sourceParts) return;
-  const need = (fontSize: number | undefined, p = parts) =>
-    measure({
-      doc: p.doc,
-      width: heading.w,
-      style: p.style,
-      preset: p.preset,
-      role: p.role,
-      fontSize,
-      inset: p.inset,
-      chrome: p.chrome,
-    });
-  const size = parts.style?.fontSize;
-  const room = need(sourceParts.style?.fontSize, sourceParts);
-  if (size === undefined || need(size) <= room + EPS) return;
+function keepHeadingLines(
+  slide: Slide,
+  reflowed: SlideElement[],
+  theme: Theme,
+  measure: Measurer,
+): void {
+  const room = reflowed.find(isHeadingText)?.h;
+  const index = slide.elements.findIndex(isHeadingText);
+  const heading = slide.elements[index];
+  if (room === undefined || heading?.type !== "text") return;
+  const size = heading.style.fontSize ?? theme.sizes[heading.style.preset];
+  // Measured the way the engine will lay the slide out, so the size chosen here is the one it keeps.
+  const heightAt = (fontSize: number) => {
+    const trial = {
+      ...slide,
+      elements: slide.elements.map((e, i) =>
+        i === index ? { ...heading, style: { ...heading.style, fontSize } } : e,
+      ),
+    };
+    const laid = reflowSlide(trial, theme, measure, reflowOptions(trial, theme, measure));
+    return laid.elements[index]?.h ?? Number.POSITIVE_INFINITY;
+  };
+  if (heightAt(size) <= room + EPS) return;
   for (let s = size - 1; s >= Math.ceil(size * 0.75); s--) {
-    const h = need(s);
+    const h = heightAt(s);
     if (h <= room + EPS) {
       heading.style = { ...heading.style, fontSize: s };
       heading.h = Math.max(1, Math.round(h));
@@ -579,7 +582,7 @@ function buildPlan(
 
   const continuation = cloneSlide({ ...slide, elements });
   markContinued(continuation);
-  keepHeadingLines(continuation, authored, measure);
+  keepHeadingLines(continuation, reflowed, theme, measure);
 
   if (mode === "move") {
     // Only worth it when the box lands higher than it stood here; otherwise the next round would
