@@ -23,6 +23,7 @@ import {
   type PlanTeachObjectiveOutput,
   planTeachObjectiveOutputSchemaFor,
   planTeachObjectivePrompt,
+  stretchRoom,
 } from "../prompts/plan-teach-objective";
 import { askableAsStem, distractorsEchoingAnswer, type PlanFactsLike } from "../specs";
 import { evaluate } from "../stages/evaluate";
@@ -546,6 +547,7 @@ export async function runWaves(
         priorKnowledge: input.priorKnowledge,
         curriculum: input.curriculum,
         ...retrievalInput(input),
+        stretches: stretchRoom(input.slideCount, objectives.length),
       };
       deps.logger.info({ stage: "plan", call: "teach", target, cls }, "plan call");
       let taught: PlanTeachObjectiveOutput;

@@ -692,6 +692,7 @@ function planFactsShape(soft: boolean) {
       z
         .array(
           z.object({
+            say: z.string().trim().min(1).optional(),
             statement: line(SPEC_LIMITS.item),
             explanation: line(SPEC_LIMITS.body),
             example: line(SPEC_LIMITS.body),
@@ -1254,6 +1255,7 @@ export function assignFactIds(
             explanation: k.explanation,
             example: k.example,
             ...optional("analogy", k.analogy),
+            ...optional("say", k.say),
             objectiveRefs: dedupe(k.objectiveRefs.map(refId)),
           })),
     ),

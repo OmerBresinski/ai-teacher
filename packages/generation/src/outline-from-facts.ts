@@ -20,6 +20,7 @@ import {
   STARTER_MAX,
   sameQuestion,
 } from "./planner/coded-slides";
+import { contentProjection, fitsPlanned, workedExampleProjection } from "./planner/slide-capacity";
 import { explainSentence, practiseSentence, slidesFor } from "./prompts/shape";
 import type { LessonShape } from "./shapes";
 import {
@@ -298,6 +299,11 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     keyIdeas: ks,
     rank: [1, o, 0, ks[0] ?? 0],
   });
+  /** Narrative then cut: two stretches share a slide only when the slide as shown fits. */
+  const ideaTexts = (ks: number[]) =>
+    ks.flatMap((k) => (facts.keyIdeas[k] ? [facts.keyIdeas[k]] : []));
+  const cut = (ks: number[]): number[] =>
+    ks.length > 1 && !fitsPlanned(contentProjection(ideaTexts(ks))) ? ks.slice(0, 1) : ks;
   const workedExampleSlot = (o: number, x: number): Slot => ({
     kind: "worked-example",
     phase: "explain",
@@ -526,7 +532,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     return i === undefined ? undefined : questionSlot(o, i);
   };
   const pickWorkedExample = (among: number[]) => {
-    const free = among.filter((x) => !used.workedExamples.has(x));
+    const unused = among.filter((x) => !used.workedExamples.has(x));
+    const fitting = unused.filter((x) => {
+      const w = facts.workedExamples[x];
+      return w !== undefined && fitsPlanned(workedExampleProjection(w.problem, w.steps, w.answer));
+    });
+    const free = fitting.length > 0 ? fitting : unused;
     return free.find((x) => facts.workedExamples[x]?.misconceptionRef !== undefined) ?? free[0];
   };
   /**
@@ -538,7 +549,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       .filter((candidate) => unusedKeyIdeas(candidate).length > 0)
       .sort((a, b) => contentSlidesOf(a) - contentSlidesOf(b) || a - b)[0];
     if (o === undefined) return undefined;
-    return [o, unusedKeyIdeas(o).slice(0, single ? 1 : KEY_IDEAS_PER_CONTENT)];
+    return [o, cut(unusedKeyIdeas(o).slice(0, single ? 1 : KEY_IDEAS_PER_CONTENT))];
   };
   /** A content slide carrying two key ideas, the objective with the fewest content slides first. */
   const pairedSlot = () =>
@@ -629,7 +640,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // content slide; the objective's key ideas then went untaught, so it no longer does.)
   for (const o of all) {
     if (taught(o)) continue;
-    const ks = unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT);
+    const ks = cut(unusedKeyIdeas(o).slice(0, KEY_IDEAS_PER_CONTENT));
     if (ks.length > 0) place(contentSlot(o, ks));
   }
   // P1b: every key idea taught — an objective with more than one slide's worth gets another,
@@ -641,6 +652,18 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     next = nextKeyIdeas()
   ) {
     place(contentSlot(next[0], next[1]));
+  }
+  // Last resort: a stretch with no slot left joins its objective's one-stretch slide rather than
+  // going untaught (the pair may overflow; Tidy is the safety net).
+  for (const o of all) {
+    for (const k of unusedKeyIdeas(o)) {
+      const host = slots.find(
+        (s) => s.kind === "content" && s.primary === o && (s.keyIdeas?.length ?? 0) === 1,
+      );
+      if (host === undefined) break;
+      host.keyIdeas = [...(host.keyIdeas ?? []), k];
+      used.keyIdeas.add(k);
+    }
   }
   // Four objectives in a six-slide deck: the budget runs out inside P1. Said per objective, so
   // the plan screen can name the one that is not taught rather than the teacher finding out.
@@ -1481,21 +1504,26 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
+        const shown = ideaTexts(ks);
+        const fits = (kind: Callout["kind"], text: string) =>
+          fitsPlanned(contentProjection(shown, { kind, text }));
         const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
-        if (watch !== undefined) {
+        const watchText = watch === undefined ? "" : (facts.misconceptions[watch]?.belief ?? "");
+        const termsText = terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", ");
+        if (watch !== undefined && fits("watch-out", watchText)) {
           usedMisconceptions.add(watch);
           callouts[position] = {
             kind: "watch-out",
             ref: { type: "misconception", index: watch },
             text: facts.misconceptions[watch]?.belief ?? "",
           };
-        } else if (terms.length > 0) {
+        } else if (terms.length > 0 && fits("key-words", termsText)) {
           callouts[position] = {
             kind: "key-words",
             ref: { type: "vocabulary", index: terms[0] ?? 0 },
             text: terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", "),
           };
-        } else if (idea) {
+        } else if (idea && fits("example", idea.example)) {
           callouts[position] = {
             kind: "example",
             ref: { type: "keyIdea", index: k },
@@ -1511,7 +1539,16 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         const m = example?.misconceptionRef?.index;
         if (m !== undefined) {
           refs.push({ type: "misconception", index: m });
-          if (!usedMisconceptions.has(m)) {
+          const belief = facts.misconceptions[m]?.belief ?? "";
+          const fitsWithCallout =
+            example !== undefined &&
+            fitsPlanned(
+              workedExampleProjection(example.problem, example.steps, example.answer, {
+                kind: "watch-out",
+                text: belief,
+              }),
+            );
+          if (!usedMisconceptions.has(m) && fitsWithCallout) {
             usedMisconceptions.add(m);
             callouts[position] = {
               kind: "watch-out",

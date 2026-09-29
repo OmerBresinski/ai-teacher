@@ -146,6 +146,7 @@ export function factsBlock(facts: LessonFacts): string {
       out.push(`  ${k.id}: ${k.statement} — ${k.explanation}${refs(k.objectiveRefs)}`);
       out.push(`    Example: ${k.example}`);
       if (k.analogy) out.push(`    Analogy: ${k.analogy}`);
+      if (k.say) out.push(`    Teacher says: ${k.say}`);
     }
   }
   if (facts.misconceptions.length > 0) {

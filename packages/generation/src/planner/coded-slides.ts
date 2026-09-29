@@ -23,6 +23,7 @@ import {
   THEMES,
   textPartsOf,
 } from "@tj/slides";
+import { fitsPlanned } from "./slide-capacity";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -315,20 +316,28 @@ export function codedSetSpec(
   // A starter or check slide with no question is the model's (a misconception discussed, prior
   // knowledge retrieved); the exit quiz is code's whenever it has a line.
   if ((entry.kind !== "exit-ticket" && asked === 0) || lines.length === 0) return undefined;
-  const kept =
+  let kept =
     entry.kind === "exit-ticket" ? exitLines(lines) : keptLines(lines, coded.max, SET_CHARS);
   if (kept.length === 0) return undefined;
-  const answers = kept.map((l) => l.answer);
-  const footnote = answersLine(answers);
-  const notes = `Answers: ${answers.map((a, i) => `${i + 1}. ${a}`).join(" ")}`;
-  const items = kept.map((l) => l.text);
-  const base = { factRefs: entry.factRefs, notes, heading: coded.heading, footnote };
-  const spec: SlideSpec =
-    entry.kind === "instructions"
+  const specOf = (chosen: readonly Line[]): SlideSpec => {
+    const answers = chosen.map((l) => l.answer);
+    const footnote = answersLine(answers);
+    const notes = `Answers: ${answers.map((a, i) => `${i + 1}. ${a}`).join(" ")}`;
+    const items = chosen.map((l) => l.text);
+    const base = { factRefs: entry.factRefs, notes, heading: coded.heading, footnote };
+    return entry.kind === "instructions"
       ? { kind: "instructions", ...base, steps: items }
       : entry.kind === "starter"
         ? { kind: "starter", ...base, items }
         : { kind: "exit-ticket", ...base, items };
+  };
+  // Narrative then cut (fit-lab 9): a check or starter set ends where the measured slide is full.
+  // The exit ticket keeps its own measured rule (`fitsExitTicket`).
+  if (entry.kind !== "exit-ticket") {
+    while (kept.length > 1 && !fitsPlanned(specOf(kept))) kept = kept.slice(0, -1);
+  }
+  const answers = kept.map((l) => l.answer);
+  const spec = specOf(kept);
   // The lesson questions the set actually prints (a line over the caps is dropped): what
   // `laterQuestionsFor` hands the teaching slides before it.
   const questionRefs = kept.flatMap((l) => (l.ref && questions.has(l.ref) ? [l.ref] : []));

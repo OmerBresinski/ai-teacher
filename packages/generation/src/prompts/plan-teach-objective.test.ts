@@ -15,6 +15,7 @@ import {
 } from "./plan-teach-objective";
 
 const KEY_IDEA = {
+  say: "Think about how an army got from one town to the next before the Romans came.",
   statement: "Roman roads let soldiers and goods move quickly between new towns.",
   explanation: "Straight, paved roads meant an army could march to trouble in days, not weeks.",
   example: "Watling Street ran from Dover to Wroxeter, about 250 miles.",

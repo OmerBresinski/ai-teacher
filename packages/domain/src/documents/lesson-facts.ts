@@ -90,6 +90,8 @@ export type KeyIdea = {
   explanation: string;
   example: string;
   analogy?: string;
+  /** What the teacher says for this stretch of the lesson (narrative-then-cut lab); goes to notes. */
+  say?: string;
   objectiveRefs: FactId[];
 };
 
@@ -273,6 +275,7 @@ export const KeyIdeaSchema = z.strictObject({
   explanation: z.string(),
   example: z.string(),
   analogy: z.string().optional(),
+  say: z.string().optional(),
   objectiveRefs: ObjectiveRefsSchema,
 });
 

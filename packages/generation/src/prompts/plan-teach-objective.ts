@@ -50,12 +50,29 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * v4 (fit-lab narrative-then-cut, 29 Sep 2026): the objective is written first as the teacher's
+ * spoken walkthrough, cut at its natural breaks into key ideas. Each key idea carries its stretch
+ * of talk (`say`, written first, to notes) beside the lines the slide shows. The board lines are
+ * written with the talk, not shortened from it afterwards. The worked example's steps are board
+ * lines. The outline then chooses slide breaks by measuring (`planner/slide-capacity.ts`).
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
   /** The starter's retrieval questions (C1): earlier learning, not taught here. Optional. */
   retrieval?: Retrieval | undefined;
+  /** v4: how many slides this objective's talk is cut into (`stretchRoom`). Absent: one or two. */
+  stretches?: 1 | 2 | undefined;
 };
+
+/**
+ * v4: the teaching slides one objective can have in the deck (title, objectives, starter and exit
+ * ticket aside, one practice or worked example per objective), after the facts-sized arm's
+ * `keyIdeaRoom`. Three objectives in ten slides leave room for one stretch each.
+ */
+export function stretchRoom(slideCount: number, objectiveCount: number): 1 | 2 {
+  return slideCount - 4 - objectiveCount >= 2 * objectiveCount ? 2 : 1;
+}
 
 /** A text slot as `specs.ts` builds one; the soft build drops the cap only (see v14 `lineFor`). */
 const lineFor =
@@ -70,6 +87,9 @@ const lineFor =
         );
   };
 type Line = (max: number) => z.ZodString;
+
+/** v4: one stretch of the spoken walkthrough; it goes to the slide's notes (notes cap 2000). */
+const SAY_MAX = 600;
 
 const MisconceptionOrdinalSchema = z.strictObject({
   type: z.literal("misconception"),
@@ -91,6 +111,7 @@ const objectiveOrdinalSchema = (count?: number) =>
 
 const keyIdeaSchema = (line: Line) =>
   z.object({
+    say: line(SAY_MAX).optional(),
     statement: line(SPEC_LIMITS.item),
     explanation: line(SPEC_LIMITS.body),
     example: line(SPEC_LIMITS.body),
@@ -178,14 +199,14 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): say ${SAY_MAX}; statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
-  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
+  '{"keyIdeas":[{"say":"…","statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v3",
+  version: "plan-teach-objective.v4",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -194,12 +215,13 @@ export const planTeachObjectivePrompt = {
     TEACH_HOUSE_RULES,
     "Pitch the language, numbers and problem steps at the year group and reading level given; explain any word a pupil at that level would not know.",
     "Write one or two key ideas, one misconception and up to two vocabulary terms.",
+    "Write the objective first as you would teach it aloud, in order, and cut it where your talk moves to a new point: each stretch is one key idea and one slide. In a key idea, `say` is that stretch as you say it to the class; `statement` is its point, the slide's heading; `explanation` and `example` are what the slide shows under it, one or two sentences each, the reason it holds and the case you point to.",
     "A key idea's example is one named case showing the explanation at work (a place, person, event, reaction, quotation or worked numbers); the worked example takes a case of its own.",
     'A worked example may invent its scenario and numbers, saying so ("a shop", "suppose"); a key idea\'s date, figure or case is real, from the curriculum extract or checkable by the class, and an uncertain figure is left out, never estimated.',
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
-    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
+    'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its steps are the lines you write on the board as you talk it through: one short line each, three at most, the last reaching the answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,
     "",
@@ -219,6 +241,7 @@ export const planTeachObjectivePrompt = {
       "",
       `Write what the lesson teaches for objective ${input.target}: ${target?.text ?? ""}`,
     );
+    if (input.stretches === 1) parts.push("Cut the talk for this objective into one stretch.");
     const workedExample = workedExampleLine(input);
     if (workedExample) parts.push(workedExample);
     if (input.curriculum) parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text);
