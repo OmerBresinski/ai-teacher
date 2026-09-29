@@ -9,3 +9,6 @@ export interface CharacterCapture {
 }
 
 export const CHARACTER_ENTRY_SECONDS = 0.6;
+
+/** Persona tempo (timeScale) per owner: Plan calm, Slides lively, Worksheet brisk, Check exact. */
+export const PERSONA_SPEED = [1, 1.35, 1.4, 1.3];

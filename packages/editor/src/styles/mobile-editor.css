@@ -170,6 +170,11 @@ html[data-design][data-theme] .mobile-editor-sheet[data-slot="dialog-content"] {
     height: 44px;
     padding-inline: 0;
   }
+  /* The selected-theme callout (ruling 123) keeps its name: swatch and label, not an icon. */
+  [data-mobile-topbar="true"] > :last-child > [data-theme-callout] {
+    width: auto;
+    padding-inline: 6px;
+  }
   [data-mobile-topbar="true"] > :first-child > div {
     min-width: 0;
   }

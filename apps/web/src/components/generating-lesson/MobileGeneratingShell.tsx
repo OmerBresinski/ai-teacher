@@ -19,6 +19,7 @@ export function MobileGeneratingShell({
   line,
   lockLine,
   canvasCompanion,
+  themeCallout,
   onBack,
   onStop,
   stop,
@@ -74,7 +75,9 @@ export function MobileGeneratingShell({
           followArrivals={running}
           footer={
             running ? (
-              <div className="mobile-generation-next" data-mobile-loading-slot>
+              // Each arrival opens a new "next slide" slot below it rather than pushing the old one
+              // down the page (so the list growing is not a layout shift).
+              <div key={count} className="mobile-generation-next" data-mobile-loading-slot>
                 <p>{count === 0 ? "Preparing your lesson" : "Making the next slide"}</p>
               </div>
             ) : count === 0 ? (
@@ -85,9 +88,16 @@ export function MobileGeneratingShell({
           }
         />
       </main>
-      <footer className="mobile-generation-footer" data-testid="generating-lock">
-        <Lock aria-hidden size={13} />
-        <span>{lockLine}</span>
+      <footer className="mobile-generation-footer">
+        {themeCallout ? (
+          <div className="mobile-generation-theme" data-generating-theme>
+            {themeCallout}
+          </div>
+        ) : null}
+        <span className="mobile-generation-lock" data-testid="generating-lock">
+          <Lock aria-hidden size={13} />
+          <span>{lockLine}</span>
+        </span>
         {exportSlot}
       </footer>
     </div>

@@ -1,27 +1,88 @@
 import { artwork } from "./artwork.js";
+import { drawnBody, restBody, restingLife } from "./body-draw.js";
+import { CAST_CLIPS } from "./cast-clips.js";
 import { fanRig } from "./fan-rig.js";
-import { buildBeat } from "./work-beats.js";
+import { buildBeat, buildReaction } from "./work-beats.js";
+
+const zeroBody = () => {
+  const z = restBody();
+  for (const k of Object.keys(z)) z[k] = 0;
+  return z;
+};
+const BODY = Object.keys(restBody());
+// Pose values that switch rather than move: never blended.
+const DISCRETE = new Set([
+  "tool",
+  "stroke",
+  "pending",
+  "sheet",
+  "paperFront",
+  "sheetFront",
+  "carryFront",
+  "contact",
+  "questions",
+]);
 
 // Original production rig: scoped geometry/contacts only. No demo UI, readiness, or global controller.
 let serial = 0;
 export function createHandoverRig(root, gsap) {
   const prefix = `intake-rig-${serial++}-`;
-  const $ = (selector) =>
-    root.querySelector(selector.replace(/#([\w-]+)/g, (_, id) => `#${prefix}${id}`));
+  const found = new Map();
+  const $ = (selector) => {
+    let el = found.get(selector);
+    if (!el) {
+      el = root.querySelector(selector.replace(/#([\w-]+)/g, (_, id) => `#${prefix}${id}`));
+      if (el) found.set(selector, el);
+    }
+    return el;
+  };
   const pref = matchMedia("(prefers-reduced-motion: reduce)");
+  // Kept by the change listener; never read `.matches` per frame (Chromium can drop the event).
+  let reduced = pref.matches,
+    onScreen = true;
   let current = 0,
     paused = false,
-    complete = false,
     fanMode = false,
     worksheetSource = false,
     tl = null,
+    reaction = null,
     handoff = null;
   const names = ["Plan", "Slides", "Worksheet", "Check"],
     keys = ["support", "slides", "activity", "answers"];
-  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2].map((owner) => ["", owner]);
+  // 12: Slides' own entrance when it is the first character making anything (slides only).
+  const beats = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 2, 1].map((owner) => ["", owner]);
   const ownerOf = () => handoff?.from ?? beats[current][1];
   const receiverOf = () => handoff?.to ?? ownerOf() + 1;
-  const actors = names.map((_, i) => ({ x: i === 0 ? 320 : 760, alpha: i === 0 ? 1 : 0 }));
+  // `b` is the beat's pose; `r` is a reaction layered on top (deltas from rest), so a nod or a
+  // leap never fights the beat for the same values.
+  const actors = names.map((_, i) => ({
+    x: i === 0 ? 320 : 760,
+    alpha: i === 0 ? 1 : 0,
+    b: restBody(),
+    r: zeroBody(),
+    // The cast layer: a clip baked from the character's own cast module (deltas from rest).
+    c: zeroBody(),
+  }));
+  const castFx = names.map(() => ({
+    look: 0,
+    hlx: 0,
+    hly: 0,
+    hrx: 0,
+    hry: 0,
+    penRot: 0,
+    penToss: 0,
+    lift: 0,
+    riffle: 0,
+    lookY: 0,
+    reach: 0,
+  }));
+  // Persona blink spacing: Plan slow, Slides quick, Worksheet sometimes doubles, Check considered.
+  const lives = [
+    restingLife({ gaps: [5, 7], depth: 0.9 }),
+    restingLife({ gaps: [3, 4.5], depth: 1.2 }),
+    restingLife({ gaps: [3, 5], double: 0.35 }),
+    restingLife({ gaps: [3.5, 6.5], depth: 0.8 }),
+  ];
   const p = {
     x: 320,
     y: 251,
@@ -70,6 +131,7 @@ export function createHandoverRig(root, gsap) {
     gripShape: 0,
     ambientGate: 1,
     outerRelease: 0,
+    carryFront: 0,
   };
   const parsed = {};
   for (const k of keys) {
@@ -88,7 +150,7 @@ export function createHandoverRig(root, gsap) {
   }
   const paper = (fill) =>
     `<rect x="-37.2" y="-26.4" width="74.4" height="52.8" rx="2.4" fill="${fill}"/>`;
-  root.innerHTML = `<svg class="production-scene" viewBox="80 45 480 280" aria-hidden="true"><g class="ground-shadows">${actors.map((_, i) => `<ellipse data-shadow="${i}" cx="320" cy="305" rx="67" ry="5" fill="#293b32" opacity=".12" stroke="none"/>`).join("")}</g><g id="people">${keys.map((k, i) => (i === 1 ? `<g class="person" data-actor="1">${fanRig.markup()}</g>` : `<g class="person" data-actor="${i}"><g class="figure">${parsed[k]}</g></g>`)).join("")}</g><g id="package"><defs><clipPath id="stack-occlusion"><rect x="-200" y="-200" width="400" height="226.4"/></clipPath><clipPath id="magic-reveal"><rect class="magic-window" x="-37.2" y="-26.4" width="0" height="52.8"/></clipPath></defs><g class="reserve">${paper("#faf5df")}</g><g class="brief"></g><g class="deck" stroke-width="2.4"><g class="leaf back-a">${paper("#d6e2bd")}</g><g class="leaf back-b">${paper("#f5c054")}</g><g class="leaf front">${paper("#faf5df")}<path class="slide-ink" d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52"/><circle class="slide-sun" cx="19.2" cy="-12" r="4.8" fill="#f5c054"/></g></g><g class="worksheet"></g><g class="pending-slide" stroke-width="2.4">${paper("#faf5df")}<g clip-path="url(#magic-reveal)"><path d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52" stroke-width="2.4"/><circle cx="19.2" cy="-12" r="4.8" fill="#f5c054" stroke-width="2.4"/></g></g><g class="approved"><circle r="16" fill="#faf5df"/><path d="m-8 0 5 5 11-13"/></g></g><g id="comparison">${[0, 1].map((i) => `<g class="compare-page" data-page="${i}">${paper("#faf5df")}<path d="M-23-14H20M-23-4H12M-23 9H19"/><path d="${i ? "m5 16 4 4 8-10" : "M-21 18H-4"}" stroke="#9b704b"/></g>`).join("")}</g><g id="limbs">${actors.map((_, i) => `<g data-limbs="${i}"><path class="arm-l"/><path class="arm-r"/></g>`).join("")}</g><g id="fingers">${actors.map((_, i) => `<g data-fingers="${i}"><path class="finger-l"/><path class="finger-r"/></g>`).join("")}</g><g id="tool"><g class="pencil"><path d="M0 0 4-20 10-17Z" fill="#e88f52"/></g><g class="stamp"><path d="M-12 0H12V-7H-12ZM-4-7v-17h8v17" fill="#e88f52"/></g></g><g id="spark"><path d="M0-7V7M-7 0H7M-4-4 4 4M4-4-4 4" stroke="#ba8d3a"/></g></svg>`;
+  root.innerHTML = `<svg class="production-scene" viewBox="80 45 480 280" aria-hidden="true"><g class="ground-shadows">${actors.map((_, i) => `<ellipse data-shadow="${i}" cx="320" cy="305" rx="67" ry="5" fill="#293b32" opacity=".12" stroke="none"/>`).join("")}</g><g id="dust" stroke="#9aa590" stroke-width="1.6" fill="none">${[0, 1, 2, 3].map(() => "<ellipse/>").join("")}</g><g id="people">${keys.map((k, i) => (i === 1 ? `<g class="person" data-actor="1">${fanRig.markup()}</g>` : `<g class="person" data-actor="${i}"><g class="figure">${parsed[k]}</g></g>`)).join("")}</g><g id="package"><defs><clipPath id="stack-occlusion"><rect x="-200" y="-200" width="400" height="226.4"/></clipPath><clipPath id="magic-reveal"><rect class="magic-window" x="-37.2" y="-26.4" width="0" height="52.8"/></clipPath></defs><g class="reserve">${paper("#faf5df")}</g><g class="brief"></g><g class="deck" stroke-width="2.4"><g class="leaf back-a">${paper("#d6e2bd")}</g><g class="leaf back-b">${paper("#f5c054")}</g><g class="leaf front">${paper("#faf5df")}<path class="slide-ink" d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52"/><circle class="slide-sun" cx="19.2" cy="-12" r="4.8" fill="#f5c054"/></g></g><g class="worksheet"></g><g class="pending-slide" stroke-width="2.4">${paper("#faf5df")}<g clip-path="url(#magic-reveal)"><path d="M-24 12-9.6-3.6 3.6 7.2 16.8-9.6 27.6 12Z" fill="#e88f52" stroke-width="2.4"/><circle cx="19.2" cy="-12" r="4.8" fill="#f5c054" stroke-width="2.4"/></g></g><g class="approved"><circle r="16" fill="#faf5df"/><path d="m-8 0 5 5 11-13"/></g></g><g id="comparison">${[0, 1].map((i) => `<g class="compare-page" data-page="${i}">${paper("#faf5df")}<path d="M-23-14H20M-23-4H12M-23 9H19"/><path d="${i ? "m5 16 4 4 8-10" : "M-21 18H-4"}" stroke="#9b704b"/></g>`).join("")}</g><g id="limbs">${actors.map((_, i) => `<g data-limbs="${i}"><path class="arm-l"/><path class="arm-r"/></g>`).join("")}</g><g id="fingers">${actors.map((_, i) => `<g data-fingers="${i}"><path class="finger-l"/><path class="finger-r"/></g>`).join("")}</g><g id="tool"><g class="pencil"><path d="M0 0 4-20 10-17Z" fill="#e88f52"/></g><g class="stamp"><path d="M-12 0H12V-7H-12ZM-4-7v-17h8v17" fill="#e88f52"/></g></g><g id="spark"><path d="M0-7V7M-7 0H7M-4-4 4 4M4-4-4 4" stroke="#ba8d3a"/></g><g id="accent" stroke="#e88f52" stroke-width="2.2" stroke-linecap="round" fill="none">${[0, 1, 2, 3, 4].map(() => "<path/>").join("")}</g></svg>`;
   root.innerHTML = root.innerHTML
     .replace(/id="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
     .replace(/url\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
@@ -101,6 +163,27 @@ export function createHandoverRig(root, gsap) {
     if (!e.classList.contains("legs")) e.style.display = "none";
   });
   const fanHands = [...fanSVG.querySelectorAll(".arm,.fingers,.held")];
+  // Shoulder offsets at rest (relative to the actor's x), so hands can hang from drawn shoulders.
+  const restShoulders = [
+    [
+      [57, 143],
+      [237, 144],
+    ],
+    [-1, 1].map((side) => {
+      const at = fanSVG.querySelector(side < 0 ? ".arm.left" : ".arm.right").getPointAtLength(0);
+      return [at.x * 1.2 - 240, at.y * 1.2];
+    }),
+    [
+      [70, 140],
+      [222, 118],
+    ],
+    [
+      [84, 150],
+      [220, 151],
+    ],
+  ].map((pts, i) =>
+    pts.map(([x, y]) => (i === 1 ? { x, y } : { x: x * 0.85 - 127.5, y: 65 + y * 0.85 })),
+  );
   const figures = actors.map((_, i) => scene.querySelector(`[data-actor="${i}"]`));
   const sh = {
     support: [
@@ -117,9 +200,13 @@ export function createHandoverRig(root, gsap) {
     ],
   };
   const faces = [];
+  const bodies = figures.map((figure, i) =>
+    i === 1 ? null : drawnBody(figure.querySelector(".body"), keys[i]),
+  );
   keys.forEach((k, i) => {
+    if (i !== 1) return;
     if (i === 1) {
-      faces.push(fan.face);
+      // The fan rig's fixed face loop is retired: blinks come from the resting life.
       return;
     }
     const root = figures[i],
@@ -170,7 +257,7 @@ export function createHandoverRig(root, gsap) {
   const rearPaths = armPaths.map((paths) =>
     paths.map((path) => {
       const copy = path.cloneNode();
-      copy.style.opacity = 0;
+      copy.style.visibility = "hidden";
       rearLimbs.append(copy);
       return copy;
     }),
@@ -199,80 +286,116 @@ export function createHandoverRig(root, gsap) {
   const slideInk = scene.querySelector(".slide-ink"),
     slideLength = slideInk.getTotalLength();
   slideInk.style.strokeDasharray = slideLength;
-  // Ambient motion changes the torso/shoulders, not the paper contact points.
-  // Feet remain planted; the arm curves absorb small shifts while working.
-  const motion = { intensity: 1.65, breathing: 1.2, sway: 1.25, tempo: 1.25 },
-    motionTarget = { ...motion };
-  let ambientTime = 0,
-    ambientFocus = 1;
-  const ambientPose = actors.map(() => ({ r: 0, y: 0 }));
-  const torsoWrappers = figures.map((figure, _i) => {
-    const body = figure.querySelector(".body"),
-      g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("class", "ambient-torso");
-    body.before(g);
-    g.append(body);
-    return g;
-  });
-  const rhythms = [
-    { period: 5.9, phase: 0.4, weight: 0.7 },
-    { period: 4.2, phase: 2.1, weight: 1 },
-    { period: 5.1, phase: 4.2, weight: 0.65 },
-    { period: 6.7, phase: 1.3, weight: 0.8 },
-  ];
-  function paintAmbient() {
-    actors.forEach((_a, i) => {
-      const rhythm = rhythms[i],
-        phase = (ambientTime * 2 * Math.PI) / rhythm.period + rhythm.phase;
-      const amount = pref.matches ? 0 : motion.intensity * ambientFocus * p.ambientGate;
-      // Two unequal waves avoid an obvious left/right metronome.
-      const r =
-        amount *
-        motion.sway *
-        rhythm.weight *
-        (0.62 * Math.sin(phase) + 0.18 * Math.sin(phase * 0.61 + 1.4));
-      const y = amount * motion.breathing * 1.3 * Math.sin(phase * 1.17 + 0.6);
-      ambientPose[i] = { r, y };
-      const scale = i === 1 ? 1.2 : 0.85,
-        cx = i === 1 ? 200 : 150,
-        cy = i === 1 ? 237.5 : (285 - 65) / 0.85;
-      torsoWrappers[i].setAttribute(
-        "transform",
-        `translate(${cx} ${cy}) rotate(${r}) translate(${-cx} ${-cy + y / scale})`,
+  // Resting life is drawn: a breath that swells each body from its planted base and random
+  // blinks. No whole-body bob or sway, and no screen shake (that is Slides' landing only).
+  let calm = 1,
+    calmTarget = 1,
+    clock = 0;
+  const lifeNow = actors.map(() => ({ breath: 0, lag: 0, blink: 0 }));
+  const dust = [...scene.querySelectorAll(`#${prefix}dust ellipse`)];
+  const dustState = { at: -9, x: 320, size: 1 };
+  function puff(x, size = 1) {
+    Object.assign(dustState, { at: clock, x, size });
+  }
+  // Anime accent: short strokes fanned up and out from a contact (never down across the copy).
+  const accentLines = [...scene.querySelectorAll(`#${prefix}accent path`)];
+  const accentState = { at: -9, x: 0, y: 0, size: 1, ground: false };
+  // A ground burst fans out to both sides of the feet, clear of the body; a point burst fans up.
+  const GROUND = [-172, -152, -28, -8];
+  function accent(x, y, size = 1, ground = false) {
+    Object.assign(accentState, { at: clock, x, y, size, ground });
+  }
+  function paintAccent() {
+    const u = (clock - accentState.at) / 0.24;
+    accentLines.forEach((e, i) => {
+      if (u < 0 || u >= 1 || (accentState.ground && i >= GROUND.length)) {
+        if (e.style.visibility !== "hidden") e.style.visibility = "hidden";
+        return;
+      }
+      e.style.visibility = "";
+      const g = accentState.ground,
+        ang = ((g ? GROUND[i] : -160 + i * 35) * Math.PI) / 180,
+        k = accentState.size,
+        grow = 1 - (1 - u) ** 3,
+        r0 = (g ? 52 + 18 * grow : 9 + 16 * grow) * k,
+        r1 = r0 + (9 * (1 - u) + 2) * k;
+      const { x, y } = accentState;
+      e.setAttribute(
+        "d",
+        `M${(x + Math.cos(ang) * r0).toFixed(1)} ${(y + Math.sin(ang) * r0).toFixed(1)}L${(x + Math.cos(ang) * r1).toFixed(1)} ${(y + Math.sin(ang) * r1).toFixed(1)}`,
       );
     });
   }
-  function ambientJoint(pt, i) {
-    const a = ambientPose[i],
-      r = (a.r * Math.PI) / 180,
-      x = pt.x - actors[i].x,
-      y = pt.y + a.y - 285;
-    return {
-      x: actors[i].x + x * Math.cos(r) - y * Math.sin(r),
-      y: 285 + x * Math.sin(r) + y * Math.cos(r),
-    };
+  function paintFx() {
+    paintAccent();
+    const u = (clock - dustState.at) / 0.5;
+    dust.forEach((e, i) => {
+      if (u < 0 || u >= 1) {
+        if (e.style.visibility !== "hidden") e.style.visibility = "hidden";
+        return;
+      }
+      const side = i % 2 ? 1 : -1,
+        far = i > 1 ? 1.6 : 1;
+      e.style.visibility = "";
+      const ease = 1 - (1 - u) ** 2;
+      e.setAttribute("cx", String(dustState.x + side * (38 + 30 * far * ease) * dustState.size));
+      e.setAttribute("cy", String(303 - 7 * ease * far));
+      e.setAttribute("rx", String((4 + 7 * ease) * dustState.size));
+      e.setAttribute("ry", String((2 + 3.5 * ease) * dustState.size));
+      e.style.opacity = String(0.9 * (1 - u));
+    });
   }
   function ambientTick(_time, delta) {
-    if (paused || document.hidden || pref.matches) return;
-    const dt = Math.min(delta / 1000, 0.05),
-      blend = 1 - Math.exp(-dt * 7);
-    Object.keys(motion).forEach((k) => {
-      motion[k] += (motionTarget[k] - motion[k]) * blend;
+    if (paused || document.hidden || reduced || !onScreen) return;
+    const dt = Math.min(delta / 1000, 0.05);
+    calm += (calmTarget - calm) * (1 - Math.exp(-dt * 2));
+    clock += dt;
+    actors.forEach((a, i) => {
+      const gate = i === 1 ? p.ambientGate : 1;
+      lifeNow[i] = a.alpha > 0.5 ? lives[i].step(dt, gate) : lifeNow[i];
     });
-    // Keep both personalities alive during a pass; only soften the shared hold.
-    const sharedHold = [2, 5, 8].includes(current) ? p.grip * (1 - p.offer) : 0;
-    const focus = complete
-      ? 0.28
-      : [2, 5, 8].includes(current)
-        ? 1 - 0.18 * sharedHold
-        : p.contact || p.tool === 2
-          ? 0.32
-          : 1;
-    ambientFocus += (focus - ambientFocus) * blend;
-    ambientTime += dt * motion.tempo;
+    // Only the breath and blinks are changing: 20 paints a second is smooth for a 4 s breath.
+    const acting =
+      tl?.isActive() ||
+      reaction?.isActive() ||
+      blend ||
+      settling ||
+      fan.t.isActive() ||
+      castRunning() ||
+      clock - accentState.at < 0.3 ||
+      clock - dustState.at < 0.5;
+    if (!acting && clock - lastPaint < 0.05) return;
+    lastPaint = clock;
+    const t0 = performance.now();
     draw();
+    const spent = performance.now() - t0;
+    cost.n++;
+    cost.total += spent;
+    cost.max = Math.max(cost.max, spent);
   }
+  let lastPaint = -1;
+  const cost = { n: 0, total: 0, max: 0 };
   gsap.ticker.add(ambientTick);
+  // Read-only view for the filmstrip and trace tooling.
+  root.__cast = {
+    /** The time every timeline runs on (gsap's ticker, lag-smoothed), for the trace tooling. */
+    get time() {
+      return gsap.ticker.time;
+    },
+    get tool() {
+      return { toolAt, tipAt, toolHand, contact: p.contact, stroke: p.stroke };
+    },
+    actors,
+    p,
+    lifeNow,
+    cost,
+    get drawn() {
+      return drawn;
+    },
+    get clock() {
+      return clock;
+    },
+  };
 
   function point(x, y) {
     const r = (p.r * Math.PI) / 180;
@@ -281,34 +404,264 @@ export function createHandoverRig(root, gsap) {
       y: p.y + x * Math.sin(r) + y * Math.cos(r),
     };
   }
+  // Draw runs every frame: its nodes are looked up once.
+  const qCache = new Map();
+  const q = (selector, within = scene) => {
+    let byRoot = qCache.get(within);
+    if (!byRoot) {
+      byRoot = new Map();
+      qCache.set(within, byRoot);
+    }
+    let el = byRoot.get(selector);
+    if (!el) {
+      el = within.querySelector(selector);
+      byRoot.set(selector, el);
+    }
+    return el;
+  };
+  let lastBrief = "";
+  const handLag = actors.map(() => [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+  ]);
+  let lagClock = 0;
+  // Blending (ANIMATION-PROCESS §5, §7): a new beat, a settle or a reset never cuts. The pose on
+  // screen when it starts is kept as an offset from the new beat's opening pose, and the offset
+  // eases to nothing (a cosine, so it starts and ends at rest). Chained changes blend from what is
+  // on screen, blend included.
+  const BLEND_P = Object.keys(p).filter((k) => !DISCRETE.has(k));
+  let blend = null;
+  const composed = actors.map(() => restBody());
+  const blendWeight = () => {
+    if (!blend || blend.at === null) return 0;
+    const u = Math.min(1, (clock - blend.at) / blend.dur);
+    return 0.5 * (1 + Math.cos(Math.PI * u));
+  };
+  /** The pose as it is drawn now: model, reaction layer and any blend offset. */
+  function drawnPose() {
+    const w = blendWeight(),
+      off = blend?.offsets;
+    const state = { p: {}, actors: [] };
+    for (const k of BLEND_P) state.p[k] = p[k] + (off?.p[k] ?? 0) * w;
+    actors.forEach((a, i) => {
+      const o = off?.actors[i];
+      const b = {};
+      for (const k of BODY) b[k] = a.b[k] + a.r[k] + (o?.b[k] ?? 0) * w;
+      state.actors.push({ shown: a.alpha > 0.5, x: a.x + (o?.x ?? 0) * w, b });
+    });
+    return state;
+  }
+  function beginBlend(dur = 0.32) {
+    if (reduced) {
+      blend = null;
+      return;
+    }
+    // A change before the last one has drawn keeps the pose that is really on screen.
+    if (blend && blend.at === null) blend.dur = dur;
+    else blend = { old: drawnPose(), dur, at: null, offsets: null };
+  }
+  function startBlend() {
+    const old = blend.old;
+    blend.offsets = null;
+    const now = drawnPose();
+    const offsets = { p: {}, actors: [] };
+    for (const k of BLEND_P) {
+      const d = old.p[k] - now.p[k];
+      if (Math.abs(d) > 1e-6) offsets.p[k] = d;
+    }
+    now.actors.forEach((a, i) => {
+      const was = old.actors[i];
+      const o = { x: 0, b: {} };
+      if (a.shown && was.shown) {
+        o.x = was.x - a.x;
+        for (const k of BODY) o.b[k] = was.b[k] - a.b[k];
+      }
+      offsets.actors.push(o);
+    });
+    blend.offsets = offsets;
+    blend.hands = null;
+    blend.at = clock;
+  }
+  // The smooth base: every drawn value follows the choreography through a critically damped
+  // spring (about 80 ms behind), so a cut, a kink or a change of hold never reaches the screen as a
+  // jump. It advances only with the clock, and it is bypassed under reduced motion.
+  const OMEGA = 24;
+  const springs = new Map();
+  let springClock = 0,
+    springDt = 0,
+    settling = false;
+  function follow(key, target, fresh) {
+    let s = springs.get(key);
+    if (!s || fresh || reduced) {
+      s = { y: target, v: 0 };
+      springs.set(key, s);
+      return target;
+    }
+    if (springDt > 0) {
+      const x = s.y - target,
+        e = Math.exp(-OMEGA * springDt),
+        k = (s.v + OMEGA * x) * springDt;
+      s.y = target + (x + k) * e;
+      s.v = (s.v - OMEGA * k) * e;
+    }
+    if (Math.abs(s.v) > 1e-3 || Math.abs(s.y - target) > 1e-3) settling = true;
+    return s.y;
+  }
+  const lastHands = actors.map(() => [null, null]);
+  function smoothHand(i, j, target, vis) {
+    const fresh = !vis || !lastHands[i][j];
+    // A hand whose owner or grip changed with the beat blends from where it was drawn.
+    if (blend?.at != null && !fresh) {
+      blend.hands ??= {};
+      const key = `${i}${j}`;
+      if (!(key in blend.hands))
+        blend.hands[key] = { x: lastHands[i][j].x - target.x, y: lastHands[i][j].y - target.y };
+      const o = blend.hands[key],
+        w = blendWeight();
+      target = { x: target.x + o.x * w, y: target.y + o.y * w };
+    }
+    const out = {
+      x: follow(`h${i}${j}x`, target.x, fresh),
+      y: follow(`h${i}${j}y`, target.y, fresh),
+    };
+    lastHands[i][j] = vis ? out : null;
+    return out;
+  }
+  const wasShown = actors.map((a) => a.alpha > 0.5);
+  // What was last put on screen, for the trace tooling.
+  const drawn = { actors: [], p: {} };
+  // The pen and its strokes keep their own eased clocks: a spring would lag the pen off the page.
+  const STROKE_CLOCKS = new Set(["q0", "q1", "q2", "penX", "penY"]);
+  let lastContact = 0;
   function draw() {
+    springDt = Math.max(0, Math.min(0.05, clock - springClock));
+    springClock = clock;
+    if (springDt > 0) settling = false;
+    if (blend && blend.at === null) {
+      // Hold the last drawing until the new beat has rendered its opening frame.
+      if (tl && !reduced && !tl.paused() && tl.totalTime() === 0) return;
+      startBlend();
+    }
+    const w = blendWeight(),
+      off = blend?.offsets;
+    if (blend && w === 0) blend = null;
+    const savedP = {};
+    if (off && w)
+      for (const k in off.p) {
+        savedP[k] = p[k];
+        p[k] += off.p[k] * w;
+      }
+    const beats = actors.map((a, i) => {
+      const o = off && w ? off.actors[i] : null;
+      const c = composed[i];
+      for (const k of BODY) c[k] = a.b[k] + a.r[k] + a.c[k] + (o?.b[k] ?? 0) * w;
+      c.shut = Math.min(1, Math.max(0, c.shut));
+      const x = a.x;
+      if (o) a.x += o.x * w;
+      const b = a.b;
+      a.b = c;
+      return { b, x };
+    });
+    // The pen is on the page while it draws: the stroke is its own clock (linear), so it is never
+    // smoothed, and the pen's hover springs restart from the stroke on every touch and lift.
+    if (p.contact !== lastContact) {
+      lastContact = p.contact;
+      springs.delete("p.penX");
+      springs.delete("p.penY");
+    }
+    for (const k of BLEND_P) {
+      if (!(k in savedP)) savedP[k] = p[k];
+      // The deck rides in with Slides' entrance at Slides' own (unsprung) pace.
+      if (STROKE_CLOCKS.has(k) || (current === 12 && k === "x")) continue;
+      p[k] = follow(`p.${k}`, p[k], false);
+    }
+    // Plan's check-through, drawn on the plan it holds: lifted and tipped toward its eyes to read,
+    // the pages riffled (the fold flutters), then set back down. (Restored with the rest of p.)
+    if (ownerOf() === 0) {
+      const cf = castFx[0];
+      if (cf.lift || cf.riffle) {
+        for (const k of ["y", "r", "fold"]) if (!(k in savedP)) savedP[k] = p[k];
+        p.y -= 22 * cf.lift;
+        p.r -= 9 * cf.lift;
+        p.fold = Math.max(0, p.fold - 0.4 * Math.abs(cf.riffle));
+      }
+    }
+    actors.forEach((a, i) => {
+      const shown = a.alpha > 0.5,
+        fresh = !shown || !wasShown[i];
+      wasShown[i] = shown;
+      // Travel is choreographed accel-limited (work-beats.js), so x is drawn as timed: a spring
+      // here would start from rest behind a character entering at speed and kink its arrival.
+      void fresh;
+      const c = a.b;
+      for (const k of BODY) c[k] = follow(`b${i}${k}`, c[k], fresh);
+      drawn.actors[i] = {
+        x: a.x,
+        lean: c.lean,
+        th: c.th,
+        ty: c.ty,
+        sy: c.sy,
+        sx: c.sx,
+        shown: a.alpha > 0.5,
+      };
+    });
+    drawn.p = { x: p.x, y: p.y };
+    try {
+      paint();
+    } finally {
+      actors.forEach((a, i) => {
+        a.b = beats[i].b;
+        a.x = beats[i].x;
+      });
+      for (const k in savedP) p[k] = savedP[k];
+    }
+  }
+  let toolHand = null;
+  const toolAt = { x: 0, y: 0 },
+    tipAt = { x: 0, y: 0 };
+  function paint() {
+    toolHand = null;
     root.dataset.beat = String(current);
     root.dataset.holder = names[ownerOf()];
 
-    paintAmbient();
+    paintFx();
     actors.forEach((a, i) => {
+      const shown = a.alpha > 0.5;
+      if (shown) {
+        const life = lifeNow[i];
+        const breath = { breath: life.breath * calm, lag: life.lag * calm, blink: life.blink };
+        if (i === 1) {
+          fan.b = a.b;
+          fan.life = breath;
+          fan.paint();
+        } else bodies[i].paint(a.b, breath);
+      }
       const owner = ownerOf(),
         passing = [2, 5, 8].includes(current);
       const target = passing ? (i === owner ? actors[receiverOf()].x : actors[owner].x) : p.x;
       const gazeX = passing
         ? Math.max(-3, Math.min(3, (target - a.x) * 0.024)) * p.gazeMix
-        : p.look;
-      const gazeY = passing ? 1 + 0.7 * p.gazeMix : 1;
-      if (i !== 1)
-        figures[i].querySelector(".gaze").setAttribute("transform", `translate(${gazeX} ${gazeY})`);
+        : p.look + castFx[i].look;
+      const gazeY = (passing ? 1 + 0.7 * p.gazeMix : 1) + castFx[i].lookY * 0.7;
+      if (i !== 1) q(".gaze", figures[i]).setAttribute("transform", `translate(${gazeX} ${gazeY})`);
       else if (!fanMode)
-        fanSVG
-          .querySelector(".face")
-          .setAttribute("transform", `translate(${gazeX + 0.125} ${gazeY - 1})`);
-      figures[i].style.opacity = a.alpha;
-      const shadow = scene.querySelector(`[data-shadow="${i}"]`);
+        q(".face", fanSVG).setAttribute("transform", `translate(${gazeX + 0.125} ${gazeY - 1})`);
+      // Characters are never faded: they walk in and out through the stage's soft edge and are
+      // hidden only while off stage. One shadow each, shrinking and fading with height.
+      const vis = shown ? "" : "hidden";
+      if (figures[i].style.visibility !== vis) figures[i].style.visibility = vis;
+      const shadow = q(`[data-shadow="${i}"]`);
+      const height = Math.min(1, Math.max(0, -a.b.ty * (i === 1 ? 1.2 : 0.85)) / 110);
       shadow.setAttribute("cx", a.x);
-      shadow.style.opacity = a.alpha * 0.12;
+      shadow.setAttribute("rx", String(67 * (1 - 0.55 * height) * (0.9 + 0.1 * a.b.sx)));
+      shadow.style.opacity = String(0.12 * (1 - 0.6 * height));
+      shadow.style.visibility = vis;
       if (i === 1) figures[i].setAttribute("transform", `translate(${a.x - 240} 0)`);
       else
-        figures[i]
-          .querySelector(".figure")
-          .setAttribute("transform", `translate(${a.x - 127.5} 65) scale(.85)`);
+        q(".figure", figures[i]).setAttribute(
+          "transform",
+          `translate(${a.x - 127.5} 65) scale(.85)`,
+        );
     });
     fanHands.forEach((e) => {
       e.style.display = fanMode ? "" : "none";
@@ -321,12 +674,16 @@ export function createHandoverRig(root, gsap) {
     const width = 74 + 90 * p.fold,
       h = 26.5,
       seg = width / 3;
-    scene.querySelector(".brief").innerHTML =
-      `<path d="M${-width / 2} ${-h}l${seg} ${-7 * p.fold} ${seg} ${7 * p.fold} ${seg} ${-7 * p.fold}v53l${-seg} ${7 * p.fold} ${-seg} ${-7 * p.fold} ${-seg} ${7 * p.fold}Z" fill="${worksheetSource ? "#faf5df" : "#d6e2bd"}"/><path d="M${-seg / 2} ${-h - 7 * p.fold}v53M${seg / 2} ${-h}v53" opacity="${p.fold}"/><path d="M${-width * 0.38} -10h${width * 0.22}M${-width * 0.38} 2h${width * 0.2}M${width * 0.08} -9h${width * 0.24}M${width * 0.08} 4h${width * 0.2}"/>`;
-    scene.querySelector(".brief").style.opacity = 1 - p.deck + p.deck * p.stackGap;
-    scene.querySelector(".slide-sun").style.opacity = p.ink;
+    const briefMarkup = `<path d="M${-width / 2} ${-h}l${seg} ${-7 * p.fold} ${seg} ${7 * p.fold} ${seg} ${-7 * p.fold}v53l${-seg} ${7 * p.fold} ${-seg} ${-7 * p.fold} ${-seg} ${7 * p.fold}Z" fill="${worksheetSource ? "#faf5df" : "#d6e2bd"}"/><path d="M${-seg / 2} ${-h - 7 * p.fold}v53M${seg / 2} ${-h}v53" opacity="${p.fold}"/><path d="M${-width * 0.38} -10h${width * 0.22}M${-width * 0.38} 2h${width * 0.2}M${width * 0.08} -9h${width * 0.24}M${width * 0.08} 4h${width * 0.2}"/>`;
+    // Rewriting markup is costly: only when the brief's shape changed.
+    if (briefMarkup !== lastBrief) {
+      lastBrief = briefMarkup;
+      briefEl.innerHTML = briefMarkup;
+    }
+    q(".brief").style.opacity = 1 - p.deck + p.deck * p.stackGap;
+    q(".slide-sun").style.opacity = p.ink;
     slideInk.style.fillOpacity = p.ink;
-    scene.querySelector(".deck").style.opacity = p.deck;
+    q(".deck").style.opacity = p.deck;
     scene
       .querySelector(".back-a")
       .setAttribute(
@@ -358,8 +715,8 @@ export function createHandoverRig(root, gsap) {
     pendingEl.style.visibility = p.pending ? "visible" : "hidden";
     pendingEl.style.opacity = 1;
     pendingEl.setAttribute("transform", `translate(${p.px} ${p.py}) rotate(${p.pr})`);
-    scene.querySelector(".magic-window").setAttribute("width", 74.4 * p.magic);
-    scene.querySelector(".reserve").setAttribute("transform", "translate(-2 5)");
+    q(".magic-window").setAttribute("width", 74.4 * p.magic);
+    q(".reserve").setAttribute("transform", "translate(-2 5)");
     if (p.tool === 1) {
       let tip = { x: p.penX, y: p.penY };
       if (p.contact && p.stroke >= 0)
@@ -369,6 +726,8 @@ export function createHandoverRig(root, gsap) {
       const world = materialPoint(tip.x, tip.y, "sheet");
       p.rx = world.x;
       p.ry = world.y;
+      tipAt.x = world.x;
+      tipAt.y = world.y;
     }
     if (p.gesture && p.pending) {
       const hand = materialPoint(
@@ -379,7 +738,7 @@ export function createHandoverRig(root, gsap) {
       p.rx = hand.x;
       p.ry = hand.y;
     }
-    scene.querySelector(".approved").style.opacity = p.seal;
+    q(".approved").style.opacity = p.seal;
     $("#comparison").style.opacity = 1;
     $("#comparison").style.visibility = [9, 10].includes(current) ? "visible" : "hidden";
     scene.querySelectorAll(".compare-page").forEach((e, i) => {
@@ -391,25 +750,47 @@ export function createHandoverRig(root, gsap) {
     const owner = ownerOf(),
       transfer = [2, 5, 8].includes(current),
       receiver = receiverOf();
+    // The hands' lag advances only when the clock does (draw can run twice in one frame).
+    const lagDt = clock - lagClock;
+    lagClock = clock;
+    const lagK = 1 - Math.exp(-Math.max(0, lagDt) / 0.07);
     actors.forEach((a, i) => {
-      const limbs = scene.querySelector(`[data-limbs="${i}"]`),
-        fingers = scene.querySelector(`[data-fingers="${i}"]`),
-        vis = a.alpha * (i === 1 && fanMode ? 0 : 1);
-      limbs.style.opacity = 1;
-      fingers.style.opacity = vis;
+      const limbs = q(`[data-limbs="${i}"]`),
+        fingers = q(`[data-fingers="${i}"]`),
+        vis = a.alpha > 0.5 && !(i === 1 && fanMode) ? 1 : 0;
+      limbs.style.visibility = vis ? "" : "hidden";
+      fingers.style.visibility = vis ? "" : "hidden";
       const shoulders =
         i === 1
           ? [-1, 1].map((side) => {
-              const path = fanSVG.querySelector(side < 0 ? ".arm.left" : ".arm.right");
+              const path = q(side < 0 ? ".arm.left" : ".arm.right", fanSVG);
               const at = path.getPointAtLength(0);
               return { x: a.x - 240 + at.x * 1.2, y: at.y * 1.2 };
             })
-          : sh[keys[i]].map(([x, y]) => ({ x: a.x - 127.5 + x * 0.85, y: 65 + y * 0.85 }));
-      shoulders.forEach((pt, j) => {
-        shoulders[j] = ambientJoint(pt, i);
-      });
-      let left = { x: a.x - 84, y: 255 },
-        right = { x: a.x + 86, y: 253 };
+          : sh[keys[i]].map(([x0, y0]) => {
+              const [x, y] = bodies[i].map(x0, y0);
+              return { x: a.x - 127.5 + x * 0.85, y: 65 + y * 0.85 };
+            });
+      // Rest hands hang from the drawn shoulders, so they ride every hop, squash and lean, and
+      // trail the shoulders by about 70 ms (follow-through); they land exactly on rest.
+      const rest0 = restShoulders[i];
+      const hang = (j) => {
+        const tx = rest0 ? shoulders[j].x - a.x - rest0[j].x : 0,
+          ty = rest0 ? shoulders[j].y - rest0[j].y : 0,
+          s = handLag[i][j];
+        if (reduced || lagDt > 0.2 || !vis) Object.assign(s, { x: tx, y: ty });
+        else if (lagDt > 0) {
+          s.x += (tx - s.x) * lagK;
+          s.y += (ty - s.y) * lagK;
+          if (Math.abs(tx - s.x) < 0.05 && Math.abs(ty - s.y) < 0.05)
+            Object.assign(s, { x: tx, y: ty });
+        }
+        return { x: s.x, y: s.y };
+      };
+      const dl = hang(0),
+        dr = hang(1);
+      let left = { x: a.x - 84 + dl.x, y: 255 + dl.y },
+        right = { x: a.x + 86 + dr.x, y: 253 + dr.y };
       const deckGrip = p.gripShape,
         hx = width / 2 + (33.6 - width / 2) * deckGrip,
         hy = 15 - 9 * deckGrip;
@@ -451,11 +832,11 @@ export function createHandoverRig(root, gsap) {
         }
 
         if (transfer) {
-          const resting = { x: a.x + 86, y: 253 },
+          const resting = { x: a.x + 86 + dr.x, y: 253 + dr.y },
             outerRelease = Math.max(p.outerRelease, p.offer);
           left = {
-            x: left.x + (a.x - 84 - left.x) * outerRelease,
-            y: left.y + (255 - left.y) * outerRelease,
+            x: left.x + (a.x - 84 + dl.x - left.x) * outerRelease,
+            y: left.y + (255 + dl.y - left.y) * outerRelease,
           };
           right = {
             x: right.x + (resting.x - right.x) * p.offer,
@@ -477,47 +858,88 @@ export function createHandoverRig(root, gsap) {
         };
       }
       if (current === 11) {
-        left = { x: a.x - 84, y: 255 };
-        right = { x: a.x + 86, y: 253 - (i === owner ? 36 * p.gesture : 0) };
+        left = { x: a.x - 84 + dl.x, y: 255 + dl.y };
+        right = { x: a.x + 86 + dr.x, y: 253 + dr.y - (i === owner ? 36 * p.gesture : 0) };
       }
-      for (const [j, h] of [
+      // The cast clip's hands ride on whatever the beat has them doing.
+      const cf = castFx[i];
+      left = { x: left.x + cf.hlx, y: left.y + cf.hly };
+      right = { x: right.x + cf.hrx, y: right.y + cf.hry };
+      if (i === 3 && cf.reach > 0) {
+        // Check's push: the hand really arrives on the bridge of its glasses (wherever they have
+        // slipped to), a fingertip's width under it, and rides them back up.
+        const [bx, by] = bodies[3].map(146.5, 130.5 + a.b.slip + 9);
+        const bridge = { x: a.x - 127.5 + bx * 0.85, y: 65 + by * 0.85 };
+        right = {
+          x: right.x + (bridge.x - right.x) * cf.reach,
+          y: right.y + (bridge.y - right.y) * cf.reach,
+        };
+      }
+      // A hand driving a tool or the reveal is locked to it: no spring between the hand, the tool
+      // and the stroke it is drawing (0 px drift). The lock fades in with the gesture.
+      const lock = i === owner && (p.tool || p.pending) ? Math.max(0, Math.min(1, p.gesture)) : 0;
+      for (const [j, target] of [
         [0, left],
         [1, right],
       ]) {
+        const h = smoothHand(i, j, target, vis);
+        if (j === 1 && lock > 0) {
+          h.x += (target.x - h.x) * lock;
+          h.y += (target.y - h.y) * lock;
+        }
+        if (j === 1 && i === owner) toolHand = vis ? { x: h.x, y: h.y } : null;
         const sh = shoulders[j],
           arm = armPaths[i][j],
           depth = transfer
             ? i === owner && j === 0
               ? p.outerRelease
               : i === receiver && j === 1
-                ? 1 - p.offer
+                ? // The taker's far arm reaches round behind its body until the carry's stop,
+                  // so it never draws across the page; it comes in front on that contact cut.
+                  1 - p.carryFront
                 : 0
             : 0;
-        arm.style.opacity = vis * (1 - depth);
-        rearPaths[i][j].style.opacity = vis * depth;
+        // Front or behind the body: a layer switch, never a cross-fade.
+        const behind = depth > 0.5;
+        arm.style.visibility = vis && !behind ? "" : "hidden";
+        rearPaths[i][j].style.visibility = vis && behind ? "" : "hidden";
         arm.setAttribute(
           "d",
           `M${sh.x} ${sh.y}Q${(sh.x + h.x) / 2 + (j ? 1 : -1) * (i === 1 ? 21.6 : 10)} ${Math.max(sh.y, h.y) + (i === 1 ? 30 : 20)} ${h.x} ${h.y}`,
         );
         rearPaths[i][j].setAttribute("d", arm.getAttribute("d"));
-        fingers
-          .querySelector(j ? ".finger-r" : ".finger-l")
-          .setAttribute(
-            "d",
-            i === 1
-              ? `M${h.x + (j ? 3.6 : -3.6)} ${h.y - 4.8}q${j ? -8.4 : 8.4} -2.4 ${j ? -7.2 : 7.2} 4.8q0 6 ${j ? 6 : -6} 4.8`
-              : `M${h.x} ${h.y - 3}q${j ? -5 : 5} -1 ${j ? -5 : 5} 3q0 4 ${j ? 4 : -4} 3`,
-          );
+        const finger = q(j ? ".finger-r" : ".finger-l", fingers);
+        // A hand reaching round behind the body is hidden with its arm.
+        finger.style.visibility = behind ? "hidden" : "";
+        finger.setAttribute(
+          "d",
+          i === 1
+            ? `M${h.x + (j ? 3.6 : -3.6)} ${h.y - 4.8}q${j ? -8.4 : 8.4} -2.4 ${j ? -7.2 : 7.2} 4.8q0 6 ${j ? 6 : -6} 4.8`
+            : `M${h.x} ${h.y - 3}q${j ? -5 : 5} -1 ${j ? -5 : 5} 3q0 4 ${j ? 4 : -4} 3`,
+        );
       }
     });
     $("#tool").style.opacity = p.tool ? p.toolAlpha : 0;
-    $("#tool").setAttribute("transform", `translate(${p.rx} ${p.ry})`);
-    scene.querySelector(".pencil").style.display = p.tool === 1 ? "" : "none";
-    scene.querySelector(".stamp").style.display = p.tool === 2 ? "" : "none";
+    // The tool is drawn from the hand that holds it, so the two can never separate. A cast clip may
+    // toss it (twirl-and-catch): it spins about the grip and is caught back on the same point.
+    const cfo = castFx[ownerOf()];
+    const tx = toolHand ? toolHand.x - (p.tool === 1 ? 5 : 0) : p.rx,
+      ty = toolHand ? toolHand.y + (p.tool === 1 ? 11 : p.tool === 2 ? 17 * p.toolAlpha : 0) : p.ry;
+    toolAt.x = tx;
+    toolAt.y = ty + cfo.penToss;
+    $("#tool").setAttribute(
+      "transform",
+      `translate(${tx.toFixed(2)} ${(ty + cfo.penToss).toFixed(2)}) rotate(${cfo.penRot.toFixed(1)} 5 -11)`,
+    );
+    q(".pencil").style.display = p.tool === 1 ? "" : "none";
+    q(".stamp").style.display = p.tool === 2 ? "" : "none";
     $("#spark").style.opacity = p.spark;
     $("#spark").setAttribute("transform", `translate(${p.rx} ${p.ry}) scale(${p.spark})`);
   }
-  function canonical(n) {
+  function canonical(beat) {
+    // Slides' entrance starts from beat 3's work state, with Slides and its deck still off stage.
+    const entering = beat === 12,
+      n = entering ? 3 : beat;
     fanMode = false;
     Object.assign(p, {
       x: 320,
@@ -567,10 +989,20 @@ export function createHandoverRig(root, gsap) {
       gripShape: 0,
       ambientGate: 1,
       outerRelease: 0,
+      carryFront: 0,
     });
     actors.forEach((a, i) => {
-      Object.assign(a, { x: i === beats[n][1] ? 320 : 760, alpha: i === beats[n][1] ? 1 : 0 });
+      Object.assign(a, {
+        x: i === beats[n][1] ? 320 : 760,
+        alpha: i === beats[n][1] ? 1 : 0,
+      });
+      // In place: a reaction running beside the beat keeps drawing on the same pose.
+      Object.assign(a.b, restBody());
     });
+    if (entering) {
+      Object.assign(actors[1], { x: 760, alpha: 0 });
+      p.x = 760;
+    }
     if (n >= 3) {
       p.stackGap = 0;
       p.gripShape = n === 3 ? 0 : 1;
@@ -599,7 +1031,90 @@ export function createHandoverRig(root, gsap) {
     fan.t.pause(0);
   }
 
+  // Cast clips (baked from new/_shared/cast/*.js, context "creation"): each character's own
+  // persona beat, laid on its cast layer so it never fights the work beat underneath.
+  const castRuns = new Map();
+  const castRunning = () => [...castRuns.values()].some((t) => t.isActive());
+  const CAST_BODY = new Set(BODY);
+  function clearCast(i) {
+    castRuns.get(i)?.kill();
+    castRuns.delete(i);
+    Object.assign(actors[i].c, zeroBody());
+    Object.assign(castFx[i], {
+      look: 0,
+      hlx: 0,
+      hly: 0,
+      hrx: 0,
+      hry: 0,
+      penRot: 0,
+      penToss: 0,
+      lift: 0,
+      riffle: 0,
+      lookY: 0,
+      reach: 0,
+    });
+  }
+  function playCast(i, id, { hands = 1, onCatch, onRelease, onDone } = {}) {
+    const clip = CAST_CLIPS[id];
+    if (!clip || reduced) {
+      onDone?.();
+      return;
+    }
+    clearCast(i);
+    const a = actors[i],
+      fx = castFx[i],
+      last = Object.values(clip.f)[0].length - 1;
+    const time = { t: 0 };
+    let airborne = false,
+      reached = false;
+    const apply = () => {
+      const x = Math.min(last, (time.t / 1000) * clip.hz),
+        i0 = Math.floor(x),
+        u = x - i0,
+        i1 = Math.min(last, i0 + 1);
+      for (const [k, s] of Object.entries(clip.f)) {
+        const v = s[i0] + (s[i1] - s[i0]) * u;
+        if (CAST_BODY.has(k)) a.c[k] = v;
+        else fx[k] = k.startsWith("h") ? v * hands : v;
+      }
+      // A reach that has arrived and starts back: the contact's release (Check's push-up).
+      if (fx.reach > 0.9) reached = true;
+      else if (reached && fx.reach < 0.6) {
+        reached = false;
+        onRelease?.();
+      }
+      if (fx.penToss < -4) airborne = true;
+      else if (airborne && fx.penToss > -0.5) {
+        airborne = false;
+        onCatch?.();
+      }
+    };
+    const run = gsap.to(time, {
+      t: clip.ms,
+      duration: clip.ms / 1000,
+      ease: "none",
+      onUpdate: () => {
+        apply();
+        draw();
+      },
+      onComplete: () => {
+        clearCast(i);
+        draw();
+        onDone?.();
+      },
+    });
+    if (paused) run.pause();
+    castRuns.set(i, run);
+  }
+  /** An entrance from off stage has nothing on screen to blend from (or spring from). */
+  function fresh(n) {
+    if (n !== 12) return;
+    blend = null;
+    springs.clear();
+  }
   function play(n, options = {}) {
+    beginBlend();
+    fresh(n);
     tl?.kill();
     handoff = options.handoff ?? null;
     current = n;
@@ -612,6 +1127,7 @@ export function createHandoverRig(root, gsap) {
           x: i === handoff.from ? 320 : 760,
           alpha: i === handoff.from ? 1 : 0,
         });
+        Object.assign(actor.b, restBody());
       });
     }
     p.gesture = 0;
@@ -620,9 +1136,11 @@ export function createHandoverRig(root, gsap) {
     p.offer = 0;
     p.grip = 0;
     p.outerRelease = 0;
+    p.carryFront = 0;
     p.spark = 0;
     fanMode = false;
     fan.t.pause(0);
+    loops[n] = (loops[n] ?? -1) + 1;
     tl = buildBeat(
       {
         p,
@@ -636,13 +1154,36 @@ export function createHandoverRig(root, gsap) {
         setFanMode(value) {
           fanMode = value;
         },
+        puff,
+        cast: playCast,
+        /** An accent at a point of the prop, in its own coordinates. */
+        accentAt(kind, x, y, size) {
+          const at =
+            kind === "hand"
+              ? { ...toolAt }
+              : kind === "glasses"
+                ? (() => {
+                    const [gx, gy] = bodies[3].map(168, 118 + actors[3].b.slip);
+                    return { x: actors[3].x - 127.5 + gx * 0.85, y: 65 + gy * 0.85 };
+                  })()
+                : kind === "scene" || kind === "ground"
+                  ? { x, y }
+                  : materialPoint(x, y, kind);
+          accent(at.x, at.y, size, kind === "ground");
+        },
+        loops: loops[n],
         onComplete: options.onComplete,
       },
       n,
       gsap,
     );
-    tl.timeScale(options.speed ?? 1.2);
-    if (pref.matches) {
+    // Handovers are charted in real time; gestures take the persona's tempo.
+    // A hurried sign-off (the lesson is already ready) runs the pass a little quicker.
+    tl.timeScale(
+      // Handovers always run at charted time: their travel is accel-limited at 1x.
+      [2, 5, 8, 11].includes(n) ? 1 : (options.speed ?? 1.2),
+    );
+    if (reduced) {
       tl.pause();
       canonical(n);
       draw();
@@ -654,26 +1195,52 @@ export function createHandoverRig(root, gsap) {
     }
     draw();
   }
+  const queued = [];
+  const loops = {};
+  draw();
   function pause(value) {
     paused = value;
-    [tl, ...faces].forEach((t) => {
+    [tl, ...faces, ...castRuns.values()].forEach((t) => {
       if (value) t?.pause();
       else t?.play();
     });
   }
   function settle(n) {
+    if (reduced) springs.clear();
+    beginBlend();
+    fresh(n);
     tl?.kill();
+    reaction?.kill();
+    reaction = null;
+    queued.length = 0;
+    for (const a of actors) Object.assign(a.r, zeroBody());
+    actors.forEach((_, i) => {
+      clearCast(i);
+    });
     handoff = null;
     current = n;
     canonical(n);
-    if (pref.matches)
-      faces.forEach((face) => {
-        face.pause();
-      });
     draw();
   }
-  const visibility = () => pause(document.hidden || pref.matches);
+  const visibility = () => pause(document.hidden || reduced);
   document.addEventListener("visibilitychange", visibility);
+  // Reduced motion switched on mid-animation: stop the beat and show the exact rest pose now.
+  const onReduce = () => {
+    reduced = pref.matches;
+    if (reduced) {
+      blend = null;
+      tl?.pause();
+      dustState.at = -9;
+      // Mid-entrance, Slides is already the one at work: settle it on its mark (beat 3).
+      settle(handoff ? ([0, 3, 7, 9][handoff.to] ?? current) : current === 12 ? 3 : current);
+    }
+  };
+  pref.addEventListener("change", onReduce);
+  // Off screen, nothing paints.
+  const seen = new IntersectionObserver((entries) => {
+    onScreen = entries.some((e) => e.isIntersecting) || entries[entries.length - 1].isIntersecting;
+  });
+  seen.observe(root);
   return {
     play,
     snapshot(active) {
@@ -701,6 +1268,7 @@ export function createHandoverRig(root, gsap) {
         });
       }
       const offsetX = actors[active].x - 320;
+      const drawn = drawnPose();
       state.x -= offsetX;
       return {
         beat,
@@ -708,6 +1276,8 @@ export function createHandoverRig(root, gsap) {
         state,
         actors: actors.map((actor, index) => ({
           ...actor,
+          b: drawn.actors[index].b,
+          r: undefined,
           x: index === active ? 320 : actor.x,
           alpha: index === active ? 1 : 0,
         })),
@@ -715,21 +1285,67 @@ export function createHandoverRig(root, gsap) {
     },
     restore(pose) {
       tl?.kill();
+      blend = null;
+      springs.clear();
       current = pose.beat;
       handoff = null;
       Object.assign(p, pose.state);
       actors.forEach((actor, i) => {
-        Object.assign(actor, pose.actors[i]);
+        Object.assign(actor, pose.actors[i], {
+          b: { ...(pose.actors[i].b ?? restBody()) },
+          r: zeroBody(),
+        });
       });
       draw();
     },
     settle,
     pause,
+    /** Resting between gestures: ease the sway down to a breath. */
+    calm(value) {
+      calmTarget = value ? 0.45 : 1;
+    },
     get reduced() {
-      return pref.matches;
+      return reduced;
+    },
+    /** A persona reaction on the current holder: "nod", "leap" (flight), "leave" (exit). */
+    react(name, options = {}) {
+      if (reduced) {
+        options.onComplete?.();
+        return;
+      }
+      // Gestures queue: a reaction never cuts into one that is still playing.
+      if (reaction?.isActive()) {
+        queued.push(() => this.react(name, options));
+        return;
+      }
+      // Reactions run beside the current gesture (they move only the body), except the exit.
+      if (name === "leave") {
+        tl?.kill();
+        handoff = null;
+      }
+      reaction = buildReaction(
+        {
+          p,
+          actors,
+          draw,
+          puff,
+          // Mid-pass, the reaction belongs to the character taking over.
+          owner: handoff ? handoff.to : ownerOf(),
+          onComplete: () => {
+            options.onComplete?.();
+            queued.shift()?.();
+          },
+        },
+        name,
+        options,
+        gsap,
+      );
+      reaction.play();
     },
     dispose() {
       tl?.kill();
+      for (const t of castRuns.values()) t.kill();
+      reaction?.kill();
       faces.forEach((face) => {
         face.kill();
       });
@@ -737,6 +1353,8 @@ export function createHandoverRig(root, gsap) {
       fan.face.kill();
       gsap.ticker.remove(ambientTick);
       document.removeEventListener("visibilitychange", visibility);
+      pref.removeEventListener("change", onReduce);
+      seen.disconnect();
       root.replaceChildren();
     },
   };
