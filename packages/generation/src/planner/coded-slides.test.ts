@@ -519,8 +519,20 @@ describe("design minimums enforced (designer eval r1)", () => {
       [arc("figure"), arc("explain"), arc("worked-example")],
       [...offered],
     );
-    expect(out.map((m) => [m.slide, m.into, m.role])).toEqual([
-      [4, "figure", "show"],
+    // Slide 4 is objective 0's only teaching slot: kept (designer r3); its one check stays too.
+    expect(out.map((m) => [m.slide, m.into, m.role])).toEqual([[7, "true-false", "check"]]);
+    // With a second teaching slot, the show slot that came back as text becomes the visual.
+    const taught = [
+      { objective: 0, form: "explain" as const, slide: 3, role: "show" as const },
+      { objective: 0, form: "list" as const, slide: 4, role: "teach" as const },
+      ...placed.slice(1),
+    ];
+    expect(
+      minimumRefills(taught, [arc("figure"), arc("explain"), arc("worked-example")], offered).map(
+        (m) => [m.slide, m.into, m.role],
+      ),
+    ).toEqual([
+      [3, "figure", "show"],
       [7, "true-false", "check"],
     ]);
     // Within the cap of 2 a lesson: a third role miss waits.
@@ -547,5 +559,67 @@ describe("design minimums enforced (designer eval r1)", () => {
     expect(out).toHaveLength(MAX_MINIMUM_REFILLS);
     expect(out.every((m) => m.into === "photo")).toBe(true);
     expect(minimumRefills([], [], offered)).toEqual([]);
+  });
+});
+
+describe("the visual minimum keeps the teaching (designer r3)", () => {
+  const offered = slotFormsFor("science");
+  const arc = (lean: string) => ({ lean });
+  test("a 2-slot cycle's explain-callout is never re-filled into its visual", () => {
+    const placed = [
+      { objective: 0, form: "explain-callout" as const, slide: 4, role: "show" as const },
+      { objective: 0, form: "hinge" as const, slide: 5, role: "check" as const },
+      { objective: 1, form: "diagram-slot" as const, slide: 6, role: "show" as const },
+      { objective: 1, form: "true-false" as const, slide: 7, role: "check" as const },
+      { objective: 2, form: "explain-callout" as const, slide: 8 },
+      { objective: 2, form: "sort" as const, slide: 9 },
+    ];
+    const arcs = [arc("diagram-slot"), arc("diagram-slot"), arc("photo")];
+    expect(minimumRefills(placed, arcs, offered)).toEqual([]);
+    // Unroled too: the callout slot is the only teaching, so the visual stays missing (logged).
+    const unroled = placed.map(({ role: _, ...p }) => p);
+    expect(minimumRefills(unroled, arcs, offered)).toEqual([]);
+  });
+
+  test("a callout slot is spared even beside another text slot; the plain one becomes the visual", () => {
+    const placed = [
+      { objective: 0, form: "explain-callout" as const, slide: 4 },
+      { objective: 0, form: "explain" as const, slide: 5 },
+      { objective: 0, form: "hinge" as const, slide: 6 },
+    ];
+    expect(minimumRefills(placed, [arc("photo")], offered).map((m) => m.slide)).toEqual([5]);
+    // Two callout slots: neither goes.
+    const both = placed.map((p) =>
+      p.slide === 5 ? { ...p, form: "explain-callout" as const } : p,
+    );
+    expect(minimumRefills(both, [arc("photo")], offered)).toEqual([]);
+  });
+
+  test("the visual takes a check only when the objective keeps another and the lesson keeps 3", () => {
+    const placed = [
+      { objective: 0, form: "explain-callout" as const, slide: 4 },
+      { objective: 0, form: "hinge" as const, slide: 5 },
+      { objective: 0, form: "true-false" as const, slide: 6 },
+      { objective: 1, form: "explain" as const, slide: 7 },
+      { objective: 1, form: "sort" as const, slide: 8 },
+      { objective: 1, form: "matching" as const, slide: 9 },
+    ];
+    const out = minimumRefills(placed, [arc("photo"), arc("explain")], offered);
+    expect(out.map((m) => [m.slide, m.into])).toEqual([[5, "photo"]]);
+    // At 3 checks in the lesson, no check is spent: the visual stays missing.
+    const three = placed.filter((p) => p.slide !== 9);
+    expect(minimumRefills(three, [arc("photo"), arc("explain")], offered)).toEqual([]);
+  });
+
+  test("the check minimum never re-fills a callout slot", () => {
+    const placed = [
+      { objective: 0, form: "explain" as const, slide: 4 },
+      { objective: 0, form: "explain-callout" as const, slide: 5 },
+      { objective: 1, form: "explain" as const, slide: 6 },
+      { objective: 1, form: "true-false" as const, slide: 7 },
+    ];
+    expect(
+      minimumRefills(placed, [arc("explain"), arc("explain")], offered).map((m) => m.slide),
+    ).toEqual([4]);
   });
 });

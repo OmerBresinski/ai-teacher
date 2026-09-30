@@ -771,6 +771,9 @@ export function designMinimums(
   };
 }
 
+const VISUAL_FROM_CHECK =
+  "the objective has no photo, figure or diagram and its teaching slot stays; this check becomes the visual, and the objective keeps another check";
+
 /** The most single-slot re-fills a lesson spends on its design minimums. */
 export const MAX_MINIMUM_REFILLS = 2;
 
@@ -794,6 +797,12 @@ export type MinimumRefill = {
  * (`ROLE_FORMS`, when the caller passes `role`): a show slot that came back as text is re-filled
  * as its visual, a check that came back open as a true-false. Roles, then visuals, then checks; at
  * most `MAX_MINIMUM_REFILLS`. The count never changes: each re-fill replaces one slot.
+ *
+ * Teaching is never spent on a visual (designer r3): a slot that carries a callout
+ * (`explain-callout`), or the objective's only teaching slot, is kept. The visual then takes one of
+ * the objective's checks when the objective keeps another and the lesson stays at `MIN_CHECKS`, or
+ * is left missing (logged by `designMinimums`). In round 2 the re-fill of 2-slot cycles' text slot
+ * cut 6-8 planned callouts to 1.
  */
 export function minimumRefills(
   placed: readonly { objective: number; form: SlotForm; slide: number; role?: SlotRole }[],
@@ -809,14 +818,36 @@ export function minimumRefills(
   };
   const visualDone = new Set<number>();
   let checks = minimums.checks;
+  const open = (o: number) => placed.filter((p) => p.objective === o && !taken.has(p.slide));
+  /** A text slot a visual may replace: no callout, and another teaching slot stays. */
+  const spendable = (p: { objective: number; form: SlotForm; slide: number }) =>
+    p.form !== "explain-callout" &&
+    open(p.objective).some((q) => q.slide !== p.slide && !CHECK_FORMS.has(q.form));
+  /** A check the visual may take instead: the objective keeps another, the lesson its 3. */
+  const spareCheck = (o: number) => {
+    const own = open(o).filter((p) => CHECK_FORMS.has(p.form));
+    return own.length >= 2 && checks > MIN_CHECKS ? own[0] : undefined;
+  };
+  const visualFrom = (slot: { objective: number; slide: number }, into: SlotForm) => {
+    taken.add(slot.slide);
+    visualDone.add(slot.objective);
+    checks -= 1;
+    out.push({ slide: slot.slide, objective: slot.objective, into, reason: VISUAL_FROM_CHECK });
+  };
   for (const p of placed) {
     if (out.length >= MAX_MINIMUM_REFILLS) return out;
     if (!p.role || ROLE_FORMS[p.role].includes(p.form)) continue;
     if (p.role === "show") {
       const into = visualFor(p.objective);
       if (!offered.includes(into)) continue;
-      taken.add(p.slide);
       visualDone.add(p.objective);
+      if (!spendable(p)) {
+        // The designer taught here (a callout, or the objective's only teaching): keep it.
+        const check = spareCheck(p.objective);
+        if (check) visualFrom(check, into);
+        continue;
+      }
+      taken.add(p.slide);
       out.push({
         slide: p.slide,
         objective: p.objective,
@@ -849,8 +880,13 @@ export function minimumRefills(
     if (out.length >= MAX_MINIMUM_REFILLS) return out;
     if (visualDone.has(o)) continue;
     const into = visualFor(o);
-    const slot = teaching(o)[0];
-    if (!slot || !offered.includes(into)) continue;
+    if (!offered.includes(into)) continue;
+    const slot = teaching(o).find(spendable);
+    if (!slot) {
+      const check = spareCheck(o);
+      if (check) visualFrom(check, into);
+      continue;
+    }
     taken.add(slot.slide);
     out.push({
       slide: slot.slide,
@@ -869,7 +905,7 @@ export function minimumRefills(
     const keepsTeaching =
       placed.filter((p) => p.objective === o && !CHECK_FORMS.has(p.form) && !taken.has(p.slide))
         .length >= 2;
-    const slot = texts.at(-1);
+    const slot = texts.filter((p) => p.form !== "explain-callout").at(-1);
     if (!slot || !keepsTeaching) continue;
     taken.add(slot.slide);
     checks += 1;

@@ -326,7 +326,7 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     expect(final.lesson.generation?.stage).toBe("repaired");
   });
 
-  test("design minimums are enforced: a missing visual is re-filled in place, the count kept (r1 bug c)", async () => {
+  const visualMissingRun = async (slides: 10 | 12) => {
     const withArc = romansObjectives.map((o, i) => ({
       ...o,
       arc: { angle: `Angle ${i + 1}`, lean: "photo", misconception: `Myth ${i + 1}` },
@@ -349,7 +349,7 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
             exitQuestion: { question: "Why?", answer: "Because" },
           });
         }
-        // Objective 1 comes back with no visual at all.
+        // Objective 1 comes back with no visual at all: its show slot is text.
         const answer = designCycleAnswer(target, count);
         if (target !== 0) return JSON.stringify(answer);
         const text: DesignSlot = {
@@ -357,24 +357,48 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
           heading: "Britain had tin and grain",
           body: "Rome wanted its metals.",
         };
-        return JSON.stringify({ ...answer, slots: [text, ...answer.slots.slice(1)] });
+        const more: DesignSlot = {
+          form: "list",
+          heading: "Rome wanted Britain's riches",
+          body: "Britain had what Rome's army needed.",
+          points: ["Tin for bronze", "Grain for the army"],
+        };
+        const slots =
+          count >= 3 ? [text, more, ...answer.slots.slice(2)] : [text, ...answer.slots.slice(1)];
+        return JSON.stringify({ ...answer, slots });
       },
     });
-    const final = await runLessonPipeline({ lesson: romans(10) }, recordingDeps(ai), {
+    const final = await runLessonPipeline({ lesson: romans(slides) }, recordingDeps(ai), {
       planner: "designer",
     });
+    return { final, refills };
+  };
+
+  test("design minimums are enforced: a missing visual is re-filled in place, the count kept (r1 bug c)", async () => {
+    const { final, refills } = await visualMissingRun(12);
+    const cycle = final.designReport?.slots.filter((s) => s.objective === 0) ?? [];
+    expect(cycle.length).toBeGreaterThanOrEqual(3);
     expect(refills).toHaveLength(1);
     expect(refills[0]).toContain(
       "This slot replaces an explain slot: this slot's role is to show the content",
     );
     // The slot's role rides along on the re-fill (the allocator's roles: a photo lean shows first).
     expect(refills[0]).toContain("  slide 4: show");
-    expect(final.lesson.slides).toHaveLength(10);
+    expect(final.lesson.slides).toHaveLength(12);
     expect(final.designReport?.enforced).toEqual([{ slide: 4, into: "photo", ok: true }]);
     expect(final.designReport?.slots[0]?.form).toBe("photo");
     expect(final.designReport?.minimums.visualMissing).toEqual([]);
     expect(final.lesson.facts?.outline[3]?.kind).toBe("image-text");
     expect(final.lesson.slides[3]?.elements.some((e) => e.type === "image")).toBe(true);
+    expect(() => parseLesson(final.lesson)).not.toThrow();
+  });
+
+  test("a 2-slot cycle's only teaching slot is kept: the visual stays missing, logged (r3)", async () => {
+    const { final, refills } = await visualMissingRun(10);
+    expect(refills).toHaveLength(0);
+    expect(final.lesson.slides).toHaveLength(10);
+    expect(final.designReport?.slots[0]?.form).toBe("explain");
+    expect(final.designReport?.minimums.visualMissing).toEqual([0]);
     expect(() => parseLesson(final.lesson)).not.toThrow();
   });
 
