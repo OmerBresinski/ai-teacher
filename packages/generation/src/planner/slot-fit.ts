@@ -90,50 +90,33 @@ function variantsOf(render: SlotRender): string[] {
 const sentences = (text: string): string[] =>
   (text.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) ?? [text]).map((s) => s.trim()).filter(Boolean);
 
-/** Rung 2: the sibling forms that hold the same units, converted in code, nearest first. */
+/**
+ * Rung 2: the sibling forms that hold the same units, converted in code, nearest first. A sibling
+ * must be a whole, valid slide of its own form, every word of the original kept on the slide or in
+ * the notes, and a check stays a check. Pairs that cannot be converted in structure alone have no
+ * sibling and go on to the re-fill (rung 4), which writes the new form (designer eval r1: a hinge
+ * turned open response kept "Which statement best…" with no options on the slide and notes naming
+ * "Option B"):
+ *  - hinge: its stem asks to choose between options and its explanation reads them; an option alone
+ *    is a phrase, not a statement to judge true or false. None.
+ *  - fill-gap (the gapped sentence is the question), sort (a sequence prints the answer order) and
+ *    matching (a vocabulary slide shows the matched pairs, and a check becomes teaching): none.
+ *  - explain: a list only when the body is exactly a lead and two sentences (nothing left over);
+ *    never a sequence (sentences of an explanation are not ordered steps).
+ *  - list: never a sequence (points carry no order).
+ *  - explain-callout -> explain (the callout joins the body), sequence of 2 -> list, compare ->
+ *    list (one point per side), worked example -> sequence (the question is its body, the working
+ *    its steps), true-false -> open response (the statement asked as true or false, the verdict
+ *    and its reason the model answer).
+ */
 export function siblingsOf(slot: DesignSlot): DesignSlot[] {
   const notes = slot.notes;
-  const withNotes = <T extends DesignSlot>(s: T, extra?: string): T => {
-    const joined = [notes, extra].filter(Boolean).join("\n");
-    return joined ? { ...s, notes: joined } : s;
-  };
+  const withNotes = <T extends DesignSlot>(s: T): T => (notes ? { ...s, notes } : s);
   switch (slot.form) {
-    case "hinge": {
-      const right = slot.options.find((o) => o.correct) ?? slot.options[0];
-      const wrong = slot.options.find((o) => !o.correct);
-      const out: DesignSlot[] = [];
-      if (right)
-        out.push(
-          withNotes(
-            { form: "open-response", stem: slot.stem, modelAnswer: right.text },
-            `${slot.explanation}${
-              wrong
-                ? ` Wrong answers to listen for: ${slot.options
-                    .filter((o) => !o.correct)
-                    .map((o) => o.text)
-                    .join("; ")}`
-                : ""
-            }`,
-          ),
-        );
-      if (wrong)
-        out.push(
-          withNotes({
-            form: "true-false",
-            statement: wrong.text,
-            correct: false,
-            explanation: slot.explanation,
-          }),
-        );
-      return out;
-    }
     case "explain": {
       const [lead, ...rest] = sentences(slot.body);
-      if (!lead || rest.length === 0) return [];
-      return [
-        withNotes({ form: "list", heading: slot.heading, body: lead, points: rest.slice(0, 2) }),
-        withNotes({ form: "sequence", heading: slot.heading, body: lead, steps: rest.slice(0, 3) }),
-      ].filter((s) => (s.form === "list" ? s.points.length === 2 : s.steps.length >= 2));
+      if (!lead || rest.length !== 2) return [];
+      return [withNotes({ form: "list", heading: slot.heading, body: lead, points: rest })];
     }
     case "explain-callout":
       return [
@@ -142,10 +125,6 @@ export function siblingsOf(slot: DesignSlot): DesignSlot[] {
           heading: slot.heading,
           body: `${slot.body} ${slot.callout.text}`.trim(),
         }),
-      ];
-    case "list":
-      return [
-        withNotes({ form: "sequence", heading: slot.heading, body: slot.body, steps: slot.points }),
       ];
     case "sequence":
       return slot.steps.length === 2
@@ -180,31 +159,6 @@ export function siblingsOf(slot: DesignSlot): DesignSlot[] {
           form: "open-response",
           stem: `True or false? ${slot.statement}`,
           modelAnswer: `${slot.correct ? "True" : "False"}. ${slot.explanation}`,
-        }),
-      ];
-    case "fill-gap":
-      return [
-        withNotes(
-          {
-            form: "open-response",
-            stem: slot.stem,
-            modelAnswer: slot.answers.join("; "),
-          },
-          slot.sentence,
-        ),
-      ];
-    case "sort":
-      return [
-        withNotes(
-          { form: "sequence", heading: slot.stem, body: slot.stem, steps: slot.steps.slice(0, 3) },
-          slot.steps.length > 3 ? slot.steps.slice(3).join("; ") : undefined,
-        ),
-      ];
-    case "matching":
-      return [
-        withNotes({
-          form: "vocabulary",
-          entries: slot.pairs.map((p) => ({ term: p.left, definition: p.right })),
         }),
       ];
     default:

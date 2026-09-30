@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { THEMES } from "@tj/slides";
 import weimar from "../fixtures/design-cycle.y9-weimar.json";
-import { type DesignSlot, designCycleSchemaFor } from "../prompts/design-cycle";
+import { type DesignSlot, designCycleSchemaFor, type SlotForm } from "../prompts/design-cycle";
 import { designMinimums, renderSlot, slotRender } from "./coded-slides";
 import { FORM_DOWN, fitSlot, refillReason, siblingsOf, slotFits, unitsToNotes } from "./slot-fit";
 
@@ -45,16 +45,27 @@ describe("fit ladder", () => {
     expect(THEMES.length).toBe(10);
   });
 
-  test("a hinge with sentence-long options becomes an open response holding the same units", async () => {
+  test("a hinge that does not fit has no sibling: it goes to the re-fill, never a stem without options", async () => {
     const hinge = bySlot("hinge");
-    const fit = await fitSlot(hinge, { seed: "x", themeId: "chalk" });
-    expect(fit.rung).toBe("sibling");
-    expect(fit.slot.form).toBe("open-response");
-    if (fit.slot.form !== "open-response" || hinge.form !== "hinge") throw new Error("form");
-    expect(fit.slot.stem).toBe(hinge.stem);
-    expect(fit.slot.modelAnswer).toBe(hinge.options.find((o) => o.correct)?.text ?? "");
-    expect(fit.slot.notes).toContain(hinge.explanation);
-    expect(slotFits(fit.render, "chalk", 0)).toBe(true);
+    expect(siblingsOf(hinge)).toEqual([]);
+    const asked: string[] = [];
+    const fit = await fitSlot(hinge, {
+      seed: "x",
+      themeId: "chalk",
+      refill: async (_s, form) => {
+        asked.push(form);
+        return {
+          form: "true-false",
+          statement: "The Ruhr strike was paid for by printing money.",
+          correct: true,
+          explanation: "The government printed money to pay the strikers.",
+        };
+      },
+    });
+    expect(fit.tried.some((t) => t.rung === "sibling")).toBe(false);
+    expect(asked).toEqual(["true-false"]);
+    expect(fit.rung).toBe("refill");
+    expect(fit.slot.form).toBe("true-false");
   });
 
   test("the re-fill rung asks for the next form down once, and takes an answer that fits", async () => {
@@ -184,4 +195,170 @@ describe("the re-fill's reason is structure, never a length", () => {
     };
     expect(refillReason(plain)).toBe("its units do not fit the slide at full size on every theme");
   });
+});
+
+describe("sibling pairs (rung 2): a whole, valid slide of the new form, every word kept", () => {
+  const strings = (x: unknown): string[] =>
+    typeof x === "string"
+      ? [x]
+      : Array.isArray(x)
+        ? x.flatMap(strings)
+        : x && typeof x === "object"
+          ? Object.values(x).flatMap(strings)
+          : [];
+  const words = (x: unknown) =>
+    strings(x)
+      .join(" ")
+      .toLowerCase()
+      .match(/[a-z0-9]+/g) ?? [];
+  const kept = (from: DesignSlot, to: DesignSlot) => {
+    const { form: _a, ...a } = from;
+    const { form: _b, ...b } = to;
+    const have = new Set(words(b));
+    return words(a).filter((w) => !have.has(w) && w !== "true" && w !== "false");
+  };
+  const valid = (to: DesignSlot) => {
+    const schema = designCycleSchemaFor("maths", 1).shape.slots.element;
+    return schema.safeParse(to).success;
+  };
+  const cases: [string, DesignSlot, SlotForm[]][] = [
+    [
+      "explain -> list (lead and exactly two sentences)",
+      {
+        form: "explain",
+        heading: "Rivers shape valleys",
+        body: "Rivers erode. They carry rock. They drop it lower down.",
+      },
+      ["list"],
+    ],
+    [
+      "explain-callout -> explain",
+      {
+        form: "explain-callout",
+        heading: "Rivers shape valleys",
+        body: "Rivers erode their beds.",
+        callout: { text: "Erosion is not weathering." },
+      },
+      ["explain"],
+    ],
+    [
+      "sequence of 2 -> list",
+      {
+        form: "sequence",
+        heading: "Making a delta",
+        body: "Two stages.",
+        steps: ["The river slows", "Sediment settles"],
+      },
+      ["list"],
+    ],
+    [
+      "compare -> list",
+      {
+        form: "compare",
+        heading: "Upper and lower course",
+        body: "They differ.",
+        compare: {
+          left: { label: "Upper", points: ["Steep", "Narrow"] },
+          right: { label: "Lower", points: ["Gentle", "Wide"] },
+        },
+      },
+      ["list"],
+    ],
+    [
+      "worked example -> sequence",
+      {
+        form: "worked-example",
+        heading: "Finding a mean",
+        question: "Find the mean of 2, 4 and 6.",
+        steps: ["Add them: 12.", "Divide by 3: 4."],
+      },
+      ["sequence"],
+    ],
+    [
+      "true-false -> open response",
+      {
+        form: "true-false",
+        statement: "Rivers only erode downwards.",
+        correct: false,
+        explanation: "They erode sideways too.",
+        notes: "Ask why.",
+      },
+      ["open-response"],
+    ],
+  ];
+  for (const [name, from, to] of cases) {
+    test(name, () => {
+      const out = siblingsOf(from);
+      expect(out.map((s) => s.form)).toEqual(to);
+      for (const s of out) {
+        expect(valid(s)).toBe(true);
+        expect(kept(from, s)).toEqual([]);
+      }
+    });
+  }
+  test("true-false -> open response asks the statement and answers with the verdict", () => {
+    const [open] = siblingsOf(cases[5]?.[1] as DesignSlot);
+    expect(open).toMatchObject({
+      form: "open-response",
+      stem: "True or false? Rivers only erode downwards.",
+      modelAnswer: "False. They erode sideways too.",
+      notes: "Ask why.",
+    });
+  });
+  const none: [string, DesignSlot][] = [
+    [
+      "hinge",
+      {
+        form: "hinge",
+        stem: "Which is a meander?",
+        options: [
+          { text: "A bend", correct: true },
+          { text: "A lake", correct: false },
+          { text: "A delta", correct: false },
+          { text: "A cliff", correct: false },
+        ],
+        explanation: "Option A: a bend.",
+        notes: "Option A is right.",
+      },
+    ],
+    [
+      "fill-gap",
+      {
+        form: "fill-gap",
+        stem: "Fill the gap.",
+        sentence: "A river bend is a ___.",
+        answers: ["meander"],
+      },
+    ],
+    [
+      "sort",
+      {
+        form: "sort",
+        stem: "Put in order.",
+        steps: ["Source", "Upper course", "Lower course", "Mouth"],
+      },
+    ],
+    [
+      "matching",
+      {
+        form: "matching",
+        stem: "Match them.",
+        pairs: [
+          { left: "Source", right: "Start" },
+          { left: "Mouth", right: "End" },
+          { left: "Delta", right: "Deposits" },
+        ],
+      },
+    ],
+    [
+      "explain with four sentences",
+      { form: "explain", heading: "Rivers", body: "One. Two. Three. Four." },
+    ],
+    ["list", { form: "list", heading: "Rivers", body: "Two facts.", points: ["Wet", "Long"] }],
+  ];
+  for (const [name, slot] of none) {
+    test(`${name}: no sibling, so the re-fill writes the new form`, () => {
+      expect(siblingsOf(slot)).toEqual([]);
+    });
+  }
 });
