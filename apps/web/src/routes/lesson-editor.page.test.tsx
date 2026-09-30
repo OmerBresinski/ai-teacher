@@ -663,6 +663,12 @@ describe("LessonEditorPage", () => {
       );
     });
 
+    /** Toasts other than the open-time tidy of the demo lesson to the teaching body size. */
+    const ownToasts = () =>
+      toastSpy.mock.calls
+        .map((call: unknown[]) => call[0])
+        .filter((message: unknown) => !String(message).includes("tidied to fit"));
+
     it("row 8: a 409 generating toasts and opens no job", async () => {
       installFakeEventSource();
       seedGenerated();
@@ -684,8 +690,11 @@ describe("LessonEditorPage", () => {
       );
       renderPage();
       await editObjective();
-      await waitFor(() => expect(toastSpy).toHaveBeenCalled(), { timeout: 3_000 });
-      expect(toastSpy.mock.calls.at(-1)?.[0]).toBe(STILL_GENERATING_MESSAGE);
+      // The demo lesson is tidied on open at the teaching body size, which toasts too; only the
+      // toasts after it are this row's.
+      await waitFor(() => expect(ownToasts()).toContain(STILL_GENERATING_MESSAGE), {
+        timeout: 3_000,
+      });
       expect(FakeEventSource.instances).toHaveLength(0);
     });
 
@@ -712,7 +721,7 @@ describe("LessonEditorPage", () => {
       const cascades = () =>
         fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
       await waitFor(() => expect(cascades()).toHaveLength(1), { timeout: 3_000 });
-      expect(toastSpy).not.toHaveBeenCalled();
+      expect(ownToasts()).toEqual([]);
       await waitFor(() => expect(cascades()).toHaveLength(2), {
         timeout: SINGLETON_RETRY_MS + 3_000,
         interval: 200,
