@@ -1042,11 +1042,6 @@ function structureObjectives(slide: Slide, t: Theme, ids: Ids): Slide {
     ids,
     {
       textName: (i) => `Objective ${i + 1}`,
-      // The class reads these from the back of the room: a size up from a set's at any count.
-      sizes: [
-        ...new Set([1.3, 1.15, 1].map((k) => Math.round(resolveFontSize(t, "body") * k))),
-        floorBelow(t, "body"),
-      ],
     },
   );
   return placed ? { ...slide, elements: [...rest, ...placed.elements] } : slide;
