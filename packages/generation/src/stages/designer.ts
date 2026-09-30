@@ -343,10 +343,16 @@ function imageBriefOf(slot: DesignSlot): ImageBrief | undefined {
 /* ------------------------------------------------------------------ question sets */
 
 /** A set spec with its answers in the notes and no reveal strip (the answers' whole unit moved). */
-function withAnswersInNotes(spec: SlideSpec, answers: readonly string[]): SlideSpec {
+export function withAnswersInNotes(spec: SlideSpec, answers: readonly string[]): SlideSpec {
   const { footnote: _strip, ...rest } = spec as SlideSpec & { footnote?: string };
   const listed = answers.map((a, i) => `${i + 1}. ${a}`).join(" ");
-  const notes = [spec.notes, listed ? `Answers: ${listed}` : ""].filter(Boolean).join("\n");
+  const line = listed ? `Answers: ${listed}` : "";
+  // `codedSetSpec` already writes this line into the set's notes: never twice (designer eval r2).
+  const kept = (spec.notes ?? "")
+    .split("\n")
+    .filter((l) => l.trim() !== "" && l.trim() !== line)
+    .join("\n");
+  const notes = [kept, line].filter(Boolean).join("\n");
   return { ...rest, notes } as SlideSpec;
 }
 
@@ -366,6 +372,16 @@ export function setFits(spec: SlideSpec): boolean {
       slideFits(withAnswersReveal(materialiseSlide(spec, theme.id, SET_META), theme.id), theme, 1)
         .ok,
   );
+}
+
+/** Why a set fails the save gate, for its flag: the themes it fails on. */
+export function setFitReason(spec: SlideSpec): string {
+  const failing = THEMES.filter(
+    (theme) =>
+      !slideFits(withAnswersReveal(materialiseSlide(spec, theme.id, SET_META), theme.id), theme, 1)
+        .ok,
+  );
+  return `fails on ${failing.length} of ${THEMES.length} themes (${failing.map((t) => t.id).join(", ")})`;
 }
 
 /** The set as printed when its reveal fits every theme; otherwise its answers in the notes. */
@@ -519,6 +535,8 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     items: [`What do you already know about ${brief.topic}?`],
   };
   const starterFitted = answersToNotesUnlessFit(starterSpec, starterCoded?.answers ?? []);
+  const unfitSets: { slide: number; reason: string }[] = [];
+  if (!setFits(starterFitted)) unfitSets.push({ slide: 3, reason: setFitReason(starterFitted) });
   if (starterFitted !== starterSpec) {
     deps.logger.info(
       { stage: "generate", slide: 3, rung: "notes" },
@@ -983,6 +1001,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       "exit answers moved to the notes",
     );
   }
+  if (!setFits(exitSpec)) unfitSets.push({ slide: slideCount, reason: setFitReason(exitSpec) });
   const exitCovered = new Set(
     exitPrinted.flatMap((id) => facts.questions.find((q) => q.id === id)?.objectiveRefs ?? []),
   ).size;
@@ -1010,16 +1029,18 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   // searches finish (the plan's step 6: neither blocks the save). What they change is saved after.
   const rungs: Record<string, number> = {};
   for (const b of bound) rungs[b.fit.rung] = (rungs[b.fit.rung] ?? 0) + 1;
+  // Every saved slide passes the save gate or carries a flag that says why.
+  const flag = (index: number, reason: string) =>
+    findings.push({
+      check: "fit",
+      severity: "warning",
+      target: { slideId: lesson.slides[index]?.id },
+      message: `This slide does not fit the save gate: it ${reason}.`,
+    });
   for (const b of bound) {
-    if (b.fit.rung === "flagged") {
-      findings.push({
-        check: "fit",
-        severity: "warning",
-        target: { slideId: lesson.slides[b.slide]?.id },
-        message: "This slide may need its text size stepped down on some themes.",
-      });
-    }
+    if (b.fit.rung === "flagged") flag(b.slide, b.fit.reason ?? "fails on some themes");
   }
+  for (const u of unfitSets) flag(u.slide - 1, u.reason);
   const asGenerated = (l: Lesson, f: LessonFacts): Lesson => {
     const generation = generationOf(l);
     return withUsage(
@@ -1173,7 +1194,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
         form: b.fit.slot.form,
         rung: b.fit.rung,
         tried: b.fit.tried,
+        ...(b.fit.reason ? { reason: b.fit.reason } : {}),
+        designed: b.slot,
+        landed: b.fit.slot,
       })),
+    ...(unfitSets.length > 0 ? { unfitSets } : {}),
     rungs,
     minimums,
     exitCovered,

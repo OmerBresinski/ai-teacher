@@ -241,7 +241,17 @@ export interface DesignReport {
     form: string;
     rung: string;
     tried: { rung: string; form: string; ok: boolean; detail?: string }[];
+    /** Set when flagged: why the slide fails the save gate. */
+    reason?: string;
+    /**
+     * The slot as designed (the cycle's or the minimums' re-fill) and as it landed, recorded so an
+     * eval can replay the fit ladder and the renderers on it with no model call.
+     */
+    designed?: unknown;
+    landed?: unknown;
   }[];
+  /** Fixed slides (starter, exit ticket) saved without passing the save gate, with why. */
+  unfitSets?: { slide: number; reason: string }[];
   rungs: Record<string, number>;
   minimums: {
     visualMissing: number[];
