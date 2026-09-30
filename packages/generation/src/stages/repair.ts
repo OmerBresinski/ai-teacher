@@ -5,6 +5,8 @@ import {
   isSchemaCheck,
   type Lesson,
   type LessonFacts,
+  type OutlineEntry,
+  richDocToPlainText,
   type Slide,
   type Worksheet,
   type WorksheetBlock,
@@ -12,12 +14,17 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
+  CALLOUT_NAMES,
+  COMPARE_NAME,
+  DIAGRAM_NAME,
   fitsPlanned,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
   type SlideSpec,
+  type SlideStructure,
+  STEP_NAME,
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
@@ -283,21 +290,114 @@ export function repairContext(
     });
 }
 
+/** The element a designer content slide's points are laid in (`materialise.ts`). */
+const POINT_NAME = "Point";
+/** The placeholder's lead-in before a diagram slot's instruction (`materialise.ts`). */
+const DIAGRAM_LEAD = /^Diagram to add:\s*/;
+
 /**
- * The lesson designer's contract on a repair (the lesson designer plan, PR 10): the rewritten
- * slide must pass `fitsPlanned` at the save gate's one step down on every theme, and it may not
- * bring text back onto the slide that the designer put in the notes (a sentence of the old notes
- * now on the slide). A reason when it breaks either, else `undefined`; the caller discards it.
+ * A designer slide's rewrite held to its slot (the lesson designer plan, PR 10). The designer laid
+ * the slide out from one palette form, with a photo or diagram zone beside the text; Repair's
+ * schema is the whole `content` spec, so a rewrite can add a unit the slot never held (points
+ * beside a photo, a callout under a diagram: smoke r1, both discards) or drop the diagram slot's
+ * instruction, and a slide measured and drawn without its photo zone loses the photo. Held:
+ *  - a unit the original did not show (points, steps, compare, callout) moves to the notes, word
+ *    for word, never onto the slide and never cut;
+ *  - a diagram slot keeps its instruction when the rewrite drops it;
+ *  - a photo slot keeps its photo zone (`structure.photo` from the outline's `imageBrief`).
+ * Other kinds' schemas already fix their units. `variants` are the content variants to measure,
+ * the slot's own first (a callout host is laid in `callout-row`).
  */
-export function designerRepairRejected(spec: SlideSpec, original: Slide): string | undefined {
-  if (!fitsPlanned(spec, { stepDown: 1 }).ok) return "does not fit";
-  const { notes: _notes, ...onSlide } = spec as SlideSpec & { notes?: string };
+export function heldToSlot(
+  spec: SlideSpec,
+  original: Slide,
+  entry: OutlineEntry | undefined,
+): { spec: SlideSpec; structure: SlideStructure; variants: (string | undefined)[] } {
+  if (spec.kind !== "content" || original.kind !== "content")
+    return { spec, structure: {}, variants: [undefined] };
+  const has = (name: string) => original.elements.some((e) => e.name === name);
+  const shows = {
+    points: has(POINT_NAME),
+    steps: has(STEP_NAME),
+    compare: has(COMPARE_NAME),
+    callout: has(CALLOUT_NAMES.card),
+  };
+  const c = spec as Extract<SlideSpec, { kind: "content" }>;
+  const moved: string[] = [];
+  const next: Record<string, unknown> = { ...c };
+  if (c.points?.length && !shows.points) {
+    moved.push(c.points.join("; "));
+    delete next.points;
+  }
+  if (c.steps?.length && !shows.steps) {
+    moved.push(c.steps.join("; "));
+    delete next.steps;
+  }
+  if (c.compare && !shows.compare) {
+    const side = (s: { label: string; points: string[] }) => `${s.label}: ${s.points.join("; ")}`;
+    moved.push(`${side(c.compare.left)}. ${side(c.compare.right)}.`);
+    delete next.compare;
+  }
+  if (c.callout && !shows.callout) {
+    moved.push(c.callout.text);
+    delete next.callout;
+  }
+  const placeholder = original.elements.find((e) => e.name === DIAGRAM_NAME);
+  if (placeholder && !c.diagram && "doc" in placeholder && placeholder.doc) {
+    const instruction = richDocToPlainText(placeholder.doc).trim().replace(DIAGRAM_LEAD, "");
+    if (instruction) next.diagram = instruction;
+  }
+  if (moved.length > 0) next.notes = [c.notes, ...moved].filter(Boolean).join("\n");
+  const photo =
+    original.elements.some((e) => e.type === "image") && entry?.imageBrief
+      ? { photo: { subject: entry.imageBrief.subject, mustShow: entry.imageBrief.mustShow ?? [] } }
+      : {};
+  const variants = next.callout
+    ? ["callout-row", "headed", "two-column"]
+    : [undefined, "headed", "two-column"];
+  return { spec: next as SlideSpec, structure: photo, variants };
+}
+
+/**
+ * The lesson designer's contract on a repair (the lesson designer plan, PR 10): the rewrite, held
+ * to its slot (`heldToSlot`), must pass `fitsPlanned` at the save gate's one step down on every
+ * theme in one of its variants, laid out as it will be stored, and it may not bring text back onto
+ * the slide that the designer put in the notes (a sentence of the old notes now on the slide). The
+ * held spec and the variant that fits, or the reason it is discarded.
+ */
+export function designerRepairGate(
+  spec: SlideSpec,
+  original: Slide,
+  entry: OutlineEntry | undefined,
+):
+  | { ok: true; spec: SlideSpec; structure: SlideStructure; variant: string | undefined }
+  | { ok: false; why: string } {
+  const held = heldToSlot(spec, original, entry);
+  const { notes: _notes, ...onSlide } = held.spec as SlideSpec & { notes?: string };
   const shown = normaliseText(JSON.stringify(onSlide));
   const sentences = (original.notes ?? "")
     .split(/(?<=[.!?])\s+/)
     .map((x) => normaliseText(x))
     .filter((x) => x.split(" ").length >= 6);
-  return sentences.some((x) => shown.includes(x)) ? "notes moved onto the slide" : undefined;
+  if (sentences.some((x) => shown.includes(x)))
+    return { ok: false, why: "notes moved onto the slide" };
+  const fits = (v: string | undefined) =>
+    fitsPlanned(held.spec, { stepDown: 1, structure: held.structure, ...(v ? { variant: v } : {}) })
+      .ok;
+  const at = held.variants.findIndex(fits);
+  if (at < 0) return { ok: false, why: "does not fit" };
+  const variant = held.variants[at];
+  return { ok: true, spec: held.spec, structure: held.structure, variant };
+}
+
+/** The gate's verdict alone (the reason a rewrite is discarded, else `undefined`). */
+export function designerRepairRejected(
+  spec: SlideSpec,
+  original: Slide,
+  entry?: OutlineEntry,
+): string | undefined {
+  const gate = designerRepairGate(spec, original, entry);
+  return gate.ok ? undefined : gate.why;
 }
 
 export async function repair(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
@@ -495,9 +595,21 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       if (outcome.corrections.length > 0) repaired.add(outcome.key);
       continue;
     }
+    let layout: { structure: SlideStructure; variant: string | undefined } = {
+      structure: {},
+      variant: undefined,
+    };
     if (outcome.kind === "slide" && designerLesson) {
-      const why = designerRepairRejected(outcome.spec, base.slides[outcome.index] as Slide);
-      if (why) {
+      const gate = designerRepairGate(
+        outcome.spec,
+        base.slides[outcome.index] as Slide,
+        base.facts?.outline[outcome.index],
+      );
+      if (gate.ok) {
+        outcome.spec = gate.spec;
+        layout = { structure: gate.structure, variant: gate.variant };
+      } else {
+        const why = gate.why;
         deps.logger.warn(
           { stage: "repair", index: outcome.index, why },
           "designer repair discarded",
@@ -521,8 +633,8 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           lesson.themeId,
           meta(outcome.modelId, deps),
           deps.ids,
-          undefined,
-          {},
+          layout.variant,
+          layout.structure,
           (note) => deps.logger.warn({ stage: "repair", index: outcome.index }, note),
         ),
         id: original.id,
