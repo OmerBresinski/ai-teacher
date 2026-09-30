@@ -3,6 +3,8 @@ import type { Slide } from "@tj/domain/documents";
 import { docFromText } from "../factories";
 import { SAFE } from "../grid";
 import { DIAGRAM_NAME, withDiagramSlot } from "../look";
+import { materialiseSlide, withDiagramDrawn } from "../materialise";
+import type { SlideSpec } from "../specs";
 import { getTheme, THEMES } from "../themes";
 import {
   DIAGRAM_DRAWN_NAME,
@@ -199,5 +201,31 @@ describe("the diagram slot (look.ts withDiagramSlot)", () => {
   test("a string instruction still gives the editor's placeholder", () => {
     const out = withDiagramSlot(slide(), chalk, "The water cycle", ids);
     expect(out.elements.some((e) => e.name === DIAGRAM_NAME)).toBe(true);
+  });
+});
+
+describe("withDiagramDrawn (generation's diagram slot)", () => {
+  const meta = { promptVersion: "t", model: "t", at: "2026-09-30T00:00:00.000Z" };
+  const spec = {
+    kind: "content",
+    heading: "Ratio as a bar",
+    body: "Share 20 sweets in the ratio 3 : 2. Draw five equal parts; three go to Ali.",
+    diagram: "A bar of five equal parts, three shaded",
+    factRefs: [],
+  } as unknown as SlideSpec;
+
+  test("a valid spec replaces the placeholder slot with a drawn Diagram image", () => {
+    const slide = materialiseSlide(spec, "chalk", meta);
+    const drawn = withDiagramDrawn(slide, getTheme("chalk"), DIAGRAM_SAMPLES["bar-model-ratio"]);
+    expect(drawn.elements.some((e) => e.type === "image" && e.name === DIAGRAM_DRAWN_NAME)).toBe(
+      true,
+    );
+    expect(drawn.elements.some((e) => e.name === DIAGRAM_NAME)).toBe(false);
+    expect(drawn.diagram).toBeUndefined();
+  });
+
+  test("an invalid spec leaves the slide as it is", () => {
+    const slide = materialiseSlide(spec, "chalk", meta);
+    expect(withDiagramDrawn(slide, getTheme("chalk"), { kind: "nonsense" })).toBe(slide);
   });
 });

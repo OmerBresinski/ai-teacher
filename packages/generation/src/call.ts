@@ -183,8 +183,9 @@ export const MAX_OUTPUT_TOKENS = {
   // Up to twenty findings, each with its evidence span (TEACH-216). 2 500 was reached twice in a
   // row on the np1 cells decks (no findings, so no repair); reasoning shares the cap.
   evaluate: 4000,
-  // Six ids (TEACH-227).
-  shortlist: 200,
+  // Six ids (TEACH-227). Reasoning shares the cap: at 200 Luna answered nothing (pv-pw smoke,
+  // 30 Sep 2026: "no output" twice), probed at 1 500 it answered in 34.
+  shortlist: 1500,
   repair: 1500,
   // Four short fields (TEACH-16).
   parseBrief: 120,

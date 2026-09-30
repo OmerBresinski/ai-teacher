@@ -44,8 +44,11 @@ const BUSY_MESSAGE = "Photo search was busy; add a picture from the image panel.
 const MAX_CANDIDATES = 30;
 const PER_PAGE = 30;
 /** The judge answers one id or a few words. */
-/** `{ pick, visible (≤ 4), count, query }`: room for the list (TEACH-220). */
-const MAX_JUDGE_TOKENS = 200;
+/**
+ * `{ pick, visible (≤ 4), count, query }`: room for the list (TEACH-220), and for reasoning, which
+ * shares the cap: Luna spent 143 of 192 tokens reasoning on a six-photo pick, so 200 failed.
+ */
+const MAX_JUDGE_TOKENS = 1500;
 /** Judge calls per slide: the first pick, and one more after a requery. */
 const MAX_JUDGE_CALLS = 2;
 

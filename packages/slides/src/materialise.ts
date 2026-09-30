@@ -16,6 +16,7 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj/domain/documents";
 import { applyCallout, detachCallout, isCalloutElement, placeCallout } from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
+import { DIAGRAM_DRAWN_NAME, type DiagramSpecInput, parseDiagram } from "./diagrams";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
@@ -314,6 +315,24 @@ export function withSlotsShown(slide: Slide, theme: Theme): Slide {
     );
   }
   return shown;
+}
+
+/**
+ * A generated diagram slot with its spec drawn (`./diagrams`): the words laid out again beside the
+ * drawing in the right half, and the undrawn instruction (`slide.diagram`) taken off. A spec that
+ * does not draw, or words that will not lay out beside it, leave the slide as it is (same object).
+ */
+export function withDiagramDrawn(slide: Slide, theme: Theme, spec: unknown): Slide {
+  if (slide.kind !== "content" || !parseDiagram(spec)) return slide;
+  const drawn = relaid(
+    slide,
+    theme,
+    (bare, ids) => withDiagramSlot(bare, theme, spec as DiagramSpecInput, ids),
+    slide,
+  );
+  if (drawn === slide || !drawn.elements.some((e) => e.name === DIAGRAM_DRAWN_NAME)) return slide;
+  const { diagram: _undrawn, ...rest } = drawn;
+  return rest;
 }
 
 /**

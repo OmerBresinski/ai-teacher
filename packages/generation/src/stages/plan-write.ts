@@ -16,9 +16,11 @@ import {
 import {
   FIT_VERSION,
   fitsPlanned,
+  getTheme,
   type MaterialiseMeta,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
+  withDiagramDrawn,
 } from "@tj/slides";
 import { z } from "zod";
 import { callStructured } from "../call";
@@ -681,7 +683,12 @@ export async function planWriteSlides(
   const drawn = (form: string, layout: string, out: Written, meta: MaterialiseMeta): Slide => {
     const r = renderWritten(form, layout, out);
     const slide = materialiseSlide(r.spec, themeId, meta, deps.ids, r.variant, r.structure);
-    return isSetForm(form) ? withAnswersReveal(slide, themeId) : slide;
+    if (isSetForm(form)) return withAnswersReveal(slide, themeId);
+    // A diagram slot's spec is drawn by the diagram renderer; one that does not draw keeps the slot.
+    const spec = form === "diagram-slot" ? out.diagram : undefined;
+    return spec && typeof spec === "object"
+      ? withDiagramDrawn(slide, getTheme(themeId), spec)
+      : slide;
   };
 
   const menu = planMenu(base.subject);
