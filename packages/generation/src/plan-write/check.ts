@@ -52,7 +52,7 @@ export function checkPlan(
   if (input.slides.length !== slideCount) {
     problems.push({
       rule: "count",
-      message: `The table has ${input.slides.length} slides; it must have exactly ${slideCount}, the title included.`,
+      message: `The plan has ${input.slides.length - 1} rows after the title; it must have exactly ${slideCount - 1}.`,
     });
   }
   const layoutsOf = (form: string) => menu.filter((m) => m.form === form);

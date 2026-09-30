@@ -6,7 +6,9 @@ import {
   PLAN_LESSON_VERSION,
   type PlanLessonInput,
   type PlanSlide,
+  parsePlan,
   planLessonPrompt,
+  toWire,
 } from "./plan-lesson";
 import { WRITE_SLIDES_VERSION, type WriteSlidesInput, writeSlidesPrompt } from "./write-slides";
 
@@ -55,7 +57,7 @@ const PLAN_SAMPLE: PlanLessonInput = {
   menu: planMenu(audience.subject),
   repair: {
     previous: { misconception: "m", objectives: ["o"], runningExample: "ice", slides: table },
-    problems: ["The table has 6 slides; it must have exactly 5, the title included."],
+    problems: ["The plan has 5 rows after the title; it must have exactly 4."],
   },
 };
 const WRITE_SAMPLE: WriteSlidesInput = {
@@ -82,16 +84,16 @@ const REWRITE_SAMPLE: WriteSlidesInput = {
 
 const PINNED = {
   plan: {
-    version: "plan-lesson.v1",
-    hash: "3f0eebaee63f9d2cfe398aa9b182c9a4479fcb59e131fad61e2b6638c499ec7a",
+    version: "plan-lesson.v2",
+    hash: "2a0fb0f93762c0fc95ba10937e486613a8577b3eb00f1aa3cd4713c98ca69ca2",
   },
   write: {
-    version: "write-slides.v1",
-    hash: "eeca7d1a337fc2533f91895319448ca4fad7a346f8263a1db2ef7752a9bdc1ae",
+    version: "write-slides.v2",
+    hash: "1d74de6b2d69ffd4dfcd9978ea238b1e4df90c623b4665930a21f11dd3d3630e",
   },
   rewrite: {
-    version: "write-slides.v1",
-    hash: "da7b3ebb517d0e13e70ee10caf70ddf4839f9f0b2417b33b5d7ade291d71d2ad",
+    version: "write-slides.v2",
+    hash: "15d6541c4536cb20da173f289afbb9d96266a25d137bac795b59ef0d4bd28fc2",
   },
 };
 
@@ -122,5 +124,28 @@ describe("plan-write prompt versions", () => {
     expect(user.match(/^\d+ [a-z]/gm)).toHaveLength(table.length);
     expect(user).toContain("Picture: an iceberg; shows ice above the water");
     expect(user).not.toContain(contractFor("hinge", "default"));
+  });
+});
+
+describe("plan-lesson rows", () => {
+  test("coded rows parse to the table, the title row added by code, and round-trip", () => {
+    const wire = {
+      misconception: "m",
+      objectives: ["a", "b"],
+      runningExample: "ice",
+      slides: [
+        "retrieve | starter-set | default | - | 2 | recall particles | - | -",
+        "teach | explain | default | 1 | 2 | how particles sit in a solid | solid, fixed-place | -",
+        "hinge | hinge | why | o1, 2 | 4 | which state is it | - | solid",
+        "teach | explain",
+      ],
+    };
+    const { plan, unreadable } = parsePlan(wire);
+    expect(unreadable).toEqual([5]);
+    expect(plan.slides).toHaveLength(5);
+    expect(plan.slides[0]).toMatchObject({ form: "title", objectives: [1, 2], parts: 0 });
+    expect(plan.slides[2]).toMatchObject({ teaches: ["solid", "fixed-place"], objectives: [1] });
+    expect(plan.slides[3]).toMatchObject({ layout: "why", objectives: [1, 2], tests: ["solid"] });
+    expect(parsePlan(toWire(plan)).plan.slides.slice(0, 4)).toEqual(plan.slides.slice(0, 4));
   });
 });

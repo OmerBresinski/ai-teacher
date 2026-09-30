@@ -4,7 +4,7 @@ import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import type { Lesson } from "@tj/domain/documents";
 import { isPlanWriteStamp } from "../plan-write/steps";
 import { romansLesson } from "../planner/testing";
-import type { PlanSlide } from "../prompts/plan-lesson";
+import { type PlanSlide, toWire } from "../prompts/plan-lesson";
 import type { WriteSlidesInput } from "../prompts/write-slides";
 import { FIXTURES, recordingDeps } from "../testing";
 import { runLessonPipeline } from "../workflow";
@@ -105,7 +105,7 @@ function planWriteAi(calls: WriteSlidesInput[]) {
   const fallback: FakeScriptEntry = async (call: FakeCall) => {
     const version = call.context?.promptVersion ?? "";
     if (version.startsWith("check-input")) return json({ findings: [] });
-    if (version.startsWith("plan-lesson")) return json(PLAN);
+    if (version.startsWith("plan-lesson")) return json(toWire(PLAN));
     if (version.startsWith("write-slides")) {
       const input = writerCallOf(call.promptText);
       calls.push(input);

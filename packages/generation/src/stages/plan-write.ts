@@ -31,10 +31,12 @@ import { verifyFactsPrompt } from "../prompts";
 import {
   PLAN_LESSON_VERSION,
   type PlanLessonInput,
-  type PlanLessonOutput,
+  type PlanLessonWire,
   type PlanSlide,
+  parsePlan,
   planLessonPrompt,
   planLessonSchema,
+  planTableSchema,
 } from "../prompts/plan-lesson";
 import {
   WRITE_SLIDES_VERSION,
@@ -74,7 +76,7 @@ export const WRITER_BATCH = 3;
 
 /** The saved slide table: the checked plan and what the check did. */
 export const SlidePlanRecordSchema = z.object({
-  plan: planLessonSchema,
+  plan: planTableSchema,
   switched: z.array(
     z.object({ slide: z.number(), form: z.string(), from: z.string(), to: z.string() }),
   ),
@@ -134,7 +136,7 @@ export async function planWritePlan(
     slideCount,
     menu,
   };
-  const callPlan = async (i: PlanLessonInput): Promise<PlanLessonOutput> => {
+  const callPlan = async (i: PlanLessonInput): Promise<PlanLessonWire> => {
     deps.logger.info(
       { stage: "plan", call: "plan-lesson", repair: i.repair !== undefined },
       "plan call",
@@ -149,22 +151,32 @@ export async function planWritePlan(
       schema: planLessonSchema,
       maxOutputTokens: MAX_OUTPUT_TOKENS_PLAN,
     });
-    return call.output as PlanLessonOutput;
+    return call.output as PlanLessonWire;
+  };
+  /** The rows as the table, checked; a row not in the format is one more problem. */
+  const check = (wire: PlanLessonWire): PlanCheck => {
+    const { plan, unreadable } = parsePlan(wire);
+    const c = checkPlan(plan, { slideCount, menu });
+    const rows = unreadable.map((n) => ({
+      rule: "form" as const,
+      slide: n,
+      message: `Row for slide ${n} is not 8 fields split by " | ".`,
+    }));
+    return { ...c, problems: [...rows, ...c.problems] };
   };
 
-  let checked: PlanCheck = checkPlan(await callPlan(input), { slideCount, menu });
+  let checked: PlanCheck = check(await callPlan(input));
   let repaired = false;
   if (checked.problems.length > 0) {
     deps.logger.info(
       { stage: "plan", problems: checked.problems },
       "plan check failed; one repair",
     );
-    const again = checkPlan(
+    const again = check(
       await callPlan({
         ...input,
         repair: { previous: checked.plan, problems: checked.problems.map((p) => p.message) },
       }),
-      { slideCount, menu },
     );
     // The repaired plan stands unless it breaks more of the rules the write step needs.
     if (blocking(again.problems).length <= blocking(checked.problems).length) {
@@ -409,6 +421,7 @@ export type PlanWriteReport = {
     layout: string;
     fits: boolean;
     rewritten?: { field: string; failure: string; ok: boolean };
+    shrunk?: boolean;
   }[];
   failedBatches: number[][];
   firstSlideMs?: number;
@@ -593,6 +606,7 @@ export async function planWriteSlides(
       layout: s.layout,
       fits: fitted.fit.ok,
       ...(fitted.rewritten ? { rewritten: fitted.rewritten } : {}),
+      ...(fitted.shrunk ? { shrunk: true } : {}),
     });
     placed.push({ index, plan: s, out: fitted.out });
     const slide = drawn(s.form, s.layout, fitted.out, {
@@ -814,7 +828,7 @@ export async function planWriteSlides(
       }
       verify.refitted += 1;
       const old = lesson.slides[p.index] as Slide;
-      const fresh = drawn(p.plan.form, p.plan.layout, out, {
+      const fresh = drawn(p.plan.form, p.plan.layout, fitted.out, {
         promptVersion: joinVersions(WRITE_SLIDES_VERSION, verifyFactsPrompt.version),
         model: "verify",
         at: at(),
@@ -841,7 +855,7 @@ export async function planWriteSlides(
             : s,
         ),
       };
-      p.out = out;
+      p.out = fitted.out;
     }
   }
   lesson = asGenerated(lesson, finalFacts);

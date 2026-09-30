@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { batchesOf } from "../stages/plan-write";
-import { fitWithRewrite, fitWritten, renderWritten } from "./fit";
+import { fitWithRewrite, fitWritten, renderWritten, shrink } from "./fit";
 
 const explain = {
   heading: "Water moves round the Earth",
@@ -130,5 +130,45 @@ describe("locate (smoke 30 Sep): a general failure names the field that breaks i
       expect(fit.field).toBe("options");
       expect(fit.failure).toContain("item 1 of options");
     }
+  });
+});
+
+describe("shrink (mechanical, no call)", () => {
+  it("two long sentence starters on one line: the second is dropped and the slide fits", async () => {
+    const out = {
+      prompt: "What would make the case for more outdoor seating at school convincing?",
+      footnote: ["The school should add seats because…", "This would matter to pupils because…"],
+      notes: "n",
+    };
+    expect(fitWritten("discussion", "default", out).ok).toBe(false);
+    const calls: string[] = [];
+    const fitted = await fitWithRewrite("discussion", "default", out, async (f) => {
+      calls.push(f);
+      return undefined;
+    });
+    expect(calls).toEqual([]);
+    expect(fitted.fit.ok).toBe(true);
+    expect(fitted.shrunk).toBe(true);
+    expect(fitted.out.footnote).toEqual(["The school should add seats because…"]);
+  });
+
+  it("a hinge's options lose their labelled reasons", () => {
+    const out = {
+      stem: "Which products form at the cathode and anode when concentrated aqueous sodium chloride is electrolysed with inert electrodes?",
+      options: [
+        { text: "Hydrogen / chlorine", correct: true },
+        { text: "Sodium / chlorine — dissolved metal always forms", correct: false },
+        { text: "Hydrogen / oxygen — water always supplies oxygen", correct: false },
+        { text: "Sodium / oxygen (both rules misunderstood)", correct: false },
+      ],
+      explanation: "Sodium is more reactive than hydrogen.",
+    };
+    const small = shrink("hinge", "default", out);
+    expect((small.options as { text: string }[]).map((o) => o.text)).toEqual([
+      "Hydrogen / chlorine",
+      "Sodium / chlorine",
+      "Hydrogen / oxygen",
+      "Sodium / oxygen",
+    ]);
   });
 });
