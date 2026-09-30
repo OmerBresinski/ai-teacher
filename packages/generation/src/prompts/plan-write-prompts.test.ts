@@ -85,6 +85,18 @@ const REWRITE_SAMPLE: WriteSlidesInput = {
   },
 };
 
+const CHECK_SAMPLE: WriteSlidesInput = {
+  ...WRITE_SAMPLE,
+  rewrite: {
+    slide: WRITE_SAMPLE.slides[0] as WriteSlidesInput["slides"][number],
+    field: "notes",
+    failure:
+      'the notes do not state the answer the slide reveals ("they vibrate"); they give that answer first',
+    current: { heading: "Particles in a solid", body: ["They vibrate."], notes: "Ask the class." },
+    reason: "check",
+  },
+};
+
 const RECHECK_SAMPLE: WriteSlidesInput = {
   ...WRITE_SAMPLE,
   slides: [],
@@ -110,20 +122,24 @@ const PINNED = {
     hash: "d3c9c5978a59efebcb5a53681556310d9f83c00bce0fe1f06c4347003ef881d4",
   },
   write: {
-    version: "write-slides.v9",
-    hash: "09be89cfc5679a525097aad120f53b0775f0d9357aad9bdf8c2f383b48263168",
+    version: "write-slides.v10",
+    hash: "0d297eeba29c19e0609c3e2600c132a24933a991f31e70886240a77156bc4521",
   },
   stream: {
-    version: "stream-lesson.v3",
-    hash: "7b591d44b59d8cfb523c0746d9d3681d87a5fee4f6653e5884c84de98536b77b",
+    version: "stream-lesson.v4",
+    hash: "682e9040a636da00813c485ee79170e0264e338b8e853baefdee053e216c0a85",
   },
   rewrite: {
-    version: "write-slides.v9",
-    hash: "876dc4c1b6f5e94d09152634da7a907191a407bcb580e66516394c5facc923bd",
+    version: "write-slides.v10",
+    hash: "acc8cdacacd762a256524c9c83bb4be9955eb5766c7233d0a5a5bded35123c7e",
   },
   recheck: {
-    version: "write-slides.v9",
-    hash: "4d6b95a07ea7bad14835fc8d1778e6ee8e7d1e584fa037cc473c25003be26947",
+    version: "write-slides.v10",
+    hash: "82513ffded429b2091cace4f3a4c9472ddf8d19c60ce1d65c98188813b2618c8",
+  },
+  check: {
+    version: "write-slides.v10",
+    hash: "b3a5f6aed7d38bcbad087cb3f427362ddeb5b4a59f0db81fb9c632b42e6a250e",
   },
 };
 
@@ -138,6 +154,7 @@ describe("plan-write prompt versions", () => {
       },
       rewrite: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(REWRITE_SAMPLE)) },
       recheck: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(RECHECK_SAMPLE)) },
+      check: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(CHECK_SAMPLE)) },
     }).toEqual(PINNED);
   });
 
@@ -154,7 +171,7 @@ describe("plan-write prompt versions", () => {
     }
   });
 
-  test("stream-lesson.v3: every swap lands, and the frame survives the picture rule", () => {
+  test("stream-lesson.v4: every swap lands, and the frame survives the picture rule", () => {
     const { system } = streamLessonPrompt(STREAM_SAMPLE);
     for (const [from, to] of STREAM_SWAPS) {
       expect(system).toContain(to);
@@ -164,6 +181,14 @@ describe("plan-write prompt versions", () => {
     expect(system.indexOf("a retrieve slide on the earlier learning")).toBeLessThan(
       system.indexOf("most teach slides carry a picture"),
     );
+  });
+
+  test("a check's re-write names the slide and field, the finding on its own line (write-slides.v10)", () => {
+    const { user } = writeSlidesPrompt(CHECK_SAMPLE);
+    expect(user).toContain(
+      'Checking slide 4 found this in its notes:\nthe notes do not state the answer the slide reveals ("they vibrate"); they give that answer first\nWrite notes again with that put right',
+    );
+    expect(user).not.toContain("does not fit");
   });
 
   test("the writer sees the whole table and only its own contracts", () => {

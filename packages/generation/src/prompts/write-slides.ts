@@ -8,8 +8,12 @@ import { type Audience, audienceBlock } from "./shared";
  * `slide<n>`); its counts are enforced there and stated here only through each contract line.
  */
 
-/* v9 (spike/parallel-slides): a re-write asked by a check (`reason: "check"`) says what the check found. */
-export const WRITE_SLIDES_VERSION = "write-slides.v9";
+/* v9 (spike/parallel-slides): a re-write asked by a check (`reason: "check"`) says what the check found.
+ * v10 (spike/stream-v4): that line reworded (it read "a check ... found a problem: <clause>", and a check
+ * is also a slide role); practice is work done alone that steps up to the lesson's hardest case, not one
+ * open prompt; a diagram is the kind the text needs, marks what the text names, one label per real part,
+ * on the part it names; a photo brief names the one specific thing it must show (`named`, for Commons). */
+export const WRITE_SLIDES_VERSION = "write-slides.v10";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -70,9 +74,11 @@ A teach slide's body says how or why its claim holds (what acts on what, and wha
 A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°").
 A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
 Each check question has exactly one defensible answer.
-A practise slide has pupils do what its objective says, on a case or numbers that no teach slide used.
+A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: a question set whose items step up from a plain case to that one, or a written task that says what to write and what it must use.
 A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
-A photo's imageBrief describes a real photograph pupils learn from; a diagram slot's diagram is the drawing itself, its labels short. Both are for whoever finds or draws the picture: the slide's text never repeats them or describes the picture.
+A photo's imageBrief describes a real photograph pupils learn from. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
+A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.
+Pictures are for whoever finds or draws them: the slide's text never repeats a brief or describes the picture.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
 Notes come first on every slide: what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next.
 A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.`;
@@ -132,7 +138,7 @@ export function writeSlidesPrompt(input: WriteSlidesInput): { system: string; us
       `Your slide ${slide.number} as written:`,
       JSON.stringify(current),
       reason === "check"
-        ? `A check of this slide found a problem: ${failure}. Write ${field} again so it is right, as its contract line says. The rest of the slide stays as it is.`
+        ? `Checking slide ${slide.number} found this in its ${field}:\n${failure}\nWrite ${field} again with that put right, as its contract line says, so it agrees with the rest of the slide, which stays as it is.`
         : `It does not fit its slide: ${failure}. Write ${field} again as its contract line says. The rest of the slide stays as it is.`,
     );
     return { system: SYSTEM, user: lines.join("\n") };

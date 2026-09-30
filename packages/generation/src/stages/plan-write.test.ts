@@ -122,7 +122,9 @@ function writerCallOf(text: string): WriteSlidesInput {
             field,
             failure: "",
             current: {},
-            ...(/A check of this slide found/.test(text) ? { reason: "check" as const } : {}),
+            ...(/Checking slide \d+ found this in its/.test(text)
+              ? { reason: "check" as const }
+              : {}),
           },
         }
       : {}),
@@ -304,7 +306,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
         [],
       );
-      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v3+");
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v4+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
       // Saves: the title, the header (title with objectives), then the slides in order.

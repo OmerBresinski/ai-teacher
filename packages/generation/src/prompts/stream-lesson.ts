@@ -14,9 +14,13 @@ import { WRITE_RULES } from "./write-slides";
  * 13 → 4 over 8 decks; teaching unchanged). The swaps make the starter, the checks, practice and the exit
  * the lesson's frame, bound the picture rule to teach slides, and close the three faults the judges found
  * (a false key, a term tested before it was taught, a starter on this lesson's own terms).
+ *
+ * v4: the practise role no longer says "in their own words" (it drew a lone open prompt); practice is
+ * work alone up to the hardest case taught. The rest of v4 is write-slides.v10's rules (practice,
+ * diagrams, the photo's `named`).
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v3";
+export const STREAM_LESSON_VERSION = "stream-lesson.v4";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -31,6 +35,10 @@ function swap(text: string, from: string, to: string): string {
 export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
   ["- slides: one row for each slide", "- plan: one row for each slide"],
   ["the writer adds the detail", "the slide adds the detail"],
+  [
+    "practise (pupils use the idea on a new case, in their own words)",
+    "practise (pupils work alone on new cases, up to the hardest the lesson taught)",
+  ],
   [
     "The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; where pupils practise and apply; and whether it closes with a check.",
     "The objectives slide does not open the lesson; the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. Then each idea is taught with a check soon after, a hinge checks the idea everything after it depends on before pupils work alone, at least one practise slide has pupils work alone on new cases, and an exit closes the lesson. How many slides each idea takes and where the hinge falls are yours. When the slides are few, checks cover two objectives each rather than losing the starter, the practice or an objective.",
