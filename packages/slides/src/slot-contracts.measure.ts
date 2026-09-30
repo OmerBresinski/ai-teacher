@@ -13,6 +13,7 @@ import {
   type TextKind,
   type WriterOutput,
 } from "./slot-contracts";
+import { workingAndReason } from "./structure";
 import { countLines } from "./text-measure";
 import { THEMES } from "./themes";
 
@@ -226,7 +227,13 @@ export function contractFits(contract: SlotContract, out: WriterOutput): Contrac
     const placed = placedName(contract.form);
     if (placed && !slide.elements.some((e) => e.name === placed))
       failing.push(`${theme.id}: no ${placed}`);
-    const lost = writtenTexts(contract, out).filter((t) => !shown.includes(norm(t)));
+    // A worked step is drawn as its working and its reason, in their own columns.
+    const kept = (t: string) => {
+      if (shown.includes(norm(t))) return true;
+      const [working, reason] = workingAndReason(t);
+      return !!reason && shown.includes(norm(working)) && shown.includes(norm(reason));
+    };
+    const lost = writtenTexts(contract, out).filter((t) => !kept(t));
     if (lost.length) failing.push(`${theme.id}: not kept "${lost[0]?.slice(0, 40)}"`);
     if (typeof spec.heading === "string") {
       const el = slide.elements.find((e) => e.name === HEADING_NAME);

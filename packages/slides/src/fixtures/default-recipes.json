@@ -1681,7 +1681,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -1708,7 +1708,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -1735,7 +1735,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -1762,7 +1762,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -1771,8 +1771,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#6E6656"
+          "valign": "middle"
         }
       },
       {
@@ -1790,7 +1789,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -1799,8 +1798,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#6E6656"
+          "valign": "middle"
         }
       },
       {
@@ -1818,7 +1816,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -1827,8 +1825,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#6E6656"
+          "valign": "middle"
         }
       }
     ],
@@ -2145,7 +2142,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -2168,7 +2165,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -2191,7 +2188,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -2214,7 +2211,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -4272,7 +4269,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -4299,7 +4296,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -4326,7 +4323,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -4353,7 +4350,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -4362,8 +4359,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#66533C"
+          "valign": "middle"
         }
       },
       {
@@ -4381,7 +4377,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -4390,8 +4386,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#66533C"
+          "valign": "middle"
         }
       },
       {
@@ -4409,7 +4404,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -4418,8 +4413,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#66533C"
+          "valign": "middle"
         }
       }
     ],
@@ -4736,7 +4730,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -4759,7 +4753,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -4782,7 +4776,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -4805,7 +4799,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -6611,7 +6605,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -6638,7 +6632,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -6665,7 +6659,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -6692,7 +6686,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -6701,8 +6695,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5C5752"
+          "valign": "middle"
         }
       },
       {
@@ -6720,7 +6713,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -6729,8 +6722,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5C5752"
+          "valign": "middle"
         }
       },
       {
@@ -6748,7 +6740,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -6757,8 +6749,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5C5752"
+          "valign": "middle"
         }
       }
     ],
@@ -7075,7 +7066,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -7098,7 +7089,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -7121,7 +7112,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -7144,7 +7135,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -8950,7 +8941,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -8977,7 +8968,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -9004,7 +8995,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -9031,7 +9022,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -9040,8 +9031,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#465F6B"
+          "valign": "middle"
         }
       },
       {
@@ -9059,7 +9049,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -9068,8 +9058,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#465F6B"
+          "valign": "middle"
         }
       },
       {
@@ -9087,7 +9076,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -9096,8 +9085,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#465F6B"
+          "valign": "middle"
         }
       }
     ],
@@ -9414,7 +9402,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -9437,7 +9425,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -9460,7 +9448,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -9483,7 +9471,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -11289,7 +11277,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -11316,7 +11304,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -11343,7 +11331,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -11370,7 +11358,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -11379,8 +11367,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4E5E4B"
+          "valign": "middle"
         }
       },
       {
@@ -11398,7 +11385,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -11407,8 +11394,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4E5E4B"
+          "valign": "middle"
         }
       },
       {
@@ -11426,7 +11412,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -11435,8 +11421,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4E5E4B"
+          "valign": "middle"
         }
       }
     ],
@@ -11753,7 +11738,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -11776,7 +11761,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -11799,7 +11784,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -11822,7 +11807,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -13880,7 +13865,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -13907,7 +13892,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -13934,7 +13919,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -13961,7 +13946,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -13970,8 +13955,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5F584D"
+          "valign": "middle"
         }
       },
       {
@@ -13989,7 +13973,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -13998,8 +13982,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5F584D"
+          "valign": "middle"
         }
       },
       {
@@ -14017,7 +14000,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -14026,8 +14009,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5F584D"
+          "valign": "middle"
         }
       }
     ],
@@ -14344,7 +14326,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -14367,7 +14349,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -14390,7 +14372,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -14413,7 +14395,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -16219,7 +16201,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -16246,7 +16228,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -16273,7 +16255,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -16300,7 +16282,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -16309,8 +16291,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4F5D6E"
+          "valign": "middle"
         }
       },
       {
@@ -16328,7 +16309,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -16337,8 +16318,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4F5D6E"
+          "valign": "middle"
         }
       },
       {
@@ -16356,7 +16336,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -16365,8 +16345,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4F5D6E"
+          "valign": "middle"
         }
       }
     ],
@@ -16683,7 +16662,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -16706,7 +16685,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -16729,7 +16708,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -16752,7 +16731,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -18810,7 +18789,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -18837,7 +18816,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -18864,7 +18843,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -18891,7 +18870,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -18900,8 +18879,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#505862"
+          "valign": "middle"
         }
       },
       {
@@ -18919,7 +18897,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -18928,8 +18906,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#505862"
+          "valign": "middle"
         }
       },
       {
@@ -18947,7 +18924,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -18956,8 +18933,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#505862"
+          "valign": "middle"
         }
       }
     ],
@@ -19274,7 +19250,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -19297,7 +19273,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -19320,7 +19296,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -19343,7 +19319,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -21401,7 +21377,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -21428,7 +21404,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -21455,7 +21431,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -21482,7 +21458,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -21491,8 +21467,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#99A0AB"
+          "valign": "middle"
         }
       },
       {
@@ -21510,7 +21485,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -21519,8 +21494,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#99A0AB"
+          "valign": "middle"
         }
       },
       {
@@ -21538,7 +21512,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -21547,8 +21521,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#99A0AB"
+          "valign": "middle"
         }
       }
     ],
@@ -21865,7 +21838,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -21888,7 +21861,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -21911,7 +21884,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -21934,7 +21907,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {
@@ -23992,7 +23965,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 1"
+                  "text": "1  Term 1"
                 }
               ]
             }
@@ -24019,7 +23992,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 2"
+                  "text": "2  Term 2"
                 }
               ]
             }
@@ -24046,7 +24019,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Term 3"
+                  "text": "3  Term 3"
                 }
               ]
             }
@@ -24073,7 +24046,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 1"
+                  "text": "A  Definition 1"
                 }
               ]
             }
@@ -24082,8 +24055,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4A4A46"
+          "valign": "middle"
         }
       },
       {
@@ -24101,7 +24073,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 2"
+                  "text": "B  Definition 2"
                 }
               ]
             }
@@ -24110,8 +24082,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4A4A46"
+          "valign": "middle"
         }
       },
       {
@@ -24129,7 +24100,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Definition 3"
+                  "text": "C  Definition 3"
                 }
               ]
             }
@@ -24138,8 +24109,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4A4A46"
+          "valign": "middle"
         }
       }
     ],
@@ -24456,7 +24426,7 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A"
       },
       {
         "id": "_3",
@@ -24479,7 +24449,7 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B"
       },
       {
         "id": "_4",
@@ -24502,7 +24472,7 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C"
       },
       {
         "id": "_5",
@@ -24525,7 +24495,7 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D"
       }
     ],
     "question": {

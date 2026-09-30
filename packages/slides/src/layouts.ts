@@ -724,7 +724,8 @@ function multipleChoiceStackedSlide(t: Theme): Layout {
   };
 }
 
-/** Matching — three terms left, three definitions right. */
+/** Matching — three numbered terms left, three lettered matches right (shuffled on fill; the
+ * structure pass sets each as a card, `rowCards`). */
 function matchingSlide(t: Theme): Layout {
   const CARD_H = 72;
   const PITCH = 88;
@@ -732,7 +733,7 @@ function matchingSlide(t: Theme): Layout {
   const left = [0, 1, 2].map((i) =>
     text(
       "body",
-      `Term ${i + 1}`,
+      `${i + 1}  Term ${i + 1}`,
       { x: SAFE.x, y: TOP + i * PITCH, w: HALF_W, h: CARD_H },
       { valign: "middle" },
     ),
@@ -740,9 +741,9 @@ function matchingSlide(t: Theme): Layout {
   const right = [0, 1, 2].map((i) =>
     text(
       "body",
-      `Definition ${i + 1}`,
+      `${String.fromCharCode(65 + i)}  Definition ${i + 1}`,
       { x: RIGHT_X, y: TOP + i * PITCH, w: HALF_W, h: CARD_H },
-      { valign: "middle", color: t.colors.muted },
+      { valign: "middle" },
     ),
   );
   return {
@@ -756,6 +757,34 @@ function matchingSlide(t: Theme): Layout {
       })),
     },
   };
+}
+
+/**
+ * A stable shuffle of 0..n-1 seeded by `seed` (the slide's own words), so the same slide always
+ * shows the same order. With `derange`, no index stays in place (a match never sits opposite its
+ * term); otherwise the order is only never the identity (a sort never shows its answer). Falls
+ * back to the cheap derangement when no seeded draw qualifies.
+ */
+export function seededOrder(n: number, seed: string, derangement: boolean): number[] {
+  if (n < 2) return Array.from({ length: n }, (_, i) => i);
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const next = () => {
+    h = (h + 0x6d2b79f5) | 0;
+    let r = Math.imul(h ^ (h >>> 15), 1 | h);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let tries = 0; tries < 64; tries++) {
+    const order = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(next() * (i + 1));
+      [order[i], order[j]] = [order[j] as number, order[i] as number];
+    }
+    const ok = derangement ? order.every((v, i) => v !== i) : order.some((v, i) => v !== i);
+    if (ok) return order;
+  }
+  return derange(n);
 }
 
 /**
@@ -870,7 +899,7 @@ function sortSlide(t: Theme): Layout {
   const cardH = optionCardH(t);
   const top = snapY(SAFE.y + stemBox + SPACE[1]);
   const cards = [0, 1, 2, 3].map((i) =>
-    option(String(i + 1), `Step ${i + 1}`, {
+    option(String.fromCharCode(65 + i), `Step ${i + 1}`, {
       x: SAFE.x,
       y: top + i * (cardH + gap),
       w: FULL,
