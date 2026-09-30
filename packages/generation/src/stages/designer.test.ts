@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { Lesson } from "@tj/domain/documents";
+import { type Lesson, parseLesson } from "@tj/domain/documents";
 import { isGeneratedSlide } from "@tj/slides";
 import weimarFixture from "../fixtures/design-cycle.y9-weimar.json";
 import romansFixture from "../fixtures/objective-facts.y4-history-romans.json";
 import { designCycleAnswer, labAi, romansLesson, versionsOf } from "../planner/testing";
+import type { DesignSlot } from "../prompts/design-cycle";
 
 const romansObjectives = romansFixture.objectives;
 
@@ -199,6 +200,39 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     expect(t?.cycles.map((c) => c.objective).sort()).toEqual([0, 1, 2]);
     expect(t?.editableMs).toBeDefined();
     expect(t?.firstSlotSavedMs).toBeDefined();
+  });
+
+  test("the designed facts pass the facts schema: photo slots are image-text entries (r1 bug a)", async () => {
+    const withArc = romansObjectives.map((o, i) => ({
+      ...o,
+      arc: { angle: `Angle ${i + 1}`, lean: "photo", misconception: `Myth ${i + 1}` },
+    }));
+    const ai = labAi({
+      objectives: withArc,
+      designCycle: (_call, target, count) => {
+        const answer = designCycleAnswer(target, count);
+        const callout: DesignSlot = {
+          form: "explain-callout",
+          heading: "Forts guarded the frontier",
+          body: "Soldiers lived in forts.",
+          callout: { text: "Forts were not castles." },
+        };
+        if (count < 3) return JSON.stringify(answer);
+        const [first, , ...rest] = answer.slots;
+        return JSON.stringify({ ...answer, slots: [first, callout, ...rest] });
+      },
+    });
+    const final = await runLessonPipeline({ lesson: romans(12) }, recordingDeps(ai), {
+      planner: "designer",
+    });
+    const outline = final.lesson.facts?.outline ?? [];
+    for (const e of outline.filter((x) => x.imageBrief)) expect(e.kind).toBe("image-text");
+    expect(outline.some((e) => e.kind === "image-text")).toBe(true);
+    const cited = outline.flatMap((e) => e.callout?.factRefs ?? []);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const ref of cited) expect(ref.startsWith("m")).toBe(true);
+    expect(() => parseLesson(final.lesson)).not.toThrow();
+    expect(final.lesson.generation?.stage).toBe("repaired");
   });
 
   test("resume: the objectives checkpoint re-designs; a later checkpoint moves on", () => {

@@ -602,24 +602,26 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       deps.ids,
     );
     const imageBrief = imageBriefOf(fit.slot);
+    const misconceptionId = facts0.misconceptions.find((m) =>
+      m.objectiveRefs.includes(objectives[cycle.objective]?.id ?? "o1"),
+    )?.id;
     outline[index] = {
       id: `s${index + 1}`,
-      kind: kindOf(fit.render.spec),
+      // A photo slot is laid out as a content slide with a photo zone (palette "photo"), but its
+      // outline entry is an image-text entry: the facts schema allows an imageBrief only there.
+      kind: imageBrief ? "image-text" : kindOf(fit.render.spec),
       factRefs: [objectives[cycle.objective]?.id ?? "o1"],
       brief: {
         adds: "heading" in fit.slot ? fit.slot.heading : "stem" in fit.slot ? fit.slot.stem : "",
       },
       phase: CHECK_FORMS.has(fit.slot.form) ? "check" : "explain",
       ...(imageBrief ? { imageBrief } : {}),
-      ...(fit.render.spec.kind === "content" && fit.render.spec.callout
-        ? {
-            callout: {
-              kind: fit.render.spec.callout.kind,
-              factRefs: [objectives[cycle.objective]?.id ?? "o1"],
-            },
-          }
+      // A watch-out callout cites the objective's misconception (the facts schema's rule).
+      ...(fit.render.spec.kind === "content" && fit.render.spec.callout && misconceptionId
+        ? { callout: { kind: fit.render.spec.callout.kind, factRefs: [misconceptionId] } }
         : {}),
-      ...(fit.slot.form === "figure"
+      // Only a drawn figure is a diagram entry; the labelled placeholder is a content entry.
+      ...(fit.slot.form === "figure" && fit.render.spec.kind === "diagram"
         ? {
             figureBrief: {
               template: fit.slot.figureBrief.template,
