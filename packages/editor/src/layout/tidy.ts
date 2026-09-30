@@ -1,14 +1,15 @@
-import type {
-  Id,
-  Lesson,
-  RichDoc,
-  RichNode,
-  Slide,
-  SlideElement,
-  Theme,
+import {
+  type Id,
+  type Lesson,
+  type RichDoc,
+  type RichNode,
+  SLIDE_W,
+  type Slide,
+  type SlideElement,
+  type Theme,
 } from "@tj/domain/documents";
-import { BODY_Y } from "@tj/slides";
-import { cloneSlide, docFromText } from "../model/factories";
+import { BODY_Y, HEADING_GAP, KIND_TAG_NAME, SAFE, SPACE, snapY } from "@tj/slides";
+import { cloneSlide, docFromText, uid } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
@@ -213,8 +214,46 @@ const cardOf = (el: SlideElement, authored: SlideElement[]): SlideElement | unde
  * Where carried text starts on a continuation: the recipes' body top, or higher when the source
  * slide's own body starts higher (a title slide has no heading band to clear).
  */
-const bodyTopOf = (authored: SlideElement[]): number =>
-  Math.min(BODY_Y, ...authored.filter(isFlow).map((el) => el.y));
+const bodyTopOf = (authored: SlideElement[]): number => {
+  const band = headerBand(authored);
+  return Math.min(
+    bodyFloorOf(authored),
+    ...authored.filter((el) => isFlow(el) && !band.has(el.id)).map((el) => el.y),
+  );
+};
+
+/**
+ * Where a continuation's body can start at the highest: under its heading once the "CONTINUED"
+ * label has pushed that heading down (`markContinued`), so every slide in the chain starts its body
+ * at the same place. Beside a kind tag the label takes no room of its own.
+ */
+const bodyFloorOf = (authored: SlideElement[]): number => {
+  if (!authored.some((el) => el.name === CONTINUED_LABEL)) return BODY_Y;
+  if (authored.some((el) => el.name === KIND_TAG_NAME)) return BODY_Y;
+  const heading = authored.find(isHeadingText);
+  return heading ? Math.max(BODY_Y, snapY(heading.y + heading.h + HEADING_GAP)) : BODY_Y;
+};
+
+/**
+ * The slide's frame, which every continuation keeps as it stands: what sits wholly above the
+ * heading (a generated slide's kind tag and deck line) and a locked bar across the slide's width
+ * (its accent bar). Without it a generated slide's continuation lost its frame and started its body
+ * in the header band, above the heading.
+ */
+function headerBand(authored: SlideElement[]): Set<Id> {
+  const heading = authored.find(isHeadingText);
+  return new Set(
+    authored
+      .filter(
+        (el) =>
+          el !== heading &&
+          !isChrome(el) &&
+          ((heading && el.type === "text" && el.y + el.h <= heading.y + EPS) ||
+            (el.type === "shape" && !!el.locked && el.w >= SLIDE_W - 1)),
+      )
+      .map((el) => el.id),
+  );
+}
 
 /**
  * Question slides are never split (ruling 91): an option grid that does not fit takes a roomier
@@ -234,18 +273,84 @@ const QUESTION_KINDS: ReadonlySet<Slide["kind"]> = new Set([
 const isQuestionSlide = (slide: Slide): boolean =>
   slide.question !== undefined || QUESTION_KINDS.has(slide.kind);
 
+/** The small "CONTINUED" label a continuation carries above its heading (TEACH-248). */
+export const CONTINUED_LABEL = "Continued label";
+
 /**
- * Mark a continuation slide's heading so a teacher can see it is a second page. Only the heading's
- * first line is kept: lines a teacher typed into the heading box stay on the slide they typed them
- * on, and are not repeated over every continuation.
+ * Mark a continuation slide as a second page (TEACH-248, variant B): the heading keeps its words
+ * and its size, and a small "CONTINUED" label in the kind tag's style sits above it. Only the
+ * heading's first line is kept: lines a teacher typed into the heading box stay on the slide they
+ * typed them on, and are not repeated over every continuation.
+ *
+ * Beside a kind tag the label shares the tag's line. Without one it takes the top of the safe
+ * area, where a heading stands on an ordinary slide, and the heading moves down to clear it. The
+ * rule under the heading follows it; the body moves only when the heading's new foot would crowd it
+ * (a card keeps its bottom edge). What then does not fit goes on to the next continuation.
  */
-function markContinued(slide: Slide): void {
+function markContinued(slide: Slide, theme: Theme): void {
   const heading = slide.elements.find(isHeadingText);
   if (heading?.type !== "text") return;
   const first = heading.doc.content?.[0];
   const text = docToPlainText(first ?? heading.doc).trim();
-  if (!text || /continued/i.test(text)) return;
-  heading.doc = docFromText(`${text} (continued)`);
+  if (!text) return;
+  heading.doc = docFromText(text);
+  // A continuation of a continuation carries the label (and the lowered heading) in its frame.
+  if (slide.elements.some((e) => e.name === CONTINUED_LABEL)) return;
+  const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME && e.type === "text");
+  if (tag?.type === "text") {
+    slide.elements.push({
+      ...structuredClone(tag),
+      id: uid(),
+      name: CONTINUED_LABEL,
+      x: tag.x + tag.w + 8,
+      w: 150,
+      doc: docFromText("CONTINUED"),
+    });
+    return;
+  }
+  const top = Math.min(heading.y, SAFE.y);
+  const labelH = Math.ceil(theme.sizes.caption * theme.lineHeights.caption);
+  const drop = Math.max(0, snapY(top + labelH + SPACE[2]) - heading.y);
+  if (drop > 0) {
+    const oldFoot = heading.y + heading.h;
+    heading.y += drop;
+    const foot = heading.y + heading.h;
+    const below = slide.elements.filter(
+      (el) => el !== heading && !isBackdrop(el) && el.y >= oldFoot - EPS,
+    );
+    // The body moves only if the heading's new foot reaches into the gap it keeps on an ordinary
+    // slide, and a card keeps its bottom edge. The rule under the heading then takes the middle of
+    // the band between them.
+    const body = below.filter((el) => !isHairline(el));
+    const firstBody = Math.min(...body.map((el) => el.y), Number.POSITIVE_INFINITY);
+    const shift = Number.isFinite(firstBody)
+      ? Math.max(0, snapY(foot + HEADING_GAP) - firstBody)
+      : 0;
+    for (const el of body) {
+      el.y += shift;
+      if (isLayerBelow(el)) el.h = Math.max(1, el.h - shift);
+    }
+    const ruleY = Number.isFinite(firstBody)
+      ? snapY((foot + firstBody + shift) / 2)
+      : snapY(foot + SPACE[1]);
+    for (const el of below) if (isHairline(el) && el.y < ruleY) el.y = ruleY;
+  }
+  slide.elements.push({
+    id: uid(),
+    type: "text",
+    name: CONTINUED_LABEL,
+    x: heading.x,
+    y: top,
+    w: 150,
+    h: labelH,
+    doc: docFromText("CONTINUED"),
+    style: {
+      preset: "caption",
+      fontWeight: 700,
+      color: theme.colors.accent,
+      autoHeight: false,
+    },
+  });
 }
 
 /**
@@ -318,6 +423,52 @@ function levelHeadings(slides: Slide[], theme: Theme, measure: Measurer): Slide[
   }));
 }
 
+/**
+ * The carried text boxes that take the full safe width on a continuation (ruling 102, T18-6): the
+ * picture or column they stood beside stays behind, so they would otherwise wrap early. A box that
+ * shares its row with another carried box (side-by-side columns) keeps its width, and so does
+ * anything on a card, which the caller leaves out of `carried`.
+ */
+function fullWidth(carried: SlideElement[]): Set<Id> {
+  const sharesRow = (a: SlideElement) =>
+    carried.some(
+      (b) =>
+        b.id !== a.id &&
+        a.y < b.y + b.h - EPS &&
+        b.y < a.y + a.h - EPS &&
+        (a.x + a.w <= b.x + EPS || b.x + b.w <= a.x + EPS),
+    );
+  return new Set(
+    carried
+      .filter((c) => (c.type === "text" || c.type === "gap-text") && !sharesRow(c))
+      .filter((c) => c.x > SAFE.x + EPS || c.w < SAFE.w - EPS)
+      .map((c) => c.id),
+  );
+}
+
+/** Set a carried box across the safe width, re-measuring an auto-height box at its new width. */
+function widen(el: SlideElement, slide: Slide, measure: Measurer): void {
+  el.x = SAFE.x;
+  el.w = SAFE.w;
+  const parts = textPartsOf(el, slide);
+  if (!parts?.autoHeight) return;
+  el.h = Math.max(
+    1,
+    Math.round(
+      measure({
+        doc: parts.doc,
+        width: el.w,
+        style: parts.style,
+        preset: parts.preset,
+        role: parts.role,
+        fontSize: parts.style?.fontSize,
+        inset: parts.inset,
+        chrome: parts.chrome,
+      }),
+    ),
+  );
+}
+
 type Plan = {
   /** The head slide's elements once the overspill has gone: shortened, or with boxes removed. */
   head: SlideElement[];
@@ -347,6 +498,7 @@ function buildPlan(
   const authored = slide.elements;
   const src = authored[target.index] ?? el;
   const bodyTop = bodyTopOf(authored);
+  const band = headerBand(authored);
 
   const card = cardOf(src, authored);
   const reflowedCard = card ? reflowed.find((r) => r.id === card.id) : undefined;
@@ -360,6 +512,10 @@ function buildPlan(
     group.add(card.id);
     for (const o of authored) if (o.id !== card.id && sitsOn(card, o)) group.add(o.id);
   }
+
+  const after = order.filter((c) => isFlow(c.el) && byY(c, target) > 0);
+  const moving = new Set<Id>([el.id, ...after.map((c) => c.el.id)]);
+  const wide = fullWidth([el, ...after.map((c) => c.el)].filter((r) => !group.has(r.id)));
 
   let headDoc: RichDoc | null = null;
   let tail: RichDoc | null = null;
@@ -401,19 +557,27 @@ function buildPlan(
     }
     headDoc = split.head;
     tail = split.tail;
-    tailH = Math.max(1, Math.round(measure({ ...base, doc: tail })));
+    // Measured at the width the tail will have on the continuation.
+    const width = wide.has(el.id) ? SAFE.w : el.w;
+    tailH = Math.max(1, Math.round(measure({ ...base, width, doc: tail })));
+  } else if (wide.has(el.id)) {
+    const widened = structuredClone(el);
+    widen(widened, slide, measure);
+    tailH = widened.h;
   }
-
-  const after = order.filter((c) => isFlow(c.el) && byY(c, target) > 0);
-  const moving = new Set<Id>([el.id, ...after.map((c) => c.el.id)]);
   const shift = reflowedCard ? bodyTop - reflowedCard.y : bodyTop - el.y;
-  // Boxes under a shortened target close up beneath its tail.
-  const trailing = mode === "split" && !card ? tailH - el.h : 0;
+  // Boxes under a target that is shorter on the continuation (its tail, or the box set wider)
+  // close up beneath it.
+  const trailing = !card ? tailH - el.h : 0;
 
   const elements: SlideElement[] = [];
   let targetIdx = -1;
   reflowed.forEach((r, i) => {
     const a = authored[i] ?? r;
+    if (band.has(a.id)) {
+      elements.push(structuredClone(r));
+      return;
+    }
     if (isChrome(a)) {
       // As it stands on this slide, size included, so the chain's headings match. A rule below
       // the body top belongs to the content it sat under, not the heading.
@@ -426,6 +590,10 @@ function buildPlan(
       const next = structuredClone(r);
       if (tail && (next.type === "text" || next.type === "gap-text")) next.doc = tail;
       next.y = r.y + shift;
+      if (wide.has(r.id)) {
+        next.x = SAFE.x;
+        next.w = SAFE.w;
+      }
       next.h = tailH;
       targetIdx = elements.length;
       elements.push(next);
@@ -444,13 +612,14 @@ function buildPlan(
       const next = structuredClone(r);
       // Below a card the card's bottom edge has not moved; elsewhere the box follows the target.
       next.y = card ? r.y : r.y + shift + trailing;
+      if (wide.has(r.id)) widen(next, slide, measure);
       elements.push(next);
     }
   });
   if (targetIdx < 0) return null;
 
   const continuation = cloneSlide({ ...slide, elements });
-  markContinued(continuation);
+  markContinued(continuation, theme);
 
   if (mode === "move") {
     // Only worth it when the box lands higher than it stood here; otherwise the next round would

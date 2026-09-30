@@ -1,0 +1,277 @@
+{
+  "_source": "Stored lesson \"Animals and their young\" (E49, Y1 science), slide 6, as generated; TEACH-248.",
+  "themeId": "chalk",
+  "slide": {
+    "id": "e6ymuirgh4e",
+    "kind": "content",
+    "elements": [
+      {
+        "id": "e9mmuirh02z",
+        "type": "text",
+        "x": 58,
+        "y": 77,
+        "w": 844,
+        "h": 52,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Growing and changing"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "autoHeight": true,
+          "fontSize": 48,
+          "lineHeight": 1.08
+        },
+        "name": "Heading",
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e9rmuirh030",
+        "type": "text",
+        "x": 285,
+        "y": 43,
+        "w": 95,
+        "h": 28,
+        "name": "Kind tag",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "TEACH"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "color": "#A94A18",
+          "fontWeight": 700,
+          "background": "#F0E0CD",
+          "radius": 99,
+          "padding": 3,
+          "align": "center",
+          "autoHeight": false
+        },
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e9smuirh030",
+        "type": "shape",
+        "shape": "rect",
+        "x": 0,
+        "y": 531,
+        "w": 960,
+        "h": 9,
+        "fill": "#A94A18",
+        "name": "Accent bar",
+        "locked": true,
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e9tmuirh031",
+        "type": "text",
+        "x": 58,
+        "y": 154,
+        "w": 403,
+        "h": 122,
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Young animals grow bigger and change as new parts grow; "
+                },
+                {
+                  "type": "text",
+                  "text": "tadpoles",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    },
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#A94A18"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " grow legs."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "autoHeight": true,
+          "preset": "body",
+          "fontSize": 29,
+          "lineHeight": 1.4
+        },
+        "name": "Body",
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e9qmuirh02z",
+        "type": "shape",
+        "shape": "rounded",
+        "x": 499,
+        "y": 154,
+        "w": 403,
+        "h": 343,
+        "fill": "#F0E0CD",
+        "stroke": "#F0E0CD",
+        "strokeWidth": 0,
+        "radius": 14,
+        "name": "Diagram placeholder",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Diagram to add: Sequence: tadpole \u2192 legs grow \u2192 tail gets shorter \u2192 frog; arrows show the order."
+                }
+              ]
+            }
+          ]
+        },
+        "textStyle": {
+          "preset": "small",
+          "fontSize": 17,
+          "color": "#6E6656",
+          "align": "center",
+          "valign": "middle",
+          "padding": 29
+        },
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e9umuirh032",
+        "type": "text",
+        "x": 58,
+        "y": 43,
+        "h": 28,
+        "w": 213,
+        "name": "Deck line",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "YEAR 1 \u00b7 SCIENCE"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "color": "#A94A18",
+          "fontWeight": 700,
+          "padding": 3,
+          "autoHeight": false
+        },
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      },
+      {
+        "id": "e9vmuirh032",
+        "type": "text",
+        "x": 835,
+        "y": 43,
+        "h": 28,
+        "w": 67,
+        "name": "Slide counter",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "1 / 1"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "caption",
+          "color": "#6E6656",
+          "align": "right",
+          "padding": 3,
+          "autoHeight": false
+        },
+        "generatedFrom": {
+          "factRefs": ["o2", "k2", "v1"],
+          "promptVersion": "repair.v18",
+          "model": "gpt-6-luna",
+          "at": "2026-09-26T19:06:54.250Z"
+        },
+        "authoredBy": "ai"
+      }
+    ]
+  }
+}
