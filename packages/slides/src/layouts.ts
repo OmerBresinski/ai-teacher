@@ -636,7 +636,7 @@ function discussionSlide(t: Theme): Layout {
       text("subtitle", "Ask the question you want pupils to talk about.", {
         x: SAFE.x,
         y: centreY(promptH),
-        w: spanWidth(10),
+        w: FULL,
         h: promptH,
       }),
       footnote(t, "Talk to your partner"),

@@ -166,7 +166,7 @@ export const CASES: BenchCase[] = [
   {
     id: "HARD-y8-hinge-outline",
     form: "hinge",
-    // plan-lesson.v3 takes the stacked layout for outline options (checked in layout mode).
+    // plan-lesson.v3+ takes the stacked layout for outline options (checked in layout mode).
     layout: "stacked",
     ks: "KS3",
     hard: "long-option hinge (speech outlines)",

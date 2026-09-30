@@ -84,16 +84,16 @@ const REWRITE_SAMPLE: WriteSlidesInput = {
 
 const PINNED = {
   plan: {
-    version: "plan-lesson.v3",
-    hash: "ed2af0d60dae8aa2ccf516211ba7009d12e629bde2870bd16a98ee9b8900a45e",
+    version: "plan-lesson.v4",
+    hash: "69da1f0763893d0ac9b501dd0cdfcf72c0f998b667f5b4ae6e88964ffb2d33cf",
   },
   write: {
-    version: "write-slides.v3",
-    hash: "078763c273c1345766e5cae167f41c09c1dee85b5f2a56c9ea4382d99e727bca",
+    version: "write-slides.v4",
+    hash: "4a531d149e2eae1856bb7e32d13a8e645c4ea92a3560724311df469387e8e701",
   },
   rewrite: {
-    version: "write-slides.v3",
-    hash: "e91355ae1cb98c21148d9543f30571a80c7f0adb42055631a99d5b12019179c6",
+    version: "write-slides.v4",
+    hash: "3d9bd496f3c999e8dbc1c6f0a702ad4eb5160d01e9bb6a44d6b0a11f35c74f5d",
   },
 };
 

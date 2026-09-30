@@ -467,7 +467,7 @@ export function answersPanel(
 ): ShapeElement | undefined {
   if (answers.length === 0) return undefined;
   const measure = measureHeadless(t);
-  const doc: RichDoc = {
+  let doc: RichDoc = {
     type: "doc",
     content: answers.map((a) => ({
       type: "paragraph",
@@ -483,6 +483,30 @@ export function answersPanel(
   };
   const pad = SPACE[2];
   let size = resolveFontSize(t, "small");
+  // Short answers share one line ("1 Water   2 40 ml   3 120 ml"), so the panel leaves the
+  // questions the room it does not need; longer ones take a line each.
+  const oneLine: RichDoc = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: (doc.content ?? []).flatMap((p, i) => [
+          ...(i > 0 ? [{ type: "text", text: "     " }] : []),
+          ...((p as { content: RichDoc["content"] }).content ?? []),
+        ]),
+      },
+    ],
+  } as RichDoc;
+  const lineH = heightOf(
+    measure,
+    { type: "doc", content: (doc.content ?? []).slice(0, 1) } as RichDoc,
+    SAFE.w,
+    "small",
+    size,
+    pad,
+  );
+  if (answers.length > 1 && heightOf(measure, oneLine, SAFE.w, "small", size, pad) <= lineH)
+    doc = oneLine;
   let h = heightOf(measure, doc, SAFE.w, "small", size, pad);
   const most = Math.round(SAFE.h * 0.62);
   if (h > most) {
