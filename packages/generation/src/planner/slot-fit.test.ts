@@ -94,11 +94,15 @@ describe("fit ladder", () => {
     expect(fit.tried.map((t) => t.rung)).toEqual(["sibling", "notes", "refill"]);
   });
 
-  test("with nothing fitting, one step down is tried and then the slot is flagged with its words", async () => {
+  test("with no re-fill, the siblings' own rungs and then one step down are tried before a flag", async () => {
     const slot = weimar.electrolysisWorkedExample as unknown as DesignSlot;
     const fit = await fitSlot(slot, { seed: "x", themeId: "chalk" });
-    expect(fit.tried.at(-1)?.rung).toBe(fit.rung === "flagged" ? "flagged" : "step-down");
+    const last = fit.tried.at(-1);
+    expect(last?.rung).toBe(fit.rung);
+    expect(last?.ok).toBe(fit.rung !== "flagged");
     if (fit.rung === "flagged") expect(fit.slot).toEqual(slot);
+    // This worked example's sibling sequence, its last step in the notes, lands as a list.
+    expect(fit.tried.some((t) => t.detail?.startsWith("sequence"))).toBe(true);
   });
 
   test("units move to the notes word for word, never cut", () => {

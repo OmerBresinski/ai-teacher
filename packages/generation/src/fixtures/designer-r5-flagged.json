@@ -1,0 +1,24 @@
+{
+  "designer-f/y5-rivers@8": {
+    "form": "worked-example",
+    "notes": "Talk through how the river’s slower flow and loss of energy lead to deposition: it can no longer carry as much material, so it drops some. Then explain that floodwater can spread beyond the channel and leave sediment on the nearby flat land, helping to form a wide floodplain. The Nile Delta is an example of land built from sediment deposited at a river mouth.",
+    "heading": "Explaining a floodplain and deposited sediment",
+    "question": "Near its mouth, a river flows over a gentle slope and then enters a sea. How could a floodplain and deposited sediment form?",
+    "steps": [
+      "The gentle slope means the river flows more slowly and loses energy.",
+      "As it slows, it drops some of the sediment it carries; during floods, water can spread over the flat land beside the river and leave sediment there.",
+      "The River Nile has deposited sediment where it meets the Mediterranean Sea, helping to form the Nile Delta."
+    ]
+  },
+  "designer-f/y8-persuasive@7": {
+    "form": "worked-example",
+    "notes": "Read the plan aloud, asking pupils to notice how each reason follows from the claim. The opening introduces the issue and viewpoint; the arguments develop reasons in order; the conclusion restates the claim and makes a final request. This is one possible order for these reasons.",
+    "heading": "Planning a persuasive speech",
+    "question": "How could you organise a speech asking your school for more shaded outdoor seating?",
+    "steps": [
+      "Opening: introduce the lack of shade and claim that the school should provide more shaded seating.",
+      "Arguments: first explain that shaded seats give pupils a comfortable place to sit outside; next explain how more outdoor seating could help pupils use the space at break time.",
+      "Conclusion: restate the claim and ask the school to provide shaded seating. The opening states the issue and claim; the arguments develop reasons in order; the conclusion restates the claim and makes a final request."
+    ]
+  }
+}

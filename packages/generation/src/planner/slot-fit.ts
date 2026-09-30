@@ -14,6 +14,7 @@ import { type SlotRender, slotRender } from "./coded-slides";
  *      notes, word for word;
  *   4. one re-fill of the slot into the next form down (the caller's single small design-cycle
  *      call; never "shorter");
+ *      Then, when neither landed, rung 2's siblings go down rungs 2-3 themselves (4c);
  *   5. one type step down (the save gate's headroom), then a flag.
  * No rung splits a slide or asks a model to shorten; the count was fixed at allocation.
  */
@@ -397,6 +398,44 @@ export const FORM_DOWN: Partial<Record<SlotForm, SlotForm>> = {
 /** A slot and its render: a candidate the step-down rung may fall back to. */
 type Candidate = { slot: DesignSlot; render: SlotRender };
 
+/** How many sibling conversions rung 4c chains (worked example -> sequence -> list). */
+const CONVERSION_DEPTH = 2;
+
+/**
+ * Rung 4c's candidates, nearest first: each sibling's own units moved to the notes, then the
+ * siblings of what that leaves, down to `CONVERSION_DEPTH` conversions. The slot itself, its
+ * direct siblings and its own units (rungs 2 and 3) are not repeated. `path` names every step,
+ * `moved` whether any unit went to the notes.
+ */
+function conversions(slot: DesignSlot): { slot: DesignSlot; path: string; moved: boolean }[] {
+  const out: { slot: DesignSlot; path: string; moved: boolean }[] = [];
+  const seen = new Set<string>([JSON.stringify(slot)]);
+  for (const s of siblingsOf(slot)) seen.add(JSON.stringify(s));
+  for (const u of unitsToNotes(slot)) seen.add(JSON.stringify(u.slot));
+  const add = (next: DesignSlot, path: string, moved: boolean) => {
+    const key = JSON.stringify(next);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    out.push({ slot: next, path, moved });
+    return true;
+  };
+  const walk = (from: DesignSlot, path: string, moved: boolean, depth: number) => {
+    if (depth >= CONVERSION_DEPTH) return;
+    for (const sibling of siblingsOf(from)) {
+      const at = [path, sibling.form].filter(Boolean).join(" > ");
+      if (depth > 0) add(sibling, at, moved);
+      walk(sibling, at, moved, depth + 1);
+      for (const u of unitsToNotes(sibling)) {
+        const there = `${at} ${u.moved}`;
+        add(u.slot, there, true);
+        walk(u.slot, there, true, depth + 1);
+      }
+    }
+  };
+  walk(slot, "", false, 0);
+  return out;
+}
+
 /**
  * Rungs 1-3 on one slot (variants, siblings, units to the notes), each logged under `prefix`.
  * Returns the landing and every candidate tried, in order, for the step-down rung.
@@ -514,8 +553,27 @@ export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<S
     if (ok) return { slot: asked, render: r, rung: "sibling", tried };
     fromRefill.push({ slot: asked, render: r });
   }
+  // 4c. the siblings' own ladders, once nothing nearer has landed: a sibling form may hold what
+  // the slot's form cannot (a worked example's working card is a fixed box that no step moved out
+  // can shrink; r5 arm F, y5-rivers and y8-persuasive), so its whole units go to the notes too,
+  // and a sibling of what is left is tried in turn (a sequence down to two steps is a list), each
+  // word for word. Step-down tries every one of them before the slot is flagged.
+  const converted: Candidate[] = [];
+  for (const { slot: next, path, moved } of conversions(slot)) {
+    const r = render(next);
+    const ok = slotFits(r, themeId, 0);
+    const rung: Rung = moved ? "notes" : "sibling";
+    tried.push({ rung, form: next.form, ok, detail: path });
+    if (ok) return { slot: next, render: r, rung, tried };
+    converted.push({ slot: next, render: r });
+  }
   // 5. one type step down, on every candidate in order, then flag
-  const candidates: Candidate[] = [...fromRefill, { slot, render: first }, ...own.candidates];
+  const candidates: Candidate[] = [
+    ...fromRefill,
+    { slot, render: first },
+    ...own.candidates,
+    ...converted,
+  ];
   for (const cand of candidates) {
     const ok = slotFits(cand.render, themeId, 1);
     tried.push({ rung: "step-down", form: cand.slot.form, ok });
