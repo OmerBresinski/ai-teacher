@@ -12,6 +12,7 @@ import {
 import {
   type BlockSpec,
   blockSpecSchemaFor,
+  fitsPlanned,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
   materialiseBlock,
@@ -51,6 +52,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { BUDGET_FINDING, withUsage } from "./generate";
+import { isDesignerStamp } from "./objectives-first";
 import {
   audienceOf,
   blockText,
@@ -281,6 +283,23 @@ export function repairContext(
     });
 }
 
+/**
+ * The lesson designer's contract on a repair (the lesson designer plan, PR 10): the rewritten
+ * slide must pass `fitsPlanned` at the save gate's one step down on every theme, and it may not
+ * bring text back onto the slide that the designer put in the notes (a sentence of the old notes
+ * now on the slide). A reason when it breaks either, else `undefined`; the caller discards it.
+ */
+export function designerRepairRejected(spec: SlideSpec, original: Slide): string | undefined {
+  if (!fitsPlanned(spec, { stepDown: 1 }).ok) return "does not fit";
+  const { notes: _notes, ...onSlide } = spec as SlideSpec & { notes?: string };
+  const shown = normaliseText(JSON.stringify(onSlide));
+  const sentences = (original.notes ?? "")
+    .split(/(?<=[.!?])\s+/)
+    .map((x) => normaliseText(x))
+    .filter((x) => x.split(" ").length >= 6);
+  return sentences.some((x) => shown.includes(x)) ? "notes moved onto the slide" : undefined;
+}
+
 export async function repair(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   let { lesson, worksheet } = state;
   let facts = lesson.facts;
@@ -300,6 +319,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   // never rewritten (r4), and a rewritten multiple-choice slide gets Generate's seeded option
   // order back (the model lists the answer first, so without it the answer is A again).
   const lab = isOutlineFromFacts(generation.promptVersions.planned);
+  const designerLesson = isDesignerStamp(generationOf(state.lesson).promptVersions.planned);
   const codeBuilt = new Set(lesson.slides.filter(isCodeBuilt).map((s) => s.id));
   const retrieval = new Set(
     lesson.slides.filter((s) => isRetrievalStarter(s, facts)).map((s) => s.id),
@@ -474,6 +494,22 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
     if (outcome.kind === "facts") {
       if (outcome.corrections.length > 0) repaired.add(outcome.key);
       continue;
+    }
+    if (outcome.kind === "slide" && designerLesson) {
+      const why = designerRepairRejected(outcome.spec, base.slides[outcome.index] as Slide);
+      if (why) {
+        deps.logger.warn(
+          { stage: "repair", index: outcome.index, why },
+          "designer repair discarded",
+        );
+        extra.push({
+          check: "repair",
+          severity: "warning",
+          target: { slideId: base.slides[outcome.index]?.id },
+          message: "This slide's automatic fix did not fit the slide; check it yourself.",
+        });
+        continue;
+      }
     }
     repaired.add(outcome.key);
     extra.push(...outcome.findings);

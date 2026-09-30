@@ -28,6 +28,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { withUsage } from "./generate";
+import { isDesignerStamp } from "./objectives-first";
 import { audienceOf, generationOf, slideText } from "./shared";
 
 /** Between Generate's last (85) and Evaluate's first (90). */
@@ -160,12 +161,20 @@ export async function illustrate(state: PipelineState, deps: PipelineDeps): Prom
       deps,
     );
   };
+  const designer = isDesignerStamp(generationOf(state.lesson).promptVersions.planned);
+  const triedAlready = (slideId: string) =>
+    baseFindings.some((f) => f.check === "image" && f.target.slideId === slideId);
   let busy = false;
   for (let index = 0; index < lesson.slides.length; index++) {
     throwIfAborted(deps.signal);
     const slide = lesson.slides[index];
     const brief = outline[index]?.imageBrief;
-    if (slide?.kind !== "image-text" || !brief) continue;
+    // The lesson designer's photo slots are content slides with a photo slot (palette "photo");
+    // their search ran as the slot landed, so a slot it already tried is not searched again.
+    const photoSlot =
+      slide?.kind === "image-text" ||
+      (designer && slide?.kind === "content" && !triedAlready(slide.id));
+    if (!slide || !photoSlot || !brief) continue;
     const target = slide.elements.find(
       (element) => element.type === "image" && element.src === PLACEHOLDER_IMAGE,
     );

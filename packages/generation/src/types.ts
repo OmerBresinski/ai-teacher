@@ -178,6 +178,8 @@ export interface PipelineDeps {
  * for a lesson generated before that (Evaluate and Repair still read the sheet when one is
  * passed) and for the worker until TEACH-13 stops minting the row.
  */
+import type { ObjectiveArc } from "./prompts/plan-objectives";
+
 export interface PipelineState {
   lesson: Lesson;
   /** Legacy (ADR 0025 §4): the worksheet of a lesson generated before ADR 0030, when resuming. */
@@ -200,6 +202,42 @@ export interface PipelineState {
    * but it is never persisted — a resumed lesson has none and Generate starts Verify itself.
    */
   pendingVerify?: Promise<VerifyResult>;
+  /**
+   * The lesson designer's arcs, one per objective (plan-objectives v19), handed from the objectives
+   * step to the design step in-process. Never persisted: a resumed design step runs without them.
+   */
+  designArcs?: (ObjectiveArc | undefined)[];
+  /** The design step's report (allocation, per-slot forms and fit rungs, timings), for the summary. */
+  designReport?: DesignReport;
+}
+
+/** What the lesson designer's design step did, for the `generation summary` line's fit block. */
+export interface DesignReport {
+  slideCount: number;
+  allocation: number[];
+  short: number[];
+  slots: {
+    slide: number;
+    objective: number;
+    planned: string;
+    form: string;
+    rung: string;
+    tried: { rung: string; form: string; ok: boolean; detail?: string }[];
+  }[];
+  rungs: Record<string, number>;
+  minimums: {
+    visualMissing: number[];
+    checks: number;
+    sameNeighbours: [number, number][];
+    untaught: number[];
+    unchecked: number[];
+  };
+  exitCovered: number;
+  failedCycles: number[];
+  verify: { corrections: number; refitted: number; rejected: number };
+  firstSlotMs?: number;
+  editableMs?: number;
+  photos: { requested: number; placed: number };
 }
 
 /** What one Verify call settles to (`stages/verify.ts`); a type here so `PipelineState` can name it. */

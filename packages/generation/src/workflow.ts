@@ -5,17 +5,22 @@ import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
 import { checkInput } from "./stages/check-input";
+import { design, designerObjectives } from "./stages/designer";
 import { evaluate } from "./stages/evaluate";
 import { facts } from "./stages/facts";
 import { generate } from "./stages/generate";
 import { illustrate } from "./stages/illustrate";
 import { objectives } from "./stages/objectives";
 import {
+  DESIGNER_CHECKPOINT,
+  DESIGNER_ORDER,
+  type DesignerStageName,
   OBJECTIVES_FIRST_CHECKPOINT,
   OBJECTIVES_FIRST_ORDER,
   type ObjectivesFirstStageName,
   type Planner,
   plannerFor,
+  resumeFromDesigner,
   resumeFromObjectivesFirst,
 } from "./stages/objectives-first";
 import { plan } from "./stages/plan";
@@ -96,7 +101,7 @@ export function resumeFrom(lesson: Lesson): PipelineStageName | null {
 }
 
 /** A step of either workflow: the legacy stages, or the objectives-first ones (TEACH-93). */
-export type StepName = PipelineStageName | ObjectivesFirstStageName;
+export type StepName = PipelineStageName | ObjectivesFirstStageName | DesignerStageName;
 
 /** How one workflow orders its steps and finds where a lesson resumes. */
 interface StepOrder<S extends StepName> {
@@ -115,6 +120,12 @@ const OBJECTIVES_FIRST: StepOrder<ObjectivesFirstStageName> = {
   order: OBJECTIVES_FIRST_ORDER,
   checkpoint: OBJECTIVES_FIRST_CHECKPOINT,
   resume: resumeFromObjectivesFirst,
+};
+
+const DESIGNER: StepOrder<DesignerStageName> = {
+  order: DESIGNER_ORDER,
+  checkpoint: DESIGNER_CHECKPOINT,
+  resume: resumeFromDesigner,
 };
 
 /** Whether `stage` runs for a lesson resuming at `from` and stopping after `stopAfter`. */
@@ -215,6 +226,27 @@ export const objectivesFirstWorkflow = createWorkflow({
   .then(stageStep("repair", repair, OBJECTIVES_FIRST))
   .commit();
 
+/**
+ * The lesson designer (the lesson designer plan; TEACH-199, TEACH-208), behind
+ * `AI_LESSON_PLANNER=designer`: the input check, the objectives with the title saved first, one
+ * design step (allocation, streamed design cycles, every slot fitted and saved as it lands), then
+ * the same illustrate, evaluate and repair.
+ */
+export const designerWorkflow = createWorkflow({
+  id: "lesson-designer",
+  description:
+    "Check input → Objectives → Design → Illustrate → Evaluate → Repair (lesson designer)",
+  inputSchema: StateSchema,
+  outputSchema: StateSchema,
+})
+  .then(stageStep("check-input", checkInput, DESIGNER))
+  .then(stageStep("objectives", designerObjectives, DESIGNER))
+  .then(stageStep("design", design, DESIGNER))
+  .then(stageStep("illustrate", illustrate, DESIGNER))
+  .then(stageStep("evaluate", evaluate, DESIGNER))
+  .then(stageStep("repair", repair, DESIGNER))
+  .commit();
+
 export interface PipelineInput {
   lesson: Lesson;
   /** Legacy (ADR 0025 §4): the worksheet row id the worker minted; unread since ADR 0030. */
@@ -268,10 +300,17 @@ export async function runLessonPipeline(
   const startedAt = Date.now();
   const planner = plannerFor(input.lesson, options.planner);
   const steps: StepOrder<StepName> =
-    planner === "objectives-first"
-      ? (OBJECTIVES_FIRST as StepOrder<StepName>)
-      : (LEGACY as StepOrder<StepName>);
-  const workflow = planner === "objectives-first" ? objectivesFirstWorkflow : lessonWorkflow;
+    planner === "designer"
+      ? (DESIGNER as StepOrder<StepName>)
+      : planner === "objectives-first"
+        ? (OBJECTIVES_FIRST as StepOrder<StepName>)
+        : (LEGACY as StepOrder<StepName>);
+  const workflow =
+    planner === "designer"
+      ? designerWorkflow
+      : planner === "objectives-first"
+        ? objectivesFirstWorkflow
+        : lessonWorkflow;
   const from = steps.resume(input.lesson);
   const requestContext = new RequestContext();
   requestContext.setRaw(RESUME_KEY, from);
@@ -310,7 +349,8 @@ export async function runLessonPipeline(
     if (result.status !== "success") {
       const stashed = requestContext.getRaw(FAILURE_KEY);
       if (requestContext.hasRaw(FAILURE_KEY)) throw stashed;
-      const stage = from === "objectives" || from === "facts" ? "plan" : from;
+      const stage =
+        from === "objectives" || from === "facts" ? "plan" : from === "design" ? "generate" : from;
       throw new StageFailure(stage ?? "check-input", "The lesson workflow could not finish.");
     }
     final = result.result;
@@ -325,7 +365,10 @@ export async function runLessonPipeline(
     const findings = { error: 0, warning: 0 };
     for (const f of checkpoint?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
     const totals = deps.budget.totals();
-    const fit = checkpoint ? fitOf(checkpoint.lesson, deps) : undefined;
+    const measured = checkpoint ? fitOf(checkpoint.lesson, deps) : undefined;
+    // The designer's fit block also carries its allocation, forms and fallback rungs.
+    const designer = checkpoint?.designReport;
+    const fit = measured && designer ? { ...measured, designer } : measured;
     deps.logger.info(
       {
         generation: {

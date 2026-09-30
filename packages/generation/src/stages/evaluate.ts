@@ -218,6 +218,9 @@ const CARRIED_CHECKS: ReadonlySet<string> = new Set([
   "image",
   "fact-verify",
   SPEC_RULE_CHECK,
+  // The lesson designer's: an objective it could not design, and a slot its fit ladder flagged.
+  "missing-material",
+  "fit",
 ]);
 
 export async function evaluate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {

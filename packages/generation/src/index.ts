@@ -69,6 +69,7 @@ export {
   runObjectivesStep,
 } from "./stages/objectives";
 export {
+  isDesignerStamp,
   isObjectivesFirstStamp,
   OBJECTIVES_FIRST_CHECKPOINT,
   OBJECTIVES_FIRST_ORDER,
@@ -78,6 +79,7 @@ export {
   type Planner,
   plannerFor,
   plannerOf,
+  resumeFromDesigner,
   resumeFromObjectivesFirst,
 } from "./stages/objectives-first";
 export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";

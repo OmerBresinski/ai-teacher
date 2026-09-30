@@ -1,4 +1,5 @@
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
+import { designCyclePrompt } from "../prompts/design-cycle";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { planQuestionSetPrompt } from "../prompts/plan-question-set";
 import { planTeachObjectivePrompt } from "../prompts/plan-teach-objective";
@@ -14,8 +15,12 @@ import { STAGE_CHECKPOINT } from "../types";
  * half-way through the other planner.
  */
 
-export type Planner = "legacy" | "objectives-first";
-export const PLANNERS = ["legacy", "objectives-first"] as const satisfies readonly Planner[];
+export type Planner = "legacy" | "objectives-first" | "designer";
+export const PLANNERS = [
+  "legacy",
+  "objectives-first",
+  "designer",
+] as const satisfies readonly Planner[];
 
 /** The objectives step's stamp: the objectives are on the row, the facts and outline are not. */
 export const OBJECTIVES_FIRST_VERSION = planObjectivesPrompt.version;
@@ -67,9 +72,9 @@ export function isObjectivesFirstStamp(planned: string | undefined): boolean {
  * the objectives prompt's version, else `legacy` (a legacy stamp, or none at all).
  */
 export function plannerOf(lesson: Lesson): Planner {
-  return isObjectivesFirstStamp(lesson.generation?.promptVersions.planned)
-    ? "objectives-first"
-    : "legacy";
+  const planned = lesson.generation?.promptVersions.planned;
+  if (isDesignerStamp(planned)) return "designer";
+  return isObjectivesFirstStamp(planned) ? "objectives-first" : "legacy";
 }
 
 /**
@@ -104,4 +109,67 @@ export function resumeFromObjectivesFirst(lesson: Lesson): ObjectivesFirstStageN
     (stage) => OBJECTIVES_FIRST_CHECKPOINT[stage] === done,
   );
   return OBJECTIVES_FIRST_ORDER[index + 1] ?? null;
+}
+
+/* ------------------------------------------------------------------ the lesson designer */
+
+/*
+ * The lesson designer (the lesson designer plan; TEACH-199, TEACH-208), behind
+ * `AI_LESSON_PLANNER=designer`: the input check, the objectives step with the arc (the title saved
+ * before the call), then one design step — allocation, the design cycles streamed in parallel and
+ * each slot rendered, fitted and saved as it lands, the starter, objectives and exit ticket in code
+ * — then the same illustrate, evaluate and repair. No facts step and no Generate: the designer
+ * writes the slide text itself. Its stamp names the design-cycle prompt beside plan-objectives, so
+ * `plannerOf` tells it from the objectives-first planner that shares the objectives call.
+ */
+
+/** The designer's `planned` stamp: plan-objectives, then the design-cycle prompt. */
+export const DESIGNER_VERSION = `${planObjectivesPrompt.version}+${designCyclePrompt.version}`;
+
+/** Whether a `planned` stamp was written by the lesson designer. */
+export function isDesignerStamp(planned: string | undefined): boolean {
+  if (planned === undefined) return false;
+  const parts = planned.split("+");
+  return parts[0] === planObjectivesPrompt.version && parts.includes(designCyclePrompt.version);
+}
+
+export type DesignerStageName =
+  | "check-input"
+  | "objectives"
+  | "design"
+  | Exclude<PipelineStageName, "check-input" | "plan" | "generate">;
+
+export const DESIGNER_ORDER: readonly DesignerStageName[] = [
+  "check-input",
+  "objectives",
+  "design",
+  "illustrate",
+  "evaluate",
+  "repair",
+];
+
+export const DESIGNER_CHECKPOINT: Record<DesignerStageName, GenerationStage | null> = {
+  "check-input": null,
+  objectives: "planned",
+  design: STAGE_CHECKPOINT.generate,
+  illustrate: STAGE_CHECKPOINT.illustrate,
+  evaluate: STAGE_CHECKPOINT.evaluate,
+  repair: STAGE_CHECKPOINT.repair,
+};
+
+/**
+ * The first designer step still to run: from the input check with no checkpoint; `planned` with
+ * the objectives on the row, the design step (the teacher may have edited them); every later
+ * checkpoint, the step after it. A design step that stopped part-way re-designs from the objectives
+ * (the slides it saved are replaced): the count is fixed at allocation, so a half-built deck is
+ * never extended.
+ */
+export function resumeFromDesigner(lesson: Lesson): DesignerStageName | null {
+  const done = lesson.generation?.stage;
+  if (!done) return DESIGNER_ORDER[0] ?? null;
+  if (done === "planned") {
+    return (lesson.facts?.objectives.length ?? 0) > 0 ? "design" : "check-input";
+  }
+  const index = DESIGNER_ORDER.findIndex((stage) => DESIGNER_CHECKPOINT[stage] === done);
+  return DESIGNER_ORDER[index + 1] ?? null;
 }

@@ -118,6 +118,8 @@ export function labAi(
     evaluate?: unknown;
     /** The input check's answer (default: no findings). */
     checkInput?: unknown;
+    /** The lesson designer's cycle answer (default `designCycleAnswer`). */
+    designCycle?: (call: FakeCall, target: number, count: number) => string | Promise<string>;
   } = {},
 ) {
   let objectivesCalls = 0;
@@ -149,6 +151,13 @@ export function labAi(
       if (options.questionSet) return options.questionSet(call, { target, use, count });
       return json(questionSetAnswer({ target, use, count }));
     }
+    if (version.startsWith("design-cycle")) {
+      const m = /Design objective (\d+): (\d+) slot/.exec(call.promptText);
+      const target = Number(m?.[1]) - 1;
+      const count = Number(m?.[2]);
+      if (options.designCycle) return options.designCycle(call, target, count);
+      return json(designCycleAnswer(target, count));
+    }
     if (version.startsWith("verify-facts")) return json(options.verify ?? { corrections: [] });
     if (version.startsWith("generate-slide")) {
       const kind = /kind "([a-z-]+)"/.exec(call.promptText)?.[1] ?? "content";
@@ -160,6 +169,43 @@ export function labAi(
     throw new Error(`unexpected call: ${version}`);
   };
   return createFakeAi({ fallback, usage });
+}
+
+/**
+ * A design-cycle answer (the lesson designer): `count` slots that fit every theme, teaching first
+ * (a photo, then a callout) and a true/false check last, and one exit question.
+ */
+export function designCycleAnswer(target: number, count: number) {
+  const teach = [
+    {
+      form: "photo",
+      notes: "Ask what they notice.",
+      heading: "Forts guarded the frontier",
+      body: "Soldiers lived in stone forts along the wall.",
+      imageBrief: { subject: "Roman fort ruins", mustShow: ["stone walls"] },
+    },
+    {
+      form: "explain-callout",
+      notes: "Stress the point.",
+      heading: "Roads linked the forts",
+      body: "Straight roads let soldiers march quickly.",
+      callout: { text: "Roads were not built for trade first." },
+    },
+  ];
+  const check = {
+    form: "true-false",
+    notes: "Take a vote.",
+    statement: "The Romans built roads to move soldiers.",
+    correct: true,
+    explanation: "Armies had to reach trouble fast.",
+  };
+  const slots = Array.from({ length: count }, (_, k) =>
+    k === count - 1 && count > 1 ? check : teach[k % teach.length],
+  );
+  return {
+    slots,
+    exitQuestion: { question: `Name one thing objective ${target + 1} taught.`, answer: "Forts" },
+  };
 }
 
 export const versionsOf = (ai: ReturnType<typeof labAi>) =>
