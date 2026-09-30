@@ -18,7 +18,10 @@ import { type Audience, audienceBlock } from "./shared";
  * v12: the photo slot's contract and schema carry `named` (proper name or null; code routes it to Commons). */
 /* v14 (merge): v13's photo subject (spike/photo-bench); the exit role gone (its ticket is on the
  * worksheet); the notes rule no longer says "first", since the stream schema puts notes last. */
-export const WRITE_SLIDES_VERSION = "write-slides.v14";
+/* v15 (round A2, explanations that build; ruling 140's larger body): a slot's lines are for the complete
+ * explanation, not the fewest words; a teach slide is one claim backed on the slide, case first then the
+ * general rule; a worked example fades (the teacher shows the first step, the class gives the rest). */
+export const WRITE_SLIDES_VERSION = "write-slides.v15";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -71,12 +74,12 @@ export type WriteSlidesInput = {
 /** The writing rules, from "Pitch the content" to the end (reused by stream-lesson). */
 export const WRITE_RULES = `Pitch the content at what this year group's specification expects, and the language at the reading level given; explain any word a pupil at that level would not know.
 
-Fill each slot exactly as its contract line says: its count of items, lines or sentences, the kind of text each one is, and the lines it takes on the slide. A line here is a line of large projected type, much shorter than a line on a page: "Kenya is hotter than the Arctic" fills a heading's line; "Oak flowers are pollinated by the wind" fills the line of a full-width card; "I think the main reason was…" is half a line; "Positive ions move to the negative electrode, where they gain electrons." takes two lines of body text. Say each idea in the lines its slot has, in the plainest words that carry it. Everything taught is on the slide; the notes add the teacher's talk.
+Fill each slot exactly as its contract line says: its count of items, lines or sentences, the kind of text each one is, and the lines it takes on the slide. A line here is a line of large projected type, much shorter than a line on a page: "Kenya is hotter than the Arctic" fills a heading's line; "Oak flowers are pollinated by the wind" fills the line of a full-width card; "I think the main reason was…" is half a line; "Positive ions move to the negative electrode, where they gain electrons." takes two lines of body text. Use the lines each slot has for the complete explanation: every step a pupil needs to follow the idea, in the plainest words that carry it, with nothing said twice. Everything taught is on the slide; the notes add the teacher's talk.
 Where a slot's kind is a phrase, a label or a term, write that and not a sentence: "Heavier than water", not "The stone is heavier than the water it pushes aside."
 Each idea a row teaches appears on its slide itself, in the order the plan gives. The questions on other slides are written from them.
 A heading is the slide's idea as a claim on one line: a subject and one verb, with no full stop and no "and", "but" or list ("Cholera spread through water", not "Cholera spread through drinking water rather than bad air in 1854 London"). The reason and the case go in the body. A worked example's heading is the label of its method ("Finding a missing angle").
-A teach slide's body says how or why its claim holds (what acts on what, and what follows) and works one real case through it, with the case's own detail: the running example where it fits, otherwise a place, an event, a person, a reaction, a quoted line or worked numbers. A list, compare or sequence carries its case in a point, side or step.
-A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°").
+A teach slide makes one claim, its heading, and its body backs that claim on the slide: first one real case with its own detail (the running example where it fits, otherwise a place, an event, a person, a reaction, a quoted line, a source or worked numbers), then the general rule the case shows and how or why it holds (what acts on what, and what follows). A list, compare or sequence carries its case in a point, side or step.
+A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°"). Its notes show the first line, then ask the class for each later line before it is revealed.
 A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
 Each check question has exactly one defensible answer.
 A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: where its objective is to work something out or identify it, a question set whose items step up from a plain case to that one; where it is to explain or describe, a written task that says what to write and what it must use.
