@@ -117,7 +117,8 @@ export function contractFor(form: string, layout: string): string {
 /** The writer's schema for one slide: the contract's fields plus the teacher notes. */
 export function slideWriterSchema(form: string, layout: string) {
   const base = isSetForm(form) ? setSchema() : writerSchema(form as PaletteFormId, layout);
-  return base.extend({
-    notes: z.string().describe("what the teacher says and does with this slide"),
-  });
+  // Notes first: said aloud, answer first on a question slide (write-slides.v1).
+  return z
+    .object({ notes: z.string().describe("what the teacher says and does with this slide") })
+    .extend(base.shape);
 }

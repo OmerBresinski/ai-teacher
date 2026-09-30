@@ -78,13 +78,36 @@ const ANSWERS: Record<string, unknown> = {
   },
 };
 
+/** The slides a writer call was asked for (and a re-write's field), read back from its user turn. */
+function writerCallOf(text: string): WriteSlidesInput {
+  const slides = [...text.matchAll(/^Slide (\d+): [^,]+, ([a-z-]+)(?: \(([a-z-]+)\))?$/gm)].map(
+    (m) => ({
+      number: Number(m[1]),
+      form: m[2] as string,
+      layout: m[3] ?? "default",
+      contract: "",
+    }),
+  );
+  const field = /Write (\S+) again/.exec(text)?.[1];
+  const base = { topic: "", audience: {}, objectives: [], runningExample: "", misconception: "" };
+  return {
+    ...base,
+    // One plan row per line ("1 title", "2 retrieve · …"): only the count is asserted.
+    table: [...text.matchAll(/^\d+ [a-z]/gm)].map(() => ({}) as PlanSlide),
+    slides,
+    ...(field && slides[0]
+      ? { rewrite: { slide: slides[0], field, failure: "", current: {} } }
+      : {}),
+  };
+}
+
 function planWriteAi(calls: WriteSlidesInput[]) {
   const fallback: FakeScriptEntry = async (call: FakeCall) => {
     const version = call.context?.promptVersion ?? "";
     if (version.startsWith("check-input")) return json({ findings: [] });
     if (version.startsWith("plan-lesson")) return json(PLAN);
     if (version.startsWith("write-slides")) {
-      const input = JSON.parse(call.promptText) as WriteSlidesInput;
+      const input = writerCallOf(call.promptText);
       calls.push(input);
       if (input.rewrite) return json({ [input.rewrite.field]: "Soldiers lived inside the fort" });
       return json(
