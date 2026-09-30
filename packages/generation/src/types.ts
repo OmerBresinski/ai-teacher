@@ -227,6 +227,19 @@ export interface DesignTimings {
   editableMs?: number;
   /** The Verify call, run after the generated save. */
   verifyMs?: number;
+  /**
+   * The facts feed (`DESIGNER_FACTS=1`), per objective: when its teach call and the Verify over its
+   * facts returned (ms after the design step's start), how many corrections, which slides were
+   * re-filled, and how long its cycle waited for its facts.
+   */
+  factsFeed?: {
+    objective: number;
+    teachMs?: number;
+    verifyMs?: number;
+    corrections: number;
+    refilled: number[];
+    failed?: true;
+  }[];
 }
 
 /** What the lesson designer's design step did, for the `generation summary` line's fit block. */

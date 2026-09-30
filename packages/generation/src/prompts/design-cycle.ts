@@ -232,6 +232,25 @@ export type DesignCycleInput = {
    * objective has no photo, figure or diagram"), and the form to write.
    */
   replacing?: { form: SlotForm; material: string; reason: string; into: SlotForm } | undefined;
+  /**
+   * This objective's facts (`DESIGNER_FACTS=1`): the objectives-first teach call's key ideas,
+   * misconceptions, vocabulary and worked examples, Verify-corrected on a re-fill. Rendered as a
+   * plain block after the slot list; left out, the user turn is unchanged.
+   */
+  facts?: DesignCycleFacts | undefined;
+};
+
+/** One objective's facts as the design cycle is handed them (`plan-teach-objective`'s lists). */
+export type DesignCycleFacts = {
+  keyIdeas: readonly {
+    statement: string;
+    explanation: string;
+    example: string;
+    analogy?: string | undefined;
+  }[];
+  misconceptions: readonly { belief: string; correction: string }[];
+  vocabulary: readonly { term: string; definition: string }[];
+  workedExamples: readonly { problem: string; steps: readonly string[]; answer: string }[];
 };
 
 /** The forms each role admits, as the system text lists them (v6); for code that enforces a role. */
@@ -462,6 +481,30 @@ function arcLine(o: DesignCycleInput["objectives"][number], i: number, self: boo
  * The re-fill's block (fit rung 4): the slot it replaces, as written, and why it did not fit.
  * Absent on a cycle call, whose text is unchanged. Wording pending the prompt-engineer.
  */
+/** The facts block of the user turn: the lists as plain labelled lines, nothing added. */
+export function factsFeedBlock(f: DesignCycleFacts): string[] {
+  const lines = ["", "Facts for this objective:"];
+  f.keyIdeas.forEach((k, i) => {
+    lines.push(`Key idea ${i + 1}: ${k.statement}`);
+    lines.push(`  Explanation: ${k.explanation}`);
+    lines.push(`  Example: ${k.example}`);
+    if (k.analogy) lines.push(`  Analogy: ${k.analogy}`);
+  });
+  for (const m of f.misconceptions) {
+    lines.push(`Misconception: ${m.belief}`);
+    lines.push(`  Correction: ${m.correction}`);
+  }
+  for (const v of f.vocabulary) lines.push(`Vocabulary: ${v.term}: ${v.definition}`);
+  for (const x of f.workedExamples) {
+    lines.push(`Worked example: ${x.problem}`);
+    x.steps.forEach((step, i) => {
+      lines.push(`  Step ${i + 1}: ${step}`);
+    });
+    lines.push(`  Answer: ${x.answer}`);
+  }
+  return lines;
+}
+
 function replacingBlock(r: NonNullable<DesignCycleInput["replacing"]>): string[] {
   return [
     "",
@@ -526,6 +569,7 @@ export const designCyclePrompt = {
       "",
       `Design objective ${input.objectiveIndex + 1}: ${count} ${count === 1 ? "slot" : "slots"}, ${where} of ${slideCount}.`,
       ...roles.map((role, k) => `  slide ${first + k}: ${role}`),
+      ...(input.facts ? factsFeedBlock(input.facts) : []),
       ...(input.replacing ? replacingBlock(input.replacing) : []),
     ].join("\n");
   },
