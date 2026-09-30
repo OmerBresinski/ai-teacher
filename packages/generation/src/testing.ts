@@ -323,6 +323,7 @@ export function recordingDeps(
     abortAfterPersist?: number;
     images?: PhotoPlacer;
     objectivesOnTitle?: boolean;
+    designerR6?: boolean;
   } = {},
 ): RecordedDeps {
   const abort = new AbortController();
@@ -357,6 +358,7 @@ export function recordingDeps(
     ...(options.objectivesOnTitle !== undefined
       ? { objectivesOnTitle: options.objectivesOnTitle }
       : {}),
+    ...(options.designerR6 !== undefined ? { designerR6: options.designerR6 } : {}),
     persisted,
     progress,
     abort,

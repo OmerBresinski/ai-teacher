@@ -263,6 +263,8 @@ export type LessonFacts = {
   durationMin: number;
   /** Lab r2: the starter's retrieval questions (prior knowledge); not facts, no id. Verify reads them as `r1`–`rN` (l6c). */
   retrieval?: RetrievalQuestion[];
+  /** Designer r6: the optional opening and closing slots the objectives call asked for. */
+  bookends?: LessonBookends;
 };
 
 export const CurriculumRefSchema = z.strictObject({
@@ -401,6 +403,24 @@ export const RetrievalQuestionSchema = z.strictObject({
 });
 export type RetrievalQuestion = z.infer<typeof RetrievalQuestionSchema>;
 
+/**
+ * Designer r6: an optional opening (retrieval or a hook) and closing (a check, a plenary or a
+ * debate) the objectives call chose for this topic and year group; never a fixed slot. `prompt`
+ * is what a hook, plenary or debate asks the class.
+ */
+export const LessonBookendsSchema = z.strictObject({
+  opening: z
+    .strictObject({ kind: z.enum(["retrieval", "hook"]), prompt: z.string().optional() })
+    .optional(),
+  closing: z
+    .strictObject({
+      kind: z.enum(["check", "plenary", "debate"]),
+      prompt: z.string().optional(),
+    })
+    .optional(),
+});
+export type LessonBookends = z.infer<typeof LessonBookendsSchema>;
+
 export const LessonFactsSchema = z
   .strictObject({
     objectives: z.array(ObjectiveSchema),
@@ -414,6 +434,7 @@ export const LessonFactsSchema = z
     durationMin: z.number().int().min(1),
     /** Lab r2: the starter's retrieval set, when the objectives call wrote one. */
     retrieval: z.array(RetrievalQuestionSchema).optional(),
+    bookends: LessonBookendsSchema.optional(),
   })
   .superRefine((facts, ctx) => {
     // Ids are the addressing scheme for `factRefs`, so they must be unique across every array

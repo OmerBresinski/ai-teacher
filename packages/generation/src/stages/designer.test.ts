@@ -115,6 +115,33 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     expect(() => parseLesson(lesson)).not.toThrow();
   });
 
+  test("designer r6: the title with the objectives is the only fixed slide; no starter, no exit ticket unless asked", async () => {
+    const ai = labAi({
+      retrieval: [
+        { question: "What is an empire?", answer: "Lands ruled by one ruler" },
+        { question: "Who were the Celts?", answer: "People living in Britain" },
+        { question: "What is a soldier?", answer: "Someone who fights in an army" },
+      ],
+    });
+    const deps = recordingDeps(ai, { designerR6: true });
+    const final = await runLessonPipeline({ lesson: romans(10) }, deps, { planner: "designer" });
+    const lesson = final.lesson;
+    expect(lesson.slides).toHaveLength(10);
+    const kinds = lesson.slides.map((s) => s.kind);
+    expect(kinds[0]).toBe("title");
+    expect(kinds).not.toContain("objectives");
+    expect(kinds).not.toContain("starter");
+    expect(kinds).not.toContain("exit-ticket");
+    // Nine cycle slots for three objectives: 3 each (teach, show, check).
+    expect(final.designReport?.allocation).toEqual([3, 3, 3]);
+    expect(final.designReport?.slots).toHaveLength(9);
+    // Every check was judged against the slides before it.
+    const support = final.designReport?.answerSupport ?? [];
+    expect(support.length).toBeGreaterThan(0);
+    expect(support.every((s) => s.where === "check")).toBe(true);
+    expect(() => parseLesson(lesson)).not.toThrow();
+  });
+
   test("the objectives-on-title switch: off by default, on with the env flag or the deps", () => {
     const was = process.env.DESIGNER_OBJECTIVES_ON_TITLE;
     try {

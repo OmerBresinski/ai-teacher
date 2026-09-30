@@ -160,6 +160,13 @@ export interface PipelineDeps {
    */
   objectivesOnTitle?: boolean;
   /**
+   * Designer r6 (structure is not fixed): the title with the objectives is the only fixed slide,
+   * the opening and closing slots come only when the objectives call asked for them, cycles run
+   * teach, show, check (practise when there is room), teaching never moves to the notes, and every
+   * check's answer must be on an earlier slide. Unset: `DESIGNER_R6=1` turns it on; off otherwise.
+   */
+  designerR6?: boolean;
+  /**
    * The reasoning effort a call runs at, given the stage, the prompt name (`plan-facts`) and the
    * effort the stage asked for. Set by the lab's effort bench, and by the worker when
    * `AI_REASONING_EFFORT` is set (TEACH-72). Unset: the stage's choice.
@@ -291,6 +298,18 @@ export interface DesignReport {
   /** Where the design step's time went (ms from the lesson's start unless named otherwise). */
   timings?: DesignTimings;
   photos: { requested: number; placed: number };
+  /**
+   * Designer r6: whether each check's, the closing's and the opening's answer is on an earlier
+   * slide (`planner/answer-support.ts`), and whether an unsupported one was re-filled.
+   */
+  answerSupport?: {
+    slide: number;
+    where: "check" | "opening" | "closing";
+    ok: boolean;
+    by: string;
+    missing?: string[];
+    refilled?: boolean;
+  }[];
 }
 
 /** What one Verify call settles to (`stages/verify.ts`); a type here so `PipelineState` can name it. */

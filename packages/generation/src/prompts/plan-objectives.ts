@@ -282,6 +282,18 @@ export type PlanObjectivesInput = {
    * (several lessons' outcomes, key learning points, keywords, misconceptions). Optional.
    */
   curriculum?: { text: string } | undefined;
+  /**
+   * Designer r6: the deck's slide count and the most objectives it holds (every objective gets at
+   * least 3 slides; the title is the only fixed slide; an opening or closing slot costs one).
+   * Code keeps the first `maxObjectives` if more come back. Left out outside r6.
+   */
+  slideCount?: number | undefined;
+  maxObjectives?: number | undefined;
+  /**
+   * Designer r6: the most objectives with no, one or two optional opening/closing slots (each slot
+   * costs a slide): `floor((slideCount - 1 - slots) / 3)`. Code cuts past the matching cap.
+   */
+  maxObjectivesByBookends?: { none: number; one: number; two: number } | undefined;
 };
 
 /** What the model is told when a curriculum unit is retrieved. Never `SOURCE_INSTRUCTION`. */
