@@ -1284,10 +1284,12 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
     const top = snapY(q.y + qh + SPACE[3]);
     const placed = rowCards(rows, top, SAFE_BOTTOM, t, ids, {
       mainOneLine: true,
+      minGap: SPACE[1],
       maxGap: SPACE[3],
-      sizes: [readingSize(t)],
+      sizes: [resolveFontSize(t, "body")],
       cardName: STEP_NAME,
-      mainShare: 0.5,
+      textName: (i) => `Step ${i + 1}`,
+      mainShare: 0.58,
     });
     if (placed) return [{ ...slide, elements: [...keep, ...placed.elements] }];
   }
@@ -2649,6 +2651,8 @@ function sidePanel(
  */
 
 export const ROW_CARD_NAME = "Row card";
+/** Measured width held back from a one-line text, so the browser's own wrap never breaks it. */
+const ONE_LINE_SLACK = 12;
 export const ROW_BADGE_NAME = "Row badge";
 export const ROW_TEXT_NAME = "Row text";
 export const ROW_SIDE_NAME = "Row side";
@@ -2675,6 +2679,8 @@ export type RowOptions = {
   mainShare?: number;
   /** The main text must sit on one line (an equation never wraps). */
   mainOneLine?: boolean;
+  /** The smallest gap between cards (a worked example's rows sit closer than a set's). */
+  minGap?: number;
   /** The largest gap between cards when spreading. */
   maxGap?: number;
   /** The cards' name (a sequence's and a worked example's are step cards). */
@@ -2702,7 +2708,7 @@ export function rowCards(
 ): Placed | undefined {
   if (rows.length === 0) return undefined;
   const measure = measureHeadless(t);
-  const minGap = SPACE[3];
+  const minGap = options.minGap ?? SPACE[3];
   const maxGap = options.maxGap ?? SPACE[5];
   const colGap = GUTTER;
   const tries = (options.sizes ?? rowSizes(t, rows.length)).flatMap((size) =>
@@ -2713,14 +2719,27 @@ export function rowCards(
     const cardW = options.split ? Math.floor((SAFE.w - colGap) / 2) : SAFE.w;
     const inner = cardW - pad * 3 - badge;
     const hasSide = !options.split && rows.some((r) => r.side);
-    const mainW = hasSide ? Math.floor(inner * (options.mainShare ?? 0.55)) : inner;
-    const sideW = inner - mainW - SPACE[3];
     const leading = readingLeading(t);
     const style = (extra: Partial<TextStyle> = {}): Partial<TextStyle> => ({
       lineHeight: leading,
       ...extra,
     });
     const h1 = heightOf(measure, docFromText("X"), inner, "body", size, 0, style());
+    // One-line mains take only the width the widest of them needs (within the share), so the
+    // reasons get the rest and stay on one line where they can.
+    const share = Math.floor(inner * (options.mainShare ?? 0.55));
+    const natural = (words: string) => {
+      for (let w = Math.floor(inner * 0.3); w <= share; w += 16) {
+        if (heightOf(measure, docFromText(words), w, "body", size, 0, style()) <= h1) return w;
+      }
+      return undefined;
+    };
+    const widest =
+      options.mainOneLine && hasSide
+        ? Math.max(0, ...rows.filter((r) => r.side).map((r) => natural(r.main) ?? 0))
+        : 0;
+    const mainW = hasSide ? (widest > 0 ? Math.min(share, widest + ONE_LINE_SLACK) : share) : inner;
+    const sideW = inner - mainW - SPACE[3];
     let ok = true;
     const sideSize = options.split ? size : resolveFontSize(t, "small");
     const sidePreset: TextPreset = options.split ? "body" : "small";
@@ -2731,16 +2750,38 @@ export function rowCards(
       !!r.reveal &&
       !hasSide &&
       heightOf(measure, docFromText(r.reveal), revealW, "body", size, 0, style()) <= h1;
-    const measured = rows.map((r) => {
+    // A one-line main that is too long for its column beside the side text takes the full inner
+    // width, with the side text stacked under it in the same card (a long equation's reason).
+    const oneLine = (words: string, w: number) =>
+      words
+        .split("\n")
+        .every(
+          (line) =>
+            heightOf(measure, docFromText(line), w - ONE_LINE_SLACK, "body", size, 0, style()) <=
+            h1,
+        );
+    // Working too long for one line even at full width breaks at its arrow, never mid-equation.
+    const rs = rows.map((r) =>
+      options.mainOneLine && r.main.includes(" → ") && !oneLine(r.main, inner)
+        ? { ...r, main: r.main.split(" → ").join("\n→ ") }
+        : r,
+    );
+    const measured = rs.map((r) => {
       const at = beside(r);
-      const mw = at ? inner - revealW - SPACE[3] : wOf(r);
+      const stacked =
+        !!options.mainOneLine &&
+        hasSide &&
+        !!r.side &&
+        !oneLine(r.main, mainW) &&
+        oneLine(r.main, inner);
+      const mw = at ? inner - revealW - SPACE[3] : stacked ? inner : wOf(r);
       const main = heightOf(measure, docFromText(r.main), mw, "body", size, 0, style());
-      if (options.mainOneLine && main > h1) ok = false;
+      if (options.mainOneLine && !oneLine(r.main, mw)) ok = false;
       const side = r.side
         ? heightOf(
             measure,
             docFromText(r.side),
-            options.split ? inner : sideW,
+            options.split || stacked ? inner : sideW,
             sidePreset,
             sideSize,
             0,
@@ -2762,12 +2803,14 @@ export function rowCards(
         ? Math.max(main, side)
         : at
           ? Math.max(main, reveal)
-          : Math.max(main + reveal, side);
-      return { main, side, reveal, at, mw, h: Math.max(badge, content) + pad * 2 };
+          : stacked
+            ? main + SPACE[0] + side + reveal
+            : Math.max(main + reveal, side);
+      return { main, side, reveal, at, mw, stacked, h: Math.max(badge, content) + pad * 2 };
     });
-    if (!ok) continue;
     const total = measured.reduce((n, m) => n + m.h, 0);
     const room = bottom - top;
+    if (!ok) continue;
     const n = rows.length;
     if (withSafety(total + minGap * (n - 1)) > room) continue;
     const spare = room - withSafety(total) - minGap * (n - 1);
@@ -2778,7 +2821,7 @@ export function rowCards(
       top + Math.max(0, Math.floor((withSafety(used) > room ? 0 : room - withSafety(used)) / 3)),
     );
     const els: SlideElement[] = [];
-    rows.forEach((r, i) => {
+    rs.forEach((r, i) => {
       const m = measured[i] as (typeof measured)[number];
       const when = r.step ? { revealStep: r.step, reveal: "fade" as const } : {};
       const place = (
@@ -2838,7 +2881,9 @@ export function rowCards(
         els.push(
           text(
             ids,
-            { x: tx + mainW + SPACE[3], y: y + pad, w: sideW, h: m.side },
+            m.stacked
+              ? { x: tx, y: y + pad + m.main + SPACE[0], w: inner, h: m.side }
+              : { x: tx + mainW + SPACE[3], y: y + pad, w: sideW, h: m.side },
             docFromText(r.side),
             {
               preset: sidePreset,
@@ -2891,7 +2936,7 @@ export function workingAndReason(step: string): [string, string | undefined] {
     const b = step.slice(at + sep.length).trim();
     if (!a || !b) continue;
     if (maths(b) && !maths(a)) return [b, a];
-    if (maths(a)) return [a, b];
+    if (maths(a) && !maths(b)) return [a, b];
   }
   return [step, undefined];
 }
