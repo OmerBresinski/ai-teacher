@@ -1,0 +1,169 @@
+{
+  "topic": "Weimar Germany (y9 history), smoke r7 design-cycle.v5",
+  "objectives": {
+    "objectives": [
+      {
+        "text": "Explain how reparations, the Ruhr occupation and passive resistance led to hyperinflation",
+        "arc": {
+          "angle": "How the government's response to the Ruhr occupation increased the money supply and prices",
+          "lean": "sequence",
+          "misconception": "Printing more money made Germany richer"
+        }
+      },
+      {
+        "text": "Explain how hyperinflation affected the savings, wages and daily lives of different groups",
+        "arc": {
+          "angle": "Why people on fixed incomes and people with debts experienced the crisis differently",
+          "lean": "compare",
+          "misconception": "Everyone in Germany was affected in the same way"
+        }
+      }
+    ],
+    "retrieval": [
+      {
+        "question": "What is a currency?",
+        "answer": "The money used in a country"
+      },
+      {
+        "question": "What is the difference between income and savings?",
+        "answer": "Income is money received; savings are money kept for later"
+      },
+      {
+        "question": "What does it mean to borrow money?",
+        "answer": "To receive money now and agree to repay it later"
+      }
+    ]
+  },
+  "cycles": [
+    {
+      "slots": [
+        {
+          "form": "photo",
+          "notes": "Explain that the Ruhr was an important industrial region, producing coal and other goods. France and Belgium occupied it in January 1923 after Germany fell behind on reparations payments. Reparations were payments Germany had been required to make after the First World War.",
+          "heading": "French and Belgian troops occupied the Ruhr",
+          "body": "The occupation took control of a major industrial region of Germany. It followed Germany\u2019s failure to keep up with reparations payments.",
+          "imageBrief": {
+            "subject": "Archival photograph of French or Belgian troops in the Ruhr during its 1923 occupation",
+            "mustShow": [
+              "Troops in a street or near industrial buildings",
+              "A recognisable historical setting from the early 1920s"
+            ]
+          }
+        },
+        {
+          "form": "explain-callout",
+          "notes": "Trace the chain aloud: reparations payments were due; the Ruhr was occupied; German workers resisted by refusing to work; the government supported them by paying their wages despite lost production; it created money to meet these costs. With fewer goods being produced and more money circulating, prices rose rapidly. This is hyperinflation: an extremely fast rise in prices. Printing money did not create more goods or make the country richer.",
+          "heading": "Paying striking workers helped drive prices up",
+          "body": "The government paid workers who resisted the Ruhr occupation, even though less was being produced, and printed money to cover the cost.",
+          "callout": {
+            "text": "Printing more money did not make Germany richer. More money chased fewer goods, so prices rose rapidly."
+          }
+        },
+        {
+          "form": "hinge",
+          "notes": "Ask pupils to choose an answer independently, then discuss why the other options are tempting but wrong. Look for the link between passive resistance, government spending, money supply and prices.",
+          "stem": "Why did the government\u2019s response to passive resistance help cause hyperinflation?",
+          "options": [
+            {
+              "text": "It printed money to pay workers while production fell, so prices rose",
+              "correct": true
+            },
+            {
+              "text": "It printed money that increased the amount of goods available",
+              "correct": false
+            },
+            {
+              "text": "It stopped reparations payments, so prices immediately fell",
+              "correct": false
+            },
+            {
+              "text": "It made Ruhr workers produce more goods, so money became scarce",
+              "correct": false
+            }
+          ],
+          "explanation": "The government created money to pay workers who were not producing goods, increasing the money supply as the supply of goods fell."
+        }
+      ],
+      "exitQuestion": {
+        "question": "How did paying workers during passive resistance contribute to hyperinflation?",
+        "answer": "The government printed money to pay workers while production fell, so more money chased fewer goods and prices rose."
+      }
+    },
+    {
+      "slots": [
+        {
+          "form": "compare",
+          "notes": "Explain that a fixed income is money that stays the same, such as a pension or a salary that has not yet been adjusted. As prices rose quickly, the same amount of money bought less. People with debts could sometimes repay them with money that had lost much of its value, although this did not help everyone with debts equally.",
+          "heading": "Fixed incomes lost value, while some debts became easier to repay",
+          "body": "Rapid price rises affected people differently, depending on their income and debts.",
+          "compare": {
+            "left": {
+              "label": "People on fixed incomes",
+              "points": ["Pensions and savings bought less", "Struggled to afford everyday goods"]
+            },
+            "right": {
+              "label": "People with debts",
+              "points": [
+                "Could repay loans with less valuable money",
+                "Some debts became easier to clear"
+              ]
+            }
+          }
+        },
+        {
+          "form": "photo",
+          "notes": "Ask pupils what they notice about the money and the shop goods. Explain that prices could change so quickly that wages or savings did not keep up. Avoid suggesting that every household had the same experience: the effects depended on a person\u2019s income, savings and debts.",
+          "heading": "Daily shopping became difficult as prices soared",
+          "body": "People needed more and more marks to buy everyday goods. Those paid at a fixed rate could find that their money no longer covered basic needs.",
+          "imageBrief": {
+            "subject": "A historical-style scene of a person shopping in Germany during the 1923 hyperinflation crisis",
+            "mustShow": [
+              "A customer holding a large bundle of banknotes",
+              "A small selection of everyday goods in a shop",
+              "No legible modern packaging or identifiable people"
+            ]
+          }
+        },
+        {
+          "form": "hinge",
+          "notes": "Pupils should reject the idea that everyone experienced hyperinflation in the same way. Ask them to explain why the two groups differed: prices rose rapidly, but fixed incomes did not keep pace, while some borrowers could repay debts in money worth less than when they borrowed it.",
+          "stem": "Why could hyperinflation affect a pensioner and a person with a loan differently?",
+          "options": [
+            {
+              "text": "A pension could lose buying power, while some debts became easier to repay",
+              "correct": true
+            },
+            {
+              "text": "Both always gained because everyone received more banknotes",
+              "correct": false
+            },
+            {
+              "text": "Both were affected in exactly the same way",
+              "correct": false
+            },
+            {
+              "text": "A pension rose automatically whenever prices rose",
+              "correct": false
+            }
+          ],
+          "explanation": "Prices rose faster than many fixed incomes, while some borrowers could repay loans with money that had lost value."
+        }
+      ],
+      "exitQuestion": {
+        "question": "Why could hyperinflation harm someone on a fixed income but help someone with a debt?",
+        "answer": "A fixed income bought less as prices rose, while some debts could be repaid with money that had lost value."
+      }
+    }
+  ],
+  "electrolysisWorkedExample": {
+    "form": "worked-example",
+    "notes": "Read the question carefully for both the ions present and whether the solution is concentrated. At the anode, negative ions lose electrons. In this example, concentrated chloride ions form chlorine rather than hydroxide ions forming oxygen.",
+    "heading": "Predicting the anode product in concentrated sodium chloride",
+    "question": "What forms at the anode during electrolysis of concentrated aqueous sodium chloride?",
+    "steps": [
+      "The solution contains chloride ions and hydroxide ions.",
+      "Because the solution is concentrated, chloride ions form the halogen at the anode.",
+      "Chlorine gas forms at the anode."
+    ]
+  }
+}

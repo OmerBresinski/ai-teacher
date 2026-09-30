@@ -13,16 +13,21 @@ import {
   fitSlide,
   getTheme,
   HEADING_NAME,
+  type IdSupplier,
   isBackdrop,
+  type MaterialiseMeta,
   materialiseSlide,
   measureHeadless,
+  paletteForm,
   type QuizLine,
   SAFE_BOTTOM,
   type SlideSpec,
+  type SlideStructure,
   SPACE,
   THEMES,
   textPartsOf,
 } from "@tj/slides";
+import type { DesignSlot, SlotForm } from "../prompts/design-cycle";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -503,5 +508,232 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
         return { ...e, y: top, h: bottom - top, name: ANSWERS_NAME, revealStep: 1, reveal: "fade" };
       return e;
     }),
+  };
+}
+
+/* ------------------------------------------------------------------ designer slots */
+
+/*
+ * The lesson designer's slot renderers (the lesson designer plan, PR 8; TEACH-208): every palette
+ * slide form mapped from its slot material to the slide spec its palette entry names, laid out in
+ * that entry's variant with its structure hints. No second writer runs: the text the design cycle
+ * wrote is the text on the slide. A figure has no template values in the slot contract yet, so it
+ * is drawn as the labelled diagram placeholder carrying its brief (ruling 133) until they do.
+ */
+
+/** A slot as the renderer lays it out: the spec, the recipe variant and the structure hints. */
+export type SlotRender = {
+  form: SlotForm;
+  spec: SlideSpec;
+  variant?: string;
+  structure: SlideStructure;
+};
+
+/** The palette's variant for a form (the kind's default when the entry names none). */
+export function paletteVariantOf(form: SlotForm): string | undefined {
+  const r = paletteForm(form).renderer;
+  return r.on === "slide" ? r.variant : undefined;
+}
+
+/**
+ * The slide spec, variant and structure for one designer slot. `seed` orders a hinge's options
+ * (the model tends to list the answer first); `factRefs` ride on the spec as for any slide.
+ */
+export function slotRender(slot: DesignSlot, seed: string, factRefs: string[] = []): SlotRender {
+  const base = { factRefs, ...(slot.notes ? { notes: slot.notes } : {}) };
+  const variant = paletteVariantOf(slot.form);
+  const out = (spec: SlideSpec, structure: SlideStructure = {}): SlotRender => ({
+    form: slot.form,
+    spec,
+    ...(variant ? { variant } : {}),
+    structure,
+  });
+  switch (slot.form) {
+    case "explain":
+      return out({ kind: "content", ...base, heading: slot.heading, body: slot.body });
+    case "explain-callout":
+      return out({
+        kind: "content",
+        ...base,
+        heading: slot.heading,
+        body: slot.body,
+        callout: { kind: "watch-out", text: slot.callout.text },
+      });
+    case "list":
+      return out({
+        kind: "content",
+        ...base,
+        heading: slot.heading,
+        body: slot.body,
+        points: slot.points,
+      });
+    case "compare":
+      return out({
+        kind: "content",
+        ...base,
+        heading: slot.heading,
+        body: slot.body,
+        compare: slot.compare,
+      });
+    case "sequence":
+      return out({
+        kind: "content",
+        ...base,
+        heading: slot.heading,
+        body: slot.body,
+        steps: slot.steps,
+      });
+    case "photo":
+      return out(
+        { kind: "content", ...base, heading: slot.heading, body: slot.body },
+        { photo: { subject: slot.imageBrief.subject, mustShow: slot.imageBrief.mustShow ?? [] } },
+      );
+    case "figure":
+      return out({
+        kind: "content",
+        ...base,
+        heading: slot.heading,
+        body: slot.body,
+        diagram: slot.figureBrief.purpose,
+      });
+    case "diagram-slot":
+      return out({
+        kind: "content",
+        ...base,
+        heading: slot.heading,
+        body: slot.body,
+        diagram: slot.diagram,
+      });
+    case "worked-example":
+      return out({
+        kind: "worked-example",
+        ...base,
+        heading: slot.heading,
+        question: slot.question,
+        steps: slot.steps,
+      });
+    case "hinge":
+      return out(
+        withShuffledOptions(
+          {
+            kind: "multiple-choice",
+            ...base,
+            stem: slot.stem,
+            options: slot.options,
+            explanation: slot.explanation,
+          },
+          seed,
+        ),
+      );
+    case "true-false":
+      return out({
+        kind: "true-false",
+        ...base,
+        statement: slot.statement,
+        correct: slot.correct,
+        explanation: slot.explanation,
+      });
+    case "matching":
+      return out({ kind: "matching", ...base, stem: slot.stem, pairs: slot.pairs });
+    case "fill-gap":
+      return out({
+        kind: "fill-gap",
+        ...base,
+        stem: slot.stem,
+        sentence: slot.sentence,
+        answers: slot.answers,
+      });
+    case "sort":
+      return out({ kind: "sort", ...base, stem: slot.stem, steps: slot.steps });
+    case "open-response":
+      return out({
+        kind: "open-response",
+        ...base,
+        stem: slot.stem,
+        modelAnswer: slot.modelAnswer,
+      });
+    case "discussion":
+      return out({
+        kind: "discussion",
+        ...base,
+        prompt: slot.prompt,
+        ...(slot.footnote ? { footnote: slot.footnote } : {}),
+      });
+    case "vocabulary":
+      return out({ kind: "vocabulary", ...base, entries: slot.entries });
+  }
+}
+
+/** The slot laid out as a slide in the lesson's theme (`materialiseSlide`). */
+export function renderSlot(
+  render: SlotRender,
+  themeId: string,
+  meta: MaterialiseMeta,
+  ids?: IdSupplier,
+): Slide {
+  return materialiseSlide(render.spec, themeId, meta, ids, render.variant, render.structure);
+}
+
+/** Forms that check the objective (the lesson's check count reads these). */
+export const CHECK_FORMS: ReadonlySet<SlotForm> = new Set([
+  "hinge",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "open-response",
+]);
+/** Forms that show the objective rather than tell it. */
+export const VISUAL_FORMS: ReadonlySet<SlotForm> = new Set(["photo", "figure", "diagram-slot"]);
+/** Arc leans that say the objective has concrete or structural content (needs a visual). */
+const VISUAL_LEANS = new Set(["photo", "figure", "diagram-slot", "sequence", "compare"]);
+
+export type DesignMinimums = {
+  /** Objectives (0-based) whose arc says concrete or structural and that got no visual slot. */
+  visualMissing: number[];
+  /** Check-form slots across the lesson (the plan's minimum is 3). */
+  checks: number;
+  /** 1-based slide pairs that sit side by side in the same form. */
+  sameNeighbours: [number, number][];
+  /** Objectives with no teaching slot, or no check slot. */
+  untaught: number[];
+  unchecked: number[];
+};
+
+export const MIN_CHECKS = 3;
+
+/**
+ * The code minimums over a designed lesson (the plan's "Code enforces the minimums"): a visual
+ * for every objective whose arc leans concrete or structural, at least `MIN_CHECKS` check slots,
+ * no two neighbouring slides in the same form, and a teach and a check slot per objective. The
+ * caller logs a miss; nothing is rewritten.
+ */
+export function designMinimums(
+  slots: readonly { objective: number; form: SlotForm; slide: number }[],
+  arcs: readonly ({ lean: string } | undefined)[],
+): DesignMinimums {
+  const byObjective = arcs.map((_, o) => slots.filter((s) => s.objective === o));
+  const ordered = [...slots].sort((a, b) => a.slide - b.slide);
+  const sameNeighbours: [number, number][] = [];
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1];
+    const b = ordered[i];
+    if (a && b && b.slide === a.slide + 1 && a.form === b.form)
+      sameNeighbours.push([a.slide, b.slide]);
+  }
+  return {
+    visualMissing: arcs.flatMap((arc, o) =>
+      arc && VISUAL_LEANS.has(arc.lean) && !byObjective[o]?.some((s) => VISUAL_FORMS.has(s.form))
+        ? [o]
+        : [],
+    ),
+    checks: slots.filter((s) => CHECK_FORMS.has(s.form)).length,
+    sameNeighbours,
+    untaught: byObjective.flatMap((list, o) =>
+      list.some((s) => !CHECK_FORMS.has(s.form)) ? [] : [o],
+    ),
+    unchecked: byObjective.flatMap((list, o) =>
+      list.some((s) => CHECK_FORMS.has(s.form)) ? [] : [o],
+    ),
   };
 }

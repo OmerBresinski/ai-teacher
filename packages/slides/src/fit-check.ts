@@ -5,6 +5,7 @@ import { isDecorative, lintAsDrawn, renderedHeights } from "./lint";
 import { type MaterialiseMeta, materialiseSlide } from "./materialise";
 import { ANSWERS_NAME, isBackdrop, isFrozen, isLayerBelow, textPartsOf } from "./reflow";
 import type { SlideSpec } from "./specs";
+import type { SlideStructure } from "./structure";
 import { measureHeadless } from "./text-measure";
 import { ladderStops, resolveFontSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
@@ -50,6 +51,10 @@ export type FitsPlannedOptions = {
   /** Defaults to every theme in the catalogue. */
   themes?: readonly Theme[];
   meta?: MaterialiseMeta;
+  /** The recipe variant the slide is laid out in (a palette form's `renderer.variant`). */
+  variant?: number | string;
+  /** The structure hints it is materialised with (a palette photo slot). */
+  structure?: SlideStructure;
 };
 
 const CHECK_META: MaterialiseMeta = {
@@ -162,7 +167,7 @@ export function fitsPlanned(spec: SlideSpec, opts: FitsPlannedOptions): FitsPlan
   let n = 0;
   const ids = () => `fit${++n}`;
   const failing = themes.flatMap((theme) => {
-    const slide = materialiseSlide(spec, theme.id, meta, ids);
+    const slide = materialiseSlide(spec, theme.id, meta, ids, opts.variant, opts.structure ?? {});
     const t = getTheme(theme.id);
     const fit = slideFits(slide, t, opts.stepDown);
     const stored = lintAsDrawn(slide, measureHeadless(t), t);
