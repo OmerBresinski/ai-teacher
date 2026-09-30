@@ -696,6 +696,8 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
       ].join("\n"),
     );
     body.doc = { type: "doc", content: [...(body.doc.content ?? []), ...(added.content ?? [])] };
+    // The teacher's edit flips the body to teacher-authored in the editor; mark it so here.
+    body.authoredBy = "teacher";
     const out = tidySlide(animals, source.id, measureHeadless(getTheme(animals.themeId)));
     expect(out.outcome.continued).toBe(1);
     const [head, cont] = out.lesson.slides;
