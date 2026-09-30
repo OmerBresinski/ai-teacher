@@ -56,9 +56,13 @@ const SET_KIND: Record<
  */
 export const SET_TAG: Partial<Record<SetForm, string>> = { "check-set": "CHECK" };
 
+/** A check-set the plan gave the practise role is pupils' practice, headed and tagged so. */
+const isPractice = (form: string, role: string | undefined) =>
+  form === "check-set" && role === "practise";
+
 /** A set slide with its kind tag relabelled for the form (see `SET_TAG`); others unchanged. */
-export function withSetTag(slide: Slide, form: string): Slide {
-  const label = isSetForm(form) ? SET_TAG[form] : undefined;
+export function withSetTag(slide: Slide, form: string, role?: string): Slide {
+  const label = isPractice(form, role) ? "PRACTICE" : isSetForm(form) ? SET_TAG[form] : undefined;
   if (!label) return slide;
   return {
     ...slide,
@@ -74,9 +78,10 @@ const notesOf = (...parts: unknown[]) =>
   parts.filter((p): p is string => typeof p === "string" && p.trim() !== "").join("\n");
 
 /** A question set's spec: the questions listed, the answers as the reveal line and in the notes. */
-function setSpec(form: SetForm, out: Written): SlideSpec {
+function setSpec(form: SetForm, out: Written, role?: string): SlideSpec {
   const qs = (out.questions ?? []) as SetQuestion[];
-  const { kind, heading } = SET_KIND[form];
+  const { kind } = SET_KIND[form];
+  const heading = isPractice(form, role) ? "Practice" : SET_KIND[form].heading;
   const items = qs.map((q) => q.question);
   const answers = qs.map((q) => q.answer);
   const footnote = `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;
@@ -99,8 +104,8 @@ export function drawable(form: string, fields: Written): Written {
 }
 
 /** The slide spec a written slide makes, with its variant and structure; notes carried over. */
-export function renderWritten(form: string, layout: string, out: Written): Rendered {
-  if (isSetForm(form)) return { spec: setSpec(form, out), structure: {} };
+export function renderWritten(form: string, layout: string, out: Written, role?: string): Rendered {
+  if (isSetForm(form)) return { spec: setSpec(form, out, role), structure: {} };
   const { notes, ...fields } = out;
   const made = specOfWriter(form as PaletteFormId, drawable(form, fields), layout);
   if (!made) throw new Error(`plan-write: ${form} is not drawn on a slide`);

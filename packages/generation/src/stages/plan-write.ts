@@ -784,10 +784,16 @@ export async function planWriteSlides(
     return picked.photo;
   };
 
-  const drawn = (form: string, layout: string, out: Written, meta: MaterialiseMeta): Slide => {
-    const r = renderWritten(form, layout, out);
+  const drawn = (
+    form: string,
+    layout: string,
+    out: Written,
+    meta: MaterialiseMeta,
+    role?: string,
+  ): Slide => {
+    const r = renderWritten(form, layout, out, role);
     const slide = materialiseSlide(r.spec, themeId, meta, deps.ids, r.variant, r.structure);
-    if (isSetForm(form)) return withSetTag(withAnswersReveal(slide, themeId), form);
+    if (isSetForm(form)) return withSetTag(withAnswersReveal(slide, themeId), form, role);
     // A diagram slot's spec is drawn by the diagram renderer; one that does not draw keeps the slot.
     const spec = form === "diagram-slot" ? out.diagram : undefined;
     return spec && typeof spec === "object"
@@ -800,7 +806,7 @@ export async function planWriteSlides(
     updateSlide(index, (old) => {
       const p = placed.find((x) => x.index === index);
       if (!p) return old;
-      const fresh = drawn(p.plan.form, p.plan.layout, p.out, meta);
+      const fresh = drawn(p.plan.form, p.plan.layout, p.out, meta, p.plan.role);
       const photo = photoOf.get(index);
       return { ...(photo ? withPlaced(fresh, photo) : fresh), id: old.id };
     });
@@ -891,7 +897,13 @@ export async function planWriteSlides(
     f.filter((g) => g.check !== "budget" || !findings.some((x) => x.check === "budget"));
 
   /** One named field of a slide written again, told what a check found. */
-  const checkRewrite = async (n: number, field: string, failure: string, current: Written) => {
+  const checkRewrite = async (
+    n: number,
+    field: string,
+    failure: string,
+    current: Written,
+    reason: "check" | "fit" = "check",
+  ) => {
     const s = table[n - 1] as PlanSlide;
     const only = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape[field];
     if (!only) return undefined;
@@ -899,7 +911,7 @@ export async function planWriteSlides(
       const { output } = await callWriter(
         {
           ...writerInput([target(n)]),
-          rewrite: { slide: target(n), field, failure, current, reason: "check" },
+          rewrite: { slide: target(n), field, failure, current, reason },
         },
         z.object({ [field]: only }) as z.ZodType<Written>,
         MAX_OUTPUT_TOKENS_REWRITE,
@@ -1055,7 +1067,7 @@ export async function planWriteSlides(
     let saved = false;
     if (JSON.stringify(out) !== JSON.stringify(before)) {
       const fitted = await fitWithRewrite(form, layout, out, async (field, failure) => {
-        const value = await checkRewrite(n, field, failure, out);
+        const value = await checkRewrite(n, field, failure, out, "fit");
         return value === undefined ? undefined : { [field]: value };
       });
       if (fitted.fit.ok) {
@@ -1180,11 +1192,13 @@ export async function planWriteSlides(
     if (s.form === "diagram-slot" && fitted.out.diagram && typeof fitted.out.diagram === "object") {
       diagrams[String(n)] = fitted.out.diagram;
     }
-    const slide = drawn(s.form, s.layout, fitted.out, {
-      promptVersion: WRITE_SLIDES_VERSION,
-      model: modelId,
-      at: at(),
-    });
+    const slide = drawn(
+      s.form,
+      s.layout,
+      fitted.out,
+      { promptVersion: WRITE_SLIDES_VERSION, model: modelId, at: at() },
+      s.role,
+    );
     if (!fitted.fit.ok) {
       findings.push({
         check: "fit",
@@ -1615,11 +1629,17 @@ export async function planWriteSlides(
         }
         verify.refitted += 1;
         const old = lesson.slides[p.index] as Slide;
-        const fresh = drawn(p.plan.form, p.plan.layout, fitted.out, {
-          promptVersion: joinVersions(WRITE_SLIDES_VERSION, verifyFactsPrompt.version),
-          model: "verify",
-          at: at(),
-        });
+        const fresh = drawn(
+          p.plan.form,
+          p.plan.layout,
+          fitted.out,
+          {
+            promptVersion: joinVersions(WRITE_SLIDES_VERSION, verifyFactsPrompt.version),
+            model: "verify",
+            at: at(),
+          },
+          p.plan.role,
+        );
         const photo = old.elements.find((e) => e.type === "image" && e.src !== PLACEHOLDER_IMAGE);
         lesson = {
           ...lesson,

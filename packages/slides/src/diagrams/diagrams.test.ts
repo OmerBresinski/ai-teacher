@@ -359,3 +359,25 @@ describe("label contrast", () => {
     for (const [what, fg, bg] of pairs) expect(ratio(fg, bg), what).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe("tables", () => {
+  const y7 = {
+    kind: "table" as const,
+    alt: "Particle arrangement and movement in ice, water and water vapour.",
+    title: "Water in three states",
+    header: ["State", "Arrangement", "Movement"],
+    rows: [
+      ["Solid: ice", "Close, fixed pattern", "Vibrate on the spot"],
+      ["Liquid: water", "Close together", "Move past each other"],
+      ["Gas: water vapour", "Far apart", "Move freely"],
+    ],
+  };
+
+  test("every cell is drawn whole, with no ellipsis, in a half-width slot", () => {
+    for (const theme of THEMES) {
+      const svg = renderDiagram(y7, theme, { w: 400, h: 356 });
+      expect(svg).not.toContain("…");
+      expect(svg).toContain(">vapour<");
+    }
+  });
+});

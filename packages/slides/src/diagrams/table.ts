@@ -1,9 +1,12 @@
 /**
  * Tables: an accent header row and zebra rows, columns as wide as their words ask, cells wrapped
- * to two lines. The type steps down (never below 14) until the table fits its box.
+ * to three lines. The type steps down (never below 14) until the table fits its box with every
+ * cell whole (no ellipsis above the floor). The table sits at the top of its box, under the title.
  */
 import type { Table } from "./schema";
 import { type Ctx, n, text, textWidth, wrap } from "./svg";
+
+const CELL_LINES = 3;
 
 export function drawTable(t: Table, x: Ctx, w: number, h: number): string {
   const { c } = x;
@@ -35,15 +38,18 @@ export function drawTable(t: Table, x: Ctx, w: number, h: number): string {
     const tableW = widths.reduce((a, b) => a + b, 0);
     const lines = all.map((r, i) =>
       Array.from({ length: cols }, (_, j) =>
-        wrap(r[j] ?? "", x, (widths[j] ?? 0) - 2 * padX, 2, fs, weightOf(i, j)),
+        wrap(r[j] ?? "", x, (widths[j] ?? 0) - 2 * padX, CELL_LINES, fs, weightOf(i, j)),
       ),
     );
     const lh = fs * 1.2;
     const heights = lines.map((r) => Math.max(1, ...r.map((cell) => cell.length)) * lh + fs * 0.8);
     const tableH = heights.reduce((a, b) => a + b, 0);
-    if (tableH <= h || fs <= 14) {
+    const cut = lines.some((r, i) =>
+      r.some((cell, j) => cell.join(" ") !== (all[i]?.[j] ?? "").trim().split(/\s+/).join(" ")),
+    );
+    if ((tableH <= h && !cut) || fs <= 14) {
       const ox = (w - tableW) / 2;
-      let y = Math.max(0, (h - tableH) / 2);
+      let y = 0;
       const out: string[] = [];
       lines.forEach((r, i) => {
         const rh = heights[i] ?? 0;
@@ -69,7 +75,7 @@ export function drawTable(t: Table, x: Ctx, w: number, h: number): string {
         y += rh;
       });
       // Rules: column lines, row lines, and a frame.
-      const top = Math.max(0, (h - tableH) / 2);
+      const top = 0;
       let cx = ox;
       for (let j = 0; j < cols - 1; j++) {
         cx += widths[j] ?? 0;

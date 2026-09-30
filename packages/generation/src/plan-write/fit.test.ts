@@ -196,3 +196,16 @@ describe("set slide tags", () => {
     expect(tagOf("starter-set")).toContain("STARTER");
   });
 });
+
+describe("a check-set given the practise role (smoke pw7: practice read 'Quick check')", () => {
+  test("is headed Practice; a mid-lesson check keeps Quick check", () => {
+    const out = {
+      questions: [{ question: "Red:blue = 3:5; 12 red. How many blue?", answer: "20" }],
+    };
+    const heading = (role?: string) =>
+      (renderWritten("check-set", "default", out, role).spec as { heading?: string }).heading;
+    expect(heading("practise")).toBe("Practice");
+    expect(heading("check")).toBe("Quick check");
+    expect(heading()).toBe("Quick check");
+  });
+});

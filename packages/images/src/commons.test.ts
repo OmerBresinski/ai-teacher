@@ -98,7 +98,9 @@ describe("Commons licence filter", () => {
       sourceUrl: "https://commons.wikimedia.org/wiki/File:Hadrian's_Wall_1.jpg",
     });
     expect(photo?.alt).toBe("A stretch of the wall near Housesteads");
-    expect(photo?.src.tiny).toContain("/200px-Hadrian's_Wall_1.jpg");
+    // Only Wikimedia's standard thumbnail widths are served (200 and 640 answer 400).
+    expect(photo?.src.tiny).toContain("/250px-Hadrian's_Wall_1.jpg");
+    expect(photo?.src.medium).toContain("/500px-");
     expect(photo?.src.large).toContain("/1280px-");
   });
 

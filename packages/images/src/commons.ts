@@ -20,8 +20,11 @@ const API_URL = "https://commons.wikimedia.org/w/api.php";
 export const COMMONS_USER_AGENT = "DaybackLessonPhotos/0.1 (https://dayback.app) @tj/images";
 /** The rendition width asked for; smaller renditions are derived from its thumb URL. */
 const LARGE_WIDTH = 1280;
-const MEDIUM_WIDTH = 640;
-const TINY_WIDTH = 200;
+// Wikimedia's thumbnail host serves only its standard widths (20, 40, 60, 120, 250, 330, 500, 960,
+// 1280, ...); any other width is a 400, and a candidate whose tiny rendition 400s was dropped
+// (smoke pw7: slide 6's named fort found 2+ files on Commons and all were dropped).
+const MEDIUM_WIDTH = 500;
+const TINY_WIDTH = 250;
 /** The least gap between two requests from one client. */
 const MIN_GAP_MS = 250;
 
