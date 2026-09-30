@@ -161,7 +161,9 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
       planner: "designer",
     });
     expect(refills).toHaveLength(1);
-    expect(refills[0]).toContain("This slot replaces a worked-example slot that did not fit");
+    expect(refills[0]).toContain(
+      "This slot replaces a worked-example slot: it did not fit its slide because",
+    );
     expect(refills[0]).toContain(JSON.stringify(tooBig.question));
     expect(refills[0]).toContain("Write the same content as a sequence slot.");
     expect(refills[0]).not.toMatch(/shorter|shorten/i);
@@ -233,6 +235,56 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     for (const ref of cited) expect(ref.startsWith("m")).toBe(true);
     expect(() => parseLesson(final.lesson)).not.toThrow();
     expect(final.lesson.generation?.stage).toBe("repaired");
+  });
+
+  test("design minimums are enforced: a missing visual is re-filled in place, the count kept (r1 bug c)", async () => {
+    const withArc = romansObjectives.map((o, i) => ({
+      ...o,
+      arc: { angle: `Angle ${i + 1}`, lean: "photo", misconception: `Myth ${i + 1}` },
+    }));
+    const refills: string[] = [];
+    const ai = labAi({
+      objectives: withArc,
+      designCycle: (call, target, count) => {
+        if (call.promptText.includes("This slot replaces")) {
+          refills.push(call.promptText);
+          return JSON.stringify({
+            slots: [
+              {
+                form: "photo",
+                heading: "Roman roads ran straight",
+                body: "Soldiers built roads to move quickly.",
+                imageBrief: { subject: "Roman road in Britain" },
+              },
+            ],
+            exitQuestion: { question: "Why?", answer: "Because" },
+          });
+        }
+        // Objective 1 comes back with no visual at all.
+        const answer = designCycleAnswer(target, count);
+        if (target !== 0) return JSON.stringify(answer);
+        const text: DesignSlot = {
+          form: "explain",
+          heading: "Britain had tin and grain",
+          body: "Rome wanted its metals.",
+        };
+        return JSON.stringify({ ...answer, slots: [text, ...answer.slots.slice(1)] });
+      },
+    });
+    const final = await runLessonPipeline({ lesson: romans(10) }, recordingDeps(ai), {
+      planner: "designer",
+    });
+    expect(refills).toHaveLength(1);
+    expect(refills[0]).toContain(
+      "This slot replaces an explain slot: the objective has no photo, figure or diagram",
+    );
+    expect(final.lesson.slides).toHaveLength(10);
+    expect(final.designReport?.enforced).toEqual([{ slide: 4, into: "photo", ok: true }]);
+    expect(final.designReport?.slots[0]?.form).toBe("photo");
+    expect(final.designReport?.minimums.visualMissing).toEqual([]);
+    expect(final.lesson.facts?.outline[3]?.kind).toBe("image-text");
+    expect(final.lesson.slides[3]?.elements.some((e) => e.type === "image")).toBe(true);
+    expect(() => parseLesson(final.lesson)).not.toThrow();
   });
 
   test("resume: the objectives checkpoint re-designs; a later checkpoint moves on", () => {

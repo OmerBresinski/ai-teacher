@@ -769,3 +769,79 @@ export function designMinimums(
     ),
   };
 }
+
+/** The most single-slot re-fills a lesson spends on its design minimums. */
+export const MAX_MINIMUM_REFILLS = 2;
+
+export type MinimumRefill = {
+  /** 1-based slide number of the slot replaced. */
+  slide: number;
+  objective: number;
+  into: SlotForm;
+  /** Why, for the re-fill call: which minimum the replaced slot now meets. */
+  reason: string;
+};
+
+/**
+ * The design minimums enforced (designer eval r1): an objective whose arc leans concrete or
+ * structural with no visual slot gets one teaching slot re-filled as its visual (the arc's lean
+ * when it is a visual form the subject offers, else a diagram slot); a lesson with fewer than 3
+ * checks gets teaching slots re-filled as true-false checks, from an objective that keeps another
+ * teaching slot, unchecked objectives first. Visuals first; at most `MAX_MINIMUM_REFILLS`. The
+ * count never changes: each re-fill replaces one slot.
+ */
+export function minimumRefills(
+  placed: readonly { objective: number; form: SlotForm; slide: number }[],
+  arcs: readonly ({ lean: string } | undefined)[],
+  offered: readonly SlotForm[],
+): MinimumRefill[] {
+  const out: MinimumRefill[] = [];
+  const taken = new Set<number>();
+  const minimums = designMinimums(placed, arcs);
+  const teaching = (o: number) =>
+    placed.filter(
+      (p) =>
+        p.objective === o &&
+        !CHECK_FORMS.has(p.form) &&
+        !VISUAL_FORMS.has(p.form) &&
+        !taken.has(p.slide),
+    );
+  for (const o of minimums.visualMissing) {
+    if (out.length >= MAX_MINIMUM_REFILLS) return out;
+    const lean = arcs[o]?.lean as SlotForm | undefined;
+    const into =
+      lean && VISUAL_FORMS.has(lean) && offered.includes(lean) ? lean : ("diagram-slot" as const);
+    const slot = teaching(o)[0];
+    if (!slot || !offered.includes(into)) continue;
+    taken.add(slot.slide);
+    out.push({
+      slide: slot.slide,
+      objective: o,
+      into,
+      reason: "the objective has no photo, figure or diagram; this slot shows its content",
+    });
+  }
+  let checks = minimums.checks;
+  const order = [
+    ...minimums.unchecked,
+    ...arcs.map((_, i) => i).filter((i) => !minimums.unchecked.includes(i)),
+  ];
+  for (const o of order) {
+    if (checks >= 3 || out.length >= MAX_MINIMUM_REFILLS || !offered.includes("true-false")) break;
+    const texts = teaching(o);
+    const keepsTeaching =
+      placed.filter((p) => p.objective === o && !CHECK_FORMS.has(p.form) && !taken.has(p.slide))
+        .length >= 2;
+    const slot = texts.at(-1);
+    if (!slot || !keepsTeaching) continue;
+    taken.add(slot.slide);
+    checks += 1;
+    out.push({
+      slide: slot.slide,
+      objective: o,
+      into: "true-false",
+      reason: "the lesson needs another check; this slot checks the objective",
+    });
+  }
+  return out;
+}

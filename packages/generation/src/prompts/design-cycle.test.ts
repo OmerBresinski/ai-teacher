@@ -34,12 +34,13 @@ describe("design-cycle", () => {
       replacing: {
         form: "hinge",
         material: JSON.stringify({ stem: "Why?", options: [{ text: "Because.", correct: true }] }),
-        reason: "the options are sentences; this form needs phrases",
+        reason:
+          "it did not fit its slide because the options are sentences; this form needs phrases",
         into: "true-false",
       },
     });
     expect(refill).toContain(
-      "This slot replaces a hinge slot that did not fit its slide: the options are sentences; this form needs phrases.",
+      "This slot replaces a hinge slot: it did not fit its slide because the options are sentences; this form needs phrases.",
     );
     expect(refill).toContain('Its material: {"stem":"Why?"');
     expect(refill).toContain("Write the same content as a true-false slot.");

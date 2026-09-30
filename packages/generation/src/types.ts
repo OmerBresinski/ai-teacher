@@ -253,6 +253,8 @@ export interface DesignReport {
   exitCovered: number;
   failedCycles: number[];
   verify: { corrections: number; refitted: number; rejected: number };
+  /** The design minimums' re-fills (at most 2): the slide, the form asked for, whether it took. */
+  enforced?: { slide: number; into: string; ok: boolean }[];
   firstSlotMs?: number;
   editableMs?: number;
   /** Where the design step's time went (ms from the lesson's start unless named otherwise). */

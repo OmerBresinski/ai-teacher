@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry, Slide, TextElement } from "@tj/domain/documents";
 import { materialiseSlide, measureHeadless, SAFE_BOTTOM, THEMES, textPartsOf } from "@tj/slides";
-import type { DesignSlot } from "../prompts/design-cycle";
+import { type DesignSlot, slotFormsFor } from "../prompts/design-cycle";
 import {
   codedSetSpec,
   EXIT_QUIZ_MAX,
@@ -11,7 +11,9 @@ import {
   fitsExitTicket,
   LINE_MAX,
   type Line,
+  MAX_MINIMUM_REFILLS,
   MC_LINE_MAX,
+  minimumRefills,
   misconceptionLine,
   questionLine,
   sameQuestion,
@@ -456,5 +458,61 @@ describe("figure slots draw their template (ADR 0032)", () => {
       );
     }
     expect(figureOfBrief({ template: "right-triangle", values: valid })?.values).toBeDefined();
+  });
+});
+
+describe("design minimums enforced (designer eval r1)", () => {
+  const offered = slotFormsFor("science");
+  const arc = (lean: string) => ({ lean });
+  test("an objective that needs a visual and has none: its first text slot becomes the visual", () => {
+    const placed = [
+      { objective: 0, form: "explain" as const, slide: 4 },
+      { objective: 0, form: "list" as const, slide: 5 },
+      { objective: 0, form: "true-false" as const, slide: 6 },
+      { objective: 1, form: "photo" as const, slide: 7 },
+      { objective: 1, form: "hinge" as const, slide: 8 },
+      { objective: 1, form: "open-response" as const, slide: 9 },
+    ];
+    expect(minimumRefills(placed, [arc("photo"), arc("explain")], offered)).toEqual([
+      {
+        slide: 4,
+        objective: 0,
+        into: "photo",
+        reason: "the objective has no photo, figure or diagram; this slot shows its content",
+      },
+    ]);
+    // A structural lean (sequence) gets a diagram slot.
+    expect(minimumRefills(placed, [arc("sequence"), arc("explain")], offered)[0]?.into).toBe(
+      "diagram-slot",
+    );
+  });
+
+  test("fewer than 3 checks: a text slot becomes a true-false, never an objective's last teaching slot", () => {
+    const placed = [
+      { objective: 0, form: "explain" as const, slide: 4 },
+      { objective: 0, form: "list" as const, slide: 5 },
+      { objective: 1, form: "explain" as const, slide: 6 },
+      { objective: 1, form: "true-false" as const, slide: 7 },
+    ];
+    const out = minimumRefills(placed, [arc("explain"), arc("explain")], offered);
+    expect(out).toEqual([
+      {
+        slide: 5,
+        objective: 0,
+        into: "true-false",
+        reason: "the lesson needs another check; this slot checks the objective",
+      },
+    ]);
+  });
+
+  test("at most two re-fills a lesson, visuals first", () => {
+    const placed = [0, 1, 2].flatMap((o) => [
+      { objective: o, form: "explain" as const, slide: 4 + o * 2 },
+      { objective: o, form: "list" as const, slide: 5 + o * 2 },
+    ]);
+    const out = minimumRefills(placed, [arc("photo"), arc("photo"), arc("photo")], offered);
+    expect(out).toHaveLength(MAX_MINIMUM_REFILLS);
+    expect(out.every((m) => m.into === "photo")).toBe(true);
+    expect(minimumRefills([], [], offered)).toEqual([]);
   });
 });

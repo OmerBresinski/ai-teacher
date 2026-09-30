@@ -32,8 +32,10 @@ import {
   codedSetSpec,
   designMinimums,
   exitStemLine,
+  minimumRefills,
   questionLine,
   renderSlot,
+  VISUAL_FORMS,
   withAnswersReveal,
 } from "../planner/coded-slides";
 import { allocate, type CycleSlots } from "../planner/cycles";
@@ -46,6 +48,7 @@ import {
   designCycleSchemaFor,
   ExitQuestionSchema,
   type SlotForm,
+  slotFormsFor,
 } from "../prompts/design-cycle";
 import { ObjectiveArcSchema } from "../prompts/plan-objectives";
 import {
@@ -590,11 +593,31 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     const fit = await fitSlot(slot, {
       seed: `${base.id}:${index}`,
       themeId,
-      refill: refillFor(cycle, k),
+      refill: (s, form, reason) =>
+        refillFor(cycle, k)(s, form, `it did not fit its slide because ${reason}`),
     });
     timings.fitMs += Date.now() - fitStart;
+    placeSlot(cycle, k, slot, fit, modelId);
+    if (cycle === firstCycle && k === 0) releaseFirst();
+  };
+
+  /**
+   * A fitted slot onto the deck: rendered, its outline entry written, queued in slide order (or,
+   * for a slot re-filled after its slide was saved, put in place under the same id and saved),
+   * and its photo searched.
+   */
+  const placeSlot = (
+    cycle: CycleSlots,
+    k: number,
+    slot: DesignSlot,
+    fit: SlotFit,
+    modelId: string,
+  ) => {
+    const index = cycle.first - 1 + k;
+    const at0 = bound.findIndex((x) => x.slide === index);
     const b: Bound = { slide: index, objective: cycle.objective, slot, fit };
-    bound.push(b);
+    if (at0 >= 0) bound[at0] = b;
+    else bound.push(b);
     const slide = renderSlot(
       fit.render,
       themeId,
@@ -630,9 +653,23 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           }
         : {}),
     };
-    ready.set(index, slide);
-    void flush();
-    if (cycle === firstCycle && k === 0) releaseFirst();
+    if (at0 < 0) {
+      ready.set(index, slide);
+      void flush();
+    } else {
+      writing = writing.then(async () => {
+        const old = lesson.slides[index];
+        if (!old) {
+          ready.set(index, slide);
+          return;
+        }
+        lesson = {
+          ...lesson,
+          slides: lesson.slides.map((x, i) => (i === index ? { ...slide, id: old.id } : x)),
+        };
+        if (!deps.signal.aborted) await deps.persist(withUsage(lesson, deps));
+      });
+    }
     if (imageBrief && deps.images) {
       photoCounts.requested += 1;
       const pickLesson: Lesson = { ...lesson, facts: { ...facts0, outline } };
@@ -749,6 +786,50 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     ),
   );
   throwIfAborted(deps.signal);
+
+  // The design minimums, enforced (designer eval r1): an objective that needs a visual and has
+  // none, or a lesson under 3 checks, gets at most 2 single-slot re-fills into the missing form.
+  // A re-fill that does not come back in that form, or does not fit at full size, leaves the slot.
+  const offered = slotFormsFor(subject);
+  const refillModelId = () => {
+    const routed = deps.ai.model(
+      cls,
+      callContext(deps, "generate", designCyclePrompt.version, "low"),
+    );
+    return typeof routed === "string" ? routed : routed.modelId;
+  };
+  const toEnforce = minimumRefills(
+    bound.map((b) => ({ objective: b.objective, form: b.fit.slot.form, slide: b.slide + 1 })),
+    arcs,
+    offered,
+  );
+  const enforced: { slide: number; into: SlotForm; ok: boolean }[] = [];
+  await Promise.all(
+    toEnforce.map(async (m) => {
+      const b = bound.find((x) => x.slide === m.slide - 1);
+      const cycle = allocation.cycles.find((c) => c.objective === m.objective);
+      if (!b || !cycle) return;
+      const k = b.slide - (cycle.first - 1);
+      const fresh = await refillFor(cycle, k)(b.fit.slot, m.into, m.reason).catch(() => undefined);
+      const fit = fresh
+        ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
+        : undefined;
+      const meets = (form: SlotForm) =>
+        m.into === "true-false" ? CHECK_FORMS.has(form) : VISUAL_FORMS.has(form);
+      const ok =
+        !!fresh &&
+        !!fit &&
+        fit.rung !== "flagged" &&
+        fit.rung !== "step-down" &&
+        meets(fit.slot.form);
+      enforced.push({ slide: m.slide, into: m.into, ok });
+      if (ok && fresh && fit) placeSlot(cycle, k, fresh, fit, refillModelId());
+    }),
+  );
+  if (toEnforce.length > 0) {
+    deps.logger.info({ stage: "generate", enforced }, "designer minimums enforced");
+  }
+  await writing;
 
   // Facts from what the slides show: ids per slot, for Verify, Evaluate and Repair.
   const counters: Record<string, number> = {};
@@ -1015,6 +1096,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     exitCovered,
     failedCycles,
     verify: verifyReport,
+    ...(enforced.length > 0 ? { enforced } : {}),
     ...(firstSlotMs !== undefined ? { firstSlotMs } : {}),
     editableMs,
     timings,

@@ -3,7 +3,7 @@ import { THEMES } from "@tj/slides";
 import weimar from "../fixtures/design-cycle.y9-weimar.json";
 import { type DesignSlot, designCycleSchemaFor, type SlotForm } from "../prompts/design-cycle";
 import { designMinimums, renderSlot, slotRender } from "./coded-slides";
-import { FORM_DOWN, fitSlot, refillReason, siblingsOf, slotFits, unitsToNotes } from "./slot-fit";
+import { FORM_DOWN, fitSlot, refillReason, siblingsOf, unitsToNotes } from "./slot-fit";
 
 const META = { promptVersion: "t", model: "t", at: "1970-01-01T00:00:00.000Z" };
 const cycles = weimar.cycles as unknown as { slots: DesignSlot[] }[];
