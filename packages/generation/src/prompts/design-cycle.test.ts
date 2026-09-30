@@ -25,6 +25,28 @@ describe("design-cycle", () => {
     }
   });
 
+  test("v12: an objective's facts render as its source, only for this call's objective", () => {
+    const plain = designCyclePrompt.user(DESIGN_CYCLE_SAMPLE);
+    expect(plain).not.toContain("Source for objective");
+    const objectives = DESIGN_CYCLE_SAMPLE.objectives.map((o, i) => ({
+      ...o,
+      facts: i === 0 ? "Other objective's facts" : "Legions of about 5,000 men, in ten cohorts.",
+    }));
+    const withFacts = designCyclePrompt.user({ ...DESIGN_CYCLE_SAMPLE, objectives });
+    expect(withFacts).toContain(
+      "Source for objective 2: its slides state these facts, cases, numbers and dates and no others.\nLegions of about 5,000 men, in ten cohorts.",
+    );
+    expect(withFacts).not.toContain("Other objective's facts");
+    expect(withFacts).not.toMatch(noBudget);
+    // Empty and whitespace-only blocks render nothing (arm P leaves the field empty).
+    expect(
+      designCyclePrompt.user({
+        ...DESIGN_CYCLE_SAMPLE,
+        objectives: DESIGN_CYCLE_SAMPLE.objectives.map((o) => ({ ...o, facts: "  " })),
+      }),
+    ).not.toContain("Source for objective");
+  });
+
   test("the user turn opens with the palette, then the arc, and names this call's slots", () => {
     const user = designCyclePrompt.user(DESIGN_CYCLE_SAMPLE);
     expect(user.startsWith("Palette")).toBe(true);

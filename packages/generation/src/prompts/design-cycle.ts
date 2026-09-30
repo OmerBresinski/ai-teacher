@@ -165,6 +165,37 @@ import { type Audience, audienceBlock, houseRules } from "./shared";
  *    otherwise the true-false statement or a hinge option. A 2-slot cycle (visual + check) still
  *    has no room for a callout row: that needs the callout to ride on the visual slide, in code.
  *
+ * v12 (30 Sept 2026, arm P of round 5, `quality-prd/lab/fit-lab/rejudge`: three blind judges on
+ *    rounds 3 and 4 against the production baseline; v11 is the dropped round-4 wording):
+ *  - Thin teaching slides. Where the baseline won it carried the mechanism, a worked example and
+ *    named real cases on the slide (rocks: Iceland basalt, Lyme Regis ammonites; Weimar: the loaf).
+ *    v10 asked for "the claim with its reason" and then had the notes explain "each part in full",
+ *    which licensed the slide to carry the claim alone. The slide sentence now names what a teach
+ *    body's units are (the mechanism, and one named real case from the baseline's measured list of
+ *    kinds: a place, an event, a person, a reaction, a quoted line or worked numbers, plan-teach-
+ *    objective v3), with one off-bench filled example; the teach notes are the telling of the slide
+ *    (analogy, second case, the question), and the line says what a question needs stands on the
+ *    slide. Same lever as v11's mechanism sentence, but placed where the slide's content is
+ *    defined and with the notes rule changed with it (CORE 2026-09-29: move a field's content in
+ *    every rule that reads it).
+ *  - A method or process objective gets a worked-example slot, its own sentence with the trigger
+ *    enumerated (a calculation, a procedure, a rule applied to a case), before anything tests it.
+ *    The visual minimum's exception names "a method" so the two floors do not fight over a
+ *    one-teach-slot objective (v7 named a calculation for the same reason).
+ *  - Practise is an open question on a new case, answered in pupils' own sentences: the role's
+ *    definition says so, since the judges found the designer's practice mostly closed checks.
+ *  - Tested before taught, or never taught: the answer line now says the answer follows from a
+ *    slide of this objective that comes before the question, named in the notes, and that a
+ *    question needs nothing a later slide or objective teaches.
+ *  - Draft smoke (v12-low): persuasive's one-teach-slot objective wrote a list of 3 points for
+ *    its three devices, the schema failure round 4 met. The parts sentence gains "within its
+ *    Holds" (round 4's measured bound, 0 of 20 invalid); the rest of the sentence is v10's.
+ *  - One new input: an optional per-objective `facts` block (arm F fills it; arm P leaves it
+ *    empty). When present for the objective being designed, the user turn renders it as the
+ *    source with its instruction beside it (an optional element's packet line carries its
+ *    instruction, CORE 2026-09-23); the system text says nothing about it, so an empty block
+ *    steers nothing.
+ *
  * Bump `version` whenever `system` or `user` changes wording.
  */
 
@@ -176,8 +207,15 @@ export type DesignCycleInput = {
   topic: string;
   shape: LessonShape;
   audience: Audience;
-  /** Every objective of the lesson with its arc, in order: the lesson's through-line. */
-  objectives: readonly { text: string; arc?: ObjectiveArc | undefined }[];
+  /**
+   * Every objective of the lesson with its arc, in order: the lesson's through-line. `facts` (v12)
+   * is the objective's source, when one was written: the call states its facts and no others.
+   */
+  objectives: readonly {
+    text: string;
+    arc?: ObjectiveArc | undefined;
+    facts?: string | undefined;
+  }[];
   /** 0-based index of the objective this call designs. */
   objectiveIndex: number;
   /**
@@ -433,20 +471,34 @@ function replacingBlock(r: NonNullable<DesignCycleInput["replacing"]>): string[]
   ];
 }
 
+/**
+ * The objective's source block (v12), rendered only when the objective being designed has one:
+ * the facts with their instruction beside them, so a call without a source is not steered by it.
+ */
+function factsBlock(facts: string | undefined, objectiveIndex: number): string[] {
+  if (!facts?.trim()) return [];
+  return [
+    "",
+    `Source for objective ${objectiveIndex + 1}: its slides state these facts, cases, numbers and dates and no others.`,
+    facts.trim(),
+  ];
+}
+
 export const designCyclePrompt = {
-  version: "design-cycle.v10",
+  version: "design-cycle.v12",
   system: [
     "You are an experienced UK teacher who designs lesson slides. You design the slides for one objective of a lesson, in the slots you are given, each with a role. For each slot you choose the palette form that shows its content best and fill it; nothing rewrites your words, so what you write is the slide.",
     "",
     houseRules("british", "names", "pitch"),
-    "Roles: teach shows an idea in a teaching form (photo, figure, diagram-slot, explain, explain-callout, list, compare, sequence, or a worked example for a procedure); show teaches through a photo, figure or diagram slot; practise has pupils do it themselves on a new case (open-response, or discussion for a judgement); check is a quick closed check (hinge, true-false, matching, fill-gap or sort).",
-    "Unless the objective is purely abstract (a rule, a number, a calculation), one of its teach or show slots is a photo, figure or diagram slot.",
-    "The objective's Angle lists the parts this lesson teaches of it, and every part reaches a slide. The teach and show slots take the parts in order. Where the parts outnumber those slots, each takes the next several, one sentence, step or point per part, under a heading stating the idea they share; where a part has a second slot, that slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
-    'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. The slide carries what pupils need for the checks: the claim with its reason, and the example, quotation or numbers it rests on; what you say around it (the fuller explanation, analogies, questions to ask, answers) goes in notes.',
-    "Every slot has notes. On a teach or show slot they are what you say aloud: each of its parts explained in full, with the question you ask about it. On a practise or check slot they open with the answer and why it is right, then what to do with the answers pupils give.",
+    "Roles: teach shows an idea in a teaching form (photo, figure, diagram-slot, explain, explain-callout, list, compare, sequence, or a worked example for a procedure); show teaches through a photo, figure or diagram slot; practise is an open question on a case no teach slot used, answered in pupils' own sentences (open-response, or discussion for a judgement); check is a quick closed check (hinge, true-false, matching, fill-gap or sort).",
+    "Unless the objective is purely abstract (a rule, a number, a method), one of its teach or show slots is a photo, figure or diagram slot.",
+    "An objective that teaches a method or a process pupils apply (a calculation, a procedure, a rule applied to a case) has a worked-example slot, the method on one case taken to its finished answer, before any slot that tests it.",
+    "The objective's Angle lists the parts this lesson teaches of it, and every part reaches a slide. The teach and show slots take the parts in order. Where the parts outnumber those slots, each takes the next several, one sentence, step or point per part within its Holds, under a heading stating the idea they share; where a part has a second slot, that slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
+    'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. A teach slot\'s body says how or why the claim holds (what acts on what, and what follows) and names one real case that shows it (a place, an event, a person, a reaction, a quoted line or worked numbers): "Cholera spread through drinking water, not bad air: John Snow traced the 1854 Soho outbreak to one pump in Broad Street." A list, compare or sequence carries its case in a point, side or step.',
+    "Every slot has notes. On a teach or show slot they are your telling of the slide aloud (an analogy, a second case, the question you ask); what a later question needs stands on the slide, not only here. On a practise or check slot they open with the answer and why it is right, then what to do with the answers pupils give.",
     "Choose a teach slot's form by what the content is: anything a camera could show (a living thing, an object, a place, a scene) is a photo; a structure, process or layout is a figure or a diagram slot; a procedure pupils will carry out (a calculation, a prediction from a rule, a technique applied to a text) is a worked example taken to its finished answer; a definition or an argument is text (explain, list, compare, sequence). Neighbouring slots use different forms.",
     "Choose a check by what the part is: the order of a process or chain of events is a sort; terms and meanings are a matching; a key term in a sentence that uses it is a fill-gap; a claim pupils get wrong is a true-false, one whole claim, true or false as written. A hinge asks for a thing pupils name (a product, a value, a term, the next step), so each option is a phrase answering the stem and each wrong one a mistake pupils make; a why or a how is checked by a sort or a true-false.",
-    "A question's answer is on a slide of this objective: it follows from a sentence, step or worked line a teach slot states, and the notes say which.",
+    "A question asks what this objective's earlier slides teach: its answer follows from a sentence, step or worked line on a slide before it, which the notes name, and it needs nothing a later slide or objective teaches.",
     'Fill each form with exactly the units its Holds line gives, its count of sentences included. Options, points, pair sides and labels are phrases, not sentences: "Heavier than water", not "The stone is heavier than the water it pushes aside." A question or a step is one sentence.',
     "A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.",
     'The objective\'s misconception reaches a slide. A teach slot that follows the objective\'s photo, figure or diagram slot is an explain-callout, its callout the misconception stated as wrong with "not" ("Evaporation is not the same as boiling."); with no such slot, it is the true-false check\'s statement or a wrong option in the hinge.',
@@ -470,6 +522,7 @@ export const designCyclePrompt = {
       "",
       "The lesson's objectives, each with its arc (a starter comes before the first and an exit ticket after the last):",
       ...input.objectives.map((o, i) => arcLine(o, i, i === input.objectiveIndex)),
+      ...factsBlock(input.objectives[input.objectiveIndex]?.facts, input.objectiveIndex),
       "",
       `Design objective ${input.objectiveIndex + 1}: ${count} ${count === 1 ? "slot" : "slots"}, ${where} of ${slideCount}.`,
       ...roles.map((role, k) => `  slide ${first + k}: ${role}`),
