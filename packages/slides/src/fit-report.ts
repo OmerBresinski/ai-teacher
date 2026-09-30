@@ -1,6 +1,6 @@
 import { isContinuation, type Lesson, type Slide } from "@tj/domain/documents";
 import { CALLOUT_NAMES } from "./callout";
-import { slideFits } from "./fit-check";
+import { isGeneratedSlide, slideFits } from "./fit-check";
 import { fitSlide } from "./fit-slide";
 import { BODY_Y } from "./layouts";
 import { lintAsDrawn } from "./lint";
@@ -61,12 +61,14 @@ const QUESTION_KINDS = new Set<Slide["kind"]>([
   "open-response",
   "exit-ticket",
 ]);
-const splittable = (slide: Slide) => !slide.question && !QUESTION_KINDS.has(slide.kind);
+/** Tidy splits neither a question slide nor a generated one (`isGeneratedSlide`). */
+const splittable = (slide: Slide) =>
+  !slide.question && !QUESTION_KINDS.has(slide.kind) && !isGeneratedSlide(slide);
 
 /**
  * Pages the first open adds, headless: none for a lesson stamped with the current `fitVersion`
  * (the migration reads one number and stops). Otherwise, for each slide the migration flags on the
- * lesson's own theme, that Tidy is allowed to split, and that still overflows once fitted: the
+ * lesson's own theme, that Tidy is allowed to split (a teacher's, not a question), and that still overflows once fitted: the
  * overrun past the safe area in continuation bodies (heading band to foot), at least one.
  */
 export function estimatePagesOnOpen(lesson: Lesson): number {

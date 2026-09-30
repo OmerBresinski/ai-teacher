@@ -56,6 +56,16 @@ const CHECK_META: MaterialiseMeta = {
 };
 
 /**
+ * A slide as generation wrote it: every element carries `authoredBy: "ai"`. The first text edit
+ * flips an element to `"teacher"` (`flipToTeacher`), and an element a teacher inserts carries no
+ * `authoredBy`, so either makes the slide the teacher's. Tidy formats a generated slide and never
+ * adds pages to it (the lesson designer plan, requirement 2): generation saved it fitted.
+ */
+export function isGeneratedSlide(slide: Slide): boolean {
+  return slide.elements.length > 0 && slide.elements.every((el) => el.authoredBy === "ai");
+}
+
+/**
  * How many stops of the theme's ladder the most-stepped text on the slide sits under the size it
  * would have with no override (its preset's size, held at the role's projector floor). 0 when
  * every text is at its own size.

@@ -45,7 +45,13 @@ export {
   stepDownSize,
   textPartsOf,
 } from "./reflow";
-export { type TidyOutcome, tidyMessage, tidySlide, tidySlideReducer } from "./tidy";
+export {
+  type TidyOptions,
+  type TidyOutcome,
+  tidyMessage,
+  tidySlide,
+  tidySlideReducer,
+} from "./tidy";
 export {
   createRunGate,
   type FitMigrationDeps,
