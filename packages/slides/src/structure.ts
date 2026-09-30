@@ -1172,8 +1172,24 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
     (e): e is TextElement => isText(e) && e.style.preset === "body" && e !== working,
   );
   if (!cardEl || !working || !question) return [slide];
-  const top = snapY(question.y + question.h + SPACE[3]);
   const steps = docLines(working.doc);
+  // The look's fit set the question beside the working card this pass replaces, so the card's
+  // lines could step the body preset down for the question too. With the strip in the card's
+  // place, the question goes back to its own size when it and the strip still fit (r6 smoke: the
+  // question sat one stop down on four themes whatever it said, and the save gate failed it).
+  const own = resolveFontSize(t, "body");
+  if ((question.style.fontSize ?? own) < own) {
+    const { fontSize: _stepped, ...style } = question.style;
+    const h = heightOf(measureHeadless(t), question.doc, question.w, "body", own, 0, style);
+    const restored: TextElement = { ...question, h, style: { ...style, fontSize: own } };
+    const top = snapY(restored.y + h + SPACE[3]);
+    const keep = slide.elements
+      .filter((e) => e !== cardEl && e !== working && e !== label)
+      .map((e) => (e === question ? restored : e));
+    const strip = stepsStrip(steps, top, SAFE_BOTTOM, t, ids, { reveal: true });
+    if (strip) return [{ ...slide, elements: [...keep, ...strip.elements] }];
+  }
+  const top = snapY(question.y + question.h + SPACE[3]);
   const keep = slide.elements.filter((e) => e !== cardEl && e !== working && e !== label);
   const strip = stepsStrip(steps, top, SAFE_BOTTOM, t, ids, { reveal: true });
   if (strip) return [{ ...slide, elements: [...keep, ...strip.elements] }];
