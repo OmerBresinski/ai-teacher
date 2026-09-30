@@ -1,4 +1,4 @@
-import { safeError } from "@tj/domain";
+import { LIVE_PENDING, safeError } from "@tj/domain";
 import {
   DEFAULT_SLIDE_COUNT,
   type FactQuestion,
@@ -73,6 +73,7 @@ import {
 import { VERIFY_EFFORT } from "./designer";
 import { withUsage } from "./generate";
 import { emptyFinding, joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
+import { runObjectivesStep } from "./objectives";
 import { existingTitle, materialiseTitle } from "./plan";
 import { audienceOf, generationOf, planClassFor } from "./shared";
 import { runVerify } from "./verify";
@@ -179,8 +180,29 @@ export async function planWritePlan(
     const { updatedAt } = await deps.persist(lesson);
     await deps.onProgress(PROGRESS_STARTING, "Title ready", "plan", updatedAt);
   }
-  // The stream plans and writes in one call, in the write step.
-  if (planWriteMode() === "stream") return { ...state, lesson };
+  // The stream plans and writes in one call, in the write step. Its objectives come first, from
+  // the objectives step, so the teacher approves them on the plan screen and the stream takes
+  // them as fixed (live writing, spike/live-writing).
+  if (planWriteMode() === "stream") {
+    if (!deps.onLiveSlide || (lesson.facts?.objectives.length ?? 0) > 0) {
+      return { ...state, lesson };
+    }
+    // The objectives step's row, stamped as this planner's so the generate job resumes at the
+    // write step (an empty slide plan: the stream plans the slides itself).
+    const planned = (await runObjectivesStep({ ...state, lesson }, deps)).state;
+    const gen = planned.lesson.generation;
+    if (!gen || !planned.lesson.facts) return planned;
+    const stamped: Lesson = {
+      ...planned.lesson,
+      facts: { ...planned.lesson.facts, slidePlan: planned.lesson.facts.slidePlan ?? {} },
+      generation: {
+        ...gen,
+        promptVersions: { ...gen.promptVersions, planned: STREAM_WRITE_VERSION },
+      },
+    };
+    await deps.persist(stamped);
+    return { ...planned, lesson: stamped };
+  }
   const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
   const menu = planMenu(lesson.subject);
   const cls = planClassFor(lesson, deps);
@@ -510,6 +532,8 @@ export async function planWriteSlides(
     objectives = base.facts?.objectives ?? [];
   }
   let table: PlanSlide[] = record.plan.slides;
+  /** The approved objectives (plan screen): the stream takes them as fixed input. */
+  const fixedObjectives = mode === "stream" ? (base.facts?.objectives ?? []) : [];
   const slideCount = mode === "stream" ? (brief.slideCount ?? DEFAULT_SLIDE_COUNT) : table.length;
   const themeId = base.themeId;
   const cls = planClassFor(base, deps);
@@ -567,19 +591,21 @@ export async function planWriteSlides(
     // only to its photo search.
     outline[0] = { id: "s1", kind: "title", factRefs: objectives.map((o) => o.id) };
     outline[1] = { id: "s2", kind: "objectives", factRefs: objectives.map((o) => o.id) };
-    ready.set(
-      1,
-      materialiseSlide(
-        {
-          kind: "objectives",
-          items: objectives.slice(0, 4).map((o) => o.text),
-          factRefs: objectives.map((o) => o.id),
-        },
-        themeId,
-        codeMeta(),
-        deps.ids,
-      ),
-    );
+    ready.set(0, lesson.slides[0] as Slide);
+    if (fixedObjectives.length === 0)
+      ready.set(
+        1,
+        materialiseSlide(
+          {
+            kind: "objectives",
+            items: objectives.slice(0, 4).map((o) => o.text),
+            factRefs: objectives.map((o) => o.id),
+          },
+          themeId,
+          codeMeta(),
+          deps.ids,
+        ),
+      );
     void flush();
     if (imageBrief && deps.images) {
       photoCounts.requested += 1;
@@ -599,23 +625,36 @@ export async function planWriteSlides(
     }
   };
 
-  // Saved in slide order, one write at a time; `ready` holds slides waiting for an earlier one.
-  const ready = new Map<number, Slide>();
+  // `ready` holds every slide that is written, by index. Saved one write at a time: in slide order
+  // by default; with live writing each slide is saved as soon as it is ready, a skeleton slide
+  // (`LIVE_PENDING` id) holding the place of any earlier one still being written.
+  const ready = new Map<number, Slide>([[0, title]]);
+  const outOfOrder = deps.onLiveSlide !== undefined;
+  const pendingSlide = (index: number): Slide => {
+    const row = table[index];
+    const form = row?.form ?? "discussion";
+    const layout = row?.layout ?? "default";
+    let k = 0;
+    const ids = () => `${LIVE_PENDING}${index + 1}-${k++}`;
+    const r = renderWritten(form, layout, liveFields(form, layout, {}, row?.parts));
+    const slide = materialiseSlide(r.spec, themeId, codeMeta(), ids, r.variant, r.structure);
+    return { ...slide, id: `${LIVE_PENDING}${index + 1}` };
+  };
   let writing: Promise<void> = Promise.resolve();
   let firstSlideMs: number | undefined;
   const flush = () => {
     writing = writing.then(async () => {
-      let wrote = false;
-      while (ready.has(lesson.slides.length)) {
-        const index = lesson.slides.length;
-        lesson = { ...lesson, slides: [...lesson.slides, ready.get(index) as Slide] };
-        ready.delete(index);
-        wrote = true;
-      }
-      if (!wrote || deps.signal.aborted) return;
+      let top = -1;
+      if (outOfOrder) top = Math.max(-1, ...ready.keys());
+      else while (ready.has(top + 1)) top += 1;
+      const slides = Array.from({ length: top + 1 }, (_, i) => ready.get(i) ?? pendingSlide(i));
+      const same =
+        slides.length === lesson.slides.length && slides.every((x, i) => x === lesson.slides[i]);
+      if (same || deps.signal.aborted) return;
+      lesson = { ...lesson, slides };
       const { updatedAt } = await deps.persist(withUsage(lesson, deps));
       firstSlideMs ??= Date.now() - startedAt;
-      const n = lesson.slides.length;
+      const n = [...ready.keys()].filter((i) => i <= top).length;
       await deps.onProgress(
         Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * n) / slideCount),
         `Slide ${n} of ${slideCount}`,
@@ -674,13 +713,17 @@ export async function planWriteSlides(
       ),
     });
     writing = writing.then(async () => {
+      const waiting = ready.get(index);
+      if (waiting) ready.set(index, put(waiting));
       const slide = lesson.slides[index];
-      if (slide) {
+      if (slide && waiting && slide.id === waiting.id) {
         lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === index ? put(s) : s)) };
-        if (!deps.signal.aborted) await deps.persist(withUsage(lesson, deps));
-      } else {
-        const waiting = ready.get(index);
-        if (waiting) ready.set(index, put(waiting));
+        if (!deps.signal.aborted) {
+          const { updatedAt } = await deps.persist(withUsage(lesson, deps));
+          // Live writing: the photo shows as soon as it is saved.
+          if (outOfOrder)
+            await deps.onProgress(PROGRESS_SLIDES_FROM, "Photo placed", "generate", updatedAt);
+        }
       }
     });
   };
@@ -931,9 +974,11 @@ export async function planWriteSlides(
     record = { plan: c.plan, switched: c.switched, problems, repaired: false };
     table = [...c.plan.slides];
     objectives =
-      state.pinObjectives && (base.facts?.objectives.length ?? 0) > 0
-        ? (base.facts?.objectives ?? [])
-        : c.plan.objectives.map((text, i) => ({ id: `o${i + 1}`, text }));
+      fixedObjectives.length > 0
+        ? fixedObjectives
+        : state.pinObjectives && (base.facts?.objectives.length ?? 0) > 0
+          ? (base.facts?.objectives ?? [])
+          : c.plan.objectives.map((text, i) => ({ id: `o${i + 1}`, text }));
     baseFacts = plannedFacts(record, objectives, brief.durationMin);
     drawTitle();
     lesson = {
@@ -975,10 +1020,43 @@ export async function planWriteSlides(
 
   /** One call plans and writes the whole lesson; each slide lands as it closes. */
   const runStream = async () => {
+    // The approved objectives are on the objectives slide from the start; the stream is told
+    // them as data (through the answers line until the prompt takes them as fixed input).
+    if (fixedObjectives.length > 0) {
+      objectives = fixedObjectives;
+      const saved = base.slides[1];
+      ready.set(
+        1,
+        saved?.kind === "objectives"
+          ? saved
+          : materialiseSlide(
+              {
+                kind: "objectives",
+                items: objectives.slice(0, 4).map((o) => o.text),
+                factRefs: objectives.map((o) => o.id),
+              },
+              themeId,
+              codeMeta(),
+              deps.ids,
+            ),
+      );
+      outline[1] = { id: "s2", kind: "objectives", factRefs: objectives.map((o) => o.id) };
+      void flush();
+    }
+    const answers = {
+      ...(brief.answers ?? {}),
+      ...(fixedObjectives.length > 0
+        ? {
+            objectives: `Use exactly these approved objectives, in this order: ${fixedObjectives
+              .map((o, i) => `${i + 1}. ${o.text}`)
+              .join(" ")}`,
+          }
+        : {}),
+    };
     const input: StreamLessonInput = {
       topic: brief.topic,
       audience,
-      ...(brief.answers ? { answers: brief.answers } : {}),
+      ...(Object.keys(answers).length > 0 ? { answers } : {}),
       ...(brief.classContext?.priorKnowledge
         ? { priorKnowledge: brief.classContext.priorKnowledge }
         : {}),
@@ -1017,6 +1095,18 @@ export async function planWriteSlides(
       }
       table[n - 1] = got ? { ...row, form: got.form, layout: got.layout } : row;
       if (got?.out) {
+        if (deps.onLiveSlide) {
+          try {
+            const whole = drawn(got.form, got.layout, got.out, codeMeta());
+            deps.onLiveSlide({
+              index: n - 1,
+              kind: String((raw as { kind?: unknown }).kind),
+              slide: whole,
+            });
+          } catch {
+            /* The saved slide comes after its fit. */
+          }
+        }
         pending.push(land(n, got.out, streamModel));
         return;
       }
@@ -1057,7 +1147,7 @@ export async function planWriteSlides(
         const r = renderWritten(
           kinded.form,
           kinded.layout,
-          liveFields(kinded.form, kinded.layout, raw),
+          liveFields(kinded.form, kinded.layout, raw, table[n - 1]?.parts),
         );
         slide = materialiseSlide(
           r.spec,
@@ -1126,10 +1216,10 @@ export async function planWriteSlides(
   throwIfAborted(deps.signal);
   await flush();
   await writing;
-  if (lesson.slides.length !== slideCount) {
+  if (lesson.slides.length !== slideCount || ready.size !== slideCount) {
     throw new StageFailure(
       "generate",
-      `plan-write: ${lesson.slides.length} of ${slideCount} slides were written`,
+      `plan-write: ${ready.size} of ${slideCount} slides were written`,
     );
   }
 

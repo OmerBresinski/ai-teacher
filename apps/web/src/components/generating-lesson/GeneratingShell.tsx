@@ -20,11 +20,13 @@ import {
 } from "react";
 import { pendingSlides } from "@/lib/pending-slides";
 import {
+  EditableSlide,
+  isWritten,
   LiveFrame,
   type LiveSlides,
+  LiveSlot,
   LiveThumb,
   liveView,
-  ThemedSkeleton,
   usePacedIntro,
 } from "./live-writing";
 import { MobileGeneratingShell } from "./MobileGeneratingShell";
@@ -92,6 +94,8 @@ export type GeneratingShellProps = {
    * navigator holds every slide from the start and the canvas follows the slide being written.
    */
   live?: LiveSlides;
+  /** Live writing: the teacher's edit of a finished slide while the rest are written. */
+  onEditSlide?: (slide: Slide) => void;
 };
 
 export function GeneratingShell({
@@ -107,6 +111,7 @@ export function GeneratingShell({
   className,
   onViewSlide,
   live,
+  onEditSlide,
 }: GeneratingShellProps) {
   const mobile = useMobileEditor();
   const state = stageOf(events, lesson.plan?.state === "proposed");
@@ -119,7 +124,8 @@ export function GeneratingShell({
   const compactChrome = useCompactChrome();
   const navigatorMode = compactChrome ? "compact" : preferredNavigatorMode;
   const thumbWidth = navigatorThumbWidth(navigatorMode);
-  const newest = lesson.slides.at(-1);
+  // Live writing saves slides out of order: a `LIVE_PENDING` slide holds a place still being written.
+  const newest = lesson.slides.filter(isWritten).at(-1);
   // `null` follows the newest slide; an id pins the canvas to that slide while more arrive.
   const [selectedId, setSelectedId] = useState<Id | null>(null);
   const selected = selectedId === null ? undefined : lesson.slides.find((s) => s.id === selectedId);
@@ -133,17 +139,26 @@ export function GeneratingShell({
   const slotCount = liveOn
     ? Math.max(lesson.brief?.slideCount ?? 0, lesson.slides.length + pending.length)
     : lesson.slides.length + pending.length;
+  const savedAt = (index: number) => {
+    const s = lesson.slides[index];
+    return s && isWritten(s) ? s : undefined;
+  };
   const liveAt = (index: number) =>
-    liveOn && index >= lesson.slides.length ? live?.get(index)?.slide : undefined;
+    liveOn && !savedAt(index) ? (live?.get(index)?.slide ?? lesson.slides[index]) : undefined;
   let writingIndex: number | undefined;
   if (liveOn && live) {
     for (const [index, entry] of live) {
-      if (index >= lesson.slides.length && entry.slide && index >= (writingIndex ?? -1)) {
+      if (!savedAt(index) && entry.slide && index >= (writingIndex ?? -1)) {
         writingIndex = index;
       }
     }
   }
-  const paced = usePacedIntro(lesson.slides, !liveOn || writingIndex !== undefined);
+  const { chars: paced, phase: introPhase } = usePacedIntro(
+    lesson.slides,
+    !liveOn || writingIndex !== undefined,
+  );
+  const intro = liveOn && following && writingIndex === undefined ? introPhase : null;
+  const [edited, setEdited] = useState<ReadonlyMap<Id, Slide>>(new Map());
 
   // Picking the newest slide is a return to following, so the next arrival is shown as before.
   const view = (id: Id) => {
@@ -299,46 +314,48 @@ export function GeneratingShell({
           style={{ width: navigatorWidthVar(navigatorMode) }}
         >
           <ul className="flex flex-col gap-2">
-            {lesson.slides.map((slide, i) => (
-              <ThumbRow
-                key={slide.id}
-                id={slide.id}
-                number={i + 1}
-                current={slide.id === shown?.id}
-                arriveDelay={arrivals(i)}
-                onView={view}
-                onKeyDown={onThumbsKeyDown}
-              >
-                {liveOn && i < 2 ? (
-                  <LiveThumb slide={slide} theme={theme} width={thumbWidth} chars={paced(i)} />
-                ) : (
-                  <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
-                )}
-              </ThumbRow>
-            ))}
+            {lesson.slides.map((slide, i) =>
+              !isWritten(slide) ? (
+                <LiveSlot
+                  key={slide.id}
+                  position={i}
+                  slide={liveAt(i)}
+                  theme={theme}
+                  width={thumbWidth}
+                />
+              ) : (
+                <ThumbRow
+                  key={slide.id}
+                  id={slide.id}
+                  number={i + 1}
+                  current={slide.id === shown?.id}
+                  arriveDelay={arrivals(i)}
+                  onView={view}
+                  onKeyDown={onThumbsKeyDown}
+                >
+                  {liveOn && i < 2 ? (
+                    <LiveThumb slide={slide} theme={theme} width={thumbWidth} chars={paced(i)} />
+                  ) : (
+                    <SlideStatic
+                      slide={edited.get(slide.id) ?? slide}
+                      theme={theme}
+                      width={thumbWidth}
+                    />
+                  )}
+                </ThumbRow>
+              ),
+            )}
             {liveOn
               ? Array.from({ length: slotCount - lesson.slides.length }, (_, i) => {
                   const position = lesson.slides.length + i;
-                  const writing = liveAt(position);
                   return (
-                    <li
+                    <LiveSlot
                       key={`slot-${position}`}
-                      aria-hidden="true"
-                      data-live-slot={position}
-                      data-live-state={writing ? "writing" : "waiting"}
-                      className="flex w-full items-center px-1 py-0.5"
-                    >
-                      <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
-                        {position + 1}
-                      </span>
-                      {writing ? (
-                        <span className="block shrink-0 overflow-hidden rounded-chip ring-1 ring-border motion-safe:animate-arrive">
-                          <LiveThumb slide={writing} theme={theme} width={thumbWidth} />
-                        </span>
-                      ) : (
-                        <ThemedSkeleton theme={theme} width={thumbWidth} />
-                      )}
-                    </li>
+                      position={position}
+                      slide={liveAt(position)}
+                      theme={theme}
+                      width={thumbWidth}
+                    />
                   );
                 })
               : pending.map((_, i) => {
@@ -370,15 +387,32 @@ export function GeneratingShell({
                   theme={theme}
                 />
               </SlideScaler>
-            ) : liveOn && shown && lesson.slides.indexOf(shown) < 2 ? (
+            ) : intro !== null && savedAt(intro) ? (
               <SlideScaler zoom="fit">
                 <LiveCanvas
-                  key={shown.id}
-                  index={lesson.slides.indexOf(shown)}
-                  slide={shown}
-                  chars={paced(lesson.slides.indexOf(shown))}
+                  key={`intro-${intro}`}
+                  index={intro}
+                  slide={savedAt(intro) as Slide}
+                  chars={paced(intro)}
                   theme={theme}
                 />
+              </SlideScaler>
+            ) : liveOn && shown && onEditSlide ? (
+              <SlideScaler zoom="fit">
+                <div
+                  key={shown.id}
+                  data-canvas-slide={shown.id}
+                  className="overflow-hidden rounded-dialog shadow-3"
+                >
+                  <EditableSlide
+                    slide={edited.get(shown.id) ?? shown}
+                    theme={theme}
+                    onSave={(next) => {
+                      setEdited((m) => new Map(m).set(next.id, next));
+                      onEditSlide(next);
+                    }}
+                  />
+                </div>
               </SlideScaler>
             ) : shown ? (
               <SlideScaler zoom="fit">
@@ -429,7 +463,9 @@ export function GeneratingShell({
               ) : (
                 <Lock aria-hidden size={14} strokeWidth={1.5} />
               )}
-              <span>{lockLine(state)}</span>
+              <span>
+                {liveOn && running ? "Click a finished slide's text to edit it" : lockLine(state)}
+              </span>
             </div>
             {!following && newest ? (
               <Button

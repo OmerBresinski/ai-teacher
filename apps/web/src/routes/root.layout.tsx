@@ -31,10 +31,19 @@ export function RootLayout() {
       <Outlet />
       {cleanPreview ? null : (
         <Suspense fallback={null}>
-          <Devtools />
+          {hideDevtools() ? null : <Devtools />}
           <DesignPreview />
         </Suspense>
       )}
     </>
   );
+}
+
+/** Recordings and screenshots turn the dev corner widgets off with `tj:hide-devtools` = "1". */
+function hideDevtools(): boolean {
+  try {
+    return localStorage.getItem("tj:hide-devtools") === "1";
+  } catch {
+    return false;
+  }
 }

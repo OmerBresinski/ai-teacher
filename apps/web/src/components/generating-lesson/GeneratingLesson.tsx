@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Id, Lesson } from "@tj/domain/documents";
+import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { type ReactNode, useEffect, useState } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
@@ -7,7 +7,7 @@ import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
 import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { GeneratingShell } from "./GeneratingShell";
-import { latestLive, liveWritingEnabled } from "./live-writing";
+import { latestLive, liveWritingEnabled, saveLiveSlide } from "./live-writing";
 import { type StageState, stageOf } from "./stage";
 
 /**
@@ -161,7 +161,10 @@ export function GeneratingLesson({
       onViewSlide={onViewSlide}
       exportSlot={exportSlot}
       {...(liveWritingEnabled()
-        ? { live: latestLive(stream.events.map((record) => record.event)) }
+        ? {
+            live: latestLive(stream.events.map((record) => record.event)),
+            onEditSlide: (slide: Slide) => void saveLiveSlide(lesson.id, slide),
+          }
         : {})}
     />
   );

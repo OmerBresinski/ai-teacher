@@ -1,7 +1,8 @@
 import { LIVE_BLANK } from "@tj/domain";
+import { layoutsOf, type PaletteFormId } from "@tj/slides";
 import type { z } from "zod";
 import type { Written } from "./fit";
-import { slideWriterSchema } from "./menu";
+import { isSetForm, partsField, slideWriterSchema } from "./menu";
 
 /*
  * Live writing (spike/live-writing): the slide the stream is writing, drawn from the fields it
@@ -92,10 +93,30 @@ export function liveFields(
   form: string,
   layout: string,
   partial: Record<string, unknown>,
+  parts?: number,
 ): Written {
   const schema = slideWriterSchema(form, layout) as unknown as z.ZodType;
   const { notes: _notes, diagram: _diagram, ...rest } = partial;
   const blank = blankOf(schema) as Written;
+  // The plan row's part count reserves the final layout: the parts list starts at that length.
+  const field = partsFieldOf(form, layout);
+  const list = field ? blank[field] : undefined;
+  if (field && Array.isArray(list) && parts !== undefined && list.length < parts) {
+    const template =
+      list[0] ??
+      blankOf(
+        (schema as unknown as { shape?: Record<string, { _zod: { def: { element?: unknown } } }> })
+          .shape?.[field]?._zod.def.element,
+      );
+    blank[field] = [...list, ...Array.from({ length: parts - list.length }, () => template)];
+  }
   const { diagram: _d, ...fields } = overBlank(blank, rest) as Written;
   return { ...fields, notes: "" };
+}
+
+/** The field that holds a layout's parts (points, steps, options…), when it has one. */
+function partsFieldOf(form: string, layout: string): string | undefined {
+  if (isSetForm(form)) return "questions";
+  const c = layoutsOf(form as PaletteFormId).find((x) => x.layout === layout);
+  return c ? partsField(c) : undefined;
 }

@@ -470,18 +470,78 @@ export async function putDocumentAsJob(
   body: unknown,
   jobId: JobId,
 ): Promise<PutDocumentAsJobResult> {
-  const current = await getDocument(ws, id);
-  if (current === null) return { status: "missing" };
-  const row = await replaceBody(
-    ws,
-    current,
-    body,
-    eq(documents.generatingJobId, jobId),
-    "putDocumentAsJob",
-  );
-  if (row) return { status: "ok", row };
-  const after = await getDocument(ws, id);
-  return after === null ? { status: "missing" } : { status: "lost_lock" };
+  // Live writing (spike): the teacher may edit a finished slide while the job writes the others,
+  // so the job's write keeps every slide the teacher has touched and is compared against the row
+  // it merged with; a teacher save in between makes it merge again.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const current = await getDocument(ws, id);
+    if (current === null) return { status: "missing" };
+    const merged = current.kind === "lesson" ? keepTeacherSlides(current.body, body) : body;
+    const row = await replaceBody(
+      ws,
+      current,
+      merged,
+      and(eq(documents.generatingJobId, jobId), eq(documents.updatedAt, current.updatedAt)) as SQL,
+      "putDocumentAsJob",
+    );
+    if (row) return { status: "ok", row };
+    const after = await getDocument(ws, id);
+    if (after === null) return { status: "missing" };
+    if (after.generatingJobId !== jobId) return { status: "lost_lock" };
+  }
+  return { status: "lost_lock" };
+}
+
+type SlideLike = { id?: unknown; elements?: unknown[] };
+const byTeacher = (el: unknown): boolean => {
+  const e = el as { authoredBy?: unknown; children?: unknown[] };
+  return e?.authoredBy === "teacher" || (e?.children ?? []).some(byTeacher);
+};
+
+/** The job's lesson with every slide the stored copy has a teacher edit in put back as stored. */
+export function keepTeacherSlides(stored: unknown, next: unknown): unknown {
+  const kept = new Map<unknown, SlideLike>();
+  for (const s of ((stored as { slides?: SlideLike[] })?.slides ?? []) as SlideLike[]) {
+    if ((s.elements ?? []).some(byTeacher)) kept.set(s.id, s);
+  }
+  if (kept.size === 0) return next;
+  const n = next as { slides?: SlideLike[] };
+  if (!Array.isArray(n?.slides)) return next;
+  return { ...n, slides: n.slides.map((s) => kept.get(s.id) ?? s) };
+}
+
+export type PutLiveSlideResult = "ok" | "missing" | "not-generating" | "no-slide";
+
+/**
+ * Live writing (spike): the teacher's edit of one finished slide while a job holds the lock. The
+ * slide replaces the stored one with the same id; a slide still being written cannot be edited.
+ */
+export async function putLiveSlide(
+  ws: WorkspaceDb,
+  id: string,
+  slide: { id: string },
+): Promise<PutLiveSlideResult> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const current = await getDocument(ws, id);
+    if (current === null || current.kind !== "lesson") return "missing";
+    if (current.generatingJobId === null) return "not-generating";
+    const body = current.body as { slides?: SlideLike[] };
+    const slides = body.slides ?? [];
+    if (!slides.some((s) => s.id === slide.id) || slide.id.startsWith("pending-"))
+      return "no-slide";
+    const row = await replaceBody(
+      ws,
+      current,
+      { ...body, slides: slides.map((s) => (s.id === slide.id ? slide : s)) },
+      and(
+        eq(documents.generatingJobId, current.generatingJobId),
+        eq(documents.updatedAt, current.updatedAt),
+      ) as SQL,
+      "putLiveSlide",
+    );
+    if (row) return "ok";
+  }
+  return "missing";
 }
 
 /**

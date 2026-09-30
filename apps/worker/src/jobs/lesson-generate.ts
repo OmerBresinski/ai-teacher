@@ -7,6 +7,7 @@ import {
   resumeFrom,
   resumeFromDesigner,
   resumeFromObjectivesFirst,
+  resumeFromPlanWrite,
 } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import type { WorkerDeps } from "../deps";
@@ -38,17 +39,22 @@ export const lessonGenerateJob = defineJob<"lesson.generate", WorkerDeps>(
         // the objectives only, and the facts step runs here; the flag is not read.
         const planner = plannerOf(lesson);
         const from =
-          planner === "designer"
-            ? resumeFromDesigner(lesson)
-            : planner === "objectives-first"
-              ? resumeFromObjectivesFirst(lesson)
-              : resumeFrom(lesson);
+          planner === "plan-write"
+            ? resumeFromPlanWrite(lesson)
+            : planner === "designer"
+              ? resumeFromDesigner(lesson)
+              : planner === "objectives-first"
+                ? resumeFromObjectivesFirst(lesson)
+                : resumeFrom(lesson);
         if (from === "check-input" || from === "plan" || from === "objectives") {
           throw new NonRetryableError("lesson is not planned");
         }
       },
       input: (lesson, deps) => ({
-        lesson: lesson.generation?.stage === "planned" ? withPlanSlides(lesson, deps) : lesson,
+        lesson:
+          lesson.generation?.stage === "planned" && plannerOf(lesson) !== "plan-write"
+            ? withPlanSlides(lesson, deps)
+            : lesson,
       }),
     }),
 );

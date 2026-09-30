@@ -29,6 +29,7 @@ import {
   listSummaries,
   MalformedCursorError,
   putDocument,
+  putLiveSlide,
   releaseStaleLock,
   restore,
   type ScopableDb,
@@ -121,119 +122,144 @@ export function documentRoutes(unsafeDb: ScopableDb) {
   const scoped = (c: Context<AppEnv>) =>
     forWorkspace(unsafeDb, getWorkspaceId(c, { allowHeaderShim: false }));
 
-  return new Hono<AppEnv>()
-    .get("/documents", zValidator("query", listQuery, validationHook), async (c) => {
-      const ws = scoped(c);
-      const { items, nextCursor } = await listSummaries(ws, c.req.valid("query")).catch(
-        (error: unknown) => {
-          if (error instanceof MalformedCursorError) {
-            throw new HTTPException(400, { message: error.message });
-          }
-          throw error;
-        },
-      );
-      return c.json({ items: items.map(toSummaryJson), nextCursor }, 200);
-    })
-    .post(
-      "/documents",
-      documentBodyLimit(),
-      requireJsonBody(),
-      zValidator("json", createBody, validationHook),
-      async (c) => {
+  return (
+    new Hono<AppEnv>()
+      .get("/documents", zValidator("query", listQuery, validationHook), async (c) => {
         const ws = scoped(c);
-        const { kind, body } = c.req.valid("json");
-        assertKnownDocumentTheme(body);
-        const row = await createDocument(ws, kind, body).catch(unprocessableOnParseError);
-        return c.json({ document: toDocumentJson(row) }, 201);
-      },
-    )
-    .get("/documents/:id", zValidator("param", documentParam, validationHook), async (c) => {
-      const ws = scoped(c);
-      const found = await getDocument(ws, c.req.valid("param").id);
-      if (found === null) notFound();
-      // ADR 0025 §24: a lock whose job is terminal or was never queued is released on read, so
-      // no lesson stays locked by a dead job for more than `STALE_LOCK_AFTER_MS`.
-      const row =
-        found.generatingJobId === null
-          ? found
-          : await releaseStaleLock(ws, found, { logger: c.get("logger") });
-      return c.json({ document: toDocumentJson(row) }, 200);
-    })
-    .put(
-      "/documents/:id",
-      documentBodyLimit(),
-      requireJsonBody(),
-      zValidator("param", documentParam, validationHook),
-      zValidator("json", putBody, validationHook),
-      async (c) => {
-        const ws = scoped(c);
-        const { id } = c.req.valid("param");
-        const { document, expectedUpdatedAt } = c.req.valid("json");
-        if (bodyId(document) !== id) {
-          throw new HTTPException(422, { message: "The document id does not match the URL." });
-        }
-        // An unknown theme is refused only when this save introduces it: a document already stored
-        // under a theme the catalogue has since dropped must stay savable.
-        if (!hasKnownOrNoTheme(document)) {
-          const stored = await getDocument(ws, id);
-          const storedTheme = (stored?.body as { themeId?: unknown } | undefined)?.themeId;
-          if (storedTheme !== (document as { themeId?: unknown }).themeId)
-            assertKnownDocumentTheme(document);
-        }
-        const result = await putDocument(ws, id, document, new Date(expectedUpdatedAt)).catch(
-          unprocessableOnParseError,
+        const { items, nextCursor } = await listSummaries(ws, c.req.valid("query")).catch(
+          (error: unknown) => {
+            if (error instanceof MalformedCursorError) {
+              throw new HTTPException(400, { message: error.message });
+            }
+            throw error;
+          },
         );
-        switch (result.status) {
-          case "ok":
-            return c.json({ document: toDocumentJson(result.row) }, 200);
-          case "conflict":
-            throw new ConflictError("stale", STALE_MESSAGE);
-          case "generating":
-            throw new ConflictError("generating", GENERATING_MESSAGE);
-          case "missing":
-            return notFound();
-        }
-      },
-    )
-    .delete(
-      "/documents/:id",
-      smallJsonBodyLimit(),
-      zValidator("param", documentParam, validationHook),
-      async (c) => {
+        return c.json({ items: items.map(toSummaryJson), nextCursor }, 200);
+      })
+      .post(
+        "/documents",
+        documentBodyLimit(),
+        requireJsonBody(),
+        zValidator("json", createBody, validationHook),
+        async (c) => {
+          const ws = scoped(c);
+          const { kind, body } = c.req.valid("json");
+          assertKnownDocumentTheme(body);
+          const row = await createDocument(ws, kind, body).catch(unprocessableOnParseError);
+          return c.json({ document: toDocumentJson(row) }, 201);
+        },
+      )
+      .get("/documents/:id", zValidator("param", documentParam, validationHook), async (c) => {
         const ws = scoped(c);
-        const { id } = c.req.valid("param");
-        if (!(await softDelete(ws, id))) {
-          // Already deleted is idempotent; unknown is 404.
+        const found = await getDocument(ws, c.req.valid("param").id);
+        if (found === null) notFound();
+        // ADR 0025 §24: a lock whose job is terminal or was never queued is released on read, so
+        // no lesson stays locked by a dead job for more than `STALE_LOCK_AFTER_MS`.
+        const row =
+          found.generatingJobId === null
+            ? found
+            : await releaseStaleLock(ws, found, { logger: c.get("logger") });
+        return c.json({ document: toDocumentJson(row) }, 200);
+      })
+      .put(
+        "/documents/:id",
+        documentBodyLimit(),
+        requireJsonBody(),
+        zValidator("param", documentParam, validationHook),
+        zValidator("json", putBody, validationHook),
+        async (c) => {
+          const ws = scoped(c);
+          const { id } = c.req.valid("param");
+          const { document, expectedUpdatedAt } = c.req.valid("json");
+          if (bodyId(document) !== id) {
+            throw new HTTPException(422, { message: "The document id does not match the URL." });
+          }
+          // An unknown theme is refused only when this save introduces it: a document already stored
+          // under a theme the catalogue has since dropped must stay savable.
+          if (!hasKnownOrNoTheme(document)) {
+            const stored = await getDocument(ws, id);
+            const storedTheme = (stored?.body as { themeId?: unknown } | undefined)?.themeId;
+            if (storedTheme !== (document as { themeId?: unknown }).themeId)
+              assertKnownDocumentTheme(document);
+          }
+          const result = await putDocument(ws, id, document, new Date(expectedUpdatedAt)).catch(
+            unprocessableOnParseError,
+          );
+          switch (result.status) {
+            case "ok":
+              return c.json({ document: toDocumentJson(result.row) }, 200);
+            case "conflict":
+              throw new ConflictError("stale", STALE_MESSAGE);
+            case "generating":
+              throw new ConflictError("generating", GENERATING_MESSAGE);
+            case "missing":
+              return notFound();
+          }
+        },
+      )
+      // Live writing (spike): the teacher edits a finished slide while the rest are written.
+      .put(
+        "/documents/:id/live-slides/:slideId",
+        documentBodyLimit(),
+        requireJsonBody(),
+        zValidator(
+          "param",
+          documentParam.extend({ slideId: z.string().min(1).max(128) }),
+          validationHook,
+        ),
+        zValidator("json", z.object({ slide: z.looseObject({ id: z.string() }) }), validationHook),
+        async (c) => {
+          const { id, slideId } = c.req.valid("param");
+          const { slide } = c.req.valid("json");
+          if (slide.id !== slideId) {
+            throw new HTTPException(422, { message: "The slide id does not match the URL." });
+          }
+          const result = await putLiveSlide(scoped(c), id, slide).catch(unprocessableOnParseError);
+          if (result === "ok") return c.body(null, 204);
+          if (result === "missing") return notFound();
+          throw new ConflictError("generating", result);
+        },
+      )
+      .delete(
+        "/documents/:id",
+        smallJsonBodyLimit(),
+        zValidator("param", documentParam, validationHook),
+        async (c) => {
+          const ws = scoped(c);
+          const { id } = c.req.valid("param");
+          if (!(await softDelete(ws, id))) {
+            // Already deleted is idempotent; unknown is 404.
+            const row = await getDocument(ws, id);
+            if (row === null) notFound();
+          }
+          return c.body(null, 204);
+        },
+      )
+      .post(
+        "/documents/:id/restore",
+        smallJsonBodyLimit(),
+        zValidator("param", documentParam, validationHook),
+        async (c) => {
+          const ws = scoped(c);
+          const { id } = c.req.valid("param");
+          await restore(ws, id);
           const row = await getDocument(ws, id);
           if (row === null) notFound();
-        }
-        return c.body(null, 204);
-      },
-    )
-    .post(
-      "/documents/:id/restore",
-      smallJsonBodyLimit(),
-      zValidator("param", documentParam, validationHook),
-      async (c) => {
-        const ws = scoped(c);
-        const { id } = c.req.valid("param");
-        await restore(ws, id);
-        const row = await getDocument(ws, id);
-        if (row === null) notFound();
-        return c.json({ document: toDocumentJson(row) }, 200);
-      },
-    )
-    .get(
-      "/documents/:id/lessons",
-      zValidator("param", documentParam, validationHook),
-      async (c) => {
-        const ws = scoped(c);
-        const result = await getSeriesWithLessons(ws, c.req.valid("param").id);
-        if (result === null) notFound();
-        return c.json(
-          { series: toDocumentJson(result.series), lessons: result.lessons.map(toSummaryJson) },
-          200,
-        );
-      },
-    );
+          return c.json({ document: toDocumentJson(row) }, 200);
+        },
+      )
+      .get(
+        "/documents/:id/lessons",
+        zValidator("param", documentParam, validationHook),
+        async (c) => {
+          const ws = scoped(c);
+          const result = await getSeriesWithLessons(ws, c.req.valid("param").id);
+          if (result === null) notFound();
+          return c.json(
+            { series: toDocumentJson(result.series), lessons: result.lessons.map(toSummaryJson) },
+            200,
+          );
+        },
+      )
+  );
 }

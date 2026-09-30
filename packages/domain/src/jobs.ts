@@ -234,6 +234,12 @@ export type JobProgress = z.infer<typeof JobProgressSchema>;
 /** Live writing: a character standing in for text the stream has not written yet. */
 export const LIVE_BLANK = "\uE000";
 
+/**
+ * Live writing: the id prefix of a skeleton slide saved in the place of one still being written,
+ * so a later slide can be saved first. The web shows it as not written yet.
+ */
+export const LIVE_PENDING = "pending-";
+
 // ---------------------------------------------------------------------------------------------
 // Job results (ADR 0025 §19: a proposal job's output rides on its `completed` event)
 // ---------------------------------------------------------------------------------------------

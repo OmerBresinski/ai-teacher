@@ -1,6 +1,7 @@
 import { SLIDE_H, SLIDE_W, type Slide } from "@tj/domain/documents";
-import { type JobEvent, LIVE_BLANK } from "@tj/domain/jobs";
+import { type JobEvent, LIVE_BLANK, LIVE_PENDING } from "@tj/domain/jobs";
 import type { getTheme } from "@tj/editor";
+import { SlideView } from "@tj/editor";
 import { SlideStatic } from "@tj/editor/thumb";
 import { cn, Skeleton } from "@tj/ui";
 import { type ReactNode, useEffect, useState } from "react";
@@ -33,6 +34,11 @@ export function latestLive(events: readonly JobEvent[]): LiveSlides {
 
 type Box = { x: number; y: number; w: number; h: number; kind: "text" | "picture" };
 type Node = { text?: string; content?: Node[]; [k: string]: unknown };
+
+const DIAGRAM_SLOT = "Diagram placeholder";
+
+/** A saved slide the stream has written, not a `LIVE_PENDING` place holder. */
+export const isWritten = (slide: Slide): boolean => !slide.id.startsWith(LIVE_PENDING);
 
 const BLANK_RUN = new RegExp(`${LIVE_BLANK}+`, "g");
 const PLACEHOLDER_FILL = "%23E9E8E3";
@@ -68,30 +74,40 @@ export function liveView(slide: Slide, chars?: number): { slide: Slide; blanks: 
   const blanks: Box[] = [];
   // One budget for the whole slide, so the texts type one after another in reading order.
   const budget = { left: chars ?? Number.POSITIVE_INFINITY };
-  const walk = (el: El): El => {
-    if (el.type === "text") {
-      const doc = el.doc as unknown as Node;
+  const walk = (el: El): El | undefined => {
+    // An open diagram slot is a picture zone until the diagram is drawn; taken out here, so the
+    // view keeps the words where the slot leaves them rather than laying them out again.
+    if (el.name === DIAGRAM_SLOT) {
+      blanks.push({ x: el.x, y: el.y, w: el.w, h: el.h, kind: "picture" });
+      return undefined;
+    }
+    // Text boxes and shapes with words (answer cards) alike: blanks are cut, and a box with no
+    // written word yet is a skeleton bar.
+    const withDoc = el as El & { doc?: unknown };
+    if (withDoc.doc && typeof withDoc.doc === "object") {
+      const doc = withDoc.doc as Node;
       const raw = textOf(doc);
       const written = raw.replace(BLANK_RUN, "").trim();
       if (raw.includes(LIVE_BLANK) && written === "") {
-        blanks.push({ x: el.x, y: el.y, w: el.w, h: el.h, kind: "text" });
+        const inset = el.type === "text" ? 0 : Math.min(56, el.w * 0.12);
+        blanks.push({ x: el.x + inset, y: el.y, w: el.w - inset * 1.5, h: el.h, kind: "text" });
       }
-      return { ...el, doc: cutDoc(doc, budget) as unknown as typeof el.doc };
+      return { ...el, doc: cutDoc(doc, budget) } as unknown as El;
     }
     if (el.type === "image") {
       if (isPlaceholderPhoto(el.src)) {
         blanks.push({ x: el.x, y: el.y, w: el.w, h: el.h, kind: "picture" });
-        return el;
+        return undefined;
       }
       // A new id when the photo lands, so its view mounts again and fades in.
       return { ...el, id: `${el.id}~${el.src.length}` };
     }
     if (el.type === "group") {
-      return { ...el, children: el.children.map((c) => walk(c as El)) } as El;
+      return { ...el, children: el.children.flatMap((c) => walk(c as El) ?? []) } as El;
     }
     return el;
   };
-  return { slide: { ...slide, elements: slide.elements.map(walk) }, blanks };
+  return { slide: { ...slide, elements: slide.elements.flatMap((e) => walk(e) ?? []) }, blanks };
 }
 
 /** Skeleton bars and picture zones over the slide, in the theme's ink, at the elements' boxes. */
@@ -198,17 +214,24 @@ export function LiveFrame({
   );
 }
 
-/** Title over the first 3 s, objectives over the next 7 s: the typing while Sol thinks. */
+/**
+ * The reveal that fills Sol's thinking time (ruling 138): the title types over about 1–4 s after
+ * generate, then the objectives slide over about 4–10 s, one objective after another. Times are
+ * from when the editor mounts (about 0.7 s after the click).
+ */
 const PACE = [
-  { from: 0, ms: 3000 },
-  { from: 2500, ms: 7000 },
+  { from: 300, ms: 3000 },
+  { from: 3300, ms: 6000 },
 ] as const;
 
 /**
- * How many characters of slide 1 and slide 2 to show, from when each landed. Real content is
- * never held back: once `done` (the first streamed slide is here) the whole text shows.
+ * How many characters of slide 1 and slide 2 to show, and which of them is on the canvas. Real
+ * content is never held back: once `done` (the first streamed slide is here) everything shows.
  */
-export function usePacedIntro(slides: readonly Slide[], done: boolean): (index: number) => number {
+export function usePacedIntro(
+  slides: readonly Slide[],
+  done: boolean,
+): { chars: (index: number) => number; phase: 0 | 1 | null } {
   const [start] = useState(() => Date.now());
   const [now, setNow] = useState(start);
   const lengths = slides
@@ -219,17 +242,166 @@ export function usePacedIntro(slides: readonly Slide[], done: boolean): (index: 
         0,
       ),
     );
-  const finished = done || now - start > PACE[1].from + PACE[1].ms;
+  const elapsed = now - start;
+  const finished = done || elapsed > PACE[1].from + PACE[1].ms + 400;
   useEffect(() => {
     if (finished) return;
     const timer = window.setInterval(() => setNow(Date.now()), 50);
     return () => window.clearInterval(timer);
   }, [finished]);
-  return (index) => {
-    const pace = PACE[index];
-    const total = lengths[index];
-    if (finished || !pace || total === undefined) return Number.POSITIVE_INFINITY;
-    const t = Math.min(1, Math.max(0, (now - start - pace.from) / pace.ms));
-    return Math.round(total * t);
+  return {
+    chars: (index) => {
+      const pace = PACE[index];
+      const total = lengths[index];
+      if (finished || !pace || total === undefined) return Number.POSITIVE_INFINITY;
+      const t = Math.min(1, Math.max(0, (elapsed - pace.from) / pace.ms));
+      return Math.round(total * t);
+    },
+    phase: done ? null : elapsed < PACE[1].from || slides.length < 2 ? 0 : 1,
   };
+}
+
+/** A navigator row for a slide not saved yet: its live copy, its place holder, or a skeleton. */
+export function LiveSlot({
+  position,
+  slide,
+  theme,
+  width,
+}: {
+  position: number;
+  slide: Slide | undefined;
+  theme: Theme;
+  width: number;
+}) {
+  return (
+    <li
+      aria-hidden="true"
+      data-live-slot={position}
+      data-live-state={slide && isWritten(slide) ? "writing" : slide ? "shaped" : "waiting"}
+      className="flex w-full items-center px-1 py-0.5"
+    >
+      <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
+        {position + 1}
+      </span>
+      {slide ? (
+        <span className="block shrink-0 overflow-hidden rounded-chip ring-1 ring-border motion-safe:animate-arrive">
+          <LiveThumb slide={slide} theme={theme} width={width} />
+        </span>
+      ) : (
+        <ThemedSkeleton theme={theme} width={width} />
+      )}
+    </li>
+  );
+}
+
+type Leaf = { text?: string; content?: Leaf[] };
+const leaves = (node: Leaf): Leaf[] =>
+  typeof node.text === "string" ? [node] : (node.content ?? []).flatMap(leaves);
+
+/** The doc with its lines replaced in order, keeping its paragraphs, lists and marks. */
+function withLines(doc: unknown, text: string): unknown {
+  const copy = structuredClone(doc) as Leaf;
+  const ls = leaves(copy);
+  const lines = text.split("\n");
+  ls.forEach((leaf, i) => {
+    leaf.text = i === ls.length - 1 ? lines.slice(i).join(" ") : (lines[i] ?? "");
+  });
+  return copy;
+}
+
+/**
+ * A finished slide the teacher can edit while the rest are written: a click on a text opens it in
+ * place; leaving it saves the slide with that element marked as the teacher's.
+ */
+export function EditableSlide({
+  slide,
+  theme,
+  onSave,
+}: {
+  slide: Slide;
+  theme: Theme;
+  onSave: (slide: Slide) => void;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const view = liveView(slide);
+  const texts = slide.elements.filter((e) => e.type === "text");
+  const box = (e: { x: number; y: number; w: number; h: number }) => ({
+    left: `${(e.x / SLIDE_W) * 100}%`,
+    top: `${(e.y / SLIDE_H) * 100}%`,
+    width: `${(e.w / SLIDE_W) * 100}%`,
+    height: `${(e.h / SLIDE_H) * 100}%`,
+  });
+  const save = () => {
+    const el = texts.find((e) => e.id === open);
+    setOpen(null);
+    if (el?.type !== "text") return;
+    const before = leaves(el.doc as unknown as Leaf)
+      .map((l) => l.text)
+      .join("\n");
+    if (draft === before) return;
+    const next = {
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.id === el.id
+          ? ({ ...e, doc: withLines(el.doc, draft), authoredBy: "teacher" } as unknown as El)
+          : e,
+      ),
+    };
+    onSave(next);
+  };
+  return (
+    <LiveFrame blanks={view.blanks} theme={theme}>
+      <SlideView slide={view.slide} theme={theme} mode="view" />
+      <div className="pointer-events-auto absolute inset-0 z-10" data-live-editable>
+        {texts.map((e) =>
+          open === e.id ? (
+            <textarea
+              key={e.id}
+              // biome-ignore lint/a11y/noAutofocus: the teacher just clicked this text to edit it
+              autoFocus
+              aria-label="Edit text"
+              className="absolute resize-none rounded-sm bg-card p-1 text-[1.4em] text-foreground shadow-focus outline-none"
+              style={box(e)}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={save}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setOpen(null);
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) save();
+              }}
+            />
+          ) : (
+            <button
+              key={e.id}
+              type="button"
+              aria-label="Edit this text"
+              data-live-edit={e.id}
+              className="absolute cursor-text rounded-sm hover:ring-2 hover:ring-primary"
+              style={box(e)}
+              onClick={() => {
+                setDraft(
+                  leaves(e.doc as unknown as Leaf)
+                    .map((l) => l.text)
+                    .join("\n"),
+                );
+                setOpen(e.id);
+              }}
+            />
+          ),
+        )}
+      </div>
+    </LiveFrame>
+  );
+}
+
+/** Live writing: save the teacher's edit of one finished slide while the job holds the lesson. */
+export async function saveLiveSlide(lessonId: string, slide: Slide): Promise<void> {
+  const res = await fetch(`${env.VITE_API_URL}/documents/${lessonId}/live-slides/${slide.id}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ slide }),
+  });
+  if (!res.ok) console.warn("live writing: the slide edit was not saved", res.status);
 }
