@@ -1,4 +1,5 @@
 {
   "extends": "@tj/config/tsconfig/node.json",
-  "include": ["src", "eval"]
+  "include": ["src", "eval"],
+  "exclude": ["eval/diagram-render.ts"]
 }

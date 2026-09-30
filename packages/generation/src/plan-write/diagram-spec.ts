@@ -216,9 +216,13 @@ export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
 
 export const DIAGRAM_KINDS = DiagramSpecSchema.options.map((o) => o.shape.kind.value);
 
-/** The contract lines a writer reads for the diagram slot: the renderer's limits, in its terms. */
+/**
+ * The contract lines a writer reads for the diagram slot: the renderer's limits as units of text
+ * (words, phrases), never character counts (rulings 82 and 132); the renderer's parse still holds
+ * the limits, and a spec over one lands as a teaching slide without the drawing.
+ */
 export const DIAGRAM_CONTRACT = [
-  `- diagram: the drawing itself, as a diagram spec of one kind (${DIAGRAM_KINDS.join(", ")}); never shown as text. Each text field keeps to the characters its schema gives (title 40, alt 200, axis label 30, series label 20, annotation 24, interval 20, flow step 32 and arrow 14, label 24, particle caption 16, table header 20 and cell 28); a field with nothing to say is left out, never empty.`,
-  "  - line-graph: an annotation's y and an interval's y are in the left axis's units, so the series they mark is on the left axis. A lag time is an interval from one peak's x to the other's.",
-  "  - labelled-diagram: shapes on a canvas 100 high (100 or 160 wide). Each label's point is inside or on the shape it names; a label is 1 to 3 words, one per shape, at most 6. Particle boxes are one per state, the caption the state's name.",
+  `- diagram: the drawing itself, as a diagram spec of one kind (${DIAGRAM_KINDS.join(", ")}); never shown as text. Its text is labels, not sentences: a label, annotation, interval, series name, particle caption or table header is one to three words; an axis label is a few words with its unit; a flow step is a short phrase and a flow arrow one or two words; a table cell is a short phrase; the title is one short line and the alt one sentence. A field with nothing to say is left out, never empty.`,
+  "  - line-graph: an annotation marks one point of one series, at that point's own x and y (on the series' own axis), and its label names that series' feature (\"Peak rainfall\" at the tallest rainfall bar, \"Peak discharge\" at the top of the discharge line). An interval's y is in the left axis's units, below both curves' peaks. A lag time is an interval from the rainfall peak's x to the discharge peak's x.",
+  "  - labelled-diagram: shapes on a canvas 100 high (100 or 160 wide). Each label's point is inside or on the shape it names; a label is 1 to 3 words, one per shape, at most 6. Particle boxes are one per state, the caption the state's name; a label on a particle box says something the caption does not (\"fixed rows\", never the state's name again).",
 ].join("\n");

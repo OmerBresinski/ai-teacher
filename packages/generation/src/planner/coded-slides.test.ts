@@ -347,12 +347,12 @@ describe("the exit ticket: one line per objective, on one slide (TEACH-172)", ()
     expect(items[1]).toBe(check.stem.trim());
   });
 
-  test("five short questions: the first three are kept, in order", () => {
+  test("five short questions: as many as fit are kept, in order (four at the teaching body size)", () => {
     const qs = ["a", "b", "c", "d", "e"].map((id) => mcOf(id, 80, 8));
     const items = itemsOf(exitSpec(qs));
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(4);
     expect(items.map((t) => t.slice(0, 20))).toEqual(
-      qs.slice(0, 3).map((q) => q.stem.slice(0, 20)),
+      qs.slice(0, 4).map((q) => q.stem.slice(0, 20)),
     );
   });
 

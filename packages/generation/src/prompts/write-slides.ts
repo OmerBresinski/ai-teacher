@@ -16,7 +16,9 @@ import { type Audience, audienceBlock } from "./shared";
  * v11: v10's smoke (ad907742) gave maths a stepped 3-item set, but history 3 closed recall questions;
  * the practice form now follows the objective's verb (a set to work out, a written task to explain).
  * v12: the photo slot's contract and schema carry `named` (proper name or null; code routes it to Commons). */
-export const WRITE_SLIDES_VERSION = "write-slides.v13";
+/* v14 (merge): v13's photo subject (spike/photo-bench); the exit role gone (its ticket is on the
+ * worksheet); the notes rule no longer says "first", since the stream schema puts notes last. */
+export const WRITE_SLIDES_VERSION = "write-slides.v14";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -75,7 +77,7 @@ Each idea a row teaches appears on its slide itself, in the order the plan gives
 A heading is the slide's idea as a claim on one line: a subject and one verb, with no full stop and no "and", "but" or list ("Cholera spread through water", not "Cholera spread through drinking water rather than bad air in 1854 London"). The reason and the case go in the body. A worked example's heading is the label of its method ("Finding a missing angle").
 A teach slide's body says how or why its claim holds (what acts on what, and what follows) and works one real case through it, with the case's own detail: the running example where it fits, otherwise a place, an event, a person, a reaction, a quoted line or worked numbers. A list, compare or sequence carries its case in a point, side or step.
 A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°").
-A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
+A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
 Each check question has exactly one defensible answer.
 A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: where its objective is to work something out or identify it, a question set whose items step up from a plain case to that one; where it is to explain or describe, a written task that says what to write and what it must use.
 A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
@@ -83,7 +85,7 @@ A photo's imageBrief names the real thing the slide teaches, which the photograp
 A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.
 Pictures are for whoever finds or draws them: the slide's text never repeats a brief or describes the picture.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
-Notes come first on every slide: what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next.
+The notes on every slide are what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next.
 A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.`;
 
 const SYSTEM = `You are an experienced UK teacher writing the slides of a planned lesson. The plan fixes each slide's role, form, layout and what it teaches; you write the slides you are given, each in its form and layout. A row gives its slide's aim in a few words; the detail, the examples and any picture's description are yours. Nothing rewrites your words, so what you write is the slide.\n\n${HOUSE_RULES}\n${WRITE_RULES}`;

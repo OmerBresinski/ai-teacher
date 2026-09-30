@@ -53,7 +53,8 @@ const EXAMPLE = {
 };
 
 export const verifyFactsPrompt = {
-  version: "verify-facts.v7",
+  // v8: text unchanged here; the measured slot limits it renders moved with the teaching body size (spike/teach-type 0272d056).
+  version: "verify-facts.v8",
   system: [
     "You are a subject specialist checking a lesson plan's facts before it is taught. You are given every fact with its id; return only the corrections that are needed.",
     "",

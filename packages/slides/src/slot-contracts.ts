@@ -39,7 +39,7 @@ export const TEXT_KINDS = {
   "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
   "gapped-sentence": "one sentence with each gap written as ___, at most two lines",
   starter: 'an unfinished sentence starter, just its opening, ending in … ("I think… because…")',
-  brief: "a description for whoever draws or finds it",
+  brief: "the real thing it shows, named plainly, as a search would name it",
   paragraph: "a paragraph",
 } as const;
 export type TextKind = keyof typeof TEXT_KINDS;

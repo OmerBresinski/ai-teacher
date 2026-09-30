@@ -1174,7 +1174,22 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
           ? [{ type: "misconception" as const, index: i, line: misconceptionLine(m) }]
           : [],
       );
-      const stand = fresher.find(fits) ?? myths.find(fits) ?? asked.find(fits);
+      // The stand-in is only for a taught objective (an untaught one's line would test what no
+      // slide taught), and never a starter's question: that asked before the teaching.
+      const taughtHere = slots.some(
+        (s) =>
+          (s.kind === "content" || s.kind === "worked-example") &&
+          s.phase === "explain" &&
+          s.objectives.includes(o),
+      );
+      const starterAsked = new Set(
+        slots.flatMap((s) => (s.kind === "starter" ? (s.questions ?? []) : [])),
+      );
+      const stand = taughtHere
+        ? (fresher.find(fits) ??
+          myths.find(fits) ??
+          asked.filter((it) => !starterAsked.has(it.index)).find(fits))
+        : undefined;
       if (stand) {
         kept.push(stand);
         gap(

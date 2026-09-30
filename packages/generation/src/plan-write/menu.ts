@@ -95,9 +95,10 @@ const OFF_MENU = new Set(["hinge/stacked"]);
 
 /**
  * Forms left off the menu: a figure's drawing comes from no step on this path (its brief would
- * reach the class as an empty picture), so a structural picture is a diagram slot, which draws.
+ * reach the class as an empty picture), so a structural picture is a diagram slot, which draws. The
+ * exit ticket is on the worksheet, never a slide (ruling 134–140 set).
  */
-const OFF_MENU_FORMS = new Set<string>(["figure"]);
+const OFF_MENU_FORMS = new Set<string>(["figure", "exit-ticket"]);
 
 /** A layout's contract text; a diagram slot's diagram is written as a diagram spec. */
 function contractLines(form: PaletteFormId, layout: string): string {
@@ -127,6 +128,7 @@ export function planMenu(subject?: string): PlanMenuEntry[] {
       }),
   );
   for (const form of SET_FORMS) {
+    if (OFF_MENU_FORMS.has(form)) continue;
     entries.push({
       form,
       layout: "default",

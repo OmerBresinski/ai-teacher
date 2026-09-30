@@ -106,7 +106,8 @@ const EXAMPLE = {
 };
 
 export const planFactsPrompt = {
-  version: "plan-facts.v13",
+  // v14: text unchanged here; the measured slot limits it renders moved with the teaching body size (spike/teach-type 0272d056).
+  version: "plan-facts.v14",
   system: [
     "You are an experienced UK teacher completing the plan for one lesson.",
     "You are given the lesson's objectives and its outline of slides, each with a brief saying what it adds. Produce the facts the slides and worksheet will be built from, then say which outline slide each fact supports.",

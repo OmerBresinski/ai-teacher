@@ -484,10 +484,13 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       pool: pool.length,
       shortlisted: shortlisted.length,
     });
-    // No caption names the subject: nothing to judge. The old fallback sent the first few to the
-    // judge anyway and placed off-topic stock (fix3: syringes on red for the particle model). No
-    // photo beats a wrong one.
-    if (pool.length > 0 && shortlisted.length === 0) return { outcome: "empty", judged: "none" };
+    // No caption names the subject: nothing to pick. The old fallback sent the first few to the
+    // judge anyway and placed off-topic stock (fix3: syringes on red for the particle model); no
+    // photo beats a wrong one. The judge is still asked, with no candidates, for one new search
+    // (T4: a Commons pool of 13 mosaics, none shortlisted, lost the Chedworth mosaic); on the last
+    // round there is no search left to run.
+    const unlisted = pool.length > 0 && shortlisted.length === 0;
+    if (unlisted && round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
     // Only a photograph the judge was shown can be placed.
     const picked = verdict.pick

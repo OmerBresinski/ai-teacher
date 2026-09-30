@@ -53,7 +53,8 @@ export const BLOCK_SHAPES = {
 } as const;
 
 export const generateWorksheetPrompt = {
-  version: "generate-worksheet.v10",
+  // v11: text unchanged here; the measured slot limits it renders moved with the teaching body size (spike/teach-type 0272d056).
+  version: "generate-worksheet.v11",
   system: [
     "You write the practice worksheet that goes with a classroom lesson, from the lesson's facts.",
     "You supply the blocks' text and answers only; a layout recipe paginates them.",

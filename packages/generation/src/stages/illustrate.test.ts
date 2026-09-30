@@ -554,7 +554,8 @@ describe("illustrate", () => {
     expect(imageOf(state3.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
 
     // T4 (30 Sep): an empty shortlist over a full pool is a verdict — no caption is the subject, so
-    // nothing is judged and the slide stays empty (the old first-six fallback placed off-topic stock).
+    // no photo from that pool is placed (the old first-six fallback placed off-topic stock). The
+    // judge is asked with no candidates, for a new search only: a pick of an unlisted id is ignored.
     const emptied = fakeImages(async () => ten);
     const { lines, logger } = memoryLogger();
     const ai2 = judge(JSON.stringify({ ids: [] }), pick("p3"));
@@ -562,11 +563,27 @@ describe("illustrate", () => {
       imageLesson([{ subject: "river" }]),
       recordingDeps(ai2, { images: emptied.images, logger }),
     );
-    expect(ai2.calls).toHaveLength(1);
+    expect(ai2.calls).toHaveLength(2);
+    expect(ai2.calls[1]?.imageParts ?? 0).toBe(0);
+    expect(ai2.calls[1]?.promptText).toContain("Candidates: none.");
     expect(emptied.stores).toEqual([]);
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     const counts = lines.map((l) => JSON.parse(l)).find((r) => r.pool !== undefined);
     expect(counts).toMatchObject({ pool: 10, shortlisted: 0 });
+
+    // …and the new search it suggests gets its own shortlist and judge round, so a good photo the
+    // first captions hid can still land (T4: the Chedworth mosaic).
+    const again = fakeImages(async (q) =>
+      q === "roman mosaic floor" ? [pexelsPhoto("M", true)] : ten,
+    );
+    const ai4 = judge(JSON.stringify({ ids: [] }), requery("roman mosaic floor"), pick("M"));
+    const state4 = await run(
+      imageLesson([{ subject: "river" }]),
+      recordingDeps(ai4, { images: again.images }),
+    );
+    expect(again.searches).toContain("roman mosaic floor");
+    expect(again.stores).toEqual(["M"]);
+    expect(imageOf(state4.lesson, 0).src).toBe("/files/ws/images/M.jpg");
   });
 
   test("row 3: a visible item outside mustShow is a validation issue the retry names", async () => {

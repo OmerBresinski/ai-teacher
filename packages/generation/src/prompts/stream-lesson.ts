@@ -22,9 +22,12 @@ import { WRITE_RULES } from "./write-slides";
  * v6: the photo slot's schema carries `named` (proper name or null), as the v4 text already asks.
  * v7: teaching first (plan-lesson.v10's budget): the frame no longer takes the teach slides, and
  * there is no exit slide. Each slide's notes come last in its schema (plan-write/stream.ts).
+ * v8 (merge of spike/teach-first and spike/photo-bench, both v7): plan-lesson.v11's teaching default
+ * and teach count, no mandatory practise slide in the frame; write-slides.v14 (photo subject, notes
+ * order-neutral, no exit role, diagram contract).
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v7";
+export const STREAM_LESSON_VERSION = "stream-lesson.v8";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -45,7 +48,7 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
   ],
   [
     "The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.",
-    "The objectives slide does not open the lesson; when the slides allow, the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. Each idea is taught with a check soon after, a hinge checks the idea everything after it depends on before pupils work alone, and a practise slide has pupils work alone on new cases. The exit ticket is on the worksheet, so no slide is an exit. How many slides each idea takes and where the hinge falls are yours.",
+    "The objectives slide does not open the lesson; when the slides allow, the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. A hinge checks the idea everything after it depends on. The exit ticket is on the worksheet, so no slide is an exit. How many slides each idea takes and where the hinge falls are yours.",
   ],
   [
     "A slide whose idea cannot be pictured has none.",
@@ -56,8 +59,8 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
     "Each check question has exactly one defensible answer; work it out before you write it, and the slide's answer and the notes give the same one.",
   ],
   [
-    "A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.",
-    "A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it; every term a pupil must know to answer it is on an earlier slide. A retrieve slide asks about what earlier lessons taught and this lesson builds on, never a term or fact this lesson teaches; a hook asks about what the class already knows.",
+    "A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.",
+    "A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it; every term a pupil must know to answer it is on an earlier slide. A retrieve slide asks about what earlier lessons taught and this lesson builds on, never a term or fact this lesson teaches; a hook asks about what the class already knows.",
   ],
 ];
 

@@ -11,7 +11,11 @@ import { type Audience, audienceBlock } from "./shared";
 
 /* v9: titlePicture carries `named` (proper name or null) for the Commons search (ruling 139). */
 /* v10: teaching first (ROOT-CAUSE-CHALKIE cause 1): at least half the slides teach, one per objective at least; no exit slide (the exit ticket is on the worksheet); "about half the slides" answer and "leave the rest for a later lesson" deleted. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v10";
+/* v11 (merge of spike/teach-first and spike/photo-bench, both v10): v10's "at least half the slides teach" was met
+ * exactly in every deck (a floor is read as the target), so teaching is now the default job and the
+ * non-teaching slides are listed as the only ones the lesson needs; code gives the teach count for
+ * this deck's size in the user turn (teachRange). Plus photo-bench's plain title-picture subject. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v11";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -234,6 +238,17 @@ export function toWire(plan: PlanLessonOutput): PlanLessonWire {
   };
 }
 
+/**
+ * How many of a deck's rows teach, as the Slides line states it: about two thirds of the rows after
+ * the objectives slide, rounded to a range (8 rows: "5 or 6"; 4 rows: "2 or 3"). Chalkie teaches on
+ * about 60–70% of those rows; a lone floor is met exactly (plan-lesson.v10), so the line names a range.
+ */
+export function teachRange(rows: number): string {
+  const lo = Math.max(1, Math.floor((rows * 2) / 3));
+  const hi = Math.max(lo, Math.min(rows - 1, Math.ceil(rows * 0.7)));
+  return hi > lo ? `${lo} or ${hi}` : `${lo}`;
+}
+
 /** Shared by the planner, the writers and the single stream (reused verbatim). */
 export const HOUSE_RULES = `Write in British English spelling and conventions.
 Never invent or include the name of any pupil, student or member of staff.`;
@@ -247,8 +262,8 @@ export const PLAN_RULES = `Decide the fields in this order:
 - slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
 The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.
-Order the ideas so each builds on the one before. An objective usually takes one or two teaching slides, with a check soon after; one check may cover two objectives. Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
-At least half the slides after the objectives slide teach, with at least one teach slide for each objective, and each teach slide carries its idea's facts, example and explanation. The hinge, the opening retrieve or hook, the checks and the practice fit into the slides that remain: when they are few, the hinge stays, one check covers two objectives, and the opening and the practice give way before a teach slide does.
+Order the ideas so each builds on the one before. Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
+Teaching is a slide's job unless the lesson needs it for something else. After the objectives slide, about two thirds of the slides teach: the Slides line gives how many. Each objective has at least one teach slide, and each teach slide carries its idea's facts, example and explanation. The other slides are only these: an opening (a retrieve or a hook), a check after each idea or pair of ideas, and the hinge; a practise slide only when a slide is still spare. When the slides are few, the practise slide gives way first, then the opening, then the checks, which the hinge covers; the hinge and the teach slides stay.
 Each slide where pupils answer, sort, match or write asks something new.
 
 Each row, fields in order, split by " | ", "-" for none:
@@ -288,7 +303,7 @@ export function planLessonPrompt(input: PlanLessonInput): { system: string; user
   const answers = Object.values(input.answers ?? {}).filter((a) => a.trim().length > 0);
   if (answers.length > 0) lines.push(`The teacher's answers: ${answers.join("; ")}`);
   lines.push(
-    `Slides: ${n}. Slide 1 is the title and slide 2 the objectives; write ${n - FIXED_ROWS} rows, for slides 3 to ${n}.`,
+    `Slides: ${n}. Slide 1 is the title and slide 2 the objectives; write ${n - FIXED_ROWS} rows, for slides 3 to ${n}. ${teachRange(n - FIXED_ROWS)} of them teach.`,
   );
   if (input.repair) {
     lines.push(

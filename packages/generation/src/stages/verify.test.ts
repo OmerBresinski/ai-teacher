@@ -161,8 +161,8 @@ describe("applyVerifyPatch: a figure (TEACH-253 row 5)", () => {
       figure("{ sides: a = 9 }"),
       figure(JSON.stringify({ sides: { a: { value: "nine" } } })),
       figure(JSON.stringify([1, 2, 3])),
-      // Over the 400-character cap (`SPEC_LIMITS.body`).
-      figure(JSON.stringify({ ...corrected, vertices: { A: "P".repeat(400) } })),
+      // Over the 600-character cap (`SPEC_LIMITS.body`, raised with the teaching body size).
+      figure(JSON.stringify({ ...corrected, vertices: { A: "P".repeat(700) } })),
     ]);
     expect(after).toEqual(before);
     expect(applied).toEqual([]);

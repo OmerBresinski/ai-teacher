@@ -36,7 +36,7 @@ describe("saveGate", () => {
 
   test("a slide that does not fit logs a warning naming the themes, as counts only", () => {
     const { lines, deps } = depsWith();
-    const body = Array.from({ length: 14 }, () => "Water moves up the stem to the leaves.").join(
+    const body = Array.from({ length: 40 }, () => "Water moves up the stem to the leaves.").join(
       " ",
     );
     const spec = { kind: "content", factRefs: ["k1"], heading: "Too much", body };

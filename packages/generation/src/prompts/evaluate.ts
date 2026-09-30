@@ -55,7 +55,8 @@ export type EvaluateInput = {
 };
 
 export const evaluatePrompt = {
-  version: "evaluate.v9",
+  // v10: text unchanged here; the measured slot limits it renders moved with the teaching body size (spike/teach-type 0272d056).
+  version: "evaluate.v10",
   system: [
     "You review a generated classroom lesson against the facts it was built from.",
     "Report problems only; do not praise, rewrite or add content.",

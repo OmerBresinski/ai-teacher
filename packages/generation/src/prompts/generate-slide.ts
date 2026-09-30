@@ -224,7 +224,8 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v30",
+  // v31: text unchanged here; the measured slot limits it renders moved with the teaching body size (spike/teach-type 0272d056).
+  version: "generate-slide.v31",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",

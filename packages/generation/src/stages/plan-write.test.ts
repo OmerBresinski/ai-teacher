@@ -41,9 +41,10 @@ const PLAN = {
     row({ objectives: [2], teaches: ["life"] }),
     row({ role: "hinge", form: "hinge", parts: 4, tests: ["forts"] }),
     row({ objectives: [2], teaches: ["daily life"] }),
+    // No exit slide: the exit ticket is on the worksheet (UX rulings 134–140); a closing check.
     row({
-      role: "exit",
-      form: "exit-ticket",
+      role: "check",
+      form: "check-set",
       objectives: [1, 2],
       parts: 2,
       tests: ["forts", "life"],
@@ -89,12 +90,12 @@ const ANSWERS: Record<string, unknown> = {
     explanation: "Forts held soldiers who guarded the frontier.",
     notes: "Hinge.",
   },
-  "exit-ticket": {
+  "check-set": {
     questions: [
-      { question: "Why did the Romans build forts?", answer: "To guard the border" },
-      { question: "Where did soldiers sleep?", answer: "In barracks" },
+      { question: "What did soldiers watch from the forts?", answer: "The border" },
+      { question: "What were the forts built from?", answer: "Stone" },
     ],
-    notes: "Exit.",
+    notes: "The border; stone. Soldiers watched the border from stone forts.",
   },
 };
 
@@ -138,7 +139,7 @@ function planWriteAi(calls: WriteSlidesInput[], opts: { longHinge?: boolean } = 
     if (version.startsWith("plan-lesson")) return json(toWire(PLAN));
     if (version.startsWith("stream-lesson")) {
       const wire = toWire(PLAN);
-      const kinds = ["starter-set", "explain", "explain", "hinge", "explain", "exit-ticket"];
+      const kinds = ["starter-set", "explain", "explain", "hinge", "explain", "check-set"];
       return json({
         misconception: wire.misconception,
         objectives: wire.objectives,
@@ -217,7 +218,8 @@ const KINDS: Lesson["slides"][number]["kind"][] = [
   "content",
   "multiple-choice",
   "content",
-  "exit-ticket",
+  // A check-set is drawn as the starter kind, tagged CHECK (pw6 withSetTag).
+  "starter",
 ];
 
 describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
@@ -254,7 +256,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
     expect(plannerOf(lesson)).toBe("plan-write");
     expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
     expect(lesson.facts?.retrieval).toHaveLength(2);
-    expect(lesson.facts?.questions.filter((q) => q.use === "exit")).toHaveLength(2);
+    expect(lesson.facts?.questions.filter((q) => q.use === "exit")).toHaveLength(0);
     expect(lesson.facts?.outline.map((e) => e.kind)[0]).toBe("title");
     // No fit flag: every slide fits after the re-write.
     expect(lesson.generation?.findings.filter((f) => f.check === "fit")).toEqual([]);
@@ -306,7 +308,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
         [],
       );
-      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v7+");
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v8+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
       // Saves: the title, the header (title with objectives), then the slides in order.

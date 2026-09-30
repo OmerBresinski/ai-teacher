@@ -89,7 +89,7 @@ describe("designer repair held to its slot (repair discards, smoke r1)", () => {
       kind: "content",
       factRefs: [],
       heading: photoSlot.heading,
-      body: [sentence, sentence, sentence, sentence].join(" "),
+      body: [sentence, sentence, sentence, sentence, sentence, sentence].join(" "),
     };
     // The old gate measured it without the photo zone: it passed, and the stored slide lost its
     // photo. Measured as stored, it does not fit and is discarded.

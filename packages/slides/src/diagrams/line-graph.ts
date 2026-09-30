@@ -8,6 +8,7 @@ import type { LineGraph } from "./schema";
 import { arrowHead, type Ctx, n, num, text, textWidth, ticks } from "./svg";
 
 type Axis = { label: string; min: number; max: number; step?: number };
+type Box = { x0: number; y0: number; x1: number; y1: number };
 
 export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
@@ -136,41 +137,111 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     }
   }
 
-  // Annotations: a dot and a leader to a label set up and away from the plot's nearer edge.
-  for (const a of g.annotations) {
-    const ax = X(a.x);
-    const ay = Y(a.y);
-    // Away from the nearer edge, unless the label would then run past the plot on that side; when
-    // it fits on neither side it is centred straight above (or below) the point.
-    const reach = fs * 1.6 + 4 + textWidth(a.label, x, small, 600);
-    const fitsLeft = ax - reach >= left;
-    const fitsRight = ax + reach <= left + pw;
-    const centred = !fitsLeft && !fitsRight;
-    const goLeft = ax > left + pw * 0.6 ? fitsLeft || !fitsRight : !fitsRight && fitsLeft;
-    const goDown = ay - fs * 2.6 < (legend ? fs * 1.8 : 0) + band;
-    const lx = centred ? ax : ax + (goLeft ? -1 : 1) * fs * 1.6;
-    const ly = ay + (goDown ? 1 : -1) * fs * 1.8;
-    out.push(
-      `<line x1="${n(ax)}" y1="${n(ay)}" x2="${n(lx)}" y2="${n(ly)}" stroke="${c.ink}" stroke-width="1.5"/>`,
-      `<circle cx="${n(ax)}" cy="${n(ay)}" r="${n(fs * 0.3)}" fill="${c.ink}" stroke="${c.bg}" stroke-width="2"/>`,
-      text(x, centred ? lx : lx + (goLeft ? -4 : 4), ly, [a.label], {
-        anchor: centred ? "middle" : goLeft ? "end" : "start",
-        fs: small,
-        weight: 600,
-        halo: c.bg,
-        v: goDown ? "top" : "bottom",
-      }),
-    );
-  }
-
-  // Intervals: dashed drops at both ends, a double arrow between them, the label above it.
+  // Intervals: where each one's arrow and label sit, worked out first so annotations keep clear.
   const rowOf = new Map(banded.map((v, i) => [v, i]));
-  for (const v of g.intervals) {
+  const spans = g.intervals.map((v) => {
     const x1 = X(v.from);
     const x2 = X(v.to);
     const row = rowOf.get(v) ?? 0;
     const ay =
       v.y === undefined ? (legend ? fs * 1.8 : 0) + row * bandRow + small * 1.2 + fs * 0.3 : Y(v.y);
+    const lw = textWidth(v.label, x, small, 600);
+    const cx = Math.max(lw / 2 + 2, Math.min(w - lw / 2 - 2, (x1 + x2) / 2));
+    return { v, x1, x2, ay, cx, lw };
+  });
+  const taken: Box[] = spans.flatMap((sp) => [
+    {
+      x0: sp.cx - sp.lw / 2 - 4,
+      y0: sp.ay - fs * 0.3 - small * 1.25,
+      x1: sp.cx + sp.lw / 2 + 4,
+      y1: sp.ay - fs * 0.3,
+    },
+    { x0: sp.x1, y0: sp.ay - 6, x1: sp.x2, y1: sp.ay + 6 },
+  ]);
+
+  // Annotations: a dot on the series point it names and a leader to its label. Each dot snaps to
+  // the series whose value at its x is nearest its y, on that series' own axis (a hydrograph's
+  // rainfall peak is on the right axis). Labels spread outward in x order, so two leaders never
+  // cross, and each takes the first place clear of the plot's edges, the interval labels and the
+  // labels already set.
+  const dots = g.annotations.map((a) => {
+    let best: { ay: number; d: number } | undefined;
+    for (const s of g.series) {
+      const axis = s.axis === "right" && g.y2 ? g.y2 : g.y;
+      const range = axis.max - axis.min || 1;
+      const d = Math.abs(at(s.points, a.x) - a.y) / range;
+      if (d <= 0.15 && (!best || d < best.d)) best = { ay: Yof(axis)(at(s.points, a.x)), d };
+    }
+    return { a, ax: X(a.x), ay: best ? best.ay : Y(a.y) };
+  });
+  const byX = [...dots].sort((p, q) => p.ax - q.ax);
+  const topLimit = (legend ? fs * 1.8 : 0) + band;
+  for (const d of dots) {
+    taken.push({
+      x0: d.ax - fs * 0.4,
+      y0: d.ay - fs * 0.4,
+      x1: d.ax + fs * 0.4,
+      y1: d.ay + fs * 0.4,
+    });
+  }
+  for (const [i, d] of byX.entries()) {
+    const { a, ax, ay } = d;
+    const lw = textWidth(a.label, x, small, 600);
+    const lh = small * 1.25;
+    const off = fs * 1.6;
+    const edgeLeft = ax > left + pw * 0.6;
+    const prefLeft =
+      byX.length > 1 ? (i === 0 ? true : i === byX.length - 1 ? false : edgeLeft) : edgeLeft;
+    type Spot = { lx: number; ly: number; anchor: "start" | "middle" | "end"; down: boolean };
+    const spot = (side: -1 | 0 | 1, down: boolean, lift = 1): Spot => ({
+      lx: ax + side * off,
+      ly: ay + (down ? 1 : -1) * fs * 1.8 * lift,
+      anchor: side < 0 ? "end" : side > 0 ? "start" : "middle",
+      down,
+    });
+    const boxOf = (p: Spot): Box => {
+      const tx = p.anchor === "middle" ? p.lx : p.lx + (p.anchor === "end" ? -4 : 4);
+      const x0 = p.anchor === "middle" ? tx - lw / 2 : p.anchor === "end" ? tx - lw : tx;
+      const y0 = p.down ? p.ly : p.ly - lh;
+      return { x0, y0, x1: x0 + lw, y1: y0 + lh };
+    };
+    const inside = (b: Box) =>
+      b.x0 >= left && b.x1 <= left + pw && b.y0 >= topLimit && b.y1 <= top + ph;
+    const clear = (b: Box) =>
+      taken.every((t) => b.x1 <= t.x0 || b.x0 >= t.x1 || b.y1 <= t.y0 || b.y0 >= t.y1);
+    const near: -1 | 1 = prefLeft ? -1 : 1;
+    const far: -1 | 1 = prefLeft ? 1 : -1;
+    const tries: Spot[] = [
+      spot(near, false),
+      spot(0, false),
+      spot(near, false, 1.8),
+      spot(far, false),
+      spot(near, true),
+      spot(0, true),
+      spot(far, true),
+    ];
+    const pick =
+      tries.find((p) => inside(boxOf(p)) && clear(boxOf(p))) ??
+      tries.find((p) => inside(boxOf(p))) ??
+      spot(0, ay - fs * 2.6 < topLimit);
+    const box = boxOf(pick);
+    taken.push(box);
+    const tx = pick.anchor === "middle" ? pick.lx : pick.lx + (pick.anchor === "end" ? -4 : 4);
+    out.push(
+      `<line x1="${n(ax)}" y1="${n(ay)}" x2="${n(pick.lx)}" y2="${n(pick.ly)}" stroke="${c.ink}" stroke-width="1.5"/>`,
+      `<circle cx="${n(ax)}" cy="${n(ay)}" r="${n(fs * 0.3)}" fill="${c.ink}" stroke="${c.bg}" stroke-width="2"/>`,
+      text(x, tx, pick.ly, [a.label], {
+        anchor: pick.anchor,
+        fs: small,
+        weight: 600,
+        halo: c.bg,
+        v: pick.down ? "top" : "bottom",
+      }),
+    );
+  }
+
+  // Intervals: dashed drops at both ends, a double arrow between them, the label above it.
+  for (const { v, x1, x2, ay, cx } of spans) {
     const head = Math.max(9, fs * 0.55);
     const dash = `stroke-dasharray="${n(fs * 0.35)} ${n(fs * 0.3)}"`;
     out.push(
@@ -180,8 +251,6 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       arrowHead(x1, ay, x2, ay, head, c.ink),
       arrowHead(x2, ay, x1, ay, head, c.ink),
     );
-    const lw = textWidth(v.label, x, small, 600);
-    const cx = Math.max(lw / 2 + 2, Math.min(w - lw / 2 - 2, (x1 + x2) / 2));
     out.push(
       text(x, cx, ay - fs * 0.3, [v.label], { v: "bottom", fs: small, weight: 600, halo: c.bg }),
     );

@@ -204,6 +204,9 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
     if (!best) continue;
     seen.add(key);
     const sh = s.shapes[best.i] as Shape;
+    // A particle box's caption already names its state: a label saying it again is dropped (T3
+    // bench: "Solid" captioned and labelled on each box).
+    if (sh.type === "particles" && sh.caption && sameName(sh.caption, l.text)) continue;
     // Near (not on) a small shape names all of it; near a big one (a valley side) names that spot.
     const big = best.a > 0.2 * (s.canvas === "wide" ? 160 : 100) * 100;
     const part = sh.type !== "particles" && (!isClosed(sh) || best.d === 0 || big);
@@ -216,6 +219,18 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
     out.push({ text: l.text, side: l.side, target: best.i, part, at: best.at });
   }
   return out;
+}
+
+/** Two names for the same thing, ignoring case and the filler words "particles", "state" and "the". */
+function sameName(a: string, b: string): boolean {
+  const norm = (t: string) =>
+    t
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w && !["the", "a", "particles", "particle", "state", "in", "of"].includes(w))
+      .join(" ");
+  return norm(a) !== "" && norm(a) === norm(b);
 }
 
 // ─── drawing ────────────────────────────────────────────────────────────────────────────────
