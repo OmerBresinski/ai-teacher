@@ -106,6 +106,23 @@ function planWriteAi(calls: WriteSlidesInput[]) {
     const version = call.context?.promptVersion ?? "";
     if (version.startsWith("check-input")) return json({ findings: [] });
     if (version.startsWith("plan-lesson")) return json(toWire(PLAN));
+    if (version.startsWith("stream-lesson")) {
+      const wire = toWire(PLAN);
+      const kinds = ["starter-set", "explain", "explain", "hinge", "exit-ticket"];
+      return json({
+        misconception: wire.misconception,
+        objectives: wire.objectives,
+        runningExample: wire.runningExample,
+        plan: wire.slides,
+        slides: kinds.map((kind, i) =>
+          i === 2
+            ? { kind, ...(ANSWERS.explain as object), heading: LONG }
+            : i === 3
+              ? { kind, ...(ANSWERS.hinge as object), options: [] }
+              : { kind, ...(ANSWERS[kind] as object) },
+        ),
+      });
+    }
     if (version.startsWith("write-slides")) {
       const input = writerCallOf(call.promptText);
       calls.push(input);
@@ -178,5 +195,43 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
     expect(final.lesson.generation?.stage).toBe("planned");
     expect(final.lesson.facts?.slidePlan).toBeDefined();
     expect(final.lesson.slides).toHaveLength(1);
+  });
+
+  test("PLAN_WRITE_MODE=stream: one call plans and writes; a slide that fails its schema goes to a writer", async () => {
+    const before = process.env.PLAN_WRITE_MODE;
+    process.env.PLAN_WRITE_MODE = "stream";
+    try {
+      const calls: WriteSlidesInput[] = [];
+      const ai = planWriteAi(calls);
+      const deps = recordingDeps(ai);
+      const final = await runLessonPipeline({ lesson: lesson6() }, deps, { planner: "plan-write" });
+      const lesson = final.lesson;
+      const versions = ai.calls.map((c) => c.context?.promptVersion ?? "");
+      expect(versions.filter((v) => v.startsWith("plan-lesson"))).toEqual([]);
+      expect(versions.filter((v) => v.startsWith("stream-lesson"))).toHaveLength(1);
+      expect(lesson.slides.map((s) => s.kind)).toEqual([
+        "title",
+        "starter",
+        "content",
+        "content",
+        "multiple-choice",
+        "exit-ticket",
+      ]);
+      // Slide 5's hinge had no options: written again by a writer; slide 4's heading re-written.
+      expect(calls.filter((c) => !c.rewrite).map((c) => c.slides.map((s) => s.number))).toEqual([
+        [5],
+      ]);
+      expect(calls.filter((c) => c.rewrite).map((c) => c.rewrite?.field)).toEqual(["heading"]);
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v1+");
+      expect(plannerOf(lesson)).toBe("plan-write");
+      expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
+      // Saves: the title, the header (title with objectives), then the slides in order.
+      const counts = deps.persisted.map((p) => p.lesson.slides.length);
+      expect(counts[0]).toBe(1);
+      expect(counts).toEqual([...counts].sort((a, b) => a - b));
+    } finally {
+      if (before === undefined) delete process.env.PLAN_WRITE_MODE;
+      else process.env.PLAN_WRITE_MODE = before;
+    }
   });
 });

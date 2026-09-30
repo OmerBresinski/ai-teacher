@@ -106,6 +106,12 @@ export interface CallStructuredOptions<I, T> {
    * validated and retried exactly as without it.
    */
   onPartial?: ((partial: unknown) => void) | undefined;
+  /**
+   * The answer is validated with this schema instead of `schema`, which is still the schema the
+   * model is given (plan-write's stream, where code checks each slide as it closes, so one bad
+   * slide never fails the whole lesson's call).
+   */
+  lenient?: z.ZodType<T> | undefined;
 }
 
 export interface CallUsage {
@@ -282,8 +288,11 @@ function repairingObjectOutput<T>(
   schema: z.ZodType<T>,
   onRepair: (repairs: JsonRepairKind[]) => void,
   modelId: string,
+  lenient?: z.ZodType<T>,
 ): OutputInterface<T> {
-  const inner = Output.object({ schema: wireSchemaFor(schema, modelId) });
+  const inner = Output.object({
+    schema: lenient ? lenientWireSchema(schema, lenient) : wireSchemaFor(schema, modelId),
+  });
   return {
     name: inner.name,
     responseFormat: inner.responseFormat,
@@ -351,6 +360,35 @@ export function wireSchemaFor<T>(schema: z.ZodType<T>, modelId: string): z.ZodTy
   });
 }
 
+/**
+ * `schema` as the JSON schema the model is given, validated with `lenient`. A zod discriminated
+ * union prints as `oneOf` with `const` tags; the provider reads `anyOf` and `enum`.
+ */
+export function lenientWireSchema<T>(schema: z.ZodType<T>, lenient: z.ZodType<T>): Schema<T> {
+  const walk = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(walk);
+    if (node && typeof node === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        if (key === "oneOf") out.anyOf = walk(value);
+        else if (key === "const") out.enum = [value];
+        else out[key] = walk(value);
+      }
+      return out;
+    }
+    return node;
+  };
+  const json = walk(z.toJSONSchema(schema, { target: "draft-7", unrepresentable: "any" }));
+  return jsonSchema<T>(json as never, {
+    validate: (value) => {
+      const parsed = lenient.safeParse(value);
+      return parsed.success
+        ? { success: true, value: parsed.data }
+        : { success: false, error: parsed.error };
+    },
+  });
+}
+
 /** The pause before retrying a provider failure, so a burst has passed. */
 export const PROVIDER_RETRY_DELAY_MS = 1500;
 
@@ -385,6 +423,7 @@ export async function callStructured<I, T>(
       );
     },
     modelId,
+    options.lenient,
   );
 
   const attempt = async (text: string): Promise<CallResult<T>> => {

@@ -25,7 +25,14 @@ import { callStructured } from "../call";
 import { blocking, checkPlan, type PlanCheck } from "../plan-write/check";
 import { fitWithRewrite, renderWritten, type Written } from "../plan-write/fit";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
-import { PLAN_WRITE_VERSION } from "../plan-write/steps";
+import { PLAN_WRITE_VERSION, STREAM_WRITE_VERSION } from "../plan-write/steps";
+import {
+  checkStreamed,
+  planWriteMode,
+  type StreamLessonWire,
+  streamLessonLenient,
+  streamLessonSchema,
+} from "../plan-write/stream";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { verifyFactsPrompt } from "../prompts";
 import {
@@ -39,12 +46,23 @@ import {
   planTableSchema,
 } from "../prompts/plan-lesson";
 import {
+  STREAM_LESSON_VERSION,
+  type StreamLessonInput,
+  streamLessonPrompt,
+} from "../prompts/stream-lesson";
+import {
   WRITE_SLIDES_VERSION,
   type WriteSlidesInput,
   type WriteSlideTarget,
   writeSlidesPrompt,
 } from "../prompts/write-slides";
-import { type PipelineDeps, type PipelineState, StageFailure, throwIfAborted } from "../types";
+import {
+  callContext,
+  type PipelineDeps,
+  type PipelineState,
+  StageFailure,
+  throwIfAborted,
+} from "../types";
 import { agendaTitleSpec, VERIFY_EFFORT } from "./designer";
 import { withUsage } from "./generate";
 import { emptyFinding, joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
@@ -71,6 +89,8 @@ export const MAX_OUTPUT_TOKENS_PLAN = 16000;
 export const WRITER_OUTPUT_TOKENS_BASE = 1500;
 export const WRITER_OUTPUT_TOKENS_PER_SLIDE = 1500;
 const MAX_OUTPUT_TOKENS_REWRITE = 2000;
+/** The single stream: the plan header and every slide in one answer. */
+export const MAX_OUTPUT_TOKENS_STREAM = 32000;
 /** Slides per writer call. */
 export const WRITER_BATCH = 3;
 
@@ -109,6 +129,33 @@ const asPrompt = <I>(version: string, built: { system: string; user: string }) =
 
 /* ------------------------------------------------------------------ plan */
 
+type Objectives = LessonFacts["objectives"];
+
+/** The facts a checked plan saves: the objectives, the misconception and the slide table. */
+function plannedFacts(
+  record: SlidePlanRecord,
+  objectives: Objectives,
+  durationMin: LessonFacts["durationMin"],
+): LessonFacts {
+  return {
+    objectives,
+    vocabulary: [],
+    workedExamples: [],
+    questions: [],
+    misconceptions: [
+      {
+        id: "m1",
+        belief: record.plan.misconception,
+        correction: "",
+        objectiveRefs: objectives.map((o) => o.id),
+      },
+    ],
+    outline: [],
+    durationMin,
+    slidePlan: record as unknown as Record<string, unknown>,
+  };
+}
+
 export async function planWritePlan(
   state: PipelineState,
   deps: PipelineDeps,
@@ -123,6 +170,8 @@ export async function planWritePlan(
     const { updatedAt } = await deps.persist(lesson);
     await deps.onProgress(PROGRESS_STARTING, "Title ready", "plan", updatedAt);
   }
+  // The stream plans and writes in one call, in the write step.
+  if (planWriteMode() === "stream") return { ...state, lesson };
   const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
   const menu = planMenu(lesson.subject);
   const cls = planClassFor(lesson, deps);
@@ -205,23 +254,7 @@ export async function planWritePlan(
     problems: checked.problems,
     repaired,
   };
-  const facts: LessonFacts = {
-    objectives,
-    vocabulary: [],
-    workedExamples: [],
-    questions: [],
-    misconceptions: [
-      {
-        id: "m1",
-        belief: plan.misconception,
-        correction: "",
-        objectiveRefs: objectives.map((o) => o.id),
-      },
-    ],
-    outline: [],
-    durationMin: brief.durationMin,
-    slidePlan: record as unknown as Record<string, unknown>,
-  };
+  const facts = plannedFacts(record, objectives, brief.durationMin);
   const planned: Lesson = {
     ...lesson,
     facts,
@@ -421,8 +454,15 @@ export type PlanWriteReport = {
     layout: string;
     fits: boolean;
     rewritten?: { field: string; failure: string; ok: boolean };
-    shrunk?: boolean;
   }[];
+  mode: "plan-write" | "stream";
+  requested: number;
+  delivered: number;
+  /** Slides that fit with no re-write. */
+  fitFirstTime: number;
+  /** Stream only: when the plan header closed, and when each slide closed (ms from the start). */
+  streamHeaderMs?: number;
+  streamSlidesMs?: Record<number, number>;
   failedBatches: number[][];
   firstSlideMs?: number;
   editableMs: number;
@@ -437,21 +477,35 @@ export async function planWriteSlides(
   const base = state.lesson;
   const brief = base.brief;
   if (!brief) throw new Error("plan-write: the lesson has no brief");
-  const parsed = SlidePlanRecordSchema.safeParse(base.facts?.slidePlan);
-  if (!parsed.success)
-    throw new StageFailure("generate", "plan-write: the lesson has no slide table");
-  const record = parsed.data;
-  const table = record.plan.slides;
-  const objectives = base.facts?.objectives ?? [];
-  const slideCount = table.length;
+  const mode = planWriteMode();
+  // Plan-write reads the checked table saved by the plan step; the stream fills these in when its
+  // plan header closes.
+  let record: SlidePlanRecord = {
+    plan: { misconception: "", objectives: [], runningExample: "", slides: [] },
+    switched: [],
+    problems: [],
+    repaired: false,
+  };
+  let objectives: Objectives = [];
+  let baseFacts = base.facts as LessonFacts;
+  if (mode === "plan-write") {
+    const parsed = SlidePlanRecordSchema.safeParse(base.facts?.slidePlan);
+    if (!parsed.success)
+      throw new StageFailure("generate", "plan-write: the lesson has no slide table");
+    record = parsed.data;
+    objectives = base.facts?.objectives ?? [];
+  }
+  let table: PlanSlide[] = record.plan.slides;
+  const slideCount = mode === "stream" ? (brief.slideCount ?? DEFAULT_SLIDE_COUNT) : table.length;
   const themeId = base.themeId;
   const cls = planClassFor(base, deps);
   const audience = audienceOf(base);
-  const startedAt = Date.parse(generationOf(base).startedAt ?? "") || Date.now();
+  const startedAt = Date.parse(base.generation?.startedAt ?? "") || Date.now();
   const at = () => deps.now().toISOString();
-  const findings: Finding[] = [...generationOf(base).findings];
+  const findings: Finding[] = [...(base.generation?.findings ?? [])];
+  const stamp = mode === "stream" ? STREAM_WRITE_VERSION : PLAN_WRITE_VERSION;
   const codeMeta = (): MaterialiseMeta => ({
-    promptVersion: PLAN_WRITE_VERSION,
+    promptVersion: stamp,
     model: CODE_MODEL,
     at: at(),
   });
@@ -465,27 +519,30 @@ export async function planWriteSlides(
   // The title with the objectives (the only fixed slide), keeping the saved title's id.
   const [title] = base.slides;
   if (!title) throw new Error("plan-write: the plan step has not run");
-  const agenda = agendaTitleSpec(base, objectives);
-  if (!fitsPlanned(agenda, { stepDown: 1 }).ok) {
-    findings.push({
-      check: "fit",
-      severity: "warning",
-      target: { slideId: title.id },
-      message:
-        "This slide does not fit the save gate: the title with its objectives fails on some themes.",
-    });
-  }
-  let lesson: Lesson = {
-    ...base,
-    slides: [{ ...materialiseSlide(agenda, themeId, codeMeta(), deps.ids), id: title.id }],
-    fitVersion: FIT_VERSION,
-  };
-  const outline: OutlineEntry[] = table.map((_, i) => ({
+  let lesson: Lesson = { ...base, slides: [title], fitVersion: FIT_VERSION };
+  const outline: OutlineEntry[] = Array.from({ length: slideCount }, (_, i) => ({
     id: `s${i + 1}`,
     kind: "content",
     factRefs: [],
   }));
-  outline[0] = { id: "s1", kind: "title", factRefs: objectives.map((o) => o.id) };
+  const drawTitle = () => {
+    const agenda = agendaTitleSpec(base, objectives);
+    if (!fitsPlanned(agenda, { stepDown: 1 }).ok) {
+      findings.push({
+        check: "fit",
+        severity: "warning",
+        target: { slideId: title.id },
+        message:
+          "This slide does not fit the save gate: the title with its objectives fails on some themes.",
+      });
+    }
+    lesson = {
+      ...lesson,
+      slides: [{ ...materialiseSlide(agenda, themeId, codeMeta(), deps.ids), id: title.id }],
+    };
+    outline[0] = { id: "s1", kind: "title", factRefs: objectives.map((o) => o.id) };
+  };
+  if (mode === "plan-write") drawTitle();
 
   // Saved in slide order, one write at a time; `ready` holds slides waiting for an earlier one.
   const ready = new Map<number, Slide>();
@@ -606,7 +663,6 @@ export async function planWriteSlides(
       layout: s.layout,
       fits: fitted.fit.ok,
       ...(fitted.rewritten ? { rewritten: fitted.rewritten } : {}),
-      ...(fitted.shrunk ? { shrunk: true } : {}),
     });
     placed.push({ index, plan: s, out: fitted.out });
     const slide = drawn(s.form, s.layout, fitted.out, {
@@ -656,7 +712,7 @@ export async function planWriteSlides(
     void flush();
     if (imageBrief && deps.images) {
       photoCounts.requested += 1;
-      const pickLesson: Lesson = { ...lesson, facts: { ...(base.facts as LessonFacts), outline } };
+      const pickLesson: Lesson = { ...lesson, facts: { ...baseFacts, outline } };
       photos.push(
         pickPhoto(pickLesson, index, deps).then((picked) => {
           if (picked.outcome === "placed") {
@@ -672,7 +728,9 @@ export async function planWriteSlides(
   };
 
   /** A batch whose writer failed twice: each slide asks about its purpose, flagged. */
+  const missing: number[] = [];
   const landMissing = async (n: number) => {
+    missing.push(n);
     const s = table[n - 1] as PlanSlide;
     const out: Written = { prompt: s.purpose, footnote: [], notes: "" };
     const index = n - 1;
@@ -730,8 +788,178 @@ export async function planWriteSlides(
     await Promise.all(batch.map(landMissing));
   };
 
-  const numbers = table.map((_, i) => i + 1).filter((n) => n > 1);
-  await Promise.all(batchesOf(numbers).map(runBatch));
+  const stream: { headerMs?: number; slidesMs: Record<number, number> } = { slidesMs: {} };
+
+  /** The stream's plan header: checked (no repair call), saved, and the title redrawn. */
+  const takeHeader = (w: Partial<StreamLessonWire>, menu: ReturnType<typeof planMenu>) => {
+    const { plan, unreadable } = parsePlan({
+      misconception: w.misconception ?? "",
+      objectives: w.objectives ?? [],
+      runningExample: w.runningExample ?? "",
+      slides: (w.plan ?? []).filter((r): r is string => typeof r === "string"),
+    });
+    const c = checkPlan(plan, { slideCount, menu });
+    const problems = [
+      ...unreadable.map((n) => ({
+        rule: "form" as const,
+        slide: n,
+        message: `Row for slide ${n} is not 8 fields split by " | ".`,
+      })),
+      ...c.problems,
+    ];
+    record = { plan: c.plan, switched: c.switched, problems, repaired: false };
+    table = [...c.plan.slides];
+    objectives =
+      state.pinObjectives && (base.facts?.objectives.length ?? 0) > 0
+        ? (base.facts?.objectives ?? [])
+        : c.plan.objectives.map((text, i) => ({ id: `o${i + 1}`, text }));
+    baseFacts = plannedFacts(record, objectives, brief.durationMin);
+    drawTitle();
+    lesson = {
+      ...lesson,
+      facts: baseFacts,
+      generation: {
+        jobId: deps.context.jobId,
+        stage: "planned",
+        startedAt: new Date(startedAt).toISOString(),
+        promptVersions: { planned: stamp },
+        usage: deps.budget.totals(),
+        findings: [],
+      },
+    };
+    stream.headerMs = Date.now() - startedAt;
+    deps.logger.info(
+      { stage: "generate", call: "stream", ms: stream.headerMs, problems, switched: c.switched },
+      "stream header",
+    );
+    writing = writing.then(async () => {
+      if (!deps.signal.aborted) await deps.persist(withUsage(lesson, deps));
+    });
+  };
+
+  /** A row for a slide the plan has none for: the stream's own slide, or a flagged gap. */
+  const rowFor = (n: number): PlanSlide =>
+    table[n - 1] ?? {
+      role: "teach",
+      objectives: [],
+      tests: [],
+      teaches: [],
+      purpose: brief.topic,
+      parts: 0,
+      form: "discussion",
+      layout: "default",
+      imageBrief: null,
+      figureBrief: null,
+    };
+
+  /** One call plans and writes the whole lesson; each slide lands as it closes. */
+  const runStream = async () => {
+    const menu = planMenu(base.subject);
+    const input: StreamLessonInput = {
+      topic: brief.topic,
+      audience,
+      ...(brief.answers ? { answers: brief.answers } : {}),
+      ...(brief.classContext?.priorKnowledge
+        ? { priorKnowledge: brief.classContext.priorKnowledge }
+        : {}),
+      slideCount,
+      menu,
+    };
+    const routed = deps.ai.model(cls, callContext(deps, "generate", STREAM_LESSON_VERSION, "low"));
+    const streamModel = typeof routed === "string" ? routed : routed.modelId;
+    const landed = new Set<number>();
+    const pending: Promise<void>[] = [];
+    let header = false;
+    const close = (i: number, raw: unknown) => {
+      const n = i + 2;
+      if (landed.has(n)) return;
+      if (n > slideCount) {
+        deps.logger.warn({ stage: "generate", slide: n }, "stream wrote a slide past the count");
+        return;
+      }
+      landed.add(n);
+      stream.slidesMs[n] = Date.now() - startedAt;
+      const got =
+        raw && typeof raw === "object"
+          ? checkStreamed(raw as Record<string, unknown>, menu)
+          : undefined;
+      const row = rowFor(n);
+      if (got && (got.form !== row.form || got.layout !== row.layout)) {
+        deps.logger.info(
+          {
+            stage: "generate",
+            slide: n,
+            row: [row.form, row.layout],
+            wrote: [got.form, got.layout],
+          },
+          "stream slide differs from its row; the slide's kind stands",
+        );
+      }
+      table[n - 1] = got ? { ...row, form: got.form, layout: got.layout } : row;
+      if (got?.out) {
+        pending.push(land(n, got.out, streamModel));
+        return;
+      }
+      deps.logger.warn(
+        { stage: "generate", slide: n, problem: got?.problem ?? "unknown kind" },
+        "stream slide not drawable; written again by a writer",
+      );
+      pending.push(runBatch([n]));
+    };
+    const onPartial = (partial: unknown) => {
+      const w = partial as Partial<StreamLessonWire>;
+      const slides = Array.isArray(w?.slides) ? w.slides : [];
+      if (!header && slides.length > 0) {
+        header = true;
+        takeHeader(w, menu);
+      }
+      if (header) for (let i = 0; i < slides.length - 1; i++) close(i, slides[i]);
+    };
+    try {
+      const call = await callStructured({
+        deps,
+        stage: "generate",
+        cls,
+        effort: "low",
+        prompt: asPrompt<StreamLessonInput>(STREAM_LESSON_VERSION, streamLessonPrompt(input)),
+        input,
+        schema: streamLessonSchema(menu) as unknown as z.ZodType<StreamLessonWire>,
+        lenient: streamLessonLenient,
+        maxOutputTokens: MAX_OUTPUT_TOKENS_STREAM,
+        onPartial,
+      });
+      const w = call.output;
+      if (!header) {
+        header = true;
+        takeHeader(w, menu);
+      }
+      w.slides.forEach((raw, i) => {
+        close(i, raw);
+      });
+    } catch (error) {
+      if (!header || (error instanceof Error && error.name === "AbortError")) throw error;
+      deps.logger.error(
+        { stage: "generate", call: "stream", err: safeError(error) },
+        "stream failed after its header; the rest is written by writers",
+      );
+    }
+    for (let n = 2; n <= slideCount; n++) {
+      if (landed.has(n)) continue;
+      landed.add(n);
+      if (table[n - 1]) pending.push(runBatch([n]));
+      else {
+        table[n - 1] = rowFor(n);
+        pending.push(landMissing(n));
+      }
+    }
+    await Promise.all(pending);
+  };
+
+  if (mode === "stream") await runStream();
+  else {
+    const numbers = table.map((_, i) => i + 1).filter((n) => n > 1);
+    await Promise.all(batchesOf(numbers).map(runBatch));
+  }
   throwIfAborted(deps.signal);
   await flush();
   await writing;
@@ -749,7 +977,7 @@ export async function planWriteSlides(
     return `${prefix}${counters[prefix]}`;
   };
   const facts: LessonFacts = {
-    ...(base.facts as LessonFacts),
+    ...baseFacts,
     keyIdeas: [],
     vocabulary: [],
     workedExamples: [],
@@ -785,7 +1013,7 @@ export async function planWriteSlides(
           stage: "generated",
           promptVersions: {
             ...generation.promptVersions,
-            planned: joinVersions(PLAN_WRITE_VERSION, verifyFactsPrompt.version),
+            planned: joinVersions(stamp, verifyFactsPrompt.version),
             generated: WRITE_SLIDES_VERSION,
           },
           findings: [...findings],
@@ -867,6 +1095,13 @@ export async function planWriteSlides(
     planProblems: record.problems.length,
     repaired: record.repaired,
     slides: report.sort((a, b) => a.slide - b.slide),
+    mode,
+    requested: slideCount,
+    delivered: lesson.slides.length - missing.length,
+    fitFirstTime: report.filter((r) => r.fits && !r.rewritten).length,
+    ...(stream.headerMs !== undefined
+      ? { streamHeaderMs: stream.headerMs, streamSlidesMs: stream.slidesMs }
+      : {}),
     failedBatches,
     ...(firstSlideMs !== undefined ? { firstSlideMs } : {}),
     editableMs,

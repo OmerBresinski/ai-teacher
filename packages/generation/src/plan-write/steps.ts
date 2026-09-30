@@ -1,5 +1,6 @@
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { PLAN_LESSON_VERSION } from "../prompts/plan-lesson";
+import { STREAM_LESSON_VERSION } from "../prompts/stream-lesson";
 import { WRITE_SLIDES_VERSION } from "../prompts/write-slides";
 import { STAGE_CHECKPOINT } from "../types";
 
@@ -14,9 +15,13 @@ import { STAGE_CHECKPOINT } from "../types";
 /** The `planned` stamp: the planner prompt, then the writer prompt. */
 export const PLAN_WRITE_VERSION = `${PLAN_LESSON_VERSION}+${WRITE_SLIDES_VERSION}`;
 
+/** The stream's stamp: the one call's prompt, then the writer prompt its re-writes use. */
+export const STREAM_WRITE_VERSION = `${STREAM_LESSON_VERSION}+${WRITE_SLIDES_VERSION}`;
+
 /** Whether a `planned` stamp was written by plan-write (any version of its planner prompt). */
 export function isPlanWriteStamp(planned: string | undefined): boolean {
-  return planned?.split("+")[0]?.startsWith("plan-lesson.") ?? false;
+  const head = planned?.split("+")[0] ?? "";
+  return head.startsWith("plan-lesson.") || head.startsWith("stream-lesson.");
 }
 
 export type PlanWriteStageName =
@@ -76,7 +81,7 @@ export function planWriteRoute(
 ) {
   return (_cls: unknown, context: { promptVersion?: string } | undefined): string | undefined => {
     const v = context?.promptVersion ?? "";
-    if (v.startsWith("plan-lesson.")) return plannerModel;
+    if (v.startsWith("plan-lesson.") || v.startsWith("stream-lesson.")) return plannerModel;
     if (v.startsWith("write-slides.")) return writerModel;
     return undefined;
   };

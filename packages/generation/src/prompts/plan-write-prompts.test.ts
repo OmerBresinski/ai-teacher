@@ -10,6 +10,7 @@ import {
   planLessonPrompt,
   toWire,
 } from "./plan-lesson";
+import { STREAM_LESSON_VERSION, streamLessonPrompt } from "./stream-lesson";
 import { WRITE_SLIDES_VERSION, type WriteSlidesInput, writeSlidesPrompt } from "./write-slides";
 
 /*
@@ -60,6 +61,7 @@ const PLAN_SAMPLE: PlanLessonInput = {
     problems: ["The plan has 5 rows after the title; it must have exactly 4."],
   },
 };
+const { repair: _repair, ...STREAM_SAMPLE } = PLAN_SAMPLE;
 const WRITE_SAMPLE: WriteSlidesInput = {
   topic: "States of matter",
   audience,
@@ -91,6 +93,10 @@ const PINNED = {
     version: "write-slides.v7",
     hash: "49ed0e12b5f19f9b74308c92ba8c02517cdc5cf3267e36c523232c2ec15533fa",
   },
+  stream: {
+    version: "stream-lesson.v1",
+    hash: "41c9693ce97ae940ebd44fc47b8becdbb4d05097ec9a90f62bdbd12960e1e432",
+  },
   rewrite: {
     version: "write-slides.v7",
     hash: "7ab03b67c374762a15b5a55dcdd993885640c2d55a8db2a8b7104b05971d209b",
@@ -102,6 +108,10 @@ describe("plan-write prompt versions", () => {
     expect({
       plan: { version: PLAN_LESSON_VERSION, hash: hash(planLessonPrompt(PLAN_SAMPLE)) },
       write: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(WRITE_SAMPLE)) },
+      stream: {
+        version: STREAM_LESSON_VERSION,
+        hash: hash(streamLessonPrompt(STREAM_SAMPLE)),
+      },
       rewrite: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(REWRITE_SAMPLE)) },
     }).toEqual(PINNED);
   });
@@ -111,6 +121,7 @@ describe("plan-write prompt versions", () => {
       planLessonPrompt(PLAN_SAMPLE),
       writeSlidesPrompt(WRITE_SAMPLE),
       writeSlidesPrompt(REWRITE_SAMPLE),
+      streamLessonPrompt(STREAM_SAMPLE),
     ]) {
       const text = `${p.system}\n${p.user}`;
       expect(text).not.toMatch(/shorten|too long|\bwords? (limit|max)|\bcharacters\b/i);

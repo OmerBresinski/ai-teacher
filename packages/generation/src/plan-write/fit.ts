@@ -229,92 +229,6 @@ export function fitWritten(form: string, layout: string, out: Written): FitResul
   return { ok: false, field, failure, themes };
 }
 
-/** Item kinds short enough that a trailing aside (" — why", "(the reason)") is never the answer. */
-const SHORT_KINDS: ReadonlySet<string> = new Set([
-  "phrase",
-  "option",
-  "outline",
-  "card",
-  "label",
-  "term",
-  "answer",
-  "starter",
-]);
-const ASIDE = /\s+[—–-]\s+\S.*$|\s*\([^()]*\)\s*$/;
-
-const unaside = (v: unknown): unknown => {
-  if (typeof v !== "string") return v;
-  const cut = v.replace(ASIDE, "").trim();
-  return cut === "" ? v : cut;
-};
-
-/** How many themes a written slide fails on. */
-const failingThemes = (form: string, layout: string, out: Written) =>
-  new Set(failingLines(form, layout, out).map((l) => l.slice(0, l.indexOf(": ")))).size;
-
-/**
- * The mechanical shrink (no call): each short item loses a trailing aside (a reason or a label
- * such as " — the common mistake"), then an optional slot (min 0) drops items from its end. Each
- * step is kept only when the slide then fails on fewer themes. A question set drops its last
- * questions instead, down to one.
- */
-export function shrink(form: string, layout: string, out: Written): Written {
-  let best = out;
-  let fails = failingThemes(form, layout, out);
-  const tryIt = (next: Written) => {
-    if (fails === 0) return;
-    const n = failingThemes(form, layout, next);
-    if (n < fails) {
-      best = next;
-      fails = n;
-    }
-  };
-  if (isSetForm(form)) {
-    // A set's capacity is not measured: its last questions go, down to one, while it fails.
-    let qs = best.questions;
-    while (fails > 0 && Array.isArray(qs) && qs.length > 1) {
-      const before = best;
-      tryIt({ ...best, questions: qs.slice(0, -1) });
-      if (best === before) break;
-      qs = best.questions;
-    }
-    return best;
-  }
-  const contract = slotContract(form as PaletteFormId, layout);
-  // 1. Asides off the short items.
-  const stripped: Written = { ...best };
-  for (const slot of contract.slots) {
-    if (slot.place === "notes" || slot.place === "off-slide") continue;
-    const v = stripped[slot.field];
-    if (!Array.isArray(v)) continue;
-    stripped[slot.field] = v.map((item) => {
-      if (typeof slot.each === "string") return SHORT_KINDS.has(slot.each) ? unaside(item) : item;
-      if (!item || typeof item !== "object") return item;
-      const each = slot.each as Record<string, unknown>;
-      return Object.fromEntries(
-        Object.entries(item as Record<string, unknown>).map(([k, x]) => [
-          k,
-          typeof each[k] === "string" && SHORT_KINDS.has(each[k] as string) ? unaside(x) : x,
-        ]),
-      );
-    });
-  }
-  tryIt(stripped);
-  // 2. Optional items off the end of an optional slot.
-  for (const slot of contract.slots) {
-    if (slot.min > 0) continue;
-    let v = best[slot.field];
-    while (fails > 0 && Array.isArray(v) && v.length > 0) {
-      const next = { ...best, [slot.field]: v.slice(0, -1) };
-      const before = best;
-      tryIt(next);
-      if (best === before) break;
-      v = best[slot.field];
-    }
-  }
-  return best;
-}
-
 export type Rewrite = (field: string, failure: string) => Promise<Written | undefined>;
 
 export type Fitted = {
@@ -322,15 +236,13 @@ export type Fitted = {
   fit: FitResult;
   /** Set when the slide failed at first and a re-write was asked for. */
   rewritten?: { field: string; failure: string; ok: boolean };
-  /** Set when the mechanical shrink changed the slide. */
-  shrunk?: boolean;
 };
 
 /**
- * The slide as written when it fits. Otherwise the mechanical shrink first (no call); then, if it
- * still fails, one re-write of the field named, and the shrink again on what comes back. The
- * re-written field is kept when the slide then fits, or fails on no more themes than before;
- * either way a slide that still fails is returned with its failure for the flag.
+ * The slide as written when it fits. Otherwise ONE re-write of the field named; nothing is cut
+ * after writing (no item, aside or question is dropped). The re-written field is kept when the
+ * slide then fits, or fails on no more themes than before; either way a slide that still fails is
+ * returned with its failure for the flag.
  */
 export async function fitWithRewrite(
   form: string,
@@ -338,29 +250,20 @@ export async function fitWithRewrite(
   out: Written,
   rewrite: Rewrite,
 ): Promise<Fitted> {
-  const initial = fitWritten(form, layout, out);
-  if (initial.ok) return { out, fit: initial };
-  // A set is re-written before it loses a question; other slides shrink first (no call).
-  const small = isSetForm(form) ? out : shrink(form, layout, out);
-  const shrunk = small !== out ? { shrunk: true } : {};
-  const first = small !== out ? fitWritten(form, layout, small) : initial;
-  if (first.ok) return { out: small, fit: first, ...shrunk };
+  const first = fitWritten(form, layout, out);
+  if (first.ok) return { out, fit: first };
   const { field, failure } = first;
   const patch = await rewrite(field, failure).catch(() => undefined);
-  if (!patch || !(field in patch)) {
-    return { out: small, fit: first, rewritten: { field, failure, ok: false }, ...shrunk };
-  }
-  const raw = { ...small, [field]: patch[field] };
-  const next = shrink(form, layout, raw);
-  const also = next !== raw ? { shrunk: true } : shrunk;
+  if (!patch || !(field in patch))
+    return { out, fit: first, rewritten: { field, failure, ok: false } };
+  const next = { ...out, [field]: patch[field] };
   const again = fitWritten(form, layout, next);
-  if (again.ok) return { out: next, fit: again, rewritten: { field, failure, ok: true }, ...also };
+  if (again.ok) return { out: next, fit: again, rewritten: { field, failure, ok: true } };
   const better = again.themes.length <= first.themes.length;
   return {
-    out: better ? next : small,
+    out: better ? next : out,
     fit: better ? again : first,
     rewritten: { field, failure, ok: false },
-    ...(better ? also : shrunk),
   };
 }
 

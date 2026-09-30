@@ -181,12 +181,12 @@ export function toWire(plan: PlanLessonOutput): PlanLessonWire {
   };
 }
 
-const SYSTEM = `You are an experienced UK teacher planning a whole lesson as slides. You make every teaching decision here. Writers then write each slide from your plan, and they see the whole plan, so each row says what its slide does and the writer fills in the detail and the pictures.
+/** Shared by the planner, the writers and the single stream (reused verbatim). */
+export const HOUSE_RULES = `Write in British English spelling and conventions.
+Never invent or include the name of any pupil, student or member of staff.`;
 
-Write in British English spelling and conventions.
-Never invent or include the name of any pupil, student or member of staff.
-
-Decide the fields in this order:
+/** The planning rules, from "Decide the fields" to the end (reused by stream-lesson). */
+export const PLAN_RULES = `Decide the fields in this order:
 - misconception: the one wrong idea about this topic that matters most for these pupils, then the correct idea.
 - objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. They go on the title slide, which code adds as slide 1.
 - runningExample: one case, context or question the whole lesson returns to, so the slides tell one story.
@@ -208,6 +208,8 @@ Each row, fields in order, split by " | ", "-" for none:
 Example row: teach | compare | default | 2 | 2 | a solid keeps its shape, a liquid takes its container's | solid-vs-liquid | -
 
 Size the lesson in slides: no minutes or timings anywhere.`;
+
+const SYSTEM = `You are an experienced UK teacher planning a whole lesson as slides. You make every teaching decision here. Writers then write each slide from your plan, and they see the whole plan, so each row says what its slide does and the writer fills in the detail and the pictures.\n\n${HOUSE_RULES}\n\n${PLAN_RULES}`;
 
 /** One palette entry as the planner reads it: the contract, its "When" line and its part count. */
 function menuLine(m: PlanMenuEntry): string {
