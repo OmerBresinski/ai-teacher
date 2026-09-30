@@ -138,6 +138,10 @@ describe("Commons licence filter", () => {
       seen.push({ url, agent: new Headers(init?.headers).get("User-Agent"), at: Date.now() });
       await new Promise((r) => setTimeout(r, 5));
       inFlight -= 1;
+      if (url.includes("upload.wikimedia.org"))
+        return new Response(new Uint8Array([255, 216, 255]), {
+          headers: { "content-type": "image/jpeg" },
+        });
       return new Response(JSON.stringify({ query: { pages: [page(1, "CC0")] } }));
     }) as unknown as typeof fetch;
     const client = createCommonsClient({ fetch: stub });
@@ -149,8 +153,11 @@ describe("Commons licence filter", () => {
     expect(b?.length).toBe(1);
     expect(peak).toBe(1);
     expect(seen.every((s) => s.agent === COMMONS_USER_AGENT)).toBe(true);
-    expect((seen[1]?.at ?? 0) - (seen[0]?.at ?? 0)).toBeGreaterThanOrEqual(200);
-    const url = new URL(seen[0]?.url ?? "");
+    // The judge is shown an inlined thumbnail, never a Wikimedia URL it cannot fetch.
+    expect(a?.[0]?.src.tiny).toBe("data:image/jpeg;base64,/9j/");
+    const api = seen.filter((s) => s.url.includes("api.php"));
+    expect((api[1]?.at ?? 0) - (api[0]?.at ?? 0)).toBeGreaterThanOrEqual(200);
+    const url = new URL(api[0]?.url ?? "");
     expect(url.searchParams.get("gsrnamespace")).toBe("6");
     expect(url.searchParams.get("maxlag")).toBe("5");
     expect(url.searchParams.get("iiextmetadatafilter")).toContain("LicenseShortName");

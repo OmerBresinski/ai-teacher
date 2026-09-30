@@ -245,6 +245,45 @@ export interface CommonsSearchParams {
   perPage?: number;
   allowDrawings?: boolean;
   signal?: AbortSignal;
+  /**
+   * How many photos come back with their `src.tiny` inlined as a data URL (default 8); the rest
+   * are dropped. The picture judge's model provider cannot fetch upload.wikimedia.org itself
+   * (smoke par2: every Commons judge call failed "provider request failed"), so the thumbnail it
+   * looks at is fetched here, with our User-Agent.
+   */
+  inline?: number;
+}
+
+/** A thumbnail this large (bytes) is not inlined; 200 px JPEGs are ~10-30 KB. */
+const MAX_THUMB_BYTES = 120_000;
+
+/** The first `limit` photos whose tiny rendition downloads, each with `src.tiny` as a data URL. */
+export async function inlineThumbnails(
+  photos: CommonsPhoto[],
+  limit: number,
+  fetchFn: typeof globalThis.fetch,
+  agent: string,
+  signal?: AbortSignal,
+): Promise<CommonsPhoto[]> {
+  const out: CommonsPhoto[] = [];
+  for (const photo of photos) {
+    if (out.length >= limit) break;
+    try {
+      const res = await fetchFn(photo.src.tiny, {
+        headers: { "User-Agent": agent },
+        ...(signal ? { signal } : {}),
+      });
+      const type = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+      if (!res.ok || !/^image\/(jpeg|webp|png)$/.test(type)) continue;
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.length === 0 || bytes.length > MAX_THUMB_BYTES) continue;
+      const tiny = `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
+      out.push({ ...photo, src: { ...photo.src, tiny } });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+    }
+  }
+  return out;
 }
 
 export interface CommonsClient {
@@ -273,7 +312,7 @@ export function createCommonsClient(
     return run;
   };
   return {
-    search: ({ query, perPage = 20, allowDrawings, signal }) =>
+    search: ({ query, perPage = 20, allowDrawings, signal, inline = 8 }) =>
       politely(async () => {
         const url = new URL(opts.apiUrl ?? API_URL);
         const p = url.searchParams;
@@ -297,7 +336,8 @@ export function createCommonsClient(
           ...(signal ? { signal } : {}),
         });
         if (!res.ok) throw new CommonsError(res.status, `Commons search failed (${res.status})`);
-        return commonsPhotosOf(await res.json(), { allowDrawings });
+        const photos = commonsPhotosOf(await res.json(), { allowDrawings });
+        return inlineThumbnails(photos, inline, fetchFn, agent, signal);
       }),
   };
 }
