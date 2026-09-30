@@ -143,17 +143,79 @@ function setFailing(spec: SlideSpec): string[] {
   ).map((t) => `${t.id}: overflow`);
 }
 
+function failingLines(form: string, layout: string, out: Written): string[] {
+  if (isSetForm(form)) return setFailing(renderWritten(form, layout, out).spec);
+  const { notes: _notes, ...fields } = out;
+  return contractFits(slotContract(form as PaletteFormId, layout), fields).failing;
+}
+
+/** A probe value: every text cut to its first two words (measured only, never saved). */
+function probeValue(v: unknown): unknown {
+  if (typeof v === "string") return v.split(/\s+/).slice(0, 2).join(" ");
+  if (Array.isArray(v)) return v.map(probeValue);
+  if (v && typeof v === "object") {
+    return Object.fromEntries(
+      Object.entries(v).map(([k, x]) => [k, typeof x === "string" ? probeValue(x) : x]),
+    );
+  }
+  return v;
+}
+
+/**
+ * A general failure (overflow, overlap, a step down) does not name its field. Probe it: the field
+ * whose text, cut down in a probe, clears the most themes is the one that breaks the slide, and in
+ * a list the item that does. Undefined when no single field clears any theme.
+ */
+export function locate(
+  form: string,
+  layout: string,
+  out: Written,
+): { field: string; item?: number } | undefined {
+  // Each failing theme's reasons ("overflow, overlap, stepped down"), counted, so a probe that
+  // lifts one reason on a theme still counts.
+  const count = (o: Written) =>
+    failingLines(form, layout, o).reduce(
+      (n, l) => n + (l.split(": ")[1] ?? "").split(", ").length,
+      0,
+    );
+  let best: { field: string; left: number } | undefined;
+  for (const field of Object.keys(out)) {
+    if (field === "notes" || out[field] === undefined || out[field] === null) continue;
+    const left = count({ ...out, [field]: probeValue(out[field]) });
+    if (!best || left < best.left) best = { field, left };
+  }
+  if (!best) return undefined;
+  const failing = count(out);
+  if (best.left >= failing) return undefined;
+  const value = out[best.field];
+  if (!Array.isArray(value) || value.length < 2) return { field: best.field };
+  let item: { i: number; left: number } | undefined;
+  value.forEach((_, i) => {
+    const next = value.map((x, j) => (j === i ? probeValue(x) : x));
+    const left = count({ ...out, [best.field]: next });
+    if (left < failing && (!item || left < item.left)) item = { i, left };
+  });
+  return item ? { field: best.field, item: item.i + 1 } : { field: best.field };
+}
+
+const GENERAL = /runs past|overlaps|below body size|cover the questions/;
+
 /** Judge a written slide; on failure, the field to re-write and why. */
 export function fitWritten(form: string, layout: string, out: Written): FitResult {
-  let lines: string[];
-  if (isSetForm(form)) {
-    lines = setFailing(renderWritten(form, layout, out).spec);
-  } else {
-    const { notes: _notes, ...fields } = out;
-    lines = contractFits(slotContract(form as PaletteFormId, layout), fields).failing;
-  }
+  const lines = failingLines(form, layout, out);
   if (lines.length === 0) return { ok: true };
   const found = lines.map((l) => attribute(l, form, layout, out));
+  const general = found.filter((f) => GENERAL.test(f.what));
+  if (general.length > 0) {
+    const at = locate(form, layout, out);
+    if (at) {
+      const where = at.item ? `; it is item ${at.item} of ${at.field} that does not fit` : "";
+      for (const f of general) {
+        f.field = at.field;
+        f.what = `${f.what}${where}`;
+      }
+    }
+  }
   // The field named on the most themes; its first description, with those themes.
   const byField = new Map<string, typeof found>();
   for (const f of found) byField.set(f.field, [...(byField.get(f.field) ?? []), f]);

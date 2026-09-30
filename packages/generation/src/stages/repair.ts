@@ -29,6 +29,7 @@ import {
   slideSpecSchemaFor,
 } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
+import { isPlanWriteStamp } from "../plan-write/steps";
 import {
   CODE_MODEL,
   codedSetSpec,
@@ -455,7 +456,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   // never rewritten (r4), and a rewritten multiple-choice slide gets Generate's seeded option
   // order back (the model lists the answer first, so without it the answer is A again).
   const lab = isOutlineFromFacts(generation.promptVersions.planned);
-  const designerLesson = isDesignerStamp(generationOf(state.lesson).promptVersions.planned);
+  const planned = generationOf(state.lesson).promptVersions.planned;
+  // Plan-write slides are held to the same gate: a rewrite must fit every theme in its slot.
+  const planWriteLesson = isPlanWriteStamp(planned);
+  const designerLesson = isDesignerStamp(planned) || planWriteLesson;
   const codeBuilt = new Set(lesson.slides.filter(isCodeBuilt).map((s) => s.id));
   const retrieval = new Set(
     lesson.slides.filter((s) => isRetrievalStarter(s, facts)).map((s) => s.id),
@@ -640,11 +644,15 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
       variant: undefined,
     };
     if (outcome.kind === "slide" && designerLesson) {
-      const gate = designerRepairGate(
-        outcome.spec,
-        base.slides[outcome.index] as Slide,
-        base.facts?.outline[outcome.index],
-      );
+      const original = base.slides[outcome.index] as Slide;
+      // Plan-write: no form changes. A rewrite keeps the slide's kind, and a question set (no
+      // palette form: its answers sit in the reveal panel) is never rewritten.
+      const formKept =
+        !planWriteLesson ||
+        (outcome.spec.kind === original.kind && designerFormOf(original) !== undefined);
+      const gate = formKept
+        ? designerRepairGate(outcome.spec, original, base.facts?.outline[outcome.index])
+        : ({ ok: false, why: "changes the slide's form" } as const);
       if (gate.ok) {
         outcome.spec = gate.spec;
         layout = { structure: gate.structure, variant: gate.variant };

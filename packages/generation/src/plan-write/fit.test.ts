@@ -98,3 +98,37 @@ describe("writer batches", () => {
     expect(batchesOf([])).toEqual([]);
   });
 });
+
+describe("locate (smoke 30 Sep): a general failure names the field that breaks it", () => {
+  it("a discussion prompt too big for the slide is the prompt, not the starters", () => {
+    const out = {
+      prompt:
+        "If we make three times as much fruit drink using the same recipe, what do you predict will happen to the concentrate and water?",
+      footnote: ["The concentrate will…", "The water will…"],
+      notes: "Ask for predictions.",
+    };
+    const fit = fitWritten("discussion", "default", out);
+    expect(fit.ok).toBe(false);
+    if (!fit.ok) expect(fit.field).toBe("prompt");
+  });
+
+  it("a hinge whose first option is a long chain names that option", () => {
+    const out = {
+      stem: "Which sequence best explains how Germany's linked problems worsened into hyperinflation?",
+      options: [
+        "Debt and reparations → Ruhr occupation → passive resistance → money printing",
+        "Money printing alone caused hyperinflation",
+        "Passive resistance ended the Ruhr occupation",
+        "Ruhr occupation erased wartime debt and reparations",
+      ].map((text, i) => ({ text, correct: i === 0 })),
+      explanation: "Debts and the Ruhr crisis led to printing.",
+      notes: "Hinge.",
+    };
+    const fit = fitWritten("hinge", "default", out);
+    expect(fit.ok).toBe(false);
+    if (!fit.ok) {
+      expect(fit.field).toBe("options");
+      expect(fit.failure).toContain("item 1 of options");
+    }
+  });
+});
