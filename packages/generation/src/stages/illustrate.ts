@@ -385,29 +385,69 @@ export function factQueryHints(lesson: Lesson, index: number): string[] {
   return hints;
 }
 
+/**
+ * Whether a photo subject names a specific thing (ruling 139: Commons first): a capitalised word
+ * after the first ("Roman soldiers on Hadrian's Wall", "the River Severn in flood"), or two
+ * capitalised words at the start ("Hadrian's Wall"). "Roman soldiers marching" is not.
+ */
+export function isSpecificSubject(subject: string): boolean {
+  const words = subject.trim().split(/\s+/).filter(Boolean);
+  const cap = (w: string | undefined) => w !== undefined && /^[A-Z][a-z'’-]*[a-z]/.test(w);
+  if (cap(words[0]) && cap(words[1])) return true;
+  return words.slice(1).some((w) => cap(w));
+}
+
+type PhotoSourceName = "pexels" | "commons";
+
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const { brief, images, deps, index } = args;
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
-  for (const query of [...factQueryHints(args.lesson, index), ...queryCandidates(brief)]) {
-    if (candidates.length >= MAX_CANDIDATES) break;
-    // Safety (TEACH-162): a blocked candidate searches nothing.
-    if (isBlockedQuery(query)) {
-      deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
-      continue;
+  const queries = [...factQueryHints(args.lesson, index), ...queryCandidates(brief)];
+  const gather = async (source: PhotoSourceName): Promise<"busy" | undefined> => {
+    for (const query of queries) {
+      if (candidates.length >= MAX_CANDIDATES) break;
+      // Safety (TEACH-162): a blocked candidate searches nothing.
+      if (isBlockedQuery(query)) {
+        deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
+        continue;
+      }
+      if (!tried.includes(query)) tried.push(query);
+      const photos = await searchPortraits(images, query, deps.signal, source);
+      if (photos === "busy") return "busy";
+      let kept = 0;
+      for (const photo of photos) {
+        if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
+        if (candidates.some((seen) => seen.id === photo.id)) continue;
+        candidates.push(photo);
+        kept += 1;
+      }
     }
-    tried.push(query);
-    const photos = await searchPortraits(images, query, deps.signal);
-    if (photos === "busy") return { outcome: "busy" };
-    let kept = 0;
-    for (const photo of photos) {
-      if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
-      if (candidates.some((seen) => seen.id === photo.id)) continue;
-      candidates.push(photo);
-      kept += 1;
-    }
+    return undefined;
+  };
+  // Ruling 139: a named, specific subject searches Commons first and falls back to Pexels.
+  const commonsFirst =
+    images.searchCommons !== undefined && (brief.specific ?? isSpecificSubject(brief.subject));
+  let source: PhotoSourceName = commonsFirst ? "commons" : "pexels";
+  if (commonsFirst) {
+    const got = await gather("commons").catch((error) => {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.warn({ stage: "illustrate", slideIndex: index, commons: "failed" });
+      return undefined;
+    });
+    if (got === "busy" || candidates.length === 0) source = "pexels";
   }
+  if (source === "pexels" && candidates.length === 0) {
+    if ((await gather("pexels")) === "busy") return { outcome: "busy" };
+  }
+  deps.logger.info({
+    stage: "illustrate",
+    slideIndex: index,
+    source,
+    commonsFirst,
+    candidates: candidates.length,
+  });
   // Every candidate query was blocked: nothing to judge, nothing to say.
   if (tried.length === 0) return { outcome: "empty" };
 
@@ -470,7 +510,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       return { outcome: "empty", judged: "query" };
     }
     tried.push(requery);
-    const photos = await searchPortraits(images, requery, deps.signal);
+    const photos = await searchPortraits(images, requery, deps.signal, source);
     if (photos === "busy") return { outcome: "busy" };
     if (photos.length === 0) return { outcome: "empty", judged: "query" };
     pool = photos.slice(0, MAX_CANDIDATES);
@@ -583,11 +623,19 @@ export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrR
   return brief.mustShow.length === 0 || itemsSeen(brief, verdict).length > 0;
 }
 
+/** A Commons photo up to 3:2 landscape is kept: the slot crops to cover, and named things are rarely portrait. */
+const COMMONS_MAX_ASPECT = 1.5;
+
 async function searchPortraits(
   images: PhotoPlacer,
   query: string,
   signal: AbortSignal,
+  source: PhotoSourceName = "pexels",
 ): Promise<PhotoResult[] | "busy"> {
+  if (source === "commons" && images.searchCommons) {
+    const photos = await images.searchCommons(query, { perPage: 20, signal });
+    return photos.filter((c) => c.width <= c.height * COMMONS_MAX_ASPECT);
+  }
   try {
     const photos = await images.search(query, {
       orientation: "portrait",

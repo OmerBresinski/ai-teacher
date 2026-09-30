@@ -99,6 +99,14 @@ export interface PhotoPlacer {
     },
   ): Promise<PhotoResult[]>;
   store(photo: PhotoResult, target: "slide"): Promise<StoredPhoto>;
+  /**
+   * Wikimedia Commons search (ruling 139), licence-filtered by `@tj/images`: tried first for a
+   * named, specific subject, with Pexels as the fallback. Absent: Pexels only.
+   */
+  searchCommons?(
+    query: string,
+    opts: { perPage: number; signal: AbortSignal },
+  ): Promise<PhotoResult[]>;
 }
 
 /**
