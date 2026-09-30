@@ -652,7 +652,8 @@ export function slotRender(slot: DesignSlot, seed: string, factRefs: string[] = 
             ...base,
             stem: slot.stem,
             options: slot.options,
-            explanation: slot.explanation,
+            // An explanation moved to the notes (the fit ladder's rung 3) leaves no "Why?" panel.
+            ...(slot.explanation ? { explanation: slot.explanation } : {}),
           },
           seed,
         ),
@@ -663,7 +664,7 @@ export function slotRender(slot: DesignSlot, seed: string, factRefs: string[] = 
         ...base,
         statement: slot.statement,
         correct: slot.correct,
-        explanation: slot.explanation,
+        ...(slot.explanation ? { explanation: slot.explanation } : {}),
       });
     case "matching":
       return out({ kind: "matching", ...base, stem: slot.stem, pairs: slot.pairs });

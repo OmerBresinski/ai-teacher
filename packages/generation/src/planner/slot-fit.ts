@@ -1,3 +1,4 @@
+import { asksForUnlistedOptions } from "@tj/domain/documents";
 import { CALLOUT_NAMES, fitsPlanned, materialiseSlide, paletteForm } from "@tj/slides";
 import type { DesignSlot, SlotForm } from "../prompts/design-cycle";
 import { type SlotRender, slotRender } from "./coded-slides";
@@ -28,6 +29,8 @@ export type SlotFit = {
   rung: Rung;
   /** Every rung tried, in order (the fit block's `rungs`). */
   tried: RungLog[];
+  /** Set when flagged: why the slot fails the save gate (`flagReason`). */
+  reason?: string;
 };
 
 export type SlotFitOptions = {
@@ -97,8 +100,9 @@ const sentences = (text: string): string[] =>
  * sibling and go on to the re-fill (rung 4), which writes the new form (designer eval r1: a hinge
  * turned open response kept "Which statement best…" with no options on the slide and notes naming
  * "Option B"):
- *  - hinge: its stem asks to choose between options and its explanation reads them; an option alone
- *    is a phrase, not a statement to judge true or false. None.
+ *  - hinge: its stem asks to choose between options; an option alone is a phrase, not a statement
+ *    to judge true or false. None here: the re-fill writes the next form down, and only when that
+ *    fails is it asked open (`hingeAsked`).
  *  - fill-gap (the gapped sentence is the question), sort (a sequence prints the answer order) and
  *    matching (a vocabulary slide shows the matched pairs, and a check becomes teaching): none.
  *  - explain: a list only when the body is exactly a lead and two sentences (nothing left over);
@@ -109,9 +113,49 @@ const sentences = (text: string): string[] =>
  *    its steps), true-false -> open response (the statement asked as true or false, the verdict
  *    and its reason the model answer).
  */
+/**
+ * What the notes of a slot talk about that only its own form has on the slide (designer eval r2:
+ * notes "using the four labels as prompts" on a slide with no labels). A sentence naming one of
+ * these is left behind when code converts the slot to another form; the rest carry over.
+ */
+const FORM_PARTS: Partial<Record<SlotForm, RegExp>> = {
+  hinge:
+    /\b(options?|choose|choices?|distractors?|reveal|(?:option|answer) [A-D])\b|\b[A-D]\)|\(\s*[A-D]\s*\)/i,
+  "true-false": /\b(true or false|true\/false|reveal|cards?)\b/i,
+  "explain-callout": /\b(callout|watch[- ]out|card)\b/i,
+  compare: /\b(columns?|sides?|cards?)\b/i,
+  sequence: /\b(steps?|arrows?|cards?|stages? in order)\b/i,
+  sort: /\b(order|cards?|labels?|sort)\b/i,
+  matching: /\b(match|pairs?|columns?)\b/i,
+  "worked-example": /\b(working card|card)\b/i,
+};
+
+/** The notes carried to `into` from `from`: the sentences that do not name `from`'s own parts. */
+export function notesAcross(
+  notes: string | undefined,
+  from: SlotForm,
+  into: SlotForm,
+): string | undefined {
+  if (!notes || from === into) return notes;
+  const parts = FORM_PARTS[from];
+  if (!parts) return notes;
+  const kept = notes
+    .split("\n")
+    .map((line) =>
+      sentences(line)
+        .filter((sentence) => !parts.test(sentence))
+        .join(" "),
+    )
+    .filter((line) => line.trim() !== "")
+    .join("\n");
+  return kept || undefined;
+}
+
 export function siblingsOf(slot: DesignSlot): DesignSlot[] {
-  const notes = slot.notes;
-  const withNotes = <T extends DesignSlot>(s: T): T => (notes ? { ...s, notes } : s);
+  const withNotes = <T extends DesignSlot>(s: T): T => {
+    const notes = notesAcross(slot.notes, slot.form, s.form);
+    return notes ? { ...s, notes } : s;
+  };
   switch (slot.form) {
     case "explain": {
       const [lead, ...rest] = sentences(slot.body);
@@ -164,6 +208,35 @@ export function siblingsOf(slot: DesignSlot): DesignSlot[] {
     default:
       return [];
   }
+}
+
+/**
+ * A hinge asked open, the fallback after its re-fill (eval r2: a hinge whose four stacked options
+ * stand in the "Why?" panel's lane has no variant and no sibling, and a re-fill that came back
+ * invalid left it flagged and overflowing on every theme). Only when neither the stem nor the
+ * explanation reads the options; the answer and its reason are the model answer, word for word.
+ */
+export function hingeAsked(slot: DesignSlot): DesignSlot | undefined {
+  if (slot.form !== "hinge") return undefined;
+  const correct = slot.options.find((o) => o.correct)?.text.trim();
+  const readsOptions = (t: string) =>
+    /\b(option|options|these|the following|statement|statements)\b|\b[A-D]\)|\(\s*[A-D]\s*\)|\b[A-D] is\b/i.test(
+      t,
+    );
+  if (
+    !correct ||
+    readsOptions(slot.stem) ||
+    readsOptions(slot.explanation) ||
+    asksForUnlistedOptions({ stem: slot.stem })
+  )
+    return undefined;
+  const notes = notesAcross(slot.notes, "hinge", "open-response");
+  return {
+    form: "open-response",
+    stem: slot.stem,
+    modelAnswer: `${correct.replace(/[.!?]+$/, "")}. ${slot.explanation}`.trim(),
+    ...(notes ? { notes } : {}),
+  };
 }
 
 /**
@@ -309,9 +382,82 @@ export const FORM_DOWN: Partial<Record<SlotForm, SlotForm>> = {
   vocabulary: "list",
 };
 
+/** A slot and its render: a candidate the step-down rung may fall back to. */
+type Candidate = { slot: DesignSlot; render: SlotRender };
+
 /**
- * Fit one slot: the gate, then the ladder. Always returns a slot to render: the one that fitted,
- * or, when nothing did, the original flagged (its words kept; the flag says it may step twice).
+ * Rungs 1-3 on one slot (variants, siblings, units to the notes), each logged under `prefix`.
+ * Returns the landing and every candidate tried, in order, for the step-down rung.
+ */
+function lowerRungs(
+  slot: DesignSlot,
+  render: (s: DesignSlot) => SlotRender,
+  themeId: string,
+  tried: RungLog[],
+  prefix = "",
+): { landed?: { cand: Candidate; rung: Rung }; candidates: Candidate[] } {
+  const first = render(slot);
+  const candidates: Candidate[] = [];
+  const log = (rung: Rung, form: SlotForm, ok: boolean, detail?: string) => {
+    const d = [prefix, detail].filter(Boolean).join(" ");
+    tried.push({ rung, form, ok, ...(d ? { detail: d } : {}) });
+  };
+  // 1. another variant of the same form
+  for (const variant of variantsOf(first)) {
+    const cand = { slot, render: { ...first, variant } };
+    const ok = slotFits(cand.render, themeId, 0);
+    log("variant", slot.form, ok, variant);
+    if (ok) return { landed: { cand, rung: "variant" }, candidates };
+    candidates.push(cand);
+  }
+  // 2. a sibling form that holds the same units
+  for (const sibling of siblingsOf(slot)) {
+    const cand = { slot: sibling, render: render(sibling) };
+    const ok = slotFits(cand.render, themeId, 0);
+    log("sibling", sibling.form, ok);
+    if (ok) return { landed: { cand, rung: "sibling" }, candidates };
+    candidates.push(cand);
+  }
+  // 3. whole units to the notes, word for word
+  for (const { slot: moved, moved: what } of unitsToNotes(slot)) {
+    const cand = { slot: moved, render: render(moved) };
+    const ok = slotFits(cand.render, themeId, 0);
+    log("notes", moved.form, ok, what);
+    if (ok) return { landed: { cand, rung: "notes" }, candidates };
+    candidates.push(cand);
+  }
+  return { candidates };
+}
+
+/**
+ * Why a slot fails the save gate (stepDown 1), for the flag a teacher and the eval read: how many
+ * themes, and what went wrong there. Never a length.
+ */
+export function flagReason(render: SlotRender): string {
+  const planned = fitsPlanned(render.spec, {
+    stepDown: 1,
+    ...(render.variant ? { variant: render.variant } : {}),
+    structure: render.structure,
+  });
+  if (planned.ok) return "its named part is not placed in the lesson's theme";
+  const count = (pick: (t: (typeof planned.failing)[number]) => boolean) =>
+    planned.failing.filter(pick).length;
+  const parts = [
+    [count((t) => t.overflow.length > 0), "text past the safe area"],
+    [count((t) => t.lane.length > 0), "options in the Why? panel's lane"],
+    [count((t) => t.answers.length > 0), "answers over the questions"],
+    [count((t) => t.steps > 1), "text more than one size step down"],
+    [count((t) => t.overlaps > 0), "overlapping boxes"],
+  ] as const;
+  const what = parts.filter(([n]) => n > 0).map(([n, label]) => `${label} on ${n}`);
+  return `fails on ${planned.failing.length} of 10 themes: ${what.join(", ") || "lint"}`;
+}
+
+/**
+ * Fit one slot: the gate, then the ladder. A re-filled slot goes down the same ladder (rungs 1-3)
+ * as the slot it replaced, and the step-down rung tries every candidate either produced, so no
+ * rung lands a slot that bypasses the gate. Always returns a slot to render: the one that fitted,
+ * or, when nothing did, the original flagged with the reason (its words kept).
  */
 export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<SlotFit> {
   const { seed, themeId } = opts;
@@ -321,44 +467,49 @@ export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<S
   const first = render(slot);
   if (slotFits(first, themeId, 0)) return { slot, render: first, rung: "fits", tried };
 
-  // 1. another variant of the same form
-  for (const variant of variantsOf(first)) {
-    const r = { ...first, variant };
-    const ok = slotFits(r, themeId, 0);
-    tried.push({ rung: "variant", form: slot.form, ok, detail: variant });
-    if (ok) return { slot, render: r, rung: "variant", tried };
+  const own = lowerRungs(slot, render, themeId, tried);
+  if (own.landed) {
+    const { cand, rung } = own.landed;
+    return { slot: cand.slot, render: cand.render, rung, tried };
   }
-  // 2. a sibling form that holds the same units
-  for (const sibling of siblingsOf(slot)) {
-    const r = render(sibling);
-    const ok = slotFits(r, themeId, 0);
-    tried.push({ rung: "sibling", form: sibling.form, ok });
-    if (ok) return { slot: sibling, render: r, rung: "sibling", tried };
-  }
-  // 3. whole units to the notes, word for word
-  for (const { slot: moved, moved: what } of unitsToNotes(slot)) {
-    const r = render(moved);
-    const ok = slotFits(r, themeId, 0);
-    tried.push({ rung: "notes", form: moved.form, ok, detail: what });
-    if (ok) return { slot: moved, render: r, rung: "notes", tried };
-  }
-  // 4. one re-fill into the next form down
+  // 4. one re-fill into the next form down, then that form's own rungs 1-3
   const down = FORM_DOWN[slot.form];
-  let refilled: DesignSlot | undefined;
+  const fromRefill: Candidate[] = [];
   if (down && opts.refill) {
-    refilled = await opts.refill(slot, down, refillReason(slot)).catch(() => undefined);
-    const ok = refilled ? slotFits(render(refilled), themeId, 0) : false;
-    tried.push({ rung: "refill", form: down, ok, ...(refilled ? {} : { detail: "no answer" }) });
-    if (ok && refilled) return { slot: refilled, render: render(refilled), rung: "refill", tried };
+    const refilled = await opts.refill(slot, down, refillReason(slot)).catch(() => undefined);
+    if (refilled) {
+      const r = render(refilled);
+      const ok = slotFits(r, themeId, 0);
+      tried.push({ rung: "refill", form: refilled.form, ok });
+      if (ok) return { slot: refilled, render: r, rung: "refill", tried };
+      fromRefill.push({ slot: refilled, render: r });
+      const again = lowerRungs(refilled, render, themeId, tried, "re-filled");
+      if (again.landed) {
+        const { cand } = again.landed;
+        return { slot: cand.slot, render: cand.render, rung: "refill", tried };
+      }
+      fromRefill.push(...again.candidates);
+    } else {
+      tried.push({ rung: "refill", form: down, ok: false, detail: "no answer" });
+    }
   }
-  // 5. one type step down, then flag
-  for (const candidate of [refilled, slot]) {
-    if (!candidate) continue;
-    const r = render(candidate);
-    const ok = slotFits(r, themeId, 1);
-    tried.push({ rung: "step-down", form: candidate.form, ok });
-    if (ok) return { slot: candidate, render: r, rung: "step-down", tried };
+  // 4b. a hinge whose re-fill did not land, asked open in code
+  const asked = hingeAsked(slot);
+  if (asked) {
+    const r = render(asked);
+    const ok = slotFits(r, themeId, 0);
+    tried.push({ rung: "sibling", form: asked.form, ok, detail: "hinge asked open" });
+    if (ok) return { slot: asked, render: r, rung: "sibling", tried };
+    fromRefill.push({ slot: asked, render: r });
   }
-  tried.push({ rung: "flagged", form: slot.form, ok: false });
-  return { slot, render: first, rung: "flagged", tried };
+  // 5. one type step down, on every candidate in order, then flag
+  const candidates: Candidate[] = [...fromRefill, { slot, render: first }, ...own.candidates];
+  for (const cand of candidates) {
+    const ok = slotFits(cand.render, themeId, 1);
+    tried.push({ rung: "step-down", form: cand.slot.form, ok });
+    if (ok) return { slot: cand.slot, render: cand.render, rung: "step-down", tried };
+  }
+  const reason = flagReason(first);
+  tried.push({ rung: "flagged", form: slot.form, ok: false, detail: reason });
+  return { slot, render: first, rung: "flagged", tried, reason };
 }

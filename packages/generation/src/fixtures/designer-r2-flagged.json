@@ -1,0 +1,95 @@
+{
+  "designer-a/y6-ratio@6": {
+    "form": "hinge",
+    "notes": "Ask pupils to choose an answer and explain their choice. Correct answer: 5 : 3. The misconception is that the order of the numbers does not matter.",
+    "stem": "There are 3 red counters and 5 blue counters. What is the ratio of blue counters to red counters?",
+    "options": [
+      {
+        "text": "5 : 3",
+        "correct": true
+      },
+      {
+        "text": "3 : 5",
+        "correct": false
+      },
+      {
+        "text": "5 : 8",
+        "correct": false
+      },
+      {
+        "text": "3 : 8",
+        "correct": false
+      }
+    ],
+    "explanation": "Blue counters come first, so write their number first: 5 : 3."
+  },
+  "designer-a/y9-weimar@7": {
+    "form": "hinge",
+    "notes": "Ask pupils to choose before revealing the explanation. The debt does not disappear; its real cost falls as the value of money falls.",
+    "stem": "A worker owes a fixed 100 marks. Prices rise sharply, but the debt stays at 100 marks. What happens to the debt\u2019s real cost?",
+    "options": [
+      {
+        "text": "It becomes easier to repay",
+        "correct": true
+      },
+      {
+        "text": "It disappears as soon as prices rise",
+        "correct": false
+      },
+      {
+        "text": "It becomes harder to repay",
+        "correct": false
+      },
+      {
+        "text": "It stays the same in buying power",
+        "correct": false
+      }
+    ],
+    "explanation": "The debt stays at 100 marks, but those marks buy less, so repaying it takes less value than before."
+  },
+  "designer-b/y10-electrolysis@7": {
+    "form": "worked-example",
+    "notes": "Explain that aqueous solutions contain ions from the dissolved substance and from water. In concentrated sodium chloride solution, chloride ions are concentrated, so chlorine forms at the anode rather than oxygen from hydroxide ions.",
+    "heading": "Concentrated chloride solution produces chlorine at the anode",
+    "question": "What forms at the anode when concentrated sodium chloride solution is electrolysed?",
+    "steps": [
+      "WORKING",
+      "The negative ions are chloride ions (Cl\u207b) and hydroxide ions (OH\u207b).\nChloride ions are concentrated, so the halide is discharged instead of hydroxide ions.\nChlorine (Cl\u2082) forms at the anode."
+    ]
+  },
+  "designer-b/y3-rocks@5": {
+    "form": "hinge",
+    "notes": "Ask pupils to choose an answer, then reveal the explanation. The squashed-layers option describes a misconception; layers of sediment form sedimentary rock over time.",
+    "stem": "What happens when melted rock cools?",
+    "options": [
+      {
+        "text": "It is squashed into layers",
+        "correct": false
+      },
+      {
+        "text": "It becomes sediment",
+        "correct": false
+      },
+      {
+        "text": "It becomes solid igneous rock",
+        "correct": true
+      },
+      {
+        "text": "It stays melted",
+        "correct": false
+      }
+    ],
+    "explanation": "As melted rock cools, it hardens into solid igneous rock."
+  },
+  "designer-b/y3-rocks@7": {
+    "form": "sort",
+    "notes": "Correct order: Bits settle; layers build up; layers are pressed together; solid rock forms. Emphasise that this takes a long time.",
+    "stem": "Put the stages in order to show how a riverbed can become sedimentary rock.",
+    "steps": [
+      "Solid rock forms",
+      "Bits of rock and other material settle on the riverbed",
+      "More layers build up over time",
+      "The layers are pressed together"
+    ]
+  }
+}
