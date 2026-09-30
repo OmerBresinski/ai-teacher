@@ -27,7 +27,9 @@ describe("plan-objectives", () => {
     // v18: 343, "it has one right answer" on the starter (3 of 9 gpt-6-luna low question faults).
     // v19: 422, the arc (lesson designer plan): one rule sentence (angle, lean with its four
     // cases, misconception) and the sketch's arc; the alarm moves once, by that growth.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(425);
+    // v20: 444, the angle as the parts taught and the procedure test's three cases (round-1
+    // judges: repeated slides, dropped strands, no worked example on procedures); moves once.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(450);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");

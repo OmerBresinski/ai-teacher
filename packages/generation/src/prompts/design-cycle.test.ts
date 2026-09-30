@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { PALETTE, type SlideSpec } from "@tj/slides";
-import { designCyclePrompt, designCycleSchemaFor, slotFormsFor } from "./design-cycle";
+import {
+  designCyclePrompt,
+  designCycleSchemaFor,
+  ROLE_FORMS,
+  SLOT_ROLES,
+  slotFormsFor,
+  slotRoles,
+} from "./design-cycle";
 import { planObjectivesPrompt } from "./plan-objectives";
 import { DESIGN_CYCLE_SAMPLE } from "./plan-samples";
 
@@ -25,6 +32,36 @@ describe("design-cycle", () => {
     expect(user).toContain("2. Describe how the Roman army was organised  <- this call");
     expect(user).toContain("Misconception: The Romans left no trace in Britain");
     expect(user).toContain("Design objective 2: 2 slots, slides 6 to 7 of 10.");
+    // v6: each slot's role, from the count and this objective's lean (photo -> show first).
+    expect(user).toContain("  slide 6: show\n  slide 7: check");
+    const given = designCyclePrompt.user({
+      ...DESIGN_CYCLE_SAMPLE,
+      slots: { ...DESIGN_CYCLE_SAMPLE.slots, roles: ["teach", "practise"] },
+    });
+    expect(given).toContain("  slide 6: teach\n  slide 7: practise");
+  });
+
+  test("slot roles: first teaches or shows by the lean, last checks, practise first for a method", () => {
+    expect(slotRoles(1, "explain")).toEqual(["teach"]);
+    expect(slotRoles(1, "photo")).toEqual(["show"]);
+    expect(slotRoles(2, "worked-example")).toEqual(["teach", "check"]);
+    expect(slotRoles(3, "worked-example")).toEqual(["teach", "practise", "check"]);
+    expect(slotRoles(3, "diagram-slot")).toEqual(["show", "teach", "check"]);
+    expect(slotRoles(3, undefined)).toEqual(["teach", "teach", "check"]);
+    expect(slotRoles(6, "sequence")).toEqual([
+      "teach",
+      "teach",
+      "practise",
+      "teach",
+      "practise",
+      "check",
+    ]);
+    // Every role's forms are slide forms the schema offers, and the four sets partition the checks.
+    for (const role of SLOT_ROLES) {
+      for (const form of ROLE_FORMS[role]) expect(slotFormsFor(undefined)).toContain(form);
+    }
+    expect(ROLE_FORMS.check).not.toContain("open-response");
+    expect(ROLE_FORMS.practise).toContain("open-response");
   });
 
   test("a re-fill is shown the slot it replaces and why, as structure; a cycle call is not", () => {

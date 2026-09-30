@@ -13,8 +13,10 @@ import { basename } from "node:path";
 import { paletteMenu } from "@tj/slides";
 import { Output, streamText } from "ai";
 import { createOpenAI } from "../../ai/node_modules/@ai-sdk/openai";
-import { designCyclePrompt, designCycleSchemaFor } from "../src/prompts/design-cycle";
+import { allocate } from "../src/planner/cycles";
+import { designCyclePrompt, designCycleSchemaFor, slotRoles } from "../src/prompts/design-cycle";
 import {
+  type ObjectiveArc,
   planObjectivesOutputSchemaFor,
   planObjectivesPrompt,
 } from "../src/prompts/plan-objectives";
@@ -120,19 +122,6 @@ async function call<T>(
   };
 }
 
-/** Code allocation stand-in for planner/cycles.ts: 10 slides, 3 fixed before, exit last. */
-function allocate(n: number, slideCount: number) {
-  const teaching = slideCount - 4;
-  const base = Math.floor(teaching / n);
-  let first = 4;
-  return Array.from({ length: n }, (_, i) => {
-    const count = base + (i < teaching % n ? 1 : 0);
-    const slot = { count, first, slideCount };
-    first += count;
-    return slot;
-  });
-}
-
 for (const file of args) {
   const id = basename(file, ".json");
   if (readSpend() + RESERVE > cap) {
@@ -157,7 +146,9 @@ for (const file of args) {
     );
   }
   const objectives = (
-    objectivesCall.output as { objectives: { text: string; arc?: never }[] } | undefined
+    objectivesCall.output as
+      | { objectives: { text: string; arc?: ObjectiveArc | undefined }[] }
+      | undefined
   )?.objectives;
   if (!objectives) {
     writeFileSync(`${out}/${id}.json`, JSON.stringify({ id, objectives: objectivesCall }, null, 1));
@@ -165,7 +156,11 @@ for (const file of args) {
     continue;
   }
   const palette = paletteMenu(b.subject);
-  const allocation = allocate(objectives.length, slideCount);
+  // The production allocator (planner/cycles.ts): minimums first, the rest by arc weight.
+  const allocation = allocate(
+    slideCount,
+    objectives.map((o) => o.arc),
+  ).cycles;
   const cycles = await Promise.all(
     objectives.map((_, i) => {
       const input = {
@@ -174,7 +169,11 @@ for (const file of args) {
         audience,
         objectives,
         objectiveIndex: i,
-        slots: allocation[i]!,
+        slots: {
+          count: allocation[i]!.count,
+          first: allocation[i]!.first,
+          slideCount,
+        },
         palette,
       };
       return call(
@@ -185,7 +184,12 @@ for (const file of args) {
           const slots = (p as { slots?: unknown[] } | undefined)?.slots;
           return Array.isArray(slots) && (slots.length >= 2 || "exitQuestion" in (p as object));
         },
-      ).then((r) => ({ objectiveIndex: i, slots: allocation[i], ...r }));
+      ).then((r) => ({
+        objectiveIndex: i,
+        slots: allocation[i],
+        roles: slotRoles(allocation[i]!.count, objectives[i]?.arc?.lean),
+        ...r,
+      }));
     }),
   );
   const row = {

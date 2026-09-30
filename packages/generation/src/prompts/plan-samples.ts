@@ -142,7 +142,7 @@ export const DESIGN_CYCLE_SAMPLE: DesignCycleInput = {
     {
       text: "Explain why the Romans invaded Britain",
       arc: {
-        angle: "Britain's wealth and an emperor who needed a victory",
+        angle: "Britain's grain, metals and slaves; an emperor who needed a victory",
         lean: "list",
         misconception: "The Romans invaded only to take treasure",
       },
@@ -150,7 +150,7 @@ export const DESIGN_CYCLE_SAMPLE: DesignCycleInput = {
     {
       text: "Describe how the Roman army was organised",
       arc: {
-        angle: "What a legionary carried and how a legion fought",
+        angle: "What a legionary carried; how a legion fought as one",
         lean: "photo",
         misconception: "Roman soldiers fought alone, like knights",
       },
@@ -158,7 +158,7 @@ export const DESIGN_CYCLE_SAMPLE: DesignCycleInput = {
     {
       text: "Explain how the Romans changed daily life in Britain",
       arc: {
-        angle: "Roads, towns and baths as the lasting marks",
+        angle: "Roads and towns; baths and villas as the lasting marks",
         lean: "diagram-slot",
         misconception: "The Romans left no trace in Britain",
       },

@@ -65,8 +65,78 @@ import { type Audience, audienceBlock, houseRules } from "./shared";
  *    says "exactly", "its count of sentences included": sentences are units the palette already
  *    counts, so this is structure, not a length (ruling 132).
  *
+ * v6 (30 Sept 2026, designer eval round 1: 16 decks judged blind, `quality-prd/lab/fit-lab/rounds/r1`;
+ *    v5 re-run standalone on the 8 briefs as the before, `lab/designer-prompts2/v5`):
+ *  - Roles. Each slot now comes with a role in the user turn (teach, show, practise, check),
+ *    assigned in code from the slot count and the arc's lean (`slotRoles`), and the system text
+ *    defines each role as a closed set of forms. Round 1 had 2.5 distinct forms a deck, no
+ *    practice slot anywhere (ratio's practice repeated the worked example word for word; the
+ *    persuasive decks never had pupils write), and one-slot objectives spent the slot on a check
+ *    (rocks: metamorphic rock taught only in a question's notes). A per-slot role is the same
+ *    lever as a slot in a sketch: it is filled as shown, where a global "teach first, check last"
+ *    rule collapsed to one pattern (openai.md 2026-09-26, shape enum and diagram trigger).
+ *  - Parts. The arc's `angle` (plan-objectives v20) now lists the parts the lesson teaches of the
+ *    objective; each teach or show slot takes the next part. Round 1's judges found neighbouring
+ *    slides saying the same thing (rivers 4/5, electrolysis 7/8, Weimar 4/5, persuasive 7/8,
+ *    linear 5/7) and strands dropped (electrolysis concentration); the call saw the whole arc but
+ *    nothing told it which slide carried which part.
+ *  - The slide carries the claim with its reason and its example. v5's "the slide shows the idea;
+ *    what you say around it goes in notes" gave one-sentence slides with the mechanism in the
+ *    notes (Weimar's Ruhr chain, persuasive's device examples, the Y4 diagram slides), which every
+ *    judge marked thin. The five nouns are the classes the judges named (generate-slide v23's
+ *    tested-not-taught list).
+ *  - Hinge form: a hinge asks for a thing pupils name, so its options are phrases. In the v5
+ *    before, 9 of 15 hinges failed fit; every failure asked "why" or "which statement", and every
+ *    hinge asking "what forms" or "what is the ratio" fit. The phrase rule alone (v3) did not
+ *    reach a "why" stem: the form of the stem decides the form of the options.
+ *  - Worked-example heading: "the label of its method, not an instruction", with an off-bench
+ *    label. v4's "names its method" gave imperatives ("Solve an equation with variable terms on
+ *    both sides") that stepped on 5-7 themes.
+ *  - Check variety: the check line says what each closed form tests (round 1: hinge and
+ *    true-false only; 15 of 19 checks in the before were hinges).
+ *  - Accuracy: one line describing the checker (a subject specialist reads every slide) and
+ *    the standard (this year group's specification), the bake-off pattern that scored 0 wrong of
+ *    141 (openai.md 2026-09-23). Verify never ran on a designer lesson in round 1 (fix branch
+ *    e0fa4e68), and at effort low it passed the rivers deck with the speed error in place, so
+ *    the source call carries the standard too.
+ *  - Gone: "The slots teach first; the last one checks" (roles say it per slot) and the visual
+ *    minimum sentence (the show role and the teach choosing line carry it; the code minimum
+ *    re-fills a miss).
+ *
+ * v7 (same day, v6 smoke on the 8 briefs, `lab/designer-prompts2/v6`): fit 74 -> 85% of
+ *    slot-themes and no hinge failed, but visuals fell to 3 of 17 objectives (v5: 14 of 19) and
+ *    12 of 17 checks were true-false (v5: 4 of 19). The visual-minimum sentence v6 dropped was
+ *    the lever (openai.md 2026-09-27 and 2026-09-30, photo trigger): it is back, worded for the
+ *    roles ("one teach or show slot"), with a calculation named in the abstract exception so a
+ *    method objective's worked example is not asked to be a diagram. Every arc carries a
+ *    misconception, so "one pupils must confront is a true-false check" made true-false the
+ *    check everywhere; the misconception's home is now the hinge's wrong option (v5's
+ *    behaviour), and the check line is keyed to what the part is, ordered from the specific
+ *    forms (sort, matching, fill-gap) to the general ones, since Luna at low takes the first
+ *    case that reads as true (openai.md 2026-09-26, shape enum).
+ *
+ * v8 (same day, v7 smoke, `lab/designer-prompts2/v7`): visuals stayed at 4 of 16 objectives with
+ *    the minimum sentence folded into the choosing line after the roles, and history hinges
+ *    asking "why" or "which best explains" overflowed again (options of 8-13 words), while the
+ *    v6 gate had 0 hinge failures. The minimum is now its own sentence straight after the roles
+ *    (a folded clause is dropped at `low`: v3, plan-objectives v16), and the teach role lists the
+ *    visual forms first (the first listed case is the one taken, openai.md 2026-09-26). The hinge
+ *    gate is its own sentence again, with the why/how case routed to sort or true-false rather
+ *    than open (a check stays closed; practise is the open slot). Practice on new numbers is
+ *    said against the teach slots ("no teach slot used"): ratio's practise reused the worked
+ *    example's numbers twice in v7.
+ *
+ * v9 (30 Sept 2026, merge of the fix branch onto v8): the user turn is v8's (roles per slot) followed
+ *    by the fix branch's re-fill block (`replacingBlock`: the slot replaced, its material, why, the
+ *    form to write). System text is v8's unchanged; a cycle call without `replacing` renders
+ *    exactly as v8. The figure slot's schema carries `figureBrief.values` (fix branch).
+ *
  * Bump `version` whenever `system` or `user` changes wording.
  */
+
+/** A slot's job in its objective's cycle (v6): assigned in code, chosen within by the model. */
+export const SLOT_ROLES = ["teach", "show", "practise", "check"] as const;
+export type SlotRole = (typeof SLOT_ROLES)[number];
 
 export type DesignCycleInput = {
   topic: string;
@@ -76,8 +146,12 @@ export type DesignCycleInput = {
   objectives: readonly { text: string; arc?: ObjectiveArc | undefined }[];
   /** 0-based index of the objective this call designs. */
   objectiveIndex: number;
-  /** This objective's slots: how many, the 1-based slide number of the first, the deck's size. */
-  slots: { count: number; first: number; slideCount: number };
+  /**
+   * This objective's slots: how many, the 1-based slide number of the first, the deck's size,
+   * and each slot's role (v6). `roles` left out means `slotRoles(count, arc.lean)`, so the
+   * allocator can pass its own or leave the default.
+   */
+  slots: { count: number; first: number; slideCount: number; roles?: SlotRole[] | undefined };
   /** `paletteMenu(audience.subject)`. */
   palette: string;
   /**
@@ -87,6 +161,42 @@ export type DesignCycleInput = {
    */
   replacing?: { form: SlotForm; material: string; reason: string; into: SlotForm } | undefined;
 };
+
+/** The forms each role admits, as the system text lists them (v6); for code that enforces a role. */
+export const ROLE_FORMS: Record<SlotRole, readonly SlotForm[]> = {
+  teach: [
+    "explain",
+    "explain-callout",
+    "list",
+    "compare",
+    "sequence",
+    "photo",
+    "figure",
+    "diagram-slot",
+    "worked-example",
+  ],
+  show: ["photo", "figure", "diagram-slot"],
+  practise: ["open-response", "discussion"],
+  check: ["hinge", "true-false", "matching", "fill-gap", "sort"],
+};
+
+const VISUAL_LEANS = new Set<ObjectiveArc["lean"]>(["photo", "figure", "diagram-slot"]);
+
+/**
+ * The roles of an objective's slots (v6), from their count and the arc's lean: the first teaches
+ * (shows, where the arc leans to a photo, figure or diagram), the last checks, and the slots
+ * between alternate teach and practise, practise first for a method (its worked example is the
+ * teach slot, so pupils try one next). One slot only teaches: the exit line checks it.
+ */
+export function slotRoles(count: number, lean?: ObjectiveArc["lean"] | undefined): SlotRole[] {
+  if (count <= 0) return [];
+  const first: SlotRole = lean && VISUAL_LEANS.has(lean) ? "show" : "teach";
+  if (count === 1) return [first];
+  const method = lean === "worked-example";
+  const middle: SlotRole[] = [];
+  for (let i = 0; i < count - 2; i++) middle.push((i % 2 === 0) === method ? "practise" : "teach");
+  return [first, ...middle, "check"];
+}
 
 /* ------------------------------------------------------------------ slot schema */
 
@@ -290,17 +400,20 @@ function replacingBlock(r: NonNullable<DesignCycleInput["replacing"]>): string[]
 }
 
 export const designCyclePrompt = {
-  version: "design-cycle.v5",
+  version: "design-cycle.v9",
   system: [
-    "You are an experienced UK teacher who designs lesson slides. You design the slides for one objective of a lesson, in the slots you are given: for each piece of its content you choose the palette form that shows it best, then fill it.",
+    "You are an experienced UK teacher who designs lesson slides. You design the slides for one objective of a lesson, in the slots you are given, each with a role. For each slot you choose the palette form that shows its content best and fill it; nothing rewrites your words, so what you write is the slide.",
     "",
     houseRules("british", "names", "pitch"),
-    'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading names its method ("Finding the area of a triangle").',
-    "Choose by what the content is: anything a camera could show (a living thing, an object, a place, a scene) is a photo; a structure, process or layout is a figure or a diagram slot; a method is a worked example; a definition or an argument is text (explain, list, compare, sequence). Unless the objective is purely abstract (a rule, a number, an argument), at least one of its slots is a photo, figure or diagram slot.",
+    "Roles: teach shows an idea in a teaching form (photo, figure, diagram-slot, explain, explain-callout, list, compare, sequence, or a worked example for a procedure); show teaches through a photo, figure or diagram slot; practise has pupils do it themselves on a new case (open-response, or discussion for a judgement); check is a quick closed check (hinge, true-false, matching, fill-gap or sort).",
+    "Unless the objective is purely abstract (a rule, a number, a calculation), one of its teach or show slots is a photo, figure or diagram slot.",
+    "The objective's Angle lists the parts this lesson teaches of it. Each teach or show slot takes the next part, so together they cover every part, each heading stating its own part; a part given a second slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
+    'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. The slide carries what pupils need for the checks: the claim with its reason, and the example, quotation or numbers it rests on; what you say around it (the fuller explanation, analogies, questions to ask, answers) goes in notes.',
+    "Choose a teach slot's form by what the content is: anything a camera could show (a living thing, an object, a place, a scene) is a photo; a structure, process or layout is a figure or a diagram slot; a procedure pupils will carry out (a calculation, a prediction from a rule, a technique applied to a text) is a worked example taken to its finished answer; a definition or an argument is text (explain, list, compare, sequence). Neighbouring slots use different forms.",
+    "Choose a check by what the part is: the order of a process or chain of events is a sort; terms and meanings are a matching; a key term in a sentence that uses it is a fill-gap; a claim pupils get wrong is a true-false. A hinge asks for a thing pupils name (a product, a value, a term, the next step), so each option is a phrase and each wrong one a mistake pupils make; a why or a how is checked by a sort or a true-false.",
     'Fill each form with exactly the units its Holds line gives, its count of sentences included. Options, points, pair sides and labels are phrases, not sentences: "Heavier than water", not "The stone is heavier than the water it pushes aside." A question or a step is one sentence.',
-    "The slide shows the idea; what you say around it (the full explanation, analogies, questions to ask, answers) goes in notes.",
-    "The slots teach first; the last one checks the objective with a question form. Neighbouring slots use different forms.",
-    'The objective\'s misconception: a short one is the callout of an explain-callout slot, stated as wrong with "not" ("Evaporation is not the same as boiling."); one pupils must confront is a true-false slot; one that needs explaining gets a slot of its own. In a hinge it is also a wrong option.',
+    "A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.",
+    'The objective\'s misconception is a wrong option in its hinge; a short one is also the callout of an explain-callout slide, stated as wrong with "not" ("Evaporation is not the same as boiling."); one that needs explaining gets a teach slot of its own.',
     "A photo's imageBrief names a subject stock photography has and what the photo must show: no names of people and no local places. A figure's figureBrief gives its template and what it shows. A diagram slot's diagram says what to draw and what to label.",
     "exitQuestion: one question that checks this objective, answered in a line, with its answer.",
   ].join("\n"),
@@ -309,6 +422,8 @@ export const designCyclePrompt = {
     const { count, first, slideCount } = input.slots;
     const last = first + count - 1;
     const where = count === 1 ? `slide ${first}` : `slides ${first} to ${last}`;
+    const roles =
+      input.slots.roles ?? slotRoles(count, input.objectives[input.objectiveIndex]?.arc?.lean);
     return [
       "Palette (form id, when to use it, what it holds, one filled example):",
       input.palette,
@@ -321,6 +436,7 @@ export const designCyclePrompt = {
       ...input.objectives.map((o, i) => arcLine(o, i, i === input.objectiveIndex)),
       "",
       `Design objective ${input.objectiveIndex + 1}: ${count} ${count === 1 ? "slot" : "slots"}, ${where} of ${slideCount}.`,
+      ...roles.map((role, k) => `  slide ${first + k}: ${role}`),
       ...(input.replacing ? replacingBlock(input.replacing) : []),
     ].join("\n");
   },

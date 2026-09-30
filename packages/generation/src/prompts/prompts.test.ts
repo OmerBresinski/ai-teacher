@@ -169,6 +169,11 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
       },
     ],
     shape: 'a "multiple-choice" slide spec',
+    // v18: the designer's slot contract, so the hash covers the block it renders.
+    slot: {
+      form: "hinge multiple choice",
+      holds: "1 question, 4 options, 1 sentence of explanation, shown after",
+    },
     context: {
       slides: [
         { position: 5, kind: "content", text: "Solids keep their shape.", why: "taught-earlier" },
@@ -213,16 +218,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "804ff4e8f733039e062563fa220d0134ac39b344aa5e168238b13d1c6feb1be0",
   },
   "plan-objectives": {
-    version: "plan-objectives.v19",
-    hash: "e7120aaaf3d9b01ea264ac51f7067dfefc29ed54666d73d52c7367f1cacbae64",
+    version: "plan-objectives.v21",
+    hash: "14de716b86fa05f8fd9af6031fe6c4f18d8c10a1cb10848e87e1119063d3623a",
   },
   "plan-facts-objective": {
     version: "plan-facts-objective.v14",
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "design-cycle": {
-    version: "design-cycle.v5",
-    hash: "54d375034615e5cb857875cfcda95dd8273c9d0f48c04d717f5103888fd05f86",
+    version: "design-cycle.v9",
+    hash: "3197c8d7c1b4630a99ae9c1f495a82ec2702800cc0d2fe1d0ad3cdeb638b89e9",
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v3",
@@ -271,8 +276,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   },
   repair: {
     // v16 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.
-    version: "repair.v17",
-    hash: "c0f91326d9c84ae43803f8da60a6be30b82683047bf2aa2d31beb402b110b039",
+    version: "repair.v18",
+    hash: "0c192b20cfdc06944b90c34bf52300a22318ad203327c2dc89a29ed52a752621",
   },
   "repair-fact": {
     version: "repair-fact.v6",
