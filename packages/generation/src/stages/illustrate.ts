@@ -399,7 +399,24 @@ export function isSpecificSubject(subject: string): boolean {
 
 type PhotoSourceName = "pexels" | "commons";
 
+/**
+ * The subject as a thing, not a request (T4 photo bench, 30 Sep): writers open with "A photograph of
+ * …", which becomes the search "photograph excavated remains", and Plan's 60-character clip leaves a
+ * half word ("Housesteads Roman F"). Strip the preamble and a clipped last word.
+ */
+export function plainSubject(subject: string, clipped = subject.length >= 60): string {
+  let s = subject
+    .trim()
+    .replace(
+      /^(?:an? |the )?(?:real |clear |close-up |colour )*(?:photograph|photo|picture|image)s? (?:of|showing) (?:an? |the )?/i,
+      "",
+    );
+  if (clipped) s = s.replace(/\s+\S{1,3}$/, "");
+  return s.trim() || subject.trim();
+}
+
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
+  args = { ...args, brief: { ...args.brief, subject: plainSubject(args.brief.subject) } };
   const { brief, images, deps, index } = args;
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
@@ -460,19 +477,17 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   // shortlist + judge round over the new pool — its first result is never placed blind (TEACH-220).
   let pool = candidates;
   for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
-    const named = await shortlist(args, pool);
-    // The shortlist narrows, it does not veto (TEACH-239): one low-effort caption call over a pool
-    // full of the subject answered [] in production and the slide landed empty unjudged. An empty
-    // answer over a non-empty pool sends the first few to the judge, who sees the pictures.
-    const fallback = pool.length > 0 && named.length === 0;
-    const shortlisted = fallback ? firstFew(pool) : named;
+    const shortlisted = await shortlist(args, pool);
     deps.logger.info({
       stage: "illustrate",
       slideIndex: index,
       pool: pool.length,
-      shortlisted: named.length,
-      ...(fallback ? { judged: "fallback" } : {}),
+      shortlisted: shortlisted.length,
     });
+    // No caption names the subject: nothing to judge. The old fallback sent the first few to the
+    // judge anyway and placed off-topic stock (fix3: syringes on red for the particle model). No
+    // photo beats a wrong one.
+    if (pool.length > 0 && shortlisted.length === 0) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
     // Only a photograph the judge was shown can be placed.
     const picked = verdict.pick

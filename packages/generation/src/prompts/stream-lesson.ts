@@ -22,7 +22,7 @@ import { WRITE_RULES } from "./write-slides";
  * v6: the photo slot's schema carries `named` (proper name or null), as the v4 text already asks.
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v6";
+export const STREAM_LESSON_VERSION = "stream-lesson.v7";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
