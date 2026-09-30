@@ -64,6 +64,13 @@ import {
   StageFailure,
   throwIfAborted,
 } from "../types";
+import {
+  correctedSlots,
+  designerFactsOn,
+  type FedFacts,
+  factsWords,
+  startFactsFeed,
+} from "./designer-facts";
 import { withUsage } from "./generate";
 import { emptyFinding, joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
 import { runObjectivesStep } from "./objectives";
@@ -442,6 +449,26 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     model: CODE_MODEL,
     at: at(),
   });
+  // The facts feed (`DESIGNER_FACTS=1`): per objective the teach call, then Verify over its facts,
+  // started now; each cycle waits only for its own facts.
+  const feed = designerFactsOn()
+    ? startFactsFeed({
+        deps,
+        cls,
+        topic: brief.topic,
+        shape,
+        audience,
+        objectives,
+        durationMin: base.facts?.durationMin ?? brief.durationMin,
+        priorKnowledge: brief.classContext?.priorKnowledge,
+        sources: base.sources,
+        retrieval: base.facts?.retrieval,
+        startedAt,
+        verifyEffort: VERIFY_EFFORT,
+      })
+    : undefined;
+  /** Each objective's facts as the cycle and its re-fills are handed them (Verify's, once in). */
+  const factsFor: (FedFacts | undefined)[] = objectives.map(() => undefined);
   deps.logger.info(
     {
       stage: "generate",
@@ -622,6 +649,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           slots: { count: 1, first: cycle.first + k, slideCount, roles: [roleOf(form, cycle, k)] },
           palette,
           replacing: { form: slot.form, material: slotMaterial(slot), reason, into: form },
+          ...(factsFor[cycle.objective] ? { facts: factsFor[cycle.objective]?.cycle } : {}),
         },
         schema: zod.object({ slots: only.array().length(1), exitQuestion: ExitQuestionSchema }),
         maxOutputTokens: MAX_OUTPUT_TOKENS_REFILL,
@@ -741,12 +769,23 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     }
   };
 
+  const refillModelId = () => {
+    const routed = deps.ai.model(
+      cls,
+      callContext(deps, "generate", designCyclePrompt.version, "low"),
+    );
+    return typeof routed === "string" ? routed : routed.modelId;
+  };
+
   const runCycle = async (cycle: CycleSlots) => {
     const slot = allocation.cycles.indexOf(cycle);
     if (cycle.count === 0) {
       firstCalls[slot]?.done();
       return;
     }
+    // The facts feed: this cycle starts the moment its own objective's facts are in.
+    const objectiveFeed = feed?.[cycle.objective];
+    if (objectiveFeed) factsFor[cycle.objective] = await objectiveFeed.facts;
     const timing: DesignTimings["cycles"][number] = {
       objective: cycle.objective,
       startMs: Date.now() - startedAt,
@@ -794,6 +833,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
             objectiveIndex: cycle.objective,
             slots: { count: cycle.count, first: cycle.first, slideCount, roles: cycle.roles },
             palette,
+            ...(factsFor[cycle.objective] ? { facts: factsFor[cycle.objective]?.cycle } : {}),
           },
           schema,
           maxOutputTokens: designCycleMaxOutputTokens(cycle.count),
@@ -864,6 +904,55 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
         message: `Objective ${cycle.objective + 1} could not be designed; slide ${index + 1} asks about it instead.`,
       });
     }
+    if (objectiveFeed) await refillCorrected(cycle, objectiveFeed);
+  };
+
+  /**
+   * The facts feed's Verify, awaited once the cycle has landed: when it corrected the facts, the
+   * cycle's slots whose words carry what a correction took out are re-filled in their own form from
+   * the corrected facts, and placed when the new slot fits; every other slot stands.
+   */
+  const refillCorrected = async (
+    cycle: CycleSlots,
+    objectiveFeed: NonNullable<typeof feed>[number],
+  ) => {
+    const verified = await objectiveFeed.verified;
+    if (!verified || verified.corrections.length === 0) return;
+    factsFor[cycle.objective] = verified.facts;
+    const mine = bound.filter((b) => b.objective === cycle.objective);
+    const hit = correctedSlots(
+      verified.corrections,
+      mine.map((b) => ({ key: b.slide, material: slotMaterial(b.fit.slot) })),
+      factsWords(verified.facts.cycle),
+    );
+    const said = verified.corrections
+      .map((c) => (c.before ? `"${c.before}" is corrected to "${c.after}"` : `"${c.after}"`))
+      .join("; ");
+    await Promise.all(
+      hit.map(async (slide) => {
+        const b = bound.find((x) => x.slide === slide);
+        if (!b) return;
+        const k = b.slide - (cycle.first - 1);
+        const form = b.fit.slot.form;
+        const fresh = await refillFor(cycle, k)(
+          b.fit.slot,
+          form,
+          `a fact it used was wrong (${said})`,
+        ).catch(() => undefined);
+        const fit = fresh
+          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
+          : undefined;
+        const ok = !!fresh && !!fit && fit.rung !== "flagged";
+        deps.logger.info(
+          { stage: "generate", call: "facts-refill", slide: slide + 1, form, ok },
+          "facts feed: slot re-filled after a Verify correction",
+        );
+        if (ok && fresh && fit) {
+          placeSlot(cycle, k, fresh, fit, refillModelId());
+          objectiveFeed.timing.refilled.push(slide + 1);
+        }
+      }),
+    );
   };
 
   await Promise.all(
@@ -872,18 +961,12 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     ),
   );
   throwIfAborted(deps.signal);
+  if (feed) timings.factsFeed = feed.map((f) => f.timing);
 
   // The design minimums, enforced (designer eval r1): an objective that needs a visual and has
   // none, or a lesson under 3 checks, gets at most 2 single-slot re-fills into the missing form.
   // A re-fill that does not come back in that form, or does not fit at full size, leaves the slot.
   const offered = slotFormsFor(subject);
-  const refillModelId = () => {
-    const routed = deps.ai.model(
-      cls,
-      callContext(deps, "generate", designCyclePrompt.version, "low"),
-    );
-    return typeof routed === "string" ? routed : routed.modelId;
-  };
   const toEnforce = minimumRefills(
     bound.map((b) => {
       const cycle = allocation.cycles.find((c) => c.objective === b.objective);
@@ -1211,6 +1294,12 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     timings,
     photos: photoCounts,
   };
+  if (feed) {
+    deps.logger.info(
+      { stage: "generate", factsFeed: timings.factsFeed },
+      "designer facts feed latency",
+    );
+  }
   deps.logger.info({ stage: "generate", designer: report }, "designer report");
   const { pendingVerify: _none, ...rest } = state;
   return { ...rest, lesson, designReport: report };
