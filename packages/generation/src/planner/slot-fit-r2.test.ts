@@ -115,8 +115,12 @@ describe("r2 overflow: nothing lands past the save gate unflagged", () => {
   });
 
   test("a re-filled slot goes down its own rungs before the step-down, never straight past the gate", async () => {
-    const we = slot("designer-b/y10-electrolysis@7");
-    if (we.form !== "worked-example") throw new Error("form");
+    const r2 = slot("designer-b/y10-electrolysis@7");
+    if (r2.form !== "worked-example") throw new Error("form");
+    // Worked steps are row cards now (layout audit), so the r2 slot lands on its notes rung; its
+    // long step repeated keeps the precondition this test needs: the slot still needs a re-fill.
+    const long = r2.steps[1] as string;
+    const we = { ...r2, steps: [r2.steps[0] as string, long, long] };
     // The re-fill comes back as a sequence that does not fit whole: its own rungs are tried
     // (logged "re-filled") before any step down.
     const fit = await fitSlot(we, {
