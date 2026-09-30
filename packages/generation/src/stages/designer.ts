@@ -52,6 +52,7 @@ import {
   BudgetExceeded,
   callContext,
   type DesignReport,
+  type DesignTimings,
   type PipelineDeps,
   type PipelineState,
   StageFailure,
@@ -392,6 +393,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   const palette = paletteMenu(subject);
   const findings: Finding[] = [...generationOf(base).findings];
   const at = () => deps.now().toISOString();
+  const timings: DesignTimings = {
+    designStartMs: Date.now() - startedAt,
+    cycles: [],
+    fitMs: 0,
+  };
   const codeMeta = (): MaterialiseMeta => ({
     promptVersion: DESIGNER_VERSION,
     model: CODE_MODEL,
@@ -465,7 +471,9 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
         wrote = true;
       }
       if (!wrote || deps.signal.aborted) return;
+      const firstInThisSave = firstSlotMs !== undefined && timings.firstSlotSavedMs === undefined;
       const { updatedAt } = await deps.persist(withUsage(lesson, deps));
+      if (firstInThisSave) timings.firstSlotSavedMs = Date.now() - startedAt;
       const n = lesson.slides.length;
       await deps.onProgress(
         Math.round(PROGRESS_SLIDES_FROM + (PROGRESS_SLIDES_SPAN * n) / slideCount),
@@ -522,7 +530,12 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     });
   };
 
-  // The cycles, in parallel and streamed.
+  // The cycles, in parallel and streamed; the first cycle's first slot is the first teaching slide.
+  const firstCycle = allocation.cycles.find((c) => c.count > 0);
+  let releaseFirst: () => void = () => {};
+  const firstLanded = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
   const bound: Bound[] = [];
   const exitQuestions: (DesignCycleOutput["exitQuestion"] | undefined)[] = objectives.map(
     () => undefined,
@@ -567,11 +580,19 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     const index = cycle.first - 1 + k;
     if (cycleSlides.has(index)) return;
     cycleSlides.add(index);
+    // The first teaching slide goes first: another cycle's slot waits until it has landed (or
+    // its cycle has ended), so its fit and save are never queued behind later slides.
+    if (cycle !== firstCycle) await firstLanded;
+    const timing = timings.cycles.find((c) => c.objective === cycle.objective);
+    if (timing && timing.firstSlotAfterMs === undefined)
+      timing.firstSlotAfterMs = Date.now() - startedAt - timing.startMs;
+    const fitStart = Date.now();
     const fit = await fitSlot(slot, {
       seed: `${base.id}:${index}`,
       themeId,
       refill: refillFor(cycle, k),
     });
+    timings.fitMs += Date.now() - fitStart;
     const b: Bound = { slide: index, objective: cycle.objective, slot, fit };
     bound.push(b);
     const slide = renderSlot(
@@ -609,6 +630,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     };
     ready.set(index, slide);
     void flush();
+    if (cycle === firstCycle && k === 0) releaseFirst();
     if (imageBrief && deps.images) {
       photoCounts.requested += 1;
       const pickLesson: Lesson = { ...lesson, facts: { ...facts0, outline } };
@@ -628,6 +650,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
 
   const runCycle = async (cycle: CycleSlots) => {
     if (cycle.count === 0) return;
+    const timing: DesignTimings["cycles"][number] = {
+      objective: cycle.objective,
+      startMs: Date.now() - startedAt,
+    };
+    timings.cycles.push(timing);
     const schema = designCycleSchemaFor(subject, cycle.count);
     const slotSchema = schema.shape.slots.element;
     const landing: Promise<void>[] = [];
@@ -677,6 +704,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
         },
       });
       modelId = call.modelId;
+      timing.doneAfterMs = Date.now() - startedAt - timing.startMs;
       const output = call.output as DesignCycleOutput;
       output.slots.forEach((slot, k) => {
         if (!cycleSlides.has(cycle.first - 1 + k)) landing.push(landSlot(cycle, k, slot, modelId));
@@ -713,7 +741,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     }
   };
 
-  await Promise.all(allocation.cycles.map(runCycle));
+  await Promise.all(
+    allocation.cycles.map((cycle) =>
+      cycle === firstCycle ? runCycle(cycle).finally(releaseFirst) : runCycle(cycle),
+    ),
+  );
   throwIfAborted(deps.signal);
 
   // Facts from what the slides show: ids per slot, for Verify, Evaluate and Repair.
@@ -802,7 +834,6 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   );
   lesson = { ...lesson, facts };
   await flush();
-  await Promise.all(photos);
   await writing;
   if (lesson.slides.length !== slideCount) {
     throw new StageFailure(
@@ -811,9 +842,61 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     );
   }
 
-  // Verify, after the save: corrections re-fitted before they replace a slide.
+  // The fit flags, then the deck saved as generated: editable now, before Verify and the photo
+  // searches finish (the plan's step 6: neither blocks the save). What they change is saved after.
+  const rungs: Record<string, number> = {};
+  for (const b of bound) rungs[b.fit.rung] = (rungs[b.fit.rung] ?? 0) + 1;
+  for (const b of bound) {
+    if (b.fit.rung === "flagged") {
+      findings.push({
+        check: "fit",
+        severity: "warning",
+        target: { slideId: lesson.slides[b.slide]?.id },
+        message: "This slide may need its text size stepped down on some themes.",
+      });
+    }
+  }
+  const asGenerated = (l: Lesson, f: LessonFacts): Lesson => {
+    const generation = generationOf(l);
+    return withUsage(
+      {
+        ...l,
+        facts: { ...f, outline },
+        generation: {
+          ...generation,
+          stage: "generated",
+          promptVersions: {
+            ...generation.promptVersions,
+            planned: joinVersions(DESIGNER_VERSION, verifyFactsPrompt.version),
+            generated: designCyclePrompt.version,
+          },
+          findings: [...findings],
+        },
+      },
+      deps,
+    );
+  };
+  lesson = asGenerated(lesson, facts);
+  let editableMs = 0;
+  writing = writing.then(async () => {
+    const { updatedAt } = await deps.persist(lesson);
+    editableMs = Date.now() - startedAt;
+    await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
+  });
+  await writing;
+  timings.editableMs = editableMs;
+
+  // Verify, after the save, alongside the photo searches: corrections re-fitted before they
+  // replace a slide.
   const verifyReport = { corrections: 0, refitted: 0, rejected: 0 };
-  const verified = await runVerify(facts, { topic: brief.topic, audience }, deps, cls);
+  const verifyStart = Date.now();
+  const [verified] = await Promise.all([
+    runVerify(facts, { topic: brief.topic, audience }, deps, cls).finally(() => {
+      timings.verifyMs = Date.now() - verifyStart;
+    }),
+    Promise.all(photos),
+  ]);
+  await writing;
   for (const f of verified.findings) {
     if (f.check === "budget" && findings.some((g) => g.check === "budget")) continue;
     findings.push(f);
@@ -907,40 +990,9 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   ) {
     deps.logger.warn({ stage: "generate", minimums }, "designer minimums missed");
   }
-  const rungs: Record<string, number> = {};
-  for (const b of bound) rungs[b.fit.rung] = (rungs[b.fit.rung] ?? 0) + 1;
-  for (const b of bound) {
-    if (b.fit.rung === "flagged") {
-      findings.push({
-        check: "fit",
-        severity: "warning",
-        target: { slideId: lesson.slides[b.slide]?.id },
-        message: "This slide may need its text size stepped down on some themes.",
-      });
-    }
-  }
-
-  const generation = generationOf(lesson);
-  lesson = withUsage(
-    {
-      ...lesson,
-      facts: { ...finalFacts, outline },
-      generation: {
-        ...generation,
-        stage: "generated",
-        promptVersions: {
-          ...generation.promptVersions,
-          planned: joinVersions(DESIGNER_VERSION, verifyFactsPrompt.version),
-          generated: designCyclePrompt.version,
-        },
-        findings,
-      },
-    },
-    deps,
-  );
-  const { updatedAt } = await deps.persist(lesson);
-  const editableMs = Date.now() - startedAt;
-  await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
+  // What Verify and the photos changed, saved over the generated deck (same checkpoint).
+  lesson = asGenerated(lesson, finalFacts);
+  if (!deps.signal.aborted) await deps.persist(lesson);
 
   const report: DesignReport = {
     slideCount,
@@ -963,6 +1015,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     verify: verifyReport,
     ...(firstSlotMs !== undefined ? { firstSlotMs } : {}),
     editableMs,
+    timings,
     photos: photoCounts,
   };
   deps.logger.info({ stage: "generate", designer: report }, "designer report");

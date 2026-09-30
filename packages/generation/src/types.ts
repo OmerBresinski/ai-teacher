@@ -213,6 +213,22 @@ export interface PipelineState {
   designReport?: DesignReport;
 }
 
+/** The design step's latency profile, for the fit block and the latency eval. */
+export interface DesignTimings {
+  /** The design step began (after the objectives call, or the job's start after the plan screen). */
+  designStartMs: number;
+  /** Per cycle: when its call started, its first slot landed (ms after its start), its call ended. */
+  cycles: { objective: number; startMs: number; firstSlotAfterMs?: number; doneAfterMs?: number }[];
+  /** Fitting and rendering every slot (the gate and the ladder, re-fill calls included). */
+  fitMs: number;
+  /** The first teaching slide's save returned. */
+  firstSlotSavedMs?: number;
+  /** The deck was saved as generated (editable). */
+  editableMs?: number;
+  /** The Verify call, run after the generated save. */
+  verifyMs?: number;
+}
+
 /** What the lesson designer's design step did, for the `generation summary` line's fit block. */
 export interface DesignReport {
   slideCount: number;
@@ -239,6 +255,8 @@ export interface DesignReport {
   verify: { corrections: number; refitted: number; rejected: number };
   firstSlotMs?: number;
   editableMs?: number;
+  /** Where the design step's time went (ms from the lesson's start unless named otherwise). */
+  timings?: DesignTimings;
   photos: { requested: number; placed: number };
 }
 

@@ -167,6 +167,40 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     expect(final.designReport?.slots[0]?.rung).toBe("refill");
   });
 
+  test("latency: the first teaching slide goes first, and the deck is saved before Verify", async () => {
+    const ai = labAi({
+      // The first objective's cycle answers last; the others at once.
+      designCycle: async (_call, target, count) => {
+        if (target === 0) await new Promise((r) => setTimeout(r, 40));
+        return JSON.stringify(designCycleAnswer(target, count));
+      },
+    });
+    const base = recordingDeps(ai);
+    const verifyCallsAtSave: number[] = [];
+    const deps = {
+      ...base,
+      persist: async (lesson: Lesson) => {
+        if (lesson.generation?.stage === "generated")
+          verifyCallsAtSave.push(versionsOf(ai).filter((v) => v === "verify-facts").length);
+        return base.persist(lesson);
+      },
+    };
+    const final = await runLessonPipeline({ lesson: romans(10) }, deps, { planner: "designer" });
+    const slides = final.lesson.slides;
+    // Rendered in that order: the first teaching slide's element ids come before the other
+    // cycles' (the counting id supplier), although their answers came 40 ms earlier.
+    const firstId = (i: number) => Number(slides[i]?.elements[0]?.id.slice(1));
+    expect(firstId(3)).toBeLessThan(firstId(5));
+    expect(firstId(3)).toBeLessThan(firstId(7));
+    // Saved as generated before the Verify call started, then saved again after it.
+    expect(verifyCallsAtSave[0]).toBe(0);
+    expect(verifyCallsAtSave.length).toBeGreaterThanOrEqual(2);
+    const t = final.designReport?.timings;
+    expect(t?.cycles.map((c) => c.objective).sort()).toEqual([0, 1, 2]);
+    expect(t?.editableMs).toBeDefined();
+    expect(t?.firstSlotSavedMs).toBeDefined();
+  });
+
   test("resume: the objectives checkpoint re-designs; a later checkpoint moves on", () => {
     const lesson = romans(10);
     expect(resumeFromDesigner(lesson)).toBe("check-input");
