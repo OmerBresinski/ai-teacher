@@ -26,7 +26,7 @@ import {
   panelFill,
 } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
-import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
+import { ANSWERS_NAME, HEADING_NAME, isBackdrop, textPartsOf } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { floorBelow, readingLeading, readingSize, resolveFontSize } from "./text-style";
@@ -1025,7 +1025,14 @@ function structureSet(
       t,
       ids,
     );
-    const kept = slide.elements.filter((e) => e !== old);
+    // The list's box is the recipe's, drawn down towards the foot for the footnote that stood
+    // under it; the panel is a layer over that foot, so the box is trimmed to its words (never
+    // grown) and the panel is judged against the questions, not the empty room below them. Left
+    // at the recipe's height, a set whose short answers kept the footnote to one line kept the
+    // taller box, and the panel "covered" it: shorter answers failed where longer ones passed.
+    const need = textNeed(list, slide, t);
+    const trimmed = need < list.h ? { ...list, h: need } : list;
+    const kept = slide.elements.filter((e) => e !== old).map((e) => (e === list ? trimmed : e));
     return answersClear(
       [{ ...slide, elements: panel ? [...kept, panel] : kept }],
       t,
@@ -1040,6 +1047,23 @@ function structureSet(
     t,
     ids,
     paginate,
+  );
+}
+
+/** The height a text box's words need at its width, by the headless ruler. */
+function textNeed(el: TextElement, slide: Slide, t: Theme): number {
+  const parts = textPartsOf(el, slide);
+  if (!parts) return el.h;
+  return Math.ceil(
+    measureHeadless(t)({
+      doc: parts.doc,
+      width: el.w,
+      preset: parts.preset,
+      inset: parts.inset,
+      chrome: parts.chrome,
+      ...(parts.style ? { style: parts.style } : {}),
+      ...(parts.role ? { role: parts.role } : {}),
+    }),
   );
 }
 
