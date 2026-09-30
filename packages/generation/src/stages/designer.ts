@@ -19,6 +19,8 @@ import {
   PLACEHOLDER_IMAGE,
   paletteMenu,
   type SlideSpec,
+  slideFits,
+  THEMES,
 } from "@tj/slides";
 import type { z } from "zod";
 import * as zod from "zod";
@@ -28,6 +30,8 @@ import {
   CODE_MODEL,
   codedSetSpec,
   designMinimums,
+  exitStemLine,
+  questionLine,
   renderSlot,
   withAnswersReveal,
 } from "../planner/coded-slides";
@@ -273,6 +277,61 @@ function imageBriefOf(slot: DesignSlot): ImageBrief | undefined {
   };
 }
 
+/* ------------------------------------------------------------------ question sets */
+
+/** A set spec with its answers in the notes and no reveal strip (the answers' whole unit moved). */
+function withAnswersInNotes(spec: SlideSpec, answers: readonly string[]): SlideSpec {
+  const { footnote: _strip, ...rest } = spec as SlideSpec & { footnote?: string };
+  const listed = answers.map((a, i) => `${i + 1}. ${a}`).join(" ");
+  const notes = [spec.notes, listed ? `Answers: ${listed}` : ""].filter(Boolean).join("\n");
+  return { ...rest, notes } as SlideSpec;
+}
+
+const SET_META: MaterialiseMeta = {
+  promptVersion: "fit",
+  model: CODE_MODEL,
+  at: "1970-01-01T00:00:00.000Z",
+};
+
+/**
+ * A question set as it is stored — materialised, its answers turned into the reveal — fits every
+ * theme at the save gate's step, answers clear of the questions included (`slideFits`).
+ */
+export function setFits(spec: SlideSpec): boolean {
+  return THEMES.every(
+    (theme) =>
+      slideFits(withAnswersReveal(materialiseSlide(spec, theme.id, SET_META), theme.id), theme, 1)
+        .ok,
+  );
+}
+
+/** The set as printed when its reveal fits every theme; otherwise its answers in the notes. */
+function answersToNotesUnlessFit(spec: SlideSpec, answers: readonly string[]): SlideSpec {
+  if (answers.length === 0 || setFits(spec)) return spec;
+  const moved = withAnswersInNotes(spec, answers);
+  return setFits(moved) ? moved : spec;
+}
+
+/** Every exit line, one per question ref, with the answers in the notes. */
+function exitTicketAll(refs: readonly string[], facts: LessonFacts): { spec: SlideSpec } {
+  const lines = refs.flatMap((id) => {
+    const q = facts.questions.find((x) => x.id === id);
+    return q ? [q.use === "exit" ? questionLine(q) : exitStemLine(q)] : [];
+  });
+  const spec: SlideSpec = {
+    kind: "exit-ticket",
+    factRefs: [...refs],
+    heading: "Exit ticket",
+    items: lines.map((l) => l.text),
+  };
+  return {
+    spec: withAnswersInNotes(
+      spec,
+      lines.map((l) => l.answer),
+    ),
+  };
+}
+
 /* ------------------------------------------------------------------ design */
 
 export async function design(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
@@ -389,9 +448,16 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     heading: "Do now",
     items: [`What do you already know about ${brief.topic}?`],
   };
+  const starterFitted = answersToNotesUnlessFit(starterSpec, starterCoded?.answers ?? []);
+  if (starterFitted !== starterSpec) {
+    deps.logger.info(
+      { stage: "generate", slide: 3, rung: "notes" },
+      "starter answers moved to the notes",
+    );
+  }
   ready.set(
     2,
-    withAnswersReveal(materialiseSlide(starterSpec, themeId, codeMeta(), deps.ids), themeId),
+    withAnswersReveal(materialiseSlide(starterFitted, themeId, codeMeta(), deps.ids), themeId),
   );
   void flush();
 
@@ -483,6 +549,14 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       },
       phase: CHECK_FORMS.has(fit.slot.form) ? "check" : "explain",
       ...(imageBrief ? { imageBrief } : {}),
+      ...(fit.render.spec.kind === "content" && fit.render.spec.callout
+        ? {
+            callout: {
+              kind: fit.render.spec.callout.kind,
+              factRefs: [objectives[cycle.objective]?.id ?? "o1"],
+            },
+          }
+        : {}),
       ...(fit.slot.form === "figure"
         ? {
             figureBrief: {
@@ -658,16 +732,22 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   outline[exitIndex] = exitEntry;
   facts.outline = outline;
   const exitCoded = codedSetSpec(exitEntry, facts, `${base.id}:${exitIndex}`);
-  const exitSpec: SlideSpec = exitCoded?.spec ?? {
-    kind: "exit-ticket",
-    factRefs: [],
-    heading: "Exit ticket",
-    items: objectives.map((o) => o.text),
-  };
+  // One line per objective: when the reveal strip crowds a line off, every line is printed and the
+  // answers move to the notes, word for word (rung 3 on the ticket), if that fits.
+  const exitAll = exitTicketAll(exitRefs, facts);
+  let exitSpec: SlideSpec = exitCoded?.spec ?? exitAll.spec;
+  let exitPrinted = exitCoded?.questionRefs ?? [];
+  const exitShort = exitPrinted.length < exitRefs.length || (exitCoded && !setFits(exitCoded.spec));
+  if (exitShort && setFits(exitAll.spec)) {
+    exitSpec = exitAll.spec;
+    exitPrinted = exitRefs;
+    deps.logger.info(
+      { stage: "generate", slide: slideCount, rung: "notes" },
+      "exit answers moved to the notes",
+    );
+  }
   const exitCovered = new Set(
-    (exitCoded?.questionRefs ?? []).flatMap(
-      (id) => facts.questions.find((q) => q.id === id)?.objectiveRefs ?? [],
-    ),
+    exitPrinted.flatMap((id) => facts.questions.find((q) => q.id === id)?.objectiveRefs ?? []),
   ).size;
   if (exitCovered < objectives.length) {
     deps.logger.warn(
@@ -752,7 +832,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       b.fit = refit;
     }
     // The exit ticket is reprinted from the corrected facts.
-    const reprinted = codedSetSpec(exitEntry, finalFacts, `${base.id}:${exitIndex}`);
+    const coded = codedSetSpec(exitEntry, finalFacts, `${base.id}:${exitIndex}`);
+    const reprinted =
+      exitSpec === exitAll.spec || !coded
+        ? { spec: exitTicketAll(exitRefs, finalFacts).spec }
+        : coded;
     if (reprinted) {
       const old = lesson.slides[exitIndex] as Slide;
       const fresh = withAnswersReveal(
