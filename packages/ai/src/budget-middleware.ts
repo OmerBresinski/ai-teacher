@@ -16,6 +16,11 @@ export class UnestimableCallError extends Error {
   }
 }
 
+type FinishUsage = {
+  inputTokens?: { total?: number; cacheRead?: number; cacheWrite?: number };
+  outputTokens?: { total?: number };
+};
+
 const count = (value: number | undefined): value is number =>
   Number.isSafeInteger(value) && (value ?? -1) >= 0;
 
@@ -26,8 +31,57 @@ export function withGenerationBudget(model: LanguageModel, modelId: string, budg
   return wrapLanguageModel({
     model,
     middleware: {
-      wrapStream: async () => {
-        throw new UnestimableCallError();
+      // A streamed call (the lesson designer's design cycles) is reserved the same way and settled
+      // from the stream's `finish` part; a stream that ends without usage leaves it uncertain.
+      wrapStream: async ({ doStream, params }) => {
+        params.abortSignal?.throwIfAborted();
+        const estimate = estimatePreparedCall(modelId, params);
+        if (!estimate) throw new UnestimableCallError();
+        const admitted = budget.reserve(modelId, estimate);
+        if ("by" in admitted) throw new BudgetReservationError(admitted.by);
+        const { reservation } = admitted;
+        let settled = false;
+        const uncertain = () => {
+          if (!settled) budget.markUncertain(reservation);
+          settled = true;
+        };
+        params.abortSignal?.addEventListener("abort", uncertain, { once: true });
+        let result: Awaited<ReturnType<typeof doStream>>;
+        try {
+          result = await doStream();
+        } catch (error) {
+          uncertain();
+          params.abortSignal?.removeEventListener("abort", uncertain);
+          throw error;
+        }
+        const settle = (chunk: unknown) => {
+          const part = chunk as { type?: string; usage?: FinishUsage };
+          if (part.type !== "finish" || settled) return;
+          const input = part.usage?.inputTokens;
+          const output = part.usage?.outputTokens;
+          if (input && output && count(input.total) && count(output.total)) {
+            budget.settle(reservation, {
+              inputTokens: input.total,
+              outputTokens: output.total,
+              cachedInputTokens: count(input.cacheRead) ? input.cacheRead : 0,
+              cacheWriteInputTokens: count(input.cacheWrite) ? input.cacheWrite : 0,
+            });
+            settled = true;
+          } else uncertain();
+        };
+        const stream = result.stream.pipeThrough(
+          new TransformStream({
+            transform(chunk, controller) {
+              settle(chunk);
+              controller.enqueue(chunk);
+            },
+            flush() {
+              uncertain();
+              params.abortSignal?.removeEventListener("abort", uncertain);
+            },
+          }),
+        );
+        return { ...result, stream };
       },
       wrapGenerate: async ({ doGenerate, params }) => {
         params.abortSignal?.throwIfAborted();

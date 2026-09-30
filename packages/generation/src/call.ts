@@ -17,6 +17,7 @@ import {
   Output,
   type OutputInterface,
   type Schema,
+  streamText,
 } from "ai";
 import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
@@ -99,6 +100,12 @@ export interface CallStructuredOptions<I, T> {
    * carries them again. Billed as input tokens on the GPT-5.6 family (stop-gate, 10 Sept).
    */
   images?: { id: string; url: string }[] | undefined;
+  /**
+   * Stream the answer (the lesson designer's design cycles): called with each partial object as it
+   * parses, so a caller can act on a slot once the next one has started. The complete answer is
+   * validated and retried exactly as without it.
+   */
+  onPartial?: ((partial: unknown) => void) | undefined;
 }
 
 export interface CallUsage {
@@ -382,6 +389,30 @@ export async function callStructured<I, T>(
 
   const attempt = async (text: string): Promise<CallResult<T>> => {
     try {
+      if (options.onPartial) {
+        const onPartial = options.onPartial;
+        return await withCallDeadline(deps.signal, timeoutMs, async (abortSignal) => {
+          let failure: unknown;
+          const streamed = streamText({
+            model,
+            system: prompt.system,
+            ...userTurn(text, images),
+            output,
+            abortSignal,
+            maxOutputTokens,
+            maxRetries: 0,
+            ...providerOptionsFor(modelId, effort),
+            onError: ({ error }) => {
+              failure = error;
+            },
+          });
+          for await (const partial of streamed.partialOutputStream) onPartial(partial);
+          if (failure !== undefined) throw failure;
+          const answer = await streamed.output;
+          const usage = usageOf(await streamed.usage);
+          return { output: answer as T, usage, attempts: 1, modelId, editorialMisses: [] };
+        });
+      }
       const result = await withCallDeadline(deps.signal, timeoutMs, (abortSignal) =>
         generateText({
           model,

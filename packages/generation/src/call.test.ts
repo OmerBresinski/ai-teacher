@@ -975,3 +975,45 @@ describe("callStructured: a cap-only first answer is kept, not regenerated (lab 
     expect(isCapMiss({ path: [], message: "Too many steps: at most 4." })).toBe(false);
   });
 });
+
+describe("streamed calls (the lesson designer's design cycles)", () => {
+  test("partials reach the caller, the answer validates, and the budget settles from the stream", async () => {
+    const ai = createFakeAi({ text: JSON.stringify({ answer: "streamed" }) });
+    const d = deps(ai);
+    const partials: unknown[] = [];
+    const result = await callStructured({
+      deps: d as unknown as PipelineDeps,
+      stage: "plan",
+      cls: "small",
+      prompt,
+      input: "x",
+      schema,
+      maxOutputTokens: 100,
+      onPartial: (p) => partials.push(p),
+    });
+    expect(result.output).toEqual({ answer: "streamed" });
+    expect(partials.length).toBeGreaterThan(0);
+    const totals = d.budget.totals();
+    expect(totals.costUsd ?? 0).toBeGreaterThan(0);
+    expect(totals.reserved?.costUsd ?? 0).toBe(0);
+  });
+
+  test("a streamed answer that fails the schema is retried once, streamed again", async () => {
+    let n = 0;
+    const ai = createFakeAi({
+      fallback: () => (++n === 1 ? JSON.stringify({ wrong: 1 }) : JSON.stringify({ answer: "ok" })),
+    });
+    const result = await callStructured({
+      deps: deps(ai) as unknown as PipelineDeps,
+      stage: "plan",
+      cls: "small",
+      prompt,
+      input: "x",
+      schema,
+      maxOutputTokens: 100,
+      onPartial: () => undefined,
+    });
+    expect(result.output).toEqual({ answer: "ok" });
+    expect(result.attempts).toBe(2);
+  });
+});
