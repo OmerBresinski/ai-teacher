@@ -13,6 +13,7 @@ import {
   HEADING_GAP,
   isGeneratedSlide,
   KIND_TAG_NAME,
+  owesExplanationLane,
   SAFE,
   SPACE,
   snapY,
@@ -21,7 +22,7 @@ import { cloneSlide, docFromText, uid } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
-import { explanationReserve, hasExplanationPanel, reservedLines } from "./explanation";
+import { explanationReserve, reservedLines } from "./explanation";
 import {
   docLineCount,
   isBackdrop,
@@ -366,7 +367,7 @@ function markContinued(slide: Slide, theme: Theme): void {
  * the safe area to its "Why?" panel, so the engine keeps that lane clear.
  */
 const reflowOptions = (slide: Slide, theme: Theme, measure: Measurer) =>
-  hasExplanationPanel(slide.question)
+  owesExplanationLane(slide)
     ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, reservedLines(slide, theme, measure)) }
     : {};
 

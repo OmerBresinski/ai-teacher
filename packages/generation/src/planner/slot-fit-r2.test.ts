@@ -3,7 +3,15 @@ import { fitsPlanned } from "@tj/slides";
 import flagged from "../fixtures/designer-r2-flagged.json";
 import type { DesignSlot } from "../prompts/design-cycle";
 import { renderSlot, slotRender } from "./coded-slides";
-import { fitSlot, hingeAsked, notesAcross, type SlotFit, siblingsOf } from "./slot-fit";
+import {
+  fitSlot,
+  flagReason,
+  hingeAsked,
+  notesAcross,
+  type SlotFit,
+  siblingsOf,
+  unitsToNotes,
+} from "./slot-fit";
 
 /*
  * Designer eval r2 (30 Sep 2026): slots read back from the stored decks whose slides failed the
@@ -24,31 +32,48 @@ const passesGate = (fit: SlotFit) =>
 const noAnswer = async () => undefined;
 
 describe("r2 overflow: nothing lands past the save gate unflagged", () => {
-  test("a hinge whose options stand in the Why? lane, and whose re-fill failed, is asked open and fits", async () => {
-    for (const key of [
-      "designer-b/y3-rocks@5",
-      "designer-a/y9-weimar@7",
-      "designer-a/y6-ratio@6",
-    ] as const) {
+  test("a hinge whose options stand in the Why? lane keeps its form: the explanation goes to the notes (r3)", async () => {
+    for (const key of ["designer-b/y3-rocks@5", "designer-a/y6-ratio@6"] as const) {
       const hinge = slot(key);
       if (hinge.form !== "hinge") throw new Error("form");
       const fit = await fitSlot(hinge, { seed: key, themeId: "chalk", refill: noAnswer });
-      expect(fit.rung).toBe("sibling");
-      expect(fit.slot.form).toBe("open-response");
+      expect(fit.rung).toBe("notes");
+      expect(fit.slot.form).toBe("hinge");
       expect(passesGate(fit)).toBe(true);
-      // The re-fill was asked first; the open question is code's fallback after it.
-      expect(fit.tried.map((t) => t.rung)).toEqual(["refill", "sibling"]);
-      // The answer and its reason go to the answer panel, not the slide face.
-      const correct = hinge.options.find((o) => o.correct)?.text ?? "";
-      if (fit.slot.form !== "open-response") throw new Error("form");
-      expect(fit.slot.modelAnswer).toContain(correct.replace(/[.!?]+$/, ""));
-      expect(fit.slot.modelAnswer).toContain(hinge.explanation);
-      const face = JSON.stringify(renderSlot(fit.render, "chalk", META).elements);
-      expect(face).not.toContain(hinge.explanation);
+      // Rung 3 lands it before any re-fill is asked.
+      expect(fit.tried.map((t) => t.rung)).not.toContain("refill");
+      expect(fit.tried.at(-1)).toMatchObject({ rung: "notes", ok: true });
+      if (fit.slot.form !== "hinge") throw new Error("form");
+      // Word for word, once, in the notes; no "Why?" on the face.
+      const why = hinge.explanation.trim();
+      expect(fit.slot.notes?.split(why).length).toBe(2);
+      expect(fit.slot.explanation).toBe("");
+      expect(fit.slot.options).toEqual(hinge.options);
+      expect(fit.slot.stem).toBe(hinge.stem);
+      const rendered = renderSlot(fit.render, "chalk", META);
+      expect(JSON.stringify(rendered.elements)).not.toContain(why);
+      expect(rendered.question && "explanation" in rendered.question).toBe(false);
     }
   });
 
-  test("a hinge whose stem reads its options is never asked open: it is flagged with the reason", async () => {
+  test("a hinge too long for the slide even without its panel: re-filled, then asked open", async () => {
+    // weimar-a s7: a three-sentence stem and four wrapped options run past the safe area on 4
+    // themes with the lane freed; that is volume, not the panel, so the ladder goes on down.
+    const hinge = slot("designer-a/y9-weimar@7");
+    if (hinge.form !== "hinge") throw new Error("form");
+    const fit = await fitSlot(hinge, { seed: "w", themeId: "chalk", refill: noAnswer });
+    expect(fit.tried.map((t) => t.rung)).toEqual(["notes", "refill", "sibling"]);
+    expect(fit.rung).toBe("sibling");
+    expect(fit.slot.form).toBe("open-response");
+    expect(passesGate(fit)).toBe(true);
+    if (fit.slot.form !== "open-response") throw new Error("form");
+    expect(fit.slot.modelAnswer).toContain(hinge.explanation);
+    const moved = unitsToNotes(hinge).at(-1);
+    if (!moved) throw new Error("moved");
+    expect(flagReason(slotRender(moved.slot, "w"))).not.toContain("Why? panel's lane");
+  });
+
+  test("a hinge whose stem reads its options is never asked open; the explanation rung still lands it", async () => {
     const base = slot("designer-b/y3-rocks@5");
     if (base.form !== "hinge") throw new Error("form");
     const reads = {
@@ -57,9 +82,21 @@ describe("r2 overflow: nothing lands past the save gate unflagged", () => {
     };
     expect(hingeAsked(reads)).toBeUndefined();
     const fit = await fitSlot(reads, { seed: "r", themeId: "chalk", refill: noAnswer });
-    expect(fit.rung).toBe("flagged");
-    expect(fit.reason).toMatch(/^fails on \d+ of 10 themes: .*Why\? panel's lane/);
-    expect(fit.tried.at(-1)).toMatchObject({ rung: "flagged", detail: fit.reason });
+    expect(fit.rung).toBe("notes");
+    expect(fit.slot.form).toBe("hinge");
+    expect(passesGate(fit)).toBe(true);
+  });
+
+  test("an explanation the notes already say is not written twice", () => {
+    const base = slot("designer-b/y3-rocks@5");
+    if (base.form !== "hinge") throw new Error("form");
+    const said = { ...base, notes: `Answer: ${base.explanation}` };
+    const moved = unitsToNotes(said).find((u) => u.moved === "explanation");
+    expect(moved?.slot.notes).toBe(said.notes);
+    const fresh = unitsToNotes({ ...base, notes: "Ask two pupils." }).find(
+      (u) => u.moved === "explanation",
+    );
+    expect(fresh?.slot.notes).toBe(`Ask two pupils.\nWhy: ${base.explanation.trim()}`);
   });
 
   test("a slot nothing can land is flagged with why, never saved silently", async () => {

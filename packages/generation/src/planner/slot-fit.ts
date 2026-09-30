@@ -274,6 +274,18 @@ export function unitsToNotes(slot: DesignSlot): { slot: DesignSlot; moved: strin
     const { footnote, ...rest } = current;
     move(rest as DesignSlot, footnote, "footnote");
   }
+  // A hinge's "Why?" panel owes a lane at the foot that four wrapped options need (designer r2:
+  // 20 of 21 overflowing slide-themes). Its explanation goes to the notes word for word, once, and
+  // the slide shows no panel (`owesExplanationLane`).
+  if (current.form === "hinge" && current.explanation.trim()) {
+    const { explanation, ...rest } = current;
+    const said = (current.notes ?? "").includes(explanation.trim());
+    const next = { ...rest, explanation: "" } as DesignSlot;
+    if (said) {
+      current = next;
+      out.push({ slot: current, moved: "explanation" });
+    } else move(next, `Why: ${explanation.trim()}`, "explanation");
+  }
   return out;
 }
 

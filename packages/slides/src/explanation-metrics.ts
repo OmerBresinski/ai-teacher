@@ -1,4 +1,4 @@
-import type { QuestionData, Theme } from "@tj/domain/documents";
+import type { QuestionData, Slide, Theme } from "@tj/domain/documents";
 import { resolveFontSize } from "./text-style";
 
 /*
@@ -29,6 +29,22 @@ export const EXPLANATION_PLACEHOLDER = "Say why this is the answer.";
 /** Question types that carry a "Why?" panel. */
 export function hasExplanationPanel(question: QuestionData | undefined): boolean {
   return question?.type === "true-false" || question?.type === "multiple-choice";
+}
+
+/**
+ * A "Why?" panel the slide owes a lane at its foot. A generated slide whose question has no reason
+ * written owes none: the designer's fit ladder (rung 3) moved the explanation to the notes word for
+ * word so the options get the room, and outside the editor an unwritten reason is not shown. A
+ * slide the teacher has touched keeps its lane, empty or not, since the editor draws the panel
+ * there to type in.
+ */
+export function owesExplanationLane(slide: Pick<Slide, "question" | "elements">): boolean {
+  if (!hasExplanationPanel(slide.question)) return false;
+  const reason = (slide.question as { explanation?: unknown }).explanation;
+  if (typeof reason === "string" && reason.trim().length > 0) return true;
+  const generated =
+    slide.elements.length > 0 && slide.elements.every((el) => el.authoredBy === "ai");
+  return !generated;
 }
 
 export type PanelType = {
