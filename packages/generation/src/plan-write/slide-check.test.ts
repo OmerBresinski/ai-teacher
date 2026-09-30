@@ -151,15 +151,28 @@ describe("no picture", () => {
     expect(plain.structure.photo).toBeUndefined();
   });
 
-  test("the retry brief is the subject's first three words and no must-show", () => {
+  test("the retry brief keeps the subject and must-show and searches the other library", () => {
     expect(
       broadenedBrief({
         subject: "river meander bend from above",
         mustShow: ["bank"],
         purpose: "context",
       }),
-    ).toEqual({ subject: "river meander bend", mustShow: [], purpose: "context" });
-    expect(broadenedBrief({ subject: "river", mustShow: [], purpose: "context" })).toBeUndefined();
+    ).toEqual({
+      subject: "river meander bend from above",
+      mustShow: ["bank"],
+      purpose: "context",
+      specific: true,
+    });
+    expect(
+      broadenedBrief({
+        subject: "Roman milestone",
+        mustShow: [],
+        purpose: "context",
+        specific: true,
+      }),
+    ).toEqual({ subject: "Roman milestone", mustShow: [], purpose: "context", specific: false });
+    expect(broadenedBrief({ subject: " ", mustShow: [], purpose: "context" })).toBeUndefined();
   });
 });
 

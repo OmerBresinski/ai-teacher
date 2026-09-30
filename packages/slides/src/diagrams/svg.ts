@@ -103,7 +103,8 @@ export function context(t: Theme, w: number, h: number): Ctx {
     body: family(t.fonts.body),
     title: family(t.fonts.title),
     stack: t.fonts.body,
-    fs: Math.max(14, Math.min(22, Math.round(Math.min(w, h) / 19))),
+    // Round A6: labels a step larger (a 403-wide panel draws 24, was 20), so a class reads them.
+    fs: Math.max(16, Math.min(26, Math.round(Math.min(w, h) / 16))),
   };
 }
 

@@ -234,12 +234,16 @@ export function noPictureTarget(form: string, layout: string, out: Written) {
   return { kind: w.spec.kind, variant: w.variant ?? CONTENT_NO_PICTURE_VARIANT };
 }
 
-/** One retry's brief: the subject's first three words, no must-show list. */
+/**
+ * One retry's brief (round A6): the same subject and must-show list, searched in the other library.
+ * A generic subject ("Roman milestone", "potassium permanganate in water") searches Pexels only
+ * and a stock library rarely holds it; Commons does. The old retry cut the subject to three words
+ * and dropped the must-show list, so the gate passed any on-subject stock photo (off-topic
+ * pictures); the gate now stays whole, and no photo beats a wrong one.
+ */
 export function broadenedBrief(brief: ImageBrief): ImageBrief | undefined {
-  const subject = brief.subject.split(/\s+/).filter(Boolean).slice(0, 3).join(" ");
-  if (!subject) return undefined;
-  if (subject === brief.subject && (brief.mustShow ?? []).length === 0) return undefined;
-  return { ...brief, subject, mustShow: [] };
+  if (!brief.subject.trim()) return undefined;
+  return { ...brief, specific: !(brief.specific ?? false) };
 }
 
 const CHECK_FORMS = new Set([

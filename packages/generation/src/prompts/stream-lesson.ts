@@ -27,7 +27,8 @@ import { WRITE_RULES } from "./write-slides";
  * order-neutral, no exit role, diagram contract).
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v8";
+/* v9: plan-lesson.v12 and write-slides.v15 (round A6, teaching pictures); no swap changed. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v9";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
