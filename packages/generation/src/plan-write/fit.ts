@@ -1,5 +1,8 @@
+import type { Slide } from "@tj/domain/documents";
 import {
   contractFits,
+  docFromText,
+  KIND_TAG_NAME,
   type MaterialiseMeta,
   materialiseSlide,
   type PaletteFormId,
@@ -46,6 +49,24 @@ const SET_KIND: Record<
   "check-set": { kind: "starter", heading: "Quick check" },
   "exit-ticket": { kind: "exit-ticket", heading: "Exit ticket" },
 };
+
+/**
+ * The tag a set slide's class sees when its slide kind's own tag would mislabel it: a mid-lesson
+ * check is drawn as a starter list but is a check, not a starter.
+ */
+export const SET_TAG: Partial<Record<SetForm, string>> = { "check-set": "CHECK" };
+
+/** A set slide with its kind tag relabelled for the form (see `SET_TAG`); others unchanged. */
+export function withSetTag(slide: Slide, form: string): Slide {
+  const label = isSetForm(form) ? SET_TAG[form] : undefined;
+  if (!label) return slide;
+  return {
+    ...slide,
+    elements: slide.elements.map((e) =>
+      e.name === KIND_TAG_NAME && e.type === "text" ? { ...e, doc: docFromText(label) } : e,
+    ),
+  };
+}
 
 type SetQuestion = { question: string; answer: string };
 

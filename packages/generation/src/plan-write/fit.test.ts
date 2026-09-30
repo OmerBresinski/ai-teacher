@@ -1,6 +1,14 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
+import { KIND_TAG_NAME, materialiseSlide } from "@tj/slides";
 import { batchesOf } from "../stages/plan-write";
-import { answerKeyFaults, fitWithRewrite, fitWritten, renderWritten } from "./fit";
+import { answerKeyFaults, fitWithRewrite, fitWritten, renderWritten, withSetTag } from "./fit";
+
+const META = {
+  generatedBy: "test",
+  promptVersion: "test",
+  model: "test",
+  at: "2026-09-30T00:00:00Z",
+};
 
 const explain = {
   heading: "Water moves round the Earth",
@@ -168,5 +176,23 @@ describe("answerKeyFaults", () => {
     expect(answerKeyFaults("matching", { pairs: twice })).toContain("a right card is used twice");
     const both = [pairs[0], { left: "Sedimentary", right: "Igneous" }, pairs[2]];
     expect(answerKeyFaults("matching", { pairs: both })).toContain("a card is on both sides");
+  });
+});
+
+describe("set slide tags", () => {
+  test("a mid-lesson check is tagged CHECK, the starter keeps STARTER", () => {
+    const out = { notes: "", questions: [{ question: "When did Rome invade?", answer: "AD 43" }] };
+    const tagOf = (form: string) => {
+      const r = renderWritten(form, "default", out);
+      const slide = withSetTag(
+        materialiseSlide(r.spec, "chalk", META, () => "x"),
+        form,
+      );
+      const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
+      return tag && tag.type === "text" ? JSON.stringify(tag.doc) : "";
+    };
+    expect(tagOf("check-set")).toContain("CHECK");
+    expect(tagOf("check-set")).not.toContain("STARTER");
+    expect(tagOf("starter-set")).toContain("STARTER");
   });
 });

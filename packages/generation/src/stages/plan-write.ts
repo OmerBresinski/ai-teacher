@@ -26,7 +26,13 @@ import {
 import { z } from "zod";
 import { callStructured } from "../call";
 import { blocking, checkPlan, FIXED_SLIDES, type PlanCheck } from "../plan-write/check";
-import { fitWithRewrite, fitWritten, renderWritten, type Written } from "../plan-write/fit";
+import {
+  fitWithRewrite,
+  fitWritten,
+  renderWritten,
+  type Written,
+  withSetTag,
+} from "../plan-write/fit";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
 import { recheckKinds } from "../plan-write/recheck";
 import {
@@ -777,7 +783,7 @@ export async function planWriteSlides(
   const drawn = (form: string, layout: string, out: Written, meta: MaterialiseMeta): Slide => {
     const r = renderWritten(form, layout, out);
     const slide = materialiseSlide(r.spec, themeId, meta, deps.ids, r.variant, r.structure);
-    if (isSetForm(form)) return withAnswersReveal(slide, themeId);
+    if (isSetForm(form)) return withSetTag(withAnswersReveal(slide, themeId), form);
     // A diagram slot's spec is drawn by the diagram renderer; one that does not draw keeps the slot.
     const spec = form === "diagram-slot" ? out.diagram : undefined;
     return spec && typeof spec === "object"
