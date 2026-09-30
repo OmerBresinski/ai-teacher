@@ -264,6 +264,25 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * v18's "one right answer" is folded into that clause. Same fields: recorded sets, the old planner
  * and the bench parse unchanged.
  *
+ * v24 (30 Sept 2026, designer r6; v23 is spike/designer-r4-prompt's, never merged here). The
+ * r5 designer lost to production (faults 12 v 7, pairwise 1 v 6, `lab/fit-lab/std-judge`) because
+ * three objectives in ten slides with four fixed slides left each objective two slots, so the
+ * teaching went to the notes. Structure is no longer fixed (Greg, 30 Sept):
+ *  - Scope follows the slide budget. Code passes the slide count and the objective ceiling for no,
+ *    one and two optional slides; `structureLines` renders them as the Objectives line, and the
+ *    count sentence names that line with no number of its own (CORE 2026-09-16). Code enforces it.
+ *  - The call chooses the opening (retrieval, a hook, none) and the closing (a check, a plenary, a
+ *    debate, none) per topic and year group, as `opening` and `closing` in the shape code reads
+ *    (`LessonBookendsSchema`), with `null` shown as the "none" alternative. Outside r6 the Opening
+ *    and Closing lines fix retrieval and a check, so the old starter is unchanged there: code, not
+ *    an "unless", decides which calls choose (CORE 2026-09-22).
+ *  - `retrieval` stays top level (code reads it there) and is written for a retrieval opening.
+ *  - Each part of an angle is one a slide can teach (a step, a case, a structure, a cause, each
+ *    outcome of a rule), since the design cycles spread the parts across teach, show and check.
+ *    The lean's text forms list sequence and compare first, the forms that carry more teaching.
+ *  - Starter keys: the answer is written "as the words a pupil would say", and the sketch's sample
+ *    answer is a name (r4 finding, openai.md 2026-09-30 round 4: describing keys read as wrong).
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -282,7 +301,51 @@ export type PlanObjectivesInput = {
    * (several lessons' outcomes, key learning points, keywords, misconceptions). Optional.
    */
   curriculum?: { text: string } | undefined;
+  /**
+   * Designer r6: the deck's slide count and the most objectives it holds (every objective gets at
+   * least 3 slides; the title is the only fixed slide; an opening or closing slot costs one).
+   * Code keeps the first `maxObjectives` if more come back. Left out outside r6.
+   */
+  slideCount?: number | undefined;
+  maxObjectives?: number | undefined;
+  /**
+   * Designer r6: the most objectives with no, one or two optional opening/closing slots (each slot
+   * costs a slide): `floor((slideCount - 1 - slots) / 3)`. Code cuts past the matching cap.
+   */
+  maxObjectivesByBookends?: { none: number; one: number; two: number } | undefined;
 };
+
+/**
+ * The user turn's structure lines (v24). With the r6 budget: the slide count, the objective count
+ * for each opening and closing choice (computed by code, so the model reads a fact and does no
+ * arithmetic, CORE 2026-07-29), and the opening and closing left to the call. Without it: the
+ * static count and a fixed retrieval opening and check closing, so a caller outside r6 gets the
+ * starter it always had. The system text names these lines and states no number (CORE 2026-09-16).
+ */
+export function structureLines(input: PlanObjectivesInput): string[] {
+  const by = input.maxObjectivesByBookends;
+  if (input.slideCount === undefined || !by) {
+    return [
+      "Objectives: two or three; one only when the topic is a single method or skill; four only for four distinct parts.",
+      "Opening: retrieval.",
+      "Closing: check.",
+    ];
+  }
+  const n = (k: number) => String(Math.min(k, input.maxObjectives ?? k));
+  const [none, one, two] = [n(by.none), n(by.one), n(by.two)];
+  const count =
+    none === one && one === two
+      ? `${none}, whatever the opening and closing`
+      : one === two
+        ? `${none} with no opening or closing slide; ${one} with an opening slide, a closing slide or both`
+        : `${none} with no opening or closing slide; ${one} with one of them; ${two} with both`;
+  return [
+    `Slides: ${input.slideCount}; the title, which lists the objectives, is the only fixed slide.`,
+    `Objectives: at most ${count}.`,
+    "Opening: retrieval, a hook or none, your choice.",
+    "Closing: a check, a plenary, a debate or none, your choice.",
+  ];
+}
 
 /** What the model is told when a curriculum unit is retrieved. Never `SOURCE_INSTRUCTION`. */
 export const CURRICULUM_INSTRUCTION =
@@ -345,11 +408,32 @@ export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>
 
 /**
  * Exactly three: the prose says "three" and Luna writes to the number it is given, so the schema
- * pins it rather than buying tolerance. Optional at the top level so a recorded set, a
+ * pins it rather than buying tolerance. v24: or none, the list a call without a retrieval opening writes (2 of 8 r6 calls wrote `[]` beside a hook or no opening; the sketch shows the slot, so it is filled). Optional at the top level so a recorded set, a
  * `fromFacts` rerun or the bench parses without it; the sketch shows the slot, so a live call
  * fills it.
  */
-const retrieval = z.array(PlanRetrievalQuestionSchema).length(3).optional();
+const retrieval = z
+  .array(PlanRetrievalQuestionSchema)
+  .refine((a) => a.length === 0 || a.length === 3, "three retrieval questions, or none")
+  .optional();
+
+/**
+ * The lesson's optional opening and closing slides (v24), in the shape code reads
+ * (`LessonBookendsSchema`): a kind, and for a hook, plenary or debate the prompt the class is
+ * asked. `null` is "none": the sketch shows it as an alternative so the choice is a real one (a
+ * slot the sketch shows is filled, CORE 2026-08-04), and code reads `null` as absent.
+ */
+const opening = z
+  .strictObject({ kind: z.enum(["retrieval", "hook"]), prompt: z.string().optional() })
+  .nullable()
+  .optional();
+const closing = z
+  .strictObject({
+    kind: z.enum(["check", "plenary", "debate"]),
+    prompt: z.string().optional(),
+  })
+  .nullable()
+  .optional();
 
 /** With a curriculum extract: every objective must carry its anchor. */
 const AnchoredOutputSchema = z.strictObject({
@@ -357,7 +441,9 @@ const AnchoredOutputSchema = z.strictObject({
     .array(z.strictObject({ text: objectiveText, curriculumAnchor, arc }))
     .min(1)
     .max(4),
+  opening,
   retrieval,
+  closing,
 });
 
 /**
@@ -371,7 +457,9 @@ const UnanchoredOutputSchema = z.strictObject({
     .array(z.object({ text: objectiveText, arc }))
     .min(1)
     .max(4),
+  opening,
   retrieval,
+  closing,
 });
 
 export type PlanObjectivesSchema = typeof AnchoredOutputSchema | typeof UnanchoredOutputSchema;
@@ -397,7 +485,9 @@ export const PlanObjectivesOutputSchema = z.strictObject({
     )
     .min(1)
     .max(4),
+  opening,
   retrieval,
+  closing,
 });
 export type PlanObjectivesOutput = z.output<typeof PlanObjectivesOutputSchema>;
 
@@ -418,20 +508,21 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "retrieval": [{ "answer": "Many lands and peoples ruled by one country or ruler", "question": "What is an empire?" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "opening": { "kind": "retrieval" } or { "kind": "hook", "prompt": "..." } or null, "retrieval": [{ "answer": "Rome", "question": "Which city ruled the Roman Empire?" }], "closing": { "kind": "check" } or { "kind": "plenary" or "debate", "prompt": "..." } or null }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v22",
+  version: "plan-objectives.v24",
   system: [
-    "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
+    "You are an experienced UK teacher planning one lesson: its learning objectives, and how it opens and closes.",
     "",
     OBJECTIVE_HOUSE_RULES,
     "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods; where it covers several factors, methods or strategies, name them.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
-    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
+    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea, as many as the Objectives line allows and no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
-    'Give each objective its arc: its angle, the parts of it this lesson teaches, in order, separated by semicolons; the form it leans towards ("photo" for anything a camera could show; "diagram-slot" or "figure" for a structure or process; "worked-example" for a procedure pupils carry out: a calculation, a prediction from a rule, a technique applied; otherwise "explain", "list", "compare" or "sequence"); and the misconception pupils most often hold about it, as they would say it.',
-    "Three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Write the answer first, then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
+    'Give each objective its arc: its angle, the parts of it this lesson teaches, in order, separated by semicolons, each a part one slide can teach (a step, a case, a structure, a cause, each outcome of a rule); the form it leans towards ("photo" for anything a camera could show; "diagram-slot" or "figure" for a structure or process; "worked-example" for a procedure pupils carry out: a calculation, a prediction from a rule, a technique applied; otherwise "sequence", "compare", "explain" or "list"); and the misconception pupils most often hold about it, as they would say it.',
+    "Opening and closing: as the Opening and Closing lines say; where they are your choice, choose for this topic and year group, knowing each objective is already taught, shown and checked in its own part of the lesson. Retrieval opens where the objectives rest on earlier learning; a hook, one question or scene that makes the class want the answer, where they have met little of it; with none, the first objective opens. A check closes with one question per objective; a plenary with one prompt every pupil answers; a debate with one motion the objectives give both sides of. A hook, plenary or debate carries its prompt.",
+    "With a retrieval opening, three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Write the answer first, the answer itself as the words a pupil would say (a name, a term, a number, a short fact), then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
@@ -442,7 +533,7 @@ export const planObjectivesPrompt = {
     if (input.priorKnowledge) {
       parts.push(`${PRIOR_KNOWLEDGE_LABEL}: ${input.priorKnowledge}`, PRIOR_KNOWLEDGE_USE);
     }
-    parts.push(`Lesson shape: ${shapeLine}`);
+    parts.push(`Lesson shape: ${shapeLine}`, ...structureLines(input));
     if (input.curriculum) {
       parts.push("", CURRICULUM_INSTRUCTION, input.curriculum.text, "", CURRICULUM_USE);
     }

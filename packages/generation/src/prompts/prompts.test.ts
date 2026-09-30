@@ -218,16 +218,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "804ff4e8f733039e062563fa220d0134ac39b344aa5e168238b13d1c6feb1be0",
   },
   "plan-objectives": {
-    version: "plan-objectives.v22",
-    hash: "61f186db19882b7b60d9ccd761557b98e25b936e6ebc2a8afe0842133fd49da3",
+    version: "plan-objectives.v24",
+    hash: "d932f97bb3f6fe8e7d10feee1d4857259940d961216a62423b302786176bc202",
   },
   "plan-facts-objective": {
     version: "plan-facts-objective.v14",
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
   },
   "design-cycle": {
-    version: "design-cycle.v12",
-    hash: "869783fa125957274370fbe7c2532a14c2daac83f866652cea7b71c4fe2d7ca5",
+    version: "design-cycle.v13",
+    hash: "57fa316bdaf75dc8fa8cc8288df228abb6d924556ae219ce8db24990e6ba1f63",
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v3",

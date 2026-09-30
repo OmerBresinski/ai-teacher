@@ -14,7 +14,11 @@ import { paletteMenu } from "@tj/slides";
 import { Output, streamText } from "ai";
 import { createOpenAI } from "../../ai/node_modules/@ai-sdk/openai";
 import { allocate } from "../src/planner/cycles";
-import { designCyclePrompt, designCycleSchemaFor } from "../src/prompts/design-cycle";
+import {
+  designCyclePrompt,
+  designCycleSchemaFor,
+  type SlotRole,
+} from "../src/prompts/design-cycle";
 import {
   type ObjectiveArc,
   planObjectivesOutputSchemaFor,
@@ -35,6 +39,34 @@ const spendFile = flag("--spend") ?? `${out}/spend.json`;
 const cap = Number(flag("--cap") ?? "0.10");
 const only = flag("--objectives-from"); // reuse a previous run's objectives (dir)
 const effort = flag("--effort") ?? "low"; // design-cycle calls only; objectives stay at low
+// Designer r6 (prompts v24/v13): the objectives call gets the slide budget, and the cycles are
+// allocated as r6 does (title the only fixed slide, an opening and closing slot when asked for,
+// each objective at least 3 slots). A stand-in for spike/r6-code's allocator, for this smoke only.
+const r6Flag = args.indexOf("--r6");
+const r6 = r6Flag >= 0;
+if (r6) args.splice(r6Flag, 1);
+const maxObj = (n: number, extra: number) => Math.max(1, Math.floor((n - 1 - extra) / 3));
+function r6Roles(count: number, lean?: string): SlotRole[] {
+  if (count === 1) return ["teach"];
+  if (count === 2) return ["teach", "check"];
+  const second: SlotRole = lean === "worked-example" ? "teach" : "show";
+  const tail: SlotRole[] = count >= 4 ? ["practise", "check"] : ["check"];
+  const extra: SlotRole[] = Array.from({ length: count - 2 - tail.length }, () => "teach");
+  return ["teach", ...extra, second, ...tail];
+}
+function r6Allocate(slideCount: number, arcs: (ObjectiveArc | undefined)[], output: unknown) {
+  const o = output as { opening?: unknown; closing?: unknown } | undefined;
+  const extra = (o?.opening ? 1 : 0) + (o?.closing ? 1 : 0);
+  const n = Math.min(arcs.length, maxObj(slideCount, extra));
+  const free = slideCount - 1 - extra;
+  let first = 2 + (o?.opening ? 1 : 0);
+  return arcs.slice(0, n).map((arc, i) => {
+    const count = Math.floor(free / n) + (i < free % n ? 1 : 0);
+    const c = { count, first, roles: r6Roles(count, arc?.lean) };
+    first += count;
+    return c;
+  });
+}
 mkdirSync(out, { recursive: true });
 
 const openai = createOpenAI({
@@ -144,7 +176,22 @@ for (const file of args) {
   } else {
     objectivesCall = await call(
       planObjectivesPrompt.system,
-      planObjectivesPrompt.user({ topic, shape, audience }),
+      planObjectivesPrompt.user({
+        topic,
+        shape,
+        audience,
+        ...(r6
+          ? {
+              slideCount,
+              maxObjectives: maxObj(slideCount, 0),
+              maxObjectivesByBookends: {
+                none: maxObj(slideCount, 0),
+                one: maxObj(slideCount, 1),
+                two: maxObj(slideCount, 2),
+              },
+            }
+          : {}),
+      }),
       planObjectivesOutputSchemaFor(false),
     );
   }
@@ -160,10 +207,17 @@ for (const file of args) {
   }
   const palette = paletteMenu(b.subject);
   // The production allocator (planner/cycles.ts): minimums first, the rest by arc weight.
-  const allocation = allocate(
-    slideCount,
-    objectives.map((o) => o.arc),
-  ).cycles;
+  const allocation = r6
+    ? r6Allocate(
+        slideCount,
+        objectives.map((o) => o.arc),
+        objectivesCall.output,
+      )
+    : allocate(
+        slideCount,
+        objectives.map((o) => o.arc),
+      ).cycles;
+  if (r6) objectives.splice(allocation.length);
   const cycles = await Promise.all(
     objectives.map((_, i) => {
       const cycle = allocation[i] as (typeof allocation)[number];

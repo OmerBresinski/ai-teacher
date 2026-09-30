@@ -31,7 +31,9 @@ describe("plan-objectives", () => {
     // judges: repeated slides, dropped strands, no worked example on procedures); moves once.
     // v22: 452, the retrieval answer written first (round-2 judges: three starters keyed to an
     // answer that did not answer them); the alarm moves once, by that growth.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(460);
+    // v24: 614, the opening and closing chosen per lesson (designer r6: no fixed starter or exit)
+    // and its sketch alternatives; the alarm moves once, by that growth.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(625);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -83,11 +85,12 @@ describe("plan-objectives", () => {
     expect(system).toContain("Give one objective for each distinct part of the topic");
     expect(system).toContain("cover its core at this year group's level and no two share an idea");
     // v17 (gpt-6-luna): the hedge went; "usually" was read as licence for one objective.
-    expect(system).toContain("two or three; one only when the topic is a single method or skill");
-    expect(system).not.toContain("usually two or three");
+    // v24: the count lives in the user turn's Objectives line (static outside r6, the slide
+    // budget's ceilings in r6); the system names the line, never a number (CORE 2026-09-16).
+    expect(system).toContain("as many as the Objectives line allows");
+    expect(system).not.toMatch(/two or three|four only/);
     // v10: "building on each other and sharing its key ideas" named no bench failure (rubric 3).
     expect(system).not.toContain("building on each other");
-    expect(system).toContain("four only for four distinct parts");
     // v17: a topic about several needs or factors is several parts, and none is the topic restated.
     expect(system).toContain("has a part for each, or for each close pair");
     expect(system).toContain("No objective restates the topic.");
@@ -98,7 +101,39 @@ describe("plan-objectives", () => {
     expect(system).toContain("start one level below the reach unless there is only one objective");
   });
 
-  test("the user turn carries no slide count and no count line", () => {
+  test("v24: the structure lines, static outside r6 and the slide budget's ceilings in r6", () => {
+    const plain = planObjectivesPrompt.user(PLAN_OBJECTIVES_SAMPLE);
+    expect(plain).toContain(
+      "Objectives: two or three; one only when the topic is a single method or skill; four only for four distinct parts.",
+    );
+    expect(plain).toContain("Opening: retrieval.\nClosing: check.");
+    const budget = (slideCount: number) =>
+      planObjectivesPrompt.user({
+        ...PLAN_OBJECTIVES_SAMPLE,
+        slideCount,
+        maxObjectives: Math.floor((slideCount - 1) / 3),
+        maxObjectivesByBookends: {
+          none: Math.floor((slideCount - 1) / 3),
+          one: Math.floor((slideCount - 2) / 3),
+          two: Math.floor((slideCount - 3) / 3),
+        },
+      });
+    const ten = budget(10);
+    expect(ten).toContain(
+      "Slides: 10; the title, which lists the objectives, is the only fixed slide.",
+    );
+    expect(ten).toContain(
+      "Objectives: at most 3 with no opening or closing slide; 2 with an opening slide, a closing slide or both.",
+    );
+    expect(ten).toContain("Opening: retrieval, a hook or none, your choice.");
+    expect(ten).toContain("Closing: a check, a plenary, a debate or none, your choice.");
+    expect(budget(12)).toContain("Objectives: at most 3, whatever the opening and closing.");
+    expect(budget(11)).toContain(
+      "at most 3 with no opening or closing slide; 3 with one of them; 2 with both.",
+    );
+  });
+
+  test("the user turn carries no slide count outside r6", () => {
     for (const input of [
       PLAN_OBJECTIVES_SAMPLE,
       { ...PLAN_OBJECTIVES_SAMPLE, curriculum: undefined },
@@ -106,6 +141,7 @@ describe("plan-objectives", () => {
     ]) {
       const user = planObjectivesPrompt.user(input);
       expect(user).not.toMatch(/\bslides?\b/i);
+      expect(user).toContain("Objectives: two or three");
       expect(user).not.toContain("Number of objectives");
       expect(user).not.toMatch(/Lesson length|minutes/);
       // v11: the output shape is the system's "JSON, in this shape:" line and the format is
@@ -173,7 +209,7 @@ describe("plan-objectives", () => {
      * clause.
      */
     const system = planObjectivesPrompt.system;
-    expect(system).toContain("three retrieval questions for its starter");
+    expect(system).toContain("With a retrieval opening, three retrieval questions");
     // v14 (latency-lab judges): the call cannot know earlier lessons, so each question is derived
     // from an objective: a prerequisite it needs that no objective teaches, one a pupil in this
     // year group could get wrong, three different ones.
@@ -187,11 +223,12 @@ describe("plan-objectives", () => {
     expect(system).toContain("a different term, fact or method");
     // v22: the answer is written first, and the question is worded to it (round-2 starter keys).
     expect(system).toContain(
-      "Write the answer first, then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
+      "Write the answer first, the answer itself as the words a pupil would say (a name, a term, a number, a short fact), then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
     );
     expect(system).toContain('"retrieval": [{ "answer": ');
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
-    expect(system).toContain('"question": "What is an empire?"');
+    // v24: the sample key is a name, not a description (r4 judges read describing keys as wrong).
+    expect(system).toContain('"answer": "Rome", "question": "Which city ruled the Roman Empire?"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.
     expect(system).not.toContain("curriculumAnchor");
     // The count appears once in the prose (the sketch shows one item, as it does for objectives).

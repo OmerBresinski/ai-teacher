@@ -196,6 +196,29 @@ import { type Audience, audienceBlock, houseRules } from "./shared";
  *    instruction, CORE 2026-09-23); the system text says nothing about it, so an empty block
  *    steers nothing.
  *
+ * v13 (30 Sept 2026, designer r6; `lab/fit-lab/std-judge`: arm F lost to production on faults
+ *    12 v 7 and pairwise 1 v 6 with teaching in the notes behind a thin slide, questions testing
+ *    what no slide taught, and wrong starter keys; production won by teaching each step on the
+ *    slide). Roles now come from the r6 allocator (teach, show, check, practise when there is room),
+ *    each objective holding at least three slots.
+ *  - Teaching is spread across the objective's slots: a part too big for one form's Holds goes on
+ *    to the next teach or show slot or takes a roomier form. This replaces the fit ladder's
+ *    move-to-notes rung, which code removes for teaching content.
+ *  - Notes are what the teacher says aloud: one sentence states that, one the guarantee that every
+ *    fact, step, case or number a question tests is on a slide. v12's "not only here" still let the
+ *    notes hold tested content.
+ *  - The forms that carry the most teaching come first in the teach role and the choosing line
+ *    (sequence, labelled diagram slot, compare, worked example step by step), each "within its
+ *    Holds"; the first listed case is the one taken (openai.md 2026-09-26).
+ *  - A question's answer is "stated on a slide before it", a label and a side counted among the
+ *    places, so code's answer-support check and the prompt say the same thing.
+ *  - The misconception's homes: a hinge's wrong option, then the true-false statement (listed
+ *    first, true-false took 10 of 12 checks in round a), then an explain-callout (the r6 roles put no
+ *    teach slot after the show slot, so v12's "after the visual" named a slot no cycle has).
+ *  - `exitQuestion` is answer-first in schema and prose (CORE 2026-09-30); it serves a closing
+ *    check when the objectives call chose one. The user turn no longer claims a starter and an
+ *    exit ticket around the objectives: neither is fixed now.
+ *
  * Bump `version` whenever `system` or `user` changes wording.
  */
 
@@ -447,7 +470,8 @@ export function slotFormsFor(subject?: string): SlotForm[] {
     .map((f) => f.id as SlotForm);
 }
 
-export const ExitQuestionSchema = z.object({ question: text, answer: text });
+/** v13: the answer first, so the question is worded to the key (CORE 2026-09-30). */
+export const ExitQuestionSchema = z.object({ answer: text, question: text });
 
 /**
  * The slot contract for one call: exactly `slotCount` slots, each one of the subject's slide
@@ -532,25 +556,25 @@ function factsBlock(facts: string | undefined, objectiveIndex: number): string[]
 }
 
 export const designCyclePrompt = {
-  version: "design-cycle.v12",
+  version: "design-cycle.v13",
   system: [
     "You are an experienced UK teacher who designs lesson slides. You design the slides for one objective of a lesson, in the slots you are given, each with a role. For each slot you choose the palette form that shows its content best and fill it; nothing rewrites your words, so what you write is the slide.",
     "",
     houseRules("british", "names", "pitch"),
-    "Roles: teach shows an idea in a teaching form (photo, figure, diagram-slot, explain, explain-callout, list, compare, sequence, or a worked example for a procedure); show teaches through a photo, figure or diagram slot; practise is an open question on a case no teach slot used, answered in pupils' own sentences (open-response, or discussion for a judgement); check is a quick closed check (hinge, true-false, matching, fill-gap or sort).",
+    "Roles: teach shows an idea in a teaching form (sequence, diagram-slot, compare, worked example for a procedure, figure, photo, explain-callout, explain, list); show teaches through a photo, figure or diagram slot; practise is an open question on a case no teach slot used, answered in pupils' own sentences (open-response, or discussion for a judgement); check is a quick closed check (hinge, true-false, matching, fill-gap or sort).",
     "Unless the objective is purely abstract (a rule, a number, a method), one of its teach or show slots is a photo, figure or diagram slot.",
     "An objective that teaches a method or a process pupils apply (a calculation, a procedure, a rule applied to a case) has a worked-example slot, the method on one case taken to its finished answer, before any slot that tests it.",
-    "The objective's Angle lists the parts this lesson teaches of it, and every part reaches a slide. The teach and show slots take the parts in order. Where the parts outnumber those slots, each takes the next several, one sentence, step or point per part within its Holds, under a heading stating the idea they share; where a part has a second slot, that slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
+    "The objective's Angle lists the parts this lesson teaches of it, and every part is taught on a slide. The teaching is spread across the objective's slots: the teach and show slots take the parts in order, and a part too big for one form's Holds continues on the next teach or show slot or takes a roomier form. Where the parts outnumber those slots, each takes the next several, one sentence, step or point per part within its Holds, under a heading stating the idea they share; where a part has a second slot, that slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
     'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. A teach slot\'s body says how or why the claim holds (what acts on what, and what follows) and names one real case that shows it (a place, an event, a person, a reaction, a quoted line or worked numbers): "Cholera spread through drinking water, not bad air: John Snow traced the 1854 Soho outbreak to one pump in Broad Street." A list, compare or sequence carries its case in a point, side or step.',
-    "Every slot has notes. On a teach or show slot they are your telling of the slide aloud (an analogy, a second case, the question you ask); what a later question needs stands on the slide, not only here. On a practise or check slot they open with the answer and why it is right, then what to do with the answers pupils give.",
-    "Choose a teach slot's form by what the content is: anything a camera could show (a living thing, an object, a place, a scene) is a photo; a structure, process or layout is a figure or a diagram slot; a procedure pupils will carry out (a calculation, a prediction from a rule, a technique applied to a text) is a worked example taken to its finished answer; a definition or an argument is text (explain, list, compare, sequence). Neighbouring slots use different forms.",
+    "Every slot has notes: what you say aloud as it is shown. On a teach or show slot, that is the slide told in your words (an analogy, the question you ask the class); every fact, step, case or number a question tests is on a slide itself. On a practise or check slot they open with the answer and why it is right, then what to do with the answers pupils give.",
+    "Choose a teach slot's form by what the content is, taking the form that carries the most of it within its Holds: steps, stages or a chain of events are a sequence; a structure, process or layout is a diagram slot with its parts labelled, or a figure; two things, sides or outcomes are a compare; a procedure pupils will carry out (a calculation, a prediction from a rule, a technique applied to a text) is a worked example, step by step to its finished answer; anything a camera could show (a living thing, an object, a place, a scene) is a photo; a definition or an argument is explain or list. Neighbouring slots use different forms.",
     "Choose a check by what the part is: the order of a process or chain of events is a sort; terms and meanings are a matching; a key term in a sentence that uses it is a fill-gap; a claim pupils get wrong is a true-false, one whole claim, true or false as written. A hinge asks for a thing pupils name (a product, a value, a term, the next step), so each option is a phrase answering the stem and each wrong one a mistake pupils make; a why or a how is checked by a sort or a true-false.",
-    "A question asks what this objective's earlier slides teach: its answer follows from a sentence, step or worked line on a slide before it, which the notes name, and it needs nothing a later slide or objective teaches.",
+    "A question asks what this objective's earlier slides teach: its answer is stated on a slide before it, in a sentence, step, label or side, or follows from a worked example's steps; the notes name that slide; and it needs nothing a later slide or objective teaches.",
     'Fill each form with exactly the units its Holds line gives, its count of sentences included. Options, points, pair sides and labels are phrases, not sentences: "Heavier than water", not "The stone is heavier than the water it pushes aside." A question or a step is one sentence.',
     "A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.",
-    'The objective\'s misconception reaches a slide. A teach slot that follows the objective\'s photo, figure or diagram slot is an explain-callout, its callout the misconception stated as wrong with "not" ("Evaporation is not the same as boiling."); with no such slot, it is the true-false check\'s statement or a wrong option in the hinge.',
+    'The objective\'s misconception reaches a slide: as a wrong option in the hinge, the true-false check\'s statement, or an explain-callout teach slot\'s callout, stated as wrong with "not" ("Evaporation is not the same as boiling.").',
     "A photo's imageBrief names a subject stock photography has and what the photo must show: no names of people and no local places. A figure's figureBrief gives its template and what it shows. A diagram slot's diagram says what to draw and what to label.",
-    "exitQuestion: one question that checks this objective, answered in a line from what its slides state, with its answer.",
+    "exitQuestion: its answer first, stated on one of this objective's slides, then one question that checks this objective and that this answer alone answers.",
   ].join("\n"),
   user(input: DesignCycleInput): string {
     const [shapeLine] = shapeBlock(input.shape);
@@ -567,7 +591,7 @@ export const designCyclePrompt = {
       audienceBlock(input.audience),
       `Lesson shape: ${shapeLine}`,
       "",
-      "The lesson's objectives, each with its arc (a starter comes before the first and an exit ticket after the last):",
+      "The lesson's objectives, each with its arc:",
       ...input.objectives.map((o, i) => arcLine(o, i, i === input.objectiveIndex)),
       ...factsBlock(
         input.facts
