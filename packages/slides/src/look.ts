@@ -8,6 +8,7 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
+import { type DiagramSpecInput, diagramElement } from "./diagrams";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
@@ -355,10 +356,11 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
 export function withDiagramSlot(
   slide: Slide,
   t: Theme,
-  instruction: string,
+  /** What the diagram should show, or a diagram spec (`./diagrams`) to draw in the slot. */
+  instruction: string | DiagramSpecInput,
   ids: Ids = uid,
   /** The slot's words; the demo placeholder (`withSlotsShown`) says "Diagram: …". */
-  label = `Diagram to add: ${instruction}`,
+  label = typeof instruction === "string" ? `Diagram to add: ${instruction}` : "",
 ): Slide {
   const body = slide.elements.find(
     (e): e is TextElement => e.type === "text" && e.style.preset === "body" && !e.name,
@@ -366,6 +368,16 @@ export function withDiagramSlot(
   if (!body || slide.elements.some((e) => e.name === DIAGRAM_NAME)) return slide;
   const half = Math.floor((SAFE.w - SPACE[5]) / 2);
   const x = SAFE.x + half + SPACE[5];
+  // A spec draws in the slot; one that does not draw leaves the slide as it was, never a box.
+  if (typeof instruction !== "string") {
+    const rect = { x, y: body.y, w: SAFE.x + SAFE.w - x, h: SAFE.y + SAFE.h - body.y };
+    const drawn = diagramElement(instruction, t, rect, ids);
+    if (!drawn) return slide;
+    return {
+      ...slide,
+      elements: slide.elements.flatMap((e) => (e === body ? [{ ...body, w: half }, drawn] : [e])),
+    };
+  }
   const slot: SlideElement = {
     id: ids(),
     type: "shape",
