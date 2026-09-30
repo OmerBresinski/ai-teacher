@@ -15,8 +15,7 @@ export interface HandoverRig {
       onComplete?: () => void;
     },
   ): void;
-  /** Page px of Plan's rest artwork and its ground shadow, for its entrance (entrances/). */
-  restBox(): {
+  restBox(actor: number): {
     left: number;
     top: number;
     width: number;

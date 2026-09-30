@@ -2,6 +2,7 @@ import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useS
 import { loadGsap } from "@/lib/gsap";
 import { type CharacterCapture, PERSONA_SPEED } from "./character-origin";
 import type { HandoverRig } from "./motion/handover-rig.js";
+import { READING, readingOrder } from "./planning-stage";
 
 type RigModule = typeof import("./motion/handover-rig.js");
 
@@ -169,24 +170,14 @@ export function CharacterHost({
       Object.assign(state, { entering: false, finishing: false, pending: false, playing: false });
       // Reading the brief: three lines, then the next page (its check-through) or a look up with a
       // nod, in turn, without rests (it is reading). When the objectives land it finishes the line,
-      // lowers the sheet with a nod (17) and the page moves on. Beats 13-17 are in work-beats.
-      let lines = 0,
-        pages = 0;
-      const next = (beat: number) => {
-        if (beat === 14) {
-          lines++;
-          if (lines % 3) return 14;
-          pages++;
-          return pages % 3 === 2 ? 16 : 15;
-        }
-        return 14;
-      };
+      // lowers the sheet with a nod (18) and the page moves on. Beats 14-18 are in work-beats.
+      const next = readingOrder();
       const loop = (beat: number) => {
         if (cancelled || state.finishing) return;
         state.playing = true;
         actor.play(beat, {
           speed: 1,
-          reset: beat === 13,
+          reset: beat === READING.pickUp,
           onComplete: () => {
             state.playing = false;
             if (cancelled) return;
@@ -195,16 +186,16 @@ export function CharacterHost({
           },
         });
       };
-      actor.settle(actor.reduced ? 14 : 13);
+      actor.settle(actor.reduced ? READING.line : READING.pickUp);
       let entry: { cancel: () => void } | null = null;
       if (!actor.reduced && element.current) {
         const stageEl = element.current;
-        const box = actor.restBox();
+        const box = actor.restBox(0);
         state.entering = true;
         actor.present(0, false);
-        void import("./motion/entrances/index.js").then(({ playPlanEntrance }) => {
+        void import("./motion/entrances/index.js").then(({ playEntrance }) => {
           if (cancelled || !box) return actor.present(0, true);
-          entry = playPlanEntrance({
+          entry = playEntrance("plan", {
             stage: stageEl,
             box,
             onEnd: () => {
@@ -214,7 +205,7 @@ export function CharacterHost({
               if (state.pending) {
                 state.finishing = true;
                 planningRef.current?.onDone?.();
-              } else afterRest(() => loop(13), 0.4);
+              } else afterRest(() => loop(READING.pickUp), 0.4);
             },
           });
         });
@@ -261,7 +252,7 @@ export function CharacterHost({
     const done = () => planningRef.current?.onDone?.();
     // Lowers the sheet with a nod, then the page moves on (without motion: straight on).
     if (!actor || actor.reduced) return done();
-    actor.play(17, { speed: 1, reset: false, onComplete: done });
+    actor.play(READING.lower, { speed: 1, reset: false, onComplete: done });
   }
   // The objectives landed: Plan finishes the entrance or the beat in hand, then the page moves on.
   const objectives = planning?.objectives ?? null;

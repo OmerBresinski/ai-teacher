@@ -23,7 +23,8 @@
       "!**/.opencode",
       "!**/skills-lock.json",
       "!**/lesson-creation/motion/entrances/characters.js",
-      "!**/lesson-creation/motion/entrances/plan"
+      "!**/lesson-creation/motion/entrances/plan",
+      "!**/lesson-creation/motion/entrances/slides"
     ]
   },
   "formatter": {

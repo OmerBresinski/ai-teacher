@@ -21,6 +21,12 @@ export const restBody = () => ({
   slip: 0,
   shut: 0,
   spot: 0,
+  // Slides' deck only (fan-rig): an in-plane tilt about the card's centre (degrees) and a wider
+  // stance (the feet apart, 1 = the artwork's stance), used to take over from its entrance's pose.
+  tilt: 0,
+  stance: 0,
+  // ...and the artwork's arm set (1 = shoulders high on the card, arms curved as drawn).
+  artArms: 0,
 });
 const REST = restBody();
 const FIELDS = Object.keys(REST);
@@ -30,7 +36,7 @@ export const FRAMES = {
   support: { cx: 146, base: 228, top: 70, ground: 272, eyeY: 143 },
   activity: { cx: 150, base: 232, top: 32, ground: 275, eyeY: 108 },
   answers: { cx: 147, base: 224, top: 66, ground: 270, eyeY: 131 },
-  slides: { cx: 0, base: 62, top: -78, ground: 90, eyeY: -12 },
+  slides: { cx: 6, base: 55, top: -71, ground: 90, eyeY: -18 },
 };
 
 /** Parse a path into absolute segments: M, L, Q, C, Z. H and V become L. */
@@ -131,13 +137,15 @@ export function drawnBody(body, kind) {
     const glasses = !!el.closest(".glasses");
     const legs = el.matches(".limb") && !el.closest(".arm-left,.arm-right");
     const eye = el.matches(".eye") || !!el.closest(".eyes");
+    // Drawn on the front only: past a quarter turn the back of the sheet shows, blank.
+    const front = face || el.hasAttribute("data-front");
     if (el.tagName === "path") {
       const d = el.getAttribute("d");
-      parts.push({ el, d, segs: parse(d), face, glasses, legs, eye, last: d });
+      parts.push({ el, d, segs: parse(d), face, glasses, legs, eye, front, last: d });
     } else {
       const cx = Number(el.getAttribute("cx")),
         cy = Number(el.getAttribute("cy"));
-      parts.push({ el, circle: true, cx, cy, face, glasses, eye, last: `${cx},${cy}` });
+      parts.push({ el, circle: true, cx, cy, face, glasses, eye, front, last: `${cx},${cy}` });
     }
   }
   let b = REST,
@@ -148,7 +156,8 @@ export function drawnBody(body, kind) {
     ca = 1,
     sa = 0,
     shear = 0,
-    hipDrop = 0;
+    hipDrop = 0,
+    backShown = false;
   function map(x, y, part) {
     // The glasses slip in the artwork's own space, so the squash and lean below carry them.
     // (Adding it to Y was lost: Y is recomputed from y for the body.)
@@ -174,10 +183,12 @@ export function drawnBody(body, kind) {
       Y = y + hipDrop * (1 - t) - Math.max(0, s) * t * 9 - b.tuck * t * G * 0.7;
     }
     Y += b.ty;
-    // Three-quarter turn: rotate about the vertical axis, then perspective about the eye line.
-    const z = X * sa,
+    // Three-quarter turn: rotate about the vertical axis, then perspective about the eye line. The
+    // front face sits a sheet's thickness ahead of the rest, so edge-on still reads as a card.
+    const d = part?.front ? -3 : 3,
+      z = X * sa,
       k = 480 / (480 + z);
-    return [f.cx + X * ca * k, f.eyeY + (Y - f.eyeY) * k];
+    return [f.cx + (X * ca + d * sa) * k, f.eyeY + (Y - f.eyeY) * k];
   }
   function identity() {
     if (breath || lag) return false;
@@ -195,6 +206,13 @@ export function drawnBody(body, kind) {
     hipDrop = b.sy < 1 ? (1 - b.sy) * 0.35 * G : 0;
     const still = identity();
     const shut = Math.max(b.shut, life.blink);
+    // A turn toward a quarter shows the edge, then the back: front-only parts are hidden (visibility).
+    // Near edge-on the face is not drawn either: a turnaround never shows a face on its edge.
+    const back = ca < 0.15;
+    if (back !== backShown) {
+      backShown = back;
+      for (const part of parts) if (part.front) part.el.style.visibility = back ? "hidden" : "";
+    }
     for (const part of parts) {
       if (part.circle) {
         const [cx, cy] = still ? [part.cx, part.cy] : map(part.cx, part.cy, part);

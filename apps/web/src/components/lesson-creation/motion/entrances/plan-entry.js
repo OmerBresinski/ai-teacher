@@ -1,4 +1,4 @@
-// Plan v6b, "sets down, stands up", verbatim from
+// Plan v6b, "sets down, stands up" (four directions), verbatim from
 // scratchpad/how-it-works-options/new/c-motion-plan-v6b/. Not re-timed: fix it there and recopy.
 import "./characters.js";
 import "./plan/plan-rig.js";

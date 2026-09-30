@@ -90,6 +90,7 @@ export function GenerationStory({
       });
     };
     let entry: ReturnType<typeof gsap.delayedCall> | null = null;
+    let entrance: { cancel: () => void } | null = null;
     root.dataset.entry =
       origin && includedWorksheet && !actor.reduced && !skipIntro ? "travelling" : "arrived";
     if (actor.reduced) actor.settle(3);
@@ -107,13 +108,32 @@ export function GenerationStory({
       entry = gsap.delayedCall(origin && includedWorksheet ? CHARACTER_ENTRY_SECONDS : 0, () => {
         root.dataset.entry = "arrived";
         handoverFrom = performance.now();
-        actor.play(includedWorksheet ? 8 : 12, {
-          handoff: includedWorksheet ? { from: 2, to: 1 } : undefined,
-          speed: includedWorksheet ? 1.45 : 1,
-          onComplete: () => {
-            work(latest.current.ready ? 4 : 3);
-          },
-        });
+        // Worksheet skipped: Slides' shipped entrance (v4a, from below) drawn by its own engine over
+        // the rig's rest drawing, then its deck rides in (rig beat 13).
+        const box = includedWorksheet ? null : actor.restBox(1);
+        if (box) {
+          void import("./motion/entrances/index.js").then(({ playEntrance }) => {
+            if (cancelled) return;
+            entrance = playEntrance("slides", {
+              stage: root,
+              box,
+              from: "below",
+              shake: root.parentElement?.querySelector<HTMLElement>(".creation-generation-status"),
+              follow: () => actor.restBox(1),
+              onEnd: () => {
+                if (cancelled) return;
+                actor.play(13, { speed: 1, onComplete: () => work(latest.current.ready ? 4 : 3) });
+              },
+            });
+          });
+        } else
+          actor.play(includedWorksheet ? 8 : 12, {
+            handoff: includedWorksheet ? { from: 2, to: 1 } : undefined,
+            speed: includedWorksheet ? 1.45 : 1,
+            onComplete: () => {
+              work(latest.current.ready ? 4 : 3);
+            },
+          });
         actor.pause(latest.current.paused);
       });
     }
@@ -139,6 +159,7 @@ export function GenerationStory({
     const changed = () => {
       if (media.matches) {
         entry?.kill();
+        entrance?.cancel();
         root.dataset.entry = "arrived";
         actor.settle(3);
         if (latest.current.ready) finish();
@@ -148,6 +169,7 @@ export function GenerationStory({
     return () => {
       cancelled = true;
       entry?.kill();
+      entrance?.cancel();
       media.removeEventListener("change", changed);
       host?.removeEventListener("cast:leap", onLeap);
       host?.removeEventListener("cast:leave", onLeave);
