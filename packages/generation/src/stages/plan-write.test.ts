@@ -116,7 +116,15 @@ function writerCallOf(text: string): WriteSlidesInput {
     table: [...text.matchAll(/^\d+ [a-z]/gm)].map(() => ({}) as PlanSlide),
     slides,
     ...(field && slides[0]
-      ? { rewrite: { slide: slides[0], field, failure: "", current: {} } }
+      ? {
+          rewrite: {
+            slide: slides[0],
+            field,
+            failure: "",
+            current: {},
+            ...(/A check of this slide found/.test(text) ? { reason: "check" as const } : {}),
+          },
+        }
       : {}),
   };
 }
@@ -220,7 +228,8 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
     const lesson = final.lesson;
     expect(lesson.slides.map((s) => s.kind)).toEqual(KINDS);
     // The fixed slides (UX ruling 134): the title with its picture, then the objectives alone.
-    expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(true);
+    // No photo search in these deps: the title stands alone, never beside an empty frame.
+    expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(false);
     expect(JSON.stringify(lesson.slides[0]?.elements)).not.toContain("the Romans built forts");
     expect(JSON.stringify(lesson.slides[1]?.elements)).toContain("the Romans built forts");
     // The title's brief goes to its photo search only; the saved outline passes the domain schema.
@@ -273,12 +282,28 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(versions.filter((v) => v.startsWith("plan-lesson"))).toEqual([]);
       expect(versions.filter((v) => v.startsWith("stream-lesson"))).toHaveLength(1);
       expect(lesson.slides.map((s) => s.kind)).toEqual(KINDS);
-      expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(true);
+      // No photo search in these deps: the title stands alone, never beside an empty frame.
+      expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(false);
       // Slide 6's hinge had no options: written again by a writer; slide 5's heading re-written.
       expect(calls.filter((c) => !c.rewrite).map((c) => c.slides.map((s) => s.number))).toEqual([
         [6],
       ]);
-      expect(calls.filter((c) => c.rewrite).map((c) => c.rewrite?.field)).toEqual(["heading"]);
+      // The fit re-write; the per-slide check's answer-key re-writes are named "check".
+      expect(
+        calls.filter((c) => c.rewrite && c.rewrite.reason !== "check").map((c) => c.rewrite?.field),
+      ).toEqual(["heading"]);
+      expect(
+        calls
+          .filter((c) => c.rewrite?.reason === "check")
+          .every((c) => c.rewrite?.field === "notes"),
+      ).toBe(true);
+      // Each slide was checked as it closed: Evaluate ran per slide, Repair made no call.
+      expect(versions.filter((v) => v.startsWith("repair."))).toEqual([]);
+      expect(final.checkedPerSlide).toBe(true);
+      // No image search here: no slide keeps an empty picture frame.
+      expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
+        [],
+      );
       expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v3+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);

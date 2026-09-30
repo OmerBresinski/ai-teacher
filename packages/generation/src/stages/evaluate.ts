@@ -223,11 +223,80 @@ const CARRIED_CHECKS: ReadonlySet<string> = new Set([
   "fit",
 ]);
 
+/**
+ * The Evaluate call over one slide (spike/parallel-slides): the stream checks each slide as it
+ * closes, with the lesson's objectives and that slide's own facts, no photo (it may not have landed)
+ * and no worksheet. Findings about anything but that slide are dropped, as are lesson-level ones:
+ * the lesson pass owns the rules that span slides. A failed call returns no findings.
+ */
+export async function evaluateOneSlide(
+  view: PipelineState,
+  slideId: string,
+  deps: PipelineDeps,
+): Promise<Finding[]> {
+  const { lesson } = view;
+  const facts = lesson.facts;
+  const slide = lesson.slides.find((s) => s.id === slideId);
+  if (!facts || !slide) return [];
+  const { verb, confidence } = shapeOf(lesson);
+  const call = await callStructured({
+    deps,
+    stage: "evaluate",
+    cls: "standard",
+    effort: "medium",
+    prompt: evaluatePrompt,
+    input: {
+      facts,
+      audience: audienceOf(lesson),
+      shape: { verb, confidence },
+      slides: [{ id: slide.id, kind: slide.kind, text: slideText(slide), notes: slide.notes }],
+      blocks: [],
+    },
+    schema: EvaluateOutputSchema,
+    maxOutputTokens: MAX_OUTPUT_TOKENS.evaluate,
+  });
+  const scoped = { ...view, lesson: { ...lesson, slides: [slide] } };
+  return knownTargetsWithEvidence(call.output.findings, scoped)
+    .kept.filter((f) => f.target.slideId === slideId)
+    .filter((f) => verbFitApplies(f, scoped) && factConsistencyApplies(f, scoped))
+    .filter((f) => f.check !== "image-fit");
+}
+
+/**
+ * A stream lesson whose slides were each checked and repaired as they closed (`checkedPerSlide`):
+ * the findings it carries stand, the schema checks run again, and no model call is made.
+ */
+function evaluatedInStream(state: PipelineState): Finding[] {
+  const generation = generationOf(state.lesson);
+  const schemaChecks = new Set(checkLesson(state.lesson, state.worksheet).map((f) => f.check));
+  return [
+    ...generation.findings.filter((f) => !schemaChecks.has(f.check)),
+    ...checkLesson(state.lesson, state.worksheet),
+  ];
+}
+
 export async function evaluate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const { lesson, worksheet } = state;
   const facts = lesson.facts;
   if (!facts) throw new Error("evaluate: the lesson has no facts; Plan has not run");
   const generation = generationOf(lesson);
+  if (state.checkedPerSlide) {
+    const next = withUsage(
+      {
+        ...lesson,
+        generation: {
+          ...generation,
+          stage: "evaluated",
+          promptVersions: { ...generation.promptVersions, evaluated: evaluatePrompt.version },
+          findings: evaluatedInStream(state),
+        },
+      },
+      deps,
+    );
+    const { updatedAt } = await deps.persist(next, worksheet);
+    await deps.onProgress(90, "Reviewed", "evaluate", updatedAt);
+    return { ...state, lesson: next };
+  }
   // Findings Generate recorded (a budget stop) survive, as do illustrate's image warnings and
   // Verify's fact corrections — none is recomputable here; everything else is recomputed below.
   const carried = generation.findings.filter(
