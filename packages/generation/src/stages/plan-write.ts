@@ -93,7 +93,7 @@ import {
 import { VERIFY_EFFORT } from "./designer";
 import { evaluateSlides } from "./evaluate";
 import { withUsage } from "./generate";
-import { joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
+import { joinVersions, type PlacedPhoto, pickPhoto, plainSubject, withPhoto } from "./illustrate";
 import { existingTitle, materialiseTitle } from "./plan";
 import { audienceOf, BUDGET_FINDING, generationOf, planClassFor } from "./shared";
 import { runVerify } from "./verify";
@@ -610,7 +610,7 @@ export async function planWriteSlides(
     const imageBrief: ImageBrief | undefined =
       split && pic
         ? {
-            subject: pic.subject.slice(0, 60),
+            subject: plainSubject(pic.subject).slice(0, 60),
             mustShow: pic.mustShow.slice(0, 3).map((m) => m.slice(0, 60)),
             purpose: "context",
             ...namedOf(pic.named),
@@ -1215,7 +1215,7 @@ export async function planWriteSlides(
         : undefined;
     const imageBrief: ImageBrief | undefined = brief0
       ? {
-          subject: brief0.subject.slice(0, 60),
+          subject: plainSubject(brief0.subject).slice(0, 60),
           mustShow: (brief0.mustShow ?? []).slice(0, 3).map((m) => m.slice(0, 60)),
           purpose: "context",
           ...namedOf(brief0.named),

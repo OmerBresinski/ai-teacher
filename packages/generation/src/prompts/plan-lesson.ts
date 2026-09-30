@@ -86,7 +86,11 @@ export const ROW_FORMAT = "role | form | layout | objectives | parts | aim | tea
 
 /** The title slide's photograph (plan-lesson.v8): what whoever finds it looks for. */
 export const titlePictureSchema = z.object({
-  subject: z.string().describe("a description for whoever finds the photograph"),
+  subject: z
+    .string()
+    .describe(
+      "the thing itself in a few plain words, as a search would name it ('Roman legionary helmet', not 'A photograph of ...')",
+    ),
   named: z
     .string()
     .nullable()
@@ -239,7 +243,7 @@ export const PLAN_RULES = `Decide the fields in this order:
 - misconception: the one wrong idea about this topic that matters most for these pupils, then the correct idea.
 - objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. They go on their own slide straight after the title; code adds both, as slides 1 and 2.
 - runningExample: one case, context or question the whole lesson returns to, so the slides tell one story.
-- titlePicture: the photograph on the title slide, a real place, thing or event from this lesson: its subject, and up to three things it must show.
+- titlePicture: the photograph on the title slide, a real place, thing or event this lesson teaches, filling the frame: its subject in a few plain words, and up to three things it must show.
 - slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
 The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.

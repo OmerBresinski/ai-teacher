@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isSpecificSubject } from "./illustrate";
+import { isSpecificSubject, plainSubject } from "./illustrate";
 
 describe("photo source per brief (ruling 139)", () => {
   test("a named, specific subject goes to Commons first; an everyday scene to Pexels", () => {
@@ -65,5 +65,18 @@ describe("diagram mirror matches the renderer's schema", () => {
     };
     expect(DiagramSpecSchema.safeParse(spec).success).toBe(true);
     expect(real.DiagramSpecSchema.safeParse(spec).success).toBe(true);
+  });
+});
+
+describe("plainSubject (T4 photo bench)", () => {
+  test("drops the photograph preamble and a word clipped at 60 characters", () => {
+    expect(plainSubject("A photograph of the excavated remains of Housesteads Roman F")).toBe(
+      "excavated remains of Housesteads Roman",
+    );
+    expect(plainSubject("A real photograph of a flooded riverside street beside the R")).toBe(
+      "flooded riverside street beside the",
+    );
+    expect(plainSubject("Roman legionary helmet")).toBe("Roman legionary helmet");
+    expect(plainSubject("Photo of")).toBe("Photo of");
   });
 });

@@ -16,7 +16,7 @@ import { type Audience, audienceBlock } from "./shared";
  * v11: v10's smoke (ad907742) gave maths a stepped 3-item set, but history 3 closed recall questions;
  * the practice form now follows the objective's verb (a set to work out, a written task to explain).
  * v12: the photo slot's contract and schema carry `named` (proper name or null; code routes it to Commons). */
-export const WRITE_SLIDES_VERSION = "write-slides.v12";
+export const WRITE_SLIDES_VERSION = "write-slides.v13";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -79,7 +79,7 @@ A check, hinge, practise or exit slide asks about what its tests name, as the ea
 Each check question has exactly one defensible answer.
 A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: where its objective is to work something out or identify it, a question set whose items step up from a plain case to that one; where it is to explain or describe, a written task that says what to write and what it must use.
 A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
-A photo's imageBrief describes a real photograph pupils learn from. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
+A photo's imageBrief names the real thing the slide teaches, which the photograph must show whole and centred: its subject in a few plain words ("Roman milestone", not "A photograph of a milestone by a road"), never a scene that only sets the theme. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
 A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.
 Pictures are for whoever finds or draws them: the slide's text never repeats a brief or describes the picture.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
