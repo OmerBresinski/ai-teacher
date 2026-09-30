@@ -96,9 +96,8 @@ describe("facts feed helpers", () => {
   test("the cycle's user turn carries the facts as a plain block, and is unchanged without them", () => {
     const facts = cycleFactsOf(taughtAsLessonFacts(taught(), objectives, 0, 60));
     const block = factsFeedBlock(facts).join("\n");
-    expect(block).toContain("Facts for this objective:");
     expect(block).toContain(`Key idea 1: ${facts.keyIdeas[0]?.statement}`);
-    expect(designCyclePrompt.system).not.toContain("Facts for this objective");
+    expect(designCyclePrompt.system).not.toContain("Source for objective");
   });
 });
 
@@ -140,7 +139,7 @@ describe("the designer with DESIGNER_FACTS=1", () => {
     expect(calls.some((c) => c.v.startsWith("plan-question-set"))).toBe(false);
     for (const [i, c] of cycles.entries()) {
       const target = Number(/Design objective (\d+)/.exec(c.text)?.[1]) - 1;
-      expect(c.text).toContain("Facts for this objective:");
+      expect(c.text).toContain("Source for objective");
       const statement = factsAnswerFor(target).keyIdeas[0]?.statement as string;
       expect(c.text).toContain(statement);
       // Its facts call was made before it.
@@ -170,7 +169,7 @@ describe("the designer with DESIGNER_FACTS=1", () => {
     const ai = labAi();
     await runLessonPipeline({ lesson: romans(10) }, recordingDeps(ai), { planner: "designer" });
     expect(ai.calls.some((c) => c.context?.promptVersion?.startsWith("plan-teach"))).toBe(false);
-    expect(ai.calls.some((c) => c.promptText.includes("Facts for this objective:"))).toBe(false);
+    expect(ai.calls.some((c) => c.promptText.includes("Source for objective"))).toBe(false);
   });
 
   test("a Verify correction re-fills only the slots that said what it took out, from the corrected facts", async () => {
@@ -209,7 +208,7 @@ describe("the designer with DESIGNER_FACTS=1", () => {
     const factsRefills = refills.filter((c) => c.promptText.includes("a fact it used was wrong"));
     expect(factsRefills).toHaveLength(1);
     expect(factsRefills[0]?.promptText).toContain("AD 122");
-    expect(factsRefills[0]?.promptText).toContain("Facts for this objective:");
+    expect(factsRefills[0]?.promptText).toContain("Source for objective");
     expect(factsRefills[0]?.promptText).toContain("Design objective 1:");
     const feed = final.designReport?.timings?.factsFeed ?? [];
     expect(feed[0]?.corrections).toBe(1);

@@ -234,8 +234,9 @@ export type DesignCycleInput = {
   replacing?: { form: SlotForm; material: string; reason: string; into: SlotForm } | undefined;
   /**
    * This objective's facts (`DESIGNER_FACTS=1`): the objectives-first teach call's key ideas,
-   * misconceptions, vocabulary and worked examples, Verify-corrected on a re-fill. Rendered as a
-   * plain block after the slot list; left out, the user turn is unchanged.
+   * misconceptions, vocabulary and worked examples, Verify-corrected on a re-fill. Rendered as
+   * the objective's source block (the same block as `objectives[i].facts`, which it overrides);
+   * left out, the user turn is unchanged.
    */
   facts?: DesignCycleFacts | undefined;
 };
@@ -478,12 +479,11 @@ function arcLine(o: DesignCycleInput["objectives"][number], i: number, self: boo
 }
 
 /**
- * The re-fill's block (fit rung 4): the slot it replaces, as written, and why it did not fit.
- * Absent on a cycle call, whose text is unchanged. Wording pending the prompt-engineer.
+ * An objective's facts (`DESIGNER_FACTS=1`) as plain labelled lines, nothing added: the text of
+ * the objective's source block, which carries the instruction beside it.
  */
-/** The facts block of the user turn: the lists as plain labelled lines, nothing added. */
 export function factsFeedBlock(f: DesignCycleFacts): string[] {
-  const lines = ["", "Facts for this objective:"];
+  const lines: string[] = [];
   f.keyIdeas.forEach((k, i) => {
     lines.push(`Key idea ${i + 1}: ${k.statement}`);
     lines.push(`  Explanation: ${k.explanation}`);
@@ -505,6 +505,10 @@ export function factsFeedBlock(f: DesignCycleFacts): string[] {
   return lines;
 }
 
+/**
+ * The re-fill's block (fit rung 4): the slot it replaces, as written, and why it did not fit.
+ * Absent on a cycle call, whose text is unchanged. Wording pending the prompt-engineer.
+ */
 function replacingBlock(r: NonNullable<DesignCycleInput["replacing"]>): string[] {
   return [
     "",
@@ -565,11 +569,15 @@ export const designCyclePrompt = {
       "",
       "The lesson's objectives, each with its arc (a starter comes before the first and an exit ticket after the last):",
       ...input.objectives.map((o, i) => arcLine(o, i, i === input.objectiveIndex)),
-      ...factsBlock(input.objectives[input.objectiveIndex]?.facts, input.objectiveIndex),
+      ...factsBlock(
+        input.facts
+          ? factsFeedBlock(input.facts).join("\n")
+          : input.objectives[input.objectiveIndex]?.facts,
+        input.objectiveIndex,
+      ),
       "",
       `Design objective ${input.objectiveIndex + 1}: ${count} ${count === 1 ? "slot" : "slots"}, ${where} of ${slideCount}.`,
       ...roles.map((role, k) => `  slide ${first + k}: ${role}`),
-      ...(input.facts ? factsFeedBlock(input.facts) : []),
       ...(input.replacing ? replacingBlock(input.replacing) : []),
     ].join("\n");
   },
