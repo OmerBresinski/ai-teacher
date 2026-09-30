@@ -179,3 +179,22 @@ export function unsupportedReason(s: Support, taughtSlides: readonly number[]): 
     s.missing.length > 0 ? ` (${s.missing.slice(0, 6).join(", ")} are on no earlier slide)` : "";
   return `its answer is not taught on an earlier slide${what}; ask about what ${span} teach`;
 }
+
+/**
+ * r6: the opening's re-fill, in code. A retrieval starter has no earlier slide, so each answer must
+ * lean on the prior knowledge the brief states; the set keeps only the supported questions (none
+ * kept: the caller falls back to its prior-knowledge prompt). No stated prior knowledge: kept as is.
+ */
+export function refillOpening<Q extends { question: string; answer: string }>(
+  questions: readonly Q[],
+  slide: number,
+  priorKnowledge: string | undefined,
+): { kept: Q[]; support: Support[] } {
+  if (!priorKnowledge || questions.length === 0) return { kept: [...questions], support: [] };
+  const support = answerSupport(
+    questions.map((q) => ({ slide, where: "opening", question: q.question, answer: q.answer })),
+    [],
+    { priorKnowledge },
+  );
+  return { kept: questions.filter((_, i) => support[i]?.ok), support };
+}

@@ -4,6 +4,7 @@ import {
   answerSupport,
   askedOf,
   keyTerms,
+  refillOpening,
   refsOfSlot,
   taughtText,
   unsupportedReason,
@@ -91,5 +92,22 @@ describe("answer on a slide (r6)", () => {
     );
     expect(opening?.ok).toBe(true);
     expect(sum).toMatchObject({ ok: true, by: "nothing-to-check" });
+  });
+
+  test("an opening keeps only the questions the stated prior knowledge supports", () => {
+    const qs = [
+      { question: "What is an empire?", answer: "Lands ruled by one ruler" },
+      { question: "Who built Hadrian's Wall?", answer: "Legionaries under Hadrian" },
+    ];
+    const prior = "The class know an empire is lands ruled by one ruler.";
+    const { kept, support } = refillOpening(qs, 2, prior);
+    expect(kept.map((q) => q.question)).toEqual(["What is an empire?"]);
+    expect(support.map((s) => s.ok)).toEqual([true, false]);
+    expect(support[1]?.where).toBe("opening");
+  });
+
+  test("an opening with no stated prior knowledge is kept as written", () => {
+    const qs = [{ question: "Who built Hadrian's Wall?", answer: "Legionaries under Hadrian" }];
+    expect(refillOpening(qs, 2, undefined)).toEqual({ kept: qs, support: [] });
   });
 });

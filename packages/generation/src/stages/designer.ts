@@ -31,6 +31,7 @@ import {
   type Asked,
   answerSupport,
   askedOf,
+  refillOpening,
   refsOfSlot,
   taughtText,
   unsupportedReason,
@@ -570,7 +571,39 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     : { index: slideCount - 1, kind: "check" as const };
   const starterIndex = openingAt?.index ?? opening.length;
   let lesson: Lesson = { ...base, slides: opening, fitVersion: FIT_VERSION };
-  const retrieval = base.facts?.retrieval ?? [];
+  // r6: a retrieval opening's answers must lean on the prior knowledge the brief states (no earlier
+  // slide teaches them). An unsupported question is re-filled in code: the starter keeps only the
+  // supported ones, or falls back to the prior-knowledge prompt when none is. Logged.
+  const openingSupport: NonNullable<DesignReport["answerSupport"]> = [];
+  const prior = brief.classContext?.priorKnowledge;
+  const asked0 = base.facts?.retrieval ?? [];
+  let retrieval = asked0;
+  if (r6 && openingAt?.kind === "retrieval") {
+    const refilled = refillOpening(asked0, starterIndex + 1, prior);
+    for (const sup of refilled.support) {
+      openingSupport.push({
+        slide: sup.slide,
+        where: sup.where,
+        ok: sup.ok,
+        by: sup.by,
+        ...(sup.ok ? {} : { missing: sup.missing }),
+      });
+    }
+    if (refilled.kept.length < asked0.length) {
+      retrieval = refilled.kept;
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "answer-refill",
+          slide: starterIndex + 1,
+          kept: retrieval.length,
+          dropped: asked0.length - retrieval.length,
+          support: openingSupport,
+        },
+        "starter re-filled with the questions the stated prior knowledge supports",
+      );
+    }
+  }
   const facts0: LessonFacts = {
     objectives,
     vocabulary: [],
@@ -689,34 +722,6 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       withAnswersReveal(materialiseSlide(starterFitted, themeId, codeMeta(), deps.ids), themeId),
     );
     void flush();
-  }
-
-  // r6: a retrieval opening's answers lean on the prior knowledge the brief states; logged, since
-  // the starter prints the objectives call's questions as written (no earlier slide to teach them).
-  const openingSupport: NonNullable<DesignReport["answerSupport"]> = [];
-  const prior = brief.classContext?.priorKnowledge;
-  if (r6 && openingAt?.kind === "retrieval" && prior) {
-    const asked: Asked[] = retrieval.map((r) => ({
-      slide: starterIndex + 1,
-      where: "opening",
-      question: r.question,
-      answer: r.answer,
-    }));
-    for (const sup of answerSupport(asked, [], { priorKnowledge: prior })) {
-      openingSupport.push({
-        slide: sup.slide,
-        where: sup.where,
-        ok: sup.ok,
-        by: sup.by,
-        ...(sup.ok ? {} : { missing: sup.missing }),
-      });
-    }
-    if (openingSupport.some((x) => !x.ok)) {
-      deps.logger.info(
-        { stage: "generate", slide: starterIndex + 1, support: openingSupport },
-        "a starter answer is not in the prior knowledge the brief states",
-      );
-    }
   }
 
   // An r6 plenary or debate closes the deck as a discussion slot; a closing check is the exit
