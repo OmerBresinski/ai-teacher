@@ -1,4 +1,5 @@
 import type { Finding, LessonFacts } from "@tj/domain/documents";
+import { holdsLine, type PaletteFormId, paletteForm } from "@tj/slides";
 import { IMAGE_TEXT_RULE, photoBlock, type SlidePhoto } from "./generate-slide";
 import {
   type Audience,
@@ -34,7 +35,15 @@ import {
  * a teacher move in `notes`, never a sentence about what the photograph lacks.
  */
 
-/** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). */
+/** One other slide a repair call sees and must not rewrite (`repairContext`, lab round 1). *
+ * v18 (30 Sept 2026, lesson designer, round-1 discards): a designer slide's repair was thrown away
+ * whenever the rewrite no longer fitted its slot (pv-designer-fix a6129d84: both discards had
+ * grown to about four sentences where the slot holds one or two, with material the notes should
+ * carry). The call now gets the slot's contract as one user-turn block when code supplies it
+ * (`slot`, from `repairSlotFor`): the palette form's name and its Holds line, with the fix bound
+ * to those units and anything more sent to notes. User turn only, and only on the designer path,
+ * so the cached system text and every objectives-first call are unchanged.
+ */
 export type RepairContextSlide = {
   /** 1-based position in the deck. */
   position: number;
@@ -84,13 +93,27 @@ export type RepairInput = {
   planned?: { factRefs: string[]; brief: string } | undefined;
   /** The target's `factRefs` as it stands (C3). Optional. */
   currentFactRefs?: string[] | undefined;
+  /**
+   * The designer's slot contract for the target (v18): the palette form's name and its Holds
+   * line (`repairSlotFor`). Rendered as one block in the user turn; absent on the objectives-first
+   * path, whose calls are byte-identical to v17's.
+   */
+  slot?: RepairSlot | undefined;
 };
+
+export type RepairSlot = { form: string; holds: string };
+
+/** The slot contract to send repair for a designer slide of palette form `id`. */
+export function repairSlotFor(id: PaletteFormId): RepairSlot {
+  const form = paletteForm(id);
+  return { form: form.name, holds: holdsLine(form) };
+}
 
 /** The image-text rule and what an image-fit fix may change, sent beside the photograph. */
 const PHOTO_RULE = `${IMAGE_TEXT_RULE} The photograph itself cannot be changed: an image-fit problem is fixed by rewriting the text to what the photograph shows.`;
 
 export const repairPrompt = {
-  version: "repair.v17",
+  version: "repair.v18",
   system: [
     "You fix one slide or worksheet block of a classroom lesson so that it no longer has the problems reported.",
     "Return a complete spec of the same kind/type, preserving correct content and its fields.",
@@ -162,6 +185,12 @@ export const repairPrompt = {
             "",
             `Planned to teach ${input.planned.factRefs.join(", ")}: ${input.planned.brief}`,
             "Keep every fact the slide was planned to teach; fix a warning without dropping one.",
+          ]
+        : []),
+      ...(input.slot
+        ? [
+            "",
+            `This is a ${input.slot.form} slide: it holds ${input.slot.holds}. A fix changes the quoted words within those units; anything more you would say goes in notes.`,
           ]
         : []),
       ...(t.kind === "slide" && t.photo !== undefined

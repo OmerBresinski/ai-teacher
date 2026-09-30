@@ -235,6 +235,24 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * same way. Optional in the schema (recorded sets, the old planner and the bench parse without it);
  * the sketch shows it, so a live call fills it (CORE 2026-09-23).
  *
+ * v20 (30 Sept 2026, designer eval round 1, `quality-prd/lab/fit-lab/rounds/r1`): the arc's
+ * `angle` is now the parts of the objective this lesson teaches, in order, semicolon-separated,
+ * so design-cycle v6 can give each teach slot the next part (judges found neighbouring slides
+ * repeating each other and strands dropped; v19's angle was one phrase the designer could not
+ * split). The lean's cases are reordered with the procedure first and its test widened (a
+ * calculation, a prediction from a rule, a technique applied): v19 put "photo" first and "a
+ * method" last, and electrolysis and persuasive-speech objectives, both procedures the judges
+ * rewarded worked examples for, leaned elsewhere. The sketch's angle shows the semicolon form.
+ * Same field, same schema: recorded sets and the old planner parse unchanged.
+ *
+ * v21 (same day, v20 measured over 16 calls): the procedure-first order gave geography and
+ * history no photo or diagram lean at all (rivers compare/sequence, Weimar sequence/explain,
+ * against v19's figure and photo leans), and the designer then planned visuals for 4 of 16
+ * objectives; the order is v19's again (photo, diagram or figure, then the procedure with its
+ * widened test). 3 of 16 v20 calls failed the schema with two retrieval questions (0 of 8 on
+ * v19), so the count now opens the retrieval sentence itself ("Three retrieval questions, each
+ * checking…") beside the rule it governs, as well as in the role line.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -388,10 +406,10 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s wealth and an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v19",
+  version: "plan-objectives.v21",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
@@ -400,8 +418,8 @@ export const planObjectivesPrompt = {
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
-    'Give each objective its arc: the angle this lesson takes on it; the form it leans towards ("photo" for anything a camera could show, "diagram-slot" or "figure" for a structure or process, "worked-example" for a method, otherwise "explain", "list", "compare" or "sequence"); and the misconception pupils most often hold about it, as they would say it.',
-    "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
+    'Give each objective its arc: its angle, the parts of it this lesson teaches, in order, separated by semicolons; the form it leans towards ("photo" for anything a camera could show; "diagram-slot" or "figure" for a structure or process; "worked-example" for a procedure pupils carry out: a calculation, a prediction from a rule, a technique applied; otherwise "explain", "list", "compare" or "sequence"); and the misconception pupils most often hold about it, as they would say it.',
+    "Three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
