@@ -1143,19 +1143,13 @@ export async function planWriteSlides(
       if (!kinded) return;
       let slide: Slide | undefined;
       try {
-        let k = 0;
-        const r = renderWritten(
+        // The same drawing as the saved slide (`drawn`: render, materialise, answers reveal,
+        // diagram), so a slide's last live frame is laid out exactly as it is saved.
+        slide = drawn(
           kinded.form,
           kinded.layout,
           liveFields(kinded.form, kinded.layout, raw, table[n - 1]?.parts),
-        );
-        slide = materialiseSlide(
-          r.spec,
-          themeId,
           codeMeta(),
-          () => `live-${n}-${k++}`,
-          r.variant,
-          r.structure,
         );
       } catch {
         slide = undefined;

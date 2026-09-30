@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide } from "@tj/domain/documents";
 import { type JobEvent, LIVE_BLANK } from "@tj/domain/jobs";
-import { latestLive, liveView, typingRate } from "./live-writing";
+import { changedWords, docTexts, latestLive, liveView, onLayout, typingRate } from "./live-writing";
+import fixture from "./live-writing.fixture.json";
 
 const text = (id: string, words: string) => ({
   id,
@@ -77,5 +78,37 @@ describe("live writing in the generating editor", () => {
     );
     expect(view.slide.elements[0]?.id).not.toBe("p");
     expect(view.blanks).toEqual([]);
+  });
+});
+
+describe("a slide's layout at close", () => {
+  // The particle model run (pass 2, Sol): each slide's last live frame and the slide as saved
+  // after the run's checks (verify, repair) re-wrote some of its words.
+  const slides = (fixture as { slides: { index: number; lastLive: Slide; saved: Slide }[] }).slides;
+  const boxes = (s: Slide) => {
+    const out: number[][] = [];
+    const walk = (e: { x: number; y: number; w: number; h: number; children?: unknown[] }) => {
+      out.push([e.x, e.y, e.w, e.h]);
+      for (const c of e.children ?? []) walk(c as typeof e);
+    };
+    for (const e of s.elements) walk(e as unknown as Parameters<typeof walk>[0]);
+    return out;
+  };
+
+  test.each(slides.map((s) => [s.index, s] as const))(
+    "slide %i keeps the boxes of its last live frame and shows the saved words",
+    (_, { lastLive, saved }) => {
+      const shown = onLayout(lastLive, saved);
+      expect(boxes(shown)).toEqual(boxes(lastLive));
+      expect(docTexts(shown)).toEqual(docTexts(saved));
+    },
+  );
+
+  test("only the words a re-write changed cross-fade", () => {
+    const prev = "Particle movement explains everyday properties";
+    const next = "Particle movement explains flow";
+    const r = changedWords(prev, next);
+    expect(r && next.slice(r.from, r.to)).toBe("flow");
+    expect(changedWords(prev, prev)).toBeNull();
   });
 });

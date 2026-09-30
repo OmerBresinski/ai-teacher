@@ -1,0 +1,1858 @@
+{
+  "slides": [
+    {
+      "index": 2,
+      "lastLive": {
+        "id": "live-3-3",
+        "kind": "content",
+        "elements": [
+          {
+            "h": 45,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "live-3-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    { "text": "Particle arrangements differ between states", "type": "text" }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "fontSize": 41,
+              "autoHeight": true,
+              "lineHeight": 1.08
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:07.009Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "live-3-5",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:07.009Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 82,
+            "w": 403,
+            "x": 58,
+            "y": 119,
+            "id": "live-3-6",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Particles move in all three states, even in a solid.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Body",
+            "type": "text",
+            "style": { "preset": "body", "fontSize": 29, "autoHeight": true, "lineHeight": 1.4 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:07.009Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 378,
+            "w": 403,
+            "x": 499,
+            "y": 119,
+            "id": "live-3-7",
+            "fill": "#DCDDD4",
+            "name": "Side panel",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:07.009Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 21,
+            "w": 327,
+            "x": 537,
+            "y": 210,
+            "id": "live-3-8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "KEY IDEA", "type": "text" }] }
+              ]
+            },
+            "name": "Side panel label",
+            "type": "text",
+            "style": {
+              "color": "#2C5A4D",
+              "preset": "caption",
+              "autoHeight": false,
+              "fontWeight": 700
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:07.009Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 167,
+            "w": 327,
+            "x": 537,
+            "y": 245,
+            "id": "live-3-9",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Ice and liquid water have close particles; water vapour has particles far apart.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Side panel text",
+            "type": "text",
+            "style": {
+              "color": "#22201C",
+              "preset": "body",
+              "fontSize": 32,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.3
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:07.009Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          }
+        ]
+      },
+      "saved": {
+        "id": "qGJOpBOWJz",
+        "kind": "content",
+        "notes": "Remind pupils that water can be a solid, liquid or gas, then compare how the particles are arranged and move in each state.",
+        "elements": [
+          {
+            "h": 45,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "TTbNmAAYRi",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Water particles have different spacing", "type": "text" }]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "fontSize": 41,
+              "autoHeight": true,
+              "lineHeight": 1.08
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.926Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k1"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "L_XEmtNTTG",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.926Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k1"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 203,
+            "w": 403,
+            "x": 58,
+            "y": 119,
+            "id": "_IQf-WvSoZ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "In ice they are close and fixed; in liquid water they stay close but move past one another; in water vapour they are far apart and move freely.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Body",
+            "type": "text",
+            "style": { "preset": "body", "fontSize": 29, "autoHeight": true, "lineHeight": 1.4 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.926Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k1"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 378,
+            "w": 403,
+            "x": 499,
+            "y": 119,
+            "id": "zmILEq6tbF",
+            "fill": "#DCDDD4",
+            "name": "Side panel",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.926Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k1"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 21,
+            "w": 327,
+            "x": 537,
+            "y": 168,
+            "id": "IYJjity85g",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "KEY IDEA", "type": "text" }] }
+              ]
+            },
+            "name": "Side panel label",
+            "type": "text",
+            "style": {
+              "color": "#2C5A4D",
+              "preset": "caption",
+              "autoHeight": false,
+              "fontWeight": 700
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.926Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k1"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 250,
+            "w": 327,
+            "x": 537,
+            "y": 203,
+            "id": "eW-NCI2nFW",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "The same water particles are arranged differently in each state, so their spacing and movement differ.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Side panel text",
+            "type": "text",
+            "style": {
+              "color": "#22201C",
+              "preset": "body",
+              "fontSize": 32,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.3
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.926Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k1"],
+              "promptVersion": "repair.v18"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 3,
+      "lastLive": {
+        "id": "ojDqf8bKsG",
+        "kind": "content",
+        "notes": "An ice cube keeps its own shape because its particles cannot move past one another. Liquid water takes the shape of its container because its particles can move past each other; gases also flow. Compression means squeezing something into a smaller volume, or less space. In a sealed syringe, squeezing gas reduces the gaps, not the size of its particles. Solids and liquids are very difficult to compress because their particles are already close together.",
+        "elements": [
+          {
+            "h": 89,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "n6nnNoMaY8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    { "text": "Particle movement explains everyday properties", "type": "text" }
+                  ]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "fontSize": 41,
+              "autoHeight": true,
+              "lineHeight": 1.08
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:11.110Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "rajABYohqq",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:11.110Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 236,
+            "w": 403,
+            "x": 499,
+            "y": 161,
+            "id": "0hOaO1VP3P",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Ice keeps its shape because particles stay in fixed positions; liquids and gases flow because particles move past each other. Gas compresses as its gaps shrink; solids and liquids barely compress because their particles are close.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Body",
+            "type": "text",
+            "style": { "preset": "body", "fontSize": 24, "autoHeight": true, "lineHeight": 1.4 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:11.110Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 336,
+            "w": 403,
+            "x": 58,
+            "y": 161,
+            "id": "IkKR9kSrVD",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Diagram to add: Draw two panels. Left: an ice cube beside liquid water in a tilted glass, with inset particle models labelled 'Fixed positions' and 'Moving past each other'. Right: a sealed syringe containing gas before and after its plunger is pushed in. Use the same number and size of particle circles in both syringe drawings, with smaller gaps after compression. Label 'Before' and 'After'.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DCDDD4",
+            "name": "Diagram placeholder",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "stroke": "#DCDDD4",
+            "textStyle": {
+              "align": "center",
+              "color": "#5F584D",
+              "preset": "small",
+              "valign": "middle",
+              "padding": 29,
+              "fontSize": 17
+            },
+            "authoredBy": "ai",
+            "strokeWidth": 0,
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:11.110Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          }
+        ]
+      },
+      "saved": {
+        "id": "vNbNq5mFyH",
+        "kind": "content",
+        "notes": "An ice cube keeps its own shape because its particles cannot move past one another. Liquid water takes the shape of its container because its particles can move past each other; gases also flow. Compression means squeezing something into a smaller volume, or less space. In a sealed syringe, squeezing gas reduces the gaps, not the size of its particles. Solids and liquids are very difficult to compress because their particles are already close together.",
+        "elements": [
+          {
+            "h": 44,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "0qJ1laIt5m",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Particle movement explains flow", "type": "text" }]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "fontSize": 41,
+              "autoHeight": true,
+              "lineHeight": 1.08
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:13.602Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "qnoWgvWN70",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:13.602Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 236,
+            "w": 403,
+            "x": 499,
+            "y": 119,
+            "id": "ijctkfo10q",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Ice keeps its shape because particles stay in fixed positions; liquids and gases flow because particles move past each other. Gas compresses as its gaps shrink; solids and liquids barely compress because their particles are close.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Body",
+            "type": "text",
+            "style": { "preset": "body", "fontSize": 24, "autoHeight": true, "lineHeight": 1.4 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:13.602Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 378,
+            "w": 403,
+            "x": 58,
+            "y": 119,
+            "id": "jBgMJLJl4j",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Diagram to add: Draw two panels. Left: an ice cube beside liquid water in a tilted glass, with inset particle models labelled 'Fixed positions' and 'Moving past each other'. Right: a sealed syringe containing gas before and after its plunger is pushed in. Use the same number and size of particle circles in both syringe drawings, with smaller gaps after compression. Label 'Before' and 'After'.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "fill": "#DCDDD4",
+            "name": "Diagram placeholder",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "stroke": "#DCDDD4",
+            "textStyle": {
+              "align": "center",
+              "color": "#5F584D",
+              "preset": "small",
+              "valign": "middle",
+              "padding": 29,
+              "fontSize": 17
+            },
+            "authoredBy": "ai",
+            "strokeWidth": 0,
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:13.602Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 4,
+      "lastLive": {
+        "id": "Or8KyJ7cA_",
+        "kind": "multiple-choice",
+        "notes": "Compression reduces the gaps between gas particles, not the particles themselves.\nThe answer is smaller gaps: pushing the plunger reduces the space between gas particles. Smaller particles is the central misconception: particles do not shrink during compression or grow during heating. Fewer particles suggests that compression removes matter, despite the syringe being sealed. Fixed particles confuses compressed gas with a solid. Ask everyone to choose before revealing the answer. If pupils choose smaller particles, return to the identical circles in the syringe drawings before proceeding.",
+        "elements": [
+          {
+            "h": 92,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "_1LSXp_MHS",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "What changes when gas is compressed in a sealed syringe?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "preset": "heading", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.724Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 58,
+            "y": 147,
+            "id": "mH19rXfJxP",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Smaller particles", "type": "text" }]
+                }
+              ]
+            },
+            "type": "option",
+            "label": "A",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.724Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 489,
+            "y": 147,
+            "id": "paM4kREk-f",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Smaller gaps", "type": "text" }] }
+              ]
+            },
+            "type": "option",
+            "label": "B",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.724Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 58,
+            "y": 261,
+            "id": "R-1c9WcATt",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Fewer particles", "type": "text" }] }
+              ]
+            },
+            "type": "option",
+            "label": "C",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.724Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 489,
+            "y": 261,
+            "id": "JM2FvzjwoG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Fixed particles", "type": "text" }] }
+              ]
+            },
+            "type": "option",
+            "label": "D",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.724Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "bwUs1-6Tk8",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.724Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          }
+        ],
+        "question": {
+          "type": "multiple-choice",
+          "options": [
+            { "id": "mH19rXfJxP", "correct": false },
+            { "id": "paM4kREk-f", "correct": true },
+            { "id": "R-1c9WcATt", "correct": false },
+            { "id": "JM2FvzjwoG", "correct": false }
+          ]
+        }
+      },
+      "saved": {
+        "id": "VTKPk8A2xn",
+        "kind": "multiple-choice",
+        "notes": "Compression reduces the gaps between gas particles, not the particles themselves.\nThe answer is smaller gaps: pushing the plunger reduces the space between gas particles. Smaller particles is the central misconception: particles do not shrink during compression or grow during heating. Fewer particles suggests that compression removes matter, despite the syringe being sealed. Fixed particles confuses compressed gas with a solid. Ask everyone to choose before revealing the answer. If pupils choose smaller particles, return to the identical circles in the syringe drawings before proceeding.",
+        "elements": [
+          {
+            "h": 92,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "FZm6QL1WZc",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "What changes when gas is compressed in a sealed syringe?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "preset": "heading", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.728Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 58,
+            "y": 147,
+            "id": "evHBrAsoAZ",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Smaller particles", "type": "text" }]
+                }
+              ]
+            },
+            "type": "option",
+            "label": "A",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.728Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 489,
+            "y": 147,
+            "id": "SuN0xuXqpn",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Smaller gaps", "type": "text" }] }
+              ]
+            },
+            "type": "option",
+            "label": "B",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.728Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 58,
+            "y": 261,
+            "id": "iphT0NjAKS",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Fewer particles", "type": "text" }] }
+              ]
+            },
+            "type": "option",
+            "label": "C",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.728Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 100,
+            "w": 413,
+            "x": 489,
+            "y": 261,
+            "id": "SivDcMiyM6",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Fixed particles", "type": "text" }] }
+              ]
+            },
+            "type": "option",
+            "label": "D",
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.728Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "RG8c4cBZQt",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:14.728Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          }
+        ],
+        "question": {
+          "type": "multiple-choice",
+          "options": [
+            { "id": "evHBrAsoAZ", "correct": false },
+            { "id": "SuN0xuXqpn", "correct": true },
+            { "id": "iphT0NjAKS", "correct": false },
+            { "id": "SivDcMiyM6", "correct": false }
+          ]
+        }
+      }
+    },
+    {
+      "index": 5,
+      "lastLive": {
+        "id": "live-6-3",
+        "kind": "content",
+        "elements": [
+          {
+            "h": 45,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "live-6-0",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Energy transfer can change a state", "type": "text" }]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "fontSize": 41,
+              "autoHeight": true,
+              "lineHeight": 1.08
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:20.189Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "live-6-5",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:20.189Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 122,
+            "w": 403,
+            "x": 58,
+            "y": 119,
+            "id": "live-6-6",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Within a state, warmer particles move faster; their size does not change.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Body",
+            "type": "text",
+            "style": { "preset": "body", "fontSize": 29, "autoHeight": true, "lineHeight": 1.4 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:20.189Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 378,
+            "w": 403,
+            "x": 499,
+            "y": 119,
+            "id": "live-6-7",
+            "fill": "#DCDDD4",
+            "name": "Side panel",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:20.189Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 21,
+            "w": 327,
+            "x": 537,
+            "y": 210,
+            "id": "live-6-8",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "KEY IDEA", "type": "text" }] }
+              ]
+            },
+            "name": "Side panel label",
+            "type": "text",
+            "style": {
+              "color": "#2C5A4D",
+              "preset": "caption",
+              "autoHeight": false,
+              "fontWeight": 700
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:20.189Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 167,
+            "w": 327,
+            "x": 537,
+            "y": 245,
+            "id": "live-6-9",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Heating gives particles energy; cooling takes energy away.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Side panel text",
+            "type": "text",
+            "style": {
+              "color": "#22201C",
+              "preset": "body",
+              "fontSize": 32,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.3
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:20.189Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          }
+        ]
+      },
+      "saved": {
+        "id": "YshfbH8esb",
+        "kind": "content",
+        "notes": "Heating gives particles more energy, so they move faster; cooling removes energy, so they move more slowly. Ask what changes as ice melts: the particles\u2019 arrangement and movement change, but the water particles stay the same size. Follow the arrows from ice to liquid water to water vapour, then back again as water cools.",
+        "elements": [
+          {
+            "h": 45,
+            "w": 844,
+            "x": 58,
+            "y": 43,
+            "id": "GhInXjGxmC",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Heating changes particle energy", "type": "text" }]
+                }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": {
+              "preset": "heading",
+              "fontSize": 41,
+              "autoHeight": true,
+              "lineHeight": 1.08
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.922Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k3"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "kuVT3lZGyz",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.922Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k3"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 244,
+            "w": 403,
+            "x": 58,
+            "y": 119,
+            "id": "obJPlVF2Xj",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Cooling removes energy, so particles move more slowly and water vapour changes back to liquid water, then ice; the particles stay the same size.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Body",
+            "type": "text",
+            "style": { "preset": "body", "fontSize": 29, "autoHeight": true, "lineHeight": 1.4 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.922Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k3"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 378,
+            "w": 403,
+            "x": 499,
+            "y": 119,
+            "id": "SgO0QdeLeb",
+            "fill": "#DCDDD4",
+            "name": "Side panel",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.922Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k3"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 21,
+            "w": 327,
+            "x": 537,
+            "y": 168,
+            "id": "ag2eQbBMc7",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "KEY IDEA", "type": "text" }] }
+              ]
+            },
+            "name": "Side panel label",
+            "type": "text",
+            "style": {
+              "color": "#2C5A4D",
+              "preset": "caption",
+              "autoHeight": false,
+              "fontWeight": 700
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.922Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k3"],
+              "promptVersion": "repair.v18"
+            }
+          },
+          {
+            "h": 250,
+            "w": 327,
+            "x": 537,
+            "y": 203,
+            "id": "z2xKyVMI_f",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Heating gives water particles more energy, so they move faster; this lets ice particles leave fixed positions to form liquid water, and further heating changes the water into water vapour.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Side panel text",
+            "type": "text",
+            "style": {
+              "color": "#22201C",
+              "preset": "body",
+              "fontSize": 24,
+              "autoHeight": true,
+              "fontWeight": 600,
+              "lineHeight": 1.3
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:08:30.922Z",
+              "model": "gpt-6-luna",
+              "factRefs": ["k3"],
+              "promptVersion": "repair.v18"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 6,
+      "lastLive": {
+        "id": "Ldrfn0YODn",
+        "kind": "open-response",
+        "notes": "Cooling removes energy from the wax, which freezes into a solid. Its particles then vibrate in fixed positions, so it keeps the mould's shape after removal. If pupils say the particles stop, revisit vibration in a solid. If they say particles shrink, revisit the unchanged particle size. If they only name freezing, ask them to connect particle movement to the fixed shape. Pupils write their own two-sentence explanation before the model is shared.",
+        "elements": [
+          {
+            "h": 92,
+            "w": 844,
+            "x": 58,
+            "y": 58,
+            "id": "MbMWYnNmtI",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Liquid wax cools in a mould. Why does it become solid and keep its shape after removal?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "preset": "heading", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.680Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 270,
+            "w": 844,
+            "x": 58,
+            "y": 182,
+            "id": "r3zOsepxXT",
+            "fill": "#FFFCF6",
+            "name": "Answer space",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "stroke": "#DDD3C1",
+            "authoredBy": "ai",
+            "strokeWidth": 1,
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.680Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 35,
+            "w": 844,
+            "x": 58,
+            "y": 462,
+            "id": "49qaGriP9z",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Write your answer", "type": "text" }]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "color": "#5F584D", "preset": "small", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.680Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "gpiYclXiUg",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.680Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "Cooling removes energy from the wax, causing it to freeze. Its particles vibrate in fixed positions, so the solid keeps its shape."
+        }
+      },
+      "saved": {
+        "id": "i4tGRU2lbq",
+        "kind": "open-response",
+        "notes": "Cooling removes energy from the wax, which freezes into a solid. Its particles then vibrate in fixed positions, so it keeps the mould's shape after removal. If pupils say the particles stop, revisit vibration in a solid. If they say particles shrink, revisit the unchanged particle size. If they only name freezing, ask them to connect particle movement to the fixed shape. Pupils write their own two-sentence explanation before the model is shared.",
+        "elements": [
+          {
+            "h": 92,
+            "w": 844,
+            "x": 58,
+            "y": 58,
+            "id": "Hqpl4KZ01Y",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Liquid wax cools in a mould. Why does it become solid and keep its shape after removal?",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "preset": "heading", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.743Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 270,
+            "w": 844,
+            "x": 58,
+            "y": 182,
+            "id": "ZLM2z4vY6_",
+            "fill": "#FFFCF6",
+            "name": "Answer space",
+            "type": "shape",
+            "shape": "rounded",
+            "radius": 6,
+            "stroke": "#DDD3C1",
+            "authoredBy": "ai",
+            "strokeWidth": 1,
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.743Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 35,
+            "w": 844,
+            "x": 58,
+            "y": 462,
+            "id": "KkriR1W2n6",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [{ "text": "Write your answer", "type": "text" }]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "color": "#5F584D", "preset": "small", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.743Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "AGt37NQohZ",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:23.743Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          }
+        ],
+        "question": {
+          "type": "open-response",
+          "modelAnswer": "Cooling removes energy from the wax, causing it to freeze. Its particles vibrate in fixed positions, so the solid keeps its shape."
+        }
+      }
+    },
+    {
+      "index": 7,
+      "lastLive": {
+        "id": "AIY0APa7H5",
+        "kind": "exit-ticket",
+        "notes": "Answers: liquid particles are close together and move past each other; gas has large gaps that can shrink; particles move faster within the liquid state. 'Far apart' for liquid reveals confusion with gas. 'Particles shrink' for compression reveals the central misconception. 'Particles get bigger' for warming reveals the same misconception in a new setting. Use these answers to decide whether the next lesson needs further particle-model work before extending to diffusion.\nAnswers: 1. Close; move past each other 2. Larger gaps between particles 3. Particles move faster",
+        "elements": [
+          {
+            "h": 41,
+            "w": 844,
+            "x": 58,
+            "y": 84,
+            "id": "jenoEagDRi",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Exit ticket", "type": "text" }] }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": { "preset": "heading", "fontSize": 41, "autoHeight": true, "lineHeight": 1 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.740Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 189,
+            "w": 844,
+            "x": 58,
+            "y": 140,
+            "id": "jCkHBMnbtw",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "orderedList",
+                  "attrs": { "start": 1 },
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "text": "How are liquid particles spaced, and how do they move?",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            { "text": "Why is gas easier to compress than liquid?", "type": "text" }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "text": "Water warms without boiling. How does particle movement change?",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "preset": "body", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.740Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 154,
+            "w": 844,
+            "x": 58,
+            "y": 343,
+            "id": "nzJxtRYTOz",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers: 1 Close; move past each other  \u00b7  2 Larger gaps between particles  \u00b7  3 Particles move faster",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answers",
+            "type": "text",
+            "style": { "color": "#5F584D", "preset": "small", "autoHeight": true },
+            "reveal": "fade",
+            "authoredBy": "ai",
+            "revealStep": 1,
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.740Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 27,
+            "w": 95,
+            "x": 58,
+            "y": 43,
+            "id": "QP4AUteWEW",
+            "doc": {
+              "type": "doc",
+              "content": [{ "type": "paragraph", "content": [{ "text": "CHECK", "type": "text" }] }]
+            },
+            "name": "Kind tag",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "color": "#2C5A4D",
+              "preset": "caption",
+              "radius": 99,
+              "padding": 3,
+              "autoHeight": false,
+              "background": "#DCDDD4",
+              "fontWeight": 700
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.740Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "y4kJvQFAZv",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.740Z",
+              "model": "code",
+              "factRefs": [],
+              "promptVersion": "stream-lesson.v2+write-slides.v8"
+            }
+          }
+        ]
+      },
+      "saved": {
+        "id": "lQjHWOoxp2",
+        "kind": "exit-ticket",
+        "notes": "Answers: liquid particles are close together and move past each other; gas has large gaps that can shrink; particles move faster within the liquid state. 'Far apart' for liquid reveals confusion with gas. 'Particles shrink' for compression reveals the central misconception. 'Particles get bigger' for warming reveals the same misconception in a new setting. Use these answers to decide whether the next lesson needs further particle-model work before extending to diffusion.\nAnswers: 1. Close; move past each other 2. Larger gaps between particles 3. Particles move faster",
+        "elements": [
+          {
+            "h": 41,
+            "w": 844,
+            "x": 58,
+            "y": 84,
+            "id": "gECunxLAv_",
+            "doc": {
+              "type": "doc",
+              "content": [
+                { "type": "paragraph", "content": [{ "text": "Exit ticket", "type": "text" }] }
+              ]
+            },
+            "name": "Heading",
+            "type": "text",
+            "style": { "preset": "heading", "fontSize": 41, "autoHeight": true, "lineHeight": 1 },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.744Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 189,
+            "w": 844,
+            "x": 58,
+            "y": 140,
+            "id": "enlSjV_Bsc",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "orderedList",
+                  "attrs": { "start": 1 },
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "text": "How are liquid particles spaced, and how do they move?",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            { "text": "Why is gas easier to compress than liquid?", "type": "text" }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "text": "Water warms without boiling. How does particle movement change?",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "type": "text",
+            "style": { "preset": "body", "autoHeight": true },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.744Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 154,
+            "w": 844,
+            "x": 58,
+            "y": 343,
+            "id": "0GgNzS0fLG",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Answers: 1 Close; move past each other  \u00b7  2 Larger gaps between particles  \u00b7  3 Particles move faster",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Answers",
+            "type": "text",
+            "style": { "color": "#5F584D", "preset": "small", "autoHeight": true },
+            "reveal": "fade",
+            "authoredBy": "ai",
+            "revealStep": 1,
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.744Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 27,
+            "w": 95,
+            "x": 58,
+            "y": 43,
+            "id": "-3Di9GG__U",
+            "doc": {
+              "type": "doc",
+              "content": [{ "type": "paragraph", "content": [{ "text": "CHECK", "type": "text" }] }]
+            },
+            "name": "Kind tag",
+            "type": "text",
+            "style": {
+              "align": "center",
+              "color": "#2C5A4D",
+              "preset": "caption",
+              "radius": 99,
+              "padding": 3,
+              "autoHeight": false,
+              "background": "#DCDDD4",
+              "fontWeight": 700
+            },
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.744Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          },
+          {
+            "h": 9,
+            "w": 960,
+            "x": 0,
+            "y": 531,
+            "id": "BnbIIMzLbD",
+            "fill": "#2C5A4D",
+            "name": "Accent bar",
+            "type": "shape",
+            "shape": "rect",
+            "locked": true,
+            "authoredBy": "ai",
+            "generatedFrom": {
+              "at": "2026-09-30T17:07:27.744Z",
+              "model": "gpt-6.1-sol",
+              "factRefs": [],
+              "promptVersion": "write-slides.v8"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

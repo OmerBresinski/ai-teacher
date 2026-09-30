@@ -20,12 +20,15 @@ import {
 } from "react";
 import { pendingSlides } from "@/lib/pending-slides";
 import {
+  changedWords,
+  docTexts,
   EditableSlide,
   isWritten,
   LiveFrame,
   type LiveSlides,
   LiveSlot,
   LiveThumb,
+  onLayout,
   type Shown,
   shownFromChars,
   ThemedSkeleton,
@@ -151,16 +154,64 @@ export function GeneratingShell({
     liveOn && !savedAt(index) ? (live?.get(index)?.slide ?? lesson.slides[index]) : undefined;
   // Live writing (ruling 138): the stream's slides are typed here at a reading pace, one slide and
   // one box at a time; the canvas follows the slide being typed.
+  // A slide's layout is frozen when it closes (its last live frame, drawn like the saved one); later
+  // versions (the saved slide, a check re-write) keep those boxes and cross-fade changed words.
+  const frozen = useRef(new Map<number, Slide>()).current;
+  const lastTexts = useRef(new Map<string, string>()).current;
+  const fadeStarts = useRef(new Map<string, { from: number; to: number; at: number }>()).current;
+  const [, setFadeTick] = useState(0);
+  const display = (i: number, latest: Slide, closed: boolean): Slide => {
+    if (closed && !frozen.has(i)) frozen.set(i, latest);
+    const f = frozen.get(i);
+    const shownSlide = f ? onLayout(f, latest) : latest;
+    if (f) {
+      docTexts(shownSlide).forEach((text, k) => {
+        const key = `${i}:${k}`;
+        const prev = lastTexts.get(key);
+        const changed = prev === undefined ? null : changedWords(prev, text);
+        if (changed) fadeStarts.set(key, { ...changed, at: performance.now() });
+        lastTexts.set(key, text);
+      });
+    }
+    return shownSlide;
+  };
+  const fadesAt = (i: number) => {
+    const now = performance.now();
+    const out = new Map<number, { from: number; to: number; alpha: number }>();
+    for (const [key, f] of fadeStarts) {
+      const [slide, box] = key.split(":").map(Number);
+      if (slide !== i) continue;
+      const alpha = Math.min(1, (now - f.at) / 600);
+      if (alpha < 1)
+        out.set(box as number, { from: f.from, to: f.to, alpha: Math.max(0.1, alpha) });
+    }
+    return out;
+  };
   const typeTargets = new Map<number, { slide: Slide; closed: boolean }>();
   if (liveOn) {
     const top = Math.max(-1, ...(live?.keys() ?? []));
     for (let i = 2; i < slotCount; i++) {
       const saved = savedAt(i);
       const target = saved ?? live?.get(i)?.slide;
-      if (target) typeTargets.set(i, { slide: target, closed: Boolean(saved) || i < top });
+      const closed = Boolean(saved) || i < top;
+      if (target) typeTargets.set(i, { slide: display(i, target, closed), closed });
     }
   }
+  // Re-render while a cross-fade runs.
+  useEffect(() => {
+    if (fadeStarts.size === 0) return;
+    let frame = 0;
+    const tick = () => {
+      const now = performance.now();
+      for (const [key, f] of fadeStarts) if (now - f.at > 650) fadeStarts.delete(key);
+      setFadeTick((n) => n + 1);
+      if (fadeStarts.size > 0) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  });
   const typer = useTypewriter(typeTargets);
+  const typedWords = [...typer.shown.values()].reduce((n, x) => n + x, 0);
   const writingIndex = typer.index;
   const shownAt = (index: number): Shown =>
     !liveOn || index < 2 || typer.done.has(index)
@@ -353,7 +404,7 @@ export function GeneratingShell({
                   theme={theme}
                   width={thumbWidth}
                   shown={shownAt(i)}
-                  active={i === nextIndex}
+                  active={i === nextIndex || (i === writingIndex && typedWords < 1)}
                 />
               ) : (
                 <ThumbRow
@@ -374,7 +425,7 @@ export function GeneratingShell({
                     />
                   ) : (
                     <SlideStatic
-                      slide={edited.get(slide.id) ?? slide}
+                      slide={edited.get(slide.id) ?? typeTargets.get(i)?.slide ?? slide}
                       theme={theme}
                       width={thumbWidth}
                     />
@@ -393,7 +444,9 @@ export function GeneratingShell({
                       theme={theme}
                       width={thumbWidth}
                       shown={shownAt(position)}
-                      active={position === nextIndex}
+                      active={
+                        position === nextIndex || (position === writingIndex && typedWords < 1)
+                      }
                     />
                   );
                 })
@@ -425,6 +478,7 @@ export function GeneratingShell({
                   slide={typeTargets.get(writingIndex)?.slide as Slide}
                   shown={typer.shown}
                   theme={theme}
+                  active={typedWords < 1}
                 />
               </SlideScaler>
             ) : intro !== null && savedAt(intro) ? (
@@ -453,7 +507,12 @@ export function GeneratingShell({
                   className="overflow-hidden rounded-dialog shadow-3"
                 >
                   <EditableSlide
-                    slide={edited.get(shown.id) ?? shown}
+                    fades={fadesAt(lesson.slides.indexOf(shown))}
+                    slide={
+                      edited.get(shown.id) ??
+                      typeTargets.get(lesson.slides.indexOf(shown))?.slide ??
+                      shown
+                    }
                     theme={theme}
                     onSave={(next) => {
                       setEdited((m) => new Map(m).set(next.id, next));
@@ -543,17 +602,21 @@ function LiveCanvas({
   slide,
   theme,
   shown,
+  active = true,
 }: {
   index: number;
   slide: Slide;
   theme: ReturnType<typeof getTheme>;
   shown: Shown;
+  /** The skeleton shimmers until the slide's first visible word. */
+  active?: boolean;
 }) {
   const view = typedView(slide, shown, theme);
   return (
     <LiveFrame
       blanks={view.blanks}
       theme={theme}
+      active={active}
       className="overflow-hidden rounded-dialog shadow-3 motion-safe:animate-arrive"
     >
       <div data-canvas-slide={`live-${index}`} data-live-writing={index}>

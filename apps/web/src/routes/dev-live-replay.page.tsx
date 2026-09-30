@@ -92,10 +92,32 @@ export function DevLiveReplayPage() {
               : e,
           ),
         } as Slide);
+  // A slide is saved as its last live frame (the stream's close, drawn like the saved slide); the
+  // run's checks (verify, repair) land at "Reviewed", when the final lesson takes over.
+  const reviewedAt =
+    fx.events.find((e) => e.event.type === "progress" && e.event.progress.message === "Reviewed")
+      ?.t ?? Number.POSITIVE_INFINITY;
+  const withPhotos = (frame: Slide, final: Slide): Slide => {
+    if (t < photoAt) return frame;
+    const photos = final.elements.filter((e) => e.type === "image");
+    let k = 0;
+    return {
+      ...frame,
+      elements: frame.elements.map((e) => {
+        if (e.type !== "image") return e;
+        const p = photos[k++];
+        return p && p.type === "image" ? { ...e, src: p.src } : e;
+      }),
+    } as Slide;
+  };
   const slides: Slide[] = Array.from({ length: top + 1 }, (_, i) => {
     const final = noPhoto(fx.lesson.slides[i] as Slide);
-    if (savedNow.includes(i)) return final;
-    return { ...(live.get(i)?.slide ?? final), id: `pending-${i + 1}` };
+    const frame = live.get(i)?.slide;
+    if (savedNow.includes(i)) {
+      if (t >= reviewedAt || !frame || i < 2) return final;
+      return { ...withPhotos(frame, fx.lesson.slides[i] as Slide), id: final.id };
+    }
+    return { ...(frame ?? final), id: `pending-${i + 1}` };
   });
   return (
     <GeneratingShell

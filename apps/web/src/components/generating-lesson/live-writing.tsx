@@ -105,7 +105,13 @@ const rgba = (hex: string, alpha: number): string | undefined => {
 };
 
 /** The doc cut to `len` characters, the words from `fadeFrom` on in the fading colour. */
-function cutTyped(doc: Node, len: number, fadeFrom: number, fade: string | undefined): Node {
+function cutTyped(
+  doc: Node,
+  len: number,
+  fadeFrom: number,
+  fade: string | undefined,
+  fadeTo = Number.POSITIVE_INFINITY,
+): Node {
   let at = 0;
   const cut = (node: Node): Node[] => {
     if (typeof node.text === "string") {
@@ -114,12 +120,17 @@ function cutTyped(doc: Node, len: number, fadeFrom: number, fade: string | undef
       at += t.length;
       const keep = t.slice(0, Math.max(0, len - a));
       if (!keep) return [];
-      const split = fadeFrom - a;
-      if (!fade || split >= keep.length) return [{ ...node, text: keep }];
+      const from = Math.max(0, fadeFrom - a);
+      const to = Math.min(keep.length, fadeTo - a);
+      if (!fade || from >= keep.length || to <= from) return [{ ...node, text: keep }];
       const marks = (node.marks ?? []).filter((m) => m.type !== "textStyle");
-      const faded = { ...node, text: keep.slice(Math.max(0, split)) };
+      const faded = { ...node, text: keep.slice(from, to) };
       faded.marks = [...marks, { type: "textStyle", attrs: { color: fade } } as { type: string }];
-      return split > 0 ? [{ ...node, text: keep.slice(0, split) }, faded] : [faded];
+      return [
+        ...(from > 0 ? [{ ...node, text: keep.slice(0, from) }] : []),
+        faded,
+        ...(to < keep.length ? [{ ...node, text: keep.slice(to) }] : []),
+      ];
     }
     if (!node.content) return [node];
     return [{ ...node, content: node.content.flatMap(cut) }];
@@ -137,6 +148,8 @@ export function typedView(
   slide: Slide,
   shown: Shown,
   theme: Theme,
+  /** Words the server changed after close, by box: they cross-fade in place. */
+  fades?: ReadonlyMap<number, { from: number; to: number; alpha: number }>,
 ): { slide: Slide; blanks: Box[] } {
   const blanks: Box[] = [];
   let pos = 0;
@@ -184,6 +197,14 @@ export function typedView(
         alpha = Math.min(1, Math.max(0.15, (n - start) / Math.max(3, end - start)));
       }
       const color = withDoc.style?.color ?? theme.colors.ink;
+      const changed = fades?.get(pos - 1);
+      if (changed && len >= text.length && changed.alpha < 1) {
+        const tint = rgba(color, changed.alpha);
+        return {
+          ...el,
+          doc: cutTyped(doc, len, changed.from, tint, changed.to),
+        } as unknown as El;
+      }
       const fade = alpha < 1 ? rgba(color, alpha) : undefined;
       return { ...el, doc: cutTyped(doc, len, fadeFrom, fade) } as unknown as El;
     }
@@ -295,6 +316,16 @@ export function useTypewriter(targets: ReadonlyMap<number, { slide: Slide; close
   };
 }
 
+/**
+ * Skeleton bars from the theme's own tokens: the ink at a quarter over whatever is under the bar
+ * (the page, a grey callout, a dark theme's panel), outlined by the theme's line colour so a bar
+ * reads on a box of its own tone too.
+ */
+export const skeletonTone = (theme: Theme) => ({
+  backgroundColor: `color-mix(in srgb, ${theme.colors.ink} 24%, transparent)`,
+  boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${theme.colors.ink} 10%, transparent)`,
+});
+
 /** Skeleton bars and picture zones over the slide, in the theme's ink, at the boxes' places. */
 export function BlankLayer({
   blanks,
@@ -306,7 +337,7 @@ export function BlankLayer({
   /** Only the slide being written (or about to be) shimmers; the rest wait still. */
   active?: boolean;
 }) {
-  const tone = { backgroundColor: `color-mix(in srgb, ${theme.colors.ink} 15%, transparent)` };
+  const tone = skeletonTone(theme);
   const still = active ? undefined : "motion-safe:animate-none";
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0" data-live-blanks>
@@ -388,7 +419,7 @@ export function ThemedSkeleton({
   width: number;
   active?: boolean;
 }) {
-  const tone = { backgroundColor: `color-mix(in srgb, ${theme.colors.ink} 9%, transparent)` };
+  const tone = skeletonTone(theme);
   const still = active ? undefined : "motion-safe:animate-none";
   return (
     <span
@@ -543,14 +574,16 @@ export function EditableSlide({
   slide,
   theme,
   onSave,
+  fades,
 }: {
   slide: Slide;
   theme: Theme;
   onSave: (slide: Slide) => void;
+  fades?: ReadonlyMap<number, { from: number; to: number; alpha: number }>;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const view = liveView(slide, undefined, theme);
+  const view = typedView(slide, "all", theme, fades);
   const texts = slide.elements.filter((e) => e.type === "text");
   const box = (e: { x: number; y: number; w: number; h: number }) => ({
     left: `${(e.x / SLIDE_W) * 100}%`,
@@ -630,4 +663,57 @@ export async function saveLiveSlide(lessonId: string, slide: Slide): Promise<voi
     body: JSON.stringify({ slide }),
   });
   if (!res.ok) console.warn("live writing: the slide edit was not saved", res.status);
+}
+
+type Flat = { el: El; path: number[] };
+const flatten = (els: readonly El[], path: number[] = []): Flat[] =>
+  els.flatMap((el, i) => [
+    { el, path: [...path, i] },
+    ...(el.type === "group" ? flatten(el.children as El[], [...path, i]) : []),
+  ]);
+
+/**
+ * The latest slide's words and pictures on the layout its slide had when it closed: after close
+ * no box moves. A check re-write changes words only; a slide whose parts changed (a different
+ * number or kind of box) takes the latest layout.
+ */
+export function onLayout(frozen: Slide, latest: Slide): Slide {
+  const a = flatten(frozen.elements);
+  const b = flatten(latest.elements);
+  if (a.length !== b.length || a.some((x, i) => x.el.type !== b[i]?.el.type)) return latest;
+  let k = 0;
+  const place = (el: El): El => {
+    const from = (a[k++] as Flat).el as El & { style?: unknown };
+    const placed = {
+      ...el,
+      x: from.x,
+      y: from.y,
+      w: from.w,
+      h: from.h,
+      ...(from.style !== undefined ? { style: from.style } : {}),
+    } as El;
+    return el.type === "group"
+      ? ({ ...placed, children: el.children.map((c) => place(c as El)) } as El)
+      : placed;
+  };
+  return { ...latest, elements: latest.elements.map(place) };
+}
+
+/** The characters of `next` whose words differ from `prev` (common leading and trailing words kept). */
+export function changedWords(prev: string, next: string): { from: number; to: number } | null {
+  if (prev === next) return null;
+  const pw = prev.split(" ");
+  const nw = next.split(" ");
+  let head = 0;
+  while (head < pw.length && head < nw.length && pw[head] === nw[head]) head += 1;
+  let tail = 0;
+  while (
+    tail < pw.length - head &&
+    tail < nw.length - head &&
+    pw[pw.length - 1 - tail] === nw[nw.length - 1 - tail]
+  )
+    tail += 1;
+  const from = nw.slice(0, head).join(" ").length + (head > 0 ? 1 : 0);
+  const to = next.length - (nw.slice(nw.length - tail).join(" ").length + (tail > 0 ? 1 : 0));
+  return { from, to: Math.max(from, to) };
 }
