@@ -929,6 +929,9 @@ export async function planWriteSlides(
       vocabulary: f.vocabulary,
       ...(f.retrieval.length > 0 ? { retrieval: f.retrieval } : {}),
     };
+    // Verify reads only this slide's facts: the lesson's misconception (its correction still blank
+    // in the stream) is not the slide's, and every slide's Verify would "correct" it again.
+    const checked: LessonFacts = { ...scoped, misconceptions: [] };
     const hasFacts =
       f.keyIdeas.length + f.questions.length + f.workedExamples.length + f.vocabulary.length > 0 ||
       f.retrieval.length > 0;
@@ -936,7 +939,7 @@ export async function planWriteSlides(
     const slideId = current?.id;
     const [verified, reviewed] = await Promise.all([
       hasFacts
-        ? runVerify(scoped, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT)
+        ? runVerify(checked, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT)
         : undefined,
       current
         ? evaluateOneSlide(
@@ -964,7 +967,7 @@ export async function planWriteSlides(
       }
       if (verified.applied.length > 0) {
         corrections = verified.applied.length;
-        out = changedStrings(scoped, verified.facts).reduce(
+        out = changedStrings(checked, verified.facts).reduce(
           (o, [, from, to]) => replaced(o, from, to),
           out,
         );
