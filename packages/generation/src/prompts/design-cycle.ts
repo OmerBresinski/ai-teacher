@@ -80,6 +80,11 @@ export type DesignCycleInput = {
   slots: { count: number; first: number; slideCount: number };
   /** `paletteMenu(audience.subject)`. */
   palette: string;
+  /**
+   * A re-fill (fit rung 4): the one slot being replaced, its material as written, why it did not
+   * fit (structure: "the options are sentences; this form needs phrases"), and the form to write.
+   */
+  replacing?: { form: SlotForm; material: string; reason: string; into: SlotForm } | undefined;
 };
 
 /* ------------------------------------------------------------------ slot schema */
@@ -270,6 +275,19 @@ function arcLine(o: DesignCycleInput["objectives"][number], i: number, self: boo
   return `${head}\n   Angle: ${o.arc.angle}. Leans to: ${o.arc.lean}. Misconception: ${o.arc.misconception}`;
 }
 
+/**
+ * The re-fill's block (fit rung 4): the slot it replaces, as written, and why it did not fit.
+ * Absent on a cycle call, whose text is unchanged. Wording pending the prompt-engineer.
+ */
+function replacingBlock(r: NonNullable<DesignCycleInput["replacing"]>): string[] {
+  return [
+    "",
+    `This slot replaces a ${r.form} slot that did not fit its slide: ${r.reason}.`,
+    `Its material: ${r.material}`,
+    `Write the same content as a ${r.into} slot.`,
+  ];
+}
+
 export const designCyclePrompt = {
   version: "design-cycle.v5",
   system: [
@@ -302,6 +320,7 @@ export const designCyclePrompt = {
       ...input.objectives.map((o, i) => arcLine(o, i, i === input.objectiveIndex)),
       "",
       `Design objective ${input.objectiveIndex + 1}: ${count} ${count === 1 ? "slot" : "slots"}, ${where} of ${slideCount}.`,
+      ...(input.replacing ? replacingBlock(input.replacing) : []),
     ].join("\n");
   },
 } as const;

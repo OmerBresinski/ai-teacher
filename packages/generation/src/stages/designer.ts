@@ -295,6 +295,12 @@ function slotFromFacts(slot: DesignSlot, facts: LessonFacts, refs: string[]): De
   }
 }
 
+/** A slot's material as the re-fill is shown it: every field but its form and notes, as written. */
+export function slotMaterial(slot: DesignSlot): string {
+  const { form: _form, notes: _notes, ...material } = slot;
+  return JSON.stringify(material);
+}
+
 /** The outline kind a rendered slot is (the entry illustrate and repair read). */
 function kindOf(spec: SlideSpec): OutlineEntry["kind"] {
   return spec.kind as OutlineEntry["kind"];
@@ -522,38 +528,40 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     () => undefined,
   );
   const failedCycles: number[] = [];
-  const refillFor = (cycle: CycleSlots, k: number) => async (slot: DesignSlot, form: SlotForm) => {
-    const union = designCycleSchemaFor(subject, 1).shape.slots.element as unknown as {
-      options: z.ZodObject[];
+  const refillFor =
+    (cycle: CycleSlots, k: number) => async (slot: DesignSlot, form: SlotForm, reason: string) => {
+      const union = designCycleSchemaFor(subject, 1).shape.slots.element as unknown as {
+        options: z.ZodObject[];
+      };
+      const only = union.options.find(
+        (o) => (o.shape.form as unknown as { value: string }).value === form,
+      );
+      if (!only) return undefined;
+      const call = await callStructured({
+        deps,
+        stage: "generate",
+        cls,
+        effort: "low",
+        prompt: designCyclePrompt,
+        input: {
+          topic: brief.topic,
+          shape,
+          audience,
+          objectives: objectives.map((o, i) => ({ text: o.text, arc: arcs[i] as never })),
+          objectiveIndex: cycle.objective,
+          slots: { count: 1, first: cycle.first + k, slideCount },
+          palette,
+          replacing: { form: slot.form, material: slotMaterial(slot), reason, into: form },
+        },
+        schema: zod.object({ slots: only.array().length(1), exitQuestion: ExitQuestionSchema }),
+        maxOutputTokens: MAX_OUTPUT_TOKENS_REFILL,
+      });
+      deps.logger.info(
+        { stage: "generate", call: "refill", from: slot.form, to: form, reason },
+        "designer refill",
+      );
+      return (call.output as unknown as { slots: DesignSlot[] }).slots[0];
     };
-    const only = union.options.find(
-      (o) => (o.shape.form as unknown as { value: string }).value === form,
-    );
-    if (!only) return undefined;
-    const call = await callStructured({
-      deps,
-      stage: "generate",
-      cls,
-      effort: "low",
-      prompt: designCyclePrompt,
-      input: {
-        topic: brief.topic,
-        shape,
-        audience,
-        objectives: objectives.map((o, i) => ({ text: o.text, arc: arcs[i] as never })),
-        objectiveIndex: cycle.objective,
-        slots: { count: 1, first: cycle.first + k, slideCount },
-        palette,
-      },
-      schema: zod.object({ slots: only.array().length(1), exitQuestion: ExitQuestionSchema }),
-      maxOutputTokens: MAX_OUTPUT_TOKENS_REFILL,
-    });
-    deps.logger.info(
-      { stage: "generate", call: "refill", from: slot.form, to: form },
-      "designer refill",
-    );
-    return (call.output as unknown as { slots: DesignSlot[] }).slots[0];
-  };
 
   const landSlot = async (cycle: CycleSlots, k: number, slot: DesignSlot, modelId: string) => {
     const index = cycle.first - 1 + k;

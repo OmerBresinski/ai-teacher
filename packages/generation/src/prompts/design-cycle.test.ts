@@ -27,6 +27,26 @@ describe("design-cycle", () => {
     expect(user).toContain("Design objective 2: 2 slots, slides 6 to 7 of 10.");
   });
 
+  test("a re-fill is shown the slot it replaces and why, as structure; a cycle call is not", () => {
+    const refill = designCyclePrompt.user({
+      ...DESIGN_CYCLE_SAMPLE,
+      slots: { count: 1, first: 7, slideCount: 10 },
+      replacing: {
+        form: "hinge",
+        material: JSON.stringify({ stem: "Why?", options: [{ text: "Because.", correct: true }] }),
+        reason: "the options are sentences; this form needs phrases",
+        into: "true-false",
+      },
+    });
+    expect(refill).toContain(
+      "This slot replaces a hinge slot that did not fit its slide: the options are sentences; this form needs phrases.",
+    );
+    expect(refill).toContain('Its material: {"stem":"Why?"');
+    expect(refill).toContain("Write the same content as a true-false slot.");
+    expect(refill).not.toMatch(noBudget);
+    expect(designCyclePrompt.user(DESIGN_CYCLE_SAMPLE)).not.toContain("replaces");
+  });
+
   test("the form enum is the subject's slide forms; a figure only where a template exists", () => {
     expect(slotFormsFor("History")).not.toContain("figure");
     expect(slotFormsFor("Maths")).toContain("figure");

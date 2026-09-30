@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Lesson } from "@tj/domain/documents";
 import { isGeneratedSlide } from "@tj/slides";
+import weimarFixture from "../fixtures/design-cycle.y9-weimar.json";
 import romansFixture from "../fixtures/objective-facts.y4-history-romans.json";
-import { labAi, romansLesson, versionsOf } from "../planner/testing";
+import { designCycleAnswer, labAi, romansLesson, versionsOf } from "../planner/testing";
 
 const romansObjectives = romansFixture.objectives;
 
@@ -129,6 +130,41 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
         undefined,
       ),
     ).toEqual([undefined]);
+  });
+
+  test("the re-fill call sees the slot it replaces and a structural reason", async () => {
+    const tooBig = weimarFixture.electrolysisWorkedExample;
+    const refills: string[] = [];
+    const ai = labAi({
+      designCycle: (call, target, count) => {
+        if (call.promptText.includes("This slot replaces")) {
+          refills.push(call.promptText);
+          return JSON.stringify({
+            slots: [
+              {
+                form: "sequence",
+                heading: "Electrolysis of brine",
+                body: "Three products form.",
+                steps: ["Chlorine at the anode", "Hydrogen at the cathode"],
+              },
+            ],
+            exitQuestion: { question: "Why?", answer: "Because" },
+          });
+        }
+        if (target !== 0) return JSON.stringify(designCycleAnswer(target, count));
+        const answer = designCycleAnswer(target, count);
+        return JSON.stringify({ ...answer, slots: [tooBig, ...answer.slots.slice(1)] });
+      },
+    });
+    const final = await runLessonPipeline({ lesson: romans(10) }, recordingDeps(ai), {
+      planner: "designer",
+    });
+    expect(refills).toHaveLength(1);
+    expect(refills[0]).toContain("This slot replaces a worked-example slot that did not fit");
+    expect(refills[0]).toContain(JSON.stringify(tooBig.question));
+    expect(refills[0]).toContain("Write the same content as a sequence slot.");
+    expect(refills[0]).not.toMatch(/shorter|shorten/i);
+    expect(final.designReport?.slots[0]?.rung).toBe("refill");
   });
 
   test("resume: the objectives checkpoint re-designs; a later checkpoint moves on", () => {

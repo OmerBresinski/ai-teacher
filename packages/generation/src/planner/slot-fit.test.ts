@@ -3,7 +3,7 @@ import { THEMES } from "@tj/slides";
 import weimar from "../fixtures/design-cycle.y9-weimar.json";
 import { type DesignSlot, designCycleSchemaFor } from "../prompts/design-cycle";
 import { designMinimums, renderSlot, slotRender } from "./coded-slides";
-import { FORM_DOWN, fitSlot, siblingsOf, slotFits, unitsToNotes } from "./slot-fit";
+import { FORM_DOWN, fitSlot, refillReason, siblingsOf, slotFits, unitsToNotes } from "./slot-fit";
 
 const META = { promptVersion: "t", model: "t", at: "1970-01-01T00:00:00.000Z" };
 const cycles = weimar.cycles as unknown as { slots: DesignSlot[] }[];
@@ -60,11 +60,13 @@ describe("fit ladder", () => {
   test("the re-fill rung asks for the next form down once, and takes an answer that fits", async () => {
     const slot = weimar.electrolysisWorkedExample as unknown as DesignSlot;
     const asked: string[] = [];
+    const shown: { slot: DesignSlot; reason: string }[] = [];
     const fit = await fitSlot(slot, {
       seed: "x",
       themeId: "chalk",
-      refill: async (_s, form) => {
+      refill: async (s, form, reason) => {
         asked.push(form);
+        shown.push({ slot: s, reason });
         return {
           form: "sequence",
           heading: "Electrolysis of brine",
@@ -74,6 +76,9 @@ describe("fit ladder", () => {
       },
     });
     expect(asked).toEqual([FORM_DOWN["worked-example"] as string]);
+    // The re-fill is shown the slot it replaces, as written, and a structural reason.
+    expect(shown[0]?.slot).toEqual(slot);
+    expect(shown[0]?.reason).toBe(refillReason(slot));
     expect(fit.rung).toBe("refill");
     expect(fit.tried.map((t) => t.rung)).toEqual(["sibling", "notes", "refill"]);
   });
@@ -124,5 +129,59 @@ describe("design minimums", () => {
     expect(same.sameNeighbours).toEqual([[4, 5]]);
     expect(same.visualMissing).toEqual([0]);
     expect(same.unchecked).toEqual([0]);
+  });
+});
+
+describe("the re-fill's reason is structure, never a length", () => {
+  const cases: [DesignSlot, string][] = [
+    [
+      {
+        form: "hinge",
+        stem: "Why did the Weimar Republic print money?",
+        options: [
+          {
+            text: "The government printed money to pay striking workers in the Ruhr.",
+            correct: true,
+          },
+          { text: "Reparations", correct: false },
+          { text: "Wall Street", correct: false },
+          { text: "Gold", correct: false },
+        ],
+        explanation: "The Ruhr strike was paid for with printed money.",
+      },
+      "the options are sentences; this form needs phrases",
+    ],
+    [
+      {
+        form: "explain-callout",
+        heading: "Inflation wiped out savings",
+        body: "Prices doubled every few days. Savings became worthless.",
+        callout: { text: "Inflation is not the same as a recession." },
+      },
+      "the body is 2 sentences; this form holds one",
+    ],
+    [
+      {
+        form: "sequence",
+        heading: "How hyperinflation grew",
+        body: "Three steps.",
+        steps: ["The Ruhr was occupied. Workers struck.", "Money was printed", "Prices soared"],
+      },
+      "a step is more than one sentence; this form takes one sentence each",
+    ],
+  ];
+  test("each names the unit and the kind of text the form needs", () => {
+    for (const [slot, expected] of cases) {
+      const reason = refillReason(slot);
+      expect(reason).toContain(expected);
+      expect(reason).not.toMatch(/short|words|characters|\d+ words/i);
+    }
+    expect(refillReason(cases[1]?.[0] as DesignSlot)).toContain("callout card does not fit");
+    const plain: DesignSlot = {
+      form: "explain",
+      heading: "Money lost value",
+      body: "Prices rose.",
+    };
+    expect(refillReason(plain)).toBe("its units do not fit the slide at full size on every theme");
   });
 });

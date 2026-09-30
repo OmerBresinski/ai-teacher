@@ -34,8 +34,11 @@ export type SlotFitOptions = {
   seed: string;
   themeId: string;
   factRefs?: string[];
-  /** Rung 4: one design-cycle call for this slot in `form`. Absent: the rung is skipped. */
-  refill?: (slot: DesignSlot, form: SlotForm) => Promise<DesignSlot | undefined>;
+  /**
+   * Rung 4: one design-cycle call for this slot in `form`, shown the slot it replaces and why it
+   * did not fit (`refillReason`). Absent: the rung is skipped.
+   */
+  refill?: (slot: DesignSlot, form: SlotForm, reason: string) => Promise<DesignSlot | undefined>;
 };
 
 const META = { promptVersion: "fit", model: "fit", at: "1970-01-01T00:00:00.000Z" };
@@ -247,6 +250,93 @@ export function unitsToNotes(slot: DesignSlot): { slot: DesignSlot; moved: strin
   return out;
 }
 
+/** A unit written as a sentence (or more) where the form lays out a phrase. */
+const isSentence = (t: string): boolean =>
+  /[.!?]["')\]]*\s*$/.test(t.trim()) || t.trim().split(/\s+/).length > 8;
+const moreThanOneSentence = (t: string): boolean => sentences(t).length > 1;
+
+/** The most sentences the palette lets a form's `body` hold. */
+function bodyMax(form: SlotForm): number | undefined {
+  const unit = paletteForm(form).holds.find((u) => u.slot === "body" && u.unit === "sentence");
+  return unit?.max;
+}
+
+/**
+ * Why a slot did not fit, as structure the re-fill can act on: which of its units is written in a
+ * bigger kind of text than the form lays out ("the options are sentences; this form needs
+ * phrases"), or which part does not fit beside the rest. Never a length to cut to, and never
+ * "shorter" (ruling 132; the plan's rung 4).
+ */
+export function refillReason(slot: DesignSlot): string {
+  const phrases = (what: string, units: readonly string[]) =>
+    units.some(isSentence) ? `the ${what} are sentences; this form needs phrases` : undefined;
+  const oneEach = (what: string, units: readonly string[]) =>
+    units.some(moreThanOneSentence)
+      ? `a ${what} is more than one sentence; this form takes one sentence each`
+      : undefined;
+  const reasons: (string | undefined)[] = [];
+  switch (slot.form) {
+    case "hinge":
+      reasons.push(
+        phrases(
+          "options",
+          slot.options.map((o) => o.text),
+        ),
+      );
+      break;
+    case "matching":
+      reasons.push(
+        phrases(
+          "pair sides",
+          slot.pairs.flatMap((p) => [p.left, p.right]),
+        ),
+      );
+      break;
+    case "list":
+      reasons.push(phrases("points", slot.points));
+      break;
+    case "compare":
+      reasons.push(
+        phrases("compare points", [...slot.compare.left.points, ...slot.compare.right.points]),
+      );
+      break;
+    case "sequence":
+    case "worked-example":
+    case "sort":
+      reasons.push(oneEach("step", slot.steps));
+      break;
+    case "vocabulary":
+      reasons.push(
+        oneEach(
+          "definition",
+          slot.entries.map((e) => e.definition),
+        ),
+      );
+      break;
+    case "fill-gap":
+      reasons.push(phrases("answers", slot.answers));
+      break;
+    default:
+      break;
+  }
+  if ("body" in slot && typeof slot.body === "string") {
+    const max = bodyMax(slot.form);
+    const n = sentences(slot.body).length;
+    if (max !== undefined && n > max)
+      reasons.push(
+        `the body is ${n} sentences; this form holds ${max === 1 ? "one" : `up to ${max}`}`,
+      );
+  }
+  if (slot.form === "explain-callout")
+    reasons.push("the callout card does not fit beside the body and heading");
+  if ("heading" in slot && typeof slot.heading === "string" && isSentence(slot.heading))
+    reasons.push("the heading is a full sentence; it must read as one line");
+  const found = reasons.filter((r): r is string => r !== undefined);
+  return found.length > 0
+    ? found.join("; ")
+    : "its units do not fit the slide at full size on every theme";
+}
+
 /** Rung 4: the form a re-fill asks for, one down from the slot's. */
 export const FORM_DOWN: Partial<Record<SlotForm, SlotForm>> = {
   "explain-callout": "explain",
@@ -302,7 +392,7 @@ export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<S
   const down = FORM_DOWN[slot.form];
   let refilled: DesignSlot | undefined;
   if (down && opts.refill) {
-    refilled = await opts.refill(slot, down).catch(() => undefined);
+    refilled = await opts.refill(slot, down, refillReason(slot)).catch(() => undefined);
     const ok = refilled ? slotFits(render(refilled), themeId, 0) : false;
     tried.push({ rung: "refill", form: down, ok, ...(refilled ? {} : { detail: "no answer" }) });
     if (ok && refilled) return { slot: refilled, render: render(refilled), rung: "refill", tried };
