@@ -26,8 +26,12 @@ import {
   type LiveSlides,
   LiveSlot,
   LiveThumb,
-  liveView,
+  type Shown,
+  shownFromChars,
+  ThemedSkeleton,
+  typedView,
   usePacedIntro,
+  useTypewriter,
 } from "./live-writing";
 import { MobileGeneratingShell } from "./MobileGeneratingShell";
 import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
@@ -145,19 +149,45 @@ export function GeneratingShell({
   };
   const liveAt = (index: number) =>
     liveOn && !savedAt(index) ? (live?.get(index)?.slide ?? lesson.slides[index]) : undefined;
-  let writingIndex: number | undefined;
-  if (liveOn && live) {
-    for (const [index, entry] of live) {
-      if (!savedAt(index) && entry.slide && index >= (writingIndex ?? -1)) {
-        writingIndex = index;
-      }
+  // Live writing (ruling 138): the stream's slides are typed here at a reading pace, one slide and
+  // one box at a time; the canvas follows the slide being typed.
+  const typeTargets = new Map<number, { slide: Slide; closed: boolean }>();
+  if (liveOn) {
+    const top = Math.max(-1, ...(live?.keys() ?? []));
+    for (let i = 2; i < slotCount; i++) {
+      const saved = savedAt(i);
+      const target = saved ?? live?.get(i)?.slide;
+      if (target) typeTargets.set(i, { slide: target, closed: Boolean(saved) || i < top });
     }
   }
-  const { chars: paced, phase: introPhase } = usePacedIntro(
-    lesson.slides,
-    !liveOn || writingIndex !== undefined,
-  );
+  const typer = useTypewriter(typeTargets);
+  const writingIndex = typer.index;
+  const shownAt = (index: number): Shown =>
+    !liveOn || index < 2 || typer.done.has(index)
+      ? "all"
+      : index === writingIndex
+        ? typer.shown
+        : new Map();
+  const {
+    chars: paced,
+    phase: introPhase,
+    finished: introFinished,
+  } = usePacedIntro(lesson.slides, !liveOn || writingIndex !== undefined);
   const intro = liveOn && following && writingIndex === undefined ? introPhase : null;
+  // Between the objectives and the first streamed slide, the slide about to be written shimmers.
+  let nextIndex: number | undefined;
+  if (liveOn && writingIndex === undefined && introFinished) {
+    for (let i = 2; i < slotCount && nextIndex === undefined; i++) {
+      if (!typer.done.has(i)) nextIndex = i;
+    }
+  }
+  useEffect(() => {
+    const at = writingIndex ?? nextIndex;
+    if (at === undefined) return;
+    document
+      .querySelector(`[data-live-slot='${at}'], [data-slide-thumb='${at}']`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [writingIndex, nextIndex]);
   const [edited, setEdited] = useState<ReadonlyMap<Id, Slide>>(new Map());
 
   // Picking the newest slide is a return to following, so the next arrival is shown as before.
@@ -322,6 +352,8 @@ export function GeneratingShell({
                   slide={liveAt(i)}
                   theme={theme}
                   width={thumbWidth}
+                  shown={shownAt(i)}
+                  active={i === nextIndex}
                 />
               ) : (
                 <ThumbRow
@@ -333,8 +365,13 @@ export function GeneratingShell({
                   onView={view}
                   onKeyDown={onThumbsKeyDown}
                 >
-                  {liveOn && i < 2 ? (
-                    <LiveThumb slide={slide} theme={theme} width={thumbWidth} chars={paced(i)} />
+                  {liveOn && (i < 2 || !typer.done.has(i)) ? (
+                    <LiveThumb
+                      slide={slide}
+                      theme={theme}
+                      width={thumbWidth}
+                      shown={i < 2 ? shownFromChars(slide, paced(i)) : shownAt(i)}
+                    />
                   ) : (
                     <SlideStatic
                       slide={edited.get(slide.id) ?? slide}
@@ -355,6 +392,8 @@ export function GeneratingShell({
                       slide={liveAt(position)}
                       theme={theme}
                       width={thumbWidth}
+                      shown={shownAt(position)}
+                      active={position === nextIndex}
                     />
                   );
                 })
@@ -378,12 +417,13 @@ export function GeneratingShell({
           data-companion-layout={canvasCompanion ? "side" : undefined}
         >
           <div className="min-h-0 flex-1 p-10">
-            {following && writingIndex !== undefined && liveAt(writingIndex) ? (
+            {following && writingIndex !== undefined && typeTargets.get(writingIndex) ? (
               <SlideScaler zoom="fit">
                 <LiveCanvas
                   key={`live-${writingIndex}`}
                   index={writingIndex}
-                  slide={liveAt(writingIndex) as NonNullable<ReturnType<typeof liveAt>>}
+                  slide={typeTargets.get(writingIndex)?.slide as Slide}
+                  shown={typer.shown}
                   theme={theme}
                 />
               </SlideScaler>
@@ -393,7 +433,15 @@ export function GeneratingShell({
                   key={`intro-${intro}`}
                   index={intro}
                   slide={savedAt(intro) as Slide}
-                  chars={paced(intro)}
+                  shown={shownFromChars(savedAt(intro) as Slide, paced(intro))}
+                  theme={theme}
+                />
+              </SlideScaler>
+            ) : following && nextIndex !== undefined ? (
+              <SlideScaler zoom="fit">
+                <NextSlide
+                  key={`next-${nextIndex}`}
+                  slide={lesson.slides[nextIndex] ?? live?.get(nextIndex)?.slide}
                   theme={theme}
                 />
               </SlideScaler>
@@ -494,27 +542,58 @@ function LiveCanvas({
   index,
   slide,
   theme,
-  chars,
+  shown,
 }: {
   index: number;
   slide: Slide;
   theme: ReturnType<typeof getTheme>;
-  chars?: number;
+  shown: Shown;
 }) {
-  const view = liveView(slide, chars);
+  const view = typedView(slide, shown, theme);
   return (
     <LiveFrame
       blanks={view.blanks}
       theme={theme}
       className="overflow-hidden rounded-dialog shadow-3 motion-safe:animate-arrive"
     >
-      <div
-        data-canvas-slide={`live-${index}`}
-        {...(chars === undefined ? { "data-live-writing": index } : { "data-live-typing": index })}
-      >
+      <div data-canvas-slide={`live-${index}`} data-live-writing={index}>
         <SlideView slide={view.slide} theme={theme} mode="view" />
       </div>
     </LiveFrame>
+  );
+}
+
+/** The slide about to be written, while the stream thinks: its skeleton, shimmering. */
+function NextSlide({
+  slide,
+  theme,
+}: {
+  slide: Slide | undefined;
+  theme: ReturnType<typeof getTheme>;
+}) {
+  if (slide) {
+    const view = typedView(slide, new Map(), theme);
+    return (
+      <LiveFrame
+        blanks={view.blanks}
+        theme={theme}
+        className="overflow-hidden rounded-dialog shadow-3 motion-safe:animate-arrive"
+      >
+        <div data-canvas-slide="next" data-live-next>
+          <SlideView slide={view.slide} theme={theme} mode="view" />
+        </div>
+      </LiveFrame>
+    );
+  }
+  return (
+    <div
+      data-canvas-slide="next"
+      data-live-next
+      className="overflow-hidden rounded-dialog shadow-3 motion-safe:animate-arrive"
+      style={{ width: 960, height: 540 }}
+    >
+      <ThemedSkeleton theme={theme} width={960} active />
+    </div>
   );
 }
 

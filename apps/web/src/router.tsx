@@ -15,6 +15,7 @@ import { queryClient } from "@/lib/query";
 import { authLayoutRoute } from "@/routes/auth.route";
 import { devFirstExperienceRoute } from "@/routes/dev-first-experience.route";
 import { devJobsRoute } from "@/routes/dev-jobs.route";
+import { devLiveReplayRoute } from "@/routes/dev-live-replay.route";
 import {
   lessonEditorRoute,
   lessonPresentRoute,
@@ -39,7 +40,7 @@ import { signInConfirmRoute } from "@/routes/sign-in-confirm.route";
 import { worksheetCreateRoute } from "@/routes/worksheet-create.route";
 
 // `/dev/jobs` is null in a production build (TEACH-81, see `dev-jobs.route.ts`).
-const DEV_ROUTES = devJobsRoute ? [devJobsRoute] : [];
+const DEV_ROUTES = [devJobsRoute, devLiveReplayRoute].filter((r) => r !== null);
 
 export const routeTree = rootRoute.addChildren([
   signInRoute,

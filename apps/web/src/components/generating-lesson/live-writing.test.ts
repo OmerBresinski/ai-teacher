@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide } from "@tj/domain/documents";
 import { type JobEvent, LIVE_BLANK } from "@tj/domain/jobs";
-import { latestLive, liveView } from "./live-writing";
+import { latestLive, liveView, typingRate } from "./live-writing";
 
 const text = (id: string, words: string) => ({
   id,
@@ -50,15 +50,24 @@ describe("live writing in the generating editor", () => {
         { id: "p", type: "image", x: 480, y: 48, w: 420, h: 400, src: PLACEHOLDER, fit: "cover" },
       ]),
     );
-    expect(view.blanks.map((b) => b.kind)).toEqual(["text", "picture"]);
+    // Every text box has a bar (it fades once words show); only the unwritten one is visible.
+    expect(view.blanks.filter((b) => b.visible).map((b) => b.kind)).toEqual(["text", "picture"]);
     expect(docText(view.slide, 0)).toBe("Heating can melt ice");
     expect(docText(view.slide, 2)).toBe("The particles ");
   });
 
-  test("typing cuts the slide's words in reading order", () => {
-    const view = liveView(slide([text("a", "The particle"), text("b", "Year 7")]), 8);
-    expect(docText(view.slide, 0)).toBe("The part");
+  test("typing shows whole words in reading order, the newest one fading in", () => {
+    const view = liveView(slide([text("a", "The particle"), text("b", "Year 7")]), 8, {
+      colors: { ink: "#222222" },
+    } as never);
+    const doc = JSON.stringify((view.slide.elements[0] as unknown as { doc: unknown }).doc);
+    expect(doc).toContain('"text":"The "');
+    expect(doc).toContain('"text":"particle"');
+    expect(doc).toContain("rgba(34, 34, 34");
     expect(docText(view.slide, 1)).toBeUndefined();
+    expect(typingRate(0)).toBeGreaterThanOrEqual(40);
+    expect(typingRate(0)).toBeLessThanOrEqual(60);
+    expect(typingRate(2000)).toBeLessThanOrEqual(90);
   });
 
   test("a landed photo gets a new id so it fades in", () => {

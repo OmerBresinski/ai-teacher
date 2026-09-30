@@ -32,7 +32,7 @@ export function RootLayout() {
       {cleanPreview ? null : (
         <Suspense fallback={null}>
           {hideDevtools() ? null : <Devtools />}
-          <DesignPreview />
+          {hideDevtools() ? null : <DesignPreview />}
         </Suspense>
       )}
     </>
