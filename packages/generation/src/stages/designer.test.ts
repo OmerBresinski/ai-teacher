@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { Writable } from "node:stream";
+import { type Budget, costUsd, createBudget, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { type Lesson, parseLesson } from "@tj/domain/documents";
 import { isGeneratedSlide } from "@tj/slides";
+import pino from "pino";
+import { envVar } from "../../../../infra/env.contract";
 import weimarFixture from "../fixtures/design-cycle.y9-weimar.json";
 import romansFixture from "../fixtures/objective-facts.y4-history-romans.json";
 import { designCycleAnswer, labAi, romansLesson, versionsOf } from "../planner/testing";
@@ -10,7 +14,7 @@ const romansObjectives = romansFixture.objectives;
 
 import { recordingDeps } from "../testing";
 import { runLessonPipeline } from "../workflow";
-import { arcsFor } from "./designer";
+import { arcsFor, designCycleMaxOutputTokens, MAX_OUTPUT_TOKENS_DESIGN } from "./designer";
 import { isDesignerStamp, plannerOf, resumeFromDesigner } from "./objectives-first";
 
 const romans = (slideCount: 6 | 8 | 10 | 12): Lesson => {
@@ -97,6 +101,91 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     ).toBeGreaterThan(0);
     // Its exit line falls back to nothing it can print; the other two objectives keep theirs.
     expect(final.designReport?.exitCovered).toBe(2);
+  });
+
+  test("a design cycle refused by the budget is an error, retried once, never a discussion slide", async () => {
+    const ai = labAi();
+    const real = createBudget({ capUsd: 5, capTokens: 5_000_000 });
+    let refused = 0;
+    const budget: Budget = {
+      ...real,
+      // The first design-cycle reservation (2 slots) is refused, as a full lesson budget would.
+      reserve(modelId, estimate) {
+        if (refused === 0 && estimate.outputTokens === designCycleMaxOutputTokens(2)) {
+          refused++;
+          return { by: "usd" };
+        }
+        return real.reserve(modelId, estimate);
+      },
+    };
+    const lines: { level: number; msg: string; refused?: boolean; attempt?: number }[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _e, cb) {
+          for (const line of chunk.toString().split("\n").filter(Boolean))
+            lines.push(JSON.parse(line));
+          cb();
+        },
+      }),
+    );
+    const deps = recordingDeps(ai, { budget, logger });
+    const final = await runLessonPipeline({ lesson: romans(10) }, deps, { planner: "designer" });
+    expect(refused).toBe(1);
+    const failed = lines.filter((l) => l.msg === "design cycle failed; retrying once");
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.level).toBe(50);
+    expect(failed[0]?.refused).toBe(true);
+    expect(final.designReport?.retriedCycles).toHaveLength(1);
+    expect(final.designReport?.failedCycles).toEqual([]);
+    expect(versionsOf(ai).filter((v) => v === "design-cycle")).toHaveLength(3);
+    expect(final.lesson.generation?.findings.filter((f) => f.check === "missing-material")).toEqual(
+      [],
+    );
+    expect(final.lesson.slides).toHaveLength(10);
+  });
+
+  test("production budget: four objectives' parallel cycles fit even if no call ever settles", async () => {
+    const capUsd = Number(envVar("AI_LESSON_COST_CAP_USD")?.railwayValue);
+    expect(capUsd).toBe(0.5);
+    const real = createBudget({ capUsd, capTokens: 300_000 });
+    const held: { outputTokens: number; usd: number }[] = [];
+    const budget: Budget = {
+      ...real,
+      reserve(modelId, estimate) {
+        const result = real.reserve(modelId, estimate);
+        if ("reservation" in result)
+          held.push({
+            outputTokens: estimate.outputTokens,
+            usd: costUsd(modelId, estimate) ?? Number.POSITIVE_INFINITY,
+          });
+        return result;
+      },
+      // Worst case: every reservation stays held at its cap for the whole lesson.
+      settle: () => true,
+    };
+    const four = [
+      ...romansObjectives,
+      { text: "Describe how Roman roads helped the army move around Britain." },
+    ];
+    const ai = labAi({ objectives: four });
+    const deps = recordingDeps(ai, { budget });
+    const final = await runLessonPipeline({ lesson: romans(12) }, deps, { planner: "designer" });
+    expect(final.designReport?.allocation).toHaveLength(4);
+    expect(final.designReport?.failedCycles).toEqual([]);
+    expect(final.designReport?.retriedCycles).toEqual([]);
+    expect(final.lesson.slides).toHaveLength(12);
+    // Each cycle reserves its slots' worth of output, never the old model-maximum cap.
+    const counts = final.designReport?.allocation ?? [];
+    for (const count of counts)
+      expect(designCycleMaxOutputTokens(count)).toBeLessThan(MAX_OUTPUT_TOKENS_DESIGN);
+    const cycles = held.filter((h) =>
+      counts.some((count) => h.outputTokens === designCycleMaxOutputTokens(count)),
+    );
+    expect(cycles.length).toBeGreaterThanOrEqual(4);
+    const cyclesUsd = cycles.slice(0, 4).reduce((sum, h) => sum + h.usd, 0);
+    expect(cyclesUsd).toBeLessThan(capUsd / 10);
+    expect(DEFAULT_MODEL_IDS.standard).toBe("openai/gpt-6-luna");
   });
 
   test("the arcs are saved on the objectives, so the generate job after the plan screen has them", async () => {

@@ -88,8 +88,19 @@ const PROGRESS_STARTING = 2;
 const PROGRESS_SLIDES_FROM = 10;
 const PROGRESS_SLIDES_SPAN = 70;
 const PROGRESS_GENERATED = PROGRESS_SLIDES_FROM + PROGRESS_SLIDES_SPAN;
-/** Output cap of one design cycle: slots plus low-effort reasoning (smoke r7: 1.5–3k used). */
+/**
+ * Output cap of one design cycle, sized to its slots: low-effort reasoning and the exit question,
+ * then each slot (smoke r7: 1.5–3k used at 2–3 slots). The budget reserves this cap up front and
+ * settles on the real usage, so a cap at the model maximum would refuse parallel cycles that fit.
+ */
+export const DESIGN_BASE_OUTPUT_TOKENS = 2000;
+export const DESIGN_OUTPUT_TOKENS_PER_SLOT = 1000;
 export const MAX_OUTPUT_TOKENS_DESIGN = 8000;
+export const designCycleMaxOutputTokens = (slots: number): number =>
+  Math.min(
+    MAX_OUTPUT_TOKENS_DESIGN,
+    DESIGN_BASE_OUTPUT_TOKENS + DESIGN_OUTPUT_TOKENS_PER_SLOT * slots,
+  );
 /**
  * Verify's effort on a designer lesson (designer prompts r1 probe, `lab/designer-prompts2/verify-probe`):
  * medium caught the planted date error with no false corrections; low rewrote correct facts into
@@ -553,6 +564,16 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     () => undefined,
   );
   const failedCycles: number[] = [];
+  const retriedCycles: number[] = [];
+  // Each cycle's first call, settled or failed: a retry waits for these, so the reservations of
+  // the calls in flight beside it are released (settled on their real usage) before it asks again.
+  const firstCalls = allocation.cycles.map(() => {
+    let done: () => void = () => {};
+    const promise = new Promise<void>((resolve) => {
+      done = resolve;
+    });
+    return { promise, done };
+  });
   /** A re-fill's role: the slot's own when it admits the form written, else the first that does. */
   const roleOf = (form: SlotForm, cycle: CycleSlots, k: number): SlotRole => {
     const own = cycle.roles[k];
@@ -703,7 +724,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   };
 
   const runCycle = async (cycle: CycleSlots) => {
-    if (cycle.count === 0) return;
+    const slot = allocation.cycles.indexOf(cycle);
+    if (cycle.count === 0) {
+      firstCalls[slot]?.done();
+      return;
+    }
     const timing: DesignTimings["cycles"][number] = {
       objective: cycle.objective,
       startMs: Date.now() - startedAt,
@@ -717,68 +742,96 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       const parsed = slotSchema.safeParse(raw);
       if (parsed.success) landing.push(landSlot(cycle, k, parsed.data as DesignSlot, modelId));
     };
-    try {
-      throwIfAborted(deps.signal);
-      modelId = (() => {
-        const routed = deps.ai.model(
-          cls,
-          callContext(deps, "generate", designCyclePrompt.version, "low"),
+    const design = async (attempt: 1 | 2): Promise<boolean> => {
+      try {
+        throwIfAborted(deps.signal);
+        modelId = (() => {
+          const routed = deps.ai.model(
+            cls,
+            callContext(deps, "generate", designCyclePrompt.version, "low"),
+          );
+          return typeof routed === "string" ? routed : routed.modelId;
+        })();
+        deps.logger.info(
+          {
+            stage: "generate",
+            call: "design-cycle",
+            objective: cycle.objective,
+            slots: cycle.count,
+            attempt,
+          },
+          "plan call",
         );
-        return typeof routed === "string" ? routed : routed.modelId;
-      })();
-      deps.logger.info(
-        { stage: "generate", call: "design-cycle", objective: cycle.objective, slots: cycle.count },
-        "plan call",
-      );
-      const call = await callStructured({
-        deps,
-        stage: "generate",
-        cls,
-        effort: "low",
-        prompt: designCyclePrompt,
-        input: {
-          topic: brief.topic,
-          shape,
-          audience,
-          objectives: objectives.map((o, i) => ({ text: o.text, arc: arcs[i] as never })),
-          objectiveIndex: cycle.objective,
-          slots: { count: cycle.count, first: cycle.first, slideCount, roles: cycle.roles },
-          palette,
-        },
-        schema,
-        maxOutputTokens: MAX_OUTPUT_TOKENS_DESIGN,
-        // A slot is complete once the next one has started (or the exit question has).
-        onPartial: (partial) => {
-          const p = partial as { slots?: unknown[]; exitQuestion?: unknown } | undefined;
-          const slots = p?.slots ?? [];
-          const done = p?.exitQuestion !== undefined ? slots.length : slots.length - 1;
-          for (let k = 0; k < Math.min(done, cycle.count); k++) {
-            if (!cycleSlides.has(cycle.first - 1 + k)) land(k, slots[k]);
-          }
-        },
-      });
-      modelId = call.modelId;
-      timing.doneAfterMs = Date.now() - startedAt - timing.startMs;
-      const output = call.output as DesignCycleOutput;
-      output.slots.forEach((slot, k) => {
-        if (!cycleSlides.has(cycle.first - 1 + k)) landing.push(landSlot(cycle, k, slot, modelId));
-      });
-      exitQuestions[cycle.objective] = output.exitQuestion;
-    } catch (error) {
-      if (!(error instanceof BudgetExceeded) && !(error instanceof StageFailure)) {
-        if (error instanceof Error && error.name === "AbortError") throw error;
-      }
-      failedCycles.push(cycle.objective);
-      deps.logger.warn(
-        {
+        const call = await callStructured({
+          deps,
           stage: "generate",
-          call: "design-cycle",
-          objective: cycle.objective,
-          err: safeError(error),
-        },
-        "design cycle failed; its slots are open questions on the objective",
-      );
+          cls,
+          effort: "low",
+          prompt: designCyclePrompt,
+          input: {
+            topic: brief.topic,
+            shape,
+            audience,
+            objectives: objectives.map((o, i) => ({ text: o.text, arc: arcs[i] as never })),
+            objectiveIndex: cycle.objective,
+            slots: { count: cycle.count, first: cycle.first, slideCount, roles: cycle.roles },
+            palette,
+          },
+          schema,
+          maxOutputTokens: designCycleMaxOutputTokens(cycle.count),
+          // A slot is complete once the next one has started (or the exit question has).
+          onPartial: (partial) => {
+            const p = partial as { slots?: unknown[]; exitQuestion?: unknown } | undefined;
+            const slots = p?.slots ?? [];
+            const done = p?.exitQuestion !== undefined ? slots.length : slots.length - 1;
+            for (let k = 0; k < Math.min(done, cycle.count); k++) {
+              if (!cycleSlides.has(cycle.first - 1 + k)) land(k, slots[k]);
+            }
+          },
+        });
+        modelId = call.modelId;
+        timing.doneAfterMs = Date.now() - startedAt - timing.startMs;
+        const output = call.output as DesignCycleOutput;
+        output.slots.forEach((slot, k) => {
+          if (!cycleSlides.has(cycle.first - 1 + k))
+            landing.push(landSlot(cycle, k, slot, modelId));
+        });
+        exitQuestions[cycle.objective] = output.exitQuestion;
+        return true;
+      } catch (error) {
+        if (!(error instanceof BudgetExceeded) && !(error instanceof StageFailure)) {
+          if (error instanceof Error && error.name === "AbortError") throw error;
+        }
+        // Never a silent fallback: a failed cycle is an error, retried once; only a second failure
+        // leaves its slots as open questions on the objective.
+        deps.logger.error(
+          {
+            stage: "generate",
+            call: "design-cycle",
+            objective: cycle.objective,
+            attempt,
+            refused: error instanceof BudgetExceeded,
+            err: safeError(error),
+          },
+          attempt === 1
+            ? "design cycle failed; retrying once"
+            : "design cycle failed twice; its slots are open questions on the objective",
+        );
+        return false;
+      }
+    };
+    let designed: boolean;
+    try {
+      designed = await design(1);
+    } finally {
+      firstCalls[slot]?.done();
     }
+    if (!designed) {
+      retriedCycles.push(cycle.objective);
+      await Promise.all(firstCalls.map((c) => c.promise));
+      designed = await design(2);
+    }
+    if (!designed) failedCycles.push(cycle.objective);
     await Promise.all(landing);
     // Whatever did not land (a failed call) keeps the count: the objective as an open question.
     for (let k = 0; k < cycle.count; k++) {
@@ -1125,6 +1178,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     minimums,
     exitCovered,
     failedCycles,
+    retriedCycles,
     verify: verifyReport,
     ...(enforced.length > 0 ? { enforced } : {}),
     ...(firstSlotMs !== undefined ? { firstSlotMs } : {}),

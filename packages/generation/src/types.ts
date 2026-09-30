@@ -252,6 +252,8 @@ export interface DesignReport {
   };
   exitCovered: number;
   failedCycles: number[];
+  /** Cycles whose first call failed (refused by the budget, or no valid answer) and were retried once. */
+  retriedCycles: number[];
   verify: { corrections: number; refitted: number; rejected: number };
   /** The design minimums' re-fills (at most 2): the slide, the form asked for, whether it took. */
   enforced?: { slide: number; into: string; ok: boolean }[];
