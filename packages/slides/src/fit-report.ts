@@ -29,7 +29,10 @@ export type FitReport = {
    * lesson's own theme is the one it opens in.
    */
   overflowing: Record<string, number>;
-  /** Per theme id: slides the linter still flags once fitted for an overlap or the "Why?" lane. */
+  /**
+   * Per theme id: slides the linter still flags once fitted for an overlap or the "Why?" lane, or
+   * whose answers reveal covers its questions (`answersOverQuestions`).
+   */
   clashing: Record<string, number>;
   /** Callouts the outline planned on a teaching slide, and teaching slides that carry one. */
   callouts: { planned: number; placed: number };
@@ -100,7 +103,9 @@ export function fitReport(lesson: Lesson, opts: FitReportOptions = {}): FitRepor
   const perTheme = (count: (fit: (typeof fits)[number]["slides"][number]) => boolean) =>
     Object.fromEntries(fits.map((t) => [t.theme, t.slides.filter(count).length]));
   const overflowing = perTheme((fit) => fit.overflow.length > 0);
-  const clashing = perTheme((fit) => fit.overlaps > 0 || fit.lane.length > 0);
+  const clashing = perTheme(
+    (fit) => fit.overlaps > 0 || fit.lane.length > 0 || fit.answers.length > 0,
+  );
   const outline = lesson.facts?.outline ?? [];
   const planned = outline.filter((e) => TEACHING.has(e.kind) && e.callout).length;
   const placed = slides.filter((s) => TEACHING.has(s.kind) && hasCallout(s)).length;

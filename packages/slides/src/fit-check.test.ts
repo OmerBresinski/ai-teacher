@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
-import { fitsPlanned, slideFits, stepsTaken } from "./fit-check";
+import { docFromText } from "./factories";
+import { answersOverQuestions, fitsPlanned, slideFits, stepsTaken } from "./fit-check";
 import { materialiseSlide } from "./materialise";
+import { ANSWERS_NAME } from "./reflow";
 import type { SlideSpec } from "./specs";
 import { ladderStops, resolveFontSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
@@ -91,5 +93,64 @@ describe("stepsTaken", () => {
     expect(stepsTaken(s, theme)).toBe(1);
     expect(slideFits(s, theme, 0).ok).toBe(false);
     expect(slideFits(s, theme, 1)).toMatchObject({ ok: true, steps: 1 });
+  });
+});
+
+describe("answersOverQuestions", () => {
+  const theme = getTheme("chalk");
+  const text = (id: string, y: number, h: number, words: string): Slide["elements"][number] => ({
+    id,
+    type: "text",
+    x: 58,
+    y,
+    w: 844,
+    h,
+    doc: docFromText(words),
+    style: { preset: "body", autoHeight: true },
+  });
+  const panel = (y: number, h: number): Slide["elements"][number] => ({
+    id: "answers",
+    type: "shape",
+    shape: "rect",
+    name: ANSWERS_NAME,
+    x: 58,
+    y,
+    w: 844,
+    h,
+    revealStep: 1,
+    reveal: "fade",
+  });
+  const slide = (elements: Slide["elements"]): Slide => ({ id: "s", kind: "starter", elements });
+
+  test("answers clear of the questions: nothing", () => {
+    expect(
+      answersOverQuestions(
+        slide([text("q", 140, 60, "1. What do roots do?"), panel(400, 60)]),
+        theme,
+      ),
+    ).toEqual([]);
+  });
+
+  test("answers laid over the questions they answer: the questions are named", () => {
+    const covered = slide([text("q", 140, 300, "1. What do roots do?"), panel(400, 60)]);
+    expect(answersOverQuestions(covered, theme)).toEqual(["q"]);
+    // And the slide does not fit, at any headroom.
+    expect(slideFits(covered, theme, 1).answers).toEqual(["q"]);
+    expect(slideFits(covered, theme, 1).ok).toBe(false);
+  });
+
+  test("questions that grow into the answers as drawn count, though stored short", () => {
+    const long = Array.from({ length: 12 }, (_, i) => `${i + 1}. Name a part of a plant.`).join(
+      "\n",
+    );
+    expect(answersOverQuestions(slide([text("q", 140, 40, long), panel(400, 60)]), theme)).toEqual([
+      "q",
+    ]);
+  });
+
+  test("a slide with no answers reveal has nothing to cover", () => {
+    expect(
+      answersOverQuestions(slide([text("q", 140, 300, "1. What do roots do?")]), theme),
+    ).toEqual([]);
   });
 });

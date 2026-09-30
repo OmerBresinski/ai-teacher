@@ -74,8 +74,8 @@ export const PLACEHOLDERS_PER_OBJECTIVE: ObjectiveQuestionDemand = {
 /**
  * One spare per slide set: the outline's `settable` (line length), `showable` (forms) and `fair`
  * (key ideas taught) filters can each reject a real question that its placeholder passed. None
- * for the exit set: the exit quiz tops itself up from unused slide questions and misconceptions
- * (`topUp`), so the slide spare is the exit's spare too.
+ * for the exit set: an objective with no exit line that fits takes a check question's stem or a
+ * misconception as its line (`outlineFromFacts`), so the slide spare is the exit's spare too.
  */
 export const SPARE: ObjectiveQuestionDemand = { slide: 1, exit: 0 };
 

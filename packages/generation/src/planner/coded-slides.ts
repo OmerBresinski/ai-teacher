@@ -83,11 +83,11 @@ export const SET_MIN = 2;
 export const SET_MAX = 4;
 export const STARTER_MAX = 3;
 /**
- * The exit ticket: at most three questions, one per objective first (UX ruling 108, TEACH-172),
- * on one slide with its answers. One is enough to print it; the outline tops it up to three.
+ * The exit ticket: one line per objective (the lesson designer plan, requirement 5), for up to
+ * four objectives, on one slide with its answers (TEACH-172). One is enough to print it.
  */
 export const EXIT_QUIZ_MIN = 1;
-export const EXIT_QUIZ_MAX = 3;
+export const EXIT_QUIZ_MAX = 4;
 const LETTERS = ["A", "B", "C", "D"] as const;
 
 type LineQuestion = Pick<FactQuestion, "stem" | "answer"> & {
@@ -225,6 +225,14 @@ export function sameQuestion(
 }
 
 /** A question as one line of a set, with its answer. */
+/**
+ * A check question on the exit ticket, when its objective has no exit question that fits: the
+ * stem, asked open, with its answer (the options are left off, as the line has no room for them).
+ */
+export function exitStemLine(q: Pick<FactQuestion, "stem" | "answer">): Line {
+  return questionLine({ stem: q.stem, answer: q.answer });
+}
+
 export function questionLine(q: LineQuestion, seed = ""): Line {
   const options = mcOptions(q, seed);
   if (!options) {
@@ -309,7 +317,13 @@ export function codedSetSpec(
       // counts printed questions only, so a check slide left with none is the model's.
       if (asksForUnlistedOptions(q)) continue;
       asked += 1;
-      lines.push({ ...questionLine(q, `${seed}:${ref}`), ref });
+      // On the exit ticket a question that is not an exit question is an objective's check
+      // question standing in for its missing exit line: its stem, asked open.
+      const line =
+        entry.kind === "exit-ticket" && q.use !== "exit"
+          ? exitStemLine(q)
+          : questionLine(q, `${seed}:${ref}`);
+      lines.push({ ...line, ref });
     } else if (m && entry.kind !== "starter") lines.push(misconceptionLine(m));
   }
   // A starter or check slide with no question is the model's (a misconception discussed, prior

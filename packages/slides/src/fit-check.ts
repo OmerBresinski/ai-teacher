@@ -1,8 +1,9 @@
 import type { Id, Slide, Theme } from "@tj/domain/documents";
 import { fitSlide } from "./fit-slide";
-import { lintAsDrawn } from "./lint";
+import { intersects, rectOf } from "./geometry";
+import { isDecorative, lintAsDrawn, renderedHeights } from "./lint";
 import { type MaterialiseMeta, materialiseSlide } from "./materialise";
-import { isFrozen, textPartsOf } from "./reflow";
+import { ANSWERS_NAME, isBackdrop, isFrozen, isLayerBelow, textPartsOf } from "./reflow";
 import type { SlideSpec } from "./specs";
 import { measureHeadless } from "./text-measure";
 import { ladderStops, resolveFontSize } from "./text-style";
@@ -34,6 +35,8 @@ export type ThemeFit = {
   lane: Id[];
   /** Ladder stops the smallest-stepped text sits under its own size. */
   steps: number;
+  /** Ids of what the answers reveal covers once it is shown (`answersOverQuestions`). */
+  answers: Id[];
 };
 
 export type FitsPlannedResult = {
@@ -86,6 +89,46 @@ export function stepsTaken(slide: Slide, theme: Theme): number {
 }
 
 /**
+ * What a question slide's answers cover when they are revealed, in any view: every step of the
+ * reveal, the slide as drawn (each auto-height box at the height its words need, `measure`). The
+ * answers are the reveal panel a set carries (`ANSWERS_NAME`, shown on its reveal step); what they
+ * may not cover is anything shown with or before them — the questions, the options, the heading —
+ * other than the ground they sit on (a backdrop, a rule, a card that holds them). Empty when the
+ * answers keep clear, or the slide has none. Ids in draw order.
+ */
+export function answersOverQuestions(slide: Slide, theme: Theme): Id[] {
+  const drawn = renderedHeights(slide, measureHeadless(theme));
+  const out = new Set<Id>();
+  for (const panel of drawn.elements) {
+    const step = panel.revealStep ?? 0;
+    if (panel.name !== ANSWERS_NAME || step <= 0) continue;
+    const box = rectOf(panel);
+    const inset = {
+      x: box.x + 0.5,
+      y: box.y + 0.5,
+      w: Math.max(0, box.w - 1),
+      h: Math.max(0, box.h - 1),
+    };
+    for (const el of drawn.elements) {
+      if (el === panel || (el.revealStep ?? 0) >= step) continue;
+      if (isBackdrop(el) || isDecorative(el)) continue;
+      const r = rectOf(el);
+      // A card the answers are laid on is their ground, not a question.
+      if (
+        isLayerBelow(el) &&
+        r.x <= box.x &&
+        r.y <= box.y &&
+        r.x + r.w >= box.x + box.w &&
+        r.y + r.h >= box.y + box.h
+      )
+        continue;
+      if (intersects(inset, r)) out.add(el.id);
+    }
+  }
+  return drawn.elements.filter((el) => out.has(el.id)).map((el) => el.id);
+}
+
+/**
  * A materialised slide judged in one theme: fitted with the headless ruler, then linted as the
  * editor draws it. The slide is taken as it stands (positions from whichever theme laid it out),
  * as the editor takes a lesson after a theme change.
@@ -95,13 +138,15 @@ export function slideFits(slide: Slide, theme: Theme, stepDown: StepDown): Theme
   const lint = lintAsDrawn(fitted.slide, measureHeadless(theme), theme);
   const overflow = [...new Set([...fitted.overflow, ...lint.overflow])];
   const steps = stepsTaken(fitted.slide, theme);
+  const answers = answersOverQuestions(fitted.slide, theme);
   return {
     theme: theme.id,
-    ok: overflow.length === 0 && lint.ok && steps <= stepDown,
+    ok: overflow.length === 0 && lint.ok && steps <= stepDown && answers.length === 0,
     overflow,
     overlaps: lint.overlaps.length,
     lane: lint.laneOverflow,
     steps,
+    answers,
   };
 }
 
@@ -121,7 +166,8 @@ export function fitsPlanned(spec: SlideSpec, opts: FitsPlannedOptions): FitsPlan
     const t = getTheme(theme.id);
     const fit = slideFits(slide, t, opts.stepDown);
     const stored = lintAsDrawn(slide, measureHeadless(t), t);
-    if (fit.ok && stored.ok) return [];
+    const storedAnswers = answersOverQuestions(slide, t);
+    if (fit.ok && stored.ok && storedAnswers.length === 0) return [];
     return [
       {
         ...fit,
@@ -129,6 +175,7 @@ export function fitsPlanned(spec: SlideSpec, opts: FitsPlannedOptions): FitsPlan
         overflow: [...new Set([...fit.overflow, ...stored.overflow])],
         overlaps: Math.max(fit.overlaps, stored.overlaps.length),
         lane: [...new Set([...fit.lane, ...stored.laneOverflow])],
+        answers: [...new Set([...fit.answers, ...storedAnswers])],
       },
     ];
   });

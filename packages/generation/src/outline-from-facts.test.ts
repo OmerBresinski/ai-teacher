@@ -663,7 +663,9 @@ describe("outlineFromFacts: every key idea taught, every question fair (np1 RC1)
     );
   /** Left off the exit ticket for room (ruling 108: three at most, and only what fits one slide). */
   const offForRoom = (r: ReturnType<typeof run>, i: number) =>
-    r.result.gaps.some((g) => g.includes("fit one slide") && new RegExp(`\\b${i + 1}\\b`).test(g));
+    r.result.gaps.some(
+      (g) => g.includes("one line per objective") && new RegExp(`\\b${i + 1}\\b`).test(g),
+    );
   const exitRefs = (r: ReturnType<typeof run>) =>
     refsAt(r, r.result.skeleton.outline.length - 1).flatMap((ref) =>
       ref.type === "question" ? [ref.index] : [],
@@ -857,6 +859,13 @@ describe("outlineFromFacts: no question without its options (w0)", () => {
         e.factRefs.filter((f) => f.type === "question").map((f) => f.index),
       );
       // No question is asked twice.
+      if (new Set(set).size !== set.length)
+        console.log(
+          "DBG",
+          slideCount,
+          JSON.stringify(r.result.outlineFactRefs),
+          r.result.gaps.filter((g) => g.includes("exit")),
+        );
       expect(new Set(set).size).toBe(set.length);
     }
   });
@@ -1216,6 +1225,51 @@ describe("lab r1 structure: sets, cycle checks, starter, exit quiz", () => {
     expect(qs.length).toBeLessThanOrEqual(EXIT_MAX);
     const objectives = qs.map((i) => r.facts.questions[i]?.objectiveRefs[0]?.index);
     expect(new Set(objectives).size).toBe(qs.length);
+  });
+});
+
+describe("the exit ticket: one line per objective (the lesson designer plan, requirement 5)", () => {
+  const exitAtOf = (r: ReturnType<typeof run>) => r.result.skeleton.outline.length - 1;
+  const itemObjectives = (r: ReturnType<typeof run>) =>
+    refsAt(r, exitAtOf(r)).flatMap((ref) =>
+      ref.type === "question"
+        ? [r.facts.questions[ref.index]?.objectiveRefs[0]?.index]
+        : ref.type === "misconception"
+          ? [r.facts.misconceptions[ref.index]?.objectiveRefs[0]?.index]
+          : [],
+    );
+
+  test("every objective is on the ticket once; one the slide has no room for is named in a gap", () => {
+    for (const n of [1, 2, 3]) {
+      const r = run({ n, slideCount: 10 });
+      const on = itemObjectives(r);
+      // Never two lines for one objective.
+      expect(new Set(on).size).toBe(on.length);
+      for (let o = 0; o < n; o++) {
+        if (on.includes(o)) continue;
+        // The fixture's multiple-choice lines fit two to a slide: a third objective is left off,
+        // and says so, rather than taking a line from another.
+        expect(r.result.gaps).toContain(
+          `Objective ${o + 1} has no exit or check question that fits the exit ticket, so the ticket does not check it.`,
+        );
+      }
+      if (n < 3) expect(on.sort()).toEqual(Array.from({ length: n }, (_, o) => o));
+    }
+  });
+
+  test("an objective whose exit question cannot be a line is asked a check question's stem, and the gap says so", () => {
+    const facts = factsFor(3);
+    const exit = facts.questions.find((q) => q.use === "exit" && q.objectiveRefs[0]?.index === 1);
+    if (!exit) throw new Error("fixture has no exit question on objective 2");
+    // Far past any line's cap: it cannot go on the ticket.
+    exit.stem = `${"Explain in full ".repeat(40)}why.`;
+    const r = run({ n: 3, slideCount: 10, facts });
+    const on = itemObjectives(r);
+    expect(on.sort()).toEqual([0, 1, 2]);
+    const standIn = r.result.gaps.find((g) => g.startsWith("Objective 2 has no exit question"));
+    expect(standIn).toBeDefined();
+    // Never a second line for another objective in its place.
+    expect(new Set(on).size).toBe(on.length);
   });
 });
 
