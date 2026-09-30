@@ -18,7 +18,8 @@ describe("projector minimums", () => {
       question: 38,
       option: 31,
       heading: 26,
-      body: 26,
+      // Teaching body: 30 px at 1440 (UX ruling 140).
+      body: 20,
       small: 24,
       caption: 14,
     });
@@ -96,10 +97,10 @@ describe("the floor clamps every path to the same number", () => {
     for (const t of THEMES) {
       expect(stepDownSize(t, "heading", t.sizes.title)).toBeGreaterThanOrEqual(26);
       expect(stepDownSize(t, "heading", t.sizes.title, "question")).toBeGreaterThanOrEqual(38);
-      expect(stepDownSize(t, "body", t.sizes.body)).toBeGreaterThanOrEqual(26);
+      expect(stepDownSize(t, "body", t.sizes.body)).toBeGreaterThanOrEqual(20);
       expect(stepDownSize(t, "small", t.sizes.body)).toBeGreaterThanOrEqual(24);
       expect(stepDownSize(t, "small", 40, "option")).toBeGreaterThanOrEqual(31);
-      expect(stepDownSize(t, "body", 26)).toBe(26);
+      expect(stepDownSize(t, "body", 20)).toBe(20);
       expect(stepDownSize(t, "small", 31, "option")).toBe(31);
     }
   });
