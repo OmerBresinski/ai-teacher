@@ -93,6 +93,12 @@ export function layoutCapacity(form: string, layout: string): number | undefined
  */
 const OFF_MENU = new Set(["hinge/stacked"]);
 
+/**
+ * Forms left off the menu: a figure's drawing comes from no step on this path (its brief would
+ * reach the class as an empty picture), so a structural picture is a diagram slot, which draws.
+ */
+const OFF_MENU_FORMS = new Set<string>(["figure"]);
+
 /** A layout's contract text; a diagram slot's diagram is written as a diagram spec. */
 function contractLines(form: PaletteFormId, layout: string): string {
   const text = contractText(form, layout);
@@ -105,7 +111,7 @@ function contractLines(form: PaletteFormId, layout: string): string {
 
 /** The planner's menu for a subject: forms on a slide, every layout, then the question sets. */
 export function planMenu(subject?: string): PlanMenuEntry[] {
-  const forms = slotFormsFor(subject) as PaletteFormId[];
+  const forms = (slotFormsFor(subject) as PaletteFormId[]).filter((f) => !OFF_MENU_FORMS.has(f));
   const entries: PlanMenuEntry[] = forms.flatMap((form) =>
     layoutsOf(form)
       .filter((c) => !OFF_MENU.has(`${form}/${c.layout}`))

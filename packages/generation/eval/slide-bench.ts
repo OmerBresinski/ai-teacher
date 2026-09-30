@@ -117,14 +117,22 @@ async function call<T>(
   maxOutputTokens: number,
 ) {
   const t0 = performance.now();
-  const r = await generateText({
-    model: openai(MODEL),
-    system,
-    prompt: user,
-    output: Output.object({ schema }),
-    ...providerOptionsFor(`openai/${MODEL}`, "low"),
-    maxOutputTokens,
-  });
+  let r: { usage: unknown; output?: unknown; text: string };
+  try {
+    r = await generateText({
+      model: openai(MODEL),
+      system,
+      prompt: user,
+      output: Output.object({ schema }),
+      ...providerOptionsFor(`openai/${MODEL}`, "low"),
+      maxOutputTokens,
+    });
+  } catch (e) {
+    // A schema miss throws (NoObjectGeneratedError) with the raw text and usage: kept as a miss.
+    const x = e as { text?: string; usage?: unknown };
+    if (typeof x.text !== "string") throw e;
+    r = { usage: x.usage ?? {}, text: x.text, output: Promise.reject(new Error("schema")) };
+  }
   const u = r.usage as {
     inputTokens?: number;
     outputTokens?: number;

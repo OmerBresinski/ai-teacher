@@ -416,6 +416,13 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       t: Math.max(m.t, L.need.t + 2),
       b: Math.max(m.b, L.need.b + 2),
     };
+    // The drawing keeps at least 60% of the box each way: labels past that sit over it on their
+    // halos. Unbounded, each round's smaller drawing crowded the labels out further, and a
+    // six-label cross-section shrank to a speck (diagram bench, y8 runoff).
+    const cap = (a: number, b: number, room: number): [number, number] =>
+      a + b <= room ? [a, b] : [(a * room) / (a + b), (b * room) / (a + b)];
+    [next.l, next.r] = cap(next.l, next.r, 0.4 * w);
+    [next.t, next.b] = cap(next.t, next.b, 0.4 * h);
     if (next.l === m.l && next.r === m.r && next.t === m.t && next.b === m.b) break;
     Object.assign(m, next);
     L = layout(m);

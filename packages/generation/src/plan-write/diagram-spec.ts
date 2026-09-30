@@ -8,11 +8,20 @@ import { z } from "zod";
  */
 
 const tone = z.enum(["accent", "accent2", "muted", "surface", "none"]);
-const text = (max: number) => z.string().trim().min(1).max(max);
+/**
+ * A text field on the wire: its limit is stated to the writer, not enforced here. A text over it
+ * (or empty) fails the renderer's own parse when the slide is drawn, and the slide lands as a
+ * normal teaching slide without the drawing (plan-write `diagramDraws`), never a failed writer call.
+ */
+const text = (max: number, what?: string) =>
+  z
+    .string()
+    .trim()
+    .describe(`${what ? `${what}; ` : ""}at most ${max} characters`);
 const pt = z.array(z.number()).length(2).describe("[x, y]");
 const common = {
-  alt: text(200).describe("what a screen reader hears: the whole drawing in one sentence"),
-  title: text(40).optional().describe("one line above the drawing"),
+  alt: text(200, "what a screen reader hears: the whole drawing in one sentence"),
+  title: text(40, "one line above the drawing").optional(),
 };
 
 const barModel = z.object({
@@ -68,12 +77,23 @@ const lineGraph = z.object({
     .max(5)
     .optional(),
   annotations: z
-    .array(z.object({ x: z.number(), y: z.number(), label: text(24) }))
+    .array(
+      z.object({
+        x: z.number(),
+        y: z.number().describe("in the left axis's units"),
+        label: text(24),
+      }),
+    )
     .max(4)
     .optional(),
   intervals: z
     .array(
-      z.object({ from: z.number(), to: z.number(), label: text(20), y: z.number().optional() }),
+      z.object({
+        from: z.number(),
+        to: z.number(),
+        label: text(20),
+        y: z.number().optional().describe("in the left axis's units"),
+      }),
     )
     .max(2)
     .optional()
@@ -196,5 +216,9 @@ export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
 
 export const DIAGRAM_KINDS = DiagramSpecSchema.options.map((o) => o.shape.kind.value);
 
-/** The contract line a writer reads for the diagram slot. */
-export const DIAGRAM_CONTRACT = `- diagram: the drawing itself, as a diagram spec of one kind (${DIAGRAM_KINDS.join(", ")}), its labels short; never shown as text`;
+/** The contract lines a writer reads for the diagram slot: the renderer's limits, in its terms. */
+export const DIAGRAM_CONTRACT = [
+  `- diagram: the drawing itself, as a diagram spec of one kind (${DIAGRAM_KINDS.join(", ")}); never shown as text. Each text field keeps to the characters its schema gives (title 40, alt 200, axis label 30, series label 20, annotation 24, interval 20, flow step 32 and arrow 14, label 24, particle caption 16, table header 20 and cell 28); a field with nothing to say is left out, never empty.`,
+  "  - line-graph: an annotation's y and an interval's y are in the left axis's units, so the series they mark is on the left axis. A lag time is an interval from one peak's x to the other's.",
+  "  - labelled-diagram: shapes on a canvas 100 high (100 or 160 wide). Each label's point is inside or on the shape it names; a label is 1 to 3 words, one per shape, at most 6. Particle boxes are one per state, the caption the state's name.",
+].join("\n");
