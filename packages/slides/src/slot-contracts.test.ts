@@ -104,7 +104,7 @@ describe("contractText", () => {
         "worked-example:",
         '- heading: one line: one short main clause about one thing, with no "and", "but", "when" or list',
         "- question: one question, at most two lines",
-        "- steps: 2–4 lines, each one calculation or one short phrase, on one line (the last line gives the answer)",
+        "- steps: 2–6 lines, each one calculation or one short phrase, on one line (the last line gives the answer)",
       ].join("\n"),
     );
     expect(contractText("hinge", "why")).toContain("hinge (why):");
@@ -115,7 +115,7 @@ describe("contractText", () => {
       "explanation: one sentence of one or two clauses, at most two lines, goes in the teacher notes",
     );
     expect(contractText("compare")).toContain(
-      "compare: 2 items, each with label: a short label, half a line, not a sentence; points: 2 items, each a phrase on one line, not a full sentence (two sides, left then right)",
+      "compare: 2 items, each with label: a short label, half a line, not a sentence; points: 2–4 items, each a phrase on one line, not a full sentence (two sides, left then right)",
     );
   });
 

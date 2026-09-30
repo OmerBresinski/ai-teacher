@@ -14,6 +14,14 @@ import { FONT_STACKS } from "./fonts";
  */
 
 const S = 1.2;
+/**
+ * Teaching body (spike/teach-type, 30 Sep 2026): the `body` stop is the reading matter a slide
+ * teaches with (explain and photo bodies, list items, captions). It is set at 0.7 of the display
+ * ladder's body stop, about 30–33 px on a 1440 projector (Chalkie sets 20–24), so a teaching slide
+ * carries a paragraph rather than three lines. Each theme keeps its own ratio; titles, headings,
+ * question stems and option cards keep their stops.
+ */
+const TEACH = 0.7;
 type Stops = [number, number][]; // [size@800, lineHeight] in order title, subtitle, heading, body, small, caption
 const PRESETS: TextPreset[] = ["title", "subtitle", "heading", "body", "small", "caption"];
 
@@ -23,7 +31,7 @@ function type(stops: Stops) {
   stops.forEach(([size, lh], i) => {
     const preset = PRESETS[i];
     if (!preset) return;
-    sizes[preset] = Math.round(size * S);
+    sizes[preset] = Math.round(size * S * (preset === "body" ? TEACH : 1));
     lineHeights[preset] = lh;
   });
   return { sizes, lineHeights };
@@ -481,7 +489,7 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
   question: 38,
   option: 31,
   heading: 26,
-  body: 26,
+  body: 20,
   small: 24,
   caption: 14,
 };
@@ -506,8 +514,9 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
  *
  * 1 — the sizes the app shipped with.
  * 2 — wave 4, 4 Sept 2026: the per-role projector floors above (SPEC §7).
+ * 3 — spike/teach-type, 30 Sep 2026: the teaching body floor 26 → 20 (30 px at 1440).
  */
-export const FIT_VERSION = 2;
+export const FIT_VERSION = 3;
 
 /**
  * Preset to role. The preset names a stop on the theme's ladder; the role names

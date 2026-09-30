@@ -59,6 +59,9 @@ const LONG = [
   "The emperor Claudius also needed a victory, because he had only just come to power in Rome.",
   "Conquering an island that Julius Caesar had failed to hold would make him look strong at home.",
   "Some Britons had also helped the Gauls fight Rome, so the island was a threat as well as a prize.",
+  "In AD 43 about forty thousand soldiers landed in Kent and pushed north towards the Thames.",
+  "Some tribes made peace with Rome quickly, because they hoped to keep their lands and their power.",
+  "Others fought on for years, led by chiefs such as Caratacus in the hills of Wales.",
 ].join(" ");
 
 const slot = (s: Slide) => s.elements.find((e) => e.name === PHOTO_NAME) as ImageElement;
@@ -325,10 +328,10 @@ describe("the first slide holds all it can; a continuation never holds one item 
       heading: "How rainfall can cause river flooding",
       body: "Heavy or prolonged rainfall can raise a river’s discharge until it spills over its banks.",
       steps: [
-        "When rain falls heavily or for a long time, the ground may not absorb it all.",
-        "The extra water flows over the land into streams and rivers, raising their discharge.",
-        "If the river cannot contain this added water, it spills onto nearby land.",
-        "During Storm Desmond in 2015, heavy rain caused river flooding in Cumbria.",
+        "When rain falls heavily or for a long time, the ground may not absorb it all, so the lowest land beside the river is the first to go under water.",
+        "The extra water flows over the land into streams and rivers, raising their discharge, so the lowest land beside the river is the first to go under water.",
+        "If the river cannot contain this added water, it spills onto nearby land, so the lowest land beside the river is the first to go under water.",
+        "During Storm Desmond in 2015, heavy rain caused river flooding in Cumbria, so the lowest land beside the river is the first to go under water.",
       ],
     };
     const pages = materialiseSlides(spec, "chalk", meta);

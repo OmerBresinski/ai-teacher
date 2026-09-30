@@ -37,10 +37,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "LESSON"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -61,11 +73,19 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Fractions of amounts" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Fractions of amounts"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "title", "autoHeight": true },
+              "style": {
+                "preset": "title",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -84,10 +104,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Year 5 · Maths" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Year 5 · Maths"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "subtitle",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -114,11 +146,19 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "By the end of this lesson I can"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "plan-objectives.v18",
@@ -157,7 +197,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -177,7 +219,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "plan-objectives.v18",
@@ -202,10 +247,21 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Do now"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -244,7 +300,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -252,7 +310,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "What is the numerator of a fraction?" }
+                              {
+                                "type": "text",
+                                "text": "What is the numerator of a fraction?"
+                              }
                             ]
                           }
                         ]
@@ -263,7 +324,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "What is the denominator of a fraction?" }
+                              {
+                                "type": "text",
+                                "text": "What is the denominator of a fraction?"
+                              }
                             ]
                           }
                         ]
@@ -273,7 +337,12 @@
                         "content": [
                           {
                             "type": "paragraph",
-                            "content": [{ "type": "text", "text": "What is 6 × 4?" }]
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What is 6 × 4?"
+                              }
+                            ]
                           }
                         ]
                       }
@@ -281,7 +350,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -311,7 +383,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -351,7 +427,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "k1"],
                 "promptVersion": "generate-slide.v25",
@@ -399,7 +478,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "k1"],
                 "promptVersion": "generate-slide.v25",
@@ -428,12 +510,19 @@
                   {
                     "type": "paragraph",
                     "content": [
-                      { "type": "text", "text": "Find three fifths by dividing, then multiplying" }
+                      {
+                        "type": "text",
+                        "text": "Find three fifths by dividing, then multiplying"
+                      }
                     ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "x1", "m1"],
                 "promptVersion": "generate-slide.v25",
@@ -472,11 +561,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "What is 3/5 of 20 beads?" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "What is 3/5 of 20 beads?"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "x1", "m1"],
                 "promptVersion": "generate-slide.v25",
@@ -514,10 +612,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "WORKING"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "x1", "m1"],
                 "promptVersion": "generate-slide.v25",
@@ -538,7 +648,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -560,7 +672,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "Take 3 parts: 4 beads × 3 = 12 beads." }
+                              {
+                                "type": "text",
+                                "text": "Take 3 parts: 4 beads × 3 = 12 beads."
+                              }
                             ]
                           }
                         ]
@@ -571,7 +686,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "So 3/5 of 20 beads is 12 beads." }
+                              {
+                                "type": "text",
+                                "text": "So 3/5 of 20 beads is 12 beads."
+                              }
                             ]
                           }
                         ]
@@ -580,7 +698,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "revealStep": 1,
               "reveal": "rise",
               "generatedFrom": {
@@ -619,7 +741,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -661,11 +786,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Write your answer" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Write your answer"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -706,7 +840,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q1"],
                 "promptVersion": "generate-slide.v25",
@@ -725,7 +862,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "112 cubes" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "112 cubes"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "A",
@@ -747,7 +892,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "4 cubes" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "4 cubes"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "B",
@@ -769,7 +922,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "7 cubes" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "7 cubes"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "C",
@@ -791,7 +952,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "28 cubes" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "28 cubes"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "D",
@@ -807,10 +976,22 @@
           "question": {
             "type": "multiple-choice",
             "options": [
-              { "id": "e8omuiri3jb", "correct": false },
-              { "id": "e8pmuiri3jb", "correct": false },
-              { "id": "e8qmuiri3jb", "correct": true },
-              { "id": "e8rmuiri3jb", "correct": false }
+              {
+                "id": "e8omuiri3jb",
+                "correct": false
+              },
+              {
+                "id": "e8pmuiri3jb",
+                "correct": false
+              },
+              {
+                "id": "e8qmuiri3jb",
+                "correct": true
+              },
+              {
+                "id": "e8rmuiri3jb",
+                "correct": false
+              }
             ],
             "explanation": "Divide 28 by 4 to find one equal part: 7 cubes. Take 1 part, so the answer is 7 cubes."
           },
@@ -841,7 +1022,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q2"],
                 "promptVersion": "generate-slide.v25",
@@ -860,7 +1044,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "12 pencils" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "12 pencils"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "A",
@@ -882,7 +1074,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "6 pencils" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "6 pencils"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "B",
@@ -904,7 +1104,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "9 pencils" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "9 pencils"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "C",
@@ -926,7 +1134,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "27 pencils" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "27 pencils"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "D",
@@ -942,10 +1158,22 @@
           "question": {
             "type": "multiple-choice",
             "options": [
-              { "id": "e8ymuiri439", "correct": true },
-              { "id": "e8zmuiri439", "correct": false },
-              { "id": "e90muiri439", "correct": false },
-              { "id": "e91muiri439", "correct": false }
+              {
+                "id": "e8ymuiri439",
+                "correct": true
+              },
+              {
+                "id": "e8zmuiri439",
+                "correct": false
+              },
+              {
+                "id": "e90muiri439",
+                "correct": false
+              },
+              {
+                "id": "e91muiri439",
+                "correct": false
+              }
             ],
             "explanation": "Divide 18 by 3 to find one equal part: 6. Then multiply by 2 to find two parts: 12 pencils."
           },
@@ -976,7 +1204,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q4"],
                 "promptVersion": "generate-slide.v25",
@@ -995,7 +1226,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "7 stickers" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "7 stickers"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "A",
@@ -1017,7 +1256,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "50.4 stickers" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "50.4 stickers"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "B",
@@ -1039,7 +1286,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "30 stickers" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "30 stickers"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "C",
@@ -1061,7 +1316,15 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "35 stickers" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "35 stickers"
+                      }
+                    ]
+                  }
                 ]
               },
               "label": "D",
@@ -1077,10 +1340,22 @@
           "question": {
             "type": "multiple-choice",
             "options": [
-              { "id": "e94muiri47y", "correct": false },
-              { "id": "e95muiri47y", "correct": false },
-              { "id": "e96muiri47y", "correct": false },
-              { "id": "e97muiri47y", "correct": true }
+              {
+                "id": "e94muiri47y",
+                "correct": false
+              },
+              {
+                "id": "e95muiri47y",
+                "correct": false
+              },
+              {
+                "id": "e96muiri47y",
+                "correct": false
+              },
+              {
+                "id": "e97muiri47y",
+                "correct": true
+              }
             ],
             "explanation": "Divide 42 by 6 to find one equal part: 7. Multiply 7 by 5 to find five parts: 35 stickers."
           },
@@ -1100,10 +1375,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Exit ticket" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Exit ticket"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q5", "q6", "q7", "q8"],
                 "promptVersion": "generate-slide.v25",
@@ -1142,7 +1429,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -1204,7 +1493,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q5", "q6", "q7", "q8"],
                 "promptVersion": "generate-slide.v25",
@@ -1234,7 +1527,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q5", "q6", "q7", "q8"],
                 "promptVersion": "generate-slide.v25",
@@ -1253,14 +1550,14 @@
       "masterFit": [
         "64c7f7287804b27d",
         "2c666c8ef02d30f4",
-        "4dfe93a35aff8da3",
+        "9a9a38d4368e9f45",
         "0ff656281bc6ec3c",
-        "f451114cb80df24d",
+        "36e8f28650d5ee87",
         "8ceef9fcf42bc0b1",
         "312126348757a232",
         "7fdd42c9c7f2572b",
         "2ead498cc891ccf4",
-        "42a12cac97f59df8"
+        "d09b3a02e653c12d"
       ]
     },
     {
@@ -1299,10 +1596,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "LESSON"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -1323,11 +1632,19 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Rates of reaction" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Rates of reaction"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "title", "autoHeight": true },
+              "style": {
+                "preset": "title",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -1348,11 +1665,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Year 11 · Chemistry" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Year 11 · Chemistry"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "subtitle",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -1379,11 +1705,19 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "By the end of this lesson I can"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "o3"],
                 "promptVersion": "plan-objectives.v18",
@@ -1422,7 +1756,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -1470,7 +1806,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "o3"],
                 "promptVersion": "plan-objectives.v18",
@@ -1495,10 +1834,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Do now"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -1537,14 +1888,21 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
                         "content": [
                           {
                             "type": "paragraph",
-                            "content": [{ "type": "text", "text": "What is activation energy?" }]
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What is activation energy?"
+                              }
+                            ]
                           }
                         ]
                       },
@@ -1580,7 +1938,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -1610,7 +1972,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -1650,7 +2016,11 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 29 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 29
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "k1", "k2", "v1"],
                 "promptVersion": "generate-slide.v25",
@@ -1698,7 +2068,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "k1", "k2", "v1"],
                 "promptVersion": "generate-slide.v25",
@@ -1735,7 +2109,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -1777,11 +2154,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Write your answer" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Write your answer"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -1822,7 +2208,11 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "k3", "k4", "v2"],
                 "promptVersion": "generate-slide.v25",
@@ -1879,7 +2269,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "k3", "k4", "v2"],
                 "promptVersion": "generate-slide.v25",
@@ -1905,10 +2299,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Quick check"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "q5", "q6", "q7"],
                 "promptVersion": "generate-slide.v25",
@@ -1947,7 +2353,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -1995,7 +2403,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "q5", "q6", "q7"],
                 "promptVersion": "generate-slide.v25",
@@ -2025,7 +2437,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "q5", "q6", "q7"],
                 "promptVersion": "generate-slide.v25",
@@ -2057,12 +2473,18 @@
                   {
                     "type": "paragraph",
                     "content": [
-                      { "type": "text", "text": "A graph’s gradient shows the reaction rate" }
+                      {
+                        "type": "text",
+                        "text": "A graph’s gradient shows the reaction rate"
+                      }
                     ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o3", "k5"],
                 "promptVersion": "generate-slide.v25",
@@ -2110,7 +2532,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o3", "k5"],
                 "promptVersion": "generate-slide.v25",
@@ -2139,12 +2564,19 @@
                   {
                     "type": "paragraph",
                     "content": [
-                      { "type": "text", "text": "The graph’s gradient gives the average rate" }
+                      {
+                        "type": "text",
+                        "text": "The graph’s gradient gives the average rate"
+                      }
                     ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 29 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 29
+              },
               "generatedFrom": {
                 "factRefs": ["o3", "x1"],
                 "promptVersion": "generate-slide.v25",
@@ -2192,7 +2624,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o3", "x1"],
                 "promptVersion": "generate-slide.v25",
@@ -2230,10 +2666,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "WORKING"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o3", "x1"],
                 "promptVersion": "generate-slide.v25",
@@ -2254,7 +2702,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -2262,7 +2712,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "Change in volume = 40 − 0 = 40 cm³." }
+                              {
+                                "type": "text",
+                                "text": "Change in volume = 40 − 0 = 40 cm³."
+                              }
                             ]
                           }
                         ]
@@ -2273,7 +2726,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "Change in time = 20 − 0 = 20 s." }
+                              {
+                                "type": "text",
+                                "text": "Change in time = 20 − 0 = 20 s."
+                              }
                             ]
                           }
                         ]
@@ -2284,7 +2740,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "Gradient = 40 cm³ ÷ 20 s = 2 cm³/s." }
+                              {
+                                "type": "text",
+                                "text": "Gradient = 40 cm³ ÷ 20 s = 2 cm³/s."
+                              }
                             ]
                           }
                         ]
@@ -2295,7 +2754,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "So the average rate is 2 cm³/s." }
+                              {
+                                "type": "text",
+                                "text": "So the average rate is 2 cm³/s."
+                              }
                             ]
                           }
                         ]
@@ -2304,7 +2766,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "revealStep": 1,
               "reveal": "rise",
               "generatedFrom": {
@@ -2332,10 +2798,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Exit ticket" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Exit ticket"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
                 "promptVersion": "generate-slide.v25",
@@ -2374,7 +2852,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -2382,7 +2862,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "What does collision frequency mean?" }
+                              {
+                                "type": "text",
+                                "text": "What does collision frequency mean?"
+                              }
                             ]
                           }
                         ]
@@ -2433,7 +2916,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
                 "promptVersion": "generate-slide.v25",
@@ -2463,7 +2950,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "o3", "q1", "q4", "q8", "q9"],
                 "promptVersion": "generate-slide.v25",
@@ -2485,11 +2976,11 @@
         "58ce61c7c1d26211",
         "7a3877295801f7e0",
         "c752214a1e29d30c",
-        "f2567d2ee9573cbd",
-        "e2f5a3510b07c09d",
+        "cccbd0276fbde3d7",
+        "c7c13c70bc87b54c",
         "be601c378de92391",
         "3f25e1ae7d069827",
-        "88a27e262e3320de"
+        "54b6465c0f3c5058"
       ]
     },
     {
@@ -2528,10 +3019,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "LESSON"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -2552,11 +3055,19 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Simplifying and sharing in a ratio" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Simplifying and sharing in a ratio"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "title", "autoHeight": true },
+              "style": {
+                "preset": "title",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -2575,10 +3086,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Year 7 · Maths" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Year 7 · Maths"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "subtitle",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": [],
                 "promptVersion": "brief",
@@ -2605,11 +3128,19 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "By the end of this lesson I can"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2"],
                 "promptVersion": "plan-objectives.v18",
@@ -2648,7 +3179,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -2682,7 +3215,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2"],
                 "promptVersion": "plan-objectives.v18",
@@ -2707,10 +3243,21 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Do now"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -2749,7 +3296,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -2797,7 +3346,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -2818,11 +3370,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Answers: 1 4  ·  2 5 groups  ·  3 5" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Answers: 1 4  ·  2 5 groups  ·  3 5"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1"],
                 "promptVersion": "generate-slide.v25",
@@ -2854,12 +3415,18 @@
                   {
                     "type": "paragraph",
                     "content": [
-                      { "type": "text", "text": "Divide every part of a ratio by the same factor" }
+                      {
+                        "type": "text",
+                        "text": "Divide every part of a ratio by the same factor"
+                      }
                     ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "k1", "v1"],
                 "promptVersion": "generate-slide.v25",
@@ -2907,7 +3474,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "k1", "v1"],
                 "promptVersion": "generate-slide.v25",
@@ -2944,7 +3514,11 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "x1", "m1"],
                 "promptVersion": "generate-slide.v25",
@@ -2992,7 +3566,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "x1", "m1"],
                 "promptVersion": "generate-slide.v25",
@@ -3030,10 +3608,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "WORKING"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "x1", "m1"],
                 "promptVersion": "generate-slide.v25",
@@ -3054,7 +3644,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -3076,7 +3668,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "Divide both parts by 6: 18 ÷ 6 = 3." }
+                              {
+                                "type": "text",
+                                "text": "Divide both parts by 6: 18 ÷ 6 = 3."
+                              }
                             ]
                           }
                         ]
@@ -3101,7 +3696,10 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "So 18 parts:24 parts = 3 parts:4 parts." }
+                              {
+                                "type": "text",
+                                "text": "So 18 parts:24 parts = 3 parts:4 parts."
+                              }
                             ]
                           }
                         ]
@@ -3110,7 +3708,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "revealStep": 1,
               "reveal": "rise",
               "generatedFrom": {
@@ -3138,10 +3740,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Quick check"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q1", "q2", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -3180,7 +3794,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -3228,7 +3844,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q1", "q2", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -3258,7 +3878,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "q1", "q2", "q3"],
                 "promptVersion": "generate-slide.v25",
@@ -3290,12 +3914,18 @@
                   {
                     "type": "paragraph",
                     "content": [
-                      { "type": "text", "text": "Share by finding the value of one part" }
+                      {
+                        "type": "text",
+                        "text": "Share by finding the value of one part"
+                      }
                     ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "k2", "v2"],
                 "promptVersion": "generate-slide.v25",
@@ -3343,7 +3973,10 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true },
+              "style": {
+                "preset": "body",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "k2", "v2"],
                 "promptVersion": "generate-slide.v25",
@@ -3371,11 +4004,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Use total parts to find each share" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Use total parts to find each share"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 29 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 29
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "x2", "m2"],
                 "promptVersion": "generate-slide.v25",
@@ -3423,7 +4065,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "x2", "m2"],
                 "promptVersion": "generate-slide.v25",
@@ -3461,10 +4107,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "WORKING"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "caption",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "x2", "m2"],
                 "promptVersion": "generate-slide.v25",
@@ -3485,23 +4143,21 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
                         "content": [
                           {
                             "type": "paragraph",
-                            "content": [{ "type": "text", "text": "2 + 3 = 5 parts altogether." }]
-                          }
-                        ]
-                      },
-                      {
-                        "type": "listItem",
-                        "content": [
-                          {
-                            "type": "paragraph",
-                            "content": [{ "type": "text", "text": "30 ÷ 5 = 6 counters per part." }]
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "2 + 3 = 5 parts altogether."
+                              }
+                            ]
                           }
                         ]
                       },
@@ -3511,7 +4167,24 @@
                           {
                             "type": "paragraph",
                             "content": [
-                              { "type": "text", "text": "2 × 6 = 12; 3 × 6 = 18 counters." }
+                              {
+                                "type": "text",
+                                "text": "30 ÷ 5 = 6 counters per part."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "2 × 6 = 12; 3 × 6 = 18 counters."
+                              }
                             ]
                           }
                         ]
@@ -3534,7 +4207,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "revealStep": 1,
               "reveal": "rise",
               "generatedFrom": {
@@ -3573,7 +4250,10 @@
                   }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "q6"],
                 "promptVersion": "generate-slide.v25",
@@ -3615,11 +4295,20 @@
                 "content": [
                   {
                     "type": "paragraph",
-                    "content": [{ "type": "text", "text": "Write your answer" }]
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Write your answer"
+                      }
+                    ]
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o2", "q6"],
                 "promptVersion": "generate-slide.v25",
@@ -3649,10 +4338,22 @@
               "doc": {
                 "type": "doc",
                 "content": [
-                  { "type": "paragraph", "content": [{ "type": "text", "text": "Exit ticket" }] }
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Exit ticket"
+                      }
+                    ]
+                  }
                 ]
               },
-              "style": { "preset": "heading", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "heading",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
                 "promptVersion": "generate-slide.v25",
@@ -3691,7 +4392,9 @@
                 "content": [
                   {
                     "type": "orderedList",
-                    "attrs": { "start": 1 },
+                    "attrs": {
+                      "start": 1
+                    },
                     "content": [
                       {
                         "type": "listItem",
@@ -3753,7 +4456,11 @@
                   }
                 ]
               },
-              "style": { "preset": "body", "autoHeight": true, "fontSize": 26 },
+              "style": {
+                "preset": "body",
+                "autoHeight": true,
+                "fontSize": 26
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
                 "promptVersion": "generate-slide.v25",
@@ -3783,7 +4490,11 @@
                   }
                 ]
               },
-              "style": { "preset": "small", "autoHeight": true, "color": "#6E6656" },
+              "style": {
+                "preset": "small",
+                "autoHeight": true,
+                "color": "#6E6656"
+              },
               "generatedFrom": {
                 "factRefs": ["o1", "o2", "q4", "q5", "q7", "q9"],
                 "promptVersion": "generate-slide.v25",
@@ -3802,14 +4513,14 @@
       "masterFit": [
         "7c6ddad3bc3a3fa7",
         "79133bd1cd275d49",
-        "0a3e4aa4c193254b",
+        "829ee0736cf93975",
         "fd23fd2802df5626",
-        "2626b7c33eb3a799",
+        "20f7db0f97a8c338",
         "cf69ba97fe356c28",
         "0f21a992496acf58",
         "76cf9efe7ddd8955",
         "921b1262e466624d",
-        "b182e47d4a59c1a9"
+        "e805ff60430f2bab"
       ]
     }
   ]

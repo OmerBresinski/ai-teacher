@@ -382,7 +382,7 @@ describe("overflow fixes", () => {
   });
   test("a paragraph too long even for the fit continues on the next slide, never below the floor", () => {
     const body = Array.from(
-      { length: 11 },
+      { length: 24 },
       (_, i) => `Sentence ${i} says something that takes up most of a line.`,
     ).join(" ");
     const slide: Slide = materialiseSlide(

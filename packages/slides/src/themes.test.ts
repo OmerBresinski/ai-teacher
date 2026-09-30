@@ -102,7 +102,7 @@ describe("theme catalogue", () => {
     expect(fontFloor("heading", "question")).toBe(38);
     expect(fontFloor("small", "option")).toBe(31);
     expect(fontFloor("caption")).toBe(14);
-    expect(FIT_VERSION).toBe(2);
+    expect(FIT_VERSION).toBe(3);
   });
 
   test("a slide of every kind on every theme parses", () => {

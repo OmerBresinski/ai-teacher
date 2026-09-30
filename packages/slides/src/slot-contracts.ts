@@ -130,13 +130,13 @@ const one = (field: string, each: TextKind, place: SlotPlace = "slide"): Slot =>
  * slot hold one more than it says.
  */
 export const SLOT_CONTRACTS: readonly SlotContract[] = [
-  { form: "explain", layout: "default", slots: [heading, body(3)] },
+  { form: "explain", layout: "default", slots: [heading, body(8)] },
   {
     form: "explain-callout",
     layout: "default",
     slots: [
       heading,
-      body(2),
+      body(5),
       { field: "callout", unit: "sentence", min: 1, max: 1, each: "sentence", place: "slide" },
     ],
   },
@@ -145,9 +145,9 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      // Measured: a list's lead holds two one-clause sentences over its two points.
-      { ...lead, max: 2 },
-      { field: "points", unit: "item", min: 2, max: 2, each: "labelled-sentence", place: "slide" },
+      // Measured at the teaching body size (spike/teach-type): eight points, then five lead clauses.
+      { ...lead, max: 5 },
+      { field: "points", unit: "item", min: 2, max: 8, each: "labelled-sentence", place: "slide" },
     ],
   },
   {
@@ -162,7 +162,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
         min: 2,
         max: 2,
         fixed: true,
-        each: { label: "label", points: { unit: "item", min: 2, max: 2, each: "phrase" } },
+        each: { label: "label", points: { unit: "item", min: 2, max: 4, each: "phrase" } },
         place: "slide",
         rule: "two sides, left then right",
       },
@@ -190,7 +190,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      body(2),
+      body(6),
       {
         field: "imageBrief",
         unit: "item",
@@ -208,12 +208,12 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
   {
     form: "figure",
     layout: "default",
-    slots: [heading, body(2), one("figure", "brief", "off-slide")],
+    slots: [heading, body(3), one("figure", "brief", "off-slide")],
   },
   {
     form: "diagram-slot",
     layout: "default",
-    slots: [heading, body(2), one("diagram", "brief")],
+    slots: [heading, body(3), one("diagram", "brief")],
   },
   {
     form: "worked-example",
@@ -227,7 +227,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
         // One line of working is not a procedure shown step by step, and the recipe has no strip
         // for it: the working card it keeps sets the question a stop down on three themes.
         min: 2,
-        max: 4,
+        max: 6,
         each: "working",
         place: "slide",
         rule: "the last line gives the answer",
