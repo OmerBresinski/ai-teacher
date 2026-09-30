@@ -12,8 +12,10 @@ import { type Audience, audienceBlock } from "./shared";
  * v10 (spike/stream-v4): that line reworded (it read "a check ... found a problem: <clause>", and a check
  * is also a slide role); practice is work done alone that steps up to the lesson's hardest case, not one
  * open prompt; a diagram is the kind the text needs, marks what the text names, one label per real part,
- * on the part it names; a photo brief names the one specific thing it must show (`named`, for Commons). */
-export const WRITE_SLIDES_VERSION = "write-slides.v10";
+ * on the part it names; a photo brief names the one specific thing it must show (`named`, for Commons).
+ * v11: v10's smoke (ad907742) gave maths a stepped 3-item set, but history 3 closed recall questions;
+ * the practice form now follows the objective's verb (a set to work out, a written task to explain). */
+export const WRITE_SLIDES_VERSION = "write-slides.v11";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -74,7 +76,7 @@ A teach slide's body says how or why its claim holds (what acts on what, and wha
 A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°").
 A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
 Each check question has exactly one defensible answer.
-A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: a question set whose items step up from a plain case to that one, or a written task that says what to write and what it must use.
+A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: where its objective is to work something out or identify it, a question set whose items step up from a plain case to that one; where it is to explain or describe, a written task that says what to write and what it must use.
 A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
 A photo's imageBrief describes a real photograph pupils learn from. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
 A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.

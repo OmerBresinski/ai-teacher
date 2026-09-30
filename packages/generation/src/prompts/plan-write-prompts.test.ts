@@ -122,24 +122,24 @@ const PINNED = {
     hash: "d3c9c5978a59efebcb5a53681556310d9f83c00bce0fe1f06c4347003ef881d4",
   },
   write: {
-    version: "write-slides.v10",
-    hash: "0d297eeba29c19e0609c3e2600c132a24933a991f31e70886240a77156bc4521",
+    version: "write-slides.v11",
+    hash: "9b3e0a752f31a669767febc2e4b4810c9bc9a0550422a6cd37cd66ceb52af5e7",
   },
   stream: {
-    version: "stream-lesson.v4",
-    hash: "682e9040a636da00813c485ee79170e0264e338b8e853baefdee053e216c0a85",
+    version: "stream-lesson.v5",
+    hash: "acad5f11afd921a3223b0faaa0d67ad797be957f011e69918d8afc2f10152243",
   },
   rewrite: {
-    version: "write-slides.v10",
-    hash: "acc8cdacacd762a256524c9c83bb4be9955eb5766c7233d0a5a5bded35123c7e",
+    version: "write-slides.v11",
+    hash: "3347b6e64eeb8da1260d89f7455b2aa68c4c680bbd00d86ca8285aabee300d5c",
   },
   recheck: {
-    version: "write-slides.v10",
-    hash: "82513ffded429b2091cace4f3a4c9472ddf8d19c60ce1d65c98188813b2618c8",
+    version: "write-slides.v11",
+    hash: "4732fdadb5b41fc21eb97faa33397cbeada2002bec729d01ba685e30e4c160ca",
   },
   check: {
-    version: "write-slides.v10",
-    hash: "b3a5f6aed7d38bcbad087cb3f427362ddeb5b4a59f0db81fb9c632b42e6a250e",
+    version: "write-slides.v11",
+    hash: "4bacd287bef38ffc46cfc0f9d0aec8e93260fd67e6c2387137ec0f147989f57e",
   },
 };
 
@@ -171,7 +171,7 @@ describe("plan-write prompt versions", () => {
     }
   });
 
-  test("stream-lesson.v4: every swap lands, and the frame survives the picture rule", () => {
+  test("stream-lesson.v5: every swap lands, and the frame survives the picture rule", () => {
     const { system } = streamLessonPrompt(STREAM_SAMPLE);
     for (const [from, to] of STREAM_SWAPS) {
       expect(system).toContain(to);
@@ -183,7 +183,7 @@ describe("plan-write prompt versions", () => {
     );
   });
 
-  test("a check's re-write names the slide and field, the finding on its own line (write-slides.v10)", () => {
+  test("a check's re-write names the slide and field, the finding on its own line (write-slides.v11)", () => {
     const { user } = writeSlidesPrompt(CHECK_SAMPLE);
     expect(user).toContain(
       'Checking slide 4 found this in its notes:\nthe notes do not state the answer the slide reveals ("they vibrate"); they give that answer first\nWrite notes again with that put right',

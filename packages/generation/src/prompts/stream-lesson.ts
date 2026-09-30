@@ -18,9 +18,10 @@ import { WRITE_RULES } from "./write-slides";
  * v4: the practise role no longer says "in their own words" (it drew a lone open prompt); practice is
  * work alone up to the hardest case taught. The rest of v4 is write-slides.v10's rules (practice,
  * diagrams, the photo's `named`).
+ * v5: the practise role names its form by the objective's verb (v4 smoke: history practice was recall).
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v4";
+export const STREAM_LESSON_VERSION = "stream-lesson.v5";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -37,7 +38,7 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
   ["the writer adds the detail", "the slide adds the detail"],
   [
     "practise (pupils use the idea on a new case, in their own words)",
-    "practise (pupils work alone on new cases, up to the hardest the lesson taught)",
+    "practise (pupils work alone on new cases, up to the hardest the lesson taught: a question set that steps up when its objective is to work something out, a written task when it is to explain or describe)",
   ],
   [
     "The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; where pupils practise and apply; and whether it closes with a check.",
