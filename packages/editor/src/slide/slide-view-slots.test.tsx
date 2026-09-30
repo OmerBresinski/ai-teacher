@@ -65,14 +65,14 @@ describe("an open photo slot", () => {
 });
 
 describe("the demo switch", () => {
-  test("present draws the photo placeholder and the undrawn diagram's slot and icon", () => {
+  test("on, present and thumbnails still never draw a brief (layout audit, 30 Sep 2026)", () => {
     setSlotPlaceholders(true);
-    expect(shown(withPhoto, "present").querySelector("[data-slot-placeholder]")).not.toBeNull();
-    const c = shown(withDiagram, "present");
-    expect(c.textContent).toContain(
-      "Diagram: Cycle: evaporation → condensation → precipitation → collection",
-    );
-    expect(c.querySelector('[data-slot-placeholder="diagram"]')).not.toBeNull();
+    for (const mode of ["present", "thumb", "view"] as const) {
+      expect(shown(withPhoto, mode).querySelector("[data-slot-placeholder]")).toBeNull();
+      const c = shown(withDiagram, mode);
+      expect(c.textContent).not.toContain("Diagram:");
+      expect(c.querySelector("[data-slot-placeholder]")).toBeNull();
+    }
   });
 
   test("capture (export, print) never draws a placeholder", () => {
