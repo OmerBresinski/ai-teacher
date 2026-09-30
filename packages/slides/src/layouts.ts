@@ -19,6 +19,7 @@ import { docFromBullets, docFromText, newText, uid } from "./factories";
 import { drawFigure } from "./figures";
 import { BASELINE, GUTTER, HALF, lastColLeft, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
+import { readingLeading } from "./text-style";
 import { fontFloor, getTheme, type TextRole } from "./themes";
 
 /** Local placeholder for new image blocks: no third-party requests (SPEC §0.6). */
@@ -435,6 +436,33 @@ function contentSlide(t: Theme): Layout {
         w: spanWidth(9),
         h: boxH(t, "body", 4),
       }),
+    ],
+  };
+}
+
+/** The name of the callout-row recipe's one sentence: named, so the look and the structure pass leave it whole. */
+export const IDEA_NAME = "Idea";
+
+/**
+ * Content, `callout-row`: one idea over a common mistake (the lesson designer's "explain + callout
+ * row"). The heading and hairline, the idea as one lead sentence across the full measure in the
+ * heading weight, and the callout as a full-width row at the foot of the slide at its own `small`
+ * size (`applyCallout`, then `placeCallout` after the look). The sentence is named (`IDEA_NAME`) so
+ * the look does not split it into a lead and a card and the structure pass does not turn it into
+ * a key card: either would take the height the row needs (fit-lab: a callout found room beside
+ * only 80 to 125 characters of body). The box is sized for three lines; the row takes the rest.
+ */
+function contentCalloutRow(t: Theme): Layout {
+  return {
+    elements: [
+      ...headed(t, "Heading"),
+      text(
+        "body",
+        "One idea in a sentence, with the mistake pupils make about it in the row below.",
+        { x: SAFE.x, y: BODY_Y, w: FULL, h: boxH(t, "body", 3) },
+        { fontWeight: 600, lineHeight: readingLeading(t) },
+        { name: IDEA_NAME },
+      ),
     ],
   };
 }
@@ -1141,7 +1169,7 @@ function steppedList(t: Theme, kind: ListKind): Layout {
 
 /** The variant names, typed so a filler's comparison and a catalogue entry are both checked. */
 export const TITLE_VARIANT_NAMES = ["stack", "photo-band", "split"] as const;
-export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column"] as const;
+export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column", "callout-row"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
 /** The diagram's compositions: the default, and the wider figure a template may ask for. */
 export const DIAGRAM_VARIANT_NAMES = ["figure-left", "figure-wide"] as const;
@@ -1262,6 +1290,11 @@ export const LAYOUT_CATALOGUE: {
       composition: "two-column",
       description: "A heading and the body in two columns",
     },
+    {
+      name: "callout-row",
+      composition: "callout-row",
+      description: "A heading, one idea and a common mistake in a row across the foot",
+    },
   ],
   "image-text": one("photo-left", "A picture down the left, the text beside it"),
   diagram: [
@@ -1338,6 +1371,8 @@ function contentVariant(t: Theme, variant: number | string): Layout {
       return contentStatement(t);
     case "two-column":
       return contentTwoColumn(t);
+    case "callout-row":
+      return contentCalloutRow(t);
     case "headed":
       return contentSlide(t);
   }
