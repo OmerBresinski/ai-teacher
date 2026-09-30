@@ -254,6 +254,22 @@ describe("illustrate", () => {
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
+  test("a photograph placed on one slide is never offered for another (round A: the title's photo came back)", async () => {
+    const { images, stores } = fakeImages(async () => [
+      pexelsPhoto("p1", true),
+      pexelsPhoto("p2", true),
+    ]);
+    const ai = judge(pick("p1"), pick("p2"));
+    const deps = recordingDeps(ai, { images });
+    const state = await run(
+      imageLesson([{ subject: "roman baths" }, { subject: "roman baths pool" }]),
+      deps,
+    );
+    expect(stores).toEqual(["p1", "p2"]);
+    expect(ai.calls[1]?.promptText).not.toContain("id p1");
+    expect(imageOf(state.lesson, 1).src).toBe("/files/ws/images/p2.jpg");
+  });
+
   test("the judge sees the lesson context, not just the slide", async () => {
     const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
     const ai = judge(pick("p", ["front teeth"]));

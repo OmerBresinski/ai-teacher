@@ -418,6 +418,9 @@ export function plainSubject(subject: string, clipped = subject.length >= 60): s
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   args = { ...args, brief: { ...args.brief, subject: plainSubject(args.brief.subject) } };
   const { brief, images, deps, index } = args;
+  deps.photosTaken ??= new Set<string>();
+  const taken = deps.photosTaken;
+  const fresh = (photos: PhotoResult[]) => photos.filter((photo) => !taken.has(photo.pageUrl));
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
@@ -438,7 +441,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       const photos = await searchPortraits(images, query, deps.signal, source);
       if (photos === "busy") return "busy";
       let kept = 0;
-      for (const photo of photos) {
+      for (const photo of fresh(photos)) {
         if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
         if (candidates.some((seen) => seen.id === photo.id)) continue;
         candidates.push(photo);
@@ -493,8 +496,9 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     if (unlisted && round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
     // Only a photograph the judge was shown can be placed.
+    // A photograph another slide placed while this judge looked is not placed twice.
     const picked = verdict.pick
-      ? shortlisted.find((candidate) => candidate.id === verdict.pick)
+      ? fresh(shortlisted).find((candidate) => candidate.id === verdict.pick)
       : undefined;
     if (picked && gatePasses(brief, verdict)) {
       const evidence: PhotoEvidence = {
@@ -504,6 +508,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         promptVersion: pickOrRequeryPrompt.version,
         thumbnail: picked.src.tiny,
       };
+      taken.add(picked.pageUrl);
       return {
         outcome: "placed",
         photo: await store(images, picked, brief, evidence),
@@ -534,8 +539,9 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     tried.push(requery);
     const photos = await searchPortraits(images, requery, deps.signal, source);
     if (photos === "busy") return { outcome: "busy" };
-    if (photos.length === 0) return { outcome: "empty", judged: "query" };
-    pool = photos.slice(0, MAX_CANDIDATES);
+    const unseen = fresh(photos);
+    if (unseen.length === 0) return { outcome: "empty", judged: "query" };
+    pool = unseen.slice(0, MAX_CANDIDATES);
   }
   return { outcome: "empty", judged: "none" };
 }

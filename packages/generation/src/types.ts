@@ -191,6 +191,11 @@ export interface PipelineDeps {
    * `budget`, which stages charge the same way). Created by illustrate when absent.
    */
   imageCounts?: ImageCounts;
+  /**
+   * The photographs already placed in this lesson, by their page URL: a lesson never shows the
+   * same photograph twice (round A, 1 Oct 2026: the title picture came back on a content slide).
+   */
+  photosTaken?: Set<string>;
 }
 
 /**
