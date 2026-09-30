@@ -90,7 +90,7 @@ export const WRITER_OUTPUT_TOKENS_BASE = 1500;
 export const WRITER_OUTPUT_TOKENS_PER_SLIDE = 1500;
 const MAX_OUTPUT_TOKENS_REWRITE = 2000;
 /** The single stream: the plan header and every slide in one answer. */
-export const MAX_OUTPUT_TOKENS_STREAM = 32000;
+export const MAX_OUTPUT_TOKENS_STREAM = 16000;
 /** Slides per writer call. */
 export const WRITER_BATCH = 3;
 
