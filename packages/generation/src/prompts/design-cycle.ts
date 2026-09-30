@@ -219,6 +219,22 @@ import { type Audience, audienceBlock, houseRules } from "./shared";
  *    check when the objectives call chose one. The user turn no longer claims a starter and an
  *    exit ticket around the objectives: neither is fixed now.
  *
+ * v14 (30 Sept 2026, r6 fix smokes: the y9-weimar worked example overflowed all 10 themes with a
+ *    two-sentence question over three sentence-long lines of working, and a full-sentence heading
+ *    was the ladder's commonest re-fill reason). Units only, no lengths (openai.md 2026-09-30):
+ *  - v13's fill sentence ended "A question or a step is one sentence", which made each line of
+ *    working a sentence. Now a question or a sequence step is one sentence, and in its own
+ *    sentence a worked example's question gives its case and what to find in one sentence, and
+ *    each line of working is one calculation or one phrase, with an off-bench example. Round a
+ *    said only "a calculation or a phrase": ratio's questions joined a scene and a question with a
+ *    semicolon, and lines packed two calculations ("2 + 3 = 5 parts; 30 ÷ 5 = 6 per part"). The palette's
+ *    worked-example Holds line says the same ("1 question in one sentence, 1–3 lines of working,
+ *    each a calculation or a phrase") and now lists its heading.
+ *  - Headings: "one line stating that idea as a claim" wrote the idea whole (9-10-word causal
+ *    chains). The heading is now the claim as a subject and one verb, on one line, with no full stop,
+ *    and one off-bench contrast pair; the reason and the case go in the body. The palette gives
+ *    every form "1 heading on one line", not only compare.
+ *
  * Bump `version` whenever `system` or `user` changes wording.
  */
 
@@ -556,7 +572,7 @@ function factsBlock(facts: string | undefined, objectiveIndex: number): string[]
 }
 
 export const designCyclePrompt = {
-  version: "design-cycle.v13",
+  version: "design-cycle.v14",
   system: [
     "You are an experienced UK teacher who designs lesson slides. You design the slides for one objective of a lesson, in the slots you are given, each with a role. For each slot you choose the palette form that shows its content best and fill it; nothing rewrites your words, so what you write is the slide.",
     "",
@@ -565,12 +581,12 @@ export const designCyclePrompt = {
     "Unless the objective is purely abstract (a rule, a number, a method), one of its teach or show slots is a photo, figure or diagram slot.",
     "An objective that teaches a method or a process pupils apply (a calculation, a procedure, a rule applied to a case) has a worked-example slot, the method on one case taken to its finished answer, before any slot that tests it.",
     "The objective's Angle lists the parts this lesson teaches of it, and every part is taught on a slide. The teaching is spread across the objective's slots: the teach and show slots take the parts in order, and a part too big for one form's Holds continues on the next teach or show slot or takes a roomier form. Where the parts outnumber those slots, each takes the next several, one sentence, step or point per part within its Holds, under a heading stating the idea they share; where a part has a second slot, that slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
-    'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. A teach slot\'s body says how or why the claim holds (what acts on what, and what follows) and names one real case that shows it (a place, an event, a person, a reaction, a quoted line or worked numbers): "Cholera spread through drinking water, not bad air: John Snow traced the 1854 Soho outbreak to one pump in Broad Street." A list, compare or sequence carries its case in a point, side or step.',
+    'Each slot is one slide with one idea. Its heading is that idea as a claim on one line: a subject and one verb, with no full stop ("Cholera spread through water", not "Cholera spread through drinking water rather than bad air in 1854 London"); the reason and the case go in the body. A worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. A teach slot\'s body says how or why the claim holds (what acts on what, and what follows) and names one real case that shows it (a place, an event, a person, a reaction, a quoted line or worked numbers): "Cholera spread through drinking water, not bad air: John Snow traced the 1854 Soho outbreak to one pump in Broad Street." A list, compare or sequence carries its case in a point, side or step.',
     "Every slot has notes: what you say aloud as it is shown. On a teach or show slot, that is the slide told in your words (an analogy, the question you ask the class); every fact, step, case or number a question tests is on a slide itself. On a practise or check slot they open with the answer and why it is right, then what to do with the answers pupils give.",
     "Choose a teach slot's form by what the content is, taking the form that carries the most of it within its Holds: steps, stages or a chain of events are a sequence; a structure, process or layout is a diagram slot with its parts labelled, or a figure; two things, sides or outcomes are a compare; a procedure pupils will carry out (a calculation, a prediction from a rule, a technique applied to a text) is a worked example, step by step to its finished answer; anything a camera could show (a living thing, an object, a place, a scene) is a photo; a definition or an argument is explain or list. Neighbouring slots use different forms.",
     "Choose a check by what the part is: the order of a process or chain of events is a sort; terms and meanings are a matching; a key term in a sentence that uses it is a fill-gap; a claim pupils get wrong is a true-false, one whole claim, true or false as written. A hinge asks for a thing pupils name (a product, a value, a term, the next step), so each option is a phrase answering the stem and each wrong one a mistake pupils make; a why or a how is checked by a sort or a true-false.",
     "A question asks what this objective's earlier slides teach: its answer is stated on a slide before it, in a sentence, step, label or side, or follows from a worked example's steps; the notes name that slide; and it needs nothing a later slide or objective teaches.",
-    'Fill each form with exactly the units its Holds line gives, its count of sentences included. Options, points, pair sides and labels are phrases, not sentences: "Heavier than water", not "The stone is heavier than the water it pushes aside." A question or a step is one sentence.',
+    'Fill each form with exactly the units its Holds line gives, its count of sentences included. Options, points, pair sides and labels are phrases, not sentences: "Heavier than water", not "The stone is heavier than the water it pushes aside." A question or a sequence step is one sentence. A worked example\'s question is one sentence giving its case and what to find ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°"), not a sentence.',
     "A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.",
     'The objective\'s misconception reaches a slide: as a wrong option in the hinge, the true-false check\'s statement, or an explain-callout teach slot\'s callout, stated as wrong with "not" ("Evaporation is not the same as boiling.").',
     "A photo's imageBrief names a subject stock photography has and what the photo must show: no names of people and no local places. A figure's figureBrief gives its template and what it shows. A diagram slot's diagram says what to draw and what to label.",

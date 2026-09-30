@@ -104,7 +104,9 @@ export const FIGURE_SUBJECTS: Record<FigureTemplateName, readonly PaletteSubject
  */
 export const VOCABULARY_ENTRIES = Math.min(...THEMES.map((t) => vocabularySlots(t.id)));
 
-const heading: PaletteUnit = { unit: "heading", slot: "heading", min: 1, max: 1 };
+// "on one line" is the heading's unit on every form (design-cycle v14): a heading that runs to a
+// second line was the fit ladder's commonest re-fill reason in the r6 smokes.
+const heading: PaletteUnit = { unit: "heading on one line", slot: "heading", min: 1, max: 1 };
 
 export const PALETTE: readonly PaletteForm[] = [
   {
@@ -174,7 +176,7 @@ export const PALETTE: readonly PaletteForm[] = [
     name: "compare",
     useWhen: "two things set side by side to show how they differ",
     holds: [
-      { unit: "heading on one line", slot: "heading", min: 1, max: 1 },
+      heading,
       { unit: "sentence", slot: "body", min: 1, max: 1 },
       { unit: "side", slot: "compare", min: 2, max: 2 },
       {
@@ -297,12 +299,15 @@ export const PALETTE: readonly PaletteForm[] = [
     name: "worked example",
     useWhen: "a procedure shown once, step by step, before pupils try it",
     holds: [
+      heading,
       // Counted in sentences (`unitsOf`): the question box is two lines over the working (r6 smoke,
-      // y9-weimar: a three-sentence question pushed the working off the slide on every theme).
-      { unit: "question", slot: "question", min: 1, max: 1 },
+      // y9-weimar: a three-sentence question pushed the working off the slide on every theme). The
+      // unit names the sentence and the kind of line, never a length (r6 fix smoke: a one-sentence
+      // question over calculation or phrase lines fits every theme; sentence-long lines do not).
+      { unit: "question in one sentence", slot: "question", min: 1, max: 1 },
       {
         unit: "line of working",
-        plural: "lines of working, the last giving the answer",
+        plural: "lines of working, each one calculation or one phrase, the last giving the answer",
         slot: "steps",
         min: 1,
         max: 3,
