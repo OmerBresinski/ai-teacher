@@ -28,7 +28,6 @@ import {
   variantsFor,
   vocabularyGrid,
 } from "./layouts";
-import { ACCENT_BAR_NAME } from "./look";
 import {
   type IdSupplier,
   materialiseBlock,
@@ -501,18 +500,13 @@ describe("materialiseSlide", () => {
       meta,
       counter(),
     );
-    const texts = slide.elements.filter((element) => element.type === "text");
-    const terms = texts.filter((element) => element.style.preset === "body");
-    const defs = texts.filter((element) => element.style.preset === "small");
+    // Word cards (layout audit round 2): each term over its definition on its own card.
+    const terms = slide.elements.filter((element) => element.name === "Term");
+    const defs = slide.elements.filter((element) => element.name === "Definition");
     expect(terms.map(plain)).toEqual(["Evaporation", "Condensation"]);
     expect(defs.map(plain)).toEqual(["Liquid to gas.", "Gas to liquid."]);
-    // The one rule between the two entries in the first column; the heading's hairline gave its
-    // lane to the kind tag, and the accent bar is the look's (`look.ts`).
-    const rules = slide.elements.filter(
-      (element) => element.type === "shape" && element.name !== ACCENT_BAR_NAME,
-    );
-    expect(rules).toHaveLength(1);
-    expect(SlideSchema.safeParse(slide).success).toBe(true);
+    expect(slide.elements.filter((element) => element.name === "Word card")).toHaveLength(2);
+    expect(slide.elements.filter((element) => element.name === "Rule")).toHaveLength(0);
   });
 
   test("vocabulary: more entries than the theme has slots fill every slot and drop the rest", () => {
@@ -529,7 +523,7 @@ describe("materialiseSlide", () => {
         meta,
         counter(),
       );
-      const terms = slide.elements.filter((e) => e.type === "text" && e.style.preset === "body");
+      const terms = slide.elements.filter((e) => e.name === "Term");
       expect(terms).toHaveLength(slots);
     }
   });
@@ -597,10 +591,11 @@ describe("materialiseSlide", () => {
       meta,
       counter(),
     );
-    const body = objectives.elements.find((e) => e.type === "text" && e.style.preset === "body");
-    expect(body && "doc" in body ? body.doc?.content?.[0]?.type : undefined).toBe("orderedList");
-    // Objectives are stored as verb phrases and listed lower-case under the stem (TEACH-198).
-    expect(plain(body)).toBe("describe the stages\n\nexplain melting");
+    // Each objective on its own numbered card (layout audit round 2), stored as verb phrases and
+    // set lower-case under the stem (TEACH-198).
+    const cards = objectives.elements.filter((e) => /^Objective \d$/.test(e.name ?? ""));
+    expect(cards.map((e) => plain(e))).toEqual(["describe the stages", "explain melting"]);
+    expect(objectives.elements.filter((e) => e.name === "Row badge")).toHaveLength(2);
     expect(plain(objectives.elements[0])).toBe(OBJECTIVES_SLIDE_HEADING);
 
     const plenary = materialiseSlide(minimalSpec("plenary"), "chalk", meta, counter());

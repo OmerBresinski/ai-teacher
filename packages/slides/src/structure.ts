@@ -1004,6 +1004,10 @@ export function structureSlide(
     case "starter":
     case "instructions":
       return structureSet(slide, t, hints, ids, options.pages !== false);
+    case "objectives":
+      return [structureObjectives(slide, t, ids)];
+    case "vocabulary":
+      return [structureVocabulary(slide, t, ids)];
     case "worked-example":
       return structureWorked(slide, t, ids, options.pages !== false);
     case "content":
@@ -1015,6 +1019,134 @@ export function structureSlide(
     default:
       return [slide];
   }
+}
+
+/**
+ * The objectives slide (UX ruling 134, slide 2): each objective on its own numbered full-width
+ * card under the "I can" stem, larger type for fewer objectives. A list that does not fit as
+ * cards stays the numbered list.
+ */
+function structureObjectives(slide: Slide, t: Theme, ids: Ids): Slide {
+  const list = slide.elements.find(
+    (e): e is TextElement => isText(e) && e.style.preset === "body" && !e.name,
+  );
+  if (!list) return slide;
+  const items = docLines(list.doc);
+  if (items.length === 0) return slide;
+  const rest = slide.elements.filter((e) => e !== list);
+  const placed = rowCards(
+    items.map((main, i) => ({ badge: String(i + 1), main })),
+    snapY(list.y + SPACE[1]),
+    SAFE_BOTTOM,
+    t,
+    ids,
+    {
+      textName: (i) => `Objective ${i + 1}`,
+      // The class reads these from the back of the room: a size up from a set's at any count.
+      sizes: [
+        ...new Set([1.3, 1.15, 1].map((k) => Math.round(resolveFontSize(t, "body") * k))),
+        floorBelow(t, "body"),
+      ],
+    },
+  );
+  return placed ? { ...slide, elements: [...rest, ...placed.elements] } : slide;
+}
+
+export const WORD_CARD_NAME = "Word card";
+export const WORD_TERM_NAME = "Term";
+export const WORD_DEFINITION_NAME = "Definition";
+
+/**
+ * Vocabulary as word cards (layout audit round 2): each term and its definition on its own card,
+ * two cards a row (one full-width card for a single word), the term bold in the accent over its
+ * definition. Every card of a row takes the row's tallest height. The definitions try the body
+ * size, then `small`; a set whose cards do not fit keeps the recipe's grid.
+ */
+function structureVocabulary(slide: Slide, t: Theme, ids: Ids): Slide {
+  const texts = slide.elements.filter(isText).filter((e) => e.name !== "Heading" && !e.name);
+  const entries: { term: TextElement; def: TextElement }[] = [];
+  texts.forEach((e, i) => {
+    const next = texts[i + 1];
+    if (e.style.preset === "body" && next?.style.preset === "small")
+      entries.push({ term: e, def: next });
+  });
+  if (entries.length === 0) return slide;
+  const used = new Set<SlideElement>(entries.flatMap((e) => [e.term, e.def]));
+  const rest = slide.elements.filter((e) => !used.has(e) && e.name !== "Rule");
+  const first = entries[0] as (typeof entries)[number];
+  const top = first.term.y;
+  const measure = measureHeadless(t);
+  const cols = entries.length === 1 ? 1 : 2;
+  const cardW = cols === 1 ? SAFE.w : Math.floor((SAFE.w - GUTTER) / 2);
+  const pad = SPACE[3];
+  const inner = cardW - pad * 2;
+  const termSize = resolveFontSize(t, "body");
+  const leading = readingLeading(t);
+  for (const [defPreset, defSize] of [
+    ["body", resolveFontSize(t, "body")],
+    ["small", resolveFontSize(t, "small")],
+  ] as const) {
+    const cards = entries.map(({ term, def }) => {
+      const th = heightOf(measure, term.doc, inner, "body", termSize, 0, { lineHeight: leading });
+      const dh = heightOf(measure, def.doc, inner, defPreset, defSize, 0, { lineHeight: leading });
+      return { term, def, th, dh, h: th + SPACE[1] + dh + pad * 2 };
+    });
+    const rows: (typeof cards)[] = [];
+    for (let i = 0; i < cards.length; i += cols) rows.push(cards.slice(i, i + cols));
+    const heights = rows.map((r) => Math.max(...r.map((c) => c.h)));
+    const room = SAFE_BOTTOM - top;
+    const minGap = SPACE[3];
+    const need = heights.reduce((a, b) => a + b, 0) + minGap * (rows.length - 1);
+    if (withSafety(need) > room) continue;
+    const gap =
+      rows.length > 1
+        ? Math.min(SPACE[5], minGap + Math.floor((room - withSafety(need)) / rows.length))
+        : 0;
+    const used2 = heights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+    let y = snapY(top + Math.max(0, Math.floor((room - withSafety(used2)) / 3)));
+    const els: SlideElement[] = [];
+    rows.forEach((row, r) => {
+      const h = heights[r] as number;
+      row.forEach((c, k) => {
+        const x = SAFE.x + k * (cardW + GUTTER);
+        els.push(card(ids, t, { x, y, w: cardW, h }, WORD_CARD_NAME));
+        els.push(
+          text(
+            ids,
+            { x: x + pad, y: y + pad, w: inner, h: c.th },
+            c.term.doc,
+            {
+              ...c.term.style,
+              preset: "body",
+              fontSize: termSize,
+              lineHeight: leading,
+              fontWeight: 700,
+              color: t.colors.accent,
+            },
+            { name: WORD_TERM_NAME },
+          ),
+        );
+        els.push(
+          text(
+            ids,
+            { x: x + pad, y: y + pad + c.th + SPACE[1], w: inner, h: c.dh },
+            c.def.doc,
+            {
+              ...c.def.style,
+              preset: defPreset,
+              fontSize: defSize,
+              lineHeight: leading,
+              color: t.colors.ink,
+            },
+            { name: WORD_DEFINITION_NAME },
+          ),
+        );
+      });
+      y += h + gap;
+    });
+    return { ...slide, elements: [...rest, ...els] };
+  }
+  return slide;
 }
 
 function headingOf(slide: Slide): TextElement | undefined {
