@@ -6,7 +6,8 @@ import { designMinimums, renderSlot, slotRender } from "./coded-slides";
 import { FORM_DOWN, fitSlot, siblingsOf, slotFits, unitsToNotes } from "./slot-fit";
 
 const META = { promptVersion: "t", model: "t", at: "1970-01-01T00:00:00.000Z" };
-const slots = weimar.cycles.flatMap((c) => c.slots) as DesignSlot[];
+const cycles = weimar.cycles as unknown as { slots: DesignSlot[] }[];
+const slots = cycles.flatMap((c) => c.slots);
 const bySlot = (form: string) => slots.find((s) => s.form === form) as DesignSlot;
 
 describe("slot renderers", () => {
@@ -57,7 +58,7 @@ describe("fit ladder", () => {
   });
 
   test("the re-fill rung asks for the next form down once, and takes an answer that fits", async () => {
-    const slot = weimar.electrolysisWorkedExample as DesignSlot;
+    const slot = weimar.electrolysisWorkedExample as unknown as DesignSlot;
     const asked: string[] = [];
     const fit = await fitSlot(slot, {
       seed: "x",
@@ -78,7 +79,7 @@ describe("fit ladder", () => {
   });
 
   test("with nothing fitting, one step down is tried and then the slot is flagged with its words", async () => {
-    const slot = weimar.electrolysisWorkedExample as DesignSlot;
+    const slot = weimar.electrolysisWorkedExample as unknown as DesignSlot;
     const fit = await fitSlot(slot, { seed: "x", themeId: "chalk" });
     expect(fit.tried.at(-1)?.rung).toBe(fit.rung === "flagged" ? "flagged" : "step-down");
     if (fit.rung === "flagged") expect(fit.slot).toEqual(slot);
@@ -100,8 +101,8 @@ describe("fit ladder", () => {
 
 describe("design minimums", () => {
   test("visuals, checks, neighbours and per-objective teach and check", () => {
-    const placed = weimar.cycles.flatMap((c, o) =>
-      (c.slots as DesignSlot[]).map((s, i) => ({
+    const placed = cycles.flatMap((c, o) =>
+      c.slots.map((s, i) => ({
         objective: o,
         form: s.form,
         slide: 4 + o * 3 + i,
