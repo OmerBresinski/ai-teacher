@@ -1,10 +1,11 @@
 /**
  * Line graphs: axes with round ticks, one to three series (a line or bars, on the left axis or a
  * second one on the right, as a hydrograph's rainfall), labelled stretches of the first series (a
- * heating curve's "melting") and pointed annotations ("peak discharge").
+ * heating curve's "melting"), pointed annotations ("peak discharge") and intervals between two x
+ * values drawn as a labelled double arrow ("lag time").
  */
 import type { LineGraph } from "./schema";
-import { type Ctx, n, num, text, textWidth, ticks } from "./svg";
+import { arrowHead, type Ctx, n, num, text, textWidth, ticks } from "./svg";
 
 type Axis = { label: string; min: number; max: number; step?: number };
 
@@ -16,7 +17,11 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   const y2t = g.y2 ? ticks(g.y2.min, g.y2.max, g.y2.step) : [];
   const tickW = (vals: number[]) => Math.max(0, ...vals.map((v) => textWidth(num(v), x, small)));
   const legend = g.series.length > 1 && g.series.some((s) => s.label);
-  const top = (legend ? fs * 1.8 : 0) + fs * 0.8 + (g.annotations.length ? fs * 1.2 : 0);
+  // Intervals with no `y` get a band of their own under the legend, one row each.
+  const banded = g.intervals.filter((v) => v.y === undefined);
+  const bandRow = small * 1.2 + fs * 0.9;
+  const band = banded.length * bandRow;
+  const top = (legend ? fs * 1.8 : 0) + fs * 0.8 + (g.annotations.length ? fs * 1.2 : 0) + band;
   const left = fs * 1.4 + tickW(yt) + 10;
   const right = g.y2
     ? fs * 1.4 + tickW(y2t) + 10
@@ -142,7 +147,7 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     const fitsRight = ax + reach <= left + pw;
     const centred = !fitsLeft && !fitsRight;
     const goLeft = ax > left + pw * 0.6 ? fitsLeft || !fitsRight : !fitsRight && fitsLeft;
-    const goDown = ay - fs * 2.6 < (legend ? fs * 1.8 : 0);
+    const goDown = ay - fs * 2.6 < (legend ? fs * 1.8 : 0) + band;
     const lx = centred ? ax : ax + (goLeft ? -1 : 1) * fs * 1.6;
     const ly = ay + (goDown ? 1 : -1) * fs * 1.8;
     out.push(
@@ -155,6 +160,30 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
         halo: c.bg,
         v: goDown ? "top" : "bottom",
       }),
+    );
+  }
+
+  // Intervals: dashed drops at both ends, a double arrow between them, the label above it.
+  const rowOf = new Map(banded.map((v, i) => [v, i]));
+  for (const v of g.intervals) {
+    const x1 = X(v.from);
+    const x2 = X(v.to);
+    const row = rowOf.get(v) ?? 0;
+    const ay =
+      v.y === undefined ? (legend ? fs * 1.8 : 0) + row * bandRow + small * 1.2 + fs * 0.3 : Y(v.y);
+    const head = Math.max(9, fs * 0.55);
+    const dash = `stroke-dasharray="${n(fs * 0.35)} ${n(fs * 0.3)}"`;
+    out.push(
+      `<line x1="${n(x1)}" y1="${n(ay)}" x2="${n(x1)}" y2="${n(top + ph)}" stroke="${c.muted}" stroke-width="1.5" ${dash}/>`,
+      `<line x1="${n(x2)}" y1="${n(ay)}" x2="${n(x2)}" y2="${n(top + ph)}" stroke="${c.muted}" stroke-width="1.5" ${dash}/>`,
+      `<line x1="${n(x1 + head * 0.8)}" y1="${n(ay)}" x2="${n(x2 - head * 0.8)}" y2="${n(ay)}" stroke="${c.ink}" stroke-width="2.5"/>`,
+      arrowHead(x1, ay, x2, ay, head, c.ink),
+      arrowHead(x2, ay, x1, ay, head, c.ink),
+    );
+    const lw = textWidth(v.label, x, small, 600);
+    const cx = Math.max(lw / 2 + 2, Math.min(w - lw / 2 - 2, (x1 + x2) / 2));
+    out.push(
+      text(x, cx, ay - fs * 0.3, [v.label], { v: "bottom", fs: small, weight: 600, halo: c.bg }),
     );
   }
 

@@ -91,6 +91,7 @@ export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
       { x: 14, y: 34, label: "peak discharge" },
       { x: 6, y: 32, label: "peak rainfall" },
     ],
+    intervals: [{ from: 6, to: 14, label: "lag time" }],
   },
   "flow-cycle": {
     kind: "flow",
@@ -127,6 +128,58 @@ export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
       { text: "regular rows", at: [20, 30], side: "top" },
       { text: "random, touching", at: [80, 60], side: "top" },
       { text: "far apart", at: [135, 45], side: "top" },
+    ],
+  },
+  // The y7 particle-model render (pw-merge): labels just under each box's caption.
+  "labelled-particles-states": {
+    kind: "labelled-diagram",
+    alt: "Ice has closely packed particles in a regular arrangement, liquid water has closely packed particles in an irregular arrangement, and air has widely spaced particles.",
+    title: "Ice, water and air",
+    canvas: "wide",
+    shapes: [
+      { type: "particles", arrangement: "solid", x: 5, y: 20, w: 40, h: 50, caption: "Solid: ice" },
+      {
+        type: "particles",
+        arrangement: "liquid",
+        x: 60,
+        y: 20,
+        w: 40,
+        h: 50,
+        caption: "Liquid: water",
+      },
+      { type: "particles", arrangement: "gas", x: 115, y: 20, w: 40, h: 50, caption: "Gas: air" },
+    ],
+    labels: [
+      { text: "Close, regular", at: [25, 80], side: "bottom" },
+      { text: "Close, irregular", at: [80, 80], side: "bottom" },
+      { text: "Far apart, irregular", at: [135, 80], side: "bottom" },
+    ],
+  },
+  // The y4 Roman roads render (pw6): each town named twice, and "Roman road" pointing at nothing.
+  "labelled-roads": {
+    kind: "labelled-diagram",
+    alt: "A road connects Londinium, now London, to Verulamium, now St Albans.",
+    title: "One Roman route",
+    canvas: "wide",
+    shapes: [
+      { type: "rect", x: 10, y: 35, w: 35, h: 25, fill: "accent", rounded: true },
+      { type: "rect", x: 115, y: 35, w: 35, h: 25, fill: "accent2", rounded: true },
+      {
+        type: "line",
+        points: [
+          [45, 47],
+          [115, 47],
+        ],
+      },
+      { type: "arrow", from: [55, 35], to: [105, 35] },
+      { type: "arrow", from: [105, 60], to: [55, 60] },
+    ],
+    labels: [
+      { text: "Londinium", at: [27, 25], side: "top" },
+      { text: "London", at: [27, 70], side: "bottom" },
+      { text: "Verulamium", at: [132, 25], side: "top" },
+      { text: "St Albans", at: [132, 70], side: "bottom" },
+      { text: "Roman road", at: [80, 80], side: "bottom" },
     ],
   },
   "labelled-cell": {
