@@ -8,7 +8,8 @@ import { type Audience, audienceBlock } from "./shared";
  * `slide<n>`); its counts are enforced there and stated here only through each contract line.
  */
 
-export const WRITE_SLIDES_VERSION = "write-slides.v8";
+/* v9 (spike/parallel-slides): a re-write asked by a check (`reason: "check"`) says what the check found. */
+export const WRITE_SLIDES_VERSION = "write-slides.v9";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -40,6 +41,11 @@ export type WriteSlidesInput = {
     field: string;
     failure: string;
     current: Record<string, unknown>;
+    /**
+     * Why the field is written again: it does not fit (the default), or a check found it wrong
+     * (a fact, a finding, or an answer key that disagrees with itself; spike/parallel-slides).
+     */
+    reason?: "fit" | "check";
   };
   /**
    * A hinge that still does not fit after its re-write, written again as another check on the same
@@ -117,7 +123,7 @@ export function writeSlidesPrompt(input: WriteSlidesInput): { system: string; us
     "",
   ];
   if (input.rewrite) {
-    const { slide, field, failure, current } = input.rewrite;
+    const { slide, field, failure, current, reason } = input.rewrite;
     lines.push(
       `Write slide ${slide.number}.`,
       "",
@@ -125,7 +131,9 @@ export function writeSlidesPrompt(input: WriteSlidesInput): { system: string; us
       "",
       `Your slide ${slide.number} as written:`,
       JSON.stringify(current),
-      `It does not fit its slide: ${failure}. Write ${field} again as its contract line says. The rest of the slide stays as it is.`,
+      reason === "check"
+        ? `A check of this slide found a problem: ${failure}. Write ${field} again so it is right, as its contract line says. The rest of the slide stays as it is.`
+        : `It does not fit its slide: ${failure}. Write ${field} again as its contract line says. The rest of the slide stays as it is.`,
     );
     return { system: SYSTEM, user: lines.join("\n") };
   }

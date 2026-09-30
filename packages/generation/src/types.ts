@@ -222,6 +222,12 @@ export interface PipelineState {
    * or a resumed one, still has them.
    */
   designArcs?: (ObjectiveArc | undefined)[];
+  /**
+   * Stream mode (spike/parallel-slides): every slide was checked (verify, evaluate, answer key) and
+   * repaired as it closed, and the lesson pass ran; Evaluate and Repair make no model call. In-process
+   * only: a resumed lesson has none and runs the whole-lesson Evaluate and Repair.
+   */
+  checkedPerSlide?: boolean;
   /** The design step's report (allocation, per-slot forms and fit rungs, timings), for the summary. */
   designReport?: DesignReport;
 }

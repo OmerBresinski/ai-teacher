@@ -28,6 +28,16 @@ import { blocking, checkPlan, FIXED_SLIDES, type PlanCheck } from "../plan-write
 import { fitWithRewrite, fitWritten, renderWritten, type Written } from "../plan-write/fit";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
 import { recheckKinds } from "../plan-write/recheck";
+import {
+  answerKeyMismatches,
+  broadenedBrief,
+  crossSlideFindings,
+  fieldOfEvidence,
+  limiter,
+  noPictureOf,
+  PICTURE_FORMS,
+  SLIDE_CHECK_CONCURRENCY,
+} from "../plan-write/slide-check";
 import { PLAN_WRITE_VERSION, STREAM_WRITE_VERSION } from "../plan-write/steps";
 import {
   checkStreamed,
@@ -62,6 +72,7 @@ import {
   writeSlidesPrompt,
 } from "../prompts/write-slides";
 import {
+  BudgetExceeded,
   callContext,
   type PipelineDeps,
   type PipelineState,
@@ -69,10 +80,11 @@ import {
   throwIfAborted,
 } from "../types";
 import { VERIFY_EFFORT } from "./designer";
+import { evaluateOneSlide } from "./evaluate";
 import { withUsage } from "./generate";
-import { emptyFinding, joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
+import { joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
 import { existingTitle, materialiseTitle } from "./plan";
-import { audienceOf, generationOf, planClassFor } from "./shared";
+import { audienceOf, BUDGET_FINDING, generationOf, planClassFor } from "./shared";
 import { runVerify } from "./verify";
 
 /*
@@ -463,6 +475,8 @@ export type PlanWriteReport = {
     rewritten?: { field: string; failure: string; ok: boolean };
     /** A hinge that did not fit, re-planned as another check ("hinge -> true-false"). */
     rechecked?: string;
+    /** A picture slide whose picture could not be filled, drawn with the text full width. */
+    noPicture?: boolean;
   }[];
   mode: "plan-write" | "stream";
   requested: number;
@@ -477,6 +491,29 @@ export type PlanWriteReport = {
   editableMs: number;
   verify: { corrections: number; refitted: number; rejected: number };
   photos: { requested: number; placed: number };
+  /**
+   * Stream (spike/parallel-slides): each slide's check, started as it closed (ms from the start):
+   * Verify corrections, findings kept, fields re-written, and whether the checked slide was saved.
+   */
+  checks?: Record<
+    number,
+    {
+      startMs: number;
+      endMs: number;
+      corrections: number;
+      findings: number;
+      rewrites: string[];
+      saved: boolean;
+    }
+  >;
+  /** When each slide's photo search ended (ms from the start), how, and whether it was retried. */
+  photoReady?: Record<number, { ms: number; outcome: string; retried: boolean }>;
+  /** Slides whose picture or drawing could not be filled, drawn with the text full width. */
+  noPicture?: number[];
+  checksDoneMs?: number;
+  photosDoneMs?: number;
+  /** Faults the lesson-level pass found (taught before tested, one hinge, objectives slide). */
+  lessonPass?: number;
 };
 
 export async function planWriteSlides(
@@ -545,7 +582,9 @@ export async function planWriteSlides(
     };
     const pic = table[0]?.imageBrief;
     // The picture takes the right half when the title fits beside it; otherwise the title stands alone.
-    const split = pic ? fitsPlanned(spec, { variant: "split", stepDown: 0 }).ok : false;
+    // Only with a photo search to fill it: an empty frame never reaches the class.
+    const split =
+      pic && deps.images ? fitsPlanned(spec, { variant: "split", stepDown: 0 }).ok : false;
     const drawnTitle = split
       ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, "split")
       : materialiseSlide(spec, themeId, codeMeta(), deps.ids);
@@ -577,18 +616,16 @@ export async function planWriteSlides(
     );
     void flush();
     if (imageBrief && deps.images) {
-      photoCounts.requested += 1;
-      const titleOutline = outline.map((e, i) => (i === 0 ? { ...e, imageBrief } : e));
-      const pickLesson: Lesson = { ...lesson, facts: { ...baseFacts, outline: titleOutline } };
       titlePhotos.push(
-        pickPhoto(pickLesson, 0, deps).then((picked) => {
-          if (picked.outcome === "placed") {
-            photoCounts.placed += 1;
-            placePhoto(0, picked.photo);
-          } else {
-            const t = lesson.slides[0]?.elements.find((e) => e.type === "image");
-            if (t) findings.push(emptyFinding(title.id, t.id));
-          }
+        findPhoto(0, imageBrief).then((photo) => {
+          if (photo) return placePhoto(0, photo);
+          // No photo after the retry: the title stands alone, never beside an empty frame.
+          noPicture.push(1);
+          deps.logger.info({ stage: "generate", slide: 1 }, "title drawn without its picture");
+          return updateSlide(0, () => ({
+            ...materialiseSlide(spec, themeId, codeMeta(), deps.ids),
+            id: title.id,
+          }));
         }),
       );
     }
@@ -661,23 +698,74 @@ export async function planWriteSlides(
   const photoCounts = { requested: 0, placed: 0 };
   const failedBatches: number[][] = [];
 
-  const placePhoto = (index: number, photo: PlacedPhoto) => {
-    const put = (slide: Slide): Slide => ({
-      ...slide,
-      elements: slide.elements.map((e) =>
-        e.type === "image" && e.src === PLACEHOLDER_IMAGE ? withPhoto(e, photo) : e,
-      ),
-    });
+  /** One slide changed in place: saved when it is already saved, else changed while it waits. */
+  const updateSlide = (index: number, change: (slide: Slide) => Slide) => {
     writing = writing.then(async () => {
       const slide = lesson.slides[index];
       if (slide) {
-        lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === index ? put(s) : s)) };
+        lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === index ? change(s) : s)) };
         if (!deps.signal.aborted) await deps.persist(withUsage(lesson, deps));
       } else {
         const waiting = ready.get(index);
-        if (waiting) ready.set(index, put(waiting));
+        if (waiting) ready.set(index, change(waiting));
       }
     });
+    return writing;
+  };
+
+  /** Photos placed so far by slide index, so a slide drawn again keeps its photo. */
+  const photoOf = new Map<number, PlacedPhoto>();
+  const withPlaced = (slide: Slide, photo: PlacedPhoto): Slide => ({
+    ...slide,
+    elements: slide.elements.map((e) =>
+      e.type === "image" && e.src === PLACEHOLDER_IMAGE ? withPhoto(e, photo) : e,
+    ),
+  });
+  const placePhoto = (index: number, photo: PlacedPhoto) => {
+    photoOf.set(index, photo);
+    return updateSlide(index, (slide) => withPlaced(slide, photo));
+  };
+
+  const photoReady: NonNullable<PlanWriteReport["photoReady"]> = {};
+  const noPicture: number[] = [];
+  /**
+   * A slide's photo: the search and pick for its brief, and when that finds nothing, ONE retry with
+   * a broader query. Undefined when neither placed a photo (the caller drops the slot).
+   */
+  const findPhoto = async (index: number, brief: ImageBrief): Promise<PlacedPhoto | undefined> => {
+    photoCounts.requested += 1;
+    const tryOne = (b: ImageBrief) =>
+      pickPhoto(
+        {
+          ...lesson,
+          facts: {
+            ...baseFacts,
+            outline: outline.map((e, i) => (i === index ? { ...e, imageBrief: b } : e)),
+          },
+        },
+        index,
+        deps,
+      );
+    let picked = await tryOne(brief);
+    const wider =
+      picked.outcome === "placed" || picked.outcome === "busy" ? undefined : broadenedBrief(brief);
+    if (wider) picked = await tryOne(wider);
+    const ms = Date.now() - startedAt;
+    photoReady[index + 1] = { ms, outcome: picked.outcome, retried: wider !== undefined };
+    deps.logger.info(
+      {
+        stage: "generate",
+        call: "photo",
+        slide: index + 1,
+        ms,
+        outcome: picked.outcome,
+        retried: wider !== undefined,
+      },
+      "slide photo ready",
+    );
+    if (picked.outcome !== "placed") return undefined;
+    photoCounts.placed += 1;
+    return picked.photo;
   };
 
   const drawn = (form: string, layout: string, out: Written, meta: MaterialiseMeta): Slide => {
@@ -689,6 +777,45 @@ export async function planWriteSlides(
     return spec && typeof spec === "object"
       ? withDiagramDrawn(slide, getTheme(themeId), spec)
       : slide;
+  };
+
+  /** A slide drawn again from its placed record (form and fields now), keeping id and photo. */
+  const redraw = (index: number, meta: MaterialiseMeta) =>
+    updateSlide(index, (old) => {
+      const p = placed.find((x) => x.index === index);
+      if (!p) return old;
+      const fresh = drawn(p.plan.form, p.plan.layout, p.out, meta);
+      const photo = photoOf.get(index);
+      return { ...(photo ? withPlaced(fresh, photo) : fresh), id: old.id };
+    });
+
+  /** Whether a diagram slot's spec draws; a slot that does not would stay empty. */
+  const diagramDraws = (layout: string, out: Written): boolean => {
+    const spec = out.diagram;
+    if (!spec || typeof spec !== "object") return false;
+    const r = renderWritten("diagram-slot", layout, out);
+    const slide = materialiseSlide(r.spec, themeId, codeMeta(), deps.ids, r.variant, r.structure);
+    return withDiagramDrawn(slide, getTheme(themeId), spec) !== slide;
+  };
+
+  /** A saved picture slide whose photo was not found: drawn again with the text full width. */
+  const dropPicture = (n: number) => {
+    const index = n - 1;
+    const p = placed.find((x) => x.index === index);
+    if (!p) return;
+    noPicture.push(n);
+    p.plan = { ...p.plan, form: "explain", layout: "default" };
+    p.out = noPictureOf(p.out);
+    table[index] = { ...(table[index] as PlanSlide), form: "explain", layout: "default" };
+    const e = outline[index];
+    if (e) {
+      const { imageBrief: _i, ...rest } = e;
+      outline[index] = { ...rest, kind: "content" } as OutlineEntry;
+    }
+    const r = report.find((x) => x.slide === n);
+    if (r) Object.assign(r, { form: "explain", layout: "default", noPicture: true });
+    deps.logger.info({ stage: "generate", slide: n }, "slide drawn without its picture");
+    return redraw(index, codeMeta());
   };
 
   const menu = planMenu(base.subject);
@@ -733,6 +860,200 @@ export async function planWriteSlides(
     }
   };
 
+  /* ---------------------------------------------------------- per-slide check (stream) */
+
+  const verify = { corrections: 0, refitted: 0, rejected: 0 };
+  const slideChecks: Promise<void>[] = [];
+  const runCheck = limiter(SLIDE_CHECK_CONCURRENCY);
+  const checks: NonNullable<PlanWriteReport["checks"]> = {};
+  const onSlide = (slideId: string | undefined) => (slideId ? { slideId } : {});
+  const budgetOnce = (f: Finding[]) =>
+    f.filter((g) => g.check !== "budget" || !findings.some((x) => x.check === "budget"));
+
+  /** One named field of a slide written again, told what a check found. */
+  const checkRewrite = async (n: number, field: string, failure: string, current: Written) => {
+    const s = table[n - 1] as PlanSlide;
+    const only = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape[field];
+    if (!only) return undefined;
+    try {
+      const { output } = await callWriter(
+        {
+          ...writerInput([target(n)]),
+          rewrite: { slide: target(n), field, failure, current, reason: "check" },
+        },
+        z.object({ [field]: only }) as z.ZodType<Written>,
+        MAX_OUTPUT_TOKENS_REWRITE,
+      );
+      deps.logger.info(
+        { stage: "generate", call: "check-rewrite", slide: n, field },
+        "plan-write check re-write",
+      );
+      return field in output ? output[field] : undefined;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.warn(
+        { stage: "generate", call: "check-rewrite", slide: n, field, err: safeError(error) },
+        "check re-write failed; the slide is kept",
+      );
+      return undefined;
+    }
+  };
+
+  /**
+   * A slide's check, the moment it closes: Verify over that slide's facts (with the lesson's
+   * objectives) beside Evaluate over that slide; Verify's corrections written in; then one
+   * named-field re-write per field the answer key (code) or a finding names, at most two; then the
+   * fit (one re-write of a failing field). The checked slide is saved when it fits, else the slide
+   * as written stays and the findings stand.
+   */
+  const checkSlide = async (n: number) => {
+    throwIfAborted(deps.signal);
+    const index = n - 1;
+    const p = placed.find((x) => x.index === index);
+    if (!p) return;
+    const startMs = Date.now() - startedAt;
+    const { form, layout } = p.plan;
+    const before = p.out;
+    deps.logger.info(
+      { stage: "generate", call: "slide-check", slide: n, startMs },
+      "slide check start",
+    );
+    let c = 0;
+    const local = (prefix: string) => `${prefix}${n * 100 + ++c}`;
+    const f = factsOfWritten(form, before, objectiveIds(p.plan), local);
+    const scoped: LessonFacts = {
+      ...baseFacts,
+      keyIdeas: f.keyIdeas,
+      questions: f.questions,
+      workedExamples: f.workedExamples,
+      vocabulary: f.vocabulary,
+      ...(f.retrieval.length > 0 ? { retrieval: f.retrieval } : {}),
+    };
+    const hasFacts =
+      f.keyIdeas.length + f.questions.length + f.workedExamples.length + f.vocabulary.length > 0 ||
+      f.retrieval.length > 0;
+    const current = lesson.slides[index] ?? ready.get(index);
+    const slideId = current?.id;
+    const [verified, reviewed] = await Promise.all([
+      hasFacts
+        ? runVerify(scoped, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT)
+        : undefined,
+      current
+        ? evaluateOneSlide(
+            { ...state, lesson: { ...lesson, facts: scoped, slides: [current] } },
+            current.id,
+            deps,
+          ).catch((error): Finding[] => {
+            if (error instanceof Error && error.name === "AbortError") throw error;
+            if (error instanceof BudgetExceeded) return [BUDGET_FINDING(error.by, "the review")];
+            deps.logger.warn(
+              { stage: "evaluate", slide: n, err: safeError(error) },
+              "slide review failed; the slide is kept",
+            );
+            return [];
+          })
+        : [],
+    ]);
+    throwIfAborted(deps.signal);
+    const kept: Finding[] = [];
+    let out = before;
+    let corrections = 0;
+    if (verified) {
+      for (const g of verified.findings) {
+        kept.push(g.check === "budget" ? g : { ...g, target: onSlide(slideId) });
+      }
+      if (verified.applied.length > 0) {
+        corrections = verified.applied.length;
+        out = changedStrings(scoped, verified.facts).reduce(
+          (o, [, from, to]) => replaced(o, from, to),
+          out,
+        );
+      }
+    }
+    const review = reviewed.filter((r) => r.check !== "budget");
+    kept.push(...reviewed.filter((r) => r.check === "budget"));
+    // The fields to write again: the answer key (code) first, then the review's findings by the
+    // field their quoted evidence sits in.
+    const asks = new Map<string, string[]>();
+    const ask = (field: string, why: string) => asks.set(field, [...(asks.get(field) ?? []), why]);
+    for (const k of answerKeyMismatches(form, out)) ask(k.field, k.failure);
+    const fieldOf = new Map<Finding, string | undefined>();
+    for (const r of review) {
+      const field = fieldOfEvidence(out, r.evidence);
+      fieldOf.set(r, field);
+      if (field) ask(field, r.evidence ? `${r.message} ("${r.evidence}")` : r.message);
+    }
+    const rewrites: string[] = [];
+    for (const [field, whys] of [...asks.entries()].slice(0, 2)) {
+      const value = await checkRewrite(n, field, whys.join("; "), out);
+      if (value === undefined) continue;
+      out = { ...out, [field]: value };
+      rewrites.push(field);
+    }
+    let saved = false;
+    if (JSON.stringify(out) !== JSON.stringify(before)) {
+      const fitted = await fitWithRewrite(form, layout, out, async (field, failure) => {
+        const value = await checkRewrite(n, field, failure, out);
+        return value === undefined ? undefined : { [field]: value };
+      });
+      if (fitted.fit.ok) {
+        // A picture dropped while the check ran: the checked words go on the no-picture slide.
+        const now = p.plan.form === form ? fitted.out : noPictureOf(fitted.out);
+        if (p.plan.form === form || fitWritten(p.plan.form, p.plan.layout, now).ok) {
+          p.out = now;
+          saved = true;
+          await redraw(index, {
+            promptVersion: joinVersions(WRITE_SLIDES_VERSION, verifyFactsPrompt.version),
+            model: "slide-check",
+            at: at(),
+          });
+        }
+      }
+    }
+    verify.corrections += corrections;
+    if (corrections > 0) {
+      if (saved) verify.refitted += 1;
+      else verify.rejected += 1;
+    }
+    for (const k of answerKeyMismatches(p.plan.form, p.out)) {
+      kept.push({
+        check: "answer-key",
+        severity: "warning",
+        target: onSlide(slideId),
+        message: `The answer key does not hold: ${k.failure}.`,
+      });
+    }
+    // A finding whose field was written again and saved is repaired; the rest stand.
+    for (const r of review) {
+      const field = fieldOf.get(r);
+      if (saved && field && rewrites.includes(field)) continue;
+      kept.push(r);
+    }
+    findings.push(...budgetOnce(kept));
+    const endMs = Date.now() - startedAt;
+    checks[n] = {
+      startMs,
+      endMs,
+      corrections,
+      findings: kept.length,
+      rewrites,
+      saved,
+    };
+    deps.logger.info(
+      {
+        stage: "generate",
+        call: "slide-check",
+        slide: n,
+        startMs,
+        endMs,
+        corrections,
+        rewrites,
+        saved,
+      },
+      "slide check end",
+    );
+  };
+
   /** One written slide: fitted (one re-write of a failing field), drawn, queued, photo searched. */
   const land = async (n: number, out: Written, modelId: string) => {
     const index = n - 1;
@@ -765,6 +1086,25 @@ export async function planWriteSlides(
         table[index] = s;
         fitted = { out: again.out, fit: fitWritten(s.form, s.layout, again.out) };
       }
+    }
+    // An empty picture or drawing never reaches the class: a figure brief (drawn later by no step
+    // here), a diagram spec that does not draw, or a photo with no search to fill it takes the
+    // no-picture layout, its text full width.
+    if (
+      PICTURE_FORMS.has(s.form) &&
+      (s.form === "photo"
+        ? !deps.images
+        : s.form === "figure" || !diagramDraws(s.layout, fitted.out))
+    ) {
+      deps.logger.info(
+        { stage: "generate", slide: n, form: s.form },
+        "slide drawn without its picture",
+      );
+      noPicture.push(n);
+      s = { ...s, form: "explain", layout: "default" };
+      table[index] = s;
+      const out2 = noPictureOf(fitted.out);
+      fitted = { out: out2, fit: fitWritten("explain", "default", out2) };
     }
     report.push({
       slide: n,
@@ -824,20 +1164,14 @@ export async function planWriteSlides(
     ready.set(index, slide);
     void flush();
     if (imageBrief && deps.images) {
-      photoCounts.requested += 1;
-      const pickLesson: Lesson = { ...lesson, facts: { ...baseFacts, outline } };
       photos.push(
-        pickPhoto(pickLesson, index, deps).then((picked) => {
-          if (picked.outcome === "placed") {
-            photoCounts.placed += 1;
-            placePhoto(index, picked.photo);
-          } else {
-            const t = slide.elements.find((e) => e.type === "image");
-            if (t) findings.push(emptyFinding(slide.id, t.id));
-          }
-        }),
+        findPhoto(index, imageBrief).then((photo) =>
+          photo ? placePhoto(index, photo) : dropPicture(n),
+        ),
       );
     }
+    // Stream: the slide's check starts now, beside the stream still writing (bounded).
+    if (mode === "stream") slideChecks.push(runCheck(() => checkSlide(n)));
   };
 
   if (mode === "plan-write") drawTitle();
@@ -1085,40 +1419,44 @@ export async function planWriteSlides(
     );
   }
 
-  // Facts from what the slides show, in slide order.
-  const counters: Record<string, number> = {};
-  const next = (prefix: string) => {
-    counters[prefix] = (counters[prefix] ?? 0) + 1;
-    return `${prefix}${counters[prefix]}`;
-  };
-  const facts: LessonFacts = {
-    ...baseFacts,
-    ...(Object.keys(diagrams).length > 0
-      ? { slidePlan: { ...(baseFacts.slidePlan ?? {}), diagrams } }
-      : {}),
-    keyIdeas: [],
-    vocabulary: [],
-    workedExamples: [],
-    questions: [],
-    outline,
-  };
-  const retrieval: RetrievalQuestion[] = [];
+  // Facts from what the slides show, in slide order (built again once the checks have landed).
   const refsOf = new Map<number, string[]>();
-  for (const p of [...placed].sort((a, b) => a.index - b.index)) {
-    const f = factsOfWritten(p.plan.form, p.out, objectiveIds(p.plan), next);
-    facts.keyIdeas?.push(...f.keyIdeas);
-    facts.questions.push(...f.questions);
-    facts.workedExamples.push(...f.workedExamples);
-    facts.vocabulary.push(...f.vocabulary);
-    retrieval.push(...f.retrieval);
-    const refs = [...f.keyIdeas, ...f.questions, ...f.workedExamples, ...f.vocabulary].map(
-      (x) => x.id,
-    );
-    refsOf.set(p.index, refs);
-    const entry = outline[p.index];
-    if (entry) entry.factRefs = [...entry.factRefs, ...refs];
-  }
-  if (retrieval.length > 0) facts.retrieval = retrieval;
+  const buildFacts = (): LessonFacts => {
+    const counters: Record<string, number> = {};
+    const next = (prefix: string) => {
+      counters[prefix] = (counters[prefix] ?? 0) + 1;
+      return `${prefix}${counters[prefix]}`;
+    };
+    const built: LessonFacts = {
+      ...baseFacts,
+      ...(Object.keys(diagrams).length > 0
+        ? { slidePlan: { ...(baseFacts.slidePlan ?? {}), diagrams } }
+        : {}),
+      keyIdeas: [],
+      vocabulary: [],
+      workedExamples: [],
+      questions: [],
+      outline,
+    };
+    const retrieval: RetrievalQuestion[] = [];
+    for (const p of [...placed].sort((a, b) => a.index - b.index)) {
+      const f = factsOfWritten(p.plan.form, p.out, objectiveIds(p.plan), next);
+      built.keyIdeas?.push(...f.keyIdeas);
+      built.questions.push(...f.questions);
+      built.workedExamples.push(...f.workedExamples);
+      built.vocabulary.push(...f.vocabulary);
+      retrieval.push(...f.retrieval);
+      const refs = [...f.keyIdeas, ...f.questions, ...f.workedExamples, ...f.vocabulary].map(
+        (x) => x.id,
+      );
+      refsOf.set(p.index, refs);
+      const entry = outline[p.index];
+      if (entry) entry.factRefs = [...objectiveIds(p.plan), ...refs];
+    }
+    if (retrieval.length > 0) built.retrieval = retrieval;
+    return built;
+  };
+  const facts = buildFacts();
 
   const asGenerated = (l: Lesson, f: LessonFacts): Lesson => {
     const generation = generationOf(l);
@@ -1145,64 +1483,97 @@ export async function planWriteSlides(
   const editableMs = Date.now() - startedAt;
   await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
 
-  // Verify after the save, beside the photo searches: a correction is written into the slides
-  // that show it and lands only when the slide still fits in its own form.
-  const verify = { corrections: 0, refitted: 0, rejected: 0 };
-  const [verified] = await Promise.all([
-    runVerify(facts, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT),
-    Promise.all(photos),
-    Promise.all(titlePhotos),
-  ]);
-  await writing;
-  for (const f of verified.findings) {
-    if (f.check === "budget" && findings.some((g) => g.check === "budget")) continue;
-    findings.push(f);
-  }
   let finalFacts = facts;
-  if (verified.applied.length > 0) {
-    verify.corrections = verified.applied.length;
-    finalFacts = verified.facts;
-    const changes = changedStrings(facts, finalFacts);
-    for (const p of placed) {
-      const refs = refsOf.get(p.index) ?? [];
-      const mine = changes.filter(([id]) => refs.includes(id));
-      if (mine.length === 0) continue;
-      const out = mine.reduce((o, [, from, to]) => replaced(o, from, to), p.out);
-      const fitted = await fitWithRewrite(p.plan.form, p.plan.layout, out, async () => undefined);
-      if (!fitted.fit.ok) {
-        verify.rejected += 1;
-        continue;
+  let checksDoneMs: number | undefined;
+  let photosDoneMs: number | undefined;
+  let lessonPass: number | undefined;
+  if (mode === "stream") {
+    // Each slide was checked as it closed; what is left are the checks and photos still in flight,
+    // then the lesson pass for the rules that span slides.
+    await Promise.all([
+      Promise.all(slideChecks).then(() => {
+        checksDoneMs = Date.now() - startedAt;
+      }),
+      Promise.all([...photos, ...titlePhotos]).then(() => {
+        photosDoneMs = Date.now() - startedAt;
+      }),
+    ]);
+    await writing;
+    throwIfAborted(deps.signal);
+    finalFacts = buildFacts();
+    const pass = crossSlideFindings(
+      placed.map((p) => ({
+        number: p.index + 1,
+        row: p.plan,
+        out: p.out,
+        ...(lesson.slides[p.index] ? { slideId: lesson.slides[p.index]?.id } : {}),
+      })),
+      { objectives: objectives.length, secondSlideKind: lesson.slides[1]?.kind },
+    );
+    lessonPass = pass.length;
+    findings.push(...pass);
+    deps.logger.info(
+      { stage: "generate", call: "lesson-pass", faults: pass.length, checksDoneMs, photosDoneMs },
+      "plan-write lesson pass",
+    );
+  } else {
+    // Verify after the save, beside the photo searches: a correction is written into the slides
+    // that show it and lands only when the slide still fits in its own form.
+    const [verified] = await Promise.all([
+      runVerify(facts, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT),
+      Promise.all(photos),
+      Promise.all(titlePhotos),
+    ]);
+    await writing;
+    for (const f of verified.findings) {
+      if (f.check === "budget" && findings.some((g) => g.check === "budget")) continue;
+      findings.push(f);
+    }
+    if (verified.applied.length > 0) {
+      verify.corrections = verified.applied.length;
+      finalFacts = verified.facts;
+      const changes = changedStrings(facts, finalFacts);
+      for (const p of placed) {
+        const refs = refsOf.get(p.index) ?? [];
+        const mine = changes.filter(([id]) => refs.includes(id));
+        if (mine.length === 0) continue;
+        const out = mine.reduce((o, [, from, to]) => replaced(o, from, to), p.out);
+        const fitted = await fitWithRewrite(p.plan.form, p.plan.layout, out, async () => undefined);
+        if (!fitted.fit.ok) {
+          verify.rejected += 1;
+          continue;
+        }
+        verify.refitted += 1;
+        const old = lesson.slides[p.index] as Slide;
+        const fresh = drawn(p.plan.form, p.plan.layout, fitted.out, {
+          promptVersion: joinVersions(WRITE_SLIDES_VERSION, verifyFactsPrompt.version),
+          model: "verify",
+          at: at(),
+        });
+        const photo = old.elements.find((e) => e.type === "image" && e.src !== PLACEHOLDER_IMAGE);
+        lesson = {
+          ...lesson,
+          slides: lesson.slides.map((s, i) =>
+            i === p.index
+              ? {
+                  ...fresh,
+                  id: old.id,
+                  elements: fresh.elements.map((e) =>
+                    e.type === "image" && photo?.type === "image"
+                      ? {
+                          ...e,
+                          src: photo.src,
+                          alt: photo.alt,
+                          ...(photo.source ? { source: photo.source } : {}),
+                        }
+                      : e,
+                  ),
+                }
+              : s,
+          ),
+        };
+        p.out = fitted.out;
       }
-      verify.refitted += 1;
-      const old = lesson.slides[p.index] as Slide;
-      const fresh = drawn(p.plan.form, p.plan.layout, fitted.out, {
-        promptVersion: joinVersions(WRITE_SLIDES_VERSION, verifyFactsPrompt.version),
-        model: "verify",
-        at: at(),
-      });
-      const photo = old.elements.find((e) => e.type === "image" && e.src !== PLACEHOLDER_IMAGE);
-      lesson = {
-        ...lesson,
-        slides: lesson.slides.map((s, i) =>
-          i === p.index
-            ? {
-                ...fresh,
-                id: old.id,
-                elements: fresh.elements.map((e) =>
-                  e.type === "image" && photo?.type === "image"
-                    ? {
-                        ...e,
-                        src: photo.src,
-                        alt: photo.alt,
-                        ...(photo.source ? { source: photo.source } : {}),
-                      }
-                    : e,
-                ),
-              }
-            : s,
-        ),
-      };
-      p.out = fitted.out;
     }
   }
   lesson = asGenerated(lesson, finalFacts);
@@ -1226,7 +1597,17 @@ export async function planWriteSlides(
     editableMs,
     verify,
     photos: photoCounts,
+    ...(mode === "stream"
+      ? {
+          checks,
+          photoReady,
+          noPicture,
+          ...(checksDoneMs !== undefined ? { checksDoneMs } : {}),
+          ...(photosDoneMs !== undefined ? { photosDoneMs } : {}),
+          ...(lessonPass !== undefined ? { lessonPass } : {}),
+        }
+      : { ...(noPicture.length > 0 ? { noPicture } : {}) }),
   };
   deps.logger.info({ stage: "generate", planWrite: summary }, "plan-write report");
-  return { ...state, lesson };
+  return { ...state, lesson, ...(mode === "stream" ? { checkedPerSlide: true } : {}) };
 }

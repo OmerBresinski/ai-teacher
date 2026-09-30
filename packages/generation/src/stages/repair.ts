@@ -472,7 +472,11 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
   const base = lesson;
   const baseFacts = facts;
   const baseWorksheet = worksheet;
-  const targets = repairTargets(generation.findings, codeBuilt, retrieval);
+  // A stream lesson repaired each slide as it closed (spike/parallel-slides): nothing is left for
+  // this pass to rewrite; its residual findings stand.
+  const targets = state.checkedPerSlide
+    ? []
+    : repairTargets(generation.findings, codeBuilt, retrieval);
   const outcomes: (TargetOutcome | undefined)[] = new Array(targets.length);
   const work = async (t: number) => {
     throwIfAborted(deps.signal);

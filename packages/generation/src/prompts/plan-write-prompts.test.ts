@@ -110,7 +110,7 @@ const PINNED = {
     hash: "d3c9c5978a59efebcb5a53681556310d9f83c00bce0fe1f06c4347003ef881d4",
   },
   write: {
-    version: "write-slides.v8",
+    version: "write-slides.v9",
     hash: "09be89cfc5679a525097aad120f53b0775f0d9357aad9bdf8c2f383b48263168",
   },
   stream: {
@@ -118,11 +118,11 @@ const PINNED = {
     hash: "abaa4a1b55516157a4e8786bae1ce93edf754a6ea26fcf10ce6c27c45265e0c6",
   },
   rewrite: {
-    version: "write-slides.v8",
+    version: "write-slides.v9",
     hash: "876dc4c1b6f5e94d09152634da7a907191a407bcb580e66516394c5facc923bd",
   },
   recheck: {
-    version: "write-slides.v8",
+    version: "write-slides.v9",
     hash: "4d6b95a07ea7bad14835fc8d1778e6ee8e7d1e584fa037cc473c25003be26947",
   },
 };
