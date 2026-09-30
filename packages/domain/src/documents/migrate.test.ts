@@ -27,6 +27,26 @@ describe("migrate", () => {
     expect(migrate(clean)).toBe(clean);
   });
 
+  test("objective arcs are additive: a lesson without them is untouched, one with them parses", () => {
+    const clean = generatedLesson();
+    expect(migrate(clean)).toBe(clean);
+    const doc = generatedLesson();
+    const facts = doc.facts as NonNullable<typeof doc.facts>;
+    const [first, ...rest] = facts.objectives;
+    const arc = { angle: "Why leaves are green", lean: "photo", misconception: "Plants eat soil" };
+    const withArc = {
+      ...doc,
+      facts: { ...facts, objectives: [{ ...(first as object), arc }, ...rest] },
+    };
+    expect(migrate(withArc)).toBe(withArc);
+    expect(parseLesson(withArc).facts?.objectives[0]?.arc).toEqual(arc);
+    const bad = {
+      ...doc,
+      facts: { ...facts, objectives: [{ ...(first as object), arc: { angle: "x" } }, ...rest] },
+    };
+    expect(() => parseLesson(bad)).toThrow(DocumentParseError);
+  });
+
   test("a document from a future version is refused with TeachDeck's message", () => {
     expect(() => migrate({ ...lesson(), version: 2 })).toThrow(
       "This file was made with a newer version of TeachDeck (document version 2).",

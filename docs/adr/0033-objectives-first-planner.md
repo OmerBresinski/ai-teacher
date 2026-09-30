@@ -65,3 +65,14 @@ The decision of 25–26 Sept 2026 (SHIP-H-PLAN §3 item 9, ticket G) ships objec
 worker's `AI_LESSON_PLANNER` now defaults to `objectives-first` when unset. Rollback is setting
 `AI_LESSON_PLANNER=legacy`, not unsetting it. The e2e worker pins `legacy`: its scripted fake
 answers the legacy planner's prompts only.
+
+## Amendment 2026-09-30 — the designer's arcs are saved on the objectives
+
+Under `AI_LESSON_PLANNER=designer` the objectives call also writes one arc per objective (angle,
+leaning form, misconception). The plan job stops at `planned` and the design step runs in the
+generate job, so the arcs are saved on the objectives (`Objective.arc`, optional) rather than
+handed on in memory. The field is additive: lessons without it parse unchanged, so the document
+version does not bump and no migration branch is needed (ADR 0021 §3). A text edit on the plan
+screen keeps the objective's arc (`applyObjectiveEdits` keeps its other fields); an added
+objective has none and is designed without one. The design step drops a stored arc whose `lean`
+is no longer a palette form.

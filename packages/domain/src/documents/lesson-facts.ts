@@ -78,7 +78,20 @@ export type CurriculumRef = {
   status: "inferred" | "confirmed";
 };
 
-export type Objective = { id: FactId; text: string; curriculumRef?: CurriculumRef };
+/**
+ * The lesson designer's through-line for one objective (plan-objectives v19): the angle this lesson
+ * takes on it, the palette form it leans towards, and the misconception pupils most often hold. Kept
+ * on the objective so the design step, which runs in its own job after the teacher confirms the
+ * plan, designs from it. `lean` is a palette form id; the generation package checks it on read.
+ */
+export type ObjectiveArc = { angle: string; lean: string; misconception: string };
+
+export type Objective = {
+  id: FactId;
+  text: string;
+  curriculumRef?: CurriculumRef;
+  arc?: ObjectiveArc;
+};
 
 /**
  * A teaching point: what a pupil must understand, explained, with one concrete example and an
@@ -259,10 +272,18 @@ export const CurriculumRefSchema = z.strictObject({
   status: z.enum(["inferred", "confirmed"]),
 });
 
+export const ObjectiveArcSchema = z.strictObject({
+  angle: z.string(),
+  lean: z.string(),
+  misconception: z.string(),
+});
+
 export const ObjectiveSchema = z.strictObject({
   id: FactIdSchema,
   text: z.string(),
   curriculumRef: CurriculumRefSchema.optional(),
+  /** Optional and additive: a lesson planned before the designer has none (no version bump). */
+  arc: ObjectiveArcSchema.optional(),
 });
 
 const ObjectiveRefsSchema = z.array(FactIdSchema);

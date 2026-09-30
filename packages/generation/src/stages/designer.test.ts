@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { Lesson } from "@tj/domain/documents";
 import { isGeneratedSlide } from "@tj/slides";
+import romansFixture from "../fixtures/objective-facts.y4-history-romans.json";
 import { labAi, romansLesson, versionsOf } from "../planner/testing";
+
+const romansObjectives = romansFixture.objectives;
+
 import { recordingDeps } from "../testing";
 import { runLessonPipeline } from "../workflow";
+import { arcsFor } from "./designer";
 import { isDesignerStamp, plannerOf, resumeFromDesigner } from "./objectives-first";
 
 const romans = (slideCount: 6 | 8 | 10 | 12): Lesson => {
@@ -90,6 +95,40 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     ).toBeGreaterThan(0);
     // Its exit line falls back to nothing it can print; the other two objectives keep theirs.
     expect(final.designReport?.exitCovered).toBe(2);
+  });
+
+  test("the arcs are saved on the objectives, so the generate job after the plan screen has them", async () => {
+    const leans = ["explain", "explain", "worked-example"] as const;
+    const withArc = romansObjectives.map((o, i) => ({
+      ...o,
+      arc: { angle: `Angle ${i + 1}`, lean: leans[i] as string, misconception: `Myth ${i + 1}` },
+    }));
+    const ai = labAi({ objectives: withArc });
+    // The plan job: stops at the plan screen.
+    const plannedDeps = recordingDeps(ai);
+    const planned = await runLessonPipeline({ lesson: romans(12) }, plannedDeps, {
+      planner: "designer",
+      stopAfter: "planned",
+    });
+    const saved = plannedDeps.persisted.at(-1)?.lesson as Lesson;
+    expect(saved.facts?.objectives.map((o) => o.arc)).toEqual(withArc.map((o) => o.arc));
+    expect(planned.lesson.slides).toHaveLength(2);
+    // The generate job: a fresh run from the saved lesson, nothing handed on in-process.
+    const genDeps = recordingDeps(ai);
+    const final = await runLessonPipeline({ lesson: saved }, genDeps, { planner: "designer" });
+    const cycles = ai.calls.filter((c) => c.context?.promptVersion?.startsWith("design-cycle"));
+    expect(cycles.length).toBeGreaterThan(0);
+    for (const c of cycles)
+      expect(c.promptText).toContain("Angle: Angle 3. Leans to: worked-example");
+    // The heavy lean weighs in the allocation (unweighted, 12 slides is [3, 3, 2]).
+    expect(final.designReport?.allocation).toEqual([3, 2, 3]);
+    // An arc the palette no longer has is dropped on read, not sent.
+    expect(
+      arcsFor(
+        [{ id: "o1", text: "x", arc: { angle: "a", lean: "hologram", misconception: "m" } }],
+        undefined,
+      ),
+    ).toEqual([undefined]);
   });
 
   test("resume: the objectives checkpoint re-designs; a later checkpoint moves on", () => {

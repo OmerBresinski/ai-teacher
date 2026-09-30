@@ -204,7 +204,9 @@ export interface PipelineState {
   pendingVerify?: Promise<VerifyResult>;
   /**
    * The lesson designer's arcs, one per objective (plan-objectives v19), handed from the objectives
-   * step to the design step in-process. Never persisted: a resumed design step runs without them.
+   * step to the design step in-process. The objectives step also saves each on its objective
+   * (`Objective.arc`), which the design step reads first, so a design job after the plan screen,
+   * or a resumed one, still has them.
    */
   designArcs?: (ObjectiveArc | undefined)[];
   /** The design step's report (allocation, per-slot forms and fit rungs, timings), for the summary. */

@@ -7,6 +7,7 @@ import {
   type KeyIdea,
   type Lesson,
   type LessonFacts,
+  type Objective,
   type OutlineEntry,
   type Slide,
   type VocabularyItem,
@@ -46,6 +47,7 @@ import {
   ExitQuestionSchema,
   type SlotForm,
 } from "../prompts/design-cycle";
+import { ObjectiveArcSchema } from "../prompts/plan-objectives";
 import {
   BudgetExceeded,
   callContext,
@@ -90,7 +92,8 @@ type Arc = NonNullable<PipelineState["designArcs"]>[number];
 
 /**
  * The designer's objectives step: the title slide first (the plan's ~1 s slide), then the
- * objectives call; the checkpoint carries the designer's stamp and the arcs ride on the state.
+ * objectives call; the checkpoint carries the designer's stamp and the arcs are saved on the
+ * objectives (and ride on the state for a one-pass run).
  */
 export async function designerObjectives(
   state: PipelineState,
@@ -105,16 +108,46 @@ export async function designerObjectives(
   }
   const { state: next, report } = await runObjectivesStep({ ...state, lesson }, deps);
   const generation = generationOf(next.lesson);
+  const arcs = report.objectives.map((o) => (o as { arc?: Arc }).arc);
+  const facts = next.lesson.facts;
   const planned: Lesson = {
     ...next.lesson,
+    ...(facts ? { facts: { ...facts, objectives: withArcs(facts.objectives, arcs) } } : {}),
     generation: {
       ...generation,
       promptVersions: { ...generation.promptVersions, planned: DESIGNER_VERSION },
     },
   };
   await deps.persist(planned);
-  const arcs = report.objectives.map((o) => (o as { arc?: Arc }).arc);
   return { ...next, lesson: planned, designArcs: arcs };
+}
+
+/**
+ * The objectives with the call's arcs saved on them, by position, so the design step (its own job
+ * after the teacher confirms the plan) designs from them. A pinned re-plan writes no arcs: the
+ * objectives keep the ones they have.
+ */
+export function withArcs(objectives: readonly Objective[], arcs: readonly (Arc | undefined)[]) {
+  return objectives.map((o, i) => {
+    const arc = arcs[i];
+    return arc
+      ? { ...o, arc: { angle: arc.angle, lean: arc.lean, misconception: arc.misconception } }
+      : o;
+  });
+}
+
+/**
+ * Each objective's arc for the design step: the one saved on the objective (checked against the
+ * arc schema: a stored lean the palette no longer has is dropped), else the one handed on in-process.
+ */
+export function arcsFor(
+  objectives: readonly Objective[],
+  handed: readonly (Arc | undefined)[] | undefined,
+): (Arc | undefined)[] {
+  return objectives.map((o, i) => {
+    const stored = o.arc ? ObjectiveArcSchema.safeParse(o.arc) : undefined;
+    return stored?.success ? stored.data : handed?.[i];
+  });
 }
 
 /* ------------------------------------------------------------------ facts from slots */
@@ -345,7 +378,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   const themeId = base.themeId;
   const subject = base.subject;
   const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
-  const arcs: Arc[] = objectives.map((_, i) => state.designArcs?.[i]);
+  const arcs = arcsFor(objectives, state.designArcs);
   const allocation = allocate(slideCount, arcs);
   const audience = audienceOf(base);
   const shape = shapeOf(base);
