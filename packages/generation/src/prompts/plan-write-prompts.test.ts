@@ -10,7 +10,7 @@ import {
   planLessonPrompt,
   toWire,
 } from "./plan-lesson";
-import { STREAM_LESSON_VERSION, streamLessonPrompt } from "./stream-lesson";
+import { STREAM_LESSON_VERSION, STREAM_SWAPS, streamLessonPrompt } from "./stream-lesson";
 import { WRITE_SLIDES_VERSION, type WriteSlidesInput, writeSlidesPrompt } from "./write-slides";
 
 /*
@@ -114,8 +114,8 @@ const PINNED = {
     hash: "09be89cfc5679a525097aad120f53b0775f0d9357aad9bdf8c2f383b48263168",
   },
   stream: {
-    version: "stream-lesson.v2",
-    hash: "abaa4a1b55516157a4e8786bae1ce93edf754a6ea26fcf10ce6c27c45265e0c6",
+    version: "stream-lesson.v3",
+    hash: "7b591d44b59d8cfb523c0746d9d3681d87a5fee4f6653e5884c84de98536b77b",
   },
   rewrite: {
     version: "write-slides.v8",
@@ -152,6 +152,18 @@ describe("plan-write prompt versions", () => {
       expect(text).not.toMatch(/shorten|too long|\bwords? (limit|max)|\bcharacters\b/i);
       expect(text.replace("no minutes or timings anywhere", "")).not.toMatch(/\bminutes?\b/i);
     }
+  });
+
+  test("stream-lesson.v3: every swap lands, and the frame survives the picture rule", () => {
+    const { system } = streamLessonPrompt(STREAM_SAMPLE);
+    for (const [from, to] of STREAM_SWAPS) {
+      expect(system).toContain(to);
+      if (!to.includes(from)) expect(system).not.toContain(from);
+    }
+    expect(system).not.toContain("The shape is yours to choose");
+    expect(system.indexOf("a retrieve slide on the earlier learning")).toBeLessThan(
+      system.indexOf("most teach slides carry a picture"),
+    );
   });
 
   test("the writer sees the whole table and only its own contracts", () => {

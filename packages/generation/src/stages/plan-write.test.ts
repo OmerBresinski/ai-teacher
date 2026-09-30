@@ -279,7 +279,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
         [6],
       ]);
       expect(calls.filter((c) => c.rewrite).map((c) => c.rewrite?.field)).toEqual(["heading"]);
-      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v2+");
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v3+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
       // Saves: the title, the header (title with objectives), then the slides in order.
