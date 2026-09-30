@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonFacts, OutlineEntry, Slide, TextElement } from "@tj/domain/documents";
 import { materialiseSlide, measureHeadless, SAFE_BOTTOM, THEMES, textPartsOf } from "@tj/slides";
+import type { DesignSlot } from "../prompts/design-cycle";
 import {
   codedSetSpec,
   EXIT_QUIZ_MAX,
   EXIT_QUIZ_MIN,
   exitLines,
+  figureOfBrief,
   fitsExitTicket,
   LINE_MAX,
   type Line,
@@ -14,9 +16,11 @@ import {
   questionLine,
   sameQuestion,
   seededOrder,
+  slotRender,
   withAnswersReveal,
   withShuffledOptions,
 } from "./coded-slides";
+import { fitSlot } from "./slot-fit";
 
 const mc = {
   id: "q1",
@@ -401,4 +405,56 @@ describe("the exit ticket: one line per objective, on one slide (TEACH-172)", ()
       expect(answers.revealStep).toBe(1);
     });
   }
+});
+
+const META = { promptVersion: "t", model: "t", at: "1970-01-01T00:00:00.000Z" };
+
+describe("figure slots draw their template (ADR 0032)", () => {
+  const slot = (values?: Record<string, unknown>): DesignSlot => ({
+    form: "figure",
+    heading: "Find the missing side",
+    body: "Use Pythagoras' theorem to find the hypotenuse x.",
+    figureBrief: {
+      template: "right-triangle",
+      purpose: "a right-angled triangle with the hypotenuse to find",
+      ...(values ? { values } : {}),
+    },
+  });
+  const valid = {
+    base: { length: 6, label: "6 cm" },
+    height: { length: 8, label: "8 cm" },
+    hypotenuse: { label: "x" },
+  };
+
+  test("valid values: a diagram slide drawing the template, in the template's variant", async () => {
+    const r = slotRender(slot(valid), "seed");
+    expect(r.spec.kind).toBe("diagram");
+    expect((r.spec as { figure?: { template: string } }).figure?.template).toBe("right-triangle");
+    const slide = materialiseSlide(r.spec, "chalk", META, undefined, r.variant, r.structure);
+    const group = slide.elements.find((e) => e.type === "group");
+    expect((group as { figure?: { template: string } } | undefined)?.figure?.template).toBe(
+      "right-triangle",
+    );
+    const fit = await fitSlot(slot(valid), { seed: "s", themeId: "chalk" });
+    expect(fit.render.spec.kind).toBe("diagram");
+  });
+
+  test("no values, or values the template's rules refuse: the labelled placeholder", () => {
+    for (const values of [
+      undefined,
+      { base: { length: 6, label: "6 cm" } },
+      {
+        base: { length: 3, label: "3" },
+        height: { length: 4, label: "4" },
+        hypotenuse: { length: 9, label: "9" },
+      },
+    ]) {
+      const r = slotRender(slot(values), "seed");
+      expect(r.spec.kind).toBe("content");
+      expect((r.spec as { diagram?: string }).diagram).toBe(
+        "a right-angled triangle with the hypotenuse to find",
+      );
+    }
+    expect(figureOfBrief({ template: "right-triangle", values: valid })?.values).toBeDefined();
+  });
 });

@@ -1,5 +1,6 @@
 import type {
   FactQuestion,
+  FigureRef,
   LessonFacts,
   Misconception,
   OutlineEntry,
@@ -10,6 +11,8 @@ import type {
 import { asksForUnlistedOptions } from "@tj/domain/documents";
 import {
   ANSWERS_NAME,
+  diagramVariantFor,
+  FIGURE_TEMPLATES,
   fitSlide,
   getTheme,
   HEADING_NAME,
@@ -517,9 +520,28 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
  * The lesson designer's slot renderers (the lesson designer plan, PR 8; TEACH-208): every palette
  * slide form mapped from its slot material to the slide spec its palette entry names, laid out in
  * that entry's variant with its structure hints. No second writer runs: the text the design cycle
- * wrote is the text on the slide. A figure has no template values in the slot contract yet, so it
- * is drawn as the labelled diagram placeholder carrying its brief (ruling 133) until they do.
+ * wrote is the text on the slide. A figure slot whose brief names a template with values that
+ * pass the template's rules (ADR 0032, `FIGURE_TEMPLATES[t].values`) is a diagram slide drawing
+ * that template; one without them, or with values the template refuses, is the labelled diagram
+ * placeholder carrying its brief (ruling 133).
  */
+
+/**
+ * The figure a figure slot draws: its brief's template and values, when the values pass the
+ * template's rules (the same schema a generated diagram spec embeds). `undefined` otherwise.
+ */
+export function figureOfBrief(brief: {
+  template: FigureRef["template"];
+  values?: Record<string, unknown> | undefined;
+}): FigureRef | undefined {
+  if (!brief.values) return undefined;
+  const template = FIGURE_TEMPLATES[brief.template];
+  if (!template) return undefined;
+  const parsed = template.values.safeParse(brief.values);
+  return parsed.success
+    ? { template: brief.template, values: parsed.data as Record<string, unknown> }
+    : undefined;
+}
 
 /** A slot as the renderer lays it out: the spec, the recipe variant and the structure hints. */
 export type SlotRender = {
@@ -588,7 +610,16 @@ export function slotRender(slot: DesignSlot, seed: string, factRefs: string[] = 
         { kind: "content", ...base, heading: slot.heading, body: slot.body },
         { photo: { subject: slot.imageBrief.subject, mustShow: slot.imageBrief.mustShow ?? [] } },
       );
-    case "figure":
+    case "figure": {
+      const figure = figureOfBrief(slot.figureBrief);
+      if (figure) {
+        return {
+          form: slot.form,
+          spec: { kind: "diagram", ...base, heading: slot.heading, body: slot.body, figure },
+          variant: diagramVariantFor(figure.template, figure.values),
+          structure: {},
+        };
+      }
       return out({
         kind: "content",
         ...base,
@@ -596,6 +627,7 @@ export function slotRender(slot: DesignSlot, seed: string, factRefs: string[] = 
         body: slot.body,
         diagram: slot.figureBrief.purpose,
       });
+    }
     case "diagram-slot":
       return out({
         kind: "content",

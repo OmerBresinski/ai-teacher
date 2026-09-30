@@ -150,7 +150,13 @@ function formSchemas(templates: readonly string[]) {
       notes,
       heading,
       body: text,
-      figureBrief: z.object({ template: figureTemplate, purpose: text }),
+      figureBrief: z.object({
+        template: figureTemplate,
+        purpose: text,
+        // The template's values (the palette example's `figure.values`), checked against the
+        // template's rules in code: a slot without valid ones is drawn as the labelled placeholder.
+        values: z.record(z.string(), z.unknown()).optional(),
+      }),
     }),
     "diagram-slot": z.object({
       form: z.literal("diagram-slot"),
