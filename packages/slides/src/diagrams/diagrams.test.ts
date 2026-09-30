@@ -5,7 +5,7 @@ import { SAFE } from "../grid";
 import { DIAGRAM_NAME, withDiagramSlot } from "../look";
 import { materialiseSlide, withDiagramDrawn } from "../materialise";
 import type { SlideSpec } from "../specs";
-import { getTheme, THEMES } from "../themes";
+import { getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import {
   DIAGRAM_DRAWN_NAME,
   DIAGRAM_KINDS,
@@ -14,7 +14,9 @@ import {
   parseDiagram,
   renderDiagram,
 } from "./index";
+import { resolveLabels } from "./labelled";
 import { DIAGRAM_SAMPLES } from "./samples";
+import { context } from "./svg";
 
 const SLOT = { w: 436, h: 356 };
 const chalk = getTheme("chalk");
@@ -227,5 +229,133 @@ describe("withDiagramDrawn (generation's diagram slot)", () => {
   test("an invalid spec leaves the slide as it is", () => {
     const slide = materialiseSlide(spec, "chalk", meta);
     expect(withDiagramDrawn(slide, getTheme("chalk"), { kind: "nonsense" })).toBe(slide);
+  });
+});
+
+describe("labelled diagram labels (v2)", () => {
+  const roads = DIAGRAM_SAMPLES["labelled-roads"];
+  const parsed = (spec: unknown) => {
+    const s = parseDiagram(spec);
+    if (s?.kind !== "labelled-diagram") throw new Error("not a labelled diagram");
+    return s;
+  };
+
+  test("a label pointing at nothing drawn is dropped; two names for one shape become one", () => {
+    const labels = resolveLabels(parsed(roads));
+    expect(labels.map((l) => l.text)).toEqual(["Londinium (London)", "Verulamium (St Albans)"]);
+    const svg = renderDiagram(roads, chalk, { w: 560, h: 356 }) ?? "";
+    expect(svg).not.toContain("Roman road");
+    expect(svg.match(/>Londinium/g)?.length).toBe(1);
+    expect(svg.match(/>London/g)?.length ?? 0).toBe(0);
+  });
+
+  test("a label repeating another's words is dropped", () => {
+    const s = parsed({
+      kind: "labelled-diagram",
+      alt: "x",
+      shapes: [
+        { type: "circle", cx: 30, cy: 50, r: 10 },
+        { type: "circle", cx: 70, cy: 50, r: 10 },
+      ],
+      labels: [
+        { text: "Cell", at: [30, 50], side: "top" },
+        { text: " cell ", at: [70, 50], side: "top" },
+      ],
+    });
+    expect(resolveLabels(s)).toHaveLength(1);
+  });
+
+  test("a spot on a big shape keeps its leader; a label beside a small shape names all of it", () => {
+    const river = resolveLabels(parsed(DIAGRAM_SAMPLES["labelled-river"]));
+    expect(river.find((l) => l.text === "valley side")?.part).toBe(true);
+    const states = resolveLabels(parsed(DIAGRAM_SAMPLES["labelled-particles-states"]));
+    expect(states.map((l) => [l.target, l.part])).toEqual([
+      [0, false],
+      [1, false],
+      [2, false],
+    ]);
+  });
+
+  test("labels and captions never set below the projector body floor, on a halo", () => {
+    for (const t of THEMES) {
+      for (const [name, spec] of Object.entries(DIAGRAM_SAMPLES)) {
+        if (spec.kind !== "labelled-diagram") continue;
+        const svg = renderDiagram(spec, t, SLOT) ?? "";
+        const sizes = [...svg.matchAll(/<text[^>]*font-size="([\d.]+)"[^>]*paint-order/g)].map(
+          (m) => Number(m[1]),
+        );
+        expect(sizes.length, name).toBeGreaterThan(0);
+        for (const fs of sizes) expect(fs).toBeGreaterThanOrEqual(MIN_FONT_SIZE.body);
+      }
+    }
+  });
+
+  test("particle descriptions sit under their own box, not at the drawing's edge", () => {
+    const svg = renderDiagram(DIAGRAM_SAMPLES["labelled-particles-states"], chalk, {
+      w: 560,
+      h: 356,
+    }) as string;
+    const y = (word: string) =>
+      Number(new RegExp(`y="([\\d.]+)">${word}`).exec(svg)?.[1] ?? Number.NaN);
+    expect(y("Close,")).toBeGreaterThan(y("Solid: ice"));
+    expect(y("Close,") - y("Solid: ice")).toBeLessThan(MIN_FONT_SIZE.body * 2);
+    expect(svg).not.toContain("<line x1"); // whole-box labels need no leader
+  });
+});
+
+describe("line graph intervals", () => {
+  const base = DIAGRAM_SAMPLES["line-graph-hydrograph"] as Record<string, unknown>;
+
+  test("an interval draws a labelled double arrow between its x values", () => {
+    const svg = renderDiagram(base, chalk, { w: 560, h: 356 }) ?? "";
+    expect(svg).toContain(">lag time<");
+    expect(svg.match(/<polygon/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("an interval off the axis, or backwards, does not parse", () => {
+    expect(parseDiagram({ ...base, intervals: [{ from: 14, to: 6, label: "lag" }] })).toBe(
+      undefined,
+    );
+    expect(parseDiagram({ ...base, intervals: [{ from: 6, to: 40, label: "lag" }] })).toBe(
+      undefined,
+    );
+    expect(parseDiagram({ ...base, intervals: [{ from: 6, to: 14, label: "lag", y: 90 }] })).toBe(
+      undefined,
+    );
+    expect(
+      parseDiagram({ ...base, intervals: [{ from: 6, to: 14, label: "lag", y: 36 }] }),
+    ).toBeDefined();
+  });
+});
+
+describe("label contrast", () => {
+  const lum = (h: string) => {
+    const v = Number.parseInt(h.slice(1), 16);
+    return [16, 8, 0]
+      .map((s) => {
+        const c = ((v >> s) & 255) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      })
+      .reduce((a, c, i) => a + c * ([0.2126, 0.7152, 0.0722][i] ?? 0), 0);
+  };
+  const ratio = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  test.each(THEMES.map((t) => t.id))("every text-on-fill pair reads at 4.5:1 (%s)", (id) => {
+    const t = getTheme(id);
+    const { c } = context(t, SLOT.w, SLOT.h);
+    const pairs: [string, string, string][] = [
+      ["ink on tint", c.ink, c.tint],
+      ["ink on tint2", c.ink, c.tint2],
+      ["onAccent on accent", c.onAccent, c.accent],
+      ["ink on surface", c.ink, c.surface],
+      ["ink on ground (label halo)", c.ink, c.bg],
+      ["muted on ground", c.muted, c.bg],
+      ["muted on surface", c.muted, c.surface],
+      ["accent on ground", c.accent, c.bg],
+    ];
+    for (const [what, fg, bg] of pairs) expect(ratio(fg, bg), what).toBeGreaterThanOrEqual(4.5);
   });
 });

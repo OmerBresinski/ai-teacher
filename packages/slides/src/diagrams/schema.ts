@@ -78,6 +78,14 @@ export const LineGraphSchema = z
       .array(z.object({ x: finite, y: finite, label: label(24) }))
       .max(4)
       .default([]),
+    /**
+     * A span between two x values drawn as a labelled double arrow ("lag time" from peak rainfall
+     * to peak discharge). Set above the plot, or at `y` (left-axis units) when given.
+     */
+    intervals: z
+      .array(z.object({ from: finite, to: finite, label: label(20), y: finite.optional() }))
+      .max(2)
+      .default([]),
   })
   .superRefine((g, ctx) => {
     g.series.forEach((s, i) => {
@@ -104,6 +112,20 @@ export const LineGraphSchema = z
       if (!(s.to > s.from) || !inside(s.from, g.x) || !inside(s.to, g.x)) {
         ctx.addIssue({ code: "custom", message: "segment off the x axis", path: ["segments", i] });
       }
+    });
+    g.intervals.forEach((v, i) => {
+      if (!(v.to > v.from) || !inside(v.from, g.x) || !inside(v.to, g.x))
+        ctx.addIssue({
+          code: "custom",
+          message: "interval off the x axis",
+          path: ["intervals", i],
+        });
+      if (v.y !== undefined && !inside(v.y, g.y))
+        ctx.addIssue({
+          code: "custom",
+          message: "interval off the y axis",
+          path: ["intervals", i],
+        });
     });
     g.annotations.forEach((a, i) => {
       if (!inside(a.x, g.x) || !inside(a.y, g.y)) {

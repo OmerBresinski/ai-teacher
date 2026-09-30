@@ -41,7 +41,10 @@ export function visualPage(themeId: string, fontRoot: string): string {
   if (!t) return "";
   const cells = Object.entries(DIAGRAM_SAMPLES).map(([name, spec]) => {
     const wide =
-      name.includes("particles") || name.includes("river") || name.includes("hydrograph");
+      name.includes("particles") ||
+      name.includes("river") ||
+      name.includes("hydrograph") ||
+      name.includes("roads");
     const size = wide ? WIDE : SLOT;
     const svg = renderDiagram(spec, t, size) ?? "<p>INVALID</p>";
     return `<figure style="width:${size.w}px"><div class="slot" style="width:${size.w}px;height:${size.h}px">${svg}</div><figcaption>${name}</figcaption></figure>`;
