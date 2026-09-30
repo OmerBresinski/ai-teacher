@@ -154,6 +154,11 @@ export interface PipelineDeps {
    */
   planFrontierFromYear?: number;
   /**
+   * Live writing (spike/live-writing): the stream's in-progress slide, about every 100 ms. Absent:
+   * nothing is drawn early. Never awaited; it must not throw.
+   */
+  onLiveSlide?: (live: LiveSlide) => void;
+  /**
    * The lesson designer sets the objectives on the title slide (the `agenda` title) instead of a
    * slide of their own, and the freed slide goes to the cycles (designer r4 experiment). Unset:
    * `DESIGNER_OBJECTIVES_ON_TITLE=1` in the environment turns it on; off otherwise.
@@ -414,4 +419,14 @@ export function abortError(signal: AbortSignal): Error {
  */
 export function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError(signal);
+}
+
+/** Live writing (spike): the slide the stream is writing now, as it stands. */
+export interface LiveSlide {
+  /** 0-based position in the lesson. */
+  index: number;
+  /** The form and layout the stream named for it. */
+  kind: string;
+  /** The slide drawn from the fields so far; absent when they cannot be drawn yet. */
+  slide?: unknown;
 }

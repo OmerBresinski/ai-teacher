@@ -1048,6 +1048,20 @@ const CONTRACT = [
       "`1` draws every slide's photo and diagram slots in present as placeholders naming what the model asked for, for testing and screenshots (look/image-slot). On by default while the image system is being built, production included; `0` turns them off.",
   },
   {
+    name: "VITE_LIVE_WRITING",
+    services: ["web"],
+    scope: "config",
+    local: "0",
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "template",
+    format: "enum",
+    values: ["0", "1"],
+    files: ["web"],
+    description:
+      "`1` turns on live writing in the generating editor (spike/live-writing): every slide as a skeleton in the theme, the slide being written drawn as the stream writes it. Off by default; the worker's LIVE_WRITING=1 sends the in-progress slides.",
+  },
+  {
     name: "VITE_DEV_API_TARGET",
     services: ["web"],
     scope: "config",

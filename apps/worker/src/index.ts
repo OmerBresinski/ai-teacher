@@ -5,6 +5,7 @@ import { createWorkerDeps } from "./deps";
 import { parseEnv } from "./env";
 import { publicJobFailure } from "./job-errors";
 import { registry } from "./jobs";
+import { LIVE_PROGRESS_MS, liveWriting } from "./live-writing";
 import { createLogger } from "./logger";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
@@ -49,6 +50,8 @@ for (const name of Object.values(JobName)) {
           logger,
           deps,
           failureMessage: publicJobFailure,
+          // Live writing (spike): the in-progress slide rides on progress events at ~100 ms.
+          ...(liveWriting() ? { progressMinIntervalMs: LIVE_PROGRESS_MS } : {}),
         });
         active.set(job.id, run);
         try {

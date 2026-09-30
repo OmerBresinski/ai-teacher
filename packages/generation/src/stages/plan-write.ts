@@ -26,11 +26,13 @@ import { z } from "zod";
 import { callStructured } from "../call";
 import { blocking, checkPlan, FIXED_SLIDES, type PlanCheck } from "../plan-write/check";
 import { fitWithRewrite, fitWritten, renderWritten, type Written } from "../plan-write/fit";
+import { liveFields } from "../plan-write/live";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
 import { recheckKinds } from "../plan-write/recheck";
 import { PLAN_WRITE_VERSION, STREAM_WRITE_VERSION } from "../plan-write/steps";
 import {
   checkStreamed,
+  formOfKind,
   kindOf,
   planWriteMode,
   type StreamLessonWire,
@@ -282,6 +284,9 @@ export async function planWritePlan(
   );
   return { ...state, lesson: planned };
 }
+
+/** Live writing (spike): the in-progress slide goes out at most this often. */
+const LIVE_MS = 100;
 
 /* ------------------------------------------------------------------ facts from written slides */
 
@@ -1029,6 +1034,47 @@ export async function planWriteSlides(
         takeHeader(w, menu);
       }
       if (header) for (let i = 0; i < slides.length - 1; i++) close(i, slides[i]);
+      if (header && deps.onLiveSlide && slides.length > 0) {
+        live.latest = { i: slides.length - 1, raw: slides[slides.length - 1] };
+        live.timer ??= setTimeout(sendLive, LIVE_MS);
+      }
+    };
+    /** Live writing: the in-progress slide, drawn with blanks, at most every `LIVE_MS`. */
+    const live: { latest?: { i: number; raw: unknown }; timer?: ReturnType<typeof setTimeout> } =
+      {};
+    const sendLive = () => {
+      live.timer = undefined;
+      const at = live.latest;
+      if (!at || !deps.onLiveSlide || deps.signal.aborted) return;
+      const n = at.i + 1 + FIXED_SLIDES;
+      if (landed.has(n) || n > slideCount) return;
+      const raw = at.raw && typeof at.raw === "object" ? (at.raw as Record<string, unknown>) : {};
+      const kinded = formOfKind(raw.kind, menu);
+      if (!kinded) return;
+      let slide: Slide | undefined;
+      try {
+        let k = 0;
+        const r = renderWritten(
+          kinded.form,
+          kinded.layout,
+          liveFields(kinded.form, kinded.layout, raw),
+        );
+        slide = materialiseSlide(
+          r.spec,
+          themeId,
+          codeMeta(),
+          () => `live-${n}-${k++}`,
+          r.variant,
+          r.structure,
+        );
+      } catch {
+        slide = undefined;
+      }
+      try {
+        deps.onLiveSlide({ index: n - 1, kind: String(raw.kind), ...(slide ? { slide } : {}) });
+      } catch {
+        /* Live writing never stops the lesson. */
+      }
     };
     try {
       const call = await callStructured({
@@ -1043,6 +1089,8 @@ export async function planWriteSlides(
         maxOutputTokens: MAX_OUTPUT_TOKENS_STREAM,
         onPartial,
       });
+      if (live.timer) clearTimeout(live.timer);
+      live.timer = undefined;
       const w = call.output;
       if (!header) {
         header = true;

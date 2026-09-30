@@ -7,6 +7,7 @@ describe("parseEnv", () => {
       VITE_API_URL: "/api",
       VITE_APP_ENV: "development",
       VITE_SHOW_SLOT_PLACEHOLDERS: "1",
+      VITE_LIVE_WRITING: "0",
     });
   });
 

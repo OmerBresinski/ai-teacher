@@ -7,6 +7,7 @@ import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse, queryKeys } from "@/lib/query";
 import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { GeneratingShell } from "./GeneratingShell";
+import { latestLive, liveWritingEnabled } from "./live-writing";
 import { type StageState, stageOf } from "./stage";
 
 /**
@@ -159,6 +160,9 @@ export function GeneratingLesson({
       stop={{ pending: cancel.isPending, sent: cancel.isSuccess, error: cancel.isError }}
       onViewSlide={onViewSlide}
       exportSlot={exportSlot}
+      {...(liveWritingEnabled()
+        ? { live: latestLive(stream.events.map((record) => record.event)) }
+        : {})}
     />
   );
 }

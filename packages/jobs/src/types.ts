@@ -58,7 +58,7 @@ export interface JobContext<K extends JobName, D = unknown> {
 }
 
 /** The optional fields of a `progress` event beyond `percent` and `message`. */
-export type ProgressExtra = Pick<JobProgress, "documentUpdatedAt" | "stage">;
+export type ProgressExtra = Pick<JobProgress, "documentUpdatedAt" | "stage" | "live">;
 
 /**
  * The result a handler for `K` may return (ADR 0025 §19): its member of `JobResultSchema`, or

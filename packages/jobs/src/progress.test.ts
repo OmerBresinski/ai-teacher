@@ -95,3 +95,22 @@ describe("progress rate limit", () => {
     expect(errors).toHaveLength(1);
   });
 });
+
+describe("live writing", () => {
+  test("the newest live slide rides on the coalesced event beside the saved document", async () => {
+    const { emitter, emitted } = harness(100);
+    await emitter.emit(undefined, undefined, { live: { index: 2, kind: "hinge" } });
+    void emitter.emit(40, "Slide 2 of 8", { documentUpdatedAt: "2026-09-30T00:00:00.000Z" });
+    void emitter.emit(undefined, undefined, { live: { index: 3, kind: "sort" } });
+    await Bun.sleep(150);
+    expect(emitted).toEqual([
+      { live: { index: 2, kind: "hinge" } },
+      {
+        percent: 40,
+        message: "Slide 2 of 8",
+        documentUpdatedAt: "2026-09-30T00:00:00.000Z",
+        live: { index: 3, kind: "sort" },
+      },
+    ]);
+  });
+});

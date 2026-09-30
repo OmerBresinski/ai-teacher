@@ -215,8 +215,24 @@ export const JobProgressSchema = z.strictObject({
    */
   documentUpdatedAt: IsoDateTime.optional(),
   stage: z.enum(JOB_PROGRESS_STAGES).optional(),
+  /**
+   * Live writing (spike, worker flag LIVE_WRITING=1): the slide the stream is writing now, as it
+   * stands. `index` is the slide's 0-based position, `kind` the form and layout the stream named,
+   * `slide` the slide drawn from the fields so far (unwritten text is the `LIVE_BLANK` sentinel).
+   * The saved document stays the source of truth; a slide already saved ignores its live copy.
+   */
+  live: z
+    .strictObject({
+      index: z.number().int().min(0),
+      kind: z.string(),
+      slide: z.unknown().optional(),
+    })
+    .optional(),
 });
 export type JobProgress = z.infer<typeof JobProgressSchema>;
+
+/** Live writing: a character standing in for text the stream has not written yet. */
+export const LIVE_BLANK = "\uE000";
 
 // ---------------------------------------------------------------------------------------------
 // Job results (ADR 0025 §19: a proposal job's output rides on its `completed` event)

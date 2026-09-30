@@ -11,6 +11,7 @@ import { type Lesson, parseLesson } from "@tj/domain/documents";
 import {
   BudgetExceeded,
   InputRejected,
+  type LiveSlide,
   type PipelineDeps,
   type PipelineInput,
   type PipelineOptions,
@@ -22,6 +23,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { liveWriting } from "../live-writing";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
@@ -120,6 +122,9 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       persist: makePersist(ws, lessonId, jobId),
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
+      ...(liveWriting()
+        ? { onLiveSlide: (live: LiveSlide) => void ctx.progress(undefined, undefined, { live }) }
+        : {}),
       context: { lessonId, jobId },
       images: imagePlacer(deps, workspaceId),
     };

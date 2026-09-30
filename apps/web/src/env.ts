@@ -16,6 +16,12 @@ export const EnvSchema = z.object({
    * image system is being built; set "0" to lay slides out as if the slots were empty.
    */
   VITE_SHOW_SLOT_PLACEHOLDERS: z.enum(["0", "1"]).default("1"),
+  /**
+   * "1" turns on live writing in the generating editor (spike/live-writing): every slide as a
+   * skeleton in the theme, the slide being written drawn as the stream writes it, the title and
+   * objectives typed in. Needs the worker's LIVE_WRITING=1 for the in-progress slides.
+   */
+  VITE_LIVE_WRITING: z.enum(["0", "1"]).default("0"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

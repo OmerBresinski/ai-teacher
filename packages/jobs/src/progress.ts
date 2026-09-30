@@ -56,6 +56,7 @@ export function createProgressEmitter(opts: ProgressEmitterOptions): ProgressEmi
       if (message !== undefined) p.message = message;
       if (extra?.documentUpdatedAt !== undefined) p.documentUpdatedAt = extra.documentUpdatedAt;
       if (extra?.stage !== undefined) p.stage = extra.stage;
+      if (extra?.live !== undefined) p.live = extra.live;
       const elapsed = now() - lastEmittedAt;
       if (elapsed >= opts.minIntervalMs && !timer) return write(p);
       pending = { ...pending, ...p };

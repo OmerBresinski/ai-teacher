@@ -1,4 +1,4 @@
-import type { Id, Lesson } from "@tj/domain/documents";
+import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import type { JobEvent } from "@tj/domain/jobs";
 import { getTheme, SlideScaler, SlideView } from "@tj/editor";
 import {
@@ -19,6 +19,14 @@ import {
   useState,
 } from "react";
 import { pendingSlides } from "@/lib/pending-slides";
+import {
+  LiveFrame,
+  type LiveSlides,
+  LiveThumb,
+  liveView,
+  ThemedSkeleton,
+  usePacedIntro,
+} from "./live-writing";
 import { MobileGeneratingShell } from "./MobileGeneratingShell";
 import { announcedLine, STAGES, type StageState, stageLine, stageOf, stageStatus } from "./stage";
 
@@ -79,6 +87,11 @@ export type GeneratingShellProps = {
    * on every pick so the editor can open on it at Ready.
    */
   onViewSlide?: (slideId: Id | null) => void;
+  /**
+   * Live writing (spike, VITE_LIVE_WRITING=1): the stream's in-progress slides by index. Set, the
+   * navigator holds every slide from the start and the canvas follows the slide being written.
+   */
+  live?: LiveSlides;
 };
 
 export function GeneratingShell({
@@ -93,6 +106,7 @@ export function GeneratingShell({
   exportSlot,
   className,
   onViewSlide,
+  live,
 }: GeneratingShellProps) {
   const mobile = useMobileEditor();
   const state = stageOf(events, lesson.plan?.state === "proposed");
@@ -113,6 +127,23 @@ export function GeneratingShell({
   const following = selected === undefined;
   const arrivals = useArrivals(lesson.slides.length, running);
   const pending = running ? pendingSlides(lesson) : [];
+  // Live writing: every slide the brief asked for is in the column from the start, and the
+  // canvas follows the newest slide the stream is writing until the teacher picks one.
+  const liveOn = live !== undefined && running;
+  const slotCount = liveOn
+    ? Math.max(lesson.brief?.slideCount ?? 0, lesson.slides.length + pending.length)
+    : lesson.slides.length + pending.length;
+  const liveAt = (index: number) =>
+    liveOn && index >= lesson.slides.length ? live?.get(index)?.slide : undefined;
+  let writingIndex: number | undefined;
+  if (liveOn && live) {
+    for (const [index, entry] of live) {
+      if (index >= lesson.slides.length && entry.slide && index >= (writingIndex ?? -1)) {
+        writingIndex = index;
+      }
+    }
+  }
+  const paced = usePacedIntro(lesson.slides, !liveOn || writingIndex !== undefined);
 
   // Picking the newest slide is a return to following, so the next arrival is shown as before.
   const view = (id: Id) => {
@@ -278,15 +309,48 @@ export function GeneratingShell({
                 onView={view}
                 onKeyDown={onThumbsKeyDown}
               >
-                <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
+                {liveOn && i < 2 ? (
+                  <LiveThumb slide={slide} theme={theme} width={thumbWidth} chars={paced(i)} />
+                ) : (
+                  <SlideStatic slide={slide} theme={theme} width={thumbWidth} />
+                )}
               </ThumbRow>
             ))}
-            {pending.map((_, i) => {
-              const position = lesson.slides.length + i;
-              return (
-                <SkeletonRow key={`slot-${position}`} number={position + 1} width={thumbWidth} />
-              );
-            })}
+            {liveOn
+              ? Array.from({ length: slotCount - lesson.slides.length }, (_, i) => {
+                  const position = lesson.slides.length + i;
+                  const writing = liveAt(position);
+                  return (
+                    <li
+                      key={`slot-${position}`}
+                      aria-hidden="true"
+                      data-live-slot={position}
+                      data-live-state={writing ? "writing" : "waiting"}
+                      className="flex w-full items-center px-1 py-0.5"
+                    >
+                      <span className="w-[18px] shrink-0 pr-1 text-right text-meta text-ink-3 tabular-nums">
+                        {position + 1}
+                      </span>
+                      {writing ? (
+                        <span className="block shrink-0 overflow-hidden rounded-chip ring-1 ring-border motion-safe:animate-arrive">
+                          <LiveThumb slide={writing} theme={theme} width={thumbWidth} />
+                        </span>
+                      ) : (
+                        <ThemedSkeleton theme={theme} width={thumbWidth} />
+                      )}
+                    </li>
+                  );
+                })
+              : pending.map((_, i) => {
+                  const position = lesson.slides.length + i;
+                  return (
+                    <SkeletonRow
+                      key={`slot-${position}`}
+                      number={position + 1}
+                      width={thumbWidth}
+                    />
+                  );
+                })}
           </ul>
         </nav>
 
@@ -297,7 +361,26 @@ export function GeneratingShell({
           data-companion-layout={canvasCompanion ? "side" : undefined}
         >
           <div className="min-h-0 flex-1 p-10">
-            {shown ? (
+            {following && writingIndex !== undefined && liveAt(writingIndex) ? (
+              <SlideScaler zoom="fit">
+                <LiveCanvas
+                  key={`live-${writingIndex}`}
+                  index={writingIndex}
+                  slide={liveAt(writingIndex) as NonNullable<ReturnType<typeof liveAt>>}
+                  theme={theme}
+                />
+              </SlideScaler>
+            ) : liveOn && shown && lesson.slides.indexOf(shown) < 2 ? (
+              <SlideScaler zoom="fit">
+                <LiveCanvas
+                  key={shown.id}
+                  index={lesson.slides.indexOf(shown)}
+                  slide={shown}
+                  chars={paced(lesson.slides.indexOf(shown))}
+                  theme={theme}
+                />
+              </SlideScaler>
+            ) : shown ? (
               <SlideScaler zoom="fit">
                 <div
                   key={shown.id}
@@ -369,6 +452,35 @@ export function GeneratingShell({
 }
 
 /* ------------------------------------------------------------------ */
+
+/** The canvas slide while it is being written: the words so far, the rest as skeletons. */
+function LiveCanvas({
+  index,
+  slide,
+  theme,
+  chars,
+}: {
+  index: number;
+  slide: Slide;
+  theme: ReturnType<typeof getTheme>;
+  chars?: number;
+}) {
+  const view = liveView(slide, chars);
+  return (
+    <LiveFrame
+      blanks={view.blanks}
+      theme={theme}
+      className="overflow-hidden rounded-dialog shadow-3 motion-safe:animate-arrive"
+    >
+      <div
+        data-canvas-slide={`live-${index}`}
+        {...(chars === undefined ? { "data-live-writing": index } : { "data-live-typing": index })}
+      >
+        <SlideView slide={view.slide} theme={theme} mode="view" />
+      </div>
+    </LiveFrame>
+  );
+}
 
 /**
  * The stage strip: a 40px row on the card surface with a hairline beneath. A done stage carries a
