@@ -112,6 +112,8 @@ async function run(file: string, slideCount: number) {
   let usage: any;
   let ttft: number | undefined;
   let tObjectives: number | undefined;
+  // Stream timeline: [ms since request, text length so far], to find when each objective's rows close.
+  const timeline: [number, number][] = [];
   let buf = "";
   const decoder = new TextDecoder();
   for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
@@ -131,6 +133,7 @@ async function run(file: string, slideCount: number) {
         const now = performance.now() - t0;
         ttft ??= now;
         text += delta;
+        timeline.push([Math.round(now), text.length]);
         if (tObjectives === undefined && text.includes('"slides"')) tObjectives = now;
       }
     }
@@ -176,6 +179,8 @@ async function run(file: string, slideCount: number) {
     system,
     user,
     output: parsed ?? text,
+    text,
+    timeline,
   };
 }
 
