@@ -88,6 +88,9 @@ export const WORST: Record<TextKind, readonly string[]> = {
     "Holds the plant firmly in the ground",
   ],
   clause: [
+    // From the slide bench's KS4-5 writers (lab/slide-bench): a lead of one clause at its longest.
+    "In 2-bromo-2-methylpropane, the C–Br bond breaks first to form a tertiary carbocation.",
+    "A German household's cash savings bought less and less bread as prices rose in 1923.",
     "In electrolysis, the current is carried through the solution by electrons.",
     "Plants get the food they need to grow from the soil around their roots.",
   ],

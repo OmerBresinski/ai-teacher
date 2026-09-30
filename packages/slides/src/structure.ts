@@ -673,8 +673,9 @@ function wordsFit(
   t: Theme,
 ): boolean {
   const line = size * t.lineHeights[preset];
+  // A hyphen is a break point on screen ("2-methylpropan-/2-ol"), so each hyphenated part is a word.
   return text
-    .split(/\s+/)
+    .split(/\s+|(?<=-)(?=\S)/)
     .filter(Boolean)
     .every((word) => heightOf(measure, docFromText(word), width, preset, size) <= line * 1.5);
 }

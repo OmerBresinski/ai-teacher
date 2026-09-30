@@ -9,7 +9,7 @@ import { type Audience, audienceBlock } from "./shared";
  * in the schemas is part of the prompt (the key before the question, the content before the form).
  */
 
-export const PLAN_LESSON_VERSION = "plan-lesson.v5";
+export const PLAN_LESSON_VERSION = "plan-lesson.v6";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {

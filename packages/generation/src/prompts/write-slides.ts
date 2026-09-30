@@ -8,7 +8,7 @@ import { type Audience, audienceBlock } from "./shared";
  * `slide<n>`); its counts are enforced there and stated here only through each contract line.
  */
 
-export const WRITE_SLIDES_VERSION = "write-slides.v5";
+export const WRITE_SLIDES_VERSION = "write-slides.v6";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {

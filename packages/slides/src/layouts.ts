@@ -144,11 +144,11 @@ function headed(t: Theme, heading: string): SlideElement[] {
 }
 
 /** A numbered body block under the hairline. */
-function numberedBody(t: Theme, items: string[]): TextElement {
+function numberedBody(t: Theme, items: string[], w: number = spanWidth(10)): TextElement {
   return text("body", docFromNumbered(items), {
     x: SAFE.x,
     y: BODY_Y,
-    w: spanWidth(10),
+    w,
     h: boxH(t, "body", items.length * 1.6),
   });
 }
@@ -349,7 +349,9 @@ function objectivesSlide(t: Theme): Layout {
 /** Do now — retrieval questions and a time cue. */
 function starterSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY.starter;
-  return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
+  return {
+    elements: [...headed(t, heading), numberedBody(t, [...items], FULL), footnote(t, foot)],
+  };
 }
 
 /**
@@ -916,7 +918,9 @@ function openResponseSlide(t: Theme): Layout {
 /** Exit ticket — three quick questions. Never revealed (research §1, decision 5). */
 function exitTicketSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY["exit-ticket"];
-  return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
+  return {
+    elements: [...headed(t, heading), numberedBody(t, [...items], FULL), footnote(t, foot)],
+  };
 }
 
 /** Timer — a task reminder and one big countdown. */

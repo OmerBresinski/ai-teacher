@@ -30,7 +30,7 @@ export const TEXT_KINDS = {
   phrase: "a phrase on one line, not a full sentence",
   option: "a short phrase, at most three short lines on its half-width card",
   outline:
-    'one line across the slide: the idea or outline named in brief, like "Hypothesis, method, results, conclusion"',
+    'one line across the slide: the idea or outline named in brief, like "Claim, reasons, rebuttal, request"',
   label: "a short label, half a line, not a sentence",
   term: "a term or a short name, half a line, as written on a card",
   card: 'a short phrase on one line across the slide: one clause, with no "and"',
@@ -95,7 +95,7 @@ const lead: Slot = {
   unit: "sentence",
   min: 1,
   max: 1,
-  each: "sentence",
+  each: "clause",
   place: "slide",
 };
 const body = (max: number): Slot => ({
@@ -138,7 +138,8 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      lead,
+      // Measured: a list's lead holds two one-clause sentences over its two points.
+      { ...lead, max: 2 },
       { field: "points", unit: "item", min: 2, max: 2, each: "labelled-sentence", place: "slide" },
     ],
   },
