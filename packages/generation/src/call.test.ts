@@ -989,6 +989,7 @@ describe("streamed calls (the lesson designer's design cycles)", () => {
       input: "x",
       schema,
       maxOutputTokens: 100,
+      effort: "low",
       onPartial: (p) => partials.push(p),
     });
     expect(result.output).toEqual({ answer: "streamed" });
@@ -1011,6 +1012,7 @@ describe("streamed calls (the lesson designer's design cycles)", () => {
       input: "x",
       schema,
       maxOutputTokens: 100,
+      effort: "low",
       onPartial: () => undefined,
     });
     expect(result.output).toEqual({ answer: "ok" });
