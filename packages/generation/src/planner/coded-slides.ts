@@ -30,7 +30,7 @@ import {
   THEMES,
   textPartsOf,
 } from "@tj/slides";
-import type { DesignSlot, SlotForm } from "../prompts/design-cycle";
+import { type DesignSlot, ROLE_FORMS, type SlotForm, type SlotRole } from "../prompts/design-cycle";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -780,6 +780,8 @@ export type MinimumRefill = {
   into: SlotForm;
   /** Why, for the re-fill call: which minimum the replaced slot now meets. */
   reason: string;
+  /** Set for a role re-fill: the slot's role, whose forms (`ROLE_FORMS`) the re-fill must be in. */
+  role?: SlotRole;
 };
 
 /**
@@ -787,17 +789,53 @@ export type MinimumRefill = {
  * structural with no visual slot gets one teaching slot re-filled as its visual (the arc's lean
  * when it is a visual form the subject offers, else a diagram slot); a lesson with fewer than 3
  * checks gets teaching slots re-filled as true-false checks, from an objective that keeps another
- * teaching slot, unchecked objectives first. Visuals first; at most `MAX_MINIMUM_REFILLS`. The
- * count never changes: each re-fill replaces one slot.
+ * teaching slot, unchecked objectives first. Before both, each slot held to its role
+ * (`ROLE_FORMS`, when the caller passes `role`): a show slot that came back as text is re-filled
+ * as its visual, a check that came back open as a true-false. Roles, then visuals, then checks; at
+ * most `MAX_MINIMUM_REFILLS`. The count never changes: each re-fill replaces one slot.
  */
 export function minimumRefills(
-  placed: readonly { objective: number; form: SlotForm; slide: number }[],
+  placed: readonly { objective: number; form: SlotForm; slide: number; role?: SlotRole }[],
   arcs: readonly ({ lean: string } | undefined)[],
   offered: readonly SlotForm[],
 ): MinimumRefill[] {
   const out: MinimumRefill[] = [];
   const taken = new Set<number>();
   const minimums = designMinimums(placed, arcs);
+  const visualFor = (o: number): SlotForm => {
+    const lean = arcs[o]?.lean as SlotForm | undefined;
+    return lean && VISUAL_FORMS.has(lean) && offered.includes(lean) ? lean : "diagram-slot";
+  };
+  const visualDone = new Set<number>();
+  let checks = minimums.checks;
+  for (const p of placed) {
+    if (out.length >= MAX_MINIMUM_REFILLS) return out;
+    if (!p.role || ROLE_FORMS[p.role].includes(p.form)) continue;
+    if (p.role === "show") {
+      const into = visualFor(p.objective);
+      if (!offered.includes(into)) continue;
+      taken.add(p.slide);
+      visualDone.add(p.objective);
+      out.push({
+        slide: p.slide,
+        objective: p.objective,
+        into,
+        reason: "this slot's role is to show the content: it is a photo, figure or diagram slot",
+        role: "show",
+      });
+    } else if (p.role === "check") {
+      if (!offered.includes("true-false")) continue;
+      taken.add(p.slide);
+      if (!CHECK_FORMS.has(p.form)) checks += 1;
+      out.push({
+        slide: p.slide,
+        objective: p.objective,
+        into: "true-false",
+        reason: "this slot's role is a quick closed check; an open question is not one",
+        role: "check",
+      });
+    }
+  }
   const teaching = (o: number) =>
     placed.filter(
       (p) =>
@@ -808,9 +846,8 @@ export function minimumRefills(
     );
   for (const o of minimums.visualMissing) {
     if (out.length >= MAX_MINIMUM_REFILLS) return out;
-    const lean = arcs[o]?.lean as SlotForm | undefined;
-    const into =
-      lean && VISUAL_FORMS.has(lean) && offered.includes(lean) ? lean : ("diagram-slot" as const);
+    if (visualDone.has(o)) continue;
+    const into = visualFor(o);
     const slot = teaching(o)[0];
     if (!slot || !offered.includes(into)) continue;
     taken.add(slot.slide);
@@ -821,7 +858,6 @@ export function minimumRefills(
       reason: "the objective has no photo, figure or diagram; this slot shows its content",
     });
   }
-  let checks = minimums.checks;
   const order = [
     ...minimums.unchecked,
     ...arcs.map((_, i) => i).filter((i) => !minimums.unchecked.includes(i)),

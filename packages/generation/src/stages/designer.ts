@@ -47,7 +47,10 @@ import {
   designCyclePrompt,
   designCycleSchemaFor,
   ExitQuestionSchema,
+  ROLE_FORMS,
+  SLOT_ROLES,
   type SlotForm,
+  type SlotRole,
   slotFormsFor,
 } from "../prompts/design-cycle";
 import { ObjectiveArcSchema } from "../prompts/plan-objectives";
@@ -87,6 +90,12 @@ const PROGRESS_SLIDES_SPAN = 70;
 const PROGRESS_GENERATED = PROGRESS_SLIDES_FROM + PROGRESS_SLIDES_SPAN;
 /** Output cap of one design cycle: slots plus low-effort reasoning (smoke r7: 1.5–3k used). */
 export const MAX_OUTPUT_TOKENS_DESIGN = 8000;
+/**
+ * Verify's effort on a designer lesson (designer prompts r1 probe, `lab/designer-prompts2/verify-probe`):
+ * medium caught the planted date error with no false corrections; low rewrote correct facts into
+ * hedges. It runs after the save, so the extra seconds are off the first slide's path.
+ */
+export const VERIFY_EFFORT = "medium" as const;
 /** A single-slot re-fill (rung 4). */
 const MAX_OUTPUT_TOKENS_REFILL = 3000;
 
@@ -544,6 +553,12 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     () => undefined,
   );
   const failedCycles: number[] = [];
+  /** A re-fill's role: the slot's own when it admits the form written, else the first that does. */
+  const roleOf = (form: SlotForm, cycle: CycleSlots, k: number): SlotRole => {
+    const own = cycle.roles[k];
+    if (own && ROLE_FORMS[own].includes(form)) return own;
+    return SLOT_ROLES.find((r) => ROLE_FORMS[r].includes(form)) ?? own ?? "teach";
+  };
   const refillFor =
     (cycle: CycleSlots, k: number) => async (slot: DesignSlot, form: SlotForm, reason: string) => {
       const union = designCycleSchemaFor(subject, 1).shape.slots.element as unknown as {
@@ -565,7 +580,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           audience,
           objectives: objectives.map((o, i) => ({ text: o.text, arc: arcs[i] as never })),
           objectiveIndex: cycle.objective,
-          slots: { count: 1, first: cycle.first + k, slideCount },
+          slots: { count: 1, first: cycle.first + k, slideCount, roles: [roleOf(form, cycle, k)] },
           palette,
           replacing: { form: slot.form, material: slotMaterial(slot), reason, into: form },
         },
@@ -727,7 +742,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           audience,
           objectives: objectives.map((o, i) => ({ text: o.text, arc: arcs[i] as never })),
           objectiveIndex: cycle.objective,
-          slots: { count: cycle.count, first: cycle.first, slideCount },
+          slots: { count: cycle.count, first: cycle.first, slideCount, roles: cycle.roles },
           palette,
         },
         schema,
@@ -799,7 +814,16 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     return typeof routed === "string" ? routed : routed.modelId;
   };
   const toEnforce = minimumRefills(
-    bound.map((b) => ({ objective: b.objective, form: b.fit.slot.form, slide: b.slide + 1 })),
+    bound.map((b) => {
+      const cycle = allocation.cycles.find((c) => c.objective === b.objective);
+      const role = cycle?.roles[b.slide - (cycle.first - 1)];
+      return {
+        objective: b.objective,
+        form: b.fit.slot.form,
+        slide: b.slide + 1,
+        ...(role ? { role } : {}),
+      };
+    }),
     arcs,
     offered,
   );
@@ -815,7 +839,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
         ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
         : undefined;
       const meets = (form: SlotForm) =>
-        m.into === "true-false" ? CHECK_FORMS.has(form) : VISUAL_FORMS.has(form);
+        m.role
+          ? ROLE_FORMS[m.role].includes(form)
+          : m.into === "true-false"
+            ? CHECK_FORMS.has(form)
+            : VISUAL_FORMS.has(form);
       const ok =
         !!fresh &&
         !!fit &&
@@ -969,12 +997,12 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   await writing;
   timings.editableMs = editableMs;
 
-  // Verify, after the save, alongside the photo searches: corrections re-fitted before they
-  // replace a slide.
+  // Verify, after the save, alongside the photo searches, at `VERIFY_EFFORT`: a correction replaces
+  // a slide only when the corrected slot still fits in its own form.
   const verifyReport = { corrections: 0, refitted: 0, rejected: 0 };
   const verifyStart = Date.now();
   const [verified] = await Promise.all([
-    runVerify(facts, { topic: brief.topic, audience }, deps, cls).finally(() => {
+    runVerify(facts, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT).finally(() => {
       timings.verifyMs = Date.now() - verifyStart;
     }),
     Promise.all(photos),
@@ -993,8 +1021,10 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       const refs = refsOf.get(b.slide) ?? [];
       if (!refs.some((r) => touched.has(r))) continue;
       const corrected = slotFromFacts(b.fit.slot, finalFacts, refs);
+      // Re-checked with `fitsPlanned` (via `fitSlot`'s first two rungs): the corrected words land
+      // only in the slot's own form at full size on every theme; any lower rung keeps the slide.
       const refit = await fitSlot(corrected, { seed: `${base.id}:${b.slide}`, themeId });
-      if (refit.rung === "flagged") {
+      if (refit.rung !== "fits" && refit.rung !== "variant") {
         verifyReport.rejected += 1;
         deps.logger.warn(
           { stage: "generate", slide: b.slide + 1 },

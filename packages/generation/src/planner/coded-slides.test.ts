@@ -505,6 +505,39 @@ describe("design minimums enforced (designer eval r1)", () => {
     ]);
   });
 
+  test("roles: a show slot that came back as text becomes its visual, a check that came back open a true-false", () => {
+    const placed = [
+      { objective: 0, form: "explain" as const, slide: 4, role: "show" as const },
+      { objective: 0, form: "hinge" as const, slide: 5, role: "check" as const },
+      { objective: 1, form: "explain" as const, slide: 6, role: "teach" as const },
+      { objective: 1, form: "open-response" as const, slide: 7, role: "check" as const },
+      { objective: 2, form: "worked-example" as const, slide: 8, role: "teach" as const },
+      { objective: 2, form: "open-response" as const, slide: 9, role: "practise" as const },
+    ];
+    const out = minimumRefills(
+      placed,
+      [arc("figure"), arc("explain"), arc("worked-example")],
+      [...offered],
+    );
+    expect(out.map((m) => [m.slide, m.into, m.role])).toEqual([
+      [4, "figure", "show"],
+      [7, "true-false", "check"],
+    ]);
+    // Within the cap of 2 a lesson: a third role miss waits.
+    const more = [
+      ...placed,
+      { objective: 2, form: "discussion" as const, slide: 10, role: "check" as const },
+    ];
+    expect(
+      minimumRefills(more, [arc("figure"), arc("explain"), arc("worked-example")], offered),
+    ).toHaveLength(MAX_MINIMUM_REFILLS);
+    // Slots held to their roles: nothing to re-fill for a role.
+    const held = placed.map((p) => ({ ...p, role: undefined }));
+    expect(minimumRefills(held, [arc("explain"), arc("explain"), arc("explain")], offered)).toEqual(
+      [],
+    );
+  });
+
   test("at most two re-fills a lesson, visuals first", () => {
     const placed = [0, 1, 2].flatMap((o) => [
       { objective: o, form: "explain" as const, slide: 4 + o * 2 },

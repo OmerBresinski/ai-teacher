@@ -14,7 +14,7 @@ import { paletteMenu } from "@tj/slides";
 import { Output, streamText } from "ai";
 import { createOpenAI } from "../../ai/node_modules/@ai-sdk/openai";
 import { allocate } from "../src/planner/cycles";
-import { designCyclePrompt, designCycleSchemaFor, slotRoles } from "../src/prompts/design-cycle";
+import { designCyclePrompt, designCycleSchemaFor } from "../src/prompts/design-cycle";
 import {
   type ObjectiveArc,
   planObjectivesOutputSchemaFor,
@@ -163,6 +163,7 @@ for (const file of args) {
   ).cycles;
   const cycles = await Promise.all(
     objectives.map((_, i) => {
+      const cycle = allocation[i] as (typeof allocation)[number];
       const input = {
         topic,
         shape,
@@ -170,24 +171,25 @@ for (const file of args) {
         objectives,
         objectiveIndex: i,
         slots: {
-          count: allocation[i]!.count,
-          first: allocation[i]!.first,
+          count: cycle.count,
+          first: cycle.first,
           slideCount,
+          roles: cycle.roles,
         },
         palette,
       };
       return call(
         designCyclePrompt.system,
         designCyclePrompt.user(input),
-        designCycleSchemaFor(b.subject, allocation[i]!.count),
+        designCycleSchemaFor(b.subject, cycle.count),
         (p) => {
           const slots = (p as { slots?: unknown[] } | undefined)?.slots;
           return Array.isArray(slots) && (slots.length >= 2 || "exitQuestion" in (p as object));
         },
       ).then((r) => ({
         objectiveIndex: i,
-        slots: allocation[i],
-        roles: slotRoles(allocation[i]!.count, objectives[i]?.arc?.lean),
+        slots: cycle,
+        roles: cycle.roles,
         ...r,
       }));
     }),

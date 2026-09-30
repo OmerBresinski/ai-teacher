@@ -55,4 +55,17 @@ describe("allocate", () => {
     expect(() => allocate(4, [undefined])).toThrow();
     expect(() => allocate(10, [])).toThrow();
   });
+
+  test("roles per slot: a method objective with 2 slots is taught then practised", () => {
+    const a = allocate(10, [lean("worked-example"), lean("photo"), lean("explain")]);
+    expect(a.cycles.map((c) => c.count)).toEqual([2, 2, 2]);
+    expect(a.cycles.map((c) => c.roles)).toEqual([
+      ["teach", "practise"],
+      ["show", "check"],
+      ["teach", "check"],
+    ]);
+    const b = allocate(14, [lean("worked-example"), lean("explain")]);
+    for (const c of b.cycles) expect(c.roles).toHaveLength(c.count);
+    expect(b.cycles[0]?.roles.at(-1)).toBe("check");
+  });
 });

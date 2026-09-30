@@ -1,7 +1,7 @@
 import type { FigureRef, Finding, LessonFacts } from "@tj/domain/documents";
 import { LessonFactsSchema } from "@tj/domain/documents";
 import { FIGURE_TEMPLATES } from "@tj/slides";
-import { callStructured, MAX_OUTPUT_TOKENS } from "../call";
+import { callStructured, MAX_OUTPUT_TOKENS, type ReasoningEffort } from "../call";
 import { figureFindings } from "../figure-check";
 import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
@@ -45,15 +45,20 @@ export async function runVerify(
   deps: PipelineDeps,
   /** Plan's class for this lesson (`planClassFor`, TEACH-259): Verify runs where the facts were written. */
   cls: "frontier" | "standard",
+  /**
+   * The call's effort: low for the objectives-first plan; the designer runs it at medium, off the
+   * critical path, where the probe caught the same planted error with no false corrections.
+   */
+  effort: ReasoningEffort = "low",
 ): Promise<VerifyResult> {
-  deps.logger.info({ stage: "plan", call: "verify", cls }, "plan call");
+  deps.logger.info({ stage: "plan", call: "verify", cls, effort }, "plan call");
   const startedAt = Date.now();
   try {
     const call = await callStructured({
       deps,
       stage: "plan",
       cls,
-      effort: "low",
+      effort,
       prompt: verifyFactsPrompt,
       input: { audience: briefInput.audience, topic: briefInput.topic, facts },
       schema: verifyOutputSchemaFor(facts),

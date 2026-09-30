@@ -276,8 +276,10 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     });
     expect(refills).toHaveLength(1);
     expect(refills[0]).toContain(
-      "This slot replaces an explain slot: the objective has no photo, figure or diagram",
+      "This slot replaces an explain slot: this slot's role is to show the content",
     );
+    // The slot's role rides along on the re-fill (the allocator's roles: a photo lean shows first).
+    expect(refills[0]).toContain("  slide 4: show");
     expect(final.lesson.slides).toHaveLength(10);
     expect(final.designReport?.enforced).toEqual([{ slide: 4, into: "photo", ok: true }]);
     expect(final.designReport?.slots[0]?.form).toBe("photo");

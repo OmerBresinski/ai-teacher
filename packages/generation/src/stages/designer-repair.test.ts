@@ -3,7 +3,7 @@ import type { OutlineEntry, Slide } from "@tj/domain/documents";
 import { fitsPlanned, materialiseSlide, type SlideSpec } from "@tj/slides";
 import { renderSlot, slotRender } from "../planner/coded-slides";
 import type { DesignSlot } from "../prompts/design-cycle";
-import { designerRepairGate, designerRepairRejected, heldToSlot } from "./repair";
+import { designerFormOf, designerRepairGate, designerRepairRejected, heldToSlot } from "./repair";
 
 const META = { promptVersion: "t", model: "t", at: "1970-01-01T00:00:00.000Z" };
 
@@ -122,5 +122,51 @@ describe("designer repair held to its slot (repair discards, smoke r1)", () => {
       ).join(" "),
     };
     expect(designerRepairRejected(long, original, photoEntry)).toBe("does not fit");
+  });
+});
+
+describe("designer repair's slot contract (repair v18)", () => {
+  test("a stored designer slide is read back as the palette form it was laid out from", () => {
+    const slots: DesignSlot[] = [
+      photoSlot,
+      diagramSlot,
+      { form: "explain", heading: "Ice is a solid", body: "It keeps its shape." },
+      {
+        form: "explain-callout",
+        heading: "Ice is a solid",
+        body: "It keeps its shape.",
+        callout: { text: "Ice is not a liquid." },
+      },
+      {
+        form: "list",
+        heading: "Two states",
+        body: "Matter has states.",
+        points: ["Solid", "Liquid"],
+      },
+      {
+        form: "sequence",
+        heading: "Water cycles",
+        body: "It goes round.",
+        steps: ["It evaporates.", "It condenses."],
+      },
+      {
+        form: "hinge",
+        stem: "What forms at the cathode?",
+        options: [
+          { text: "Copper", correct: true },
+          { text: "Oxygen", correct: false },
+          { text: "Chlorine", correct: false },
+          { text: "Sulfur", correct: false },
+        ],
+        explanation: "Metal ions gain electrons at the cathode.",
+      },
+      {
+        form: "true-false",
+        statement: "Ice is a liquid.",
+        correct: false,
+        explanation: "It is a solid.",
+      },
+    ];
+    expect(slots.map((s) => designerFormOf(stored(s)))).toEqual(slots.map((s) => s.form));
   });
 });

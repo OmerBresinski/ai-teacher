@@ -173,7 +173,7 @@ for (const file of readdirSync(dir)
       { form: "worked-example" }
     >[];
     for (const we of wes) {
-      const n = numbers(we.question + " " + we.steps.join(" "));
+      const n = numbers(`${we.question} ${we.steps.join(" ")}`);
       for (const s of c.output.slots) {
         if (s === we || !("stem" in s)) continue;
         const m = numbers(s.stem);
@@ -196,16 +196,16 @@ for (const file of readdirSync(dir)
   const dups: string[] = [];
   for (let i = 0; i < slides.length; i++)
     for (let j = i + 1; j < slides.length; j++) {
-      const a = slides[i]!;
-      const b = slides[j]!;
-      if (a.obj !== b.obj) continue;
+      const a = slides[i];
+      const b = slides[j];
+      if (!a || !b || a.obj !== b.obj) continue;
       const sim = jaccard(words(a.text), words(b.text));
       if (sim >= 0.5) {
         dupPairs++;
         dups.push(`${a.form}/${b.form} ${sim.toFixed(2)}`);
       }
     }
-  const text = allText.join("\n") + "\n" + JSON.stringify(objectives);
+  const text = `${allText.join("\n")}\n${JSON.stringify(objectives)}`;
   for (const k of KNOWN[run.id] ?? []) if (k.test(text)) known.push(k.name);
   const distinct = new Set(deckForms).size;
   const mix = [...new Set(deckForms)]
@@ -234,7 +234,8 @@ for (const file of readdirSync(dir)
 }
 const med = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
-  return s.length ? (s[Math.floor((s.length - 1) / 2)]! / 1000).toFixed(1) : "-";
+  const m = s[Math.floor((s.length - 1) / 2)];
+  return m !== undefined ? (m / 1000).toFixed(1) : "-";
 };
 console.log(
   `| brief | obj | slots | distinct forms | mix | visuals/obj | check forms | worked ex | dup pairs | WE reuse | known errors | first / total s (max over cycles) | $ |`,

@@ -22,6 +22,7 @@ import {
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
+  type PaletteFormId,
   type SlideSpec,
   type SlideStructure,
   STEP_NAME,
@@ -43,7 +44,7 @@ import {
   repairPrompt,
   type WritingShape,
 } from "../prompts";
-import type { RepairContextSlide } from "../prompts/repair";
+import { type RepairContextSlide, repairSlotFor } from "../prompts/repair";
 import {
   isOutlineFromFacts,
   VERIFY_FIELDS_BY_ARRAY,
@@ -359,6 +360,41 @@ export function heldToSlot(
 }
 
 /**
+ * The palette form a designer slide was laid out from, read back off the slide (the slot's form is
+ * not stored): its kind, and for a content slide the unit it shows beside the heading and body.
+ * `undefined` for a slide printed in code (title, starter, exit ticket).
+ */
+export function designerFormOf(slide: Slide): PaletteFormId | undefined {
+  switch (slide.kind) {
+    case "multiple-choice":
+      return "hinge";
+    case "true-false":
+    case "matching":
+    case "fill-gap":
+    case "sort":
+    case "open-response":
+    case "discussion":
+    case "vocabulary":
+    case "worked-example":
+      return slide.kind;
+    case "diagram":
+      return "figure";
+    case "content": {
+      const has = (name: string) => slide.elements.some((e) => e.name === name);
+      if (slide.elements.some((e) => e.type === "image")) return "photo";
+      if (has(DIAGRAM_NAME)) return "diagram-slot";
+      if (has(CALLOUT_NAMES.card)) return "explain-callout";
+      if (has(COMPARE_NAME)) return "compare";
+      if (has(STEP_NAME)) return "sequence";
+      if (has(POINT_NAME)) return "list";
+      return "explain";
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
  * The lesson designer's contract on a repair (the lesson designer plan, PR 10): the rewrite, held
  * to its slot (`heldToSlot`), must pass `fitsPlanned` at the save gate's one step down on every
  * theme in one of its variants, laid out as it will be stored, and it may not bring text back onto
@@ -501,6 +537,10 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           findings: target.findings,
           shape: `a "${slide.kind}" slide spec`,
           context: { slides: repairContext(base, index, target.findings) },
+          // repair v18: a designer slide's slot contract (its palette form and Holds line).
+          ...(designerLesson && designerFormOf(slide)
+            ? { slot: repairSlotFor(designerFormOf(slide) as PaletteFormId) }
+            : {}),
         };
         const call = await callStructured({
           deps,

@@ -1,3 +1,4 @@
+import { type SlotRole, slotRoles } from "../prompts/design-cycle";
 import type { ObjectiveArc } from "../prompts/plan-objectives";
 
 /*
@@ -37,7 +38,20 @@ export type CycleSlots = {
   first: number;
   /** The deck's size, for the prompt's "slides 4 to 6 of 10". */
   slideCount: number;
+  /** Each slot's role, in order (`slotRolesFor`): the design-cycle prompt's `slots.roles`. */
+  roles: SlotRole[];
 };
+
+/**
+ * The roles of an objective's slots: the prompt's `slotRoles`, except that a method objective
+ * with 2 slots gets [teach, practise] (designer prompts r1: with 3 objectives in 10 slides every
+ * objective has 2 slots, so no practise slot existed; judges valued practice on a new case over a
+ * second closed check, and the exit ticket's line still checks the objective).
+ */
+export function slotRolesFor(count: number, lean?: ObjectiveArc["lean"] | undefined): SlotRole[] {
+  if (count === 2 && lean === "worked-example") return ["teach", "practise"];
+  return slotRoles(count, lean);
+}
 
 export type Allocation = {
   slideCount: number;
@@ -106,7 +120,13 @@ export function allocate(
   }
   let next = FIRST_CYCLE_SLIDE;
   const cycles = counts.map((count, objective) => {
-    const slot = { objective, count, first: next, slideCount };
+    const slot = {
+      objective,
+      count,
+      first: next,
+      slideCount,
+      roles: slotRolesFor(count, arcs[objective]?.lean),
+    };
     next += count;
     return slot;
   });
