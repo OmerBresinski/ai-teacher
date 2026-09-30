@@ -228,6 +228,16 @@ describe("runLessonPipeline", () => {
     expect(accepted).toMatchObject({ stage: "plan", photographable: true });
     expect(JSON.stringify(accepted)).not.toContain("camera captures");
     expect(summary.generation.stages).toContain("illustrate");
+    // The fit block (designer plan PR 0): counts from `fitReport`, the fit-lab scorer's function.
+    const fit = summary.generation.fit;
+    expect(fit.slides).toEqual({
+      requested: lesson.brief?.slideCount ?? null,
+      delivered: lesson.slides.length,
+      stored: lesson.slides.length,
+    });
+    expect(Object.keys(fit.overflowing)).toHaveLength(10);
+    expect(fit.callouts.placed).toBeLessThanOrEqual(lesson.slides.length);
+    expect(typeof fit.pagesOnOpen).toBe("number");
     // Picture first: the photograph landed with its slide's persist, so the illustrate step had
     // nothing left to place and reported no 88 progress event (the strip tolerates that).
     expect(deps.progress.some((p) => p.message === "Pictures placed")).toBe(false);

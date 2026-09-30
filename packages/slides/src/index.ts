@@ -19,6 +19,7 @@ export * from "./explanation-metrics";
 export * from "./factories";
 export * from "./figures";
 export * from "./fit-check";
+export * from "./fit-report";
 export * from "./fit-slide";
 export * from "./fonts";
 export * from "./geometry";
