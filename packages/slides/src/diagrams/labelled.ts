@@ -178,7 +178,14 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
   }
   for (const k2 of ["top", "bottom"] as const) {
     const ls = side(k2).sort((a, b) => a.at[0] - b.at[0]);
-    const widths = ls.map((l) => textWidth(l.text, x, small, 600) + small);
+    // A row of labels wider than the drawing is set smaller until it fits, never pushed off an edge.
+    let rowFs = small;
+    const widthsAt = (f: number) => ls.map((l) => textWidth(l.text, x, f, 600) + f);
+    let widths = widthsAt(rowFs);
+    while (rowFs > 11 && widths.reduce((a, b) => a + b, 0) > w) {
+      rowFs -= 1;
+      widths = widthsAt(rowFs);
+    }
     const xs: number[] = [];
     ls.forEach((l, i) => {
       const want = X(l.at[0]);
@@ -190,17 +197,17 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     const lastX = xs[xs.length - 1];
     const lastW = widths[widths.length - 1] ?? 0;
     if (lastX !== undefined && lastX + lastW / 2 > w) {
-      const shift = lastX + lastW / 2 - w;
-      for (let i = 0; i < xs.length; i++) xs[i] = (xs[i] ?? 0) - shift;
+      const shift = Math.min(lastX + lastW / 2 - w, (xs[0] ?? 0) - (widths[0] ?? 0) / 2);
+      for (let i = 0; i < xs.length; i++) xs[i] = (xs[i] ?? 0) - Math.max(0, shift);
     }
     ls.forEach((l, i) => {
       const px = xs[i] ?? 0;
       const ty = k2 === "top" ? small * 0.2 : h - small * 0.2;
-      const ly = k2 === "top" ? ty + small * 1.3 : ty - small * 1.3;
+      const ly = k2 === "top" ? ty + rowFs * 1.3 : ty - rowFs * 1.3;
       out.push(
         leader(px, ly, X(l.at[0]), Y(l.at[1])),
         dot(X(l.at[0]), Y(l.at[1])),
-        text(x, px, ty, [l.text], { v: k2 === "top" ? "top" : "bottom", fs: small, weight: 600 }),
+        text(x, px, ty, [l.text], { v: k2 === "top" ? "top" : "bottom", fs: rowFs, weight: 600 }),
       );
     });
   }

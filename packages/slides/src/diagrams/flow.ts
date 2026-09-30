@@ -9,8 +9,16 @@ type Box = { cx: number; cy: number; w: number; h: number };
 
 function box(x: Ctx, b: Box, label: string): string {
   const { c } = x;
-  const lines = wrap(label, x, b.w - x.fs * 0.9, 2, x.fs, 600);
-  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="2.5"/>${text(x, b.cx, b.cy, lines, { weight: 600 })}`;
+  // As many lines as the box holds (1.2 em each), a step down in size before any word is cut.
+  let fs = x.fs;
+  let lines: string[] = [];
+  for (const f of [x.fs, x.fs * 0.88, x.fs * 0.76]) {
+    fs = f;
+    const room = Math.max(1, Math.floor((b.h - f * 0.5) / (f * 1.2)));
+    lines = wrap(label, x, b.w - f * 0.9, Math.min(3, room), f, 600);
+    if (!lines[lines.length - 1]?.endsWith("…")) break;
+  }
+  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="2.5"/>${text(x, b.cx, b.cy, lines, { weight: 600, fs })}`;
 }
 
 /** Where the segment from `b`'s centre towards (tx, ty) leaves `b`, plus a small gap. */
@@ -28,8 +36,12 @@ export function drawFlow(f: Flow, x: Ctx, w: number, h: number): string {
   return f.layout === "cycle" ? cycle(f, x, w, h) : chain(f, x, w, h);
 }
 
-function chain(f: Flow, x: Ctx, w: number, h: number): string {
+function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
   const { c, fs } = x;
+  // The boxes' strokes stay inside the drawing: a 2-point inset on every side.
+  const inset = 2;
+  const w = fullW - inset * 2;
+  const h = fullH - inset * 2;
   const k = f.steps.length;
   const wide = w / h >= 1.6;
   const cols = wide ? (k <= 4 ? k : Math.ceil(k / 2)) : k <= 4 ? 1 : 2;
@@ -44,8 +56,8 @@ function chain(f: Flow, x: Ctx, w: number, h: number): string {
   const bh = Math.min((h - gapY * (rows - 1)) / rows, fs * 4.2);
   const totalW = bw * cols + gapX * (cols - 1);
   const totalH = bh * rows + gapY * (rows - 1);
-  const ox = (w - totalW) / 2;
-  const oy = (h - totalH) / 2;
+  const ox = inset + (w - totalW) / 2;
+  const oy = inset + (h - totalH) / 2;
   const boxes: Box[] = f.steps.map((_, i) => {
     const r = Math.floor(i / cols);
     const pos = i % cols;
@@ -65,8 +77,10 @@ function chain(f: Flow, x: Ctx, w: number, h: number): string {
       const vertical = Math.abs(x2 - x1) < 1;
       out.push(
         vertical
-          ? text(x, x1 + 10, (y1 + y2) / 2, [note], {
-              anchor: "start",
+          ? // Beside the arrow on the side facing the middle, so a right-hand column's note
+            // stays inside the drawing.
+            text(x, x1 > fullW / 2 ? x1 - 10 : x1 + 10, (y1 + y2) / 2, [note], {
+              anchor: x1 > fullW / 2 ? "end" : "start",
               fs: small,
               fill: c.muted,
               weight: 600,

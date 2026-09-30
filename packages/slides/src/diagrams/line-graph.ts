@@ -88,8 +88,12 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       const base = Ys(axis.min <= 0 && axis.max >= 0 ? 0 : axis.min);
       for (const [px, py] of s.points) {
         const yy = Ys(py);
+        // A bar at either end of the x axis is cut at the axis, never drawn over the tick labels.
+        const x0 = Math.max(left, X(px) - bw / 2);
+        const x1 = Math.min(left + pw, X(px) + bw / 2);
+        if (x1 <= x0) continue;
         out.push(
-          `<rect x="${n(X(px) - bw / 2)}" y="${n(Math.min(yy, base))}" width="${n(bw)}" height="${n(Math.abs(base - yy))}" fill="${colour}" fill-opacity="0.55" stroke="${colour}" stroke-width="1.5"/>`,
+          `<rect x="${n(x0)}" y="${n(Math.min(yy, base))}" width="${n(x1 - x0)}" height="${n(Math.abs(base - yy))}" fill="${colour}" fill-opacity="0.55" stroke="${colour}" stroke-width="1.5"/>`,
         );
       }
     } else {
@@ -131,15 +135,21 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   for (const a of g.annotations) {
     const ax = X(a.x);
     const ay = Y(a.y);
-    const goLeft = ax > left + pw * 0.6;
+    // Away from the nearer edge, unless the label would then run past the plot on that side; when
+    // it fits on neither side it is centred straight above (or below) the point.
+    const reach = fs * 1.6 + 4 + textWidth(a.label, x, small, 600);
+    const fitsLeft = ax - reach >= left;
+    const fitsRight = ax + reach <= left + pw;
+    const centred = !fitsLeft && !fitsRight;
+    const goLeft = ax > left + pw * 0.6 ? fitsLeft || !fitsRight : !fitsRight && fitsLeft;
     const goDown = ay - fs * 2.6 < (legend ? fs * 1.8 : 0);
-    const lx = ax + (goLeft ? -1 : 1) * fs * 1.6;
+    const lx = centred ? ax : ax + (goLeft ? -1 : 1) * fs * 1.6;
     const ly = ay + (goDown ? 1 : -1) * fs * 1.8;
     out.push(
       `<line x1="${n(ax)}" y1="${n(ay)}" x2="${n(lx)}" y2="${n(ly)}" stroke="${c.ink}" stroke-width="1.5"/>`,
       `<circle cx="${n(ax)}" cy="${n(ay)}" r="${n(fs * 0.3)}" fill="${c.ink}" stroke="${c.bg}" stroke-width="2"/>`,
-      text(x, lx + (goLeft ? -4 : 4), ly, [a.label], {
-        anchor: goLeft ? "end" : "start",
+      text(x, centred ? lx : lx + (goLeft ? -4 : 4), ly, [a.label], {
+        anchor: centred ? "middle" : goLeft ? "end" : "start",
         fs: small,
         weight: 600,
         halo: c.bg,
