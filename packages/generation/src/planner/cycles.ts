@@ -15,11 +15,40 @@ import type { ObjectiveArc } from "../prompts/plan-objectives";
 export const FIXED_SLIDES = 4;
 /** Title and objectives come first, then the starter; the cycles start on this slide (1-based). */
 export const FIRST_CYCLE_SLIDE = 4;
+/**
+ * The fixed slides when the objectives ride on the title slide (`DESIGNER_OBJECTIVES_ON_TITLE`,
+ * designer r4): title, starter, exit ticket. The freed slide goes to the cycles.
+ */
+export const FIXED_SLIDES_OBJECTIVES_ON_TITLE = 3;
 /** A cycle's minimum: one slot that teaches the objective, one that checks it. */
 export const CYCLE_MIN = 2;
 
 /** Arc leans whose content needs more room: a method, a process, a contrast or a structure. */
 const HEAVY_LEANS = new Set(["worked-example", "sequence", "compare", "diagram-slot", "figure"]);
+
+/**
+ * Arc leans that say the objective has concrete or structural content, so it wants a visual
+ * (the design minimums' test, `planner/coded-slides.ts`). The visual forms themselves already
+ * open their cycle with a show slot (`slotRoles`); a process or a contrast does not.
+ */
+export const VISUAL_NEED_LEANS: ReadonlySet<string> = new Set([
+  "photo",
+  "figure",
+  "diagram-slot",
+  "sequence",
+  "compare",
+]);
+
+/**
+ * Which objective takes a spare slot when the weights tie (designer r4): a method first (a third
+ * slot is its practise), then a process or a contrast (a third slot is its show slot), then the
+ * rest. The visual forms already show in their first slot.
+ */
+function needOf(arc: Pick<ObjectiveArc, "lean"> | undefined): number {
+  if (arc?.lean === "worked-example") return 2;
+  if (arc?.lean === "sequence" || arc?.lean === "compare") return 1;
+  return 0;
+}
 
 /** An objective's share of the free slots, from its arc (1 when it has none). */
 export function weightOf(arc: Pick<ObjectiveArc, "lean"> | undefined): number {
@@ -50,7 +79,14 @@ export type CycleSlots = {
  */
 export function slotRolesFor(count: number, lean?: ObjectiveArc["lean"] | undefined): SlotRole[] {
   if (count === 2 && lean === "worked-example") return ["teach", "practise"];
-  return slotRoles(count, lean);
+  const roles = slotRoles(count, lean);
+  // Designer r4: a cycle with room for 3 or more slots whose arc wants a visual always has a show
+  // slot. The visual leans open with one already; a process or a contrast is taught first in its
+  // own form, then shown (the r3 judges missed visuals on rivers and plants).
+  if (count >= 3 && lean && VISUAL_NEED_LEANS.has(lean) && !roles.includes("show")) {
+    roles[1] = "show";
+  }
+  return roles;
 }
 
 export type Allocation = {
@@ -62,16 +98,19 @@ export type Allocation = {
   short: number[];
 };
 
-/** `total` shared by `weights`, largest remainder first (ties to the earlier objective). */
-function share(total: number, weights: readonly number[]): number[] {
+/**
+ * `total` shared by `weights`, largest remainder first; ties go to the heavier, then the needier
+ * (`needs`, higher first), then the earlier objective.
+ */
+function share(total: number, weights: readonly number[], needs: readonly number[] = []): number[] {
   const sum = weights.reduce((s, w) => s + w, 0);
   if (total <= 0 || sum <= 0) return weights.map(() => 0);
   const exact = weights.map((w) => (total * w) / sum);
   const out = exact.map(Math.floor);
   let left = total - out.reduce((s, n) => s + n, 0);
   const order = exact
-    .map((x, i) => ({ i, rem: x - Math.floor(x), w: weights[i] ?? 0 }))
-    .sort((a, b) => b.rem - a.rem || b.w - a.w || a.i - b.i);
+    .map((x, i) => ({ i, rem: x - Math.floor(x), w: weights[i] ?? 0, need: needs[i] ?? 0 }))
+    .sort((a, b) => b.rem - a.rem || b.w - a.w || b.need - a.need || a.i - b.i);
   for (const { i } of order) {
     if (left <= 0) break;
     out[i] = (out[i] ?? 0) + 1;
@@ -81,26 +120,30 @@ function share(total: number, weights: readonly number[]): number[] {
 }
 
 /**
- * Exactly `slideCount` slides: the four fixed ones and `slideCount - 4` cycle slots across the
- * objectives. Minimums first (`CYCLE_MIN` each), then the rest by weight. When the deck cannot
- * give every objective its minimum, each gets one slot in weight order (heaviest first, then
- * earliest), and objectives still at zero are checked by their exit-ticket line alone; both are
- * reported in `short`. The sum of the counts is always `slideCount - FIXED_SLIDES`.
+ * Exactly `slideCount` slides: the fixed ones (`FIXED_SLIDES`, or 3 with `objectivesOnTitle`)
+ * and the rest as cycle slots across the objectives. Minimums first (`CYCLE_MIN` each), then the
+ * rest by weight. When the deck cannot give every objective its minimum, each gets one slot in
+ * weight order (heaviest first, then earliest), and objectives still at zero are checked by their
+ * exit-ticket line alone; both are reported in `short`. The sum of the counts is always
+ * `slideCount` less the fixed slides; the cycles start on the slide after the starter.
  */
 export function allocate(
   slideCount: number,
   arcs: readonly (Pick<ObjectiveArc, "lean"> | undefined)[],
+  opts: { objectivesOnTitle?: boolean } = {},
 ): Allocation {
   const n = arcs.length;
+  const fixed = opts.objectivesOnTitle ? FIXED_SLIDES_OBJECTIVES_ON_TITLE : FIXED_SLIDES;
   if (n === 0) throw new Error("allocate: no objectives");
-  if (!Number.isInteger(slideCount) || slideCount < FIXED_SLIDES + 1) {
+  if (!Number.isInteger(slideCount) || slideCount < fixed + 1) {
     throw new Error(`allocate: ${slideCount} slides leave no room for a cycle`);
   }
-  const free = slideCount - FIXED_SLIDES;
+  const free = slideCount - fixed;
   const weights = arcs.map(weightOf);
+  const needs = arcs.map(needOf);
   let counts: number[];
   if (free >= CYCLE_MIN * n) {
-    const extra = share(free - CYCLE_MIN * n, weights);
+    const extra = share(free - CYCLE_MIN * n, weights, needs);
     counts = extra.map((e) => CYCLE_MIN + e);
   } else {
     // Too small for the minimums: one each by weight, then a second each by weight.
@@ -118,7 +161,8 @@ export function allocate(
       }
     }
   }
-  let next = FIRST_CYCLE_SLIDE;
+  // The exit ticket is the last fixed slide; the others open the deck.
+  let next = fixed;
   const cycles = counts.map((count, objective) => {
     const slot = {
       objective,

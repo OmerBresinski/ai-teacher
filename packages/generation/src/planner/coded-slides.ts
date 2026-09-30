@@ -31,6 +31,7 @@ import {
   textPartsOf,
 } from "@tj/slides";
 import { type DesignSlot, ROLE_FORMS, type SlotForm, type SlotRole } from "../prompts/design-cycle";
+import { VISUAL_NEED_LEANS } from "./cycles";
 
 /*
  * Lab r1 (structure): the slides the lab writes in code from the facts, with no model call —
@@ -718,8 +719,6 @@ export const CHECK_FORMS: ReadonlySet<SlotForm> = new Set([
 ]);
 /** Forms that show the objective rather than tell it. */
 export const VISUAL_FORMS: ReadonlySet<SlotForm> = new Set(["photo", "figure", "diagram-slot"]);
-/** Arc leans that say the objective has concrete or structural content (needs a visual). */
-const VISUAL_LEANS = new Set(["photo", "figure", "diagram-slot", "sequence", "compare"]);
 
 export type DesignMinimums = {
   /** Objectives (0-based) whose arc says concrete or structural and that got no visual slot. */
@@ -756,7 +755,9 @@ export function designMinimums(
   }
   return {
     visualMissing: arcs.flatMap((arc, o) =>
-      arc && VISUAL_LEANS.has(arc.lean) && !byObjective[o]?.some((s) => VISUAL_FORMS.has(s.form))
+      arc &&
+      VISUAL_NEED_LEANS.has(arc.lean) &&
+      !byObjective[o]?.some((s) => VISUAL_FORMS.has(s.form))
         ? [o]
         : [],
     ),

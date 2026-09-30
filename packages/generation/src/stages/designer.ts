@@ -15,6 +15,7 @@ import {
 } from "@tj/domain/documents";
 import {
   FIT_VERSION,
+  fitsPlanned,
   type MaterialiseMeta,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
@@ -420,6 +421,26 @@ function exitTicketAll(refs: readonly string[], facts: LessonFacts): { spec: Sli
 
 /* ------------------------------------------------------------------ design */
 
+/** Designer r4's objectives-on-title switch: the deps' flag, else `DESIGNER_OBJECTIVES_ON_TITLE=1`. */
+export function objectivesOnTitle(deps: Pick<PipelineDeps, "objectivesOnTitle">): boolean {
+  return deps.objectivesOnTitle ?? process.env.DESIGNER_OBJECTIVES_ON_TITLE === "1";
+}
+
+/**
+ * The title slide with the lesson's objectives beside it (the `agenda` variant): the title and
+ * class line `materialiseTitle` writes, and at most four objectives, as the objectives slide
+ * would list them.
+ */
+export function agendaTitleSpec(lesson: Lesson, objectives: readonly Objective[]): SlideSpec {
+  return {
+    kind: "title",
+    title: lesson.title,
+    subtitle: [lesson.yearGroup, lesson.subject].filter(Boolean).join(" · ") || "Lesson",
+    objectives: objectives.slice(0, 4).map((o) => o.text),
+    factRefs: objectives.map((o) => o.id),
+  };
+}
+
 export async function design(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const base = state.lesson;
   const brief = base.brief;
@@ -432,7 +453,17 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   const subject = base.subject;
   const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
   const arcs = arcsFor(objectives, state.designArcs);
-  const allocation = allocate(slideCount, arcs);
+  // Designer r4 (off by default): the objectives ride on the title slide when that title fits
+  // every theme; the deck then has three fixed slides and one more cycle slot.
+  const agenda = objectivesOnTitle(deps) ? agendaTitleSpec(base, objectives) : undefined;
+  const onTitle = agenda !== undefined && fitsPlanned(agenda, { stepDown: 1 }).ok;
+  if (agenda && !onTitle) {
+    deps.logger.info(
+      { stage: "generate", call: "allocate", objectivesOnTitle: false },
+      "objectives keep their own slide: the title with the objectives does not fit every theme",
+    );
+  }
+  const allocation = allocate(slideCount, arcs, { objectivesOnTitle: onTitle });
   const audience = audienceOf(base);
   const shape = shapeOf(base);
   const cls = planClassFor(base, deps);
@@ -476,6 +507,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       slideCount,
       cycles: allocation.cycles.map((c) => c.count),
       short: allocation.short,
+      ...(onTitle ? { objectivesOnTitle: true } : {}),
     },
     "designer allocation",
   );
@@ -483,7 +515,14 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   // The deck restarts from the title and objectives: a design step that stopped part-way is redone.
   const [title, objectivesSlide] = base.slides;
   if (!title || !objectivesSlide) throw new Error("design: the objectives step has not run");
-  let lesson: Lesson = { ...base, slides: [title, objectivesSlide], fitVersion: FIT_VERSION };
+  // With the objectives on the title, the title is redrawn with them (keeping its id) and the
+  // objectives slide is dropped; the starter moves up to slide 2.
+  const opening: Slide[] =
+    onTitle && agenda
+      ? [{ ...materialiseSlide(agenda, themeId, codeMeta(), deps.ids), id: title.id }]
+      : [title, objectivesSlide];
+  const starterIndex = opening.length;
+  let lesson: Lesson = { ...base, slides: opening, fitVersion: FIT_VERSION };
   const retrieval = base.facts?.retrieval ?? [];
   const facts0: LessonFacts = {
     objectives,
@@ -511,13 +550,15 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     kind: "content",
     factRefs: [],
   }));
-  outline[0] = { id: "s1", kind: "title", factRefs: [] };
-  outline[1] = {
-    id: "s2",
-    kind: "objectives",
-    factRefs: objectives.map((o) => o.id),
-    phase: "starter",
-  };
+  outline[0] = { id: "s1", kind: "title", factRefs: onTitle ? objectives.map((o) => o.id) : [] };
+  if (!onTitle) {
+    outline[1] = {
+      id: "s2",
+      kind: "objectives",
+      factRefs: objectives.map((o) => o.id),
+      phase: "starter",
+    };
+  }
 
   // Persist in slide order, one write at a time; `ready` holds slides waiting for an earlier one.
   const ready = new Map<number, Slide>();
@@ -552,8 +593,13 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   };
 
   // The starter, in code: the objectives call's retrieval questions, answers revealed.
-  const starterEntry: OutlineEntry = { id: "s3", kind: "starter", factRefs: [], phase: "starter" };
-  outline[2] = starterEntry;
+  const starterEntry: OutlineEntry = {
+    id: `s${starterIndex + 1}`,
+    kind: "starter",
+    factRefs: [],
+    phase: "starter",
+  };
+  outline[starterIndex] = starterEntry;
   const starterCoded = codedSetSpec(starterEntry, facts0, `${base.id}:2`);
   const starterSpec: SlideSpec = starterCoded?.spec ?? {
     kind: "starter",
@@ -563,15 +609,16 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   };
   const starterFitted = answersToNotesUnlessFit(starterSpec, starterCoded?.answers ?? []);
   const unfitSets: { slide: number; reason: string }[] = [];
-  if (!setFits(starterFitted)) unfitSets.push({ slide: 3, reason: setFitReason(starterFitted) });
+  if (!setFits(starterFitted))
+    unfitSets.push({ slide: starterIndex + 1, reason: setFitReason(starterFitted) });
   if (starterFitted !== starterSpec) {
     deps.logger.info(
-      { stage: "generate", slide: 3, rung: "notes" },
+      { stage: "generate", slide: starterIndex + 1, rung: "notes" },
       "starter answers moved to the notes",
     );
   }
   ready.set(
-    2,
+    starterIndex,
     withAnswersReveal(materialiseSlide(starterFitted, themeId, codeMeta(), deps.ids), themeId),
   );
   void flush();

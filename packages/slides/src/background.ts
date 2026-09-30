@@ -9,6 +9,7 @@ import {
 } from "@tj/domain/documents";
 import { artOf } from "./art";
 import { figureGroupOf } from "./figures";
+import { AGENDA_DIVIDER } from "./layouts";
 import { DIAGRAM_NAME } from "./look";
 
 /*
@@ -56,7 +57,10 @@ export function slideArtRole(slide: Slide): { role: ThemeArtRole; side?: ArtSide
       x1 - x0 > SLIDE_W * FULL_SHARE ? "full" : (x0 + x1) / 2 < SLIDE_W / 2 ? "left" : "right";
     return { role: "picture", side };
   }
-  return { role: slide.kind === "title" ? "title" : "content" };
+  // The `agenda` title fills both halves with text, which the title art's corners would meet:
+  // it wears the content art, as the objectives slide it replaces does.
+  const agenda = slide.elements.some((e) => e.name === AGENDA_DIVIDER);
+  return { role: slide.kind === "title" && !agenda ? "title" : "content" };
 }
 
 /** The art a theme draws for a role, mirrored when the picture sits on the right. */

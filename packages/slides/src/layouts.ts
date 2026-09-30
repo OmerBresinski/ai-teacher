@@ -986,6 +986,79 @@ function titleSplit(t: Theme): Layout {
   };
 }
 
+/** The divider between the title and the objectives on the `agenda` title (x at its centre). */
+export const AGENDA_DIVIDER = "Divider";
+/** The "I can" stem over the objectives on the `agenda` title. */
+export const AGENDA_STEM = "Objectives stem";
+/** The objectives list on the `agenda` title. */
+export const AGENDA_OBJECTIVES = "Objectives";
+
+/**
+ * Title, `agenda` (designer r4, `DESIGNER_OBJECTIVES_ON_TITLE`): a deck with no objectives slide
+ * opens on this. Left, five columns: accent rule, "LESSON" eyebrow, the title at the heading stop
+ * over up to four lines and the class line in `small` (a designer title runs to seventy
+ * characters, which the 48pt title floor cannot set in a column beside three objectives). Right,
+ * seven columns: the "I can" stem and the numbered objectives. A hairline between; each column is
+ * optically centred on its own (`fit-slide.ts` restacks each).
+ */
+function titleAgenda(t: Theme): Layout {
+  const leftW = spanWidth(4);
+  const rightW = spanWidth(8);
+  const rightX = lastColLeft(8);
+  const { heading, items } = LIST_COPY.objectives;
+  const capH = boxH(t, "caption");
+  const titleH = boxH(t, "heading", 5);
+  const subH = boxH(t, "small");
+  const top = centreY(capH + SPACE[2] + titleH + SPACE[3] + subH);
+  const stemBoxH = boxH(t, "small");
+  const bodyH = boxH(t, "body", items.length * 1.6);
+  const listTop = centreY(stemBoxH + SPACE[2] + bodyH);
+  return {
+    elements: [
+      accentRule(t, top),
+      text(
+        "caption",
+        "LESSON",
+        { x: SAFE.x, y: top, w: leftW, h: capH },
+        { color: t.colors.muted },
+      ),
+      text(
+        "heading",
+        "Lesson title",
+        { x: SAFE.x, y: top + capH + SPACE[2], w: leftW, h: titleH },
+        {},
+        { name: "Title" },
+      ),
+      text(
+        "small",
+        "Year group and class",
+        { x: SAFE.x, y: top + capH + SPACE[2] + titleH + SPACE[3], w: leftW, h: subH },
+        { color: t.colors.muted },
+        { name: "Subtitle" },
+      ),
+      shape(
+        "rect",
+        { x: Math.round((SAFE.x + leftW + rightX) / 2), y: SAFE.y, w: 1, h: SAFE.h },
+        { fill: t.colors.line, name: AGENDA_DIVIDER },
+      ),
+      text(
+        "small",
+        heading,
+        { x: rightX, y: listTop, w: rightW, h: stemBoxH },
+        { color: t.colors.muted },
+        { name: AGENDA_STEM },
+      ),
+      text(
+        "body",
+        docFromNumbered([...items]),
+        { x: rightX, y: listTop + stemBoxH + SPACE[2], w: rightW, h: bodyH },
+        {},
+        { name: AGENDA_OBJECTIVES },
+      ),
+    ],
+  };
+}
+
 /**
  * Content, `statement`: one sentence at subtitle size, optically centred, with the heading
  * reduced to an eyebrow above it. For bodies under twenty words; the subtitle stop sits on
@@ -1168,7 +1241,7 @@ function steppedList(t: Theme, kind: ListKind): Layout {
 /* ------------------------------------------------------------------ */
 
 /** The variant names, typed so a filler's comparison and a catalogue entry are both checked. */
-export const TITLE_VARIANT_NAMES = ["stack", "photo-band", "split"] as const;
+export const TITLE_VARIANT_NAMES = ["stack", "photo-band", "split", "agenda"] as const;
 export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column", "callout-row"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
 /** The diagram's compositions: the default, and the wider figure a template may ask for. */
@@ -1270,6 +1343,11 @@ export const LAYOUT_CATALOGUE: {
       composition: "split",
       description: "The title left, a photograph filling the right half",
     },
+    {
+      name: "agenda",
+      composition: "agenda",
+      description: "The title left, the lesson's objectives on the right",
+    },
   ],
   objectives: LIST_VARIANTS,
   starter: LIST_VARIANTS,
@@ -1360,6 +1438,8 @@ function titleVariant(t: Theme, variant: number | string): Layout {
       return titlePhotoBand(t);
     case "split":
       return titleSplit(t);
+    case "agenda":
+      return titleAgenda(t);
     case "stack":
       return titleSlide(t);
   }

@@ -322,6 +322,7 @@ export function recordingDeps(
     logger?: pino.Logger;
     abortAfterPersist?: number;
     images?: PhotoPlacer;
+    objectivesOnTitle?: boolean;
   } = {},
 ): RecordedDeps {
   const abort = new AbortController();
@@ -353,6 +354,9 @@ export function recordingDeps(
     },
     context: { lessonId: SAMPLE_LESSON_ID, jobId: SAMPLE_JOB_ID },
     images: options.images,
+    ...(options.objectivesOnTitle !== undefined
+      ? { objectivesOnTitle: options.objectivesOnTitle }
+      : {}),
     persisted,
     progress,
     abort,

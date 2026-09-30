@@ -154,6 +154,12 @@ export interface PipelineDeps {
    */
   planFrontierFromYear?: number;
   /**
+   * The lesson designer sets the objectives on the title slide (the `agenda` title) instead of a
+   * slide of their own, and the freed slide goes to the cycles (designer r4 experiment). Unset:
+   * `DESIGNER_OBJECTIVES_ON_TITLE=1` in the environment turns it on; off otherwise.
+   */
+  objectivesOnTitle?: boolean;
+  /**
    * The reasoning effort a call runs at, given the stage, the prompt name (`plan-facts`) and the
    * effort the stage asked for. Set by the lab's effort bench, and by the worker when
    * `AI_REASONING_EFFORT` is set (TEACH-72). Unset: the stage's choice.

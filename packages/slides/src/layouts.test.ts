@@ -271,7 +271,7 @@ describe("layoutSlide", () => {
       expect(variantName(kind, "photo-band-x"), `${kind} unknown name`).toBe(first);
       for (const v of LAYOUT_CATALOGUE[kind]) expect(v.description.length).toBeGreaterThan(0);
     }
-    expect(variantsFor("title")).toEqual(["stack", "photo-band", "split"]);
+    expect(variantsFor("title")).toEqual(["stack", "photo-band", "split", "agenda"]);
     expect(variantsFor("content")).toEqual(["headed", "statement", "two-column", "callout-row"]);
     for (const kind of ["objectives", "starter", "instructions", "exit-ticket", "plenary"] as const)
       expect(variantsFor(kind), kind).toEqual(["numbered", "cards", "stepped"]);

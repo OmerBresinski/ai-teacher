@@ -21,6 +21,8 @@ import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import {
+  AGENDA_OBJECTIVES,
+  AGENDA_STEM,
   type ContentVariant,
   docFromNumbered,
   IDEA_NAME,
@@ -448,6 +450,7 @@ function markedTerms(els: TextElement[]): string[] {
  * diagram, whose Figure template picks it (`diagramVariantFor`, ADR 0034 decision 7).
  */
 function defaultVariant(spec: SlideSpec): number | string {
+  if (spec.kind === "title" && spec.objectives?.length) return "agenda";
   return spec.kind === "diagram" ? diagramVariantFor(spec.figure.template, spec.figure.values) : 0;
 }
 
@@ -580,6 +583,18 @@ function fillSlide(
 /* --- per-kind fillers --------------------------------------------- */
 
 function fillTitle(spec: SlideSpecOf<"title">, laid: Layout, variant: TitleVariant): Layout {
+  if (variant === "agenda") {
+    // The title at the heading stop and the class line in `small`, named (`layouts.ts`); the
+    // objectives under the stem, lower-cased as the objectives slide sets them.
+    setText(slot(laid, "Title"), spec.title);
+    setText(slot(laid, "Subtitle"), spec.subtitle);
+    setText(slot(laid, AGENDA_STEM), OBJECTIVES_SLIDE_HEADING);
+    setDoc(
+      slot(laid, AGENDA_OBJECTIVES),
+      docFromNumbered((spec.objectives ?? []).map(objectiveLine)),
+    );
+    return laid;
+  }
   setText(textOf(laid, "title"), spec.title);
   // The photo-band variant sets the class line in `small`, named so it can be found.
   setText(
