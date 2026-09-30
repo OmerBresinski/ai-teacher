@@ -10,7 +10,7 @@ import { SLIDE_H } from "@tj/domain/documents";
 import { explanationReserve, owesExplanationLane, RESERVED_LINES } from "./explanation-metrics";
 import { contains } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
-import { ACCENT_ABOVE, OPTICAL_BIAS } from "./layouts";
+import { ACCENT_ABOVE, AGENDA_DIVIDER, OPTICAL_BIAS } from "./layouts";
 import { OPTION, SAFE_BOTTOM } from "./metrics";
 import {
   isFrozen,
@@ -278,11 +278,25 @@ function growCards(before: SlideElement[], after: SlideElement[]): SlideElement[
  * centred: once its texts are measured it is re-stacked at the recipe's own gaps, so a short title
  * pulls the class line up as surely as a long one pushes it down, and centred again. Skipped when
  * a picture shares the stack's column (the photo-band variant sets the stack on its picture).
+ * The `agenda` variant's objectives (texts right of its divider) are a second column, restacked and
+ * centred on their own; its divider stays where the recipe drew it.
  */
 function restackTitle(before: SlideElement[], after: SlideElement[]): SlideElement[] {
+  const split = before.find((el) => el.name === AGENDA_DIVIDER)?.x ?? Number.POSITIVE_INFINITY;
+  const right = (i: number) => (before[i] as SlideElement).x > split;
+  const stacked = restackColumn(before, after, (i) => !right(i), true);
+  return restackColumn(before, stacked, right, false);
+}
+
+function restackColumn(
+  before: SlideElement[],
+  after: SlideElement[],
+  inColumn: (i: number) => boolean,
+  carry: boolean,
+): SlideElement[] {
   const texts = after
-    .map((el, i) => ({ el, el0: before[i] as SlideElement }))
-    .filter(({ el }) => el.type === "text")
+    .map((el, i) => ({ el, el0: before[i] as SlideElement, i }))
+    .filter(({ el, i }) => el.type === "text" && inColumn(i))
     .sort((a, b) => a.el0.y - b.el0.y);
   const first = texts[0];
   if (!first) return after;
@@ -312,7 +326,8 @@ function restackTitle(before: SlideElement[], after: SlideElement[]): SlideEleme
     const at = ys.get(el);
     if (at !== undefined) return { ...el, y: top + at };
     // The accent rule, and anything else not a text or a picture, travels with the eyebrow.
-    if (el.type === "image" || isFrozen(el)) return el;
+    if (!carry || el.type === "image" || isFrozen(el) || el.name === AGENDA_DIVIDER) return el;
+    if (el.type === "text") return el;
     const el0 = before[i] as SlideElement;
     return { ...el, y: el0.y + dy };
   });

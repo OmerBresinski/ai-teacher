@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { allocate, CYCLE_MIN, FIRST_CYCLE_SLIDE, FIXED_SLIDES, weightOf } from "./cycles";
+import {
+  allocate,
+  CYCLE_MIN,
+  FIRST_CYCLE_SLIDE,
+  FIXED_SLIDES,
+  FIXED_SLIDES_OBJECTIVES_ON_TITLE,
+  slotRolesFor,
+  weightOf,
+} from "./cycles";
 
 const lean = (l: string) => ({ lean: l }) as { lean: "explain" };
 
@@ -67,5 +75,49 @@ describe("allocate", () => {
     const b = allocate(14, [lean("worked-example"), lean("explain")]);
     for (const c of b.cycles) expect(c.roles).toHaveLength(c.count);
     expect(b.cycles[0]?.roles.at(-1)).toBe("check");
+  });
+
+  test("objectives on the title: three fixed slides, cycles from slide 3, exactly N", () => {
+    const leans = ["explain", "worked-example", "photo", "list"];
+    for (let n = 5; n <= 15; n++) {
+      for (let k = 1; k <= 4; k++) {
+        const a = allocate(n, leans.slice(0, k).map(lean), { objectivesOnTitle: true });
+        const total = a.cycles.reduce((s, c) => s + c.count, 0);
+        expect(total + FIXED_SLIDES_OBJECTIVES_ON_TITLE).toBe(n);
+        expect(a.cycles[0]?.first).toBe(3);
+        expect(a.exitSlide).toBe(n);
+      }
+    }
+    expect(() => allocate(3, [undefined], { objectivesOnTitle: true })).toThrow();
+  });
+
+  test("objectives on the title: 3 objectives in 10 slides get 3/2/2, the extra to the neediest", () => {
+    const counts = (leans: string[]) =>
+      allocate(10, leans.map(lean), { objectivesOnTitle: true }).cycles.map((c) => c.count);
+    // A heavier lean takes it (a method, a process, a structure) over an explanation or a photo.
+    expect(counts(["explain", "photo", "worked-example"])).toEqual([2, 2, 3]);
+    expect(counts(["explain", "photo", "sequence"])).toEqual([2, 2, 3]);
+    expect(counts(["explain", "photo", "explain"])).toEqual([2, 3, 2]);
+    // Tied weights: a method first, then a process or contrast (its third slot shows it).
+    expect(counts(["figure", "compare", "worked-example"])).toEqual([2, 2, 3]);
+    expect(counts(["figure", "figure", "sequence"])).toEqual([2, 2, 3]);
+    // With no arcs, the first objective, as before.
+    expect(
+      allocate(10, [undefined, undefined, undefined], { objectivesOnTitle: true }).cycles.map(
+        (c) => c.count,
+      ),
+    ).toEqual([3, 2, 2]);
+  });
+
+  test("a cycle of 3 or more whose arc wants a visual has a show slot", () => {
+    expect(slotRolesFor(3, "figure")).toEqual(["show", "teach", "check"]);
+    expect(slotRolesFor(3, "photo")).toEqual(["show", "teach", "check"]);
+    expect(slotRolesFor(3, "sequence")).toEqual(["teach", "show", "check"]);
+    expect(slotRolesFor(3, "compare")).toEqual(["teach", "show", "check"]);
+    expect(slotRolesFor(4, "sequence")).toEqual(["teach", "show", "practise", "check"]);
+    // No room for one in 2 slots; a method or an explanation is not given one.
+    expect(slotRolesFor(2, "sequence")).toEqual(["teach", "check"]);
+    expect(slotRolesFor(3, "worked-example")).toEqual(["teach", "practise", "check"]);
+    expect(slotRolesFor(3, "explain")).toEqual(["teach", "teach", "check"]);
   });
 });

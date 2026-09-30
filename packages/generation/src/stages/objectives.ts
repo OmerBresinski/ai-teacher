@@ -1,6 +1,13 @@
-import type { Lesson, LessonFacts, Slide } from "@tj/domain/documents";
+import {
+  DEFAULT_SLIDE_COUNT,
+  type Lesson,
+  LessonBookendsSchema,
+  type LessonFacts,
+  type Slide,
+} from "@tj/domain/documents";
 import { callStructured } from "../call";
 import { checkObjectives, describeIssues } from "../objectives-check";
+import { type Bookends, bookendCount, fitBookends, maxObjectives } from "../planner/cycles";
 import {
   type PlanRetrievalQuestion,
   planObjectivesOutputSchemaFor,
@@ -80,6 +87,56 @@ export interface ObjectivesStepReport {
 
 export interface ObjectivesStepOptions {
   effort?: PlannerEffortOption;
+  /**
+   * Designer r6: the call is told the slide count and `maxObjectives`; code keeps the first
+   * `maxObjectives` (the rest logged) and the opening and closing slots the call asked for, dropping
+   * a bookend first when the objectives would fall under their minimum.
+   */
+  r6?: boolean;
+}
+
+/** The r6 bookends as the objectives call wrote them (`opening`, `closing`), when it did. */
+export function bookendsOf(output: unknown): Bookends | undefined {
+  const parsed = LessonBookendsSchema.safeParse({
+    opening: (output as { opening?: unknown } | undefined)?.opening ?? undefined,
+    closing: (output as { closing?: unknown } | undefined)?.closing ?? undefined,
+  });
+  if (!parsed.success) return undefined;
+  const { opening, closing } = parsed.data;
+  return opening || closing
+    ? { ...(opening ? { opening } : {}), ...(closing ? { closing } : {}) }
+    : undefined;
+}
+
+/**
+ * Designer r6's scope rule, applied to what the call returned: the cap is
+ * `floor((slides - 1 - bookends asked) / 3)`, objectives past it are cut (never crammed in), then a
+ * bookend is dropped (closing first) only if the kept objectives still lack their minimum. An
+ * opening retrieval with no retrieval questions is dropped first.
+ */
+export function scopeToSlides<T>(
+  objectives: readonly T[],
+  bookends: Bookends | undefined,
+  slideCount: number,
+  hasRetrieval: boolean,
+): { objectives: T[]; cut: T[]; bookends: Bookends | undefined; dropped: string[] } {
+  const dropped: string[] = [];
+  let asked: Bookends | undefined = bookends;
+  if (asked?.opening?.kind === "retrieval" && !hasRetrieval) {
+    const { opening: _none, ...rest } = asked;
+    asked = rest;
+    dropped.push("opening (no retrieval questions)");
+  }
+  const cap = maxObjectives(slideCount, bookendCount(asked));
+  const kept = objectives.slice(0, cap);
+  const fitted = fitBookends(slideCount, kept.length, asked);
+  dropped.push(...fitted.dropped);
+  return {
+    objectives: kept,
+    cut: objectives.slice(cap),
+    bookends: bookendCount(fitted.kept) > 0 ? fitted.kept : undefined,
+    dropped,
+  };
 }
 
 export async function runObjectivesStep(
@@ -96,6 +153,9 @@ export async function runObjectivesStep(
   const t0 = Date.now();
   let objectives: ObjectivesStepReport["objectives"];
   let retrieval: PlanRetrievalQuestion[] | undefined;
+  let bookends: Bookends | undefined;
+  const r6 = options.r6 === true;
+  const r6SlideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
   let model = "none";
   let calls = 0;
   const pinned = state.pinObjectives ? (lesson.facts?.objectives ?? []) : undefined;
@@ -137,6 +197,17 @@ export async function runObjectivesStep(
           audience: audienceOf(lesson),
           priorKnowledge: brief.classContext?.priorKnowledge,
           curriculum,
+          ...(r6
+            ? {
+                slideCount: r6SlideCount,
+                maxObjectives: maxObjectives(r6SlideCount),
+                maxObjectivesByBookends: {
+                  none: maxObjectives(r6SlideCount, 0),
+                  one: maxObjectives(r6SlideCount, 1),
+                  two: maxObjectives(r6SlideCount, 2),
+                },
+              }
+            : {}),
         },
         schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
         maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
@@ -168,6 +239,29 @@ export async function runObjectivesStep(
         objectives = call.output.objectives;
         const written = call.output.retrieval;
         retrieval = written && written.length > 0 ? written : undefined;
+        if (r6) {
+          const scoped = scopeToSlides(
+            objectives,
+            bookendsOf(call.output),
+            r6SlideCount,
+            retrieval !== undefined,
+          );
+          objectives = scoped.objectives;
+          bookends = scoped.bookends;
+          if (scoped.cut.length > 0 || scoped.dropped.length > 0) {
+            deps.logger.warn(
+              {
+                stage: "plan",
+                call: "objectives",
+                slideCount: r6SlideCount,
+                max: maxObjectives(r6SlideCount, bookendCount(bookendsOf(call.output))),
+                cut: scoped.cut.map((o) => o.text),
+                dropped: scoped.dropped,
+              },
+              "objectives scoped to the slide budget",
+            );
+          }
+        }
         model = call.modelId;
         break;
       }
@@ -187,6 +281,11 @@ export async function runObjectivesStep(
     ...(retrieval
       ? { retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
       : {}),
+    ...(bookends
+      ? { bookends }
+      : pinned && lesson.facts?.bookends
+        ? { bookends: lesson.facts.bookends }
+        : {}),
   };
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
   const objectivesSlide = keepId(

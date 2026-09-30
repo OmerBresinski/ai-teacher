@@ -43,7 +43,40 @@ export type SlotFitOptions = {
    * did not fit (`refillReason`). Absent: the rung is skipped.
    */
   refill?: (slot: DesignSlot, form: SlotForm, reason: string) => Promise<DesignSlot | undefined>;
+  /**
+   * Designer r6 (Greg, 30 Sep: fit everything within the slide, never rely on the notes): `false`
+   * takes teaching content off rung 3 and rung 4c — only teacher-only asides (a discussion's
+   * footnote, a check's "Why?" reason) may go to the notes. A slot that does not fit goes to a
+   * sibling form that holds its units, then the re-fill. Default `true` (the r5 ladder).
+   */
+  teachingToNotes?: boolean;
 };
+
+/** Units rung 3 may move under `teachingToNotes: false`: what the teacher says, not what is taught. */
+export const ASIDE_UNITS: ReadonlySet<string> = new Set(["footnote", "explanation"]);
+
+/**
+ * Rung 3 with teaching content kept on the slide (r6): only the asides of `unitsToNotes` — a
+ * discussion's footnote and a hinge's "Why?" reason — each applied on its own to the slot as
+ * written, never after a teaching unit has moved.
+ */
+export function asidesToNotes(slot: DesignSlot): { slot: DesignSlot; moved: string }[] {
+  const out: { slot: DesignSlot; moved: string }[] = [];
+  if (slot.form === "discussion" && slot.footnote) {
+    const { footnote, ...rest } = slot;
+    out.push({
+      slot: { ...rest, notes: [slot.notes, footnote].filter(Boolean).join("\n") } as DesignSlot,
+      moved: "footnote",
+    });
+  }
+  if (slot.form === "hinge") {
+    const moved = unitsToNotes(slot).find((u) => u.moved === "explanation");
+    if (moved) out.push(moved);
+  }
+  return out;
+}
+
+type ToNotes = (slot: DesignSlot) => { slot: DesignSlot; moved: string }[];
 
 const META = { promptVersion: "fit", model: "fit", at: "1970-01-01T00:00:00.000Z" };
 
@@ -407,11 +440,14 @@ const CONVERSION_DEPTH = 2;
  * direct siblings and its own units (rungs 2 and 3) are not repeated. `path` names every step,
  * `moved` whether any unit went to the notes.
  */
-function conversions(slot: DesignSlot): { slot: DesignSlot; path: string; moved: boolean }[] {
+function conversions(
+  slot: DesignSlot,
+  toNotes: ToNotes = unitsToNotes,
+): { slot: DesignSlot; path: string; moved: boolean }[] {
   const out: { slot: DesignSlot; path: string; moved: boolean }[] = [];
   const seen = new Set<string>([JSON.stringify(slot)]);
   for (const s of siblingsOf(slot)) seen.add(JSON.stringify(s));
-  for (const u of unitsToNotes(slot)) seen.add(JSON.stringify(u.slot));
+  for (const u of toNotes(slot)) seen.add(JSON.stringify(u.slot));
   const add = (next: DesignSlot, path: string, moved: boolean) => {
     const key = JSON.stringify(next);
     if (seen.has(key)) return false;
@@ -425,7 +461,7 @@ function conversions(slot: DesignSlot): { slot: DesignSlot; path: string; moved:
       const at = [path, sibling.form].filter(Boolean).join(" > ");
       if (depth > 0) add(sibling, at, moved);
       walk(sibling, at, moved, depth + 1);
-      for (const u of unitsToNotes(sibling)) {
+      for (const u of toNotes(sibling)) {
         const there = `${at} ${u.moved}`;
         add(u.slot, there, true);
         walk(u.slot, there, true, depth + 1);
@@ -446,6 +482,7 @@ function lowerRungs(
   themeId: string,
   tried: RungLog[],
   prefix = "",
+  toNotes: ToNotes = unitsToNotes,
 ): { landed?: { cand: Candidate; rung: Rung }; candidates: Candidate[] } {
   const first = render(slot);
   const candidates: Candidate[] = [];
@@ -470,7 +507,7 @@ function lowerRungs(
     candidates.push(cand);
   }
   // 3. whole units to the notes, word for word
-  for (const { slot: moved, moved: what } of unitsToNotes(slot)) {
+  for (const { slot: moved, moved: what } of toNotes(slot)) {
     const cand = { slot: moved, render: render(moved) };
     const ok = slotFits(cand.render, themeId, 0);
     log("notes", moved.form, ok, what);
@@ -517,11 +554,30 @@ export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<S
   const render = (s: DesignSlot) => slotRender(s, seed, refs);
   const first = render(slot);
   if (slotFits(first, themeId, 0)) return { slot, render: first, rung: "fits", tried };
+  const toNotes: ToNotes = opts.teachingToNotes === false ? asidesToNotes : unitsToNotes;
 
-  const own = lowerRungs(slot, render, themeId, tried);
+  const own = lowerRungs(slot, render, themeId, tried, "", toNotes);
   if (own.landed) {
     const { cand, rung } = own.landed;
     return { slot: cand.slot, render: cand.render, rung, tried };
+  }
+  // 4c (below), run before the re-fill under r6: a roomier sibling chain, then the re-fill.
+  const siblingsFirst = opts.teachingToNotes === false;
+  const converted: Candidate[] = [];
+  const convert = (): SlotFit | undefined => {
+    for (const { slot: next, path, moved } of conversions(slot, toNotes)) {
+      const r = render(next);
+      const ok = slotFits(r, themeId, 0);
+      const rung: Rung = moved ? "notes" : "sibling";
+      tried.push({ rung, form: next.form, ok, detail: path });
+      if (ok) return { slot: next, render: r, rung, tried };
+      converted.push({ slot: next, render: r });
+    }
+    return undefined;
+  };
+  if (siblingsFirst) {
+    const landed = convert();
+    if (landed) return landed;
   }
   // 4. one re-fill into the next form down, then that form's own rungs 1-3
   const down = FORM_DOWN[slot.form];
@@ -534,7 +590,7 @@ export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<S
       tried.push({ rung: "refill", form: refilled.form, ok });
       if (ok) return { slot: refilled, render: r, rung: "refill", tried };
       fromRefill.push({ slot: refilled, render: r });
-      const again = lowerRungs(refilled, render, themeId, tried, "re-filled");
+      const again = lowerRungs(refilled, render, themeId, tried, "re-filled", toNotes);
       if (again.landed) {
         const { cand } = again.landed;
         return { slot: cand.slot, render: cand.render, rung: "refill", tried };
@@ -558,14 +614,9 @@ export async function fitSlot(slot: DesignSlot, opts: SlotFitOptions): Promise<S
   // can shrink; r5 arm F, y5-rivers and y8-persuasive), so its whole units go to the notes too,
   // and a sibling of what is left is tried in turn (a sequence down to two steps is a list), each
   // word for word. Step-down tries every one of them before the slot is flagged.
-  const converted: Candidate[] = [];
-  for (const { slot: next, path, moved } of conversions(slot)) {
-    const r = render(next);
-    const ok = slotFits(r, themeId, 0);
-    const rung: Rung = moved ? "notes" : "sibling";
-    tried.push({ rung, form: next.form, ok, detail: path });
-    if (ok) return { slot: next, render: r, rung, tried };
-    converted.push({ slot: next, render: r });
+  if (!siblingsFirst) {
+    const landed = convert();
+    if (landed) return landed;
   }
   // 5. one type step down, on every candidate in order, then flag
   const candidates: Candidate[] = [

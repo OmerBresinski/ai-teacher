@@ -15,6 +15,7 @@ import {
 } from "@tj/domain/documents";
 import {
   FIT_VERSION,
+  fitsPlanned,
   type MaterialiseMeta,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
@@ -27,6 +28,15 @@ import type { z } from "zod";
 import * as zod from "zod";
 import { callStructured } from "../call";
 import {
+  type Asked,
+  answerSupport,
+  askedOf,
+  refillOpening,
+  refsOfSlot,
+  taughtText,
+  unsupportedReason,
+} from "../planner/answer-support";
+import {
   CHECK_FORMS,
   CODE_MODEL,
   codedSetSpec,
@@ -38,7 +48,7 @@ import {
   VISUAL_FORMS,
   withAnswersReveal,
 } from "../planner/coded-slides";
-import { allocate, type CycleSlots } from "../planner/cycles";
+import { allocate, allocateR6, type CycleSlots } from "../planner/cycles";
 import { fitSlot, type SlotFit } from "../planner/slot-fit";
 import { verifyFactsPrompt } from "../prompts";
 import {
@@ -137,7 +147,9 @@ export async function designerObjectives(
     const { updatedAt } = await deps.persist(lesson);
     await deps.onProgress(PROGRESS_STARTING, "Title ready", "plan", updatedAt);
   }
-  const { state: next, report } = await runObjectivesStep({ ...state, lesson }, deps);
+  const { state: next, report } = await runObjectivesStep({ ...state, lesson }, deps, {
+    r6: designerR6(deps),
+  });
   const generation = generationOf(next.lesson);
   const arcs = report.objectives.map((o) => (o as { arc?: Arc }).arc);
   const facts = next.lesson.facts;
@@ -420,6 +432,44 @@ function exitTicketAll(refs: readonly string[], facts: LessonFacts): { spec: Sli
 
 /* ------------------------------------------------------------------ design */
 
+/** Designer r4's objectives-on-title switch: the deps' flag, else `DESIGNER_OBJECTIVES_ON_TITLE=1`. */
+export function objectivesOnTitle(deps: Pick<PipelineDeps, "objectivesOnTitle">): boolean {
+  return deps.objectivesOnTitle ?? process.env.DESIGNER_OBJECTIVES_ON_TITLE === "1";
+}
+
+/**
+ * Designer r6's switch (structure is not fixed: the title with the objectives is the only fixed
+ * slide; opening and closing slots only when the objectives call asked for them): the deps' flag,
+ * else `DESIGNER_R6=1` in the environment. Off: the r5 deck (title, objectives, starter, cycles,
+ * exit ticket).
+ */
+export function designerR6(deps: Pick<PipelineDeps, "designerR6">): boolean {
+  return deps.designerR6 ?? process.env.DESIGNER_R6 === "1";
+}
+
+/** What an r6 hook, plenary or debate asks when the objectives call wrote no prompt for it. */
+export function bookendPrompt(kind: string, topic: string, prompt?: string | undefined): string {
+  if (prompt?.trim()) return prompt.trim();
+  if (kind === "hook") return `What do you already know about ${topic}?`;
+  if (kind === "debate") return `Where do you stand on ${topic}, and why?`;
+  return `What is the most important thing you learned about ${topic} today?`;
+}
+
+/**
+ * The title slide with the lesson's objectives beside it (the `agenda` variant): the title and
+ * class line `materialiseTitle` writes, and at most four objectives, as the objectives slide
+ * would list them.
+ */
+export function agendaTitleSpec(lesson: Lesson, objectives: readonly Objective[]): SlideSpec {
+  return {
+    kind: "title",
+    title: lesson.title,
+    subtitle: [lesson.yearGroup, lesson.subject].filter(Boolean).join(" · ") || "Lesson",
+    objectives: objectives.slice(0, 4).map((o) => o.text),
+    factRefs: objectives.map((o) => o.id),
+  };
+}
+
 export async function design(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const base = state.lesson;
   const brief = base.brief;
@@ -432,7 +482,21 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   const subject = base.subject;
   const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
   const arcs = arcsFor(objectives, state.designArcs);
-  const allocation = allocate(slideCount, arcs);
+  // Designer r4 (off by default): the objectives ride on the title slide when that title fits
+  // every theme; the deck then has three fixed slides and one more cycle slot.
+  const r6 = designerR6(deps);
+  const agenda = r6 || objectivesOnTitle(deps) ? agendaTitleSpec(base, objectives) : undefined;
+  const onTitle = agenda !== undefined && fitsPlanned(agenda, { stepDown: 1 }).ok;
+  if (agenda && !onTitle) {
+    deps.logger.info(
+      { stage: "generate", call: "allocate", objectivesOnTitle: false },
+      "objectives keep their own slide: the title with the objectives does not fit every theme",
+    );
+  }
+  const r6Allocation = r6
+    ? allocateR6(slideCount, arcs, { objectivesOnTitle: onTitle, bookends: base.facts?.bookends })
+    : undefined;
+  const allocation = r6Allocation ?? allocate(slideCount, arcs, { objectivesOnTitle: onTitle });
   const audience = audienceOf(base);
   const shape = shapeOf(base);
   const cls = planClassFor(base, deps);
@@ -476,6 +540,10 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       slideCount,
       cycles: allocation.cycles.map((c) => c.count),
       short: allocation.short,
+      ...(onTitle ? { objectivesOnTitle: true } : {}),
+      ...(r6Allocation
+        ? { r6: true, bookends: r6Allocation.bookends, dropped: r6Allocation.dropped }
+        : {}),
     },
     "designer allocation",
   );
@@ -483,8 +551,59 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   // The deck restarts from the title and objectives: a design step that stopped part-way is redone.
   const [title, objectivesSlide] = base.slides;
   if (!title || !objectivesSlide) throw new Error("design: the objectives step has not run");
-  let lesson: Lesson = { ...base, slides: [title, objectivesSlide], fitVersion: FIT_VERSION };
-  const retrieval = base.facts?.retrieval ?? [];
+  // With the objectives on the title, the title is redrawn with them (keeping its id) and the
+  // objectives slide is dropped; the starter moves up to slide 2.
+  const opening: Slide[] =
+    onTitle && agenda
+      ? [{ ...materialiseSlide(agenda, themeId, codeMeta(), deps.ids), id: title.id }]
+      : [title, objectivesSlide];
+  // The opening and closing slots: in r5 always a retrieval starter after the fixed slides and an
+  // exit ticket last; in r6 only those the objectives call asked for and the deck kept.
+  const openingAt = r6Allocation
+    ? r6Allocation.openingSlide !== undefined && r6Allocation.bookends.opening
+      ? { index: r6Allocation.openingSlide - 1, ...r6Allocation.bookends.opening }
+      : undefined
+    : { index: opening.length, kind: "retrieval" as const };
+  const closingAt = r6Allocation
+    ? r6Allocation.closingSlide !== undefined && r6Allocation.bookends.closing
+      ? { index: r6Allocation.closingSlide - 1, ...r6Allocation.bookends.closing }
+      : undefined
+    : { index: slideCount - 1, kind: "check" as const };
+  const starterIndex = openingAt?.index ?? opening.length;
+  let lesson: Lesson = { ...base, slides: opening, fitVersion: FIT_VERSION };
+  // r6: a retrieval opening's answers must lean on the prior knowledge the brief states (no earlier
+  // slide teaches them). An unsupported question is re-filled in code: the starter keeps only the
+  // supported ones, or falls back to the prior-knowledge prompt when none is. Logged.
+  const openingSupport: NonNullable<DesignReport["answerSupport"]> = [];
+  const prior = brief.classContext?.priorKnowledge;
+  const asked0 = base.facts?.retrieval ?? [];
+  let retrieval = asked0;
+  if (r6 && openingAt?.kind === "retrieval") {
+    const refilled = refillOpening(asked0, starterIndex + 1, prior);
+    for (const sup of refilled.support) {
+      openingSupport.push({
+        slide: sup.slide,
+        where: sup.where,
+        ok: sup.ok,
+        by: sup.by,
+        ...(sup.ok ? {} : { missing: sup.missing }),
+      });
+    }
+    if (refilled.kept.length < asked0.length) {
+      retrieval = refilled.kept;
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "answer-refill",
+          slide: starterIndex + 1,
+          kept: retrieval.length,
+          dropped: asked0.length - retrieval.length,
+          support: openingSupport,
+        },
+        "starter re-filled with the questions the stated prior knowledge supports",
+      );
+    }
+  }
   const facts0: LessonFacts = {
     objectives,
     vocabulary: [],
@@ -511,13 +630,15 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     kind: "content",
     factRefs: [],
   }));
-  outline[0] = { id: "s1", kind: "title", factRefs: [] };
-  outline[1] = {
-    id: "s2",
-    kind: "objectives",
-    factRefs: objectives.map((o) => o.id),
-    phase: "starter",
-  };
+  outline[0] = { id: "s1", kind: "title", factRefs: onTitle ? objectives.map((o) => o.id) : [] };
+  if (!onTitle) {
+    outline[1] = {
+      id: "s2",
+      kind: "objectives",
+      factRefs: objectives.map((o) => o.id),
+      phase: "starter",
+    };
+  }
 
   // Persist in slide order, one write at a time; `ready` holds slides waiting for an earlier one.
   const ready = new Map<number, Slide>();
@@ -551,30 +672,67 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     return writing;
   };
 
-  // The starter, in code: the objectives call's retrieval questions, answers revealed.
-  const starterEntry: OutlineEntry = { id: "s3", kind: "starter", factRefs: [], phase: "starter" };
-  outline[2] = starterEntry;
-  const starterCoded = codedSetSpec(starterEntry, facts0, `${base.id}:2`);
-  const starterSpec: SlideSpec = starterCoded?.spec ?? {
-    kind: "starter",
-    factRefs: [],
-    heading: "Do now",
-    items: [`What do you already know about ${brief.topic}?`],
-  };
-  const starterFitted = answersToNotesUnlessFit(starterSpec, starterCoded?.answers ?? []);
   const unfitSets: { slide: number; reason: string }[] = [];
-  if (!setFits(starterFitted)) unfitSets.push({ slide: 3, reason: setFitReason(starterFitted) });
-  if (starterFitted !== starterSpec) {
-    deps.logger.info(
-      { stage: "generate", slide: 3, rung: "notes" },
-      "starter answers moved to the notes",
+  /** An r6 hook, plenary or debate: a discussion slot in code, fitted like any slot, never the notes. */
+  const placeTalk = async (index: number, prompt: string, phase: "starter" | "check") => {
+    const fit = await fitSlot(
+      { form: "discussion", prompt },
+      { seed: `${base.id}:${index}`, themeId, teachingToNotes: false },
+    );
+    if (fit.rung === "flagged") unfitSets.push({ slide: index + 1, reason: fit.reason ?? "" });
+    outline[index] = { id: `s${index + 1}`, kind: kindOf(fit.render.spec), factRefs: [], phase };
+    ready.set(index, renderSlot(fit.render, themeId, codeMeta(), deps.ids));
+    void flush();
+  };
+
+  // The opening. A retrieval starter, in code: the objectives call's retrieval questions, answers
+  // revealed (r5 always; r6 when asked for). An r6 hook is a discussion slot.
+  if (openingAt && openingAt.kind !== "retrieval") {
+    await placeTalk(
+      starterIndex,
+      bookendPrompt(openingAt.kind, brief.topic, openingAt.prompt),
+      "starter",
+    );
+  } else if (openingAt) {
+    const starterEntry: OutlineEntry = {
+      id: `s${starterIndex + 1}`,
+      kind: "starter",
+      factRefs: [],
+      phase: "starter",
+    };
+    outline[starterIndex] = starterEntry;
+    const starterCoded = codedSetSpec(starterEntry, facts0, `${base.id}:2`);
+    const starterSpec: SlideSpec = starterCoded?.spec ?? {
+      kind: "starter",
+      factRefs: [],
+      heading: "Do now",
+      items: [`What do you already know about ${brief.topic}?`],
+    };
+    const starterFitted = answersToNotesUnlessFit(starterSpec, starterCoded?.answers ?? []);
+    if (!setFits(starterFitted))
+      unfitSets.push({ slide: starterIndex + 1, reason: setFitReason(starterFitted) });
+    if (starterFitted !== starterSpec) {
+      deps.logger.info(
+        { stage: "generate", slide: starterIndex + 1, rung: "notes" },
+        "starter answers moved to the notes",
+      );
+    }
+    ready.set(
+      starterIndex,
+      withAnswersReveal(materialiseSlide(starterFitted, themeId, codeMeta(), deps.ids), themeId),
+    );
+    void flush();
+  }
+
+  // An r6 plenary or debate closes the deck as a discussion slot; a closing check is the exit
+  // ticket, written after the cycles below.
+  if (closingAt && closingAt.kind !== "check") {
+    await placeTalk(
+      closingAt.index,
+      bookendPrompt(closingAt.kind, brief.topic, closingAt.prompt),
+      "check",
     );
   }
-  ready.set(
-    2,
-    withAnswersReveal(materialiseSlide(starterFitted, themeId, codeMeta(), deps.ids), themeId),
-  );
-  void flush();
 
   // Photos, searched as their slots land; placed into the slide once it is saved.
   const photos: Promise<void>[] = [];
@@ -675,6 +833,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     const fit = await fitSlot(slot, {
       seed: `${base.id}:${index}`,
       themeId,
+      teachingToNotes: !r6,
       refill: (s, form, reason) =>
         refillFor(cycle, k)(s, form, `it did not fit its slide because ${reason}`),
     });
@@ -940,7 +1099,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           `a fact it used was wrong (${said})`,
         ).catch(() => undefined);
         const fit = fresh
-          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
+          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId, teachingToNotes: !r6 })
           : undefined;
         const ok = !!fresh && !!fit && fit.rung !== "flagged";
         deps.logger.info(
@@ -990,7 +1149,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       const k = b.slide - (cycle.first - 1);
       const fresh = await refillFor(cycle, k)(b.fit.slot, m.into, m.reason).catch(() => undefined);
       const fit = fresh
-        ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
+        ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId, teachingToNotes: !r6 })
         : undefined;
       const meets = (form: SlotForm) =>
         m.role
@@ -1012,6 +1171,72 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     deps.logger.info({ stage: "generate", enforced }, "designer minimums enforced");
   }
   await writing;
+
+  // r6: every check's answer is taught on an earlier slide (`answerSupport`). A check that is not
+  // gets one re-fill of its question in its own form, told what the earlier slides teach; the new
+  // slot lands only when it fits and its answer is then supported. Nothing moves to the notes.
+  const supportLog: NonNullable<DesignReport["answerSupport"]> = [...openingSupport];
+  if (r6) {
+    const taughtNow = () =>
+      bound
+        .map((b) => ({
+          slide: b.slide + 1,
+          text: taughtText(b.fit.slot),
+          refs: refsOfSlot(b.fit.slot),
+        }))
+        .filter((t) => t.text !== "");
+    const askedOfBound = (b: Bound): Asked | undefined => {
+      const q = askedOf(b.fit.slot);
+      return q
+        ? { slide: b.slide + 1, where: "check", ...q, refs: refsOfSlot(b.fit.slot) }
+        : undefined;
+    };
+    const first = answerSupport(
+      bound.flatMap((b) => askedOfBound(b) ?? []),
+      taughtNow(),
+    );
+    await Promise.all(
+      first.map(async (sup) => {
+        if (sup.ok) {
+          supportLog.push({ slide: sup.slide, where: sup.where, ok: true, by: sup.by });
+          return;
+        }
+        const b = bound.find((x) => x.slide === sup.slide - 1);
+        const cycle = b && allocation.cycles.find((c) => c.objective === b.objective);
+        if (!b || !cycle) return;
+        const k = b.slide - (cycle.first - 1);
+        const earlier = taughtNow()
+          .map((t) => t.slide)
+          .filter((n) => n < sup.slide);
+        const reason = unsupportedReason(sup, earlier);
+        const fresh = await refillFor(cycle, k)(b.fit.slot, b.fit.slot.form, reason).catch(
+          () => undefined,
+        );
+        const fit = fresh
+          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId, teachingToNotes: false })
+          : undefined;
+        const again =
+          fit && fit.rung !== "flagged"
+            ? answerSupport([askedOfBound({ ...b, fit }) as Asked].filter(Boolean), taughtNow())[0]
+            : undefined;
+        const ok = !!fresh && !!fit && !!again?.ok;
+        if (ok && fresh && fit) placeSlot(cycle, k, fresh, fit, refillModelId());
+        supportLog.push({
+          slide: sup.slide,
+          where: sup.where,
+          ok: false,
+          by: sup.by,
+          missing: sup.missing,
+          refilled: ok,
+        });
+        deps.logger.info(
+          { stage: "generate", call: "answer-refill", slide: sup.slide, missing: sup.missing, ok },
+          "answer not on an earlier slide: question re-filled",
+        );
+      }),
+    );
+    await writing;
+  }
 
   // Facts from what the slides show: ids per slot, for Verify, Evaluate and Repair.
   const counters: Record<string, number> = {};
@@ -1041,9 +1266,44 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
 
   // The exit ticket, in code: one line per objective from its exit question, or its first check's
   // stem when the cycle wrote none (`codedSetSpec` prints a non-exit question as a stem).
+  // r6: only when the objectives call asked for a closing check; an exit question whose answer
+  // no earlier slide carries is re-filled in code with the objective's first check (logged).
+  const exitTicket = !r6Allocation || closingAt?.kind === "check";
+  const closingTaught = r6
+    ? bound
+        .map((b) => ({
+          slide: b.slide + 1,
+          text: taughtText(b.fit.slot),
+          refs: refsOfSlot(b.fit.slot),
+        }))
+        .filter((t) => t.text !== "")
+    : [];
   const exitRefs: string[] = [];
   objectives.forEach((o, i) => {
-    const eq = exitQuestions[i];
+    if (!exitTicket) return;
+    let eq = exitQuestions[i];
+    if (eq && r6) {
+      const [sup] = answerSupport(
+        [{ slide: slideCount, where: "closing", question: eq.question, answer: eq.answer }],
+        closingTaught,
+      );
+      if (sup) {
+        supportLog.push({
+          slide: sup.slide,
+          where: sup.where,
+          ok: sup.ok,
+          by: sup.by,
+          ...(sup.ok ? {} : { missing: sup.missing, refilled: true }),
+        });
+        if (!sup.ok) {
+          deps.logger.info(
+            { stage: "generate", call: "answer-refill", slide: sup.slide, missing: sup.missing },
+            "exit answer not on an earlier slide: the objective's first check stands in",
+          );
+          eq = undefined;
+        }
+      }
+    }
     if (eq) {
       const id = next("q");
       facts.questions.push({
@@ -1067,15 +1327,18 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     factRefs: exitRefs,
     phase: "check",
   };
-  outline[exitIndex] = exitEntry;
+  if (exitTicket) outline[exitIndex] = exitEntry;
   facts.outline = outline;
-  const exitCoded = codedSetSpec(exitEntry, facts, `${base.id}:${exitIndex}`);
+  const exitCoded = exitTicket
+    ? codedSetSpec(exitEntry, facts, `${base.id}:${exitIndex}`)
+    : undefined;
   // One line per objective: when the reveal strip crowds a line off, every line is printed and the
   // answers move to the notes, word for word (rung 3 on the ticket), if that fits.
   const exitAll = exitTicketAll(exitRefs, facts);
   let exitSpec: SlideSpec = exitCoded?.spec ?? exitAll.spec;
   let exitPrinted = exitCoded?.questionRefs ?? [];
-  const exitShort = exitPrinted.length < exitRefs.length || (exitCoded && !setFits(exitCoded.spec));
+  const exitShort =
+    exitTicket && (exitPrinted.length < exitRefs.length || (exitCoded && !setFits(exitCoded.spec)));
   if (exitShort && setFits(exitAll.spec)) {
     exitSpec = exitAll.spec;
     exitPrinted = exitRefs;
@@ -1084,20 +1347,23 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       "exit answers moved to the notes",
     );
   }
-  if (!setFits(exitSpec)) unfitSets.push({ slide: slideCount, reason: setFitReason(exitSpec) });
+  if (exitTicket && !setFits(exitSpec))
+    unfitSets.push({ slide: slideCount, reason: setFitReason(exitSpec) });
   const exitCovered = new Set(
     exitPrinted.flatMap((id) => facts.questions.find((q) => q.id === id)?.objectiveRefs ?? []),
   ).size;
-  if (exitCovered < objectives.length) {
+  if (exitTicket && exitCovered < objectives.length) {
     deps.logger.warn(
       { stage: "generate", covered: exitCovered, objectives: objectives.length },
       "exit ticket misses an objective",
     );
   }
-  ready.set(
-    exitIndex,
-    withAnswersReveal(materialiseSlide(exitSpec, themeId, codeMeta(), deps.ids), themeId),
-  );
+  if (exitTicket) {
+    ready.set(
+      exitIndex,
+      withAnswersReveal(materialiseSlide(exitSpec, themeId, codeMeta(), deps.ids), themeId),
+    );
+  }
   lesson = { ...lesson, facts };
   await flush();
   await writing;
@@ -1180,7 +1446,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       const corrected = slotFromFacts(b.fit.slot, finalFacts, refs);
       // Re-checked with `fitsPlanned` (via `fitSlot`'s first two rungs): the corrected words land
       // only in the slot's own form at full size on every theme; any lower rung keeps the slide.
-      const refit = await fitSlot(corrected, { seed: `${base.id}:${b.slide}`, themeId });
+      const refit = await fitSlot(corrected, {
+        seed: `${base.id}:${b.slide}`,
+        themeId,
+        teachingToNotes: !r6,
+      });
       if (refit.rung !== "fits" && refit.rung !== "variant") {
         verifyReport.rejected += 1;
         deps.logger.warn(
@@ -1231,7 +1501,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       exitSpec === exitAll.spec || !coded
         ? { spec: exitTicketAll(exitRefs, finalFacts).spec }
         : coded;
-    if (reprinted) {
+    if (exitTicket && reprinted) {
       const old = lesson.slides[exitIndex] as Slide;
       const fresh = withAnswersReveal(
         materialiseSlide(reprinted.spec, themeId, codeMeta(), deps.ids),
@@ -1293,6 +1563,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     editableMs,
     timings,
     photos: photoCounts,
+    ...(r6 ? { answerSupport: supportLog } : {}),
   };
   if (feed) {
     deps.logger.info(

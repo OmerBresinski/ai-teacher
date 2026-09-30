@@ -14,7 +14,12 @@ const romansObjectives = romansFixture.objectives;
 
 import { recordingDeps } from "../testing";
 import { runLessonPipeline } from "../workflow";
-import { arcsFor, designCycleMaxOutputTokens, MAX_OUTPUT_TOKENS_DESIGN } from "./designer";
+import {
+  arcsFor,
+  designCycleMaxOutputTokens,
+  MAX_OUTPUT_TOKENS_DESIGN,
+  objectivesOnTitle,
+} from "./designer";
 import { isDesignerStamp, plannerOf, resumeFromDesigner } from "./objectives-first";
 
 const romans = (slideCount: 6 | 8 | 10 | 12): Lesson => {
@@ -76,6 +81,79 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     expect(report?.minimums.checks).toBe(3);
     // The photo slots carry their brief on the outline for illustrate.
     expect(lesson.facts?.outline.filter((e) => e.imageBrief)).toHaveLength(3);
+  });
+
+  test("objectives on the title (designer r4 flag): no objectives slide, the freed slot goes to a cycle", async () => {
+    const ai = labAi({
+      retrieval: [
+        { question: "What is an empire?", answer: "Lands ruled by one ruler" },
+        { question: "Who were the Celts?", answer: "People living in Britain" },
+        { question: "What is a soldier?", answer: "Someone who fights in an army" },
+      ],
+    });
+    const deps = recordingDeps(ai, { objectivesOnTitle: true });
+    const final = await runLessonPipeline({ lesson: romans(10) }, deps, { planner: "designer" });
+    const lesson = final.lesson;
+    expect(lesson.slides).toHaveLength(10);
+    const kinds = lesson.slides.map((s) => s.kind);
+    expect(kinds.slice(0, 2)).toEqual(["title", "starter"]);
+    expect(kinds).not.toContain("objectives");
+    expect(kinds.at(-1)).toBe("exit-ticket");
+    // Seven cycle slots for three objectives: 3/2/2, the extra one by weight.
+    const allocation = final.designReport?.allocation ?? [];
+    expect([...allocation].sort()).toEqual([2, 2, 3]);
+    expect(final.designReport?.slots).toHaveLength(7);
+    // The title keeps its id and carries every objective beside it.
+    const title = lesson.slides[0];
+    expect(title?.id).toBe(deps.persisted[0]?.lesson.slides[0]?.id);
+    const titleText = JSON.stringify(title?.elements);
+    expect(titleText).toContain("By the end of this lesson I can");
+    for (const o of romansObjectives) expect(titleText).toContain(o.text.slice(1, 30));
+    expect(lesson.facts?.outline[0]?.factRefs).toHaveLength(3);
+    expect(lesson.facts?.outline[1]?.kind).toBe("starter");
+    expect(final.designReport?.exitCovered).toBe(3);
+    expect(() => parseLesson(lesson)).not.toThrow();
+  });
+
+  test("designer r6: the title with the objectives is the only fixed slide; no starter, no exit ticket unless asked", async () => {
+    const ai = labAi({
+      retrieval: [
+        { question: "What is an empire?", answer: "Lands ruled by one ruler" },
+        { question: "Who were the Celts?", answer: "People living in Britain" },
+        { question: "What is a soldier?", answer: "Someone who fights in an army" },
+      ],
+    });
+    const deps = recordingDeps(ai, { designerR6: true });
+    const final = await runLessonPipeline({ lesson: romans(10) }, deps, { planner: "designer" });
+    const lesson = final.lesson;
+    expect(lesson.slides).toHaveLength(10);
+    const kinds = lesson.slides.map((s) => s.kind);
+    expect(kinds[0]).toBe("title");
+    expect(kinds).not.toContain("objectives");
+    expect(kinds).not.toContain("starter");
+    expect(kinds).not.toContain("exit-ticket");
+    // Nine cycle slots for three objectives: 3 each (teach, show, check).
+    expect(final.designReport?.allocation).toEqual([3, 3, 3]);
+    expect(final.designReport?.slots).toHaveLength(9);
+    // Every check was judged against the slides before it.
+    const support = final.designReport?.answerSupport ?? [];
+    expect(support.length).toBeGreaterThan(0);
+    expect(support.every((s) => s.where === "check")).toBe(true);
+    expect(() => parseLesson(lesson)).not.toThrow();
+  });
+
+  test("the objectives-on-title switch: off by default, on with the env flag or the deps", () => {
+    const was = process.env.DESIGNER_OBJECTIVES_ON_TITLE;
+    try {
+      delete process.env.DESIGNER_OBJECTIVES_ON_TITLE;
+      expect(objectivesOnTitle({})).toBe(false);
+      process.env.DESIGNER_OBJECTIVES_ON_TITLE = "1";
+      expect(objectivesOnTitle({})).toBe(true);
+      expect(objectivesOnTitle({ objectivesOnTitle: false })).toBe(false);
+    } finally {
+      if (was === undefined) delete process.env.DESIGNER_OBJECTIVES_ON_TITLE;
+      else process.env.DESIGNER_OBJECTIVES_ON_TITLE = was;
+    }
   });
 
   test("a cycle that fails twice keeps the count: its slots ask about the objective", async () => {
