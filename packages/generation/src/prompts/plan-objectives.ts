@@ -1,3 +1,4 @@
+import type { PaletteFormId } from "@tj/slides";
 import { z } from "zod";
 import type { LessonShape } from "../shapes";
 import { shapeBlock } from "./shape";
@@ -223,6 +224,17 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *    sentence covers the open and the picking form). The knowledge errors themselves need verify to see the starter
  *    (CHANGES.md change 4: code, not a prompt rule).
  *
+ * v19 (30 Sept 2026, lesson designer plan, TEACH-201; rulings 131, 132): each objective also
+ * carries its `arc`, one line in three parts, so the per-objective design-cycle calls, which run in
+ * parallel and never see each other's slides, share a through-line: the `angle` this lesson takes
+ * on the objective, the palette form it `lean`s towards (an enum of the teaching forms in
+ * `@tj/slides` palette.ts, so it cannot name a form the renderer lacks) and the `misconception`
+ * pupils most often hold, stated as their belief (design-cycle routes it to a callout, a
+ * true-false slot, its own slot and a hinge distractor). One rule sentence plus the sketch's arc;
+ * the lean's four cases mirror the design-cycle's choosing line, so the two calls read content the
+ * same way. Optional in the schema (recorded sets, the old planner and the bench parse without it);
+ * the sketch shows it, so a live call fills it (CORE 2026-09-23).
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -264,6 +276,30 @@ export const CURRICULUM_USE =
   'Where the topic spans this unit, the objectives span its arc, not its opening lesson. Put the learning point or bullet each objective serves in "curriculumAnchor".';
 
 const objectiveText = z.string().min(8).max(120);
+
+/** The forms an objective's arc may lean towards: the palette's teaching forms (v19). */
+export const ARC_LEAN_FORMS = [
+  "explain",
+  "list",
+  "compare",
+  "sequence",
+  "photo",
+  "figure",
+  "diagram-slot",
+  "worked-example",
+] as const satisfies readonly PaletteFormId[];
+
+/**
+ * The objective's through-line for the design-cycle calls (v19): the angle this lesson takes on
+ * it, the form it leans towards, and the misconception pupils most often hold, as their belief.
+ */
+export const ObjectiveArcSchema = z.object({
+  angle: z.string().min(1),
+  lean: z.enum(ARC_LEAN_FORMS),
+  misconception: z.string().min(1),
+});
+export type ObjectiveArc = z.output<typeof ObjectiveArcSchema>;
+const arc = ObjectiveArcSchema.optional();
 const curriculumAnchor = z.string().max(160);
 
 /**
@@ -288,7 +324,7 @@ const retrieval = z.array(PlanRetrievalQuestionSchema).length(3).optional();
 /** With a curriculum extract: every objective must carry its anchor. */
 const AnchoredOutputSchema = z.strictObject({
   objectives: z
-    .array(z.strictObject({ text: objectiveText, curriculumAnchor }))
+    .array(z.strictObject({ text: objectiveText, curriculumAnchor, arc }))
     .min(1)
     .max(4),
   retrieval,
@@ -302,7 +338,7 @@ const AnchoredOutputSchema = z.strictObject({
  */
 const UnanchoredOutputSchema = z.strictObject({
   objectives: z
-    .array(z.object({ text: objectiveText }))
+    .array(z.object({ text: objectiveText, arc }))
     .min(1)
     .max(4),
   retrieval,
@@ -326,7 +362,9 @@ export function planObjectivesOutputSchemaFor(hasCurriculum: boolean): PlanObjec
  */
 export const PlanObjectivesOutputSchema = z.strictObject({
   objectives: z
-    .array(z.strictObject({ text: objectiveText, curriculumAnchor: curriculumAnchor.optional() }))
+    .array(
+      z.strictObject({ text: objectiveText, curriculumAnchor: curriculumAnchor.optional(), arc }),
+    )
     .min(1)
     .max(4),
   retrieval,
@@ -350,10 +388,10 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain" }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s wealth and an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v18",
+  version: "plan-objectives.v19",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
@@ -362,6 +400,7 @@ export const planObjectivesPrompt = {
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
+    'Give each objective its arc: the angle this lesson takes on it; the form it leans towards ("photo" for anything a camera could show, "diagram-slot" or "figure" for a structure or process, "worked-example" for a method, otherwise "explain", "list", "compare" or "sequence"); and the misconception pupils most often hold about it, as they would say it.',
     "Each retrieval question checks a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
     "",
     "JSON, in this shape:",

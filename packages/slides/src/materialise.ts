@@ -23,6 +23,7 @@ import { SAFE } from "./grid";
 import {
   type ContentVariant,
   docFromNumbered,
+  IDEA_NAME,
   LIST_SLOTS,
   type ListVariant,
   layoutSlide,
@@ -60,6 +61,7 @@ import {
   structureSlide,
   withTerms,
 } from "./structure";
+import { measureHeadless } from "./text-measure";
 import { getTheme } from "./themes";
 
 /*
@@ -724,6 +726,21 @@ function fillContent(
     return withCallout(spec, themeId, laid, ids, variant);
   }
   setText(textOf(laid, "heading"), spec.heading);
+  if (variant === "callout-row") {
+    // One sentence, hugged by its box: the row under it takes every point the words leave.
+    const idea = slot(laid, IDEA_NAME);
+    setText(idea, spec.body);
+    const measured = measureHeadless(getTheme(themeId))({
+      doc: idea.doc,
+      width: idea.w,
+      style: idea.style,
+      preset: "body",
+      inset: 0,
+      chrome: 0,
+    });
+    idea.h = Math.ceil(measured);
+    return withCallout(spec, themeId, laid, ids, variant);
+  }
   if (variant === "two-column") {
     const [left, right] = splitAtFullStop(spec.body);
     setText(slot(laid, "Body left"), left);

@@ -725,3 +725,47 @@ describe("the words are the same with or without a callout", () => {
     }
   }
 });
+
+describe("content callout-row: one idea over a common mistake", () => {
+  const meta = { promptVersion: "t", model: "t", at: "t" };
+  // A two-line assertion heading, one twenty-word sentence and a twenty-two-word misconception:
+  // the fit-lab's headed slide dropped a card this size on every theme once the body passed
+  // about 125 characters.
+  const spec: SlideSpec = {
+    kind: "content",
+    factRefs: ["f1"],
+    heading: "Hyperinflation wiped out the savings of the middle classes",
+    body: "By November 1923 prices doubled every few days, so a lifetime of savings could not buy a loaf of bread.",
+    callout: {
+      kind: "watch-out",
+      text: "Hyperinflation did not hurt everyone: people with large debts, including many landowners and industrialists, paid them off with worthless marks and gained.",
+    },
+  };
+
+  it.each(THEMES.map((t) => [t.id]))(
+    "%s: the card is placed at small, the idea kept whole",
+    (id) => {
+      const t = getTheme(id);
+      const { slide, overflow } = fitSlide(
+        materialiseSlide(spec, id, meta, undefined, "callout-row"),
+        t,
+      );
+      expect(overflow).toEqual([]);
+      const card = slide.elements.find((e) => e.name === CALLOUT_NAMES.card) as ShapeElement;
+      const text = slide.elements.find((e) => e.name === CALLOUT_NAMES.text) as TextElement;
+      const idea = slide.elements.find((e) => e.name === "Idea") as TextElement;
+      expect(card).toBeDefined();
+      expect(text.style.fontSize).toBeUndefined();
+      expect(richDocToPlainText(idea.doc)).toBe(spec.body);
+      // Full width, under the idea with the gap kept, above the safe edge.
+      expect(card.x).toBe(SAFE.x);
+      expect(card.w).toBe(FULL);
+      expect(card.y).toBeGreaterThanOrEqual(idea.y + idea.h + SPACE[2]);
+      expect(card.y + card.h).toBeLessThanOrEqual(SAFE_BOTTOM);
+      // The look leaves the sentence alone: no lead-and-card split, no key card.
+      expect(
+        slide.elements.some((e) => e.name === "Explanation card" || e.name === "Key card"),
+      ).toBe(false);
+    },
+  );
+});

@@ -19,6 +19,7 @@ import {
 import { parseBriefPrompt } from "./parse-brief";
 import { planFactsPrompt } from "./plan-facts";
 import {
+  DESIGN_CYCLE_SAMPLE,
   PLAN_FACTS_OBJECTIVE_SAMPLE,
   PLAN_OBJECTIVES_SAMPLE,
   PLAN_QUESTION_SET_SAMPLE,
@@ -78,6 +79,7 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   "plan-objectives": PLAN_OBJECTIVES_SAMPLE,
   "plan-facts-objective": PLAN_FACTS_OBJECTIVE_SAMPLE,
   "plan-teach-objective": PLAN_TEACH_OBJECTIVE_SAMPLE,
+  "design-cycle": DESIGN_CYCLE_SAMPLE,
   "plan-question-set": PLAN_QUESTION_SET_SAMPLE,
   "verify-facts": { audience, topic: brief.topic, facts },
   "generate-slide": {
@@ -211,12 +213,16 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "804ff4e8f733039e062563fa220d0134ac39b344aa5e168238b13d1c6feb1be0",
   },
   "plan-objectives": {
-    version: "plan-objectives.v18",
-    hash: "4ce288b25f09eec5f5a6a357bfb931677dcbc5a6d210dad01f9bbc64174308e6",
+    version: "plan-objectives.v19",
+    hash: "e7120aaaf3d9b01ea264ac51f7067dfefc29ed54666d73d52c7367f1cacbae64",
   },
   "plan-facts-objective": {
     version: "plan-facts-objective.v14",
     hash: "e4a54b63401fa8c49a7de13f30bfd84999f0d2e2dbda8a3525150c40e4985c8b",
+  },
+  "design-cycle": {
+    version: "design-cycle.v5",
+    hash: "54d375034615e5cb857875cfcda95dd8273c9d0f48c04d717f5103888fd05f86",
   },
   "plan-teach-objective": {
     version: "plan-teach-objective.v3",
