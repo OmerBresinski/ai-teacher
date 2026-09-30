@@ -15,6 +15,13 @@ export const MAX_IMAGE_INPUT_TOKENS = 36_001;
  */
 const IMAGE_MODELS =
   /^(?:(?:us|global|in)\.openai\.gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-6-luna)$/;
+/**
+ * A model id as IMAGE_MODELS names it: the direct OpenAI provider reports the bare id
+ * (`gpt-6-luna`), which is the gateway's `openai/` row (as `priceOf` reads it).
+ */
+export function imageModelId(modelId: string): string {
+  return /^gpt-/.test(modelId) ? `openai/${modelId}` : modelId;
+}
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 const encoder = new TextEncoder();
 
@@ -67,7 +74,7 @@ export function estimatePreparedCall(modelId: string, params: PreparedCall): Tok
     for (const part of message.content) {
       if (part.type === "text") content.push(part);
       else if (part.type === "file" && IMAGE_TYPES.has(part.mediaType)) {
-        if (!IMAGE_MODELS.test(modelId)) return null;
+        if (!IMAGE_MODELS.test(imageModelId(modelId))) return null;
         images += imageTokens(part.data.type === "data" ? part.data.data : undefined);
         content.push({
           type: "file",

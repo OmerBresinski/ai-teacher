@@ -45,7 +45,7 @@ export const EnvSchema = z
     AI_LESSON_PLANNER: z.enum(PLANNERS).default("objectives-first"),
     /**
      * Plan-write's planner model (spike/plan-write): the one call that designs the whole lesson.
-     * Its writers run on `openai/gpt-6-luna`. Read only when `AI_LESSON_PLANNER=plan-write`.
+     * Default `openai/gpt-6.1-sol`; its writers and re-writes run on `openai/gpt-6-luna`. Read only when `AI_LESSON_PLANNER=plan-write`.
      */
     PLAN_WRITE_PLANNER_MODEL: z.string().trim().min(1).default(PLAN_WRITE_PLANNER_MODEL),
     /**
@@ -53,7 +53,7 @@ export const EnvSchema = z
      * `stream` (one PLAN_WRITE_PLANNER_MODEL call plans and writes every slide). The generation
      * stage reads it from the process environment. Read only when `AI_LESSON_PLANNER=plan-write`.
      */
-    PLAN_WRITE_MODE: z.enum(["plan-write", "stream"]).default("plan-write"),
+    PLAN_WRITE_MODE: z.enum(["plan-write", "stream"]).default("stream"),
     /** A finished lesson above this cost logs `lesson cost above target` (TEACH-93); never a stop. */
     AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.03),
     /**

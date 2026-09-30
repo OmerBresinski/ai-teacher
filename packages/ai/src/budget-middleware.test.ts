@@ -162,4 +162,27 @@ describe("prepared request estimates", () => {
     );
     expect(estimatePreparedCall("unknown-model", params)).not.toBeNull();
   });
+
+  test("reads the direct provider's bare id as its openai/ row, so the photo pick is not refused", () => {
+    const png = new Uint8Array(24);
+    png.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
+    const view = new DataView(png.buffer);
+    view.setUint32(16, 1024);
+    view.setUint32(20, 1024);
+    const withImage: PreparedCall = {
+      maxOutputTokens: 100,
+      prompt: [
+        {
+          role: "user",
+          content: [{ type: "file", mediaType: "image/png", data: { type: "data", data: png } }],
+        },
+      ],
+    } as PreparedCall;
+    const direct = estimatePreparedCall("gpt-6-luna", withImage);
+    expect(direct).not.toBeNull();
+    expect(direct?.inputTokens).toBe(
+      estimatePreparedCall("openai/gpt-6-luna", withImage)?.inputTokens,
+    );
+    expect(estimatePreparedCall("gpt-unknown", withImage)).toBeNull();
+  });
 });

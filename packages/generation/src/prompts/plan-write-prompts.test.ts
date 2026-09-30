@@ -39,6 +39,7 @@ const row = (over: Partial<PlanSlide>): PlanSlide => ({
 });
 const table: PlanSlide[] = [
   row({ role: "title", form: "title", objectives: [1, 2], parts: 0 }),
+  row({ role: "objectives", form: "objectives", objectives: [1, 2], parts: 0 }),
   row({ role: "retrieve", form: "starter-set", objectives: [], purpose: "recall particles" }),
   row({ teaches: ["particles in a solid"], purpose: "how particles sit in a solid" }),
   row({
@@ -54,11 +55,11 @@ const PLAN_SAMPLE: PlanLessonInput = {
   audience,
   answers: { q1: "yes" },
   priorKnowledge: "Solids, liquids and gases by name",
-  slideCount: 5,
+  slideCount: 6,
   menu: planMenu(audience.subject),
   repair: {
     previous: { misconception: "m", objectives: ["o"], runningExample: "ice", slides: table },
-    problems: ["The plan has 5 rows after the title; it must have exactly 4."],
+    problems: ["The plan has 5 rows after the objectives slide; it must have exactly 4."],
   },
 };
 const { repair: _repair, ...STREAM_SAMPLE } = PLAN_SAMPLE;
@@ -69,7 +70,7 @@ const WRITE_SAMPLE: WriteSlidesInput = {
   runningExample: "An ice cube melting in a glass",
   misconception: "Particles in a solid do not move; they vibrate in place.",
   table,
-  slides: [3, 4].map((n) => {
+  slides: [4, 5].map((n) => {
     const s = table[n - 1] as PlanSlide;
     return { number: n, form: s.form, layout: s.layout, contract: contractFor(s.form, s.layout) };
   }),
@@ -84,22 +85,45 @@ const REWRITE_SAMPLE: WriteSlidesInput = {
   },
 };
 
+const RECHECK_SAMPLE: WriteSlidesInput = {
+  ...WRITE_SAMPLE,
+  slides: [],
+  recheck: {
+    slide: {
+      number: 7,
+      form: "hinge",
+      layout: "default",
+      contract: contractFor("hinge", "default"),
+    },
+    failure: "the text runs past the slide's safe area on 3 of 10 themes (chalk, sea, sun)",
+    current: { stem: "Why does ice float?", options: [] },
+    kinds: [
+      { kind: "true-false", contract: contractFor("true-false", "default") },
+      { kind: "check-set", contract: contractFor("check-set", "default") },
+    ],
+  },
+};
+
 const PINNED = {
   plan: {
-    version: "plan-lesson.v7",
-    hash: "491f231117743cc8c0c82a73c0e2f47f07d34397b3c1cf0c3d3a42e6f3abb48a",
+    version: "plan-lesson.v8",
+    hash: "d3c9c5978a59efebcb5a53681556310d9f83c00bce0fe1f06c4347003ef881d4",
   },
   write: {
-    version: "write-slides.v7",
-    hash: "49ed0e12b5f19f9b74308c92ba8c02517cdc5cf3267e36c523232c2ec15533fa",
+    version: "write-slides.v8",
+    hash: "09be89cfc5679a525097aad120f53b0775f0d9357aad9bdf8c2f383b48263168",
   },
   stream: {
-    version: "stream-lesson.v1",
-    hash: "41c9693ce97ae940ebd44fc47b8becdbb4d05097ec9a90f62bdbd12960e1e432",
+    version: "stream-lesson.v2",
+    hash: "abaa4a1b55516157a4e8786bae1ce93edf754a6ea26fcf10ce6c27c45265e0c6",
   },
   rewrite: {
-    version: "write-slides.v7",
-    hash: "7ab03b67c374762a15b5a55dcdd993885640c2d55a8db2a8b7104b05971d209b",
+    version: "write-slides.v8",
+    hash: "876dc4c1b6f5e94d09152634da7a907191a407bcb580e66516394c5facc923bd",
+  },
+  recheck: {
+    version: "write-slides.v8",
+    hash: "4d6b95a07ea7bad14835fc8d1778e6ee8e7d1e584fa037cc473c25003be26947",
   },
 };
 
@@ -113,6 +137,7 @@ describe("plan-write prompt versions", () => {
         hash: hash(streamLessonPrompt(STREAM_SAMPLE)),
       },
       rewrite: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(REWRITE_SAMPLE)) },
+      recheck: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(RECHECK_SAMPLE)) },
     }).toEqual(PINNED);
   });
 
@@ -131,7 +156,7 @@ describe("plan-write prompt versions", () => {
 
   test("the writer sees the whole table and only its own contracts", () => {
     const { user } = writeSlidesPrompt(WRITE_SAMPLE);
-    expect(user).toContain("Write slides 3 and 4.");
+    expect(user).toContain("Write slides 4 and 5.");
     expect(user.match(/^\d+ [a-z]/gm)).toHaveLength(table.length);
     expect(user).toContain("Picture: an iceberg; shows ice above the water");
     expect(user).not.toContain(contractFor("hinge", "default"));
@@ -139,11 +164,12 @@ describe("plan-write prompt versions", () => {
 });
 
 describe("plan-lesson rows", () => {
-  test("coded rows parse to the table, the title row added by code, and round-trip", () => {
+  test("coded rows parse to the table, the title and objectives rows added by code, and round-trip", () => {
     const wire = {
       misconception: "m",
       objectives: ["a", "b"],
       runningExample: "ice",
+      titlePicture: { subject: "an iceberg", mustShow: ["ice above the water"] },
       slides: [
         "retrieve | starter-set | default | - | 2 | recall particles | - | -",
         "teach | explain | default | 1 | 2 | how particles sit in a solid | solid, fixed-place | -",
@@ -152,11 +178,16 @@ describe("plan-lesson rows", () => {
       ],
     };
     const { plan, unreadable } = parsePlan(wire);
-    expect(unreadable).toEqual([5]);
-    expect(plan.slides).toHaveLength(5);
-    expect(plan.slides[0]).toMatchObject({ form: "title", objectives: [1, 2], parts: 0 });
-    expect(plan.slides[2]).toMatchObject({ teaches: ["solid", "fixed-place"], objectives: [1] });
-    expect(plan.slides[3]).toMatchObject({ layout: "why", objectives: [1, 2], tests: ["solid"] });
-    expect(parsePlan(toWire(plan)).plan.slides.slice(0, 4)).toEqual(plan.slides.slice(0, 4));
+    expect(unreadable).toEqual([6]);
+    expect(plan.slides).toHaveLength(6);
+    expect(plan.slides[0]).toMatchObject({
+      form: "title",
+      parts: 0,
+      imageBrief: { subject: "an iceberg", mustShow: ["ice above the water"] },
+    });
+    expect(plan.slides[1]).toMatchObject({ form: "objectives", objectives: [1, 2] });
+    expect(plan.slides[3]).toMatchObject({ teaches: ["solid", "fixed-place"], objectives: [1] });
+    expect(plan.slides[4]).toMatchObject({ layout: "why", objectives: [1, 2], tests: ["solid"] });
+    expect(parsePlan(toWire(plan)).plan.slides.slice(0, 5)).toEqual(plan.slides.slice(0, 5));
   });
 });

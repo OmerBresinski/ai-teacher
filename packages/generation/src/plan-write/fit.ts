@@ -66,11 +66,22 @@ function setSpec(form: SetForm, out: Written): SlideSpec {
     : { kind, ...base, items }) as unknown as SlideSpec;
 }
 
+/**
+ * A written slide's fields as the slot contract reads them: a diagram slot's spec object is drawn by
+ * the diagram renderer, so the slot carries its alt text (never shown as slide text).
+ */
+export function drawable(form: string, fields: Written): Written {
+  const d = fields.diagram;
+  if (form !== "diagram-slot" || !d || typeof d !== "object") return fields;
+  const alt = (d as { alt?: unknown }).alt;
+  return { ...fields, diagram: typeof alt === "string" && alt.trim() ? alt : "Diagram" };
+}
+
 /** The slide spec a written slide makes, with its variant and structure; notes carried over. */
 export function renderWritten(form: string, layout: string, out: Written): Rendered {
   if (isSetForm(form)) return { spec: setSpec(form, out), structure: {} };
   const { notes, ...fields } = out;
-  const made = specOfWriter(form as PaletteFormId, fields, layout);
+  const made = specOfWriter(form as PaletteFormId, drawable(form, fields), layout);
   if (!made) throw new Error(`plan-write: ${form} is not drawn on a slide`);
   const spec = { ...made.spec, notes: notesOf((made.spec as { notes?: string }).notes, notes) };
   return {
@@ -146,7 +157,7 @@ function setFailing(spec: SlideSpec): string[] {
 function failingLines(form: string, layout: string, out: Written): string[] {
   if (isSetForm(form)) return setFailing(renderWritten(form, layout, out).spec);
   const { notes: _notes, ...fields } = out;
-  return contractFits(slotContract(form as PaletteFormId, layout), fields).failing;
+  return contractFits(slotContract(form as PaletteFormId, layout), drawable(form, fields)).failing;
 }
 
 /** A probe value: every text cut to its first two words (measured only, never saved). */

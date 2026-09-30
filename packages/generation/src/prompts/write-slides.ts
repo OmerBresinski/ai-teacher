@@ -8,7 +8,7 @@ import { type Audience, audienceBlock } from "./shared";
  * `slide<n>`); its counts are enforced there and stated here only through each contract line.
  */
 
-export const WRITE_SLIDES_VERSION = "write-slides.v7";
+export const WRITE_SLIDES_VERSION = "write-slides.v8";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -41,6 +41,16 @@ export type WriteSlidesInput = {
     failure: string;
     current: Record<string, unknown>;
   };
+  /**
+   * A hinge that still does not fit after its re-write, written again as another check on the same
+   * idea (UX ruling 136). The output is one slide keyed by `kind`, one of `kinds`.
+   */
+  recheck?: {
+    slide: WriteSlideTarget;
+    failure: string;
+    current: Record<string, unknown>;
+    kinds: { kind: string; contract: string }[];
+  };
 };
 
 /** The writing rules, from "Pitch the content" to the end (reused by stream-lesson). */
@@ -53,8 +63,10 @@ A heading is the slide's idea as a claim on one line: a subject and one verb, wi
 A teach slide's body says how or why its claim holds (what acts on what, and what follows) and works one real case through it, with the case's own detail: the running example where it fits, otherwise a place, an event, a person, a reaction, a quoted line or worked numbers. A list, compare or sequence carries its case in a point, side or step.
 A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°").
 A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
+Each check question has exactly one defensible answer.
 A practise slide has pupils do what its objective says, on a case or numbers that no teach slide used.
-A hinge's options are answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
+A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
+A photo's imageBrief describes a real photograph pupils learn from; a diagram slot's diagram is the drawing itself, its labels short. Both are for whoever finds or draws the picture: the slide's text never repeats them or describes the picture.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
 Notes come first on every slide: what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next.
 A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.`;
@@ -66,6 +78,7 @@ const list = (xs: readonly (string | number)[]) => xs.join(", ");
 /** One plan row as the writers read it; empty fields are left out. */
 function rowLine(s: PlanSlide, n: number): string {
   if (n === 1) return "1 title";
+  if (n === 2 && s.form === "objectives") return "2 objectives";
   const bits = [`${n} ${s.role}`];
   if (s.objectives.length > 0) bits.push(`objectives ${list(s.objectives)}`);
   bits.push(`${s.form}${s.layout === "default" ? "" : ` (${s.layout})`}`, s.purpose);
@@ -113,6 +126,20 @@ export function writeSlidesPrompt(input: WriteSlidesInput): { system: string; us
       `Your slide ${slide.number} as written:`,
       JSON.stringify(current),
       `It does not fit its slide: ${failure}. Write ${field} again as its contract line says. The rest of the slide stays as it is.`,
+    );
+    return { system: SYSTEM, user: lines.join("\n") };
+  }
+  if (input.recheck) {
+    const { slide, failure, current, kinds } = input.recheck;
+    lines.push(
+      `Write slide ${slide.number} again.`,
+      "",
+      targetBlock(slide, input.table),
+      "",
+      `Your slide ${slide.number} as written:`,
+      JSON.stringify(current),
+      `It does not fit its slide: ${failure}. Its options are ideas, too long for a hinge. Write slide ${slide.number} again as another check on the same idea, as one of these kinds:`,
+      ...kinds.map((k) => k.contract),
     );
     return { system: SYSTEM, user: lines.join("\n") };
   }

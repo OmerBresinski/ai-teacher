@@ -9,7 +9,7 @@ import { type Audience, audienceBlock } from "./shared";
  * in the schemas is part of the prompt (the key before the question, the content before the form).
  */
 
-export const PLAN_LESSON_VERSION = "plan-lesson.v7";
+export const PLAN_LESSON_VERSION = "plan-lesson.v8";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -76,14 +76,23 @@ export type PlanLessonOutput = z.infer<typeof planTableSchema>;
 /** The row format, field by field; the prompt and `parsePlan` share it. */
 export const ROW_FORMAT = "role | form | layout | objectives | parts | aim | teaches | tests";
 
-/** What the planner writes: the header, then one coded row per slide after the title. */
+/** The title slide's photograph (plan-lesson.v8): what whoever finds it looks for. */
+export const titlePictureSchema = z.object({
+  subject: z.string().describe("a description for whoever finds the photograph"),
+  mustShow: z.array(z.string()).max(3).describe("up to 3 short labels, not shown on the slide"),
+});
+
+/** What the planner writes: the header, then one coded row per slide after the objectives. */
 export const planLessonSchema = z.object({
   misconception: z
     .string()
     .describe("the one wrong idea that matters most for these pupils, then the correct idea"),
   objectives: z.array(z.string()).min(1).max(4),
   runningExample: z.string(),
-  slides: z.array(z.string()).describe(`one row per slide after the title: ${ROW_FORMAT}`),
+  titlePicture: titlePictureSchema,
+  slides: z
+    .array(z.string())
+    .describe(`one row per slide after the objectives slide: ${ROW_FORMAT}`),
 });
 export type PlanLessonWire = z.infer<typeof planLessonSchema>;
 
@@ -96,27 +105,46 @@ const listOf = (v: string) =>
         .map((x) => x.trim())
         .filter((x) => x !== "" && !none(x));
 
+/** The two slides code draws before the planner's rows: the title and the objectives. */
+const FIXED_ROWS = 2;
+
 /**
- * The planner's rows as the table: the title row first (every objective), then one slide per row.
- * A row that is not in the format keeps what it can, and is named in `unreadable`.
+ * The planner's rows as the table: the title row (its picture) and the objectives row first, then
+ * one slide per row. A row that is not in the format keeps what it can, and is named in
+ * `unreadable`.
  */
-export function parsePlan(wire: PlanLessonWire): { plan: PlanLessonOutput; unreadable: number[] } {
+export function parsePlan(
+  wire: Omit<PlanLessonWire, "titlePicture"> & { titlePicture?: PlanSlide["imageBrief"] },
+): { plan: PlanLessonOutput; unreadable: number[] } {
   const unreadable: number[] = [];
+  const every = wire.objectives.map((_, i) => i + 1);
+  const fixed = { tests: [], teaches: [], parts: 0, layout: "default", figureBrief: null };
+  const pic = wire.titlePicture;
   const title: PlanSlide = {
+    ...fixed,
     role: "title",
-    objectives: wire.objectives.map((_, i) => i + 1),
-    tests: [],
-    teaches: [],
-    purpose: "title and objectives",
-    parts: 0,
+    objectives: every,
+    purpose: "the lesson title and its picture",
     form: "title",
-    layout: "default",
+    imageBrief:
+      pic && typeof pic.subject === "string" && pic.subject.trim()
+        ? {
+            subject: pic.subject,
+            mustShow: (pic.mustShow ?? []).filter((m) => typeof m === "string"),
+          }
+        : null,
+  };
+  const objectivesRow: PlanSlide = {
+    ...fixed,
+    role: "objectives",
+    objectives: every,
+    purpose: "the lesson's objectives",
+    form: "objectives",
     imageBrief: null,
-    figureBrief: null,
   };
   const rows = wire.slides.map((line, i): PlanSlide => {
     const f = line.split("|").map((x) => x.trim());
-    if (f.length !== 8) unreadable.push(i + 2);
+    if (f.length !== 8) unreadable.push(i + 1 + FIXED_ROWS);
     const [
       role = "",
       form = "",
@@ -151,7 +179,7 @@ export function parsePlan(wire: PlanLessonWire): { plan: PlanLessonOutput; unrea
       misconception: wire.misconception,
       objectives: wire.objectives,
       runningExample: wire.runningExample,
-      slides: [title, ...rows],
+      slides: [title, objectivesRow, ...rows],
     },
     unreadable,
   };
@@ -164,8 +192,9 @@ export function toWire(plan: PlanLessonOutput): PlanLessonWire {
     misconception: plan.misconception,
     objectives: plan.objectives,
     runningExample: plan.runningExample,
+    titlePicture: plan.slides[0]?.imageBrief ?? { subject: "", mustShow: [] },
     slides: plan.slides
-      .filter((s, i) => !(i === 0 && s.form === "title"))
+      .filter((s, i) => !(i === 0 && s.form === "title") && !(i === 1 && s.form === "objectives"))
       .map((s) =>
         [
           s.role,
@@ -188,18 +217,19 @@ Never invent or include the name of any pupil, student or member of staff.`;
 /** The planning rules, from "Decide the fields" to the end (reused by stream-lesson). */
 export const PLAN_RULES = `Decide the fields in this order:
 - misconception: the one wrong idea about this topic that matters most for these pupils, then the correct idea.
-- objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. They go on the title slide, which code adds as slide 1.
+- objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. They go on their own slide straight after the title; code adds both, as slides 1 and 2.
 - runningExample: one case, context or question the whole lesson returns to, so the slides tell one story.
-- slides: one row for each slide after the title, as "${ROW_FORMAT}".
+- titlePicture: the photograph on the title slide, a real place, thing or event from this lesson: its subject, and up to three things it must show.
+- slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
 The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; where pupils practise and apply; and whether it closes with a check.
-Order the ideas so each builds on the one before. An objective usually takes one or two teaching slides, with a check soon after; one check may cover two objectives. Every objective is taught, and pupils do what it says on a later slide.
+Order the ideas so each builds on the one before. An objective usually takes one or two teaching slides, with a check soon after; one check may cover two objectives. Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
 Pupils answer, sort, match or write on about half the slides, and each of those slides asks something new.
 When the topic holds more than the slides do, leave the rest for a later lesson.
 
 Each row, fields in order, split by " | ", "-" for none:
 - role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on), practise (pupils use the idea on a new case, in their own words) or exit (a closing check).
-- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, or a figure draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, and a sort only checks an order already taught; a hinge whose options are ideas, methods or outlines rather than single terms or numbers takes the stacked layout; two things set side by side are a compare; a method pupils will carry out is a worked example; a real thing, place or event pupils may never have seen, or one that surprises, is a photo. A lesson whose ideas cannot be seen has no picture.
+- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, or a figure draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out is a worked example; most teach slides carry a picture: a photo wherever a real photograph helps pupils understand (a place, an object, an event, a process), and a diagram slot for a structural or mathematical picture (a bar model, a graph, a cycle, a labelled cross-section, a number line, a table). A slide whose idea cannot be pictured has none.
 - objectives: the numbers of the objectives it serves, split by commas; "-" for retrieve or hook.
 - parts: how many items its layout's counted slot will hold: its steps, points, sides, pairs, cards, terms, gaps, options, questions or sentences. The parts fit the layout's count. When an idea has more parts than a form holds, choose a form that holds them or split the idea over two slides.
 - aim: what the slide does, in a few words; the writer adds the detail.
@@ -233,7 +263,9 @@ export function planLessonPrompt(input: PlanLessonInput): { system: string; user
   }
   const answers = Object.values(input.answers ?? {}).filter((a) => a.trim().length > 0);
   if (answers.length > 0) lines.push(`The teacher's answers: ${answers.join("; ")}`);
-  lines.push(`Slides: ${n}. Slide 1 is the title; write ${n - 1} rows, for slides 2 to ${n}.`);
+  lines.push(
+    `Slides: ${n}. Slide 1 is the title and slide 2 the objectives; write ${n - FIXED_ROWS} rows, for slides 3 to ${n}.`,
+  );
   if (input.repair) {
     lines.push(
       "",

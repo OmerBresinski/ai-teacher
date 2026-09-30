@@ -22,16 +22,19 @@ import {
 } from "@tj/slides";
 import { z } from "zod";
 import { callStructured } from "../call";
-import { blocking, checkPlan, type PlanCheck } from "../plan-write/check";
-import { fitWithRewrite, renderWritten, type Written } from "../plan-write/fit";
+import { blocking, checkPlan, FIXED_SLIDES, type PlanCheck } from "../plan-write/check";
+import { fitWithRewrite, fitWritten, renderWritten, type Written } from "../plan-write/fit";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
+import { recheckKinds } from "../plan-write/recheck";
 import { PLAN_WRITE_VERSION, STREAM_WRITE_VERSION } from "../plan-write/steps";
 import {
   checkStreamed,
+  kindOf,
   planWriteMode,
   type StreamLessonWire,
   streamLessonLenient,
   streamLessonSchema,
+  streamSlideSchema,
 } from "../plan-write/stream";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { verifyFactsPrompt } from "../prompts";
@@ -63,7 +66,7 @@ import {
   StageFailure,
   throwIfAborted,
 } from "../types";
-import { agendaTitleSpec, VERIFY_EFFORT } from "./designer";
+import { VERIFY_EFFORT } from "./designer";
 import { withUsage } from "./generate";
 import { emptyFinding, joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
 import { existingTitle, materialiseTitle } from "./plan";
@@ -104,6 +107,8 @@ export const SlidePlanRecordSchema = z.object({
     z.object({ rule: z.string(), slide: z.number().optional(), message: z.string() }),
   ),
   repaired: z.boolean(),
+  /** Diagram slots' specs by slide number, for the diagram renderer (spike/diagrams). */
+  diagrams: z.record(z.string(), z.unknown()).optional(),
 });
 export type SlidePlanRecord = z.infer<typeof SlidePlanRecordSchema>;
 
@@ -454,6 +459,8 @@ export type PlanWriteReport = {
     layout: string;
     fits: boolean;
     rewritten?: { field: string; failure: string; ok: boolean };
+    /** A hinge that did not fit, re-planned as another check ("hinge -> true-false"). */
+    rechecked?: string;
   }[];
   mode: "plan-write" | "stream";
   requested: number;
@@ -516,7 +523,8 @@ export async function planWriteSlides(
     return ids.length > 0 ? ids : [objectives[0]?.id ?? "o1"];
   };
 
-  // The title with the objectives (the only fixed slide), keeping the saved title's id.
+  // The fixed slides (UX ruling 134): the title with its picture, keeping the saved title's id,
+  // then the objectives on their own slide.
   const [title] = base.slides;
   if (!title) throw new Error("plan-write: the plan step has not run");
   let lesson: Lesson = { ...base, slides: [title], fitVersion: FIT_VERSION };
@@ -525,24 +533,64 @@ export async function planWriteSlides(
     kind: "content",
     factRefs: [],
   }));
+  const titlePhotos: Promise<void>[] = [];
   const drawTitle = () => {
-    const agenda = agendaTitleSpec(base, objectives);
-    if (!fitsPlanned(agenda, { stepDown: 1 }).ok) {
-      findings.push({
-        check: "fit",
-        severity: "warning",
-        target: { slideId: title.id },
-        message:
-          "This slide does not fit the save gate: the title with its objectives fails on some themes.",
-      });
-    }
-    lesson = {
-      ...lesson,
-      slides: [{ ...materialiseSlide(agenda, themeId, codeMeta(), deps.ids), id: title.id }],
+    const spec = {
+      kind: "title" as const,
+      title: base.title,
+      subtitle: [base.yearGroup, base.subject].filter(Boolean).join(" · ") || "Lesson",
+      factRefs: objectives.map((o) => o.id),
     };
+    const pic = table[0]?.imageBrief;
+    // The picture takes the right half when the title fits beside it; otherwise the title stands alone.
+    const split = pic ? fitsPlanned(spec, { variant: "split", stepDown: 0 }).ok : false;
+    const drawnTitle = split
+      ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, "split")
+      : materialiseSlide(spec, themeId, codeMeta(), deps.ids);
+    lesson = { ...lesson, slides: [{ ...drawnTitle, id: title.id }] };
+    const imageBrief: ImageBrief | undefined =
+      split && pic
+        ? {
+            subject: pic.subject.slice(0, 60),
+            mustShow: pic.mustShow.slice(0, 3).map((m) => m.slice(0, 60)),
+            purpose: "context",
+          }
+        : undefined;
+    // The saved outline keeps imageBrief to image-text entries (domain rule); the title's brief goes
+    // only to its photo search.
     outline[0] = { id: "s1", kind: "title", factRefs: objectives.map((o) => o.id) };
+    outline[1] = { id: "s2", kind: "objectives", factRefs: objectives.map((o) => o.id) };
+    ready.set(
+      1,
+      materialiseSlide(
+        {
+          kind: "objectives",
+          items: objectives.slice(0, 4).map((o) => o.text),
+          factRefs: objectives.map((o) => o.id),
+        },
+        themeId,
+        codeMeta(),
+        deps.ids,
+      ),
+    );
+    void flush();
+    if (imageBrief && deps.images) {
+      photoCounts.requested += 1;
+      const titleOutline = outline.map((e, i) => (i === 0 ? { ...e, imageBrief } : e));
+      const pickLesson: Lesson = { ...lesson, facts: { ...baseFacts, outline: titleOutline } };
+      titlePhotos.push(
+        pickPhoto(pickLesson, 0, deps).then((picked) => {
+          if (picked.outcome === "placed") {
+            photoCounts.placed += 1;
+            placePhoto(0, picked.photo);
+          } else {
+            const t = lesson.slides[0]?.elements.find((e) => e.type === "image");
+            if (t) findings.push(emptyFinding(title.id, t.id));
+          }
+        }),
+      );
+    }
   };
-  if (mode === "plan-write") drawTitle();
 
   // Saved in slide order, one write at a time; `ready` holds slides waiting for an earlier one.
   const ready = new Map<number, Slide>();
@@ -604,6 +652,8 @@ export async function planWriteSlides(
   };
 
   const placed: Placed[] = [];
+  /** Diagram slots' specs by slide number, saved with the slide plan for the diagram renderer. */
+  const diagrams: Record<string, unknown> = {};
   const report: PlanWriteReport["slides"] = [];
   const photos: Promise<void>[] = [];
   const photoCounts = { requested: 0, placed: 0 };
@@ -634,11 +684,53 @@ export async function planWriteSlides(
     return isSetForm(form) ? withAnswersReveal(slide, themeId) : slide;
   };
 
+  const menu = planMenu(base.subject);
+  /**
+   * The hinge gate (UX ruling 136): a hinge that still does not fit after its re-write is written
+   * ONCE as another check on the same idea. Undefined when that call fails or writes no such check.
+   */
+  const recheck = async (n: number, current: Written, failure: string) => {
+    const kinds = recheckKinds(menu);
+    if (kinds.length === 0) return undefined;
+    try {
+      const schema = z.object({ slide: streamSlideSchema(kinds) });
+      const { output } = await callWriter(
+        {
+          ...writerInput([target(n)]),
+          recheck: {
+            slide: target(n),
+            failure,
+            current,
+            kinds: kinds.map((k) => ({
+              kind: kindOf(k.form, k.layout),
+              contract: contractFor(k.form, k.layout),
+            })),
+          },
+        },
+        schema as unknown as z.ZodType<{ slide: Record<string, unknown> }>,
+        MAX_OUTPUT_TOKENS_REWRITE,
+      );
+      const got = checkStreamed(output.slide, kinds);
+      deps.logger.info(
+        { stage: "generate", call: "recheck", slide: n, failure, to: got?.form ?? null },
+        "plan-write hinge re-planned as another check",
+      );
+      return got?.out ? { form: got.form, layout: got.layout, out: got.out } : undefined;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.error(
+        { stage: "generate", call: "recheck", slide: n, err: safeError(error) },
+        "hinge re-plan failed; the hinge is kept and flagged",
+      );
+      return undefined;
+    }
+  };
+
   /** One written slide: fitted (one re-write of a failing field), drawn, queued, photo searched. */
   const land = async (n: number, out: Written, modelId: string) => {
     const index = n - 1;
-    const s = table[index] as PlanSlide;
-    const fitted = await fitWithRewrite(s.form, s.layout, out, async (field, failure) => {
+    let s = table[index] as PlanSlide;
+    let fitted = await fitWithRewrite(s.form, s.layout, out, async (field, failure) => {
       const shape = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape;
       const only = shape[field];
       if (!only) return undefined;
@@ -657,14 +749,28 @@ export async function planWriteSlides(
       );
       return output;
     });
+    let rechecked: string | undefined;
+    if (s.form === "hinge" && !fitted.fit.ok) {
+      const again = await recheck(n, fitted.out, fitted.fit.failure);
+      if (again) {
+        rechecked = `${s.form} -> ${again.form}`;
+        s = { ...s, form: again.form, layout: again.layout };
+        table[index] = s;
+        fitted = { out: again.out, fit: fitWritten(s.form, s.layout, again.out) };
+      }
+    }
     report.push({
       slide: n,
       form: s.form,
       layout: s.layout,
       fits: fitted.fit.ok,
       ...(fitted.rewritten ? { rewritten: fitted.rewritten } : {}),
+      ...(rechecked ? { rechecked } : {}),
     });
     placed.push({ index, plan: s, out: fitted.out });
+    if (s.form === "diagram-slot" && fitted.out.diagram && typeof fitted.out.diagram === "object") {
+      diagrams[String(n)] = fitted.out.diagram;
+    }
     const slide = drawn(s.form, s.layout, fitted.out, {
       promptVersion: WRITE_SLIDES_VERSION,
       model: modelId,
@@ -726,6 +832,8 @@ export async function planWriteSlides(
       );
     }
   };
+
+  if (mode === "plan-write") drawTitle();
 
   /** A batch whose writer failed twice: each slide asks about its purpose, flagged. */
   const missing: number[] = [];
@@ -796,6 +904,7 @@ export async function planWriteSlides(
       misconception: w.misconception ?? "",
       objectives: w.objectives ?? [],
       runningExample: w.runningExample ?? "",
+      titlePicture: w.titlePicture ?? null,
       slides: (w.plan ?? []).filter((r): r is string => typeof r === "string"),
     });
     const c = checkPlan(plan, { slideCount, menu });
@@ -854,7 +963,6 @@ export async function planWriteSlides(
 
   /** One call plans and writes the whole lesson; each slide lands as it closes. */
   const runStream = async () => {
-    const menu = planMenu(base.subject);
     const input: StreamLessonInput = {
       topic: brief.topic,
       audience,
@@ -871,7 +979,7 @@ export async function planWriteSlides(
     const pending: Promise<void>[] = [];
     let header = false;
     const close = (i: number, raw: unknown) => {
-      const n = i + 2;
+      const n = i + 1 + FIXED_SLIDES;
       if (landed.has(n)) return;
       if (n > slideCount) {
         deps.logger.warn({ stage: "generate", slide: n }, "stream wrote a slide past the count");
@@ -943,7 +1051,7 @@ export async function planWriteSlides(
         "stream failed after its header; the rest is written by writers",
       );
     }
-    for (let n = 2; n <= slideCount; n++) {
+    for (let n = FIXED_SLIDES + 1; n <= slideCount; n++) {
       if (landed.has(n)) continue;
       landed.add(n);
       if (table[n - 1]) pending.push(runBatch([n]));
@@ -957,7 +1065,7 @@ export async function planWriteSlides(
 
   if (mode === "stream") await runStream();
   else {
-    const numbers = table.map((_, i) => i + 1).filter((n) => n > 1);
+    const numbers = table.map((_, i) => i + 1).filter((n) => n > FIXED_SLIDES);
     await Promise.all(batchesOf(numbers).map(runBatch));
   }
   throwIfAborted(deps.signal);
@@ -978,6 +1086,9 @@ export async function planWriteSlides(
   };
   const facts: LessonFacts = {
     ...baseFacts,
+    ...(Object.keys(diagrams).length > 0
+      ? { slidePlan: { ...(baseFacts.slidePlan ?? {}), diagrams } }
+      : {}),
     keyIdeas: [],
     vocabulary: [],
     workedExamples: [],
@@ -1033,6 +1144,7 @@ export async function planWriteSlides(
   const [verified] = await Promise.all([
     runVerify(facts, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT),
     Promise.all(photos),
+    Promise.all(titlePhotos),
   ]);
   await writing;
   for (const f of verified.findings) {

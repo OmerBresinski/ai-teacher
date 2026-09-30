@@ -10,9 +10,14 @@ import { slideWriterSchema } from "./menu";
 
 export type PlanWriteMode = "plan-write" | "stream";
 
-/** The mode: `deps` first, then PLAN_WRITE_MODE; plan-write unless it says stream. */
+/** The default: the single stream (the plan-write final round, 30 Sep 2026). */
+export const PLAN_WRITE_MODE_DEFAULT: PlanWriteMode = "stream";
+
+/** The mode: `asked` first, then PLAN_WRITE_MODE; the stream unless it says plan-write. */
 export function planWriteMode(asked?: string): PlanWriteMode {
-  return (asked ?? process.env.PLAN_WRITE_MODE) === "stream" ? "stream" : "plan-write";
+  return (asked ?? process.env.PLAN_WRITE_MODE) === "plan-write"
+    ? "plan-write"
+    : PLAN_WRITE_MODE_DEFAULT;
 }
 
 export const kindOf = (form: string, layout: string): string =>
@@ -45,6 +50,7 @@ export function streamLessonSchema(menu: readonly PlanMenuEntry[]) {
     misconception: planLessonSchema.shape.misconception,
     objectives: planLessonSchema.shape.objectives,
     runningExample: planLessonSchema.shape.runningExample,
+    titlePicture: planLessonSchema.shape.titlePicture,
     plan: planLessonSchema.shape.slides,
     slides: z.array(streamSlideSchema(menu)),
   });
@@ -55,6 +61,10 @@ export const streamLessonLenient = z.object({
   misconception: z.string(),
   objectives: z.array(z.string()).min(1),
   runningExample: z.string(),
+  titlePicture: z
+    .object({ subject: z.string(), mustShow: z.array(z.string()).catch([]) })
+    .nullish()
+    .catch(null),
   plan: z.array(z.string()),
   slides: z.array(z.record(z.string(), z.unknown())),
 });

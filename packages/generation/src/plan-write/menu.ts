@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { slotFormsFor } from "../prompts/design-cycle";
 import type { PlanMenuEntry } from "../prompts/plan-lesson";
+import { DIAGRAM_CONTRACT, DiagramSpecSchema } from "./diagram-spec";
 
 /*
  * Plan-write's menu (spike/plan-write): every palette form drawn on a slide, each layout with its
@@ -86,20 +87,38 @@ export function layoutCapacity(form: string, layout: string): number | undefined
   return c ? capacityOf(c) : undefined;
 }
 
+/**
+ * Layouts left off the menu: the stacked hinge carries whole ideas as options, and a hinge's
+ * options are a word, a number or a short phrase (UX ruling 136); those ideas take another check.
+ */
+const OFF_MENU = new Set(["hinge/stacked"]);
+
+/** A layout's contract text; a diagram slot's diagram is written as a diagram spec. */
+function contractLines(form: PaletteFormId, layout: string): string {
+  const text = contractText(form, layout);
+  if (form !== "diagram-slot") return text;
+  return text
+    .split("\n")
+    .map((l) => (l.startsWith("- diagram:") ? DIAGRAM_CONTRACT : l))
+    .join("\n");
+}
+
 /** The planner's menu for a subject: forms on a slide, every layout, then the question sets. */
 export function planMenu(subject?: string): PlanMenuEntry[] {
   const forms = slotFormsFor(subject) as PaletteFormId[];
   const entries: PlanMenuEntry[] = forms.flatMap((form) =>
-    layoutsOf(form).map((c) => {
-      const capacity = capacityOf(c);
-      return {
-        form,
-        layout: c.layout,
-        ...(c.when ? { when: c.when } : {}),
-        ...(capacity !== undefined ? { capacity } : {}),
-        contract: contractText(form, c.layout),
-      };
-    }),
+    layoutsOf(form)
+      .filter((c) => !OFF_MENU.has(`${form}/${c.layout}`))
+      .map((c) => {
+        const capacity = capacityOf(c);
+        return {
+          form,
+          layout: c.layout,
+          ...(c.when ? { when: c.when } : {}),
+          ...(capacity !== undefined ? { capacity } : {}),
+          contract: contractLines(form, c.layout),
+        };
+      }),
   );
   for (const form of SET_FORMS) {
     entries.push({
@@ -115,12 +134,14 @@ export function planMenu(subject?: string): PlanMenuEntry[] {
 
 /** The contract text a writer sees for one slide. */
 export function contractFor(form: string, layout: string): string {
-  return isSetForm(form) ? setContractText(form) : contractText(form as PaletteFormId, layout);
+  return isSetForm(form) ? setContractText(form) : contractLines(form as PaletteFormId, layout);
 }
 
 /** The writer's schema for one slide: the contract's fields plus the teacher notes. */
 export function slideWriterSchema(form: string, layout: string) {
-  const base = isSetForm(form) ? setSchema(form) : writerSchema(form as PaletteFormId, layout);
+  const written = isSetForm(form) ? setSchema(form) : writerSchema(form as PaletteFormId, layout);
+  // A diagram slot's diagram is the drawing's spec (the diagram renderer draws it), not a brief.
+  const base = form === "diagram-slot" ? written.extend({ diagram: DiagramSpecSchema }) : written;
   // Notes first: said aloud, answer first on a question slide (write-slides.v1).
   return z
     .object({ notes: z.string().describe("what the teacher says and does with this slide") })

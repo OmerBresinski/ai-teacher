@@ -39,6 +39,9 @@ export const CHECKING_FORMS: ReadonlySet<string> = new Set([
   "exit-ticket",
 ]);
 
+/** Code draws slides 1 and 2: the title (with its picture) and the objectives (UX ruling 134). */
+export const FIXED_SLIDES = 2;
+
 const key = (k: string) => k.trim().toLowerCase();
 
 export function checkPlan(
@@ -52,7 +55,7 @@ export function checkPlan(
   if (input.slides.length !== slideCount) {
     problems.push({
       rule: "count",
-      message: `The plan has ${input.slides.length - 1} rows after the title; it must have exactly ${slideCount - 1}.`,
+      message: `The plan has ${input.slides.length - FIXED_SLIDES} rows after the objectives slide; it must have exactly ${slideCount - FIXED_SLIDES}.`,
     });
   }
   const layoutsOf = (form: string) => menu.filter((m) => m.form === form);
@@ -63,9 +66,27 @@ export function checkPlan(
         problems.push({
           rule: "title",
           slide: 1,
-          message: `Slide 1 must be the title (form "title"), which carries the objectives; it is "${s.form}".`,
+          message: `Slide 1 must be the title (form "title"); it is "${s.form}".`,
         });
       }
+      return s;
+    }
+    if (number === 2) {
+      if (s.form !== "objectives") {
+        problems.push({
+          rule: "title",
+          slide: 2,
+          message: `Slide 2 must be the objectives (form "objectives"); it is "${s.form}".`,
+        });
+      }
+      return s;
+    }
+    if (s.form === "objectives") {
+      problems.push({
+        rule: "title",
+        slide: number,
+        message: `Slide ${number} is a second objectives slide; only slide 2 lists the objectives.`,
+      });
       return s;
     }
     if (s.form === "title") {
@@ -145,6 +166,19 @@ export function checkPlan(
     for (const t of s.teaches) taught.add(key(t));
   });
 
+  // Every objective is taught on a slide (UX ruling 135): thin coverage is fine, a dropped one is not.
+  for (let o = 1; o <= n; o++) {
+    const teaching = slides.some(
+      (s, i) => i >= FIXED_SLIDES && s.objectives.includes(o) && s.teaches.length > 0,
+    );
+    if (!teaching) {
+      problems.push({
+        rule: "objective",
+        message: `Objective ${o} is taught on no slide; give it a slide that teaches it before any slide tests it.`,
+      });
+    }
+  }
+
   return { plan: { ...input, slides }, problems, switched };
 }
 
@@ -155,6 +189,6 @@ export function blocking(problems: readonly PlanProblem[]): PlanProblem[] {
   );
 }
 
-/** Whether a form is one the writer fills (not the title, which code prints). */
-export const writtenForm = (form: string) => form !== "title";
+/** Whether a form is one the writer fills (not the title or the objectives, which code prints). */
+export const writtenForm = (form: string) => form !== "title" && form !== "objectives";
 export { isSetForm };

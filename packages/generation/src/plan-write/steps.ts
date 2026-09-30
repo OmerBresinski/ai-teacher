@@ -67,8 +67,11 @@ export function resumeFromPlanWrite(lesson: Lesson): PlanWriteStageName | null {
   return PLAN_WRITE_ORDER[index + 1] ?? null;
 }
 
-/** The default planner model (`PLAN_WRITE_PLANNER_MODEL` overrides it) and the writers' model. */
-export const PLAN_WRITE_PLANNER_MODEL = "openai/gpt-6-luna";
+/**
+ * The default planner model (`PLAN_WRITE_PLANNER_MODEL` overrides it) and the writers' model. Sol
+ * plans and writes the single stream (the plan-write final round, 30 Sep 2026: arm C won).
+ */
+export const PLAN_WRITE_PLANNER_MODEL = "openai/gpt-6.1-sol";
 export const PLAN_WRITE_WRITER_MODEL = "openai/gpt-6-luna";
 
 /**
