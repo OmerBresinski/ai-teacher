@@ -417,9 +417,16 @@ export function refillReason(slot: DesignSlot): string {
       break;
     case "worked-example": {
       const n = sentences(slot.question).length;
+      // Worded so it carries to the form the re-fill writes (r6 fix smoke: "this form needs
+      // phrases" read as the worked example's rule, and the sequence came back in sentences).
       if (n > 1)
-        reasons.push(`the question is ${n} sentences; this form holds a one-sentence question`);
-      reasons.push(phrases("lines of working", slot.steps));
+        reasons.push(
+          `the question is ${n} sentences; one sentence fits over the steps, in any form`,
+        );
+      if (slot.steps.some(isSentence))
+        reasons.push(
+          "the lines of working are sentences; each step fits as a phrase or a calculation, in any form",
+        );
       break;
     }
     case "vocabulary":

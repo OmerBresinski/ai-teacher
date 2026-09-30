@@ -126,7 +126,10 @@ export const VERIFY_EFFORT = "medium" as const;
 /** A single-slot re-fill (rung 4). */
 const MAX_OUTPUT_TOKENS_REFILL = 3000;
 /** A re-fill's exit question: `ExitQuestionSchema`'s keys, read by no one, so blanks pass. */
-const REFILL_EXIT_QUESTION = zod.object({ answer: zod.string(), question: zod.string() });
+const REFILL_EXIT_QUESTION = zod.object({
+  answer: zod.string().nullable(),
+  question: zod.string().nullable(),
+});
 
 type Arc = NonNullable<PipelineState["designArcs"]>[number];
 
@@ -1156,7 +1159,15 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       // A slot already written in that form that did not fit (as designed, or re-filled on the
       // ladder) is not asked again: on the r6 smoke both minimum re-fills were such repeats,
       // failed again, and held the editable deck back a whole call (about 9 s).
-      if (b.slot.form === m.into || b.fit.tried.some((t) => t.form === m.into && !t.ok)) {
+      // Nor is a slot the designer already wrote in a form its role asks for, which the fit
+      // ladder then had to take to a text form (r6 fix smoke: a photo whose heading did not fit,
+      // re-asked as a diagram slot, failed again on both briefs).
+      const metByDesign = !!m.role && ROLE_FORMS[m.role].includes(b.slot.form);
+      if (
+        metByDesign ||
+        b.slot.form === m.into ||
+        b.fit.tried.some((t) => t.form === m.into && !t.ok)
+      ) {
         enforced.push({ slide: m.slide, into: m.into, ok: false, skipped: true });
         return;
       }
