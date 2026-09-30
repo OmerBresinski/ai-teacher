@@ -20,8 +20,8 @@ import type { SlideStructure } from "./structure";
 
 /** The kinds of text a slot's items are, with the plain words the writer reads. */
 export const TEXT_KINDS = {
-  heading: "one line: the slide's claim, briefly",
-  sentence: "one sentence, at most two lines",
+  heading: 'one line: one short clause about one thing, with no "and", "but" or list',
+  sentence: "one sentence of one or two clauses, at most two lines",
   clause: "one sentence of a single clause, at most two lines",
   question: "one question, at most two lines",
   "short-question": "one question on one line",
@@ -29,15 +29,16 @@ export const TEXT_KINDS = {
   "short-instruction": "one short instruction to pupils, on one line",
   phrase: "a phrase on one line, not a full sentence",
   option: "a short phrase, at most three short lines on its half-width card",
-  outline: "one line across the slide: an idea or an outline in brief, not a full sentence",
+  outline:
+    'one line across the slide: the idea or outline named in brief, like "Hypothesis, method, results, conclusion"',
   label: "a short label, half a line, not a sentence",
   term: "a term or a short name, half a line, as written on a card",
-  card: "a short phrase on one line across the slide",
+  card: 'a short phrase on one line across the slide: one clause, with no "and"',
   answer: "a single term or number",
   working: "one calculation or one short phrase, on one line",
   "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
   "gapped-sentence": "one sentence with each gap written as ___, at most two lines",
-  starter: "an unfinished sentence starter ending in …, half a line",
+  starter: 'an unfinished sentence starter, just its opening, ending in … ("I think… because…")',
   brief: "a description for whoever draws or finds it",
   paragraph: "a paragraph",
 } as const;

@@ -8,7 +8,7 @@ import { type Audience, audienceBlock } from "./shared";
  * `slide<n>`); its counts are enforced there and stated here only through each contract line.
  */
 
-export const WRITE_SLIDES_VERSION = "write-slides.v4";
+export const WRITE_SLIDES_VERSION = "write-slides.v5";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -52,7 +52,7 @@ Pitch the content at what this year group's specification expects, and the langu
 Fill each slot exactly as its contract line says: its count of items, lines or sentences, the kind of text each one is, and the lines it takes on the slide. A line here is a line of large projected type, much shorter than a line on a page: "Kenya is hotter than the Arctic" fills a heading's line; "Oak flowers are pollinated by the wind" fills the line of a full-width card; "I think the main reason was…" is half a line; "Positive ions move to the negative electrode, where they gain electrons." takes two lines of body text. Say each idea in the lines its slot has, in the plainest words that carry it. Everything taught is on the slide; the notes add the teacher's talk.
 Where a slot's kind is a phrase, a label or a term, write that and not a sentence: "Heavier than water", not "The stone is heavier than the water it pushes aside."
 Each idea a row teaches appears on its slide itself, in the order the plan gives. The questions on other slides are written from them.
-A heading is the slide's idea as a claim on one line: a subject and one verb, with no full stop ("Cholera spread through water", not "Cholera spread through drinking water rather than bad air in 1854 London"). The reason and the case go in the body. A worked example's heading is the label of its method ("Finding a missing angle").
+A heading is the slide's idea as a claim on one line: a subject and one verb, with no full stop and no "and", "but" or list ("Cholera spread through water", not "Cholera spread through drinking water rather than bad air in 1854 London"). The reason and the case go in the body. A worked example's heading is the label of its method ("Finding a missing angle").
 A teach slide's body says how or why its claim holds (what acts on what, and what follows) and works one real case through it, with the case's own detail: the running example where it fits, otherwise a place, an event, a person, a reaction, a quoted line or worked numbers. A list, compare or sequence carries its case in a point, side or step.
 A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°").
 A check, hinge, practise or exit slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.

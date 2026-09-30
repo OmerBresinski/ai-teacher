@@ -102,7 +102,7 @@ describe("contractText", () => {
     expect(contractText("worked-example")).toBe(
       [
         "worked-example:",
-        "- heading: one line: the slide's claim, briefly",
+        '- heading: one line: one short clause about one thing, with no "and", "but" or list',
         "- question: one question, at most two lines",
         "- steps: 2–4 lines, each one calculation or one short phrase, on one line (the last line gives the answer)",
       ].join("\n"),
@@ -112,7 +112,7 @@ describe("contractText", () => {
       "options: 4 items, each with text: one line across the slide",
     );
     expect(contractText("hinge")).toContain(
-      "explanation: one sentence, at most two lines, goes in the teacher notes",
+      "explanation: one sentence of one or two clauses, at most two lines, goes in the teacher notes",
     );
     expect(contractText("compare")).toContain(
       "compare: 2 items, each with label: a short label, half a line, not a sentence; points: 2 items, each a phrase on one line, not a full sentence (two sides, left then right)",

@@ -9,7 +9,7 @@ import { type Audience, audienceBlock } from "./shared";
  * in the schemas is part of the prompt (the key before the question, the content before the form).
  */
 
-export const PLAN_LESSON_VERSION = "plan-lesson.v4";
+export const PLAN_LESSON_VERSION = "plan-lesson.v5";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -128,6 +128,9 @@ export function parsePlan(wire: PlanLessonWire): { plan: PlanLessonOutput; unrea
       tests = "",
     ] = f;
     const count = Number.parseInt(parts, 10);
+    // "hinge (stacked)" in the form field: the menu's own name for a layout, read as form + layout.
+    const named = /^(.+?)\s*\((.+)\)$/.exec(form);
+    const [formName, layoutName] = named ? [named[1] ?? "", named[2] ?? ""] : [form, layout];
     return {
       role: role.toLowerCase(),
       objectives: listOf(objectives)
@@ -137,8 +140,8 @@ export function parsePlan(wire: PlanLessonWire): { plan: PlanLessonOutput; unrea
       teaches: listOf(teaches),
       purpose: aim,
       parts: Number.isInteger(count) && count >= 0 ? count : 0,
-      form: form.toLowerCase(),
-      layout: none(layout) ? "default" : layout.toLowerCase(),
+      form: formName.toLowerCase(),
+      layout: none(layoutName) ? "default" : layoutName.toLowerCase(),
       imageBrief: null,
       figureBrief: null,
     };
