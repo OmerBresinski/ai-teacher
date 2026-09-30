@@ -10,7 +10,8 @@ import { type Audience, audienceBlock } from "./shared";
  */
 
 /* v9: titlePicture carries `named` (proper name or null) for the Commons search (ruling 139). */
-export const PLAN_LESSON_VERSION = "plan-lesson.v9";
+/* v10: teaching first (ROOT-CAUSE-CHALKIE cause 1): at least half the slides teach, one per objective at least; no exit slide (the exit ticket is on the worksheet); "about half the slides" answer and "leave the rest for a later lesson" deleted. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v10";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -241,19 +242,19 @@ export const PLAN_RULES = `Decide the fields in this order:
 - titlePicture: the photograph on the title slide, a real place, thing or event from this lesson: its subject, and up to three things it must show.
 - slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
-The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; where pupils practise and apply; and whether it closes with a check.
+The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.
 Order the ideas so each builds on the one before. An objective usually takes one or two teaching slides, with a check soon after; one check may cover two objectives. Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
-Pupils answer, sort, match or write on about half the slides, and each of those slides asks something new.
-When the topic holds more than the slides do, leave the rest for a later lesson.
+At least half the slides after the objectives slide teach, with at least one teach slide for each objective, and each teach slide carries its idea's facts, example and explanation. The hinge, the opening retrieve or hook, the checks and the practice fit into the slides that remain: when they are few, the hinge stays, one check covers two objectives, and the opening and the practice give way before a teach slide does.
+Each slide where pupils answer, sort, match or write asks something new.
 
 Each row, fields in order, split by " | ", "-" for none:
-- role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on), practise (pupils use the idea on a new case, in their own words) or exit (a closing check).
+- role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on) or practise (pupils use the idea on a new case, in their own words).
 - form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, or a figure draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out is a worked example; most teach slides carry a picture: a photo wherever a real photograph helps pupils understand (a place, an object, an event, a process), and a diagram slot for a structural or mathematical picture (a bar model, a graph, a cycle, a labelled cross-section, a number line, a table). A slide whose idea cannot be pictured has none.
 - objectives: the numbers of the objectives it serves, split by commas; "-" for retrieve or hook.
 - parts: how many items its layout's counted slot will hold: its steps, points, sides, pairs, cards, terms, gaps, options, questions or sentences. The parts fit the layout's count. When an idea has more parts than a form holds, choose a form that holds them or split the idea over two slides.
 - aim: what the slide does, in a few words; the writer adds the detail.
 - teaches: a short key for each idea the slide teaches, split by commas.
-- tests: on a check, hinge, practise or exit, the keys of what it asks, each copied exactly from the teaches of an earlier row; "-" on other roles.
+- tests: on a check, hinge or practise, the keys of what it asks, each copied exactly from the teaches of an earlier row; "-" on other roles.
 Example row: teach | compare | default | 2 | 2 | a solid keeps its shape, a liquid takes its container's | solid-vs-liquid | -
 
 Size the lesson in slides: no minutes or timings anywhere.`;

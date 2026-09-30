@@ -36,11 +36,14 @@ export function formOfKind(
 
 /** One streamed slide: a discriminated union of every menu entry's writer schema. */
 export function streamSlideSchema(menu: readonly PlanMenuEntry[]) {
-  const members = menu.map((m) =>
-    z
+  // The visible fields first and the notes last (stream-lesson.v7).
+  const members = menu.map((m) => {
+    const { notes, ...shown } = slideWriterSchema(m.form, m.layout).shape;
+    return z
       .object({ kind: z.literal(kindOf(m.form, m.layout)) })
-      .extend(slideWriterSchema(m.form, m.layout).shape),
-  );
+      .extend(shown)
+      .extend({ notes });
+  });
   return z.discriminatedUnion("kind", members as unknown as [z.ZodObject, ...z.ZodObject[]]);
 }
 
