@@ -1,7 +1,7 @@
 import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
-import type { Planner, ReasoningEffort } from "@tj/generation";
+import { type Planner, planWriteRoute, type ReasoningEffort } from "@tj/generation";
 import { createPexelsClient, type PexelsClient } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { createStorage, type StorageKind } from "@tj/storage";
@@ -58,7 +58,16 @@ export function createWorkerDeps(
     STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
   });
   return {
-    ai: env.AI_FAKE_SCRIPT === "pipeline" ? createPerJobFakeAi(env) : createAi(env, { logger }),
+    ai:
+      env.AI_FAKE_SCRIPT === "pipeline"
+        ? createPerJobFakeAi(env)
+        : createAi(env, {
+            logger,
+            // Plan-write routes its planner and writer calls by prompt version; no other call moves.
+            ...(env.AI_LESSON_PLANNER === "plan-write"
+              ? { route: planWriteRoute(env.PLAN_WRITE_PLANNER_MODEL) }
+              : {}),
+          }),
     db,
     caps: { capUsd: env.AI_LESSON_COST_CAP_USD, capTokens: env.AI_LESSON_TOKEN_CAP },
     worksheetCapUsd: env.AI_WORKSHEET_COST_CAP_USD,

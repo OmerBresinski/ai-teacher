@@ -36,6 +36,11 @@ export {
   RULE_FIELDS,
   type RuleField,
 } from "./parse-brief";
+// Plan-write (spike/plan-write): one planner call, the code check, parallel writers.
+export * from "./plan-write/check";
+export * from "./plan-write/fit";
+export * from "./plan-write/menu";
+export * from "./plan-write/steps";
 // The objectives-first planner (TEACH-91) as the lab runs it; production runs its two steps as
 // workflow steps behind `AI_LESSON_PLANNER` (TEACH-93).
 export {
@@ -53,6 +58,8 @@ export {
   statusLine,
 } from "./planner/plan-pipeline";
 export * from "./prompts";
+export * from "./prompts/plan-lesson";
+export * from "./prompts/write-slides";
 export * from "./shapes";
 export * from "./specs";
 export { checkInput } from "./stages/check-input";
@@ -83,6 +90,14 @@ export {
   resumeFromObjectivesFirst,
 } from "./stages/objectives-first";
 export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";
+export {
+  batchesOf,
+  factsOfWritten,
+  type PlanWriteReport,
+  planWritePlan,
+  planWriteSlides,
+  SlidePlanRecordSchema,
+} from "./stages/plan-write";
 export {
   type ImpactSet,
   impactSet,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { Theme } from "@tj/domain/documents";
-import { answersOverQuestions } from "./fit-check";
+import { answersOverQuestions, fitsPlanned } from "./fit-check";
 import { fitSlide } from "./fit-slide";
 import { materialiseSlide } from "./materialise";
 import type { SlideSpec } from "./specs";
@@ -40,4 +40,14 @@ describe("a set's answers panel clears its questions", () => {
       expect(answersOverQuestions(slide, theme)).toEqual([]);
     });
   }
+});
+
+describe("a set whose answers go to the panel keeps its questions at body size", () => {
+  it.each([
+    ["one question", [QUESTIONS[0] as string], ["12"]],
+    ["three questions", QUESTIONS, ["12", "Paris", "Light"]],
+  ] as const)("%s passes the save gate at stepDown 0 on every theme", (_l, items, answers) => {
+    const spec = { ...starter([...answers]), items: [...items] } as SlideSpec;
+    expect(fitsPlanned(spec, { stepDown: 0 }).failing.map((f) => f.theme)).toEqual([]);
+  });
 });

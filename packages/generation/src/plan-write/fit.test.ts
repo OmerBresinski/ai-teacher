@@ -1,0 +1,100 @@
+import { describe, expect, it } from "bun:test";
+import { batchesOf } from "../stages/plan-write";
+import { fitWithRewrite, fitWritten, renderWritten } from "./fit";
+
+const explain = {
+  heading: "Water moves round the Earth",
+  body: ["Heat from the Sun turns water in the sea into vapour."],
+  notes: "Ask where the puddle went.",
+};
+const longHeading =
+  "Water moves round the Earth in a cycle driven by the Sun, and it never stops moving at all";
+
+describe("plan-write fit and re-write", () => {
+  it("a slide written to its contract fits and keeps its notes", () => {
+    expect(fitWritten("explain", "default", explain)).toEqual({ ok: true });
+    expect(renderWritten("explain", "default", explain).spec.notes).toBe(explain.notes);
+  });
+
+  it("names the heading when it wraps, with what the slide showed", () => {
+    const fit = fitWritten("explain", "default", { ...explain, heading: longHeading });
+    expect(fit.ok).toBe(false);
+    if (fit.ok) return;
+    expect(fit.field).toBe("heading");
+    expect(fit.failure).toMatch(/heading sits on \d lines, not one on \d+ of 10 themes/);
+    expect(fit.failure).not.toMatch(/shorten|words|characters/i);
+  });
+
+  it("re-writes only the named field, once, and keeps it when the slide then fits", async () => {
+    const asked: [string, string][] = [];
+    const out = { ...explain, heading: longHeading };
+    const fitted = await fitWithRewrite("explain", "default", out, async (field, failure) => {
+      asked.push([field, failure]);
+      return { heading: "The Sun drives the water cycle" };
+    });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.[0]).toBe("heading");
+    expect(fitted.fit.ok).toBe(true);
+    expect(fitted.rewritten).toMatchObject({ field: "heading", ok: true });
+    expect(fitted.out).toEqual({ ...out, heading: "The Sun drives the water cycle" });
+  });
+
+  it("keeps the slide as written, flagged, when the re-write fails or does not help", async () => {
+    const out = { ...explain, heading: longHeading };
+    const failed = await fitWithRewrite("explain", "default", out, async () => {
+      throw new Error("model down");
+    });
+    expect(failed.out).toBe(out);
+    expect(failed.fit.ok).toBe(false);
+    expect(failed.rewritten).toMatchObject({ field: "heading", ok: false });
+    const same = await fitWithRewrite("explain", "default", out, async () => ({
+      heading: longHeading,
+    }));
+    expect(same.fit.ok).toBe(false);
+    expect(same.rewritten?.ok).toBe(false);
+  });
+
+  it("never asks for a re-write when the slide fits", async () => {
+    let calls = 0;
+    const fitted = await fitWithRewrite("explain", "default", explain, async () => {
+      calls += 1;
+      return undefined;
+    });
+    expect(calls).toBe(0);
+    expect(fitted.rewritten).toBeUndefined();
+  });
+
+  it("renders a question set with its answers in the reveal line and the notes", () => {
+    const set = {
+      questions: [
+        { question: "What do plants need to grow?", answer: "Light and water" },
+        { question: "Name the capital of France.", answer: "Paris" },
+      ],
+      notes: "Cold-call two pupils.",
+    };
+    const r = renderWritten("exit-ticket", "default", set).spec as unknown as Record<
+      string,
+      string
+    >;
+    expect(r.kind).toBe("exit-ticket");
+    expect(r.footnote).toBe("Answers: 1 Light and water  ·  2 Paris");
+    expect(r.notes).toContain("Cold-call two pupils.");
+    expect(fitWritten("exit-ticket", "default", set)).toEqual({ ok: true });
+  });
+});
+
+describe("writer batches", () => {
+  it("splits slides into contiguous batches of at most 3, as even as it can", () => {
+    expect(batchesOf([2, 3, 4, 5, 6, 7, 8, 9, 10])).toEqual([
+      [2, 3, 4],
+      [5, 6, 7],
+      [8, 9, 10],
+    ]);
+    expect(batchesOf([2, 3, 4, 5, 6, 7, 8])).toEqual([
+      [2, 3, 4],
+      [5, 6],
+      [7, 8],
+    ]);
+    expect(batchesOf([])).toEqual([]);
+  });
+});

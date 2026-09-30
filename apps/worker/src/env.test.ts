@@ -23,6 +23,7 @@ describe("worker env", () => {
       AI_LESSON_TOKEN_CAP: 300_000,
       AI_WORKSHEET_COST_CAP_USD: 0.1,
       AI_LESSON_PLANNER: "objectives-first",
+      PLAN_WRITE_PLANNER_MODEL: "openai/gpt-6-luna",
       AI_LESSON_COST_WARN_USD: 0.03,
       AI_REASONING_EFFORT: "low",
       MASTRA_TELEMETRY_DISABLED: undefined,

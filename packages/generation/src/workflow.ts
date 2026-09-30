@@ -4,6 +4,12 @@ import { safeError } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
+import {
+  PLAN_WRITE_CHECKPOINT,
+  PLAN_WRITE_ORDER,
+  type PlanWriteStageName,
+  resumeFromPlanWrite,
+} from "./plan-write/steps";
 import { checkInput } from "./stages/check-input";
 import { design, designerObjectives } from "./stages/designer";
 import { evaluate } from "./stages/evaluate";
@@ -24,6 +30,7 @@ import {
   resumeFromObjectivesFirst,
 } from "./stages/objectives-first";
 import { plan } from "./stages/plan";
+import { planWritePlan, planWriteSlides } from "./stages/plan-write";
 import { repair } from "./stages/repair";
 import {
   emptyImageCounts,
@@ -101,7 +108,11 @@ export function resumeFrom(lesson: Lesson): PipelineStageName | null {
 }
 
 /** A step of either workflow: the legacy stages, or the objectives-first ones (TEACH-93). */
-export type StepName = PipelineStageName | ObjectivesFirstStageName | DesignerStageName;
+export type StepName =
+  | PipelineStageName
+  | ObjectivesFirstStageName
+  | DesignerStageName
+  | PlanWriteStageName;
 
 /** How one workflow orders its steps and finds where a lesson resumes. */
 interface StepOrder<S extends StepName> {
@@ -126,6 +137,12 @@ const DESIGNER: StepOrder<DesignerStageName> = {
   order: DESIGNER_ORDER,
   checkpoint: DESIGNER_CHECKPOINT,
   resume: resumeFromDesigner,
+};
+
+const PLAN_WRITE: StepOrder<PlanWriteStageName> = {
+  order: PLAN_WRITE_ORDER,
+  checkpoint: PLAN_WRITE_CHECKPOINT,
+  resume: resumeFromPlanWrite,
 };
 
 /** Whether `stage` runs for a lesson resuming at `from` and stopping after `stopAfter`. */
@@ -247,6 +264,25 @@ export const designerWorkflow = createWorkflow({
   .then(stageStep("repair", repair, DESIGNER))
   .commit();
 
+/**
+ * Plan-write (spike/plan-write), behind `AI_LESSON_PLANNER=plan-write`: the input check, one
+ * planner call for the whole lesson checked in code (the `planned` checkpoint), parallel writers
+ * with render, fit and one re-write per failing slide, then the same illustrate, evaluate, repair.
+ */
+export const planWriteWorkflow = createWorkflow({
+  id: "lesson-plan-write",
+  description: "Check input → Plan → Write → Illustrate → Evaluate → Repair (plan-write)",
+  inputSchema: StateSchema,
+  outputSchema: StateSchema,
+})
+  .then(stageStep("check-input", checkInput, PLAN_WRITE))
+  .then(stageStep("plan", planWritePlan, PLAN_WRITE))
+  .then(stageStep("write", planWriteSlides, PLAN_WRITE))
+  .then(stageStep("illustrate", illustrate, PLAN_WRITE))
+  .then(stageStep("evaluate", evaluate, PLAN_WRITE))
+  .then(stageStep("repair", repair, PLAN_WRITE))
+  .commit();
+
 export interface PipelineInput {
   lesson: Lesson;
   /** Legacy (ADR 0025 §4): the worksheet row id the worker minted; unread since ADR 0030. */
@@ -300,17 +336,21 @@ export async function runLessonPipeline(
   const startedAt = Date.now();
   const planner = plannerFor(input.lesson, options.planner);
   const steps: StepOrder<StepName> =
-    planner === "designer"
-      ? (DESIGNER as StepOrder<StepName>)
-      : planner === "objectives-first"
-        ? (OBJECTIVES_FIRST as StepOrder<StepName>)
-        : (LEGACY as StepOrder<StepName>);
+    planner === "plan-write"
+      ? (PLAN_WRITE as StepOrder<StepName>)
+      : planner === "designer"
+        ? (DESIGNER as StepOrder<StepName>)
+        : planner === "objectives-first"
+          ? (OBJECTIVES_FIRST as StepOrder<StepName>)
+          : (LEGACY as StepOrder<StepName>);
   const workflow =
-    planner === "designer"
-      ? designerWorkflow
-      : planner === "objectives-first"
-        ? objectivesFirstWorkflow
-        : lessonWorkflow;
+    planner === "plan-write"
+      ? planWriteWorkflow
+      : planner === "designer"
+        ? designerWorkflow
+        : planner === "objectives-first"
+          ? objectivesFirstWorkflow
+          : lessonWorkflow;
   const from = steps.resume(input.lesson);
   const requestContext = new RequestContext();
   requestContext.setRaw(RESUME_KEY, from);
@@ -350,7 +390,11 @@ export async function runLessonPipeline(
       const stashed = requestContext.getRaw(FAILURE_KEY);
       if (requestContext.hasRaw(FAILURE_KEY)) throw stashed;
       const stage =
-        from === "objectives" || from === "facts" ? "plan" : from === "design" ? "generate" : from;
+        from === "objectives" || from === "facts"
+          ? "plan"
+          : from === "design" || from === "write"
+            ? "generate"
+            : from;
       throw new StageFailure(stage ?? "check-input", "The lesson workflow could not finish.");
     }
     final = result.result;

@@ -1,5 +1,5 @@
 import { DEFAULT_MODEL_IDS, DEFAULT_REGION } from "@tj/ai";
-import { PLANNERS, REASONING_EFFORTS } from "@tj/generation";
+import { PLAN_WRITE_PLANNER_MODEL, PLANNERS, REASONING_EFFORTS } from "@tj/generation";
 import { z } from "zod";
 
 /** Empty strings (e.g. a documented secret left blank in `.env`) count as "unset". */
@@ -43,6 +43,11 @@ export const EnvSchema = z
      * this says.
      */
     AI_LESSON_PLANNER: z.enum(PLANNERS).default("objectives-first"),
+    /**
+     * Plan-write's planner model (spike/plan-write): the one call that designs the whole lesson.
+     * Its writers run on `openai/gpt-6-luna`. Read only when `AI_LESSON_PLANNER=plan-write`.
+     */
+    PLAN_WRITE_PLANNER_MODEL: z.string().trim().min(1).default(PLAN_WRITE_PLANNER_MODEL),
     /** A finished lesson above this cost logs `lesson cost above target` (TEACH-93); never a stop. */
     AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.03),
     /**

@@ -485,6 +485,18 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
   const { body, foot } = parts;
   const bottom = foot.y + foot.h;
   const room = themeId === undefined ? undefined : answersRoom(slide, getTheme(themeId));
+  // The fit stepped the list down to make room for the footnote in the flow; once the footnote is
+  // the reveal panel, the list goes back to its own size when the panel still has room under it
+  // (plan-write: every set on playground and splash stayed a step down whatever it held).
+  if (themeId !== undefined && body.type === "text" && body.style.fontSize !== undefined) {
+    const { fontSize: _stepped, ...style } = body.style;
+    const full = { ...body, style } as typeof body;
+    const t = getTheme(themeId);
+    const grown = { ...full, h: Math.max(body.h, needOf(slide, full as TextElement, t)) };
+    const unstepped = { ...slide, elements: slide.elements.map((e) => (e === body ? grown : e)) };
+    const roomFull = answersRoom(unstepped, t);
+    if (roomFull && roomFull.spare >= 0) return withAnswersReveal(unstepped, themeId);
+  }
   if (room && room.spare >= 0) {
     return {
       ...slide,

@@ -265,6 +265,11 @@ export type LessonFacts = {
   retrieval?: RetrievalQuestion[];
   /** Designer r6: the optional opening and closing slots the objectives call asked for. */
   bookends?: LessonBookends;
+  /**
+   * Plan-write (spike/plan-write): the planner's slide table, checked, kept for the write step (its
+   * own job after the plan screen). Opaque here: the generation package parses it.
+   */
+  slidePlan?: Record<string, unknown>;
 };
 
 export const CurriculumRefSchema = z.strictObject({
@@ -435,6 +440,7 @@ export const LessonFactsSchema = z
     /** Lab r2: the starter's retrieval set, when the objectives call wrote one. */
     retrieval: z.array(RetrievalQuestionSchema).optional(),
     bookends: LessonBookendsSchema.optional(),
+    slidePlan: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((facts, ctx) => {
     // Ids are the addressing scheme for `factRefs`, so they must be unique across every array

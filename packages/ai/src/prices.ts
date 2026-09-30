@@ -110,6 +110,13 @@ export const PRICES: Record<string, ModelPrice> = {
     cachedInputPerMTok: 0.2,
     cacheWriteInputPerMTok: 2.5,
   },
+  // Plan-write's planner candidate (spike/plan-write, 30 Sep 2026).
+  "openai/gpt-6.1-sol": {
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    cachedInputPerMTok: 0.1,
+    cacheWriteInputPerMTok: 2.5,
+  },
   "google/gemini-3.8-flash": {
     inputPerMTok: 0.75,
     outputPerMTok: 3.75,

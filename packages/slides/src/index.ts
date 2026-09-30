@@ -33,6 +33,8 @@ export * from "./palette";
 export * from "./path";
 export * from "./reflow";
 export * from "./slot-contracts";
+// The writer fit check (plan-write): a contract's fill judged as the drift test judges it.
+export { type ContractFit, contractFits } from "./slot-contracts.measure";
 export * from "./specs";
 export * from "./structure";
 export * from "./text-measure";

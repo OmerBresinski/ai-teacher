@@ -1,0 +1,83 @@
+import type { GenerationStage, Lesson } from "@tj/domain/documents";
+import { PLAN_LESSON_VERSION } from "../prompts/plan-lesson";
+import { WRITE_SLIDES_VERSION } from "../prompts/write-slides";
+import { STAGE_CHECKPOINT } from "../types";
+
+/*
+ * Plan-write's place among the planners (spike/plan-write), behind `AI_LESSON_PLANNER=plan-write`:
+ * the input check, the plan step (the title saved first, one planner call, the code check and at
+ * most one repair; the objectives and the checked slide table saved as `planned`), the write step
+ * (parallel writers, render, fit, one re-write per failing slide, streamed saves), then the same
+ * illustrate, evaluate and repair.
+ */
+
+/** The `planned` stamp: the planner prompt, then the writer prompt. */
+export const PLAN_WRITE_VERSION = `${PLAN_LESSON_VERSION}+${WRITE_SLIDES_VERSION}`;
+
+/** Whether a `planned` stamp was written by plan-write (any version of its planner prompt). */
+export function isPlanWriteStamp(planned: string | undefined): boolean {
+  return planned?.split("+")[0]?.startsWith("plan-lesson.") ?? false;
+}
+
+export type PlanWriteStageName =
+  | "check-input"
+  | "plan"
+  | "write"
+  | "illustrate"
+  | "evaluate"
+  | "repair";
+
+export const PLAN_WRITE_ORDER: readonly PlanWriteStageName[] = [
+  "check-input",
+  "plan",
+  "write",
+  "illustrate",
+  "evaluate",
+  "repair",
+];
+
+export const PLAN_WRITE_CHECKPOINT: Record<PlanWriteStageName, GenerationStage | null> = {
+  "check-input": null,
+  plan: "planned",
+  write: STAGE_CHECKPOINT.generate,
+  illustrate: STAGE_CHECKPOINT.illustrate,
+  evaluate: STAGE_CHECKPOINT.evaluate,
+  repair: STAGE_CHECKPOINT.repair,
+};
+
+/**
+ * The first plan-write step still to run: the input check with no checkpoint; `planned` with the
+ * objectives and the slide table saved, the write step (a write step that stopped part-way is
+ * redone from the table); every later checkpoint, the step after it.
+ */
+export function resumeFromPlanWrite(lesson: Lesson): PlanWriteStageName | null {
+  const done = lesson.generation?.stage;
+  if (!done) return PLAN_WRITE_ORDER[0] ?? null;
+  if (done === "planned") {
+    const ready =
+      (lesson.facts?.objectives.length ?? 0) > 0 && lesson.facts?.slidePlan !== undefined;
+    return ready ? "write" : "check-input";
+  }
+  const index = PLAN_WRITE_ORDER.findIndex((stage) => PLAN_WRITE_CHECKPOINT[stage] === done);
+  return PLAN_WRITE_ORDER[index + 1] ?? null;
+}
+
+/** The default planner model (`PLAN_WRITE_PLANNER_MODEL` overrides it) and the writers' model. */
+export const PLAN_WRITE_PLANNER_MODEL = "openai/gpt-6-luna";
+export const PLAN_WRITE_WRITER_MODEL = "openai/gpt-6-luna";
+
+/**
+ * The model route for plan-write's calls, for `createAi({ route })`: the planner prompt goes to
+ * the planner model, the writer prompt to the writer model; every other call keeps its class's id.
+ */
+export function planWriteRoute(
+  plannerModel: string = PLAN_WRITE_PLANNER_MODEL,
+  writerModel: string = PLAN_WRITE_WRITER_MODEL,
+) {
+  return (_cls: unknown, context: { promptVersion?: string } | undefined): string | undefined => {
+    const v = context?.promptVersion ?? "";
+    if (v.startsWith("plan-lesson.")) return plannerModel;
+    if (v.startsWith("write-slides.")) return writerModel;
+    return undefined;
+  };
+}

@@ -1,4 +1,5 @@
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
+import { isPlanWriteStamp } from "../plan-write/steps";
 import { designCyclePrompt } from "../prompts/design-cycle";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { planQuestionSetPrompt } from "../prompts/plan-question-set";
@@ -15,11 +16,12 @@ import { STAGE_CHECKPOINT } from "../types";
  * half-way through the other planner.
  */
 
-export type Planner = "legacy" | "objectives-first" | "designer";
+export type Planner = "legacy" | "objectives-first" | "designer" | "plan-write";
 export const PLANNERS = [
   "legacy",
   "objectives-first",
   "designer",
+  "plan-write",
 ] as const satisfies readonly Planner[];
 
 /** The objectives step's stamp: the objectives are on the row, the facts and outline are not. */
@@ -73,6 +75,7 @@ export function isObjectivesFirstStamp(planned: string | undefined): boolean {
  */
 export function plannerOf(lesson: Lesson): Planner {
   const planned = lesson.generation?.promptVersions.planned;
+  if (isPlanWriteStamp(planned)) return "plan-write";
   if (isDesignerStamp(planned)) return "designer";
   return isObjectivesFirstStamp(planned) ? "objectives-first" : "legacy";
 }

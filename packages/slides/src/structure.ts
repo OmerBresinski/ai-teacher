@@ -1030,8 +1030,17 @@ function structureSet(
     // grown) and the panel is judged against the questions, not the empty room below them. Left
     // at the recipe's height, a set whose short answers kept the footnote to one line kept the
     // taller box, and the panel "covered" it: shorter answers failed where longer ones passed.
-    const need = textNeed(list, slide, t);
-    const trimmed = need < list.h ? { ...list, h: need } : list;
+    // The fit stepped the list down to make room for the footnote in the flow; with the footnote
+    // gone to the panel, the list goes back to its own size when its words then clear the panel
+    // (plan-write: a one-question set was stepped on playground and splash whatever it held).
+    let sized = list;
+    if (list.style.fontSize !== undefined && panel) {
+      const { fontSize: _stepped, ...style } = list.style;
+      const full = { ...list, style } as TextElement;
+      if (list.y + textNeed(full, slide, t) <= panel.y) sized = full;
+    }
+    const need = textNeed(sized, slide, t);
+    const trimmed = need < sized.h ? { ...sized, h: need } : sized;
     const kept = slide.elements.filter((e) => e !== old).map((e) => (e === list ? trimmed : e));
     return answersClear(
       [{ ...slide, elements: panel ? [...kept, panel] : kept }],
