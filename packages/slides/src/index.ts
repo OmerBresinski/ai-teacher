@@ -32,6 +32,7 @@ export * from "./metrics";
 export * from "./palette";
 export * from "./path";
 export * from "./reflow";
+export * from "./slot-contracts";
 export * from "./specs";
 export * from "./structure";
 export * from "./text-measure";
