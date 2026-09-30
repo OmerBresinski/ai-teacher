@@ -5,7 +5,7 @@
  * time to first complete slot, total time, tokens and cost. Refuses to start a brief once the
  * spend file's total plus a reserve passes the cap.
  *
- *   bun eval/design-cycle-smoke.ts --out <dir> --spend <file.json> --cap 0.10 <brief.json>...
+ *   bun eval/design-cycle-smoke.ts --out <dir> --spend <file.json> --cap 0.10 [--effort low|medium] <brief.json>...
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -34,6 +34,7 @@ const out = flag("--out") ?? "runs/design-cycle";
 const spendFile = flag("--spend") ?? `${out}/spend.json`;
 const cap = Number(flag("--cap") ?? "0.10");
 const only = flag("--objectives-from"); // reuse a previous run's objectives (dir)
+const effort = flag("--effort") ?? "low"; // design-cycle calls only; objectives stay at low
 mkdirSync(out, { recursive: true });
 
 const openai = createOpenAI({
@@ -41,6 +42,7 @@ const openai = createOpenAI({
 });
 const model = openai("gpt-6-luna");
 const providerOptions = { openai: { reasoningEffort: "low", strictJsonSchema: false } };
+const cycleOptions = { openai: { reasoningEffort: effort, strictJsonSchema: false } };
 const PRICE = { in: 0.1e-6, cached: 0.01e-6, out: 0.5e-6 };
 const RESERVE = 0.02;
 
@@ -74,6 +76,7 @@ async function call<T>(
   prompt: string,
   schema: import("zod").ZodType<T>,
   firstUnit?: (p: unknown) => boolean,
+  options = providerOptions,
 ) {
   const t0 = performance.now();
   let tFirst: number | undefined;
@@ -82,7 +85,7 @@ async function call<T>(
     system,
     prompt,
     output: Output.object({ schema }),
-    providerOptions,
+    providerOptions: options,
     maxOutputTokens: 12000,
   });
   for await (const partial of result.partialOutputStream) {
@@ -186,6 +189,7 @@ for (const file of args) {
           const slots = (p as { slots?: unknown[] } | undefined)?.slots;
           return Array.isArray(slots) && (slots.length >= 2 || "exitQuestion" in (p as object));
         },
+        cycleOptions,
       ).then((r) => ({
         objectiveIndex: i,
         slots: cycle,
@@ -197,6 +201,7 @@ for (const file of args) {
   const row = {
     id,
     versions: { objectives: planObjectivesPrompt.version, cycle: designCyclePrompt.version },
+    effort,
     objectives: objectivesCall,
     cycles,
   };

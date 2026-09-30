@@ -115,12 +115,12 @@ for (const file of readdirSync(dir)
   .filter((f) => f.endsWith(".json") && f !== "spend.json")
   .sort()) {
   const run = JSON.parse(readFileSync(`${dir}/${file}`, "utf8")) as Run;
-  const objectives = run.objectives.output?.objectives ?? [];
+  const objectives = run.objectives?.output?.objectives ?? [];
   const deckForms: string[] = [];
   const visualsPerObj: number[] = [];
   const checkForms: string[] = [];
   const slides: { text: string; form: string; obj: number }[] = [];
-  let usd = run.objectives.usd ?? 0;
+  let usd = run.objectives?.usd ?? 0;
   let worked = 0;
   let reuse = 0;
   const known: string[] = [];

@@ -131,6 +131,40 @@ import { type Audience, audienceBlock, houseRules } from "./shared";
  *    form to write). System text is v8's unchanged; a cycle call without `replacing` renders
  *    exactly as v8. The figure slot's schema carries `figureBrief.values` (fix branch).
  *
+ * v10 (30 Sept 2026, designer eval round 2: 16 decks judged blind against 8 baselines,
+ *    `quality-prd/lab/fit-lab/rounds/r2`; designer 20.3/30 vs baseline 19.0, round 1 21.4):
+ *  - Parts that outnumber the teach slots were dropped. "Each teach or show slot takes the next
+ *    part" has no case for the commonest deck (3 objectives in 10 slides: one teach slot each),
+ *    so a three-part objective taught its first part (plants-b: objective 3's slide said only
+ *    "Seeds can grow without being planted by people"; rocks-a: one label sentence per rock) or
+ *    crammed every part into one sentence (weimar-a slide 4, rivers-a slide 7). The rule now
+ *    opens with the guarantee (every part reaches a slide) and gives the outnumbered case its
+ *    own sentence: several parts in one slot, one sentence, step or point each ("each takes the
+ *    next several": the first smoke's rocks deck put all three rock types in the first teach slot
+ *    and the second restated them).
+ *  - Notes were missing or empty on 9 of the 16 decks' check slides ("reveal the explanation",
+ *    none given; ratio-a s9 with no 20; ratio-b s8 with no 16 pens) and absent on many teaching
+ *    slides, so a judge teaching "as is" had no explanation and no key. Notes are optional in the
+ *    schema (v4) and nothing asked for them per slot. One rule, own sentences: every slot has
+ *    notes; teach notes explain each part aloud; check and practise notes open with the answer.
+ *    `notes` is the second field, so the answer is written before the question it keys (the
+ *    "say it first" pattern, openai.md 2026-09-30).
+ *  - Keys that did not follow from the slides (ratio-b true-false "4:12 tells us the second
+ *    quantity is 8 more", ambiguous as written; persuasive-a a distractor that did not answer its
+ *    stem; ratio-b notes deriving 5 as "the difference between 10 and 5"). The check line now
+ *    says a true-false statement is one whole claim, true or false as written, and a hinge option
+ *    answers the stem; one new sentence ties every question's answer to a sentence, step or
+ *    worked line a teach slot states, named in the notes. The two recurring knowledge errors
+ *    (dilute bromide gives oxygen; the upper course is fast) are beliefs the model holds and are
+ *    left to the knowledge packs (source policy), not to a prompt fact.
+ *  - Callouts: 1 planned in 16 decks (round 1: 12). v8 made the hinge the misconception's first
+ *    home and the visual forms the teach role's first case, and the code's visual minimum then
+ *    re-fills a text teach slot into a diagram slot, so no slot was left for an explain-callout.
+ *    The routing now opens with the one case the deck can place: a teach slot after the
+ *    objective's visual is an explain-callout (2-objective and 1-objective decks have one);
+ *    otherwise the true-false statement or a hinge option. A 2-slot cycle (visual + check) still
+ *    has no room for a callout row: that needs the callout to ride on the visual slide, in code.
+ *
  * Bump `version` whenever `system` or `user` changes wording.
  */
 
@@ -400,22 +434,24 @@ function replacingBlock(r: NonNullable<DesignCycleInput["replacing"]>): string[]
 }
 
 export const designCyclePrompt = {
-  version: "design-cycle.v9",
+  version: "design-cycle.v10",
   system: [
     "You are an experienced UK teacher who designs lesson slides. You design the slides for one objective of a lesson, in the slots you are given, each with a role. For each slot you choose the palette form that shows its content best and fill it; nothing rewrites your words, so what you write is the slide.",
     "",
     houseRules("british", "names", "pitch"),
     "Roles: teach shows an idea in a teaching form (photo, figure, diagram-slot, explain, explain-callout, list, compare, sequence, or a worked example for a procedure); show teaches through a photo, figure or diagram slot; practise has pupils do it themselves on a new case (open-response, or discussion for a judgement); check is a quick closed check (hinge, true-false, matching, fill-gap or sort).",
     "Unless the objective is purely abstract (a rule, a number, a calculation), one of its teach or show slots is a photo, figure or diagram slot.",
-    "The objective's Angle lists the parts this lesson teaches of it. Each teach or show slot takes the next part, so together they cover every part, each heading stating its own part; a part given a second slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
+    "The objective's Angle lists the parts this lesson teaches of it, and every part reaches a slide. The teach and show slots take the parts in order. Where the parts outnumber those slots, each takes the next several, one sentence, step or point per part, under a heading stating the idea they share; where a part has a second slot, that slot shows its example or structure in another form. Each practise or check slot tests a taught part with numbers or an example no teach slot used.",
     'Each slot is one slide with one idea. Its heading is one line stating that idea as a claim ("Plants make their own food"), not a label; a worked example\'s heading is the label of its method ("Finding a missing angle"), not an instruction. The slide carries what pupils need for the checks: the claim with its reason, and the example, quotation or numbers it rests on; what you say around it (the fuller explanation, analogies, questions to ask, answers) goes in notes.',
+    "Every slot has notes. On a teach or show slot they are what you say aloud: each of its parts explained in full, with the question you ask about it. On a practise or check slot they open with the answer and why it is right, then what to do with the answers pupils give.",
     "Choose a teach slot's form by what the content is: anything a camera could show (a living thing, an object, a place, a scene) is a photo; a structure, process or layout is a figure or a diagram slot; a procedure pupils will carry out (a calculation, a prediction from a rule, a technique applied to a text) is a worked example taken to its finished answer; a definition or an argument is text (explain, list, compare, sequence). Neighbouring slots use different forms.",
-    "Choose a check by what the part is: the order of a process or chain of events is a sort; terms and meanings are a matching; a key term in a sentence that uses it is a fill-gap; a claim pupils get wrong is a true-false. A hinge asks for a thing pupils name (a product, a value, a term, the next step), so each option is a phrase and each wrong one a mistake pupils make; a why or a how is checked by a sort or a true-false.",
+    "Choose a check by what the part is: the order of a process or chain of events is a sort; terms and meanings are a matching; a key term in a sentence that uses it is a fill-gap; a claim pupils get wrong is a true-false, one whole claim, true or false as written. A hinge asks for a thing pupils name (a product, a value, a term, the next step), so each option is a phrase answering the stem and each wrong one a mistake pupils make; a why or a how is checked by a sort or a true-false.",
+    "A question's answer is on a slide of this objective: it follows from a sentence, step or worked line a teach slot states, and the notes say which.",
     'Fill each form with exactly the units its Holds line gives, its count of sentences included. Options, points, pair sides and labels are phrases, not sentences: "Heavier than water", not "The stone is heavier than the water it pushes aside." A question or a step is one sentence.',
     "A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.",
-    'The objective\'s misconception is a wrong option in its hinge; a short one is also the callout of an explain-callout slide, stated as wrong with "not" ("Evaporation is not the same as boiling."); one that needs explaining gets a teach slot of its own.',
+    'The objective\'s misconception reaches a slide. A teach slot that follows the objective\'s photo, figure or diagram slot is an explain-callout, its callout the misconception stated as wrong with "not" ("Evaporation is not the same as boiling."); with no such slot, it is the true-false check\'s statement or a wrong option in the hinge.',
     "A photo's imageBrief names a subject stock photography has and what the photo must show: no names of people and no local places. A figure's figureBrief gives its template and what it shows. A diagram slot's diagram says what to draw and what to label.",
-    "exitQuestion: one question that checks this objective, answered in a line, with its answer.",
+    "exitQuestion: one question that checks this objective, answered in a line from what its slides state, with its answer.",
   ].join("\n"),
   user(input: DesignCycleInput): string {
     const [shapeLine] = shapeBlock(input.shape);

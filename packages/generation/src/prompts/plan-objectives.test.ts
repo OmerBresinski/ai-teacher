@@ -29,7 +29,9 @@ describe("plan-objectives", () => {
     // cases, misconception) and the sketch's arc; the alarm moves once, by that growth.
     // v20: 444, the angle as the parts taught and the procedure test's three cases (round-1
     // judges: repeated slides, dropped strands, no worked example on procedures); moves once.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(450);
+    // v22: 452, the retrieval answer written first (round-2 judges: three starters keyed to an
+    // answer that did not answer them); the alarm moves once, by that growth.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(460);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -183,9 +185,13 @@ describe("plan-objectives", () => {
     // v16: a category word met v14's "not a heading"; the members are named instead.
     expect(system).toContain("where it covers several factors, methods or strategies, name them");
     expect(system).toContain("a different term, fact or method");
-    expect(system).toContain("options the question names; it has one right answer.");
+    // v22: the answer is written first, and the question is worded to it (round-2 starter keys).
+    expect(system).toContain(
+      "Write the answer first, then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
+    );
+    expect(system).toContain('"retrieval": [{ "answer": ');
     expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
-    expect(system).toContain('"retrieval": [{ "question"');
+    expect(system).toContain('"question": "What is an empire?"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.
     expect(system).not.toContain("curriculumAnchor");
     // The count appears once in the prose (the sketch shows one item, as it does for objectives).
