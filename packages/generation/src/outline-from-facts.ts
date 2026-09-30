@@ -9,6 +9,7 @@ import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
 import {
   EXIT_QUIZ_MAX,
   EXIT_QUIZ_MIN,
+  exitStemLine,
   fitsExitTicket,
   fitsLine,
   keptLines,
@@ -87,10 +88,11 @@ import {
  * - Model, then practise: an objective whose questions declare an `apply` demand gets its worked
  *   example placed before the shape's kinds and floors take the budget, and so before its practice.
  *   An objective with apply questions and no worked example is a gap: the facts must supply one.
- * - The exit ticket is short: at most three items (`EXIT_MAX`, UX ruling 108), one per objective
- *   first, and only what fits one slide with its answers on every theme (`fitsExitTicket`); a
- *   ticket the exit questions leave under three is topped up with unused fair questions that can
- *   be asked as a line of it, on the same measure.
+ * - The exit ticket asks one line per objective (the lesson designer plan, requirement 5), for at
+ *   most `EXIT_MAX` objectives, and only what fits one slide with its answers on every theme
+ *   (`fitsExitTicket`): each objective's shortest exit question that fits, else its check
+ *   question's stem (one no slide asks first, then a misconception as true or false, then the
+ *   question its check slide asked; a gap says which). No objective gets a second line.
  */
 
 /** A question as the outline reads it: the facts' fields plus the optional declarations. */
@@ -1099,6 +1101,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     index: i,
     line: questionLine(facts.questions[i] ?? { stem: "", answer: "" }),
   });
+  /** A check question on the exit ticket: its stem, asked open (`exitStemLine`). */
+  const stemItem = (i: number): ExitItem => ({
+    type: "question",
+    index: i,
+    line: exitStemLine(facts.questions[i] ?? { stem: "", answer: "" }),
+  });
   facts.questions.forEach((q, i) => {
     if (isSlideQuestion(q) && asksForUnlistedOptions(q) && !showable(i))
       gap(
@@ -1115,96 +1123,88 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         `Exit question ${i + 1} cannot be a line of the exit quiz (no form a line can show, or too long), so it is left off.`,
       );
     }
-    const round = new Map<number, number>();
-    const ranked = exits
-      .filter(settable)
-      .map((i, at) => {
-        const o = firstObjectiveOf(i) ?? count;
-        const n = round.get(o) ?? 0;
-        round.set(o, n + 1);
-        return { i, at, n };
-      })
-      .sort((a, b) => a.n - b.n || a.at - b.at)
-      .map((r) => questionItem(r.i))
-      // pw: a later exit question that asks what an earlier one asks stays off the quiz.
-      .filter((it, at, all) => !all.slice(0, at).some((prior) => repeats(prior, it)));
-    // One per objective first, on the measure (ruling 108): in the first round each objective in
-    // turn takes its shortest exit question that still fits beside those kept, so as many
-    // objectives as the slide can hold are checked; later rounds take the rest in rank order,
-    // up to the cap.
+    // One line per objective, in objective order (the lesson designer plan, requirement 5): each
+    // objective takes its shortest exit question that still fits beside the lines kept, measured
+    // on every theme (`fitsExitTicket`); no objective gets a second line, so none is skipped for
+    // another's. An objective with no exit question that fits is asked its check question's stem
+    // instead (a fair slide or worksheet question on it, the one its check slide asks first), and
+    // the gap says so. At most `EXIT_QUIZ_MAX` objectives are on the ticket.
     const kept: ExitItem[] = [];
     const fits = (it: ExitItem) =>
       fitsLine(it.line) && fitsExitTicket([...kept.map((k) => k.line), it.line]);
-    const byObjective = new Map<number, ExitItem[]>();
-    for (const it of ranked) {
-      const o = firstObjectiveOf(it.index) ?? count;
-      byObjective.set(o, [...(byObjective.get(o) ?? []), it]);
-    }
-    let added = true;
-    for (let round = 0; added && kept.length < EXIT_QUIZ_MAX; round++) {
-      added = false;
-      for (const [, pool] of byObjective) {
-        if (kept.length >= EXIT_QUIZ_MAX) break;
-        const order =
-          round === 0 ? [...pool].sort((a, b) => a.line.text.length - b.line.text.length) : pool;
-        const pick = order.find(fits);
-        const at = pick ? pool.indexOf(pick) : -1;
-        if (at < 0) continue;
-        kept.push(...pool.splice(at, 1));
-        added = true;
+    const fresh = (it: ExitItem) => !kept.some((k) => repeats(k, it));
+    const byLength = (a: ExitItem, b: ExitItem) => a.line.text.length - b.line.text.length;
+    const onTicket = all.slice(0, EXIT_QUIZ_MAX);
+    for (const o of onTicket) {
+      const own = exits
+        .filter((i) => settable(i) && (firstObjectiveOf(i) ?? count) === o)
+        .map(questionItem)
+        .filter(fresh)
+        .sort(byLength);
+      const pick = own.find(fits);
+      if (pick) {
+        kept.push(pick);
+        continue;
       }
-    }
-    if (kept.length === 0 && ranked[0]) kept.push(ranked[0]);
-    exitItems.push(...kept);
-    const over = ranked.filter((it) => !kept.includes(it));
-    if (over.length > 0) {
-      gap(
-        `The exit quiz holds ${EXIT_QUIZ_MAX} items that fit one slide, so exit question${over.length === 1 ? "" : "s"} ${over.map((it) => it.index + 1).join(", ")} ${over.length === 1 ? "is" : "are"} left off it.`,
+      const checks = facts.questions
+        .flatMap((q, i) =>
+          q.use !== "exit" && (firstObjectiveOf(i) ?? count) === o && fair(i) && admitsOpen(i)
+            ? [stemItem(i)]
+            : [],
+        )
+        .filter(fresh)
+        // A question no slide asks first, so nothing is asked twice; then the one its check slide
+        // asks. Shortest first within each.
+        .sort(
+          (x, y) =>
+            Number(used.questions.has(x.index)) - Number(used.questions.has(y.index)) ||
+            byLength(x, y),
+        );
+      // A question no slide asks yet, then a true/false line on one of its misconceptions (not
+      // already a slide of its own), and only then the question its check slide already asked.
+      const fresher = checks.filter((it) => !used.questions.has(it.index));
+      const asked = checks.filter((it) => used.questions.has(it.index));
+      const onSlide = new Set(
+        slots.flatMap((x) =>
+          x.kind === "true-false" && x.misconception !== undefined ? [x.misconception] : [],
+        ),
       );
-    }
-    const itemsOn = (o: number) => exitItems.filter((it) => itemObjectives(it).includes(o)).length;
-    const fewest = (objectives: number[]) => Math.min(...objectives.map(itemsOn));
-    const topUp = (candidates: ExitItem[]) => {
-      const sorted = candidates.sort(
-        (a, b) =>
-          fewest(itemObjectives(a)) - fewest(itemObjectives(b)) ||
-          (a.type === "question" ? tierRank(a.index) : 0) -
-            (b.type === "question" ? tierRank(b.index) : 0) ||
-          a.index - b.index,
-      );
-      for (const it of sorted) {
-        if (exitItems.length >= EXIT_QUIZ_MAX) return;
-        if (!fitsLine(it.line) || !fitsExitTicket([...exitItems.map((on) => on.line), it.line]))
-          continue;
-        if (exitItems.some((on) => repeats(on, it))) continue;
-        exitItems.push(it);
-      }
-    };
-    topUp(
-      facts.questions.flatMap((q, i) =>
-        q.use !== "exit" &&
-        !used.questions.has(i) &&
-        q.demand !== "judgement" &&
-        settable(i) &&
-        fair(i)
-          ? [questionItem(i)]
-          : [],
-      ),
-    );
-    const onSlide = new Set(
-      slots.flatMap((x) =>
-        x.kind === "true-false" && x.misconception !== undefined ? [x.misconception] : [],
-      ),
-    );
-    topUp(
-      facts.misconceptions.flatMap((m, i) =>
-        !onSlide.has(i) &&
-        m.objectiveRefs.length > 0 &&
-        refIndices(m.objectiveRefs).every((o) => taught(o))
+      const myths = facts.misconceptions.flatMap((m, i) =>
+        !onSlide.has(i) && refIndices(m.objectiveRefs)[0] === o
           ? [{ type: "misconception" as const, index: i, line: misconceptionLine(m) }]
           : [],
-      ),
+      );
+      const stand = fresher.find(fits) ?? myths.find(fits) ?? asked.find(fits);
+      if (stand) {
+        kept.push(stand);
+        gap(
+          stand.type === "question"
+            ? `${nth(o)} has no exit question that fits the exit ticket, so the stem of its check question ${stand.index + 1} is asked there.`
+            : `${nth(o)} has no exit question that fits the exit ticket, so misconception ${stand.index + 1} is asked there as true or false.`,
+        );
+        continue;
+      }
+      gap(
+        `${nth(o)} has no exit or check question that fits the exit ticket, so the ticket does not check it.`,
+      );
+    }
+    if (count > onTicket.length) {
+      gap(
+        `The exit ticket holds one line for each of the first ${EXIT_QUIZ_MAX} objectives, so ${all
+          .slice(EXIT_QUIZ_MAX)
+          .map(nth)
+          .join(", ")} ${count - EXIT_QUIZ_MAX === 1 ? "is" : "are"} not on it.`,
+      );
+    }
+    exitItems.push(...kept);
+    const over = exits.filter(
+      (i) => settable(i) && !kept.some((it) => it.type === "question" && it.index === i),
     );
+    if (over.length > 0) {
+      gap(
+        `The exit ticket asks one line per objective and fits one slide, so exit question${over.length === 1 ? "" : "s"} ${over.map((i) => i + 1).join(", ")} ${over.length === 1 ? "is" : "are"} left off it.`,
+      );
+    }
     if (exitItems.length < EXIT_QUIZ_MIN) {
       gap(
         `The exit quiz has ${exitItems.length} item${exitItems.length === 1 ? "" : "s"}: the facts have no other question or misconception that can be a line of it.`,

@@ -2,6 +2,7 @@ import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { safeError } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
+import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
 import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
@@ -240,6 +241,22 @@ export interface PipelineOptions {
 }
 
 /**
+ * The summary's `fit` block (the lesson designer plan, PR 0): slides asked for and delivered,
+ * slides that overflow per theme, callouts planned and placed, and the pages the editor's first
+ * open would add — `fitReport` in `@tj/slides`, the function the fit-lab scorer prints too. A
+ * measuring fault never costs the summary line: it is logged and the block is left off.
+ */
+function fitOf(lesson: Lesson, deps: PipelineDeps): FitReport | undefined {
+  if (lesson.slides.length === 0) return undefined;
+  try {
+    return fitReport(lesson);
+  } catch (error) {
+    deps.logger.warn({ err: safeError(error) }, "fit report failed");
+    return undefined;
+  }
+}
+
+/**
  * Run the workflow for one job. Resolves with the final state; rejects with the stage's own
  * error (`StageFailure`, `AbortError`, …). Writes the one `generation summary` line (§16).
  */
@@ -308,6 +325,7 @@ export async function runLessonPipeline(
     const findings = { error: 0, warning: 0 };
     for (const f of checkpoint?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
     const totals = deps.budget.totals();
+    const fit = checkpoint ? fitOf(checkpoint.lesson, deps) : undefined;
     deps.logger.info(
       {
         generation: {
@@ -322,6 +340,7 @@ export async function runLessonPipeline(
           durationMs: Date.now() - startedAt,
           ...(readableMs !== undefined ? { readableMs } : {}),
           ...(checkedMs !== undefined ? { checkedMs } : {}),
+          ...(fit ? { fit } : {}),
         },
       },
       "generation summary",

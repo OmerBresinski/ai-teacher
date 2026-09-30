@@ -60,14 +60,14 @@ const demandFor = (n: number, slideCount: 10 | 12 = 10, withRetrieval = true) =>
 };
 
 describe("questionDemand", () => {
-  test("two objectives at ten slides: a set of two on each, three exit lines across them", () => {
+  test("two objectives at ten slides: a set of two on each, one exit line on each", () => {
     const { demand, counts, outline } = demandFor(2);
     expect(demand).toEqual([
-      { slide: 2, exit: 2 },
+      { slide: 2, exit: 1 },
       { slide: 2, exit: 1 },
     ]);
     expect(counts).toEqual([
-      { slide: 2 + SPARE.slide, exit: 2 + SPARE.exit },
+      { slide: 2 + SPARE.slide, exit: 1 + SPARE.exit },
       { slide: 2 + SPARE.slide, exit: 1 + SPARE.exit },
     ]);
     expect(outline.skeleton.outline.map((e) => e.kind)).toEqual([
@@ -173,8 +173,9 @@ describe("questionDemand", () => {
       ...base,
       facts: sketchTaught(ratio.objectives, [false, true]),
     });
+    // One exit line per objective (the lesson designer plan, requirement 5).
     expect(demand).toEqual([
-      { slide: 2, exit: 2 },
+      { slide: 2, exit: 1 },
       { slide: 2, exit: 1 },
     ]);
     const asked = counts.reduce((n, c) => n + c.slide + c.exit, 0);

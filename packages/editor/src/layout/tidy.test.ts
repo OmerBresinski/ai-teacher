@@ -304,6 +304,59 @@ describe("TEACH-248: steps at the tolerant ceiling never throw", () => {
   });
 });
 
+describe("split: false (the lesson designer plan, requirement 2)", () => {
+  const items = Array.from(
+    { length: 40 },
+    (_, i) => `Item number ${i + 1} on this very long list of things`,
+  );
+  const aiText = (el: TextElement): TextElement => ({
+    ...el,
+    generatedFrom: generatedFrom(["o1"]),
+    authoredBy: "ai",
+  });
+
+  test("a generated slide is reflowed but never continued, and what will not fit is reported", () => {
+    const lesson = lessonWith([
+      aiText(text("h", 43, 60, "Learning objectives", "heading")),
+      aiText(text("list", 120, 300, items.join("\n"))),
+    ]);
+    const sid = lesson.slides[0]?.id ?? "";
+    const out = tidySlide(lesson, sid, ruler);
+    expect(out.outcome.continued).toBe(0);
+    expect(out.lesson.slides).toHaveLength(lesson.slides.length);
+    expect(out.outcome.overflow).toContain("list");
+    // Every word stays on the slide: nothing is cut or carried.
+    const list = out.lesson.slides[0]?.elements.find((e) => e.id === "list") as TextElement;
+    expect(docToPlainText(list.doc)).toBe(docToPlainText(docFromText(items.join("\n"))));
+  });
+
+  test("the same slide once a teacher has edited it still continues", () => {
+    const heading = aiText(text("h", 43, 60, "Learning objectives", "heading"));
+    const list = {
+      ...aiText(text("list", 120, 300, items.join("\n"))),
+      authoredBy: "teacher" as const,
+    };
+    const lesson = lessonWith([heading, list]);
+    const out = tidySlide(lesson, lesson.slides[0]?.id ?? "", ruler);
+    expect(out.outcome.continued).toBeGreaterThanOrEqual(1);
+  });
+
+  test("split: false holds for a teacher's slide too when asked, and split: true overrides", () => {
+    const plain = lessonWith([
+      text("h", 43, 60, "Learning objectives", "heading"),
+      text("list", 120, 300, items.join("\n")),
+    ]);
+    const sid = plain.slides[0]?.id ?? "";
+    expect(tidySlide(plain, sid, ruler, { split: false }).outcome.continued).toBe(0);
+    const generated = lessonWith([
+      aiText(text("h", 43, 60, "Learning objectives", "heading")),
+      aiText(text("list", 120, 300, items.join("\n"))),
+    ]);
+    const gid = generated.slides[0]?.id ?? "";
+    expect(tidySlide(generated, gid, ruler, SPLIT).outcome.continued).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("tidyMessage", () => {
   test("names what happened, and what still will not fit", () => {
     expect(
@@ -353,6 +406,13 @@ describe("tidyMessage", () => {
     );
   });
 });
+
+/*
+ * The split engine on recipe-laid slides. A materialised slide is a generated one, which Tidy
+ * never splits by default (the lesson designer plan, requirement 2); these hold the engine itself,
+ * as it runs for a teacher's slide.
+ */
+const SPLIT = { split: true } as const;
 
 describe("fills continuations and splits worked examples (TEACH-18)", () => {
   const rule = (id: string, y: number): ShapeElement => ({
@@ -519,7 +579,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
       "before you write it down. Then explain in one sentence how you would share 36 sweets in the " +
       "same ratio without starting the whole calculation again from the beginning.";
     const { lesson, slide } = workedExample(question, sevenSteps);
-    const out = tidySlide(lesson, slide.id, ruler);
+    const out = tidySlide(lesson, slide.id, ruler, SPLIT);
     expect(out.outcome.continued).toBe(1);
     const [head, cont] = out.lesson.slides;
     // Six question lines push the card to the foot: not one step fits under them, so the whole
@@ -540,14 +600,14 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
 
   test("AC4: when only the steps overflow, the split is the same and nothing is left over", () => {
     const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", sevenSteps);
-    const out = tidySlide(lesson, slide.id, ruler);
+    const out = tidySlide(lesson, slide.id, ruler, SPLIT);
     expect(out.outcome.continued).toBe(1);
     expect(out.outcome.overflow).toEqual([]);
     const [head, cont] = out.lesson.slides;
     const headSteps = bodies(head).find((b) => b.doc.content?.[0]?.type === "orderedList");
     if (!headSteps) throw new Error("head steps");
     expectWorkingCard(cont, docLineCount(headSteps.doc) + 1);
-    expect(tidySlide(out.lesson, slide.id, ruler).outcome.changed).toBe(false);
+    expect(tidySlide(out.lesson, slide.id, ruler, SPLIT).outcome.changed).toBe(false);
   });
 
   describe("continuation text takes the full safe width (ruling 102, T18-6)", () => {
@@ -658,7 +718,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     slide.elements = slide.elements.map((e) =>
       e.type === "text" && e.doc.content?.[0]?.type === "orderedList" ? { ...e, h: 600 } : e,
     );
-    const out = tidySlide(lesson, slide.id, ruler);
+    const out = tidySlide(lesson, slide.id, ruler, SPLIT);
     expect(out.outcome.continued).toBe(1);
     const [head, cont] = out.lesson.slides;
     const headSteps = bodies(head).find((b) => b.doc.content?.[0]?.type === "orderedList");
@@ -874,7 +934,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(source.elements[reflowed.splitAt ?? -1]?.id).toBe(card.id);
     expect(reflowed.overflow).toContain(steps.id);
 
-    const out = tidySlide(freud, source.id, measure);
+    const out = tidySlide(freud, source.id, measure, { split: true });
     expect(out.outcome.continued).toBe(1);
     expect(out.outcome.overflow).toEqual([]);
     expect(tidyMessage(out.outcome)).toContain("list continued on a new slide");

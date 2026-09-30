@@ -37,6 +37,7 @@ export function refitStaleLesson(lesson: Lesson, deps: RefitDeps = {}): Lesson {
     (slide) => !lintSlide(renderedHeights(slide, measure), measure, theme).ok,
   );
   let out = lesson;
+  // A generated slide is never continued (`tidySlide`'s default for it is `split: false`).
   for (const id of plan.slideIds) out = tidySlide(out, id, measure).lesson;
   return out === lesson ? lesson : { ...out, fitVersion: plan.version };
 }

@@ -209,38 +209,54 @@ describe("runFitMigration", () => {
     expect(read().fitVersion).toBe(FIT_VERSION);
   });
 
-  test("row 3: a worker-shaped worked-example with four 64-character steps has no lint left after the first open", () => {
+  test("row 3: a worker-shaped worked-example is reflowed on first open but never continued", () => {
     const step = "Gnawing scrapes the incisors down, so they never grow past the lip.";
     expect(step.length).toBeGreaterThanOrEqual(64);
-    const slide = materialiseSlide(
-      {
-        kind: "worked-example",
-        heading: "Why does a mouse gnaw a hard seed?",
-        question: "Explain why a mouse gnaws hard nuts even when it is not hungry.",
-        steps: [step, step, step, step],
-        factRefs: ["x1"],
-      },
-      "chalk",
-      { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
-      (() => {
-        let n = 0;
-        return () => `e${++n}`;
-      })(),
-    );
-    // As the worker writes it: laid out by the recipe, never fitted in a browser.
-    const { read, deps } = setup(stale([slide]));
+    const make = () =>
+      materialiseSlide(
+        {
+          kind: "worked-example",
+          heading: "Why does a mouse gnaw a hard seed?",
+          question: "Explain why a mouse gnaws hard nuts even when it is not hungry.",
+          steps: [step, step, step, step],
+          factRefs: ["x1"],
+        },
+        "chalk",
+        { promptVersion: "test", model: "test", at: "2026-09-11T00:00:00.000Z" },
+        (() => {
+          let n = 0;
+          return () => `e${++n}`;
+        })(),
+      );
     const theme = getTheme("chalk");
     const ruler = rulerFor(theme);
+
+    // As the worker writes it: every element the AI's. Under the test ruler (harsher than the
+    // headless one generation fits with) the steps wrap and run past the card; the migration
+    // tidies the slide but adds no page to a generated lesson (the lesson designer plan, req. 2).
+    const generated = setup(stale([make()]));
     let out: ReturnType<typeof runFitMigration> | undefined;
     act(() => {
-      out = runFitMigration(deps({ measurer: () => ruler }));
+      out = runFitMigration(generated.deps({ measurer: () => ruler }));
     });
-    // Under the test ruler the steps wrap to two lines each and run past the card: the migration
-    // flags the slide and the tidy carries the tail onto a continuation slide (`continued: 1`).
+    expect(out?.ran).toBe(true);
+    expect(generated.read().slides).toHaveLength(1);
+    expect(generated.read().fitVersion).toBe(FIT_VERSION);
+
+    // The same slide once the teacher has typed in it is theirs: the first open continues it and
+    // leaves no lint behind, as before.
+    const edited = make();
+    edited.elements = edited.elements.map((e, i) =>
+      i === 0 ? { ...e, authoredBy: "teacher" } : e,
+    );
+    const teacher = setup(stale([edited]));
+    act(() => {
+      out = runFitMigration(teacher.deps({ measurer: () => ruler }));
+    });
     expect(out).toEqual({ ran: true, tidied: 1 });
-    const after = read().slides[0];
+    expect(teacher.read().slides.length).toBeGreaterThan(1);
+    const after = teacher.read().slides[0];
     if (!after) throw new Error("slide");
-    expect(read().fitVersion).toBe(FIT_VERSION);
     expect(lintSlide(renderedHeights(after, ruler), ruler, theme).ok).toBe(true);
   });
 

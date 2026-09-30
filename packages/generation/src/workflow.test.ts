@@ -3,6 +3,7 @@ import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { type Lesson, parseLesson } from "@tj/domain/documents";
 import type { StoredPhoto } from "@tj/images";
+import { FIT_VERSION } from "@tj/slides";
 import { PROMPT_VERSIONS } from "./prompts";
 import { assignFactIds } from "./specs";
 import { GENERATE_CONCURRENCY } from "./stages/generate";
@@ -228,6 +229,23 @@ describe("runLessonPipeline", () => {
     expect(accepted).toMatchObject({ stage: "plan", photographable: true });
     expect(JSON.stringify(accepted)).not.toContain("camera captures");
     expect(summary.generation.stages).toContain("illustrate");
+    // The fit block (designer plan PR 0): counts from `fitReport`, the fit-lab scorer's function.
+    const fit = summary.generation.fit;
+    expect(fit.slides).toEqual({
+      requested: lesson.brief?.slideCount ?? null,
+      delivered: lesson.slides.length,
+      stored: lesson.slides.length,
+    });
+    expect(Object.keys(fit.overflowing)).toHaveLength(10);
+    expect(fit.callouts.placed).toBeLessThanOrEqual(lesson.slides.length);
+    expect(typeof fit.pagesOnOpen).toBe("number");
+    // Saved fitted: the lesson carries the current fitVersion, so the first open is a no-op, and
+    // every generated slide went through the save gate, one line each.
+    expect(lesson.fitVersion).toBe(FIT_VERSION);
+    expect(fit.pagesOnOpen).toBe(0);
+    const gates = lines.map((l) => JSON.parse(l)).filter((r) => r.msg === "save gate");
+    expect(gates).toHaveLength(GENERATED_SLIDES);
+    expect(gates.every((g) => typeof g.fits === "boolean" && g.stage === "generate")).toBe(true);
     // Picture first: the photograph landed with its slide's persist, so the illustrate step had
     // nothing left to place and reported no 88 progress event (the strip tolerates that).
     expect(deps.progress.some((p) => p.message === "Pictures placed")).toBe(false);

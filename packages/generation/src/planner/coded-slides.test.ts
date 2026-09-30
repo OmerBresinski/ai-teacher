@@ -317,10 +317,25 @@ const needOf = (slide: Slide, el: TextElement, themeId: string) => {
   return measureHeadless(theme)({ ...parts, width: el.w });
 };
 
-describe("the exit ticket: at most three, on one slide (TEACH-172, ruling 108)", () => {
-  test("the cap is three; one prints a ticket", () => {
-    expect(EXIT_QUIZ_MAX).toBe(3);
+describe("the exit ticket: one line per objective, on one slide (TEACH-172)", () => {
+  test("the cap is four, one per objective; one prints a ticket", () => {
+    expect(EXIT_QUIZ_MAX).toBe(4);
     expect(EXIT_QUIZ_MIN).toBe(1);
+  });
+
+  test("a check question standing in for an objective's exit line is asked as its stem", () => {
+    const exit = mcOf("a", 80, 8);
+    const check = { ...mcOf("b", 90, 8), use: "slide" as const };
+    const items = itemsOf(
+      codedSetSpec(
+        entry("exit-ticket", ["a", "b"]),
+        exitFacts([exit, check as unknown as typeof exit]),
+        "L:9",
+      ),
+    );
+    expect(items[0]).toContain("A ");
+    // The stand-in: the stem alone, no options, its answer still revealed.
+    expect(items[1]).toBe(check.stem.trim());
   });
 
   test("five short questions: the first three are kept, in order", () => {
