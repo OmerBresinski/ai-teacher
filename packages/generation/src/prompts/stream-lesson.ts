@@ -20,9 +20,11 @@ import { WRITE_RULES } from "./write-slides";
  * diagrams, the photo's `named`).
  * v5: the practise role names its form by the objective's verb (v4 smoke: history practice was recall).
  * v6: the photo slot's schema carries `named` (proper name or null), as the v4 text already asks.
+ * v7: teaching first (plan-lesson.v10's budget): the frame no longer takes the teach slides, and
+ * there is no exit slide. Each slide's notes come last in its schema (plan-write/stream.ts).
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v6";
+export const STREAM_LESSON_VERSION = "stream-lesson.v7";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -42,8 +44,8 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
     "practise (pupils work alone on new cases, up to the hardest the lesson taught: a question set that steps up when its objective is to work something out, a written task when it is to explain or describe)",
   ],
   [
-    "The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; where pupils practise and apply; and whether it closes with a check.",
-    "The objectives slide does not open the lesson; the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. Then each idea is taught with a check soon after, a hinge checks the idea everything after it depends on before pupils work alone, at least one practise slide has pupils work alone on new cases, and an exit closes the lesson. How many slides each idea takes and where the hinge falls are yours. When the slides are few, checks cover two objectives each rather than losing the starter, the practice or an objective.",
+    "The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.",
+    "The objectives slide does not open the lesson; when the slides allow, the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. Each idea is taught with a check soon after, a hinge checks the idea everything after it depends on before pupils work alone, and a practise slide has pupils work alone on new cases. The exit ticket is on the worksheet, so no slide is an exit. How many slides each idea takes and where the hinge falls are yours.",
   ],
   [
     "A slide whose idea cannot be pictured has none.",
