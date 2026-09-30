@@ -222,19 +222,19 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
-  // spike/teach-type: at the teaching body size these steps fit as step cards, so the working-card
-  // fallback this pins is no longer reached; re-pin with a longer fixture before this ships.
-  test.skip("a one-line question hands its second line to the working, which stays on its card", () => {
+  // Steps of two lines each at the teaching body size: too long for step cards or a strip, so the
+  // worked example keeps its working card (the fallback this pins).
+  test("a one-line question hands its second line to the working, which stays on its card", () => {
     const slide = make(
       {
         kind: "worked-example",
         heading: "Explain why the Bolsheviks won the Civil War",
         question: "Explain why the Bolsheviks won the Russian Civil War.",
         steps: [
-          "They controlled central Russia and its railways.",
-          "This let them move troops and supplies between fronts.",
-          "The White forces were divided and had different aims.",
-          "Together, Red control and White disunity made victory more likely.",
+          "They controlled central Russia, its big industrial cities and the main railway lines",
+          "Railways let them move troops and supplies quickly between the different fronts of the war",
+          "The White armies were divided, far apart and wanted different things after the war was won",
+          "Red control of the centre and White disunity together made a Bolshevik victory far more likely",
         ],
         factRefs: ["x1"],
       },
@@ -248,9 +248,9 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
-  // spike/teach-type: at the teaching body size these steps fit as step cards, so the working-card
-  // fallback this pins is no longer reached; re-pin with a longer fixture before this ships.
-  test.skip("the showcase's two-line question leaves five working lines no card can hold: reported", () => {
+  // Steps of two lines each at the teaching body size: too long for step cards or a strip, so the
+  // worked example keeps its working card (the fallback this pins).
+  test("the showcase's two-line question leaves five working lines no card can hold: reported", () => {
     const slide = make(
       {
         kind: "worked-example",
@@ -258,10 +258,10 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
         question:
           "Explain why the Bolsheviks won the Russian Civil War. Choose the strongest two reasons from a source pack.",
         steps: [
-          "They controlled central Russia and its railways.",
-          "This let them move troops and supplies between fronts.",
-          "The White forces were divided and had different aims.",
-          "Together, Red control and White disunity made victory more likely.",
+          "They controlled central Russia, its big industrial cities and the main railway lines, and why",
+          "Railways let them move troops and supplies quickly between the different fronts, and why",
+          "The White armies were divided, far apart and wanted different things after the war, and why",
+          "Red control of the centre and White disunity together made a Bolshevik victory likely, and why",
         ],
         factRefs: ["x1"],
       },

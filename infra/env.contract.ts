@@ -755,6 +755,33 @@ const CONTRACT = [
       "Which planner plans a new lesson (TEACH-93, ADR 0033). `objectives-first` (default since the decision of 25–26 Sept 2026, SHIP-H-PLAN §3 item 9): `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. `legacy`: the skeleton and facts calls in `lesson.plan`. `designer` (lesson designer, TEACH-199/208, lab only): the title first, the objectives call with its arc, then one streamed design-cycle call per objective whose slots are fitted and saved as they land. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `legacy`.",
   },
   {
+    name: "PLAN_WRITE_PLANNER_MODEL",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "Plan-write's planner model (spike/plan-write), the one call that designs the whole lesson. Default `openai/gpt-6.1-sol`; its writers run on `openai/gpt-6-luna`. Read only when `AI_LESSON_PLANNER=plan-write`. Not set on Railway.",
+  },
+  {
+    name: "PLAN_WRITE_MODE",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["plan-write", "stream"],
+    files: ["worker"],
+    description:
+      "Plan-write's arm (spike/plan-write): `stream` (default, one `PLAN_WRITE_PLANNER_MODEL` call plans and writes every slide) or `plan-write` (the planner, then parallel writers). Read only when `AI_LESSON_PLANNER=plan-write`. Not set on Railway.",
+  },
+  {
     name: "AI_LESSON_COST_WARN_USD",
     services: ["worker"],
     scope: "config",
