@@ -191,6 +191,8 @@ export const CALL_TIMEOUT_MS = {
   "plan-objectives": 75_000,
   "plan-facts-objective": 150_000,
   "plan-teach-objective": 45_000,
+  // Replaces plan-teach-objective on the designer path; smoke max 11.5 s on gpt-6-luna low.
+  "design-cycle": 45_000,
   "plan-question-set": 60_000,
   "verify-facts": 180_000,
   "generate-slide": 180_000,
@@ -232,6 +234,8 @@ export const FAST_CALL_TIMEOUT_MS: Readonly<Partial<Record<PromptName, number>>>
   "plan-objectives": 75_000,
   "plan-question-set": 60_000,
   "plan-teach-objective": 45_000,
+  // Replaces plan-teach-objective on the designer path; smoke max 11.5 s on gpt-6-luna low.
+  "design-cycle": 45_000,
   repair: 30_000,
   "repair-fact": 30_000,
   "verify-facts": 30_000,

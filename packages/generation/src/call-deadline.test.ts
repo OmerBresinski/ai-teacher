@@ -120,9 +120,11 @@ test("each registered prompt uses its stage-specific deadline across version bum
     "plan-facts-objective": 150,
     "plan-teach-objective": 45,
     "plan-question-set": 60,
+    "design-cycle": 45,
   };
   const legacy = [
-    180, 180, 300, 300, 300, 300, 300, 180, 180, 300, 180, 180, 180, 180, 300, 180, 180, 300, 300,
+    180, 180, 300, 300, 300, 300, 45, 300, 180, 180, 300, 180, 180, 180, 180, 300, 180, 180, 300,
+    300,
   ];
   const expected = Object.values(PROMPTS).map(
     (prompt, i) => byName[prompt.version.replace(/\.v\d+$/, "")] ?? (legacy[i] as number),

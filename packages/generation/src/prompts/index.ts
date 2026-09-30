@@ -1,4 +1,5 @@
 import { checkInputPrompt } from "./check-input";
+import { designCyclePrompt } from "./design-cycle";
 import { evaluatePrompt } from "./evaluate";
 import { generateSlidePrompt } from "./generate-slide";
 import { generateWorksheetPrompt } from "./generate-worksheet";
@@ -26,6 +27,8 @@ import { verifyFactsPrompt } from "./verify-facts";
  */
 
 export type { CheckInputInput } from "./check-input";
+export type { DesignCycleInput, DesignCycleOutput, DesignSlot, SlotForm } from "./design-cycle";
+export { designCycleSchemaFor, slotFormsFor } from "./design-cycle";
 export type { EvaluateInput } from "./evaluate";
 export type { GenerateSlideInput, SlidePhoto } from "./generate-slide";
 export { IMAGE_TEXT_RULE, photoBlock } from "./generate-slide";
@@ -52,6 +55,7 @@ export type { VerifyFactsInput } from "./verify-facts";
 export {
   cascadePrompt,
   checkInputPrompt,
+  designCyclePrompt,
   evaluatePrompt,
   generateSlidePrompt,
   generateWorksheetFillPrompt,
@@ -78,6 +82,7 @@ export const PROMPTS = {
   "plan-objectives": planObjectivesPrompt,
   "plan-facts-objective": planFactsObjectivePrompt,
   "plan-teach-objective": planTeachObjectivePrompt,
+  "design-cycle": designCyclePrompt,
   "plan-question-set": planQuestionSetPrompt,
   "verify-facts": verifyFactsPrompt,
   "generate-slide": generateSlidePrompt,
@@ -101,6 +106,7 @@ export const PROMPT_VERSIONS = {
   "plan-objectives": planObjectivesPrompt.version,
   "plan-facts-objective": planFactsObjectivePrompt.version,
   "plan-teach-objective": planTeachObjectivePrompt.version,
+  "design-cycle": designCyclePrompt.version,
   "plan-question-set": planQuestionSetPrompt.version,
   "verify-facts": verifyFactsPrompt.version,
   "generate-slide": generateSlidePrompt.version,

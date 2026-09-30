@@ -1,6 +1,8 @@
+import { paletteMenu } from "@tj/slides";
 import { lessonShapeOf } from "../shapes";
 import { audienceOf } from "../stages/shared";
 import { sampleBriefLesson } from "../testing";
+import type { DesignCycleInput } from "./design-cycle";
 import type { PlanFactsObjectiveInput } from "./plan-facts-objective";
 import type { PlanObjectivesInput } from "./plan-objectives";
 import type { PlanQuestionSetInput } from "./plan-question-set";
@@ -129,4 +131,40 @@ export const PLAN_FACTS_OBJECTIVE_SAMPLE: PlanFactsObjectiveInput = {
       "- Term: villa — a large Roman country house with farmland.",
     ].join("\n"),
   },
+};
+
+/** design-cycle v1's sample: objective 2 of a three-objective Year 4 lesson, with every arc. */
+export const DESIGN_CYCLE_SAMPLE: DesignCycleInput = {
+  topic: "The Roman invasion of Britain",
+  audience: { ...audience, subject: "History", yearGroup: "Year 4" },
+  shape: SHAPE,
+  objectives: [
+    {
+      text: "Explain why the Romans invaded Britain",
+      arc: {
+        angle: "Britain's wealth and an emperor who needed a victory",
+        lean: "list",
+        misconception: "The Romans invaded only to take treasure",
+      },
+    },
+    {
+      text: "Describe how the Roman army was organised",
+      arc: {
+        angle: "What a legionary carried and how a legion fought",
+        lean: "photo",
+        misconception: "Roman soldiers fought alone, like knights",
+      },
+    },
+    {
+      text: "Explain how the Romans changed daily life in Britain",
+      arc: {
+        angle: "Roads, towns and baths as the lasting marks",
+        lean: "diagram-slot",
+        misconception: "The Romans left no trace in Britain",
+      },
+    },
+  ],
+  objectiveIndex: 1,
+  slots: { count: 2, first: 6, slideCount: 10 },
+  palette: paletteMenu("History"),
 };
