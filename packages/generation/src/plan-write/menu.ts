@@ -38,14 +38,14 @@ export function setSchema() {
     questions: z
       .array(
         z.object({
-          question: z.string().trim().min(1).describe("one question, in one sentence"),
-          answer: z.string().trim().min(1).describe("a phrase, not a full sentence"),
+          question: z.string().trim().min(1).describe("one question, at most two lines"),
+          answer: z.string().trim().min(1).describe("a short answer, half a line"),
         }),
       )
       .min(1)
       .max(SET_MAX)
       .describe(
-        `questions: 1–${SET_MAX} items, each with question: one question, in one sentence; answer: a phrase, not a full sentence (shown after the reveal)`,
+        `questions: 1–${SET_MAX} items, each with question: one question, at most two lines; answer: a short answer, half a line (shown after the reveal)`,
       ),
   });
 }
@@ -53,7 +53,7 @@ export function setSchema() {
 export function setContractText(form: SetForm): string {
   return [
     `${form}:`,
-    `- questions: 1–${SET_MAX} items, each with question: one question, in one sentence; answer: a phrase, not a full sentence, shown after the reveal`,
+    `- questions: 1–${SET_MAX} items, each with question: one question, at most two lines; answer: a short answer, half a line, shown after the reveal`,
   ].join("\n");
 }
 

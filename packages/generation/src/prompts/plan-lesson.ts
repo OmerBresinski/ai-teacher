@@ -9,7 +9,7 @@ import { type Audience, audienceBlock } from "./shared";
  * in the schemas is part of the prompt (the key before the question, the content before the form).
  */
 
-export const PLAN_LESSON_VERSION = "plan-lesson.v2";
+export const PLAN_LESSON_VERSION = "plan-lesson.v3";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -196,7 +196,7 @@ When the topic holds more than the slides do, leave the rest for a later lesson.
 
 Each row, fields in order, split by " | ", "-" for none:
 - role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on), practise (pupils use the idea on a new case, in their own words) or exit (a closing check).
-- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, or a figure draws a process, a structure or a layout. Steps, stages or a chain of events are a sequence; two things set side by side are a compare; a method pupils will carry out is a worked example; a real thing, place or event pupils may never have seen, or one that surprises, is a photo. A lesson whose ideas cannot be seen has no picture.
+- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, or a figure draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, and a sort only checks an order already taught; a hinge whose options are ideas, methods or outlines rather than single terms or numbers takes the stacked layout; two things set side by side are a compare; a method pupils will carry out is a worked example; a real thing, place or event pupils may never have seen, or one that surprises, is a photo. A lesson whose ideas cannot be seen has no picture.
 - objectives: the numbers of the objectives it serves, split by commas; "-" for retrieve or hook.
 - parts: how many items its layout's counted slot will hold: its steps, points, sides, pairs, cards, terms, gaps, options, questions or sentences. The parts fit the layout's count. When an idea has more parts than a form holds, choose a form that holds them or split the idea over two slides.
 - aim: what the slide does, in a few words; the writer adds the detail.

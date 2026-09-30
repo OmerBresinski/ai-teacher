@@ -166,7 +166,8 @@ export const CASES: BenchCase[] = [
   {
     id: "HARD-y8-hinge-outline",
     form: "hinge",
-    layout: "default",
+    // plan-lesson.v3 takes the stacked layout for outline options (checked in layout mode).
+    layout: "stacked",
     ks: "KS3",
     hard: "long-option hinge (speech outlines)",
     from: { file: "pw2-smoke/S/y8-persuasive.lesson.json", slide: 6 },

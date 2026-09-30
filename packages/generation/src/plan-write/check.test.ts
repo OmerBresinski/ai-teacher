@@ -103,7 +103,11 @@ describe("plan-write code check", () => {
 describe("plan-write menu", () => {
   it("lists every layout with its contract, the question sets included", () => {
     const m = planMenu("science");
-    expect(m.filter((e) => e.form === "hinge").map((e) => e.layout)).toEqual(["default", "why"]);
+    expect(m.filter((e) => e.form === "hinge").map((e) => e.layout)).toEqual([
+      "default",
+      "stacked",
+      "why",
+    ]);
     expect(m.find((e) => e.form === "sequence")?.capacity).toBe(4);
     expect(m.find((e) => e.form === "exit-ticket")?.contract).toContain("questions:");
     expect(m.every((e) => e.contract.length > 0)).toBe(true);

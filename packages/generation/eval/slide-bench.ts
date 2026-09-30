@@ -24,7 +24,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { createOpenAI } from "../../ai/node_modules/@ai-sdk/openai";
 import { providerOptionsFor } from "../src/call";
-import { fitWritten, type Written } from "../src/plan-write/fit";
+import { answerKeyFaults, fitWritten, type Written } from "../src/plan-write/fit";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../src/plan-write/menu";
 import {
   type PlanLessonOutput,
@@ -77,6 +77,11 @@ type Ctx = {
 function contextOf(c: BenchCase): Ctx {
   if (c.from) {
     const l = JSON.parse(readFileSync(join(ROUNDS, c.from.file), "utf8"));
+    const saved = l.facts.slidePlan.plan as PlanLessonOutput;
+    // The case's layout wins over the saved row's (a layout added after the plan was made).
+    const slides = saved.slides.map((s, i) =>
+      i === (c.from?.slide ?? 0) - 1 && s.form === c.form ? { ...s, layout: c.layout } : s,
+    );
     return {
       topic: l.brief.topic,
       audience: {
@@ -86,7 +91,7 @@ function contextOf(c: BenchCase): Ctx {
         readingLevel: l.readingLevel ?? undefined,
         language: l.language ?? "en-GB",
       },
-      plan: l.facts.slidePlan.plan as PlanLessonOutput,
+      plan: { ...saved, slides },
       slide: c.from.slide,
     };
   }
@@ -187,6 +192,13 @@ function kindFault(kind: string, s: string): string | undefined {
         : undefined;
     case "label":
       return endsStop(s) || w > 5 ? `label ${w} words` : undefined;
+    case "short-question":
+    case "short-instruction":
+      return sentences(s) > 1 ? "not one sentence" : undefined;
+    case "outline":
+    case "option":
+    case "card":
+      return endsStop(s) ? "full stop" : undefined;
     case "term":
       return w > 4 ? `term ${w} words` : undefined;
     case "answer":
@@ -234,7 +246,7 @@ function contractFaults(form: string, layout: string, out: Written): string[] {
     // A compare's two sides come as { left, right }.
     const v =
       raw && typeof raw === "object" && !Array.isArray(raw) && "left" in raw
-        ? [(raw as { left: unknown }).left, (raw as { right: unknown }).right]
+        ? [(raw as { left: unknown }).left, (raw as unknown as { right: unknown }).right]
         : raw;
     const items = Array.isArray(v) ? v : v === undefined || v === null ? [] : [v];
     if (slot.max !== undefined && (items.length < slot.min || items.length > slot.max)) {
@@ -375,7 +387,10 @@ async function modeWrite() {
         aim: row.purpose,
         schemaValid: res.issues.length === 0 && res.output !== undefined,
         schemaIssues: res.issues,
-        contractFaults: contractFaults(row.form, row.layout, out),
+        contractFaults: [
+          ...contractFaults(row.form, row.layout, out),
+          ...answerKeyFaults(row.form, out).map((f) => `answer key: ${f}`),
+        ],
         fitsFirstTime: fit.ok,
         fit: fit.ok
           ? undefined
