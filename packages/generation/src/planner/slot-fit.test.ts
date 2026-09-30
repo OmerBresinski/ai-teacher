@@ -3,7 +3,7 @@ import { THEMES } from "@tj/slides";
 import weimar from "../fixtures/design-cycle.y9-weimar.json";
 import { type DesignSlot, designCycleSchemaFor, type SlotForm } from "../prompts/design-cycle";
 import { designMinimums, renderSlot, slotRender } from "./coded-slides";
-import { FORM_DOWN, fitSlot, refillReason, siblingsOf, unitsToNotes } from "./slot-fit";
+import { FORM_DOWN, fitSlot, refillReason, siblingsOf } from "./slot-fit";
 
 const META = { promptVersion: "t", model: "t", at: "1970-01-01T00:00:00.000Z" };
 const cycles = weimar.cycles as unknown as { slots: DesignSlot[] }[];
@@ -76,7 +76,6 @@ describe("fit ladder", () => {
     const fit = await fitSlot(slot, {
       seed: "x",
       themeId: "chalk",
-      teachingToNotes: false,
       refill: async (s, form, reason) => {
         asked.push(form);
         shown.push({ slot: s, reason });
@@ -97,7 +96,7 @@ describe("fit ladder", () => {
   });
 
   test("with no re-fill, the siblings' own rungs and then one step down are tried before a flag", async () => {
-    // Two sentences to each line of working: its last step in the notes does not land it (r5).
+    // Two sentences to each line of working: no sibling holds it whole at full size (r5).
     const we = weimar.buyingPowerWorkedExample;
     const slot = {
       ...we,
@@ -108,16 +107,11 @@ describe("fit ladder", () => {
     expect(last?.rung).toBe(fit.rung);
     expect(last?.ok).toBe(fit.rung !== "flagged");
     if (fit.rung === "flagged") expect(fit.slot).toEqual(slot);
-    // This worked example's sibling sequence, its last step in the notes, lands as a list.
-    expect(fit.tried.some((t) => t.detail?.startsWith("sequence"))).toBe(true);
+    // This worked example's sibling sequence and that sequence's own sibling are both tried.
+    expect(fit.tried.some((t) => t.rung === "sibling" && t.form === "sequence")).toBe(true);
   });
 
-  test("units move to the notes word for word, never cut", () => {
-    const callout = bySlot("explain-callout");
-    if (callout.form !== "explain-callout") throw new Error("form");
-    const [first] = unitsToNotes(callout);
-    expect(first?.moved).toBe("callout");
-    expect(first?.slot.notes).toContain(callout.callout.text);
+  test("a sibling holds every unit word for word, never cut", () => {
     const compare = bySlot("compare");
     const [list] = siblingsOf(compare);
     expect(list?.form).toBe("list");

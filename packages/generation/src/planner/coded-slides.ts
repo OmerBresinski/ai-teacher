@@ -665,7 +665,7 @@ export function slotRender(slot: DesignSlot, seed: string, factRefs: string[] = 
             ...base,
             stem: slot.stem,
             options: slot.options,
-            // An explanation moved to the notes (the fit ladder's rung 3) leaves no "Why?" panel.
+            // A hinge written with no explanation leaves no "Why?" panel.
             ...(slot.explanation ? { explanation: slot.explanation } : {}),
           },
           seed,

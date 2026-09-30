@@ -4,13 +4,16 @@ import { renderWritten } from "./fit";
 import {
   answerKeyMismatches,
   broadenedBrief,
+  checkBatcher,
   crossSlideFindings,
   fieldOfEvidence,
+  isSmallForCheck,
   limiter,
   NO_PICTURE_ROW,
   noPictureOf,
   noPictureTarget,
   type PassSlide,
+  skipsCheck,
   states,
 } from "./slide-check";
 
@@ -220,5 +223,85 @@ describe("fieldOfEvidence", () => {
     };
     expect(fieldOfEvidence(out, "flow downhill")).toBe("body");
     expect(fieldOfEvidence(out, "not there")).toBeUndefined();
+  });
+});
+
+describe("the stream's check queue (batched, bounded)", () => {
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  test("a small slide waits for its closed neighbour and shares one call; a large one goes alone", async () => {
+    const calls: number[][] = [];
+    const q = checkBatcher({
+      limit: 4,
+      maxGroup: 3,
+      last: 10,
+      run: async (g) => {
+        calls.push(g);
+      },
+    });
+    q.add(3, true);
+    await tick();
+    expect(calls).toEqual([]);
+    q.add(4, true);
+    q.add(5, false);
+    await tick();
+    expect(calls).toEqual([[3, 4], [5]]);
+    q.add(6, true);
+    q.add(7, true);
+    q.add(8, true);
+    await tick();
+    expect(calls.at(-1)).toEqual([6, 7, 8]);
+    q.add(9, true);
+    await tick();
+    expect(calls.flat()).not.toContain(9);
+    q.end();
+    await q.done();
+    expect(calls.at(-1)).toEqual([9]);
+    // The last slide never waits for a neighbour.
+    const last: number[][] = [];
+    const q2 = checkBatcher({
+      limit: 4,
+      maxGroup: 3,
+      last: 10,
+      run: async (g) => void last.push(g),
+    });
+    q2.add(10, true);
+    await tick();
+    expect(last).toEqual([[10]]);
+  });
+
+  test("never more than the limit in flight", async () => {
+    let active = 0;
+    let peak = 0;
+    const q = checkBatcher({
+      limit: 4,
+      maxGroup: 3,
+      last: 20,
+      run: async () => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 5));
+        active -= 1;
+      },
+    });
+    for (let n = 3; n <= 20; n++) q.add(n, false);
+    q.end();
+    await q.done();
+    expect(peak).toBe(4);
+  });
+
+  test("slides with no facts and no answers need no check; a check form always does", () => {
+    expect(skipsCheck("discussion", { prompt: "What would you pack for a march?" }, false)).toBe(
+      true,
+    );
+    expect(skipsCheck("discussion", { prompt: "Why did 5,000 soldiers march?" }, false)).toBe(
+      false,
+    );
+    expect(skipsCheck("matching", { pairs: [] }, false)).toBe(false);
+    expect(skipsCheck("explain", { heading: "Roads" }, true)).toBe(false);
+    expect(isSmallForCheck({ heading: "Roads", body: ["Straight."], notes: "x".repeat(900) })).toBe(
+      true,
+    );
+    expect(isSmallForCheck({ body: ["y".repeat(600)] })).toBe(false);
   });
 });

@@ -681,7 +681,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
   const placeTalk = async (index: number, prompt: string, phase: "starter" | "check") => {
     const fit = await fitSlot(
       { form: "discussion", prompt },
-      { seed: `${base.id}:${index}`, themeId, teachingToNotes: false },
+      { seed: `${base.id}:${index}`, themeId },
     );
     if (fit.rung === "flagged") unfitSets.push({ slide: index + 1, reason: fit.reason ?? "" });
     outline[index] = { id: `s${index + 1}`, kind: kindOf(fit.render.spec), factRefs: [], phase };
@@ -838,7 +838,6 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     const fit = await fitSlot(slot, {
       seed: `${base.id}:${index}`,
       themeId,
-      teachingToNotes: !r6,
       refill: (s, form, reason) =>
         refillFor(cycle, k)(s, form, `it did not fit its slide because ${reason}`),
     });
@@ -1109,7 +1108,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           `a fact it used was wrong (${said})`,
         ).catch(() => undefined);
         const fit = fresh
-          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId, teachingToNotes: !r6 })
+          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
           : undefined;
         const ok = !!fresh && !!fit && fit.rung !== "flagged";
         deps.logger.info(
@@ -1174,7 +1173,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       const k = b.slide - (cycle.first - 1);
       const fresh = await refillFor(cycle, k)(b.fit.slot, m.into, m.reason).catch(() => undefined);
       const fit = fresh
-        ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId, teachingToNotes: !r6 })
+        ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
         : undefined;
       const meets = (form: SlotForm) =>
         m.role
@@ -1238,7 +1237,7 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           () => undefined,
         );
         const fit = fresh
-          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId, teachingToNotes: false })
+          ? await fitSlot(fresh, { seed: `${base.id}:${b.slide}`, themeId })
           : undefined;
         const again =
           fit && fit.rung !== "flagged"
@@ -1474,7 +1473,6 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
       const refit = await fitSlot(corrected, {
         seed: `${base.id}:${b.slide}`,
         themeId,
-        teachingToNotes: !r6,
       });
       if (refit.rung !== "fits" && refit.rung !== "variant") {
         verifyReport.rejected += 1;

@@ -1,57 +1,81 @@
 import { describe, expect, test } from "bun:test";
+import flaggedR2 from "../fixtures/designer-r2-flagged.json";
 import flagged from "../fixtures/designer-r5-flagged.json";
 import type { DesignSlot } from "../prompts/design-cycle";
 import { askedOf } from "./answer-support";
 import { slotRender } from "./coded-slides";
-import { ASIDE_UNITS, asidesToNotes, fitSlot, namesOtherForm, slotFits } from "./slot-fit";
+import { fitSlot, namesOtherForm, slotFits } from "./slot-fit";
 
 const slots = flagged as Record<string, DesignSlot>;
 
-describe("r6 fit ladder: teaching never moves to the notes", () => {
-  for (const [key, slot] of Object.entries(slots)) {
-    test(`${key}: no teaching unit to the notes; sibling forms before the re-fill`, async () => {
-      const calls: string[] = [];
-      const refill = async (_s: DesignSlot, form: string) => {
-        calls.push(form);
-        return undefined;
-      };
-      const fit = await fitSlot(slot, {
-        seed: key,
-        themeId: "chalk",
-        refill,
-        teachingToNotes: false,
-      });
-      expect(fit.rung).not.toBe("notes");
-      for (const t of fit.tried) {
-        if (t.rung === "notes") expect(ASIDE_UNITS.has(t.detail ?? "")).toBe(true);
-      }
-      // The notes are the teacher's words as written: nothing taught was added to them.
-      expect((fit.slot as { notes?: string }).notes ?? "").toBe(
-        (slot as { notes?: string }).notes ?? "",
-      );
+const notesOf = (s: DesignSlot) => (s as { notes?: string }).notes ?? "";
+/** The notes' sentences, whitespace folded (a sibling may drop a sentence and re-join the rest). */
+const linesOf = (t: string) =>
+  t
+    .split(/(?<=[.!?])\s+|\n/)
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+/**
+ * Nothing taught lives only in the notes (Greg, 30 Sep): whatever rung lands a slot, its notes
+ * hold no line the teacher's notes did not already hold. A fallback that moves slide text into the
+ * notes fails here.
+ */
+function expectNoTextToNotes(before: DesignSlot, after: DesignSlot) {
+  const had = new Set(linesOf(notesOf(before)));
+  const added = linesOf(notesOf(after)).filter((l) => !had.has(l));
+  expect(added).toEqual([]);
+}
+
+/** Slots the old notes rung moved text from: a callout, a footnote, a hinge's reason, a step. */
+const long = "the river carries sand and silt downstream and drops it where the water slows";
+const MOVERS: Record<string, DesignSlot> = {
+  "explain-callout": {
+    form: "explain-callout",
+    heading: "Where rivers drop their load",
+    body: `When a river reaches the sea, ${long}. ${long}. ${long}.`,
+    callout: { kind: "key", text: `Remember: ${long}.` },
+    notes: "Point at the delta.",
+  } as unknown as DesignSlot,
+  discussion: {
+    form: "discussion",
+    prompt: `Is a delta land or sea? Think about how ${long}, ${long}, and ${long}.`,
+    footnote: `Accept both if they explain how ${long}.`,
+    notes: "Ask round.",
+  } as unknown as DesignSlot,
+  sequence: {
+    form: "sequence",
+    heading: "How a delta forms",
+    body: long,
+    steps: [long, long, long, long, long],
+    notes: "",
+  } as unknown as DesignSlot,
+};
+
+describe("the fit ladder never moves slide text to the notes", () => {
+  const all: [string, DesignSlot][] = [
+    ...Object.entries(slots),
+    ...Object.entries(flaggedR2 as Record<string, DesignSlot>),
+    ...Object.entries(MOVERS),
+  ];
+  for (const [key, slot] of all) {
+    test(`${key}: every fallback keeps the slide's words off the notes; siblings before the re-write`, async () => {
+      const refill = async () => undefined;
+      const fit = await fitSlot(slot, { seed: key, themeId: "chalk", refill });
+      expect(fit.tried.map((t) => t.rung as string)).not.toContain("notes");
+      expectNoTextToNotes(slot, fit.slot);
       const firstRefill = fit.tried.findIndex((t) => t.rung === "refill");
-      const lastSibling = fit.tried.map((t) => t.rung).lastIndexOf("sibling");
+      const lastSibling = fit.tried
+        .slice(0, firstRefill < 0 ? undefined : firstRefill + 1)
+        .map((t) => t.rung)
+        .lastIndexOf("sibling");
       if (firstRefill >= 0 && lastSibling >= 0) expect(lastSibling).toBeLessThan(firstRefill);
     });
   }
 
-  test("asides still go: a discussion's footnote and a hinge's reason", () => {
-    const talk = {
-      form: "discussion",
-      prompt: "Is a delta land or sea?",
-      footnote: "Accept both.",
-      notes: "Ask round.",
-    } as unknown as DesignSlot;
-    const [moved] = asidesToNotes(talk);
-    expect(moved?.moved).toBe("footnote");
-    expect((moved?.slot as { notes?: string } | undefined)?.notes).toBe("Ask round.\nAccept both.");
-    const seq = {
-      form: "sequence",
-      heading: "h",
-      steps: ["a", "b", "c"],
-      notes: "",
-    } as unknown as DesignSlot;
-    expect(asidesToNotes(seq)).toEqual([]);
+  test("the guard itself catches a slot whose text went to the notes", () => {
+    const moved = { ...MOVERS.discussion, notes: "Ask round.\nAccept both." } as DesignSlot;
+    expect(() => expectNoTextToNotes(MOVERS.discussion as DesignSlot, moved)).toThrow();
   });
 });
 
@@ -80,7 +104,7 @@ describe("r6 fit ladder: a question never names another form", () => {
     };
     expect(slotFits(slotRender(open, "tf", []), "chalk", 0)).toBe(false);
     expect(slotFits(slotRender(open, "tf", []), "chalk", 1)).toBe(false);
-    const fit = await fitSlot(open, { seed: "tf", themeId: "chalk", teachingToNotes: false });
+    const fit = await fitSlot(open, { seed: "tf", themeId: "chalk" });
     expect(fit.rung).toBe("flagged");
   });
 
@@ -111,7 +135,6 @@ describe("r6 fit ladder: a question never names another form", () => {
     const fit = await fitSlot(hinge, {
       seed: "weimar-9",
       themeId: "chalk",
-      teachingToNotes: false,
       refill: async () => refilled,
     });
     const asked = askedOf(fit.slot);
