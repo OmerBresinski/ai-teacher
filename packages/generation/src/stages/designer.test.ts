@@ -301,7 +301,13 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
   });
 
   test("the re-fill call sees the slot it replaces and a structural reason", async () => {
-    const tooBig = weimarFixture.electrolysisWorkedExample;
+    // r6 smoke, y9-weimar slide 7, each line of working two sentences: no rung below the re-fill
+    // lands it (a one-sentence question over lines of working fits at full size).
+    const we = weimarFixture.buyingPowerWorkedExample;
+    const tooBig = {
+      ...we,
+      steps: we.steps.map((s) => `${s} This is what the class should notice first.`),
+    };
     const refills: string[] = [];
     const ai = labAi({
       designCycle: (call, target, count) => {

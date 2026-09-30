@@ -292,7 +292,8 @@ export interface DesignReport {
   retriedCycles: number[];
   verify: { corrections: number; refitted: number; rejected: number };
   /** The design minimums' re-fills (at most 2): the slide, the form asked for, whether it took. */
-  enforced?: { slide: number; into: string; ok: boolean }[];
+  /** `skipped`: the slot had already failed to fit in that form, so no re-fill was asked. */
+  enforced?: { slide: number; into: string; ok: boolean; skipped?: true }[];
   firstSlotMs?: number;
   editableMs?: number;
   /** Where the design step's time went (ms from the lesson's start unless named otherwise). */

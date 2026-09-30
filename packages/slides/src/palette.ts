@@ -297,6 +297,8 @@ export const PALETTE: readonly PaletteForm[] = [
     name: "worked example",
     useWhen: "a procedure shown once, step by step, before pupils try it",
     holds: [
+      // Counted in sentences (`unitsOf`): the question box is two lines over the working (r6 smoke,
+      // y9-weimar: a three-sentence question pushed the working off the slide on every theme).
       { unit: "question", slot: "question", min: 1, max: 1 },
       {
         unit: "line of working",
@@ -607,7 +609,7 @@ export function unitsOf(form: PaletteForm, spec: SlideSpec): Record<string, numb
   };
   if ("heading" in s && s.heading) set("heading", 1);
   if ("body" in s) set("body", countSentences(s.body as string));
-  if ("question" in s) set("question", s.question ? 1 : 0);
+  if ("question" in s) set("question", countSentences(s.question as string));
   if ("stem" in s) set("stem", s.stem ? 1 : 0);
   if ("prompt" in s) set("prompt", s.prompt ? 1 : 0);
   if ("statement" in s) set("statement", s.statement ? 1 : 0);

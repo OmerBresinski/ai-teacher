@@ -86,6 +86,7 @@ const META = { promptVersion: "fit", model: "fit", at: "1970-01-01T00:00:00.000Z
  * callout has not fitted it.
  */
 export function slotFits(render: SlotRender, themeId: string, stepDown: 0 | 1): boolean {
+  if (namesOtherForm(render.form, askedText(render.spec)) !== undefined) return false;
   const planned = fitsPlanned(render.spec, {
     stepDown,
     ...(render.variant ? { variant: render.variant } : {}),
@@ -103,6 +104,39 @@ export function slotFits(render: SlotRender, themeId: string, stepDown: 0 | 1): 
     render.structure,
   );
   return slide.elements.some((e) => e.name === placed);
+}
+
+/** What a check slide asks, as printed: its stem, statement or prompt. */
+function askedText(spec: SlotRender["spec"]): string | undefined {
+  const s = spec as { stem?: unknown; statement?: unknown; prompt?: unknown };
+  const text = s.stem ?? s.statement ?? s.prompt;
+  return typeof text === "string" ? text : undefined;
+}
+
+/** The words that name a way of answering, and the forms that answer that way. */
+const FORM_NAMES: readonly { names: RegExp; forms: readonly SlotForm[] }[] = [
+  { names: /\btrue\s+or\s+false\b|\bfalse\s+or\s+true\b/i, forms: ["true-false"] },
+  {
+    names:
+      /\b(choose|select|pick|tick|circle)\b[^.?!]*\b(options?|letters?)\b|\bfrom the (options|choices)\b|\bwhich (option|letter)\b/i,
+    forms: ["hinge"],
+  },
+  { names: /\bfill\s+(in\s+)?the\s+(gaps?|blanks?)\b/i, forms: ["fill-gap"] },
+  { names: /\bmatch\s+(each|the|these)\b/i, forms: ["matching"] },
+  { names: /\b(sort|put)\s+(these|the|each)\b[^.?!]*\b(order|groups?)\b/i, forms: ["sort"] },
+];
+
+/**
+ * The form a slot's question names when that is not the slot's own form: an open question that
+ * reads "True or false? ..." (r6 smoke, y9-weimar: a hinge re-filled as true-false landed as an
+ * open response still asking "True or false?"). Such a slot never passes the gate, on any rung.
+ */
+export function namesOtherForm(form: SlotForm, asked: string | undefined): SlotForm | undefined {
+  if (!asked) return undefined;
+  for (const { names, forms } of FORM_NAMES) {
+    if (names.test(asked) && !forms.includes(form)) return forms[0];
+  }
+  return undefined;
 }
 
 function placedName(render: SlotRender): string | undefined {
@@ -232,11 +266,15 @@ export function siblingsOf(slot: DesignSlot): DesignSlot[] {
           ]
         : [];
     case "true-false":
+      // Asked open in the open response's own shape: the statement to explain, never "True or
+      // false?" over a writing space (`namesOtherForm`); the reason is the model answer.
       return [
         withNotes({
           form: "open-response",
-          stem: `True or false? ${slot.statement}`,
-          modelAnswer: `${slot.correct ? "True" : "False"}. ${slot.explanation}`,
+          stem: slot.correct
+            ? `Explain why this is right: ${slot.statement}`
+            : `Explain what is wrong with this claim: ${slot.statement}`,
+          modelAnswer: slot.explanation,
         }),
       ];
     default:
@@ -374,10 +412,23 @@ export function refillReason(slot: DesignSlot): string {
       );
       break;
     case "sequence":
-    case "worked-example":
     case "sort":
       reasons.push(oneEach("step", slot.steps));
       break;
+    case "worked-example": {
+      const n = sentences(slot.question).length;
+      // Worded so it carries to the form the re-fill writes (r6 fix smoke: "this form needs
+      // phrases" read as the worked example's rule, and the sequence came back in sentences).
+      if (n > 1)
+        reasons.push(
+          `the question is ${n} sentences; one sentence fits over the steps, in any form`,
+        );
+      if (slot.steps.some(isSentence))
+        reasons.push(
+          "the lines of working are sentences; each step fits as a phrase or a calculation, in any form",
+        );
+      break;
+    }
     case "vocabulary":
       reasons.push(
         oneEach(

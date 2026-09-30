@@ -94,11 +94,13 @@ export const PALETTE_MAX: Partial<Record<PaletteFormId, SlideSpec>> = {
     kind: "worked-example",
     factRefs: [],
     heading: "Sharing an amount in a given ratio",
-    question: "Share £45 between Amy and Ben in the ratio 2 : 3.",
+    // One sentence at full stretch: two lines over the working (r6 smoke, y9-weimar).
+    question:
+      "Amy and Ben share the £45 they earned washing cars in the ratio 2 : 3, so how much money does each of them get?",
     steps: [
-      "Add the parts: 2 + 3 = 5 parts",
-      "Find one part: £45 ÷ 5 = £9",
-      "Amy gets 2 × £9 = £18, Ben gets 3 × £9 = £27",
+      "Add the parts to find the total: 2 + 3 = 5 parts",
+      "Find the value of one part: £45 ÷ 5 = £9 per part",
+      "Amy gets 2 × £9 = £18 and Ben gets 3 × £9 = £27",
     ],
   },
   hinge: {

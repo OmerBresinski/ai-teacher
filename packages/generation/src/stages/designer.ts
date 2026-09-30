@@ -56,7 +56,6 @@ import {
   type DesignSlot,
   designCyclePrompt,
   designCycleSchemaFor,
-  ExitQuestionSchema,
   ROLE_FORMS,
   SLOT_ROLES,
   type SlotForm,
@@ -126,6 +125,11 @@ export const designCycleMaxOutputTokens = (slots: number): number =>
 export const VERIFY_EFFORT = "medium" as const;
 /** A single-slot re-fill (rung 4). */
 const MAX_OUTPUT_TOKENS_REFILL = 3000;
+/** A re-fill's exit question: `ExitQuestionSchema`'s keys, read by no one, so blanks pass. */
+const REFILL_EXIT_QUESTION = zod.object({
+  answer: zod.string().nullable(),
+  question: zod.string().nullable(),
+});
 
 type Arc = NonNullable<PipelineState["designArcs"]>[number];
 
@@ -809,7 +813,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
           replacing: { form: slot.form, material: slotMaterial(slot), reason, into: form },
           ...(factsFor[cycle.objective] ? { facts: factsFor[cycle.objective]?.cycle } : {}),
         },
-        schema: zod.object({ slots: only.array().length(1), exitQuestion: ExitQuestionSchema }),
+        // The exit question is the cycle's, not the slot's: a re-fill's is never read, so a blank
+        // one is not a reason to retry (r6 smoke: 5 re-fills failed validation with two
+        // too_small or invalid_type issues, the exit question's two fields, each retried at a full
+        // call's latency). Same keys, so the prompt's contract is unchanged.
+        schema: zod.object({ slots: only.array().length(1), exitQuestion: REFILL_EXIT_QUESTION }),
         maxOutputTokens: MAX_OUTPUT_TOKENS_REFILL,
       });
       deps.logger.info(
@@ -823,9 +831,6 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     const index = cycle.first - 1 + k;
     if (cycleSlides.has(index)) return;
     cycleSlides.add(index);
-    // The first teaching slide goes first: another cycle's slot waits until it has landed (or
-    // its cycle has ended), so its fit and save are never queued behind later slides.
-    if (cycle !== firstCycle) await firstLanded;
     const timing = timings.cycles.find((c) => c.objective === cycle.objective);
     if (timing && timing.firstSlotAfterMs === undefined)
       timing.firstSlotAfterMs = Date.now() - startedAt - timing.startMs;
@@ -838,6 +843,11 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
         refillFor(cycle, k)(s, form, `it did not fit its slide because ${reason}`),
     });
     timings.fitMs += Date.now() - fitStart;
+    // The first teaching slide goes first: another cycle's slot is placed once it has landed (or
+    // its cycle has ended), so its save is never queued behind later slides. Only the placing
+    // waits: every slot's fit, and any re-fill it needs, runs as soon as the slot is written
+    // (r6 smoke: the second cycle's re-fills sat behind the first slot's for 6 s).
+    if (cycle !== firstCycle) await firstLanded;
     placeSlot(cycle, k, slot, fit, modelId);
     if (cycle === firstCycle && k === 0) releaseFirst();
   };
@@ -1140,12 +1150,27 @@ export async function design(state: PipelineState, deps: PipelineDeps): Promise<
     arcs,
     offered,
   );
-  const enforced: { slide: number; into: SlotForm; ok: boolean }[] = [];
+  const enforced: { slide: number; into: SlotForm; ok: boolean; skipped?: true }[] = [];
   await Promise.all(
     toEnforce.map(async (m) => {
       const b = bound.find((x) => x.slide === m.slide - 1);
       const cycle = allocation.cycles.find((c) => c.objective === m.objective);
       if (!b || !cycle) return;
+      // A slot already written in that form that did not fit (as designed, or re-filled on the
+      // ladder) is not asked again: on the r6 smoke both minimum re-fills were such repeats,
+      // failed again, and held the editable deck back a whole call (about 9 s).
+      // Nor is a slot the designer already wrote in a form its role asks for, which the fit
+      // ladder then had to take to a text form (r6 fix smoke: a photo whose heading did not fit,
+      // re-asked as a diagram slot, failed again on both briefs).
+      const metByDesign = !!m.role && ROLE_FORMS[m.role].includes(b.slot.form);
+      if (
+        metByDesign ||
+        b.slot.form === m.into ||
+        b.fit.tried.some((t) => t.form === m.into && !t.ok)
+      ) {
+        enforced.push({ slide: m.slide, into: m.into, ok: false, skipped: true });
+        return;
+      }
       const k = b.slide - (cycle.first - 1);
       const fresh = await refillFor(cycle, k)(b.fit.slot, m.into, m.reason).catch(() => undefined);
       const fit = fresh

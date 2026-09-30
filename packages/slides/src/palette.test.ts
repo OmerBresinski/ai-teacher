@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { figureGroupOf } from "./figures";
+import { fitsPlanned } from "./fit-check";
 import { fitSlide } from "./fit-slide";
 import { PALETTE_MAX as MAX } from "./fixtures/palette-max";
 import { materialiseSlide } from "./materialise";
@@ -129,4 +130,48 @@ describe("palette drift: every slide form at its maximum fits at body size on al
       if (form.id === "figure") expect(figureGroupOf(full)).toBeDefined();
     });
   }
+});
+
+/*
+ * The same drift, through the save gate the designer's fit ladder runs (`fitsPlanned`, stepDown 0):
+ * every text at its own size, nothing past the safe area, nothing overlapping, on all 10 themes.
+ * The test above compares sizes with the form's short example, so a form whose example was itself
+ * stepped down passed it while the ladder failed every fill on those themes (r6 smoke, y9-weimar:
+ * the worked example's question sat one stop down on four themes whatever it said). An aside the
+ * ladder moves to the notes before anything else (a hinge's "Why?" explanation) is left out.
+ */
+describe("palette drift through the save gate: every slide form at its maximum passes", () => {
+  const ASIDES: Partial<Record<string, string>> = { hinge: "explanation" };
+  for (const form of slideForms) {
+    for (const which of ["maximum", "example"] as const) {
+      it(`${form.id}, its ${which}`, () => {
+        if (form.renderer.on !== "slide") return;
+        const spec = { ...((which === "maximum" ? MAX[form.id] : form.example) as SlideSpec) };
+        const aside = ASIDES[form.id];
+        if (aside) delete (spec as Record<string, unknown>)[aside];
+        const structure: SlideStructure =
+          form.renderer.structure === "photo"
+            ? { photo: { subject: "root hairs on a seedling" } }
+            : {};
+        const gate = fitsPlanned(spec, {
+          stepDown: 0,
+          ...(form.renderer.variant ? { variant: form.renderer.variant } : {}),
+          structure,
+        });
+        expect(gate.failing.map((f) => f.theme)).toEqual([]);
+      });
+    }
+  }
+
+  it("counts a worked example's question in sentences, so a longer question is over the promise", () => {
+    const form = PALETTE.find((f) => f.id === "worked-example") as PaletteForm;
+    const spec = {
+      ...(MAX["worked-example"] as SlideSpec),
+      question:
+        "A worker has 100 marks in savings. A loaf rises from 1 mark to 10 marks. What can the savings buy?",
+    } as SlideSpec;
+    const max = form.holds.find((u) => u.slot === "question")?.max;
+    expect(unitsOf(form, spec).question).toBe(3);
+    expect(max).toBe(1);
+  });
 });

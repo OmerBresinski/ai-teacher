@@ -69,12 +69,14 @@ describe("fit ladder", () => {
   });
 
   test("the re-fill rung asks for the next form down once, and takes an answer that fits", async () => {
-    const slot = weimar.electrolysisWorkedExample as unknown as DesignSlot;
+    // r6 smoke, y9-weimar slide 7: a three-sentence question over three sentences of working.
+    const slot = weimar.buyingPowerWorkedExample as unknown as DesignSlot;
     const asked: string[] = [];
     const shown: { slot: DesignSlot; reason: string }[] = [];
     const fit = await fitSlot(slot, {
       seed: "x",
       themeId: "chalk",
+      teachingToNotes: false,
       refill: async (s, form, reason) => {
         asked.push(form);
         shown.push({ slot: s, reason });
@@ -91,11 +93,16 @@ describe("fit ladder", () => {
     expect(shown[0]?.slot).toEqual(slot);
     expect(shown[0]?.reason).toBe(refillReason(slot));
     expect(fit.rung).toBe("refill");
-    expect(fit.tried.map((t) => t.rung)).toEqual(["sibling", "notes", "refill"]);
+    expect(fit.tried.map((t) => t.rung)).toEqual(["sibling", "refill"]);
   });
 
   test("with no re-fill, the siblings' own rungs and then one step down are tried before a flag", async () => {
-    const slot = weimar.electrolysisWorkedExample as unknown as DesignSlot;
+    // Two sentences to each line of working: its last step in the notes does not land it (r5).
+    const we = weimar.buyingPowerWorkedExample;
+    const slot = {
+      ...we,
+      steps: we.steps.map((s) => `${s} This is what the class should notice first.`),
+    } as unknown as DesignSlot;
     const fit = await fitSlot(slot, { seed: "x", themeId: "chalk" });
     const last = fit.tried.at(-1);
     expect(last?.rung).toBe(fit.rung);
@@ -300,12 +307,12 @@ describe("sibling pairs (rung 2): a whole, valid slide of the new form, every wo
       }
     });
   }
-  test("true-false -> open response asks the statement and answers with the verdict", () => {
+  test("true-false -> open response asks for the reason in its own shape, never 'True or false?'", () => {
     const [open] = siblingsOf(cases[5]?.[1] as DesignSlot);
     expect(open).toMatchObject({
       form: "open-response",
-      stem: "True or false? Rivers only erode downwards.",
-      modelAnswer: "False. They erode sideways too.",
+      stem: "Explain what is wrong with this claim: Rivers only erode downwards.",
+      modelAnswer: "They erode sideways too.",
       notes: "Ask why.",
     });
   });

@@ -41,7 +41,7 @@
           "form": "photo",
           "notes": "Explain that the Ruhr was an important industrial region, producing coal and other goods. France and Belgium occupied it in January 1923 after Germany fell behind on reparations payments. Reparations were payments Germany had been required to make after the First World War.",
           "heading": "French and Belgian troops occupied the Ruhr",
-          "body": "The occupation took control of a major industrial region of Germany. It followed Germany\u2019s failure to keep up with reparations payments.",
+          "body": "The occupation took control of a major industrial region of Germany. It followed Germany’s failure to keep up with reparations payments.",
           "imageBrief": {
             "subject": "Archival photograph of French or Belgian troops in the Ruhr during its 1923 occupation",
             "mustShow": [
@@ -62,7 +62,7 @@
         {
           "form": "hinge",
           "notes": "Ask pupils to choose an answer independently, then discuss why the other options are tempting but wrong. Look for the link between passive resistance, government spending, money supply and prices.",
-          "stem": "Why did the government\u2019s response to passive resistance help cause hyperinflation?",
+          "stem": "Why did the government’s response to passive resistance help cause hyperinflation?",
           "options": [
             {
               "text": "It printed money to pay workers while production fell, so prices rose",
@@ -112,7 +112,7 @@
         },
         {
           "form": "photo",
-          "notes": "Ask pupils what they notice about the money and the shop goods. Explain that prices could change so quickly that wages or savings did not keep up. Avoid suggesting that every household had the same experience: the effects depended on a person\u2019s income, savings and debts.",
+          "notes": "Ask pupils what they notice about the money and the shop goods. Explain that prices could change so quickly that wages or savings did not keep up. Avoid suggesting that every household had the same experience: the effects depended on a person’s income, savings and debts.",
           "heading": "Daily shopping became difficult as prices soared",
           "body": "People needed more and more marks to buy everyday goods. Those paid at a fixed rate could find that their money no longer covered basic needs.",
           "imageBrief": {
@@ -164,6 +164,17 @@
       "The solution contains chloride ions and hydroxide ions.",
       "Because the solution is concentrated, chloride ions form the halogen at the anode.",
       "Chlorine gas forms at the anode."
+    ]
+  },
+  "buyingPowerWorkedExample": {
+    "form": "worked-example",
+    "notes": "Work through the two prices with the class. Buying power means how much a sum of money can purchase. Emphasise that the number of marks stays the same, but the money buys fewer loaves when prices rise. This is an invented example, not a claim about the actual price of bread in Germany.",
+    "heading": "Comparing what savings and wages could buy",
+    "question": "A worker has 100 marks in savings and earns 10 marks in a day. A loaf rises in price from 1 mark to 10 marks. How does this change what the money can buy?",
+    "steps": [
+      "At 1 mark per loaf, 100 marks buys 100 loaves; 10 marks of daily pay buys 10 loaves.",
+      "At 10 marks per loaf, the same 100 marks buys 10 loaves; 10 marks of daily pay buys 1 loaf.",
+      "The savings’ buying power falls from 100 loaves to 10, and the daily pay’s falls from 10 loaves to 1."
     ]
   }
 }
