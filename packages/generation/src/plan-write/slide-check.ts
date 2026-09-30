@@ -34,6 +34,106 @@ export function limiter(limit: number) {
   };
 }
 
+/** Most neighbouring small slides one check call reads together. */
+export const CHECK_GROUP_MAX = 3;
+
+/** A slide whose written text (notes and picture brief aside) is at most this many characters is small. */
+export const SMALL_CHECK_CHARS = 500;
+
+/** Forms whose slide carries answers a check must hold, facts or not. */
+const ANSWER_FORMS = new Set([
+  "hinge",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "open-response",
+  "check-set",
+  "exit-ticket",
+  "starter-set",
+  "worked-example",
+]);
+
+/** A written slide's own words: every field but the notes and the picture brief. */
+function shownText(out: Written): string {
+  const { notes: _n, imageBrief: _i, ...shown } = out;
+  return textOf(shown);
+}
+
+/**
+ * Whether a slide needs no check call: it states no fact and holds no answer (a discussion prompt
+ * with no number or claim in it; the title and objectives are drawn in code and never reach here).
+ * `hasFacts` is whether `factsOfWritten` found any.
+ */
+export function skipsCheck(form: string, out: Written, hasFacts: boolean): boolean {
+  if (hasFacts || ANSWER_FORMS.has(form)) return false;
+  return !/\d/.test(shownText(out));
+}
+
+/** Whether a slide is small enough to share one check call with its neighbours. */
+export function isSmallForCheck(out: Written): boolean {
+  return shownText(out).length <= SMALL_CHECK_CHARS;
+}
+
+/**
+ * The stream's check queue: slides are added as they close, and each call checks one slide or a
+ * run of neighbouring small slides that have all closed (at most `maxGroup`). A small slide waits
+ * for its next neighbour to close (or the stream to end) so the two can share a call; a large slide
+ * goes alone at once. At most `limit` calls run at a time. `end` releases every slide still waiting;
+ * `done` settles when every call has.
+ */
+export function checkBatcher(opts: {
+  limit: number;
+  maxGroup: number;
+  /** The last slide the stream can close; a small slide at the end does not wait past it. */
+  last: number;
+  run: (group: number[]) => Promise<void>;
+}) {
+  const closed = new Map<number, boolean>();
+  const sent = new Set<number>();
+  const running: Promise<void>[] = [];
+  const queue = limiter(opts.limit);
+  let ended = false;
+  const send = (group: number[]) => {
+    for (const n of group) sent.add(n);
+    running.push(queue(() => opts.run(group)));
+  };
+  const pump = () => {
+    const open = [...closed.keys()].filter((n) => !sent.has(n)).sort((a, b) => a - b);
+    for (const n of open) {
+      if (sent.has(n)) continue;
+      if (!closed.get(n)) {
+        send([n]);
+        continue;
+      }
+      const group = [n];
+      let waiting = false;
+      for (let m = n + 1; group.length < opts.maxGroup; m++) {
+        if (m > opts.last) break;
+        if (!closed.has(m)) {
+          waiting = !ended;
+          break;
+        }
+        if (sent.has(m) || !closed.get(m)) break;
+        group.push(m);
+      }
+      if (!waiting) send(group);
+    }
+  };
+  return {
+    add(n: number, small: boolean) {
+      if (closed.has(n)) return;
+      closed.set(n, small);
+      pump();
+    },
+    end() {
+      ended = true;
+      pump();
+    },
+    done: () => Promise.all(running).then(() => undefined),
+  };
+}
+
 const STOP = new Set(["the", "and", "for", "with", "that", "this", "are", "was", "its", "from"]);
 
 const words = (s: string) =>

@@ -191,6 +191,12 @@ export const ImageBriefSchema = z.strictObject({
   // The same ceiling as Plan's `PlanImageBriefSchema` (TEACH-227 raised it to six; TEACH-237
   // aligned this one after a skeleton Plan accepted was refused here with a bare ZodError).
   avoid: z.array(MustShowItem).max(6).optional(),
+  /**
+   * A named, specific subject (a place, a building, an artefact, a person from history): the photo
+   * search goes to Wikimedia Commons first, then Pexels (ruling 139). Absent: judged from the
+   * subject's wording (`isSpecificSubject` in generation).
+   */
+  specific: z.boolean().optional(),
 });
 export type ImageBrief = z.infer<typeof ImageBriefSchema>;
 

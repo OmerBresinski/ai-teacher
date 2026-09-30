@@ -38,13 +38,16 @@ import { recheckKinds } from "../plan-write/recheck";
 import {
   answerKeyMismatches,
   broadenedBrief,
+  CHECK_GROUP_MAX,
+  checkBatcher,
   crossSlideFindings,
   fieldOfEvidence,
-  limiter,
+  isSmallForCheck,
   NO_PICTURE_ROW,
   noPictureOf,
   PICTURE_FORMS,
   SLIDE_CHECK_CONCURRENCY,
+  skipsCheck,
 } from "../plan-write/slide-check";
 import { PLAN_WRITE_VERSION, STREAM_WRITE_VERSION } from "../plan-write/steps";
 import {
@@ -88,7 +91,7 @@ import {
   throwIfAborted,
 } from "../types";
 import { VERIFY_EFFORT } from "./designer";
-import { evaluateOneSlide } from "./evaluate";
+import { evaluateSlides } from "./evaluate";
 import { withUsage } from "./generate";
 import { joinVersions, type PlacedPhoto, pickPhoto, withPhoto } from "./illustrate";
 import { existingTitle, materialiseTitle } from "./plan";
@@ -875,8 +878,12 @@ export async function planWriteSlides(
   /* ---------------------------------------------------------- per-slide check (stream) */
 
   const verify = { corrections: 0, refitted: 0, rejected: 0 };
-  const slideChecks: Promise<void>[] = [];
-  const runCheck = limiter(SLIDE_CHECK_CONCURRENCY);
+  const checker = checkBatcher({
+    limit: SLIDE_CHECK_CONCURRENCY,
+    maxGroup: CHECK_GROUP_MAX,
+    last: slideCount,
+    run: (group) => checkSlides(group),
+  });
   const checks: NonNullable<PlanWriteReport["checks"]> = {};
   const onSlide = (slideId: string | undefined) => (slideId ? { slideId } : {});
   const budgetOnce = (f: Finding[]) =>
@@ -911,80 +918,119 @@ export async function planWriteSlides(
     }
   };
 
-  /**
-   * A slide's check, the moment it closes: Verify over that slide's facts (with the lesson's
-   * objectives) beside Evaluate over that slide; Verify's corrections written in; then one
-   * named-field re-write per field the answer key (code) or a finding names, at most two; then the
-   * fit (one re-write of a failing field). The checked slide is saved when it fits, else the slide
-   * as written stays and the findings stand.
-   */
-  const checkSlide = async (n: number) => {
-    throwIfAborted(deps.signal);
+  /** One slide as its check reads it: its written words, its facts (ids local to the slide). */
+  const checkInput = (n: number) => {
     const index = n - 1;
     const p = placed.find((x) => x.index === index);
-    if (!p) return;
-    const startMs = Date.now() - startedAt;
-    const { form, layout } = p.plan;
-    const before = p.out;
-    deps.logger.info(
-      { stage: "generate", call: "slide-check", slide: n, startMs },
-      "slide check start",
-    );
+    if (!p) return undefined;
     let c = 0;
     const local = (prefix: string) => `${prefix}${n * 100 + ++c}`;
+    // The slide as the check starts: a picture dropped while it runs changes `p.plan` (see below).
+    const { form, layout } = p.plan;
+    const before = p.out;
     const f = factsOfWritten(form, before, objectiveIds(p.plan), local);
+    const ids = new Set(
+      [...f.keyIdeas, ...f.questions, ...f.workedExamples, ...f.vocabulary].map((x) => x.id),
+    );
+    const hasFacts = ids.size > 0 || f.retrieval.length > 0;
+    return { n, index, p, form, layout, before, f, ids, hasFacts };
+  };
+
+  /** Whether a closed slide goes to the check queue, and whether it may share a call. */
+  const queueCheck = (n: number) => {
+    const input = checkInput(n);
+    if (!input) return;
+    if (skipsCheck(input.p.plan.form, input.p.out, input.hasFacts)) {
+      deps.logger.info({ stage: "generate", call: "slide-check", slide: n }, "slide check skipped");
+      return;
+    }
+    checker.add(n, isSmallForCheck(input.p.out));
+  };
+
+  /**
+   * The check of one slide, or of a few neighbouring small slides in one call, once they have
+   * closed: Verify over their facts (with the lesson's objectives) beside Evaluate over them; each
+   * slide's Verify corrections written into that slide; then per slide one named-field re-write per
+   * field the answer key (code) or a finding names, at most two; then the fit (one re-write of a
+   * failing field). A checked slide is saved when it fits, else the slide as written stays and the
+   * findings stand.
+   */
+  const checkSlides = async (group: number[]) => {
+    throwIfAborted(deps.signal);
+    const startMs = Date.now() - startedAt;
+    const inputs = group.map(checkInput).filter((x) => x !== undefined);
+    if (inputs.length === 0) return;
+    deps.logger.info(
+      { stage: "generate", call: "slide-check", slides: group, startMs },
+      "slide check start",
+    );
+    const retrieval = inputs.flatMap((i) => i.f.retrieval);
     const scoped: LessonFacts = {
       ...baseFacts,
-      keyIdeas: f.keyIdeas,
-      questions: f.questions,
-      workedExamples: f.workedExamples,
-      vocabulary: f.vocabulary,
-      ...(f.retrieval.length > 0 ? { retrieval: f.retrieval } : {}),
+      keyIdeas: inputs.flatMap((i) => i.f.keyIdeas),
+      questions: inputs.flatMap((i) => i.f.questions),
+      workedExamples: inputs.flatMap((i) => i.f.workedExamples),
+      vocabulary: inputs.flatMap((i) => i.f.vocabulary),
+      ...(retrieval.length > 0 ? { retrieval } : {}),
     };
-    // Verify reads only this slide's facts: the lesson's misconception (its correction still blank
-    // in the stream) is not the slide's, and every slide's Verify would "correct" it again.
+    // Verify reads only these slides' facts: the lesson's misconception (its correction still blank
+    // in the stream) is not theirs, and every check's Verify would "correct" it again.
     const checked: LessonFacts = { ...scoped, misconceptions: [] };
-    const hasFacts =
-      f.keyIdeas.length + f.questions.length + f.workedExamples.length + f.vocabulary.length > 0 ||
-      f.retrieval.length > 0;
-    const current = lesson.slides[index] ?? ready.get(index);
-    const slideId = current?.id;
+    const current = inputs.map((i) => ({ i, slide: lesson.slides[i.index] ?? ready.get(i.index) }));
+    const shown = current.flatMap((x) => (x.slide ? [x.slide] : []));
     const [verified, reviewed] = await Promise.all([
-      hasFacts
+      inputs.some((i) => i.hasFacts)
         ? runVerify(checked, { topic: brief.topic, audience }, deps, cls, VERIFY_EFFORT)
         : undefined,
-      current
-        ? evaluateOneSlide(
-            { ...state, lesson: { ...lesson, facts: scoped, slides: [current] } },
-            current.id,
+      shown.length > 0
+        ? evaluateSlides(
+            { ...state, lesson: { ...lesson, facts: scoped, slides: shown } },
+            shown.map((x) => x.id),
             deps,
           ).catch((error): Finding[] => {
             if (error instanceof Error && error.name === "AbortError") throw error;
             if (error instanceof BudgetExceeded) return [BUDGET_FINDING(error.by, "the review")];
             deps.logger.warn(
-              { stage: "evaluate", slide: n, err: safeError(error) },
-              "slide review failed; the slide is kept",
+              { stage: "evaluate", slides: group, err: safeError(error) },
+              "slide review failed; the slides are kept",
             );
             return [];
           })
         : [],
     ]);
     throwIfAborted(deps.signal);
-    const kept: Finding[] = [];
-    let out = before;
-    let corrections = 0;
-    if (verified) {
-      for (const g of verified.findings) {
-        kept.push(g.check === "budget" ? g : { ...g, target: onSlide(slideId) });
-      }
-      if (verified.applied.length > 0) {
-        corrections = verified.applied.length;
-        out = changedStrings(checked, verified.facts).reduce(
-          (o, [, from, to]) => replaced(o, from, to),
-          out,
-        );
-      }
+    const changed = verified ? changedStrings(checked, verified.facts) : [];
+    const ownerOf = (factId: string | undefined) =>
+      inputs.find((i) => factId !== undefined && i.ids.has(factId)) ?? inputs[0];
+    for (const [k, { i, slide }] of current.entries()) {
+      const first = k === 0;
+      const slideId = slide?.id;
+      const verifyFindings = (verified?.findings ?? []).filter((g) =>
+        g.check === "budget" ? first : ownerOf(g.target.factId) === i,
+      );
+      const own = changed.filter(([id]) => i.ids.has(id));
+      const corrections = (verified?.applied ?? []).filter((a) => ownerOf(a.factId) === i).length;
+      const reviewedHere = reviewed.filter((r) =>
+        r.check === "budget" ? first : r.target.slideId === slideId,
+      );
+      await finishCheck(i, startMs, slideId, verifyFindings, own, corrections, reviewedHere);
     }
+  };
+
+  /** One slide's part of a check: its corrections, re-writes, fit and findings. */
+  const finishCheck = async (
+    { n, index, p, form, layout, before }: NonNullable<ReturnType<typeof checkInput>>,
+    startMs: number,
+    slideId: string | undefined,
+    verifyFindings: Finding[],
+    own: [string, string, string][],
+    corrections: number,
+    reviewed: Finding[],
+  ) => {
+    const kept: Finding[] = [];
+    for (const g of verifyFindings)
+      kept.push(g.check === "budget" ? g : { ...g, target: onSlide(slideId) });
+    let out = own.reduce((o, [, from, to]) => replaced(o, from, to), before);
     const review = reviewed.filter((r) => r.check !== "budget");
     kept.push(...reviewed.filter((r) => r.check === "budget"));
     // The fields to write again: the answer key (code) first, then the review's findings by the
@@ -1186,7 +1232,7 @@ export async function planWriteSlides(
       );
     }
     // Stream: the slide's check starts now, beside the stream still writing (bounded).
-    if (mode === "stream") slideChecks.push(runCheck(() => checkSlide(n)));
+    if (mode === "stream") queueCheck(n);
   };
 
   if (mode === "plan-write") drawTitle();
@@ -1419,8 +1465,13 @@ export async function planWriteSlides(
     await Promise.all(pending);
   };
 
-  if (mode === "stream") await runStream();
-  else {
+  if (mode === "stream") {
+    try {
+      await runStream();
+    } finally {
+      checker.end();
+    }
+  } else {
     const numbers = table.map((_, i) => i + 1).filter((n) => n > FIXED_SLIDES);
     await Promise.all(batchesOf(numbers).map(runBatch));
   }
@@ -1506,7 +1557,7 @@ export async function planWriteSlides(
     // Each slide was checked as it closed; what is left are the checks and photos still in flight,
     // then the lesson pass for the rules that span slides.
     await Promise.all([
-      Promise.all(slideChecks).then(() => {
+      checker.done().then(() => {
         checksDoneMs = Date.now() - startedAt;
       }),
       Promise.all([...photos, ...titlePhotos]).then(() => {

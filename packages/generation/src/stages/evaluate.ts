@@ -234,10 +234,23 @@ export async function evaluateOneSlide(
   slideId: string,
   deps: PipelineDeps,
 ): Promise<Finding[]> {
+  return evaluateSlides(view, [slideId], deps);
+}
+
+/**
+ * Evaluate over a few neighbouring slides in one call (the stream's batched check): the same call
+ * as `evaluateOneSlide`, reading every slide named, each finding kept on the slide it targets.
+ */
+export async function evaluateSlides(
+  view: PipelineState,
+  slideIds: readonly string[],
+  deps: PipelineDeps,
+): Promise<Finding[]> {
   const { lesson } = view;
   const facts = lesson.facts;
-  const slide = lesson.slides.find((s) => s.id === slideId);
-  if (!facts || !slide) return [];
+  const ids = new Set(slideIds);
+  const slides = lesson.slides.filter((s) => ids.has(s.id));
+  if (!facts || slides.length === 0) return [];
   const { verb, confidence } = shapeOf(lesson);
   const call = await callStructured({
     deps,
@@ -249,15 +262,20 @@ export async function evaluateOneSlide(
       facts,
       audience: audienceOf(lesson),
       shape: { verb, confidence },
-      slides: [{ id: slide.id, kind: slide.kind, text: slideText(slide), notes: slide.notes }],
+      slides: slides.map((slide) => ({
+        id: slide.id,
+        kind: slide.kind,
+        text: slideText(slide),
+        notes: slide.notes,
+      })),
       blocks: [],
     },
     schema: EvaluateOutputSchema,
     maxOutputTokens: MAX_OUTPUT_TOKENS.evaluate,
   });
-  const scoped = { ...view, lesson: { ...lesson, slides: [slide] } };
+  const scoped = { ...view, lesson: { ...lesson, slides } };
   return knownTargetsWithEvidence(call.output.findings, scoped)
-    .kept.filter((f) => f.target.slideId === slideId)
+    .kept.filter((f) => f.target.slideId !== undefined && ids.has(f.target.slideId))
     .filter((f) => verbFitApplies(f, scoped) && factConsistencyApplies(f, scoped))
     .filter((f) => f.check !== "image-fit");
 }

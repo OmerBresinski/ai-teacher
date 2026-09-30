@@ -17,7 +17,7 @@ import {
   type PipelineState,
   runLessonPipeline,
 } from "@tj/generation";
-import { storePhoto } from "@tj/images";
+import { createCommonsClient, storePhoto } from "@tj/images";
 import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
@@ -61,6 +61,9 @@ export interface LessonJobSpec {
   after?: (ws: WorkspaceDb, final: PipelineState) => Promise<boolean>;
 }
 
+/** One Commons client per process, so its one-request-at-a-time gate holds across jobs. */
+const commons = createCommonsClient();
+
 /**
  * The pipeline's image collaborator (Images project): Pexels search plus bucket store, closed
  * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements.
@@ -71,6 +74,8 @@ function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["
   return {
     search: (query, opts) =>
       images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
+    // Ruling 139: named, specific subjects search Wikimedia Commons first (no key needed).
+    searchCommons: (query, opts) => commons.search({ query, ...opts }),
     store: (photo, target) =>
       storePhoto({
         photo,

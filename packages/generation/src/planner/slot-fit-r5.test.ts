@@ -20,19 +20,23 @@ const words = (s: DesignSlot): string[] =>
 
 describe("r5 arm F: a worked example whose working card cannot hold its steps", () => {
   for (const [key, slot] of Object.entries(slots)) {
-    test(`${key} lands a fitting slot, every word kept`, async () => {
+    test(`${key}: with no re-write, lands at the gate or is flagged, every word kept on the slide`, async () => {
       const refill = async () => undefined;
       const fit = await fitSlot(slot, { seed: key, themeId: "chalk", refill });
-      expect(fit.rung).not.toBe("flagged");
-      const gate = fitsPlanned(fit.render.spec, {
-        stepDown: 1,
-        ...(fit.render.variant ? { variant: fit.render.variant } : {}),
-        structure: fit.render.structure,
-      });
-      expect(gate.ok).toBe(true);
-      // Whole units to the notes, word for word: nothing shortened, nothing dropped.
-      const landed = new Set(words(fit.slot));
-      expect(words(slot).filter((w) => !landed.has(w))).toEqual([]);
+      // The r5 landing (its last step moved to the notes) is gone: nothing taught lives only in
+      // the notes. Without a re-write the slot steps down or is flagged, its words kept.
+      if (fit.rung !== "flagged") {
+        const gate = fitsPlanned(fit.render.spec, {
+          stepDown: 1,
+          ...(fit.render.variant ? { variant: fit.render.variant } : {}),
+          structure: fit.render.structure,
+        });
+        expect(gate.ok).toBe(true);
+      }
+      const { notes: _n, ...shown } = fit.slot as DesignSlot & { notes?: string };
+      const landed = new Set(words(shown as DesignSlot));
+      const { notes: _o, ...was } = slot as DesignSlot & { notes?: string };
+      expect(words(was as DesignSlot).filter((w) => !landed.has(w))).toEqual([]);
       if (fit.slot.form === "sequence") expect(fit.slot.steps.length).toBeGreaterThanOrEqual(2);
     });
   }
