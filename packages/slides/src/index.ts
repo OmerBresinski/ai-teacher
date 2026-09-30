@@ -26,6 +26,7 @@ export * from "./layouts";
 export * from "./look";
 export * from "./materialise";
 export * from "./metrics";
+export * from "./palette";
 export * from "./path";
 export * from "./reflow";
 export * from "./specs";
