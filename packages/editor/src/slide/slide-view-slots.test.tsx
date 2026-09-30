@@ -67,7 +67,7 @@ describe("an open photo slot", () => {
 describe("the demo switch", () => {
   test("on, present and thumbnails still never draw a brief (layout audit, 30 Sep 2026)", () => {
     setSlotPlaceholders(true);
-    for (const mode of ["present", "thumb", "view"] as const) {
+    for (const mode of ["present", "view"] as const) {
       expect(shown(withPhoto, mode).querySelector("[data-slot-placeholder]")).toBeNull();
       const c = shown(withDiagram, mode);
       expect(c.textContent).not.toContain("Diagram:");

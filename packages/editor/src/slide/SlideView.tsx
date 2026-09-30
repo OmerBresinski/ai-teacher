@@ -1,6 +1,12 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { isDiagramMark, slideArtVariant, slideBackground, withoutDiagramSlot } from "@tj/slides";
+import {
+  isDiagramMark,
+  slideArtVariant,
+  slideBackground,
+  withoutDiagramSlot,
+  withThemeColours,
+} from "@tj/slides";
 import {
   type CSSProperties,
   lazy,
@@ -97,7 +103,8 @@ export function SlideView({
    * 2026). The old demo switch (`slot-placeholders.ts`) no longer draws briefs outside the editor.
    */
   const slide = useMemo(
-    () => (mode === "edit" ? given : withoutDiagramSlot(given, theme)),
+    // Look colours are theme tokens, drawn in the slide's own theme whatever theme wrote them.
+    () => withThemeColours(mode === "edit" ? given : withoutDiagramSlot(given, theme), theme),
     [given, theme, mode],
   );
   /**

@@ -733,7 +733,7 @@ function matchingSlide(t: Theme): Layout {
   const left = [0, 1, 2].map((i) =>
     text(
       "body",
-      `${i + 1}  Term ${i + 1}`,
+      `Term ${i + 1}`,
       { x: SAFE.x, y: TOP + i * PITCH, w: HALF_W, h: CARD_H },
       { valign: "middle" },
     ),
@@ -741,7 +741,7 @@ function matchingSlide(t: Theme): Layout {
   const right = [0, 1, 2].map((i) =>
     text(
       "body",
-      `${String.fromCharCode(65 + i)}  Definition ${i + 1}`,
+      `Definition ${i + 1}`,
       { x: RIGHT_X, y: TOP + i * PITCH, w: HALF_W, h: CARD_H },
       { valign: "middle" },
     ),
