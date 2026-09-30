@@ -613,6 +613,7 @@ export async function planWriteSlides(
             subject: pic.subject.slice(0, 60),
             mustShow: pic.mustShow.slice(0, 3).map((m) => m.slice(0, 60)),
             purpose: "context",
+            ...namedOf(pic.named),
           }
         : undefined;
     // The saved outline keeps imageBrief to image-text entries (domain rule); the title's brief goes
@@ -1194,13 +1195,16 @@ export async function planWriteSlides(
     }
     const brief0 =
       s.form === "photo"
-        ? (fitted.out.imageBrief as { subject: string; mustShow?: string[] } | undefined)
+        ? (fitted.out.imageBrief as
+            | { subject: string; named?: string | null; mustShow?: string[] }
+            | undefined)
         : undefined;
     const imageBrief: ImageBrief | undefined = brief0
       ? {
           subject: brief0.subject.slice(0, 60),
           mustShow: (brief0.mustShow ?? []).slice(0, 3).map((m) => m.slice(0, 60)),
           purpose: "context",
+          ...namedOf(brief0.named),
         }
       : undefined;
     const kind = renderWritten(s.form, s.layout, fitted.out).spec.kind as OutlineEntry["kind"];
@@ -1676,4 +1680,13 @@ export async function planWriteSlides(
   };
   deps.logger.info({ stage: "generate", planWrite: summary }, "plan-write report");
   return { ...state, lesson, ...(mode === "stream" ? { checkedPerSlide: true } : {}) };
+}
+
+/**
+ * The writer's `named` (a proper name or null) as the photo search reads it (ruling 139): a name
+ * sends the search to Commons first with that name; null keeps it to Pexels.
+ */
+export function namedOf(named: string | null | undefined): Pick<ImageBrief, "named" | "specific"> {
+  const name = typeof named === "string" ? named.trim().slice(0, 80) : "";
+  return name ? { named: name, specific: true } : { specific: false };
 }

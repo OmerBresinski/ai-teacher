@@ -71,6 +71,13 @@ const lineGraph = z.object({
     .array(z.object({ x: z.number(), y: z.number(), label: text(24) }))
     .max(4)
     .optional(),
+  intervals: z
+    .array(
+      z.object({ from: z.number(), to: z.number(), label: text(20), y: z.number().optional() }),
+    )
+    .max(2)
+    .optional()
+    .describe("a span between two x values, drawn as a labelled double arrow (a lag time)"),
 });
 
 const flow = z.object({
@@ -140,7 +147,10 @@ const labelledDiagram = z.object({
   labels: z
     .array(z.object({ text: text(24), at: pt, side: z.enum(["left", "right", "top", "bottom"]) }))
     .max(8)
-    .optional(),
+    .optional()
+    .describe(
+      "each label on, inside or just beside the shape it names (one further away is dropped); one name per shape",
+    ),
 });
 
 const numberLine = z.object({

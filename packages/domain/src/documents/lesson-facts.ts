@@ -197,6 +197,8 @@ export const ImageBriefSchema = z.strictObject({
    * subject's wording (`isSpecificSubject` in generation).
    */
   specific: z.boolean().optional(),
+  /** The proper name of the one thing the photo must show (the writer's `named`); searched first. */
+  named: z.string().trim().min(1).max(80).optional(),
 });
 export type ImageBrief = z.infer<typeof ImageBriefSchema>;
 

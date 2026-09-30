@@ -62,7 +62,11 @@ export const streamLessonLenient = z.object({
   objectives: z.array(z.string()).min(1),
   runningExample: z.string(),
   titlePicture: z
-    .object({ subject: z.string(), mustShow: z.array(z.string()).catch([]) })
+    .object({
+      subject: z.string(),
+      named: z.string().nullish().catch(null),
+      mustShow: z.array(z.string()).catch([]),
+    })
     .nullish()
     .catch(null),
   plan: z.array(z.string()),

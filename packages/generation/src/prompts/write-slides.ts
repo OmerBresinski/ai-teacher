@@ -14,8 +14,9 @@ import { type Audience, audienceBlock } from "./shared";
  * open prompt; a diagram is the kind the text needs, marks what the text names, one label per real part,
  * on the part it names; a photo brief names the one specific thing it must show (`named`, for Commons).
  * v11: v10's smoke (ad907742) gave maths a stepped 3-item set, but history 3 closed recall questions;
- * the practice form now follows the objective's verb (a set to work out, a written task to explain). */
-export const WRITE_SLIDES_VERSION = "write-slides.v11";
+ * the practice form now follows the objective's verb (a set to work out, a written task to explain).
+ * v12: the photo slot's contract and schema carry `named` (proper name or null; code routes it to Commons). */
+export const WRITE_SLIDES_VERSION = "write-slides.v12";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {

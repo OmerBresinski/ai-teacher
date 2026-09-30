@@ -51,7 +51,14 @@ export type SlotUnit = "line" | "sentence" | "item";
 export type SubList = { unit: SlotUnit; min: number; max: number; each: TextKind };
 
 /** One field of an item: a kind of text, a list, or the right-answer flag. */
-export type ItemField = TextKind | SubList | "flag";
+/**
+ * `named`: a photo's proper name or null (ruling 139: a named subject is searched on Commons). Off
+ * the slide, so never measured.
+ */
+export type ItemField = TextKind | SubList | "flag" | "named";
+
+const NAMED_LINE =
+  "the proper name of the one place, artefact, person or specimen this photo must show; null when any photo of its kind will do";
 
 /** Where a slot's text ends up. */
 export type SlotPlace = "slide" | "reveal" | "answer" | "notes" | "off-slide";
@@ -189,7 +196,11 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
         unit: "item",
         min: 1,
         max: 1,
-        each: { subject: "brief", mustShow: { unit: "item", min: 0, max: 4, each: "label" } },
+        each: {
+          subject: "brief",
+          named: "named",
+          mustShow: { unit: "item", min: 0, max: 4, each: "label" },
+        },
         place: "off-slide",
       },
     ],
@@ -425,6 +436,7 @@ function counted<T extends z.ZodTypeAny>(item: T, min: number, max: number | und
 
 function fieldSchema(f: ItemField): z.ZodTypeAny {
   if (f === "flag") return z.boolean().describe("true for the right answer");
+  if (f === "named") return z.string().trim().min(1).nullable().describe(NAMED_LINE);
   if (typeof f === "string") return kindSchema(f);
   return counted(kindSchema(f.each), f.min, f.max).describe(
     `${range(f.min, f.max)} ${unitName(f.unit, f.max)}, each ${TEXT_KINDS[f.each]}`,
@@ -489,9 +501,11 @@ function itemLine(each: Slot["each"]): string {
   return Object.entries(each)
     .filter(([, f]) => f !== "flag")
     .map(([k, f]) =>
-      typeof f === "string"
-        ? `${k}: ${TEXT_KINDS[f as TextKind]}`
-        : `${k}: ${range((f as SubList).min, (f as SubList).max)} ${unitName((f as SubList).unit, (f as SubList).max)}, each ${TEXT_KINDS[(f as SubList).each]}`,
+      f === "named"
+        ? `${k}: ${NAMED_LINE}`
+        : typeof f === "string"
+          ? `${k}: ${TEXT_KINDS[f as TextKind]}`
+          : `${k}: ${range((f as SubList).min, (f as SubList).max)} ${unitName((f as SubList).unit, (f as SubList).max)}, each ${TEXT_KINDS[(f as SubList).each]}`,
     )
     .join("; ");
 }

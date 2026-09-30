@@ -9,7 +9,8 @@ import { type Audience, audienceBlock } from "./shared";
  * in the schemas is part of the prompt (the key before the question, the content before the form).
  */
 
-export const PLAN_LESSON_VERSION = "plan-lesson.v8";
+/* v9: titlePicture carries `named` (proper name or null) for the Commons search (ruling 139). */
+export const PLAN_LESSON_VERSION = "plan-lesson.v9";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -59,7 +60,13 @@ export const PlanSlideSchema = z.object({
   form: z.string(),
   /** A layout of that form on the menu ("default" when it has one). */
   layout: z.string(),
-  imageBrief: z.object({ subject: z.string(), mustShow: z.array(z.string()) }).nullable(),
+  imageBrief: z
+    .object({
+      subject: z.string(),
+      named: z.string().nullish(),
+      mustShow: z.array(z.string()),
+    })
+    .nullable(),
   figureBrief: nullableText,
 });
 export type PlanSlide = z.infer<typeof PlanSlideSchema>;
@@ -79,6 +86,12 @@ export const ROW_FORMAT = "role | form | layout | objectives | parts | aim | tea
 /** The title slide's photograph (plan-lesson.v8): what whoever finds it looks for. */
 export const titlePictureSchema = z.object({
   subject: z.string().describe("a description for whoever finds the photograph"),
+  named: z
+    .string()
+    .nullable()
+    .describe(
+      "the proper name of the one place, artefact, person or specimen this photo must show; null when any photo of its kind will do",
+    ),
   mustShow: z.array(z.string()).max(3).describe("up to 3 short labels, not shown on the slide"),
 });
 
@@ -130,6 +143,7 @@ export function parsePlan(
       pic && typeof pic.subject === "string" && pic.subject.trim()
         ? {
             subject: pic.subject,
+            named: typeof pic.named === "string" && pic.named.trim() ? pic.named.trim() : null,
             mustShow: (pic.mustShow ?? []).filter((m) => typeof m === "string"),
           }
         : null,
@@ -192,7 +206,12 @@ export function toWire(plan: PlanLessonOutput): PlanLessonWire {
     misconception: plan.misconception,
     objectives: plan.objectives,
     runningExample: plan.runningExample,
-    titlePicture: plan.slides[0]?.imageBrief ?? { subject: "", mustShow: [] },
+    titlePicture: (() => {
+      const pic = plan.slides[0]?.imageBrief;
+      return pic
+        ? { ...pic, named: pic.named ?? null }
+        : { subject: "", named: null, mustShow: [] };
+    })(),
     slides: plan.slides
       .filter((s, i) => !(i === 0 && s.form === "title") && !(i === 1 && s.form === "objectives"))
       .map((s) =>

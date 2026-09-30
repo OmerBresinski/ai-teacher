@@ -149,6 +149,7 @@ function picker(): Picker {
 
 function fillField(f: ItemField, i: number, counts: Counts, key: string, next: Picker): unknown {
   if (f === "flag") return i === 0;
+  if (f === "named") return null;
   if (typeof f === "string") return next(f);
   const n = counts[key] ?? f.max;
   return Array.from({ length: n }, () => next(f.each));
@@ -167,7 +168,8 @@ function fillSlot(slot: Slot, counts: Counts, next: Picker): unknown {
         );
   if (slot.field === "correct") return false;
   if (slot.field === "compare") return { left: item(0), right: item(1) };
-  if (slot.field === "imageBrief") return { subject: "root hairs on a seedling", mustShow: [] };
+  if (slot.field === "imageBrief")
+    return { subject: "root hairs on a seedling", named: null, mustShow: [] };
   const items = Array.from({ length: n }, (_, i) => item(i));
   return slot.min === 1 && slot.max === 1 && n === 1 ? items[0] : items;
 }

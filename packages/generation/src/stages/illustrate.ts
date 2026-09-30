@@ -404,7 +404,11 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
-  const queries = [...factQueryHints(args.lesson, index), ...queryCandidates(brief)];
+  const queries = [
+    ...(brief.named ? [brief.named] : []),
+    ...factQueryHints(args.lesson, index),
+    ...queryCandidates(brief),
+  ].filter((q, i, all) => all.indexOf(q) === i);
   const gather = async (source: PhotoSourceName): Promise<"busy" | undefined> => {
     for (const query of queries) {
       if (candidates.length >= MAX_CANDIDATES) break;

@@ -19,9 +19,10 @@ import { WRITE_RULES } from "./write-slides";
  * work alone up to the hardest case taught. The rest of v4 is write-slides.v10's rules (practice,
  * diagrams, the photo's `named`).
  * v5: the practise role names its form by the objective's verb (v4 smoke: history practice was recall).
+ * v6: the photo slot's schema carries `named` (proper name or null), as the v4 text already asks.
  */
 
-export const STREAM_LESSON_VERSION = "stream-lesson.v5";
+export const STREAM_LESSON_VERSION = "stream-lesson.v6";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
