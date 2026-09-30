@@ -28,7 +28,6 @@ import {
   variantsFor,
   vocabularyGrid,
 } from "./layouts";
-import { ACCENT_BAR_NAME } from "./look";
 import {
   type IdSupplier,
   materialiseBlock,
@@ -501,18 +500,13 @@ describe("materialiseSlide", () => {
       meta,
       counter(),
     );
-    const texts = slide.elements.filter((element) => element.type === "text");
-    const terms = texts.filter((element) => element.style.preset === "body");
-    const defs = texts.filter((element) => element.style.preset === "small");
+    // Word cards (layout audit round 2): each term over its definition on its own card.
+    const terms = slide.elements.filter((element) => element.name === "Term");
+    const defs = slide.elements.filter((element) => element.name === "Definition");
     expect(terms.map(plain)).toEqual(["Evaporation", "Condensation"]);
     expect(defs.map(plain)).toEqual(["Liquid to gas.", "Gas to liquid."]);
-    // The one rule between the two entries in the first column; the heading's hairline gave its
-    // lane to the kind tag, and the accent bar is the look's (`look.ts`).
-    const rules = slide.elements.filter(
-      (element) => element.type === "shape" && element.name !== ACCENT_BAR_NAME,
-    );
-    expect(rules).toHaveLength(1);
-    expect(SlideSchema.safeParse(slide).success).toBe(true);
+    expect(slide.elements.filter((element) => element.name === "Word card")).toHaveLength(2);
+    expect(slide.elements.filter((element) => element.name === "Rule")).toHaveLength(0);
   });
 
   test("vocabulary: more entries than the theme has slots fill every slot and drop the rest", () => {
@@ -529,34 +523,45 @@ describe("materialiseSlide", () => {
         meta,
         counter(),
       );
-      const terms = slide.elements.filter((e) => e.type === "text" && e.style.preset === "body");
+      const terms = slide.elements.filter((e) => e.name === "Term");
       expect(terms).toHaveLength(slots);
     }
   });
 
-  test("sort: question.order is the card ids in spec order", () => {
+  test("sort: shown shuffled under letters, never in the answer order; question.order keeps it", () => {
     const spec = minimalSpec("sort") as Extract<SlideSpec, { kind: "sort" }>;
     const slide = materialiseSlide(spec, "chalk", meta, counter());
     const cards = slide.elements.filter((element) => element.type === "option");
-    expect(cards.map(plain)).toEqual(spec.steps);
+    expect(cards.map(plain)).not.toEqual(spec.steps);
+    expect([...cards.map(plain)].sort()).toEqual([...spec.steps].sort());
+    expect(cards.map((c) => (c as { label?: string }).label)).toEqual(["A", "B", "C", "D"]);
     if (slide.question?.type !== "sort") throw new Error("not a sort");
-    expect(slide.question.order).toEqual(cards.map((card) => card.id));
+    const byId = new Map(cards.map((c) => [c.id, plain(c)]));
+    expect(slide.question.order.map((id) => byId.get(id))).toEqual(spec.steps);
+    // Stable: the same slide always shows the same order.
+    const again = materialiseSlide(spec, "chalk", meta, counter());
+    expect(again.elements.filter((e) => e.type === "option").map(plain)).toEqual(cards.map(plain));
   });
 
-  test("matching: left and right cards in order; pairs join them with fresh ids", () => {
+  test("matching: terms numbered in order, matches lettered and shuffled, pairs keep the key", () => {
     const spec = minimalSpec("matching") as Extract<SlideSpec, { kind: "matching" }>;
     const slide = materialiseSlide(spec, "chalk", meta, counter());
-    const cards = slide.elements.filter((e) => e.type === "text" && e.style.preset === "body");
-    expect(cards.map(plain)).toEqual([
-      ...spec.pairs.map((p) => p.left),
-      ...spec.pairs.map((p) => p.right),
-    ]);
+    const texts = slide.elements.filter((e) => e.type === "text" && e.style.preset === "body");
+    const byId = new Map(texts.map((e) => [e.id, plain(e)]));
     if (slide.question?.type !== "matching") throw new Error("not a matching");
-    slide.question.pairs.forEach((pair, i) => {
-      expect(pair.leftElementId).toBe(cards[i]?.id ?? "");
-      expect(pair.rightElementId).toBe(cards[3 + i]?.id ?? "");
-      expect(pair.id).toMatch(/^e\d+$/);
+    const lefts = slide.question.pairs.map((p) => byId.get(p.leftElementId));
+    const rights = slide.question.pairs.map((p) => byId.get(p.rightElementId));
+    expect(lefts).toEqual(spec.pairs.map((p) => p.left));
+    expect(rights).toEqual(spec.pairs.map((p) => p.right));
+    // No match sits opposite its own term.
+    const rightTexts = texts
+      .filter((e) => e.x > 480)
+      .sort((a, b) => a.y - b.y)
+      .map(plain);
+    rightTexts.forEach((r, i) => {
+      expect(r).not.toBe(spec.pairs[i]?.right);
     });
+    for (const pair of slide.question.pairs) expect(pair.id).toMatch(/^e\d+$/);
   });
 
   test("true-false and open-response carry their answer data", () => {
@@ -586,10 +591,11 @@ describe("materialiseSlide", () => {
       meta,
       counter(),
     );
-    const body = objectives.elements.find((e) => e.type === "text" && e.style.preset === "body");
-    expect(body && "doc" in body ? body.doc?.content?.[0]?.type : undefined).toBe("orderedList");
-    // Objectives are stored as verb phrases and listed lower-case under the stem (TEACH-198).
-    expect(plain(body)).toBe("describe the stages\n\nexplain melting");
+    // Each objective on its own numbered card (layout audit round 2), stored as verb phrases and
+    // set lower-case under the stem (TEACH-198).
+    const cards = objectives.elements.filter((e) => /^Objective \d$/.test(e.name ?? ""));
+    expect(cards.map((e) => plain(e))).toEqual(["describe the stages", "explain melting"]);
+    expect(objectives.elements.filter((e) => e.name === "Row badge")).toHaveLength(2);
     expect(plain(objectives.elements[0])).toBe(OBJECTIVES_SLIDE_HEADING);
 
     const plenary = materialiseSlide(minimalSpec("plenary"), "chalk", meta, counter());

@@ -277,11 +277,11 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       footnote: "Answer all three in your books. Use because, so and therefore.",
       factRefs: ["q4"],
     });
-    const [list] = byPreset(slide, "body");
+    const list = byPreset(slide, "body");
     const [foot] = byPreset(slide, "small");
-    if (!list || !foot) throw new Error("exit ticket");
+    if (list.length === 0 || !foot) throw new Error("exit ticket");
     expect(bottom(foot)).toBeLessThanOrEqual(SAFE_BOTTOM);
-    expect(foot.y).toBeGreaterThanOrEqual(bottom(list));
+    for (const q of list) expect(foot.y).toBeGreaterThanOrEqual(bottom(q));
   });
 
   test("a slide whose copy fits the recipe is returned as the recipe drew it", () => {

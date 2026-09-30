@@ -30,6 +30,7 @@ import {
   LIST_SLOTS,
   type ListVariant,
   layoutSlide,
+  seededOrder,
   type TitleVariant,
   variantName,
   vocabularyGrid,
@@ -65,6 +66,7 @@ import {
   withTerms,
 } from "./structure";
 import { measureHeadless } from "./text-measure";
+import { withThemeColours } from "./theme-colours";
 import { getTheme } from "./themes";
 
 /*
@@ -446,7 +448,7 @@ function says(laid: readonly SlideElement[], words: readonly SlideElement[]): bo
 export function presentedSlide(slide: Slide, theme: Theme): Slide {
   const shown = withoutDiagramSlot(slide, theme);
   const elements = shown.elements.filter((e) => !isDiagramMark(e) && !isOpenPhotoSlot(e));
-  return { ...shown, elements };
+  return withThemeColours({ ...shown, elements }, theme);
 }
 
 /** The key terms a slide's running text picks out (bold), so the relaid words mark them again. */
@@ -931,10 +933,24 @@ function fillMatching(spec: SlideSpecOf<"matching">, laid: Layout): Layout {
   setText(textOf(laid, "heading"), spec.stem);
   const cards = textsOf(laid, "body");
   const half = cards.length / 2;
+  const n = spec.pairs.length;
+  // The right-hand side is shown shuffled (seeded by the pairs, so stable), never opposite its
+  // term; the answer key stays in `question.pairs` (layout audit #3).
+  const order = seededOrder(n, spec.pairs.map((p) => `${p.left}|${p.right}`).join("\n"), true);
   spec.pairs.forEach((pair, i) => {
-    setText(cards[i], pair.left);
-    setText(cards[half + i], pair.right);
+    setDoc(cards[i], labelledDoc(String(i + 1), pair.left));
   });
+  order.forEach((pairIndex, slotIndex) => {
+    const pair = spec.pairs[pairIndex];
+    if (pair) setDoc(cards[half + slotIndex], labelledDoc(LETTER(slotIndex), pair.right));
+  });
+  const question = laid.question;
+  if (question?.type === "matching") {
+    question.pairs = question.pairs.map((p, i) => ({
+      ...p,
+      rightElementId: cards[half + order.indexOf(i)]?.id ?? p.rightElementId,
+    }));
+  }
   return laid;
 }
 
@@ -953,10 +969,32 @@ function fillGap(spec: SlideSpecOf<"fill-gap">, laid: Layout, ids: IdSupplier): 
 function fillSort(spec: SlideSpecOf<"sort">, laid: Layout): Layout {
   setText(textOf(laid, "heading"), spec.stem);
   const cards = optionsOf(laid);
-  spec.steps.forEach((step, i) => {
-    setDoc(cards[i], docFromText(step));
+  // Shown in a stable shuffled order under letters, never the answer order; `question.order`
+  // keeps the right order as card ids (layout audit #3).
+  const order = seededOrder(spec.steps.length, spec.steps.join("\n"), false);
+  order.forEach((stepIndex, slotIndex) => {
+    setDoc(cards[slotIndex], docFromText(spec.steps[stepIndex] ?? ""));
   });
-  return { ...laid, question: { type: "sort", order: cards.map((card) => card.id) } };
+  const right = spec.steps.map((_, i) => cards[order.indexOf(i)]?.id ?? "");
+  return { ...laid, question: { type: "sort", order: right } };
+}
+
+const LETTER = (i: number) => String.fromCharCode(65 + i);
+
+/** "1  term" / "A  match": the label bold in the accent, as the option cards letter theirs. */
+function labelledDoc(label: string, content: string): RichDoc {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: label, marks: [{ type: "bold" }] },
+          { type: "text", text: `  ${content}` },
+        ],
+      },
+    ],
+  };
 }
 
 function fillOpenResponse(spec: SlideSpecOf<"open-response">, laid: Layout): Layout {

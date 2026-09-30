@@ -630,15 +630,27 @@ function instructionsSlide(t: Theme): Layout {
   return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
 }
 
-/** Discussion — one big prompt and a named talk structure. */
+/** Discussion — one big prompt in a framed speech bubble, and a named talk structure. */
 function discussionSlide(t: Theme): Layout {
   const promptH = boxH(t, "subtitle", 3);
+  const pad = SPACE[4];
+  const top = centreY(promptH + pad * 2);
   return {
     elements: [
+      shape(
+        "speech",
+        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 + SPACE[5] },
+        {
+          fill: t.colors.surface,
+          stroke: t.colors.accent,
+          strokeWidth: 2.5,
+          name: "Speech bubble",
+        },
+      ),
       text("subtitle", "Ask the question you want pupils to talk about.", {
-        x: SAFE.x,
-        y: centreY(promptH),
-        w: FULL,
+        x: SAFE.x + pad,
+        y: top + pad,
+        w: FULL - pad * 2,
         h: promptH,
       }),
       footnote(t, "Talk to your partner"),
@@ -655,8 +667,9 @@ function trueFalseSlide(t: Theme): Layout {
     140,
     RESERVED_LINES["true-false"],
   );
-  const yes = option("True", "True", { x: SAFE.x, y, w: HALF_W, h });
-  const no = option("False", "False", { x: RIGHT_X, y, w: HALF_W, h });
+  // Big True and False buttons, a tick and a cross for their chips (layout audit #9).
+  const yes = option("✓", "True", { x: SAFE.x, y, w: HALF_W, h });
+  const no = option("✗", "False", { x: RIGHT_X, y, w: HALF_W, h });
   return {
     elements: [prompt, yes, no],
     question: { type: "true-false", correct: true },
@@ -724,7 +737,8 @@ function multipleChoiceStackedSlide(t: Theme): Layout {
   };
 }
 
-/** Matching — three terms left, three definitions right. */
+/** Matching — three numbered terms left, three lettered matches right (shuffled on fill; the
+ * structure pass sets each as a card, `rowCards`). */
 function matchingSlide(t: Theme): Layout {
   const CARD_H = 72;
   const PITCH = 88;
@@ -742,7 +756,7 @@ function matchingSlide(t: Theme): Layout {
       "body",
       `Definition ${i + 1}`,
       { x: RIGHT_X, y: TOP + i * PITCH, w: HALF_W, h: CARD_H },
-      { valign: "middle", color: t.colors.muted },
+      { valign: "middle" },
     ),
   );
   return {
@@ -756,6 +770,34 @@ function matchingSlide(t: Theme): Layout {
       })),
     },
   };
+}
+
+/**
+ * A stable shuffle of 0..n-1 seeded by `seed` (the slide's own words), so the same slide always
+ * shows the same order. With `derange`, no index stays in place (a match never sits opposite its
+ * term); otherwise the order is only never the identity (a sort never shows its answer). Falls
+ * back to the cheap derangement when no seeded draw qualifies.
+ */
+export function seededOrder(n: number, seed: string, derangement: boolean): number[] {
+  if (n < 2) return Array.from({ length: n }, (_, i) => i);
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const next = () => {
+    h = (h + 0x6d2b79f5) | 0;
+    let r = Math.imul(h ^ (h >>> 15), 1 | h);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let tries = 0; tries < 64; tries++) {
+    const order = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(next() * (i + 1));
+      [order[i], order[j]] = [order[j] as number, order[i] as number];
+    }
+    const ok = derangement ? order.every((v, i) => v !== i) : order.some((v, i) => v !== i);
+    if (ok) return order;
+  }
+  return derange(n);
 }
 
 /**
@@ -862,21 +904,28 @@ function fillGapSlide(t: Theme): Layout {
  * the card's own chrome rather than typed, so a change to either moves the cards
  * instead of quietly overflowing them.
  */
+/** A sort card's padding: four full-width cards and a two-line stem inside the safe area. */
+export const SORT_CARD_PAD = SPACE[2];
+
 function sortSlide(t: Theme): Layout {
   // A column of four full-width cards under a one-line stem: a stage of a process is a short
   // phrase, which a half-width card cannot hold on the option floor.
-  const stemBox = boxH(t, "heading", 1, "question");
-  const gap = SPACE[0];
-  const cardH = optionCardH(t);
+  // The cards take a compact padding so all four sit inside the safe area under a two-line stem
+  // (layout audit: the fourth card ran under the bottom bar at the option default's 24pt pad).
+  const stemBox = boxH(t, "heading", 2, "question");
+  const gap = SPACE[1];
+  const pad = SORT_CARD_PAD;
+  const cardH = optionCardH(t) - (OPTION.pad - pad) * 2;
   const top = snapY(SAFE.y + stemBox + SPACE[1]);
-  const cards = [0, 1, 2, 3].map((i) =>
-    option(String(i + 1), `Step ${i + 1}`, {
+  const cards = [0, 1, 2, 3].map((i) => ({
+    ...option(String.fromCharCode(65 + i), `Step ${i + 1}`, {
       x: SAFE.x,
       y: top + i * (cardH + gap),
       w: FULL,
       h: cardH,
     }),
-  );
+    textStyle: { padding: pad },
+  }));
   return {
     elements: [
       text("heading", "Put these in the right order.", {
@@ -891,23 +940,33 @@ function sortSlide(t: Theme): Layout {
   };
 }
 
-/** Open response — a question and a big space to answer it in. */
+/**
+ * Open response — the question centred in a framed prompt card. Pupils write in their books, so the
+ * board shows no empty answer box (the box belongs on the handout; layout audit #8).
+ */
 function openResponseSlide(t: Theme): Layout {
+  const promptH = boxH(t, "heading", 3, "question");
+  const pad = SPACE[4];
+  const top = centreY(promptH + pad * 2);
   return {
     elements: [
-      stem(t, "Ask an open question worth writing about."),
       shape(
         "rounded",
-        { x: SAFE.x, y: 200, w: FULL, h: 240 },
+        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 },
         {
           fill: t.colors.surface,
-          stroke: t.colors.line,
-          strokeWidth: 1,
+          stroke: t.colors.accent,
+          strokeWidth: 2.5,
           radius: t.radius,
-          name: "Answer space",
+          name: "Prompt card",
         },
       ),
-      footnote(t, "Write your answer"),
+      text(
+        "heading",
+        "Ask an open question worth writing about.",
+        { x: SAFE.x + pad, y: top + pad, w: FULL - pad * 2, h: promptH },
+        { align: "center", valign: "middle" },
+      ),
     ],
     // Without this the slide is not a question slide: the answer drawer, the model
     // answer field and "Show answers" on export all key off `slide.question`.

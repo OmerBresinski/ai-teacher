@@ -1362,10 +1362,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 168,
+        "y": 140,
         "w": 844,
+        "h": 278,
+        "fill": "#FFFBF0",
+        "stroke": "#A94A18",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 169,
+        "w": 786,
         "h": 182,
         "doc": {
           "type": "doc",
@@ -1387,7 +1400,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 459,
@@ -1464,7 +1477,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -1487,7 +1500,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -1771,8 +1784,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#6E6656"
+          "valign": "middle"
         }
       },
       {
@@ -1799,8 +1811,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#6E6656"
+          "valign": "middle"
         }
       },
       {
@@ -1827,8 +1838,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#6E6656"
+          "valign": "middle"
         }
       }
     ],
@@ -2104,7 +2114,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 46,
+        "h": 92,
         "doc": {
           "type": "doc",
           "content": [
@@ -2128,9 +2138,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -2145,15 +2155,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -2168,15 +2181,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -2191,15 +2207,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -2214,7 +2233,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -2226,11 +2248,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 92,
+        "h": 195,
+        "fill": "#FFFBF0",
+        "stroke": "#A94A18",
+        "strokeWidth": 2.5,
+        "radius": 14,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 137,
         "doc": {
           "type": "doc",
           "content": [
@@ -2247,48 +2283,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFBF0",
-        "stroke": "#E7DCC4",
-        "strokeWidth": 1,
-        "radius": 14,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 459,
-        "w": 844,
-        "h": 38,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#6E6656"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -3953,10 +3950,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 161,
+        "y": 133,
         "w": 844,
+        "h": 288,
+        "fill": "#FFFFFF",
+        "stroke": "#6532BE",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 162,
+        "w": 786,
         "h": 192,
         "doc": {
           "type": "doc",
@@ -3978,7 +3988,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 458,
@@ -4055,7 +4065,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -4078,7 +4088,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -4362,8 +4372,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#66533C"
+          "valign": "middle"
         }
       },
       {
@@ -4390,8 +4399,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#66533C"
+          "valign": "middle"
         }
       },
       {
@@ -4418,8 +4426,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#66533C"
+          "valign": "middle"
         }
       }
     ],
@@ -4695,7 +4702,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -4719,9 +4726,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 140,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -4736,15 +4743,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 223,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -4759,15 +4769,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 306,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -4782,15 +4795,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 389,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -4805,7 +4821,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -4817,11 +4836,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 90,
+        "h": 193,
+        "fill": "#FFFFFF",
+        "stroke": "#6532BE",
+        "strokeWidth": 2.5,
+        "radius": 22,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 135,
         "doc": {
           "type": "doc",
           "content": [
@@ -4838,48 +4871,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFFFF",
-        "stroke": "#F0D27C",
-        "strokeWidth": 1,
-        "radius": 22,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 458,
-        "w": 844,
-        "h": 39,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#66533C"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -6292,10 +6286,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 175,
+        "y": 147,
         "w": 844,
+        "h": 267,
+        "fill": "#FFFFFF",
+        "stroke": "#A31F2E",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 176,
+        "w": 786,
         "h": 171,
         "doc": {
           "type": "doc",
@@ -6317,7 +6324,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 461,
@@ -6394,7 +6401,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -6417,7 +6424,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -6701,8 +6708,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5C5752"
+          "valign": "middle"
         }
       },
       {
@@ -6729,8 +6735,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5C5752"
+          "valign": "middle"
         }
       },
       {
@@ -6757,8 +6762,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5C5752"
+          "valign": "middle"
         }
       }
     ],
@@ -7034,7 +7038,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 47,
+        "h": 93,
         "doc": {
           "type": "doc",
           "content": [
@@ -7058,9 +7062,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -7075,15 +7079,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -7098,15 +7105,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -7121,15 +7131,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -7144,7 +7157,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -7156,11 +7172,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 93,
+        "h": 198,
+        "fill": "#FFFFFF",
+        "stroke": "#A31F2E",
+        "strokeWidth": 2.5,
+        "radius": 6,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 140,
         "doc": {
           "type": "doc",
           "content": [
@@ -7177,48 +7207,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFFFF",
-        "stroke": "#F5C9CF",
-        "strokeWidth": 1,
-        "radius": 6,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 461,
-        "w": 844,
-        "h": 36,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#5C5752"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -8631,10 +8622,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 161,
+        "y": 133,
         "w": 844,
+        "h": 288,
+        "fill": "#FFFFFF",
+        "stroke": "#0A5CA2",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 162,
+        "w": 786,
         "h": 192,
         "doc": {
           "type": "doc",
@@ -8656,7 +8660,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 458,
@@ -8733,7 +8737,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -8756,7 +8760,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -9040,8 +9044,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#465F6B"
+          "valign": "middle"
         }
       },
       {
@@ -9068,8 +9071,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#465F6B"
+          "valign": "middle"
         }
       },
       {
@@ -9096,8 +9098,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#465F6B"
+          "valign": "middle"
         }
       }
     ],
@@ -9373,7 +9374,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -9397,9 +9398,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 140,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -9414,15 +9415,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 223,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -9437,15 +9441,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 306,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -9460,15 +9467,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 389,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -9483,7 +9493,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -9495,11 +9508,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 90,
+        "h": 193,
+        "fill": "#FFFFFF",
+        "stroke": "#0A5CA2",
+        "strokeWidth": 2.5,
+        "radius": 26,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 135,
         "doc": {
           "type": "doc",
           "content": [
@@ -9516,48 +9543,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFFFF",
-        "stroke": "#BFE1F0",
-        "strokeWidth": 1,
-        "radius": 26,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 458,
-        "w": 844,
-        "h": 39,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#465F6B"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -10970,10 +10958,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 168,
+        "y": 140,
         "w": 844,
+        "h": 275,
+        "fill": "#FFFFFF",
+        "stroke": "#245F28",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 169,
+        "w": 786,
         "h": 179,
         "doc": {
           "type": "doc",
@@ -10995,7 +10996,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 458,
@@ -11072,7 +11073,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -11095,7 +11096,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -11379,8 +11380,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4E5E4B"
+          "valign": "middle"
         }
       },
       {
@@ -11407,8 +11407,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4E5E4B"
+          "valign": "middle"
         }
       },
       {
@@ -11435,8 +11434,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4E5E4B"
+          "valign": "middle"
         }
       }
     ],
@@ -11712,7 +11710,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 45,
+        "h": 90,
         "doc": {
           "type": "doc",
           "content": [
@@ -11736,9 +11734,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 140,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -11753,15 +11751,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 223,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -11776,15 +11777,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 306,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -11799,15 +11803,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 389,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -11822,7 +11829,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -11834,11 +11844,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 90,
+        "h": 193,
+        "fill": "#FFFFFF",
+        "stroke": "#245F28",
+        "strokeWidth": 2.5,
+        "radius": 10,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 135,
         "doc": {
           "type": "doc",
           "content": [
@@ -11855,48 +11879,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFFFF",
-        "stroke": "#CBE0BA",
-        "strokeWidth": 1,
-        "radius": 10,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 458,
-        "w": 844,
-        "h": 39,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#4E5E4B"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -13561,10 +13546,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 168,
+        "y": 140,
         "w": 844,
+        "h": 278,
+        "fill": "#FFFCF6",
+        "stroke": "#2C5A4D",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 169,
+        "w": 786,
         "h": 182,
         "doc": {
           "type": "doc",
@@ -13586,7 +13584,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 462,
@@ -13663,7 +13661,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -13686,7 +13684,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -13970,8 +13968,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5F584D"
+          "valign": "middle"
         }
       },
       {
@@ -13998,8 +13995,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5F584D"
+          "valign": "middle"
         }
       },
       {
@@ -14026,8 +14022,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#5F584D"
+          "valign": "middle"
         }
       }
     ],
@@ -14303,7 +14298,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 46,
+        "h": 92,
         "doc": {
           "type": "doc",
           "content": [
@@ -14327,9 +14322,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -14344,15 +14339,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -14367,15 +14365,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -14390,15 +14391,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -14413,7 +14417,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -14425,11 +14432,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 92,
+        "h": 195,
+        "fill": "#FFFCF6",
+        "stroke": "#2C5A4D",
+        "strokeWidth": 2.5,
+        "radius": 6,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 137,
         "doc": {
           "type": "doc",
           "content": [
@@ -14446,48 +14467,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFCF6",
-        "stroke": "#DDD3C1",
-        "strokeWidth": 1,
-        "radius": 6,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 462,
-        "w": 844,
-        "h": 35,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#5F584D"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -15900,10 +15882,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 168,
+        "y": 140,
         "w": 844,
+        "h": 278,
+        "fill": "#FFFFFF",
+        "stroke": "#0B6E86",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 169,
+        "w": 786,
         "h": 182,
         "doc": {
           "type": "doc",
@@ -15925,7 +15920,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 460,
@@ -16002,7 +15997,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -16025,7 +16020,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -16309,8 +16304,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4F5D6E"
+          "valign": "middle"
         }
       },
       {
@@ -16337,8 +16331,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4F5D6E"
+          "valign": "middle"
         }
       },
       {
@@ -16365,8 +16358,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4F5D6E"
+          "valign": "middle"
         }
       }
     ],
@@ -16642,7 +16634,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 46,
+        "h": 92,
         "doc": {
           "type": "doc",
           "content": [
@@ -16666,9 +16658,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -16683,15 +16675,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -16706,15 +16701,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -16729,15 +16727,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -16752,7 +16753,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -16764,11 +16768,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 92,
+        "h": 195,
+        "fill": "#FFFFFF",
+        "stroke": "#0B6E86",
+        "strokeWidth": 2.5,
+        "radius": 14,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 137,
         "doc": {
           "type": "doc",
           "content": [
@@ -16785,48 +16803,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFFFF",
-        "stroke": "#D9E1EA",
-        "strokeWidth": 1,
-        "radius": 14,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 460,
-        "w": 844,
-        "h": 37,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#4F5D6E"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -18491,10 +18470,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 175,
+        "y": 147,
         "w": 844,
+        "h": 267,
+        "fill": "#F3F5F8",
+        "stroke": "#1B3A8C",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 176,
+        "w": 786,
         "h": 171,
         "doc": {
           "type": "doc",
@@ -18516,7 +18508,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 462,
@@ -18593,7 +18585,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -18616,7 +18608,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -18900,8 +18892,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#505862"
+          "valign": "middle"
         }
       },
       {
@@ -18928,8 +18919,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#505862"
+          "valign": "middle"
         }
       },
       {
@@ -18956,8 +18946,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#505862"
+          "valign": "middle"
         }
       }
     ],
@@ -19233,7 +19222,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 47,
+        "h": 93,
         "doc": {
           "type": "doc",
           "content": [
@@ -19257,9 +19246,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -19274,15 +19263,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -19297,15 +19289,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -19320,15 +19315,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -19343,7 +19341,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -19355,11 +19356,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 93,
+        "h": 198,
+        "fill": "#F3F5F8",
+        "stroke": "#1B3A8C",
+        "strokeWidth": 2.5,
+        "radius": 4,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 140,
         "doc": {
           "type": "doc",
           "content": [
@@ -19376,48 +19391,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#F3F5F8",
-        "stroke": "#CFD5DD",
-        "strokeWidth": 1,
-        "radius": 4,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 462,
-        "w": 844,
-        "h": 35,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#505862"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -21082,10 +21058,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 168,
+        "y": 140,
         "w": 844,
+        "h": 278,
+        "fill": "#1C1F25",
+        "stroke": "#F2B551",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 169,
+        "w": 786,
         "h": 182,
         "doc": {
           "type": "doc",
@@ -21107,7 +21096,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 461,
@@ -21184,7 +21173,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -21207,7 +21196,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -21491,8 +21480,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#99A0AB"
+          "valign": "middle"
         }
       },
       {
@@ -21519,8 +21507,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#99A0AB"
+          "valign": "middle"
         }
       },
       {
@@ -21547,8 +21534,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#99A0AB"
+          "valign": "middle"
         }
       }
     ],
@@ -21824,7 +21810,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 46,
+        "h": 92,
         "doc": {
           "type": "doc",
           "content": [
@@ -21848,9 +21834,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -21865,15 +21851,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -21888,15 +21877,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -21911,15 +21903,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -21934,7 +21929,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -21946,11 +21944,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 92,
+        "h": 195,
+        "fill": "#1C1F25",
+        "stroke": "#F2B551",
+        "strokeWidth": 2.5,
+        "radius": 12,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 137,
         "doc": {
           "type": "doc",
           "content": [
@@ -21967,48 +21979,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#1C1F25",
-        "stroke": "#2C313A",
-        "strokeWidth": 1,
-        "radius": 12,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 461,
-        "w": 844,
-        "h": 36,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#99A0AB"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
@@ -23673,10 +23646,23 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "speech",
         "x": 58,
-        "y": 161,
+        "y": 133,
         "w": 844,
+        "h": 295,
+        "fill": "#FFFFFF",
+        "stroke": "#0A46C8",
+        "strokeWidth": 2.5,
+        "name": "Speech bubble"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 162,
+        "w": 786,
         "h": 199,
         "doc": {
           "type": "doc",
@@ -23698,7 +23684,7 @@
         }
       },
       {
-        "id": "_2",
+        "id": "_3",
         "type": "text",
         "x": 58,
         "y": 456,
@@ -23775,7 +23761,7 @@
             }
           ]
         },
-        "label": "True"
+        "label": "✓"
       },
       {
         "id": "_3",
@@ -23798,7 +23784,7 @@
             }
           ]
         },
-        "label": "False"
+        "label": "✗"
       }
     ],
     "question": {
@@ -24082,8 +24068,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4A4A46"
+          "valign": "middle"
         }
       },
       {
@@ -24110,8 +24095,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4A4A46"
+          "valign": "middle"
         }
       },
       {
@@ -24138,8 +24122,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "valign": "middle",
-          "color": "#4A4A46"
+          "valign": "middle"
         }
       }
     ],
@@ -24415,7 +24398,7 @@
         "x": 58,
         "y": 43,
         "w": 844,
-        "h": 46,
+        "h": 92,
         "doc": {
           "type": "doc",
           "content": [
@@ -24439,9 +24422,9 @@
         "id": "_2",
         "type": "option",
         "x": 58,
-        "y": 98,
+        "y": 147,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -24456,15 +24439,18 @@
             }
           ]
         },
-        "label": "1"
+        "label": "A",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_3",
         "type": "option",
         "x": 58,
-        "y": 196,
+        "y": 230,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -24479,15 +24465,18 @@
             }
           ]
         },
-        "label": "2"
+        "label": "B",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_4",
         "type": "option",
         "x": 58,
-        "y": 294,
+        "y": 313,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -24502,15 +24491,18 @@
             }
           ]
         },
-        "label": "3"
+        "label": "C",
+        "textStyle": {
+          "padding": 14
+        }
       },
       {
         "id": "_5",
         "type": "option",
         "x": 58,
-        "y": 392,
+        "y": 396,
         "w": 844,
-        "h": 93,
+        "h": 73,
         "doc": {
           "type": "doc",
           "content": [
@@ -24525,7 +24517,10 @@
             }
           ]
         },
-        "label": "4"
+        "label": "D",
+        "textStyle": {
+          "padding": 14
+        }
       }
     ],
     "question": {
@@ -24537,11 +24532,25 @@
     "elements": [
       {
         "id": "_1",
-        "type": "text",
+        "type": "shape",
+        "shape": "rounded",
         "x": 58,
-        "y": 58,
+        "y": 161,
         "w": 844,
-        "h": 92,
+        "h": 195,
+        "fill": "#FFFFFF",
+        "stroke": "#0A46C8",
+        "strokeWidth": 2.5,
+        "radius": 6,
+        "name": "Prompt card"
+      },
+      {
+        "id": "_2",
+        "type": "text",
+        "x": 87,
+        "y": 190,
+        "w": 786,
+        "h": 137,
         "doc": {
           "type": "doc",
           "content": [
@@ -24558,48 +24567,9 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true
-        }
-      },
-      {
-        "id": "_2",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 200,
-        "w": 844,
-        "h": 240,
-        "fill": "#FFFFFF",
-        "stroke": "#111111",
-        "strokeWidth": 1,
-        "radius": 6,
-        "name": "Answer space"
-      },
-      {
-        "id": "_3",
-        "type": "text",
-        "x": 58,
-        "y": 456,
-        "w": 844,
-        "h": 41,
-        "doc": {
-          "type": "doc",
-          "content": [
-            {
-              "type": "paragraph",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Write your answer"
-                }
-              ]
-            }
-          ]
-        },
-        "style": {
-          "preset": "small",
           "autoHeight": true,
-          "color": "#4A4A46"
+          "align": "center",
+          "valign": "middle"
         }
       }
     ],
