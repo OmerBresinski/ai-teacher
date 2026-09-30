@@ -253,6 +253,17 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  * v19), so the count now opens the retrieval sentence itself ("Three retrieval questions, each
  * checking…") beside the rule it governs, as well as in the role line.
  *
+ * v22 (30 Sept 2026, designer eval round 2, `quality-prd/lab/fit-lab/rounds/r2`): 3 of 16
+ * designer decks had a starter question whose answer did not answer it (rocks-a "What word
+ * describes something that was once alive?" keyed "Living"; weimar-b "Germany's currency before
+ * the euro" keyed "the mark", which is the Deutsche Mark; electrolysis-b "Which three ions are
+ * called halide ions?"). Each question was written first and its key fitted afterwards. The
+ * retrieval item now carries `answer` before `question`, in the schema and the sketch, and the
+ * rule says so ("Write the answer first, then a question that this answer alone answers"): the
+ * key is fixed before the question is worded (the "say it first" pattern, openai.md 2026-09-30).
+ * v18's "one right answer" is folded into that clause. Same fields: recorded sets, the old planner
+ * and the bench parse unchanged.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -326,8 +337,9 @@ const curriculumAnchor = z.string().max(160);
  * it before this lesson teaches anything; the outline places the three on the starter slide.
  */
 export const PlanRetrievalQuestionSchema = z.strictObject({
-  question: z.string().min(8).max(200),
+  // The answer first (v22): the question is then written to the fact it keys.
   answer: z.string().min(1).max(120),
+  question: z.string().min(8).max(200),
 });
 export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>;
 
@@ -406,10 +418,10 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "retrieval": [{ "question": "What is an empire?", "answer": "Many lands and peoples ruled by one country or ruler" }] }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "retrieval": [{ "answer": "Many lands and peoples ruled by one country or ruler", "question": "What is an empire?" }] }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v21",
+  version: "plan-objectives.v22",
   system: [
     "You are an experienced UK teacher writing one lesson's learning objectives and three retrieval questions for its starter.",
     "",
@@ -419,7 +431,7 @@ export const planObjectivesPrompt = {
     "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea: two or three; one only when the topic is a single method or skill; four only for four distinct parts; no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
     'Give each objective its arc: its angle, the parts of it this lesson teaches, in order, separated by semicolons; the form it leans towards ("photo" for anything a camera could show; "diagram-slot" or "figure" for a structure or process; "worked-example" for a procedure pupils carry out: a calculation, a prediction from a rule, a technique applied; otherwise "explain", "list", "compare" or "sequence"); and the misconception pupils most often hold about it, as they would say it.',
-    "Three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Ask it in one line or by picking from options the question names; it has one right answer.",
+    "Three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Write the answer first, then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
