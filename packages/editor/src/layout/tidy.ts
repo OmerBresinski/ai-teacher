@@ -8,8 +8,8 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { BODY_Y, SAFE } from "@tj/slides";
-import { cloneSlide, docFromText } from "../model/factories";
+import { BODY_Y, HEADING_GAP, KIND_TAG_NAME, SAFE, SPACE, snapY } from "@tj/slides";
+import { cloneSlide, docFromText, uid } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
@@ -217,9 +217,21 @@ const cardOf = (el: SlideElement, authored: SlideElement[]): SlideElement | unde
 const bodyTopOf = (authored: SlideElement[]): number => {
   const band = headerBand(authored);
   return Math.min(
-    BODY_Y,
+    bodyFloorOf(authored),
     ...authored.filter((el) => isFlow(el) && !band.has(el.id)).map((el) => el.y),
   );
+};
+
+/**
+ * Where a continuation's body can start at the highest: under its heading once the "CONTINUED"
+ * label has pushed that heading down (`markContinued`), so every slide in the chain starts its body
+ * at the same place. Beside a kind tag the label takes no room of its own.
+ */
+const bodyFloorOf = (authored: SlideElement[]): number => {
+  if (!authored.some((el) => el.name === CONTINUED_LABEL)) return BODY_Y;
+  if (authored.some((el) => el.name === KIND_TAG_NAME)) return BODY_Y;
+  const heading = authored.find(isHeadingText);
+  return heading ? Math.max(BODY_Y, snapY(heading.y + heading.h + HEADING_GAP)) : BODY_Y;
 };
 
 /**
@@ -261,58 +273,84 @@ const QUESTION_KINDS: ReadonlySet<Slide["kind"]> = new Set([
 const isQuestionSlide = (slide: Slide): boolean =>
   slide.question !== undefined || QUESTION_KINDS.has(slide.kind);
 
+/** The small "CONTINUED" label a continuation carries above its heading (TEACH-248). */
+export const CONTINUED_LABEL = "Continued label";
+
 /**
- * Mark a continuation slide's heading so a teacher can see it is a second page. Only the heading's
- * first line is kept: lines a teacher typed into the heading box stay on the slide they typed them
- * on, and are not repeated over every continuation.
+ * Mark a continuation slide as a second page (TEACH-248, variant B): the heading keeps its words
+ * and its size, and a small "CONTINUED" label in the kind tag's style sits above it. Only the
+ * heading's first line is kept: lines a teacher typed into the heading box stay on the slide they
+ * typed them on, and are not repeated over every continuation.
+ *
+ * Beside a kind tag the label shares the tag's line. Without one it takes the top of the safe
+ * area, where a heading stands on an ordinary slide, and the heading moves down to clear it. The
+ * rule under the heading follows it; the body moves only when the heading's new foot would crowd it
+ * (a card keeps its bottom edge). What then does not fit goes on to the next continuation.
  */
-function markContinued(slide: Slide): void {
+function markContinued(slide: Slide, theme: Theme): void {
   const heading = slide.elements.find(isHeadingText);
   if (heading?.type !== "text") return;
   const first = heading.doc.content?.[0];
   const text = docToPlainText(first ?? heading.doc).trim();
-  if (!text || /continued/i.test(text)) return;
-  heading.doc = docFromText(`${text} (continued)`);
-}
-
-/**
- * A continuation's heading keeps the lines its source heading had: " (continued)" can wrap it onto
- * a second line, which pushes the carried body down and leaves less room than the split planned
- * for. The heading steps down (to three quarters of its size at most, and never under the size the
- * engine will set a heading at) until it fits again; the chain is levelled to that size afterwards
- * (`levelHeadings`). A heading already at its floor keeps its size and wraps.
- */
-function keepHeadingLines(
-  slide: Slide,
-  reflowed: SlideElement[],
-  theme: Theme,
-  measure: Measurer,
-): void {
-  const room = reflowed.find(isHeadingText)?.h;
-  const index = slide.elements.findIndex(isHeadingText);
-  const heading = slide.elements[index];
-  if (room === undefined || heading?.type !== "text") return;
-  const size = heading.style.fontSize ?? theme.sizes[heading.style.preset];
-  // Measured the way the engine will lay the slide out, so the size chosen here is the one it keeps.
-  const heightAt = (fontSize: number) => {
-    const trial = {
-      ...slide,
-      elements: slide.elements.map((e, i) =>
-        i === index ? { ...heading, style: { ...heading.style, fontSize } } : e,
-      ),
-    };
-    const laid = reflowSlide(trial, theme, measure, reflowOptions(trial, theme, measure));
-    return laid.elements[index]?.h ?? Number.POSITIVE_INFINITY;
-  };
-  if (heightAt(size) <= room + EPS) return;
-  for (let s = size - 1; s >= Math.ceil(size * 0.75); s--) {
-    const h = heightAt(s);
-    if (h <= room + EPS) {
-      heading.style = { ...heading.style, fontSize: s };
-      heading.h = Math.max(1, Math.round(h));
-      return;
-    }
+  if (!text) return;
+  heading.doc = docFromText(text);
+  // A continuation of a continuation carries the label (and the lowered heading) in its frame.
+  if (slide.elements.some((e) => e.name === CONTINUED_LABEL)) return;
+  const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME && e.type === "text");
+  if (tag?.type === "text") {
+    slide.elements.push({
+      ...structuredClone(tag),
+      id: uid(),
+      name: CONTINUED_LABEL,
+      x: tag.x + tag.w + 8,
+      w: 150,
+      doc: docFromText("CONTINUED"),
+    });
+    return;
   }
+  const top = Math.min(heading.y, SAFE.y);
+  const labelH = Math.ceil(theme.sizes.caption * theme.lineHeights.caption);
+  const drop = Math.max(0, snapY(top + labelH + SPACE[2]) - heading.y);
+  if (drop > 0) {
+    const oldFoot = heading.y + heading.h;
+    heading.y += drop;
+    const foot = heading.y + heading.h;
+    const below = slide.elements.filter(
+      (el) => el !== heading && !isBackdrop(el) && el.y >= oldFoot - EPS,
+    );
+    // The body moves only if the heading's new foot reaches into the gap it keeps on an ordinary
+    // slide, and a card keeps its bottom edge. The rule under the heading then takes the middle of
+    // the band between them.
+    const body = below.filter((el) => !isHairline(el));
+    const firstBody = Math.min(...body.map((el) => el.y), Number.POSITIVE_INFINITY);
+    const shift = Number.isFinite(firstBody)
+      ? Math.max(0, snapY(foot + HEADING_GAP) - firstBody)
+      : 0;
+    for (const el of body) {
+      el.y += shift;
+      if (isLayerBelow(el)) el.h = Math.max(1, el.h - shift);
+    }
+    const ruleY = Number.isFinite(firstBody)
+      ? snapY((foot + firstBody + shift) / 2)
+      : snapY(foot + SPACE[1]);
+    for (const el of below) if (isHairline(el) && el.y < ruleY) el.y = ruleY;
+  }
+  slide.elements.push({
+    id: uid(),
+    type: "text",
+    name: CONTINUED_LABEL,
+    x: heading.x,
+    y: top,
+    w: 150,
+    h: labelH,
+    doc: docFromText("CONTINUED"),
+    style: {
+      preset: "caption",
+      fontWeight: 700,
+      color: theme.colors.accent,
+      autoHeight: false,
+    },
+  });
 }
 
 /**
@@ -581,8 +619,7 @@ function buildPlan(
   if (targetIdx < 0) return null;
 
   const continuation = cloneSlide({ ...slide, elements });
-  markContinued(continuation);
-  keepHeadingLines(continuation, reflowed, theme, measure);
+  markContinued(continuation, theme);
 
   if (mode === "move") {
     // Only worth it when the box lands higher than it stood here; otherwise the next round would
