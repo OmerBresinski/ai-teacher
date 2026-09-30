@@ -904,21 +904,28 @@ function fillGapSlide(t: Theme): Layout {
  * the card's own chrome rather than typed, so a change to either moves the cards
  * instead of quietly overflowing them.
  */
+/** A sort card's padding: four full-width cards and a two-line stem inside the safe area. */
+export const SORT_CARD_PAD = SPACE[2];
+
 function sortSlide(t: Theme): Layout {
   // A column of four full-width cards under a one-line stem: a stage of a process is a short
   // phrase, which a half-width card cannot hold on the option floor.
-  const stemBox = boxH(t, "heading", 1, "question");
-  const gap = SPACE[0];
-  const cardH = optionCardH(t);
+  // The cards take a compact padding so all four sit inside the safe area under a two-line stem
+  // (layout audit: the fourth card ran under the bottom bar at the option default's 24pt pad).
+  const stemBox = boxH(t, "heading", 2, "question");
+  const gap = SPACE[1];
+  const pad = SORT_CARD_PAD;
+  const cardH = optionCardH(t) - (OPTION.pad - pad) * 2;
   const top = snapY(SAFE.y + stemBox + SPACE[1]);
-  const cards = [0, 1, 2, 3].map((i) =>
-    option(String.fromCharCode(65 + i), `Step ${i + 1}`, {
+  const cards = [0, 1, 2, 3].map((i) => ({
+    ...option(String.fromCharCode(65 + i), `Step ${i + 1}`, {
       x: SAFE.x,
       y: top + i * (cardH + gap),
       w: FULL,
       h: cardH,
     }),
-  );
+    textStyle: { padding: pad },
+  }));
   return {
     elements: [
       text("heading", "Put these in the right order.", {
