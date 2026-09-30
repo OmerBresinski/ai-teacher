@@ -28,6 +28,84 @@ export type BenchCase = {
 };
 
 export const CASES: BenchCase[] = [
+  // Diagram bench (spike/diagram-bench, root cause 3): the three diagram-needing teach slides.
+  {
+    id: "y7-particles-diagram",
+    form: "diagram-slot",
+    layout: "default",
+    ks: "KS3",
+    plan: {
+      topic: "The particle model of solids, liquids and gases",
+      subject: "Science",
+      yearGroup: "Year 7",
+      ageBand: "ks3",
+      objectives: [
+        "Describe the arrangement and movement of particles in solids, liquids and gases",
+        "Use the particle model to explain the properties of each state",
+      ],
+      runningExample: "Ice, water and steam from the same kettle",
+      misconception:
+        "The particles themselves melt, expand or get bigger when a substance is heated",
+      rows: [
+        "teach | diagram-slot | default | 1 | 3 | particles in a solid, a liquid and a gas side by side: close in rows, close but jumbled, far apart | particle-arrangement | -",
+      ],
+    },
+    probe: {
+      objective: "Describe the arrangement and movement of particles in solids, liquids and gases",
+      point: "a diagram of particles in a solid, a liquid and a gas side by side",
+    },
+  },
+  {
+    id: "y8-runoff-diagram",
+    form: "diagram-slot",
+    layout: "default",
+    ks: "KS3",
+    plan: {
+      topic: "River flooding: causes and management",
+      subject: "Geography",
+      yearGroup: "Year 8",
+      ageBand: "ks3",
+      objectives: [
+        "Explain how rainfall reaches a river by surface runoff, infiltration and throughflow",
+        "Explain the physical and human causes of river flooding",
+      ],
+      runningExample: "The River Foss flooding York in 2015",
+      misconception: "All rain that falls lands straight in the river",
+      rows: [
+        "teach | diagram-slot | default | 1 | 3 | how rain reaches a river: runoff over the surface, infiltration into the soil, throughflow and groundwater flow to the channel | runoff-infiltration | -",
+      ],
+    },
+    probe: {
+      objective:
+        "Explain how rainfall reaches a river by surface runoff, infiltration and throughflow",
+      point: "how rain reaches a river: runoff and infiltration",
+    },
+  },
+  {
+    id: "y8-hydrograph-diagram",
+    form: "diagram-slot",
+    layout: "default",
+    ks: "KS3",
+    plan: {
+      topic: "River flooding: causes and management",
+      subject: "Geography",
+      yearGroup: "Year 8",
+      ageBand: "ks3",
+      objectives: [
+        "Explain how rainfall reaches a river by surface runoff, infiltration and throughflow",
+        "Read a storm hydrograph and explain lag time",
+      ],
+      runningExample: "The River Foss flooding York in 2015",
+      misconception: "A river is at its highest while the rain is still falling",
+      rows: [
+        "teach | diagram-slot | default | 2 | 3 | a storm hydrograph: rainfall bars, the discharge line, peak rainfall, peak discharge and the lag time between them | storm-hydrograph | -",
+      ],
+    },
+    probe: {
+      objective: "Read a storm hydrograph and explain lag time",
+      point: "a storm hydrograph with lag time between peak rainfall and peak discharge",
+    },
+  },
   // Saved plan rows (pw1 L/S, pw2-smoke S).
   {
     id: "y5-rivers-hinge",
