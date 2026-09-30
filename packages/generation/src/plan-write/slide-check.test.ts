@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type { PlanSlide } from "../prompts/plan-lesson";
+import { renderWritten } from "./fit";
 import {
   answerKeyMismatches,
   broadenedBrief,
   crossSlideFindings,
   fieldOfEvidence,
   limiter,
+  NO_PICTURE_ROW,
   noPictureOf,
+  noPictureTarget,
   type PassSlide,
   states,
 } from "./slide-check";
@@ -127,6 +130,22 @@ describe("no picture", () => {
         imageBrief: { subject: "x", mustShow: [] },
       }),
     ).toEqual({ notes: "n", heading: "h", body: ["b"] });
+  });
+
+  test("the no-picture row draws the slides package's no-picture form of each picture slide", () => {
+    const out = { notes: "n", heading: "Roman roads", body: ["They ran straight."] };
+    const plain = renderWritten(NO_PICTURE_ROW.form, NO_PICTURE_ROW.layout, noPictureOf(out));
+    const pictures = [
+      ["photo", { ...out, imageBrief: { subject: "Roman road", mustShow: [] } }],
+      ["diagram-slot", { ...out, diagram: { kind: "flow", alt: "a", steps: [] } }],
+    ] as const;
+    for (const [form, written] of pictures) {
+      expect(noPictureTarget(form, "default", written)).toEqual({
+        kind: plain.spec.kind,
+        variant: plain.variant as string,
+      });
+    }
+    expect(plain.structure.photo).toBeUndefined();
   });
 
   test("the retry brief is the subject's first three words and no must-show", () => {

@@ -21,6 +21,7 @@ import {
   materialiseSlide,
   PLACEHOLDER_IMAGE,
   withDiagramDrawn,
+  withoutPicture,
 } from "@tj/slides";
 import { z } from "zod";
 import { callStructured } from "../call";
@@ -34,6 +35,7 @@ import {
   crossSlideFindings,
   fieldOfEvidence,
   limiter,
+  NO_PICTURE_ROW,
   noPictureOf,
   PICTURE_FORMS,
   SLIDE_CHECK_CONCURRENCY,
@@ -580,6 +582,13 @@ export async function planWriteSlides(
       subtitle: [base.yearGroup, base.subject].filter(Boolean).join(" · ") || "Lesson",
       factRefs: objectives.map((o) => o.id),
     };
+    // The title with no picture: the slides package's no-picture title variant when it fits.
+    const titleWithoutPicture = () => {
+      const variant = withoutPicture(spec, "split").variant;
+      return variant && fitsPlanned(spec, { variant, stepDown: 0 }).ok
+        ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, variant)
+        : materialiseSlide(spec, themeId, codeMeta(), deps.ids);
+    };
     const pic = table[0]?.imageBrief;
     // The picture takes the right half when the title fits beside it; otherwise the title stands alone.
     // Only with a photo search to fill it: an empty frame never reaches the class.
@@ -587,7 +596,7 @@ export async function planWriteSlides(
       pic && deps.images ? fitsPlanned(spec, { variant: "split", stepDown: 0 }).ok : false;
     const drawnTitle = split
       ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, "split")
-      : materialiseSlide(spec, themeId, codeMeta(), deps.ids);
+      : titleWithoutPicture();
     lesson = { ...lesson, slides: [{ ...drawnTitle, id: title.id }] };
     const imageBrief: ImageBrief | undefined =
       split && pic
@@ -622,10 +631,7 @@ export async function planWriteSlides(
           // No photo after the retry: the title stands alone, never beside an empty frame.
           noPicture.push(1);
           deps.logger.info({ stage: "generate", slide: 1 }, "title drawn without its picture");
-          return updateSlide(0, () => ({
-            ...materialiseSlide(spec, themeId, codeMeta(), deps.ids),
-            id: title.id,
-          }));
+          return updateSlide(0, () => ({ ...titleWithoutPicture(), id: title.id }));
         }),
       );
     }
@@ -804,9 +810,9 @@ export async function planWriteSlides(
     const p = placed.find((x) => x.index === index);
     if (!p) return;
     noPicture.push(n);
-    p.plan = { ...p.plan, form: "explain", layout: "default" };
+    p.plan = { ...p.plan, ...NO_PICTURE_ROW };
     p.out = noPictureOf(p.out);
-    table[index] = { ...(table[index] as PlanSlide), form: "explain", layout: "default" };
+    table[index] = { ...(table[index] as PlanSlide), ...NO_PICTURE_ROW };
     const e = outline[index];
     if (e) {
       const { imageBrief: _i, ...rest } = e;
@@ -1104,10 +1110,10 @@ export async function planWriteSlides(
         "slide drawn without its picture",
       );
       noPicture.push(n);
-      s = { ...s, form: "explain", layout: "default" };
+      s = { ...s, ...NO_PICTURE_ROW };
       table[index] = s;
       const out2 = noPictureOf(fitted.out);
-      fitted = { out: out2, fit: fitWritten("explain", "default", out2) };
+      fitted = { out: out2, fit: fitWritten(NO_PICTURE_ROW.form, NO_PICTURE_ROW.layout, out2) };
     }
     report.push({
       slide: n,

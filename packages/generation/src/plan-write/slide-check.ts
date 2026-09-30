@@ -1,7 +1,8 @@
 import type { Finding, ImageBrief } from "@tj/domain/documents";
+import { CONTENT_NO_PICTURE_VARIANT, withoutPicture } from "@tj/slides";
 import type { PlanSlide } from "../prompts/plan-lesson";
 import { FIXED_SLIDES } from "./check";
-import { answerKeyFaults, type Written } from "./fit";
+import { answerKeyFaults, renderWritten, type Written } from "./fit";
 import { isSetForm } from "./menu";
 
 /*
@@ -117,6 +118,20 @@ export const PICTURE_FORMS = new Set(["photo", "diagram-slot", "figure"]);
 export function noPictureOf(out: Written): Written {
   const { notes, heading, body } = out;
   return { notes: notes ?? "", heading: heading ?? "", body: body ?? [] };
+}
+
+/**
+ * The palette row a picture slide is re-planned as when its picture cannot be supplied. It draws
+ * what `@tj/slides` `withoutPicture` names for the slide (content, `headed`, no slot); the test pins
+ * the two together.
+ */
+export const NO_PICTURE_ROW = { form: "explain", layout: "default" } as const;
+
+/** The slides package's no-picture form of a written picture slide, as kind and variant. */
+export function noPictureTarget(form: string, layout: string, out: Written) {
+  const r = renderWritten(form, layout, out);
+  const w = withoutPicture(r.spec, r.variant, r.structure);
+  return { kind: w.spec.kind, variant: w.variant ?? CONTENT_NO_PICTURE_VARIANT };
 }
 
 /** One retry's brief: the subject's first three words, no must-show list. */
