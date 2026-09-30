@@ -25,7 +25,9 @@ describe("plan-objectives", () => {
     // v17: 337, the unhedged count, the list-as-parts rule and "No objective restates the topic"
     // (gpt-6-luna gave one topic-restating objective on list-shaped topics); the alarm moves once.
     // v18: 343, "it has one right answer" on the starter (3 of 9 gpt-6-luna low question faults).
-    expect(system.trim().split(/\s+/).length).toBeLessThan(345);
+    // v19: 422, the arc (lesson designer plan): one rule sentence (angle, lean with its four
+    // cases, misconception) and the sketch's arc; the alarm moves once, by that growth.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(425);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
