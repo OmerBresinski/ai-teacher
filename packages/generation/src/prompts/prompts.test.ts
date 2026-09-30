@@ -218,8 +218,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "804ff4e8f733039e062563fa220d0134ac39b344aa5e168238b13d1c6feb1be0",
   },
   "plan-objectives": {
-    version: "plan-objectives.v24",
-    hash: "d932f97bb3f6fe8e7d10feee1d4857259940d961216a62423b302786176bc202",
+    version: "plan-objectives.v25",
+    hash: "aceafa1396a116b4f4d4bc9862c4342d8c1e211e82dd67273422db8f5ed8676d",
   },
   "plan-facts-objective": {
     version: "plan-facts-objective.v14",

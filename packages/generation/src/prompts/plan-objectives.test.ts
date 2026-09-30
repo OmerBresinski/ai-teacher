@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { bookendsOf, scopeToSlides } from "../stages/objectives";
 import {
   CURRICULUM_INSTRUCTION,
   CURRICULUM_USE,
@@ -33,7 +34,9 @@ describe("plan-objectives", () => {
     // answer that did not answer them); the alarm moves once, by that growth.
     // v24: 614, the opening and closing chosen per lesson (designer r6: no fixed starter or exit)
     // and its sketch alternatives; the alarm moves once, by that growth.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(625);
+    // v25: 701, the objectives first and each bookend's own condition (r6 smoke: both bookends
+    // in 15 of 16 calls, so most 10-slide lessons lost their third objective).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(710);
     // The house rules' JSON-only line is code's (`call.ts` repairs and validates), so it is gone.
     expect(system).not.toContain("JSON only");
     expect(system).toContain("British English");
@@ -87,7 +90,9 @@ describe("plan-objectives", () => {
     // v17 (gpt-6-luna): the hedge went; "usually" was read as licence for one objective.
     // v24: the count lives in the user turn's Objectives line (static outside r6, the slide
     // budget's ceilings in r6); the system names the line, never a number (CORE 2026-09-16).
-    expect(system).toContain("as many as the Objectives line allows");
+    // v25: "as many as the Objectives line allows" read as a target; the topic's parts set the count.
+    expect(system).toContain("up to the Objectives line's limit");
+    expect(system).not.toContain("as many as the Objectives line allows");
     expect(system).not.toMatch(/two or three|four only/);
     // v10: "building on each other and sharing its key ideas" named no bench failure (rubric 3).
     expect(system).not.toContain("building on each other");
@@ -125,8 +130,9 @@ describe("plan-objectives", () => {
     expect(ten).toContain(
       "Objectives: at most 3 with no opening or closing slide; 2 with an opening slide, a closing slide or both.",
     );
-    expect(ten).toContain("Opening: retrieval, a hook or none, your choice.");
-    expect(ten).toContain("Closing: a check, a plenary, a debate or none, your choice.");
+    // v25: none listed first (the listed-first option was taken in 15 of 16 v24 calls).
+    expect(ten).toContain("Opening: none, retrieval or a hook, your choice.");
+    expect(ten).toContain("Closing: none, a check, a plenary or a debate, your choice.");
     expect(budget(12)).toContain("Objectives: at most 3, whatever the opening and closing.");
     expect(budget(11)).toContain(
       "at most 3 with no opening or closing slide; 3 with one of them; 2 with both.",
@@ -200,6 +206,57 @@ describe("plan-objectives", () => {
     expect(parse(true, [anchored, anchored, anchored, anchored, anchored])).toBe(false);
   });
 
+  test("v25: opening and closing parse into what code reads (bookendsOf, scopeToSlides)", () => {
+    const system = planObjectivesPrompt.system;
+    // The objectives come first; a bookend is chosen only if they still fit the Objectives line.
+    expect(system).toContain(
+      "choose one only if the objectives you wrote still fit the Objectives line with it",
+    );
+    expect(system).toContain("A hook, plenary or debate carries its prompt; a check carries none.");
+    expect(system).toContain('"opening": null or { "kind": "retrieval" }');
+    expect(system).toContain('"closing": null or { "kind": "check" }');
+    const q = (n: number) => ({ answer: `x${n}`, question: `Which term is number ${n}?` });
+    const objective = (n: number) => ({ text: `Explain how part ${n} of the topic works` });
+    const three = [objective(1), objective(2), objective(3)];
+    const schema = planObjectivesOutputSchemaFor(false);
+    // No bookends: null on both sides and an empty retrieval list (2 of 8 v24 calls) are valid.
+    const none = schema.parse({ objectives: three, opening: null, retrieval: [], closing: null });
+    expect(bookendsOf(none)).toBeUndefined();
+    expect(scopeToSlides(none.objectives, bookendsOf(none), 10, false).objectives).toHaveLength(3);
+    // A hook beside an empty retrieval list, and a plenary with its prompt, reach code whole.
+    const hooked = schema.parse({
+      objectives: three.slice(0, 2),
+      opening: { kind: "hook", prompt: "Why would a river ever stop?" },
+      retrieval: [],
+      closing: { kind: "plenary", prompt: "Which course would you live beside?" },
+    });
+    expect(bookendsOf(hooked)).toEqual({
+      opening: { kind: "hook", prompt: "Why would a river ever stop?" },
+      closing: { kind: "plenary", prompt: "Which course would you live beside?" },
+    });
+    // A check that also writes its questions (2 of 16 v24 calls) has the stray key stripped, not
+    // a retry, and code reads a plain check.
+    const checked = schema.parse({
+      objectives: three.slice(0, 2),
+      opening: { kind: "retrieval" },
+      retrieval: [q(1), q(2), q(3)],
+      closing: { kind: "check", questions: ["What is a meander?"] },
+    });
+    expect(bookendsOf(checked)).toEqual({
+      opening: { kind: "retrieval" },
+      closing: { kind: "check" },
+    });
+    const scoped = scopeToSlides(checked.objectives, bookendsOf(checked), 10, true);
+    expect(scoped.objectives).toHaveLength(2);
+    expect(scoped.bookends).toEqual({ opening: { kind: "retrieval" }, closing: { kind: "check" } });
+    // Kinds outside the code's enums still fail, and so do one or two retrieval questions.
+    expect(schema.safeParse({ objectives: three, opening: { kind: "starter" } }).success).toBe(
+      false,
+    );
+    expect(schema.safeParse({ objectives: three, closing: { kind: "exit" } }).success).toBe(false);
+    expect(schema.safeParse({ objectives: three, retrieval: [q(1)] }).success).toBe(false);
+  });
+
   test("retrieval: three prior-knowledge questions for the starter, asked once, optional in the schema", () => {
     /*
      * v12 (round 1 judges): starters built from the lesson's own questions were marked
@@ -225,8 +282,14 @@ describe("plan-objectives", () => {
     expect(system).toContain(
       "Write the answer first, the answer itself as the words a pupil would say (a name, a term, a number, a short fact), then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
     );
-    expect(system).toContain('"retrieval": [{ "answer": ');
-    expect(system).not.toMatch(/earlier lesson|answerable before this lesson begins/);
+    expect(system).toContain('"retrieval": [] or [{ "answer": ');
+    // v25: the empty list is named in the prose and the sketch, as the schema allows it.
+    expect(system).toContain('With any other opening, "retrieval" is [].');
+    // v25: the opening's choice names "earlier lessons" (when retrieval earns its slide); the
+    // questions' own rule still derives them from the objectives, not from lessons it cannot see.
+    const questionsRule =
+      system.split("\n").find((l) => l.startsWith("With a retrieval opening")) ?? "";
+    expect(questionsRule).not.toMatch(/earlier lesson|answerable before this lesson begins/);
     // v24: the sample key is a name, not a description (r4 judges read describing keys as wrong).
     expect(system).toContain('"answer": "Rome", "question": "Which city ruled the Roman Empire?"');
     // The sketch shows no anchor slot: a no-extract call filled anchors it was shown.

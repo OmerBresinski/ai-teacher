@@ -283,6 +283,25 @@ import { type Audience, audienceBlock, HOUSE_RULES } from "./shared";
  *  - Starter keys: the answer is written "as the words a pupil would say", and the sketch's sample
  *    answer is a name (r4 finding, openai.md 2026-09-30 round 4: describing keys read as wrong).
  *
+ * v25 (30 Sept 2026, r6 objectives smoke, `quality-prd/lab/designer-r6p/obj-smoke`, 16 calls per
+ * round on the 8 fit-lab briefs). v24 chose both bookends in 15 of 16 calls (the other retrieval
+ * alone), so every 10-slide lesson kept 2 objectives. Its conditions were ones every lesson meets
+ * ("retrieval where the objectives rest on earlier learning"; a check with none), and the Opening
+ * and Closing lines and the sketch listed retrieval and a check first, none last.
+ *  - The objectives come first: a bookend is chosen only if the objectives written still fit the
+ *    Objectives line with it, and the count sentence says "up to the Objectives line's limit", not
+ *    "as many as it allows". Each bookend has its own condition (retrieval where the objectives
+ *    build on terms, facts or methods pupils may have forgotten; a hook where the topic is new; a
+ *    closing only where it does what no objective's check does). None is listed first in the
+ *    lines and the sketch.
+ *  - A first cut ("none is the default for both") gave 0 openings in 32 calls; without it, 4
+ *    retrieval openings in 32 on the final text, all in 2-objective maths, science or English
+ *    lessons, 0 closings. Objectives: 3 in 26 of 32, 2 in 6; nothing cut by code.
+ *  - `retrieval: []` is named in the prose and the sketch ("With any other opening"), as the schema
+ *    allows. A check "carries none" (no prompt), and the bookend objects are plain `z.object`, so a
+ *    check that writes its own `questions` (2 of 16 v24 calls, a schema failure) is stripped to the
+ *    kind code reads. 0 schema failures in 48 v25 calls; 1 malformed JSON, a model slip.
+ *
  * Bump `version` whenever `system` or `user` changes wording (`shape.ts` and `shared.ts` included).
  */
 
@@ -342,8 +361,8 @@ export function structureLines(input: PlanObjectivesInput): string[] {
   return [
     `Slides: ${input.slideCount}; the title, which lists the objectives, is the only fixed slide.`,
     `Objectives: at most ${count}.`,
-    "Opening: retrieval, a hook or none, your choice.",
-    "Closing: a check, a plenary, a debate or none, your choice.",
+    "Opening: none, retrieval or a hook, your choice.",
+    "Closing: none, a check, a plenary or a debate, your choice.",
   ];
 }
 
@@ -408,7 +427,7 @@ export type PlanRetrievalQuestion = z.output<typeof PlanRetrievalQuestionSchema>
 
 /**
  * Exactly three: the prose says "three" and Luna writes to the number it is given, so the schema
- * pins it rather than buying tolerance. v24: or none, the list a call without a retrieval opening writes (2 of 8 r6 calls wrote `[]` beside a hook or no opening; the sketch shows the slot, so it is filled). Optional at the top level so a recorded set, a
+ * pins it rather than buying tolerance. v24: or none, the list a call without a retrieval opening writes (2 of 8 r6 calls wrote `[]` beside a hook or no opening; the sketch shows the slot, so it is filled). v25: the prose and the sketch name `[]` too. Optional at the top level so a recorded set, a
  * `fromFacts` rerun or the bench parses without it; the sketch shows the slot, so a live call
  * fills it.
  */
@@ -421,14 +440,16 @@ const retrieval = z
  * The lesson's optional opening and closing slides (v24), in the shape code reads
  * (`LessonBookendsSchema`): a kind, and for a hook, plenary or debate the prompt the class is
  * asked. `null` is "none": the sketch shows it as an alternative so the choice is a real one (a
- * slot the sketch shows is filled, CORE 2026-08-04), and code reads `null` as absent.
+ * slot the sketch shows is filled, CORE 2026-08-04), and code reads `null` as absent. v25: plain
+ * `z.object`, so a stray key (a check's own `questions`) is stripped, not a retry; the parsed value
+ * is then exactly `LessonBookendsSchema`'s shape (`bookendsOf`).
  */
 const opening = z
-  .strictObject({ kind: z.enum(["retrieval", "hook"]), prompt: z.string().optional() })
+  .object({ kind: z.enum(["retrieval", "hook"]), prompt: z.string().optional() })
   .nullable()
   .optional();
 const closing = z
-  .strictObject({
+  .object({
     kind: z.enum(["check", "plenary", "debate"]),
     prompt: z.string().optional(),
   })
@@ -508,21 +529,22 @@ const OBJECTIVE_HOUSE_RULES = HOUSE_RULES.split("\n")
  * is asked for beside an extract (`CURRICULUM_USE`), so a no-extract call is not shown the slot.
  */
 const SHAPE_SKETCH =
-  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "opening": { "kind": "retrieval" } or { "kind": "hook", "prompt": "..." } or null, "retrieval": [{ "answer": "Rome", "question": "Which city ruled the Roman Empire?" }], "closing": { "kind": "check" } or { "kind": "plenary" or "debate", "prompt": "..." } or null }';
+  '{ "objectives": [{ "text": "Explain why the Romans invaded Britain", "arc": { "angle": "Britain\'s grain, metals and slaves; an emperor who needed a victory", "lean": "list", "misconception": "The Romans invaded only to take treasure" } }], "opening": null or { "kind": "retrieval" } or { "kind": "hook", "prompt": "..." }, "retrieval": [] or [{ "answer": "Rome", "question": "Which city ruled the Roman Empire?" }], "closing": null or { "kind": "check" } or { "kind": "plenary" or "debate", "prompt": "..." } }';
 
 export const planObjectivesPrompt = {
-  version: "plan-objectives.v24",
+  version: "plan-objectives.v25",
   system: [
     "You are an experienced UK teacher planning one lesson: its learning objectives, and how it opens and closes.",
     "",
     OBJECTIVE_HOUSE_RULES,
     "Each objective is one idea, at most 16 words, starting with one observable verb. Name the actual concepts or methods; where it covers several factors, methods or strategies, name them.",
     "Levels rise: Recall (names or states), Explain (how or why), Apply (uses a method), Evaluate (judges, with a reason). The lesson's verb is its reach: every objective sits at that verb unless a lower level is genuinely needed (a method before judging, a definition the class lacks); the last sits at that verb, none above, none over two levels below. Where the class is new to the topic and the reach is Apply or Evaluate, start one level below the reach unless there is only one objective.",
-    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea, as many as the Objectives line allows and no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
+    "Give one objective for each distinct part of the topic, so together they cover its core at this year group's level and no two share an idea, up to the Objectives line's limit and no filler line. A topic about several needs, factors, causes or methods has a part for each, or for each close pair.",
     "No objective restates the topic.",
     'Give each objective its arc: its angle, the parts of it this lesson teaches, in order, separated by semicolons, each a part one slide can teach (a step, a case, a structure, a cause, each outcome of a rule); the form it leans towards ("photo" for anything a camera could show; "diagram-slot" or "figure" for a structure or process; "worked-example" for a procedure pupils carry out: a calculation, a prediction from a rule, a technique applied; otherwise "sequence", "compare", "explain" or "list"); and the misconception pupils most often hold about it, as they would say it.',
-    "Opening and closing: as the Opening and Closing lines say; where they are your choice, choose for this topic and year group, knowing each objective is already taught, shown and checked in its own part of the lesson. Retrieval opens where the objectives rest on earlier learning; a hook, one question or scene that makes the class want the answer, where they have met little of it; with none, the first objective opens. A check closes with one question per objective; a plenary with one prompt every pupil answers; a debate with one motion the objectives give both sides of. A hook, plenary or debate carries its prompt.",
-    "With a retrieval opening, three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Write the answer first, the answer itself as the words a pupil would say (a name, a term, a number, a short fact), then a question that this answer alone answers; ask it in one line or by picking from options the question names.",
+    "Opening and closing: as the Opening and Closing lines say. Where they are your choice, the objectives come first: each opening or closing slide is a slide they do not get, so choose one only if the objectives you wrote still fit the Objectives line with it. Each objective is already taught, shown and checked in its own part of the lesson; with no opening the first objective opens it, and with no closing the last one's check closes it.",
+    "Choose an opening where this topic and year group need one: retrieval where the objectives build on specific terms, facts or methods from earlier lessons that pupils may have forgotten; a hook, one question or scene that makes the class want the answer, where they meet the topic for the first time. Choose a closing only where it does what no objective's check does: a plenary, one prompt every pupil answers that joins the objectives up; a debate, one motion the objectives give both sides of; a check, every objective's question again at the end. A hook, plenary or debate carries its prompt; a check carries none.",
+    'With a retrieval opening, three retrieval questions, each checking a different term, fact or method that an objective needs pupils to know already, one a pupil in this year group could plausibly have forgotten. None asks what the lesson teaches, its examples included. Write the answer first, the answer itself as the words a pupil would say (a name, a term, a number, a short fact), then a question that this answer alone answers; ask it in one line or by picking from options the question names. With any other opening, "retrieval" is [].',
     "",
     "JSON, in this shape:",
     SHAPE_SKETCH,
