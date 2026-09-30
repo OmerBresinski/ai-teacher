@@ -168,7 +168,7 @@ describe("layoutSlide", () => {
   it("creates the option elements each question kind promises", () => {
     const tf = layoutSlide("true-false", "chalk");
     const options = tf.elements.filter((e) => e.type === "option");
-    expect(options.map((o) => (o.type === "option" ? o.label : null))).toEqual(["True", "False"]);
+    expect(options.map((o) => (o.type === "option" ? o.label : null))).toEqual(["✓", "✗"]);
     expect(tf.question).toEqual({ type: "true-false", correct: true });
 
     const mcq = layoutSlide("multiple-choice", "chalk");

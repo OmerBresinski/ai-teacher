@@ -630,15 +630,27 @@ function instructionsSlide(t: Theme): Layout {
   return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
 }
 
-/** Discussion — one big prompt and a named talk structure. */
+/** Discussion — one big prompt in a framed speech bubble, and a named talk structure. */
 function discussionSlide(t: Theme): Layout {
   const promptH = boxH(t, "subtitle", 3);
+  const pad = SPACE[4];
+  const top = centreY(promptH + pad * 2);
   return {
     elements: [
+      shape(
+        "speech",
+        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 + SPACE[5] },
+        {
+          fill: t.colors.surface,
+          stroke: t.colors.accent,
+          strokeWidth: 2.5,
+          name: "Speech bubble",
+        },
+      ),
       text("subtitle", "Ask the question you want pupils to talk about.", {
-        x: SAFE.x,
-        y: centreY(promptH),
-        w: FULL,
+        x: SAFE.x + pad,
+        y: top + pad,
+        w: FULL - pad * 2,
         h: promptH,
       }),
       footnote(t, "Talk to your partner"),
@@ -655,8 +667,9 @@ function trueFalseSlide(t: Theme): Layout {
     140,
     RESERVED_LINES["true-false"],
   );
-  const yes = option("True", "True", { x: SAFE.x, y, w: HALF_W, h });
-  const no = option("False", "False", { x: RIGHT_X, y, w: HALF_W, h });
+  // Big True and False buttons, a tick and a cross for their chips (layout audit #9).
+  const yes = option("✓", "True", { x: SAFE.x, y, w: HALF_W, h });
+  const no = option("✗", "False", { x: RIGHT_X, y, w: HALF_W, h });
   return {
     elements: [prompt, yes, no],
     question: { type: "true-false", correct: true },
@@ -920,23 +933,33 @@ function sortSlide(t: Theme): Layout {
   };
 }
 
-/** Open response — a question and a big space to answer it in. */
+/**
+ * Open response — the question centred in a framed prompt card. Pupils write in their books, so the
+ * board shows no empty answer box (the box belongs on the handout; layout audit #8).
+ */
 function openResponseSlide(t: Theme): Layout {
+  const promptH = boxH(t, "heading", 3, "question");
+  const pad = SPACE[4];
+  const top = centreY(promptH + pad * 2);
   return {
     elements: [
-      stem(t, "Ask an open question worth writing about."),
       shape(
         "rounded",
-        { x: SAFE.x, y: 200, w: FULL, h: 240 },
+        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 },
         {
           fill: t.colors.surface,
-          stroke: t.colors.line,
-          strokeWidth: 1,
+          stroke: t.colors.accent,
+          strokeWidth: 2.5,
           radius: t.radius,
-          name: "Answer space",
+          name: "Prompt card",
         },
       ),
-      footnote(t, "Write your answer"),
+      text(
+        "heading",
+        "Ask an open question worth writing about.",
+        { x: SAFE.x + pad, y: top + pad, w: FULL - pad * 2, h: promptH },
+        { align: "center", valign: "middle" },
+      ),
     ],
     // Without this the slide is not a question slide: the answer drawer, the model
     // answer field and "Show answers" on export all key off `slide.question`.
