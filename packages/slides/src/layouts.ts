@@ -144,11 +144,11 @@ function headed(t: Theme, heading: string): SlideElement[] {
 }
 
 /** A numbered body block under the hairline. */
-function numberedBody(t: Theme, items: string[]): TextElement {
+function numberedBody(t: Theme, items: string[], w: number = spanWidth(10)): TextElement {
   return text("body", docFromNumbered(items), {
     x: SAFE.x,
     y: BODY_Y,
-    w: spanWidth(10),
+    w,
     h: boxH(t, "body", items.length * 1.6),
   });
 }
@@ -349,7 +349,9 @@ function objectivesSlide(t: Theme): Layout {
 /** Do now — retrieval questions and a time cue. */
 function starterSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY.starter;
-  return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
+  return {
+    elements: [...headed(t, heading), numberedBody(t, [...items], FULL), footnote(t, foot)],
+  };
 }
 
 /**
@@ -636,7 +638,7 @@ function discussionSlide(t: Theme): Layout {
       text("subtitle", "Ask the question you want pupils to talk about.", {
         x: SAFE.x,
         y: centreY(promptH),
-        w: spanWidth(10),
+        w: FULL,
         h: promptH,
       }),
       footnote(t, "Talk to your partner"),
@@ -683,6 +685,35 @@ function multipleChoiceSlide(t: Theme): Layout {
       w: HALF_W,
       h: cardH,
     }),
+  );
+  return {
+    elements: [prompt, ...opts],
+    question: {
+      type: "multiple-choice",
+      options: opts.map((o, i) => ({ id: o.id, correct: i === 0 })),
+    },
+  };
+}
+
+/**
+ * Multiple choice, stacked — the four options one under another, each the full width, for
+ * options that are ideas or outlines rather than single terms. A card here takes one line of
+ * about the width of the slide; the stem keeps one line so that four cards fit under it. The
+ * reason goes to the notes (no "Why?" panel), so the cards may run to the foot of the safe area.
+ */
+function multipleChoiceStackedSlide(t: Theme): Layout {
+  const stemBox = boxH(t, "heading", 1, "question");
+  const prompt = text("heading", "Which of these is right?", {
+    x: SAFE.x,
+    y: SAFE.y,
+    w: FULL,
+    h: stemBox,
+  });
+  const gap = SPACE[0];
+  const cardH = optionCardH(t);
+  const top = snapY(SAFE.y + stemBox + SPACE[1]);
+  const opts = ["A", "B", "C", "D"].map((label, i) =>
+    option(label, `Option ${label}`, { x: SAFE.x, y: top + i * (cardH + gap), w: FULL, h: cardH }),
   );
   return {
     elements: [prompt, ...opts],
@@ -819,7 +850,7 @@ function fillGapSlide(t: Theme): Layout {
 }
 
 /**
- * Sort — four cards two by two, held in the correct order (reading order: top row
+ * Sort — four cards in a column, held in the correct order (top to bottom).
  * left to right, then the bottom row).
  *
  * The column of four research/04 draws does not survive the option floor. A card's
@@ -832,21 +863,30 @@ function fillGapSlide(t: Theme): Layout {
  * instead of quietly overflowing them.
  */
 function sortSlide(t: Theme): Layout {
+  // A column of four full-width cards under a one-line stem: a stage of a process is a short
+  // phrase, which a half-width card cannot hold on the option floor.
+  const stemBox = boxH(t, "heading", 1, "question");
+  const gap = SPACE[0];
   const cardH = optionCardH(t);
-  const gap = SPACE[3];
-  const gridH = cardH * 2 + gap;
-  const bandTop = STEM_Y + stemH(t) + SPACE[4];
-  const top = snapY(bandTop + Math.max(0, (SAFE_BOTTOM - bandTop - gridH) / 2));
+  const top = snapY(SAFE.y + stemBox + SPACE[1]);
   const cards = [0, 1, 2, 3].map((i) =>
     option(String(i + 1), `Step ${i + 1}`, {
-      x: i % 2 === 0 ? SAFE.x : RIGHT_X,
-      y: top + Math.floor(i / 2) * (cardH + gap),
-      w: HALF_W,
+      x: SAFE.x,
+      y: top + i * (cardH + gap),
+      w: FULL,
       h: cardH,
     }),
   );
   return {
-    elements: [stem(t, "Put these in the right order."), ...cards],
+    elements: [
+      text("heading", "Put these in the right order.", {
+        x: SAFE.x,
+        y: SAFE.y,
+        w: FULL,
+        h: stemBox,
+      }),
+      ...cards,
+    ],
     question: { type: "sort", order: cards.map((c) => c.id) },
   };
 }
@@ -878,7 +918,9 @@ function openResponseSlide(t: Theme): Layout {
 /** Exit ticket — three quick questions. Never revealed (research §1, decision 5). */
 function exitTicketSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY["exit-ticket"];
-  return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
+  return {
+    elements: [...headed(t, heading), numberedBody(t, [...items], FULL), footnote(t, foot)],
+  };
 }
 
 /** Timer — a task reminder and one big countdown. */
@@ -1259,6 +1301,8 @@ const SINGLE_VARIANT_NAMES = [
   "gap-sentence",
   "answer-space",
   "countdown",
+  "stacked",
+  "card-column",
   "blank",
 ] as const;
 
@@ -1391,11 +1435,22 @@ export const LAYOUT_CATALOGUE: {
   instructions: LIST_VARIANTS,
   discussion: one("prompt", "One big prompt"),
   "true-false": one("two-cards", "A statement and two cards"),
-  "multiple-choice": one("card-grid", "A stem and four cards two by two"),
+  "multiple-choice": [
+    {
+      name: "card-grid",
+      composition: "card-grid",
+      description: "A stem and four cards two by two",
+    },
+    {
+      name: "stacked",
+      composition: "stacked",
+      description: "A one-line stem and four full-width cards, one under another",
+    },
+  ],
   matching: one("columns", "Terms left, definitions right"),
   "image-match": one("picture-row", "Pictures in a row, a word under each"),
   "fill-gap": one("gap-sentence", "A sentence with blanks"),
-  sort: one("card-grid", "A stem and four cards two by two"),
+  sort: one("card-column", "A one-line stem and four full-width cards, one under another"),
   "open-response": one("answer-space", "A question and room to answer it"),
   "exit-ticket": LIST_VARIANTS,
   timer: one("countdown", "A task reminder and a countdown"),
@@ -1515,7 +1570,9 @@ export function layoutSlide(
     case "true-false":
       return trueFalseSlide(t);
     case "multiple-choice":
-      return multipleChoiceSlide(t);
+      return variantName("multiple-choice", variant) === "stacked"
+        ? multipleChoiceStackedSlide(t)
+        : multipleChoiceSlide(t);
     case "matching":
       return matchingSlide(t);
     case "image-match":

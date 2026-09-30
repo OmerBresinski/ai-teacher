@@ -33,19 +33,23 @@ const SET_WHEN: Record<SetForm, string> = {
   "exit-ticket": "the closing questions, answers revealed",
 };
 
-export function setSchema() {
+/** How long a set's question is: a quick check asks short questions. */
+const questionKind = (form: SetForm) =>
+  form === "check-set" ? "one question on one line" : "one question, at most two lines";
+
+export function setSchema(form: SetForm) {
   return z.object({
     questions: z
       .array(
         z.object({
-          question: z.string().trim().min(1).describe("one question, in one sentence"),
-          answer: z.string().trim().min(1).describe("a phrase, not a full sentence"),
+          question: z.string().trim().min(1).describe(questionKind(form)),
+          answer: z.string().trim().min(1).describe("a short answer, half a line"),
         }),
       )
       .min(1)
       .max(SET_MAX)
       .describe(
-        `questions: 1–${SET_MAX} items, each with question: one question, in one sentence; answer: a phrase, not a full sentence (shown after the reveal)`,
+        `questions: 1–${SET_MAX} items, each with question: ${questionKind(form)}; answer: a short answer, half a line (shown after the reveal)`,
       ),
   });
 }
@@ -53,7 +57,7 @@ export function setSchema() {
 export function setContractText(form: SetForm): string {
   return [
     `${form}:`,
-    `- questions: 1–${SET_MAX} items, each with question: one question, in one sentence; answer: a phrase, not a full sentence, shown after the reveal`,
+    `- questions: 1–${SET_MAX} items, each with question: ${questionKind(form)}; answer: a short answer, half a line, shown after the reveal`,
   ].join("\n");
 }
 
@@ -116,7 +120,7 @@ export function contractFor(form: string, layout: string): string {
 
 /** The writer's schema for one slide: the contract's fields plus the teacher notes. */
 export function slideWriterSchema(form: string, layout: string) {
-  const base = isSetForm(form) ? setSchema() : writerSchema(form as PaletteFormId, layout);
+  const base = isSetForm(form) ? setSchema(form) : writerSchema(form as PaletteFormId, layout);
   // Notes first: said aloud, answer first on a question slide (write-slides.v1).
   return z
     .object({ notes: z.string().describe("what the teacher says and does with this slide") })

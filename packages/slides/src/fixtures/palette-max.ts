@@ -144,8 +144,13 @@ export const PALETTE_MAX: Partial<Record<PaletteFormId, SlideSpec>> = {
   sort: {
     kind: "sort",
     factRefs: [],
-    stem: "Put the events of 1923 in the order they happened.",
-    steps: ["Ruhr occupied", "General strike", "Money printed", "Rentenmark issued"],
+    stem: "Order the events of 1923.",
+    steps: [
+      "French troops occupy the Ruhr",
+      "Workers in the Ruhr go on strike",
+      "The government prints more money",
+      "The Rentenmark replaces the old mark",
+    ],
   },
   "open-response": {
     kind: "open-response",

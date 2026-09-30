@@ -43,7 +43,7 @@ const SET_KIND: Record<
   { kind: "starter" | "instructions" | "exit-ticket"; heading: string }
 > = {
   "starter-set": { kind: "starter", heading: "Do now" },
-  "check-set": { kind: "instructions", heading: "Quick check" },
+  "check-set": { kind: "starter", heading: "Quick check" },
   "exit-ticket": { kind: "exit-ticket", heading: "Exit ticket" },
 };
 
@@ -230,7 +230,16 @@ export function fitWritten(form: string, layout: string, out: Written): FitResul
 }
 
 /** Item kinds short enough that a trailing aside (" — why", "(the reason)") is never the answer. */
-const SHORT_KINDS: ReadonlySet<string> = new Set(["phrase", "label", "term", "answer", "starter"]);
+const SHORT_KINDS: ReadonlySet<string> = new Set([
+  "phrase",
+  "option",
+  "outline",
+  "card",
+  "label",
+  "term",
+  "answer",
+  "starter",
+]);
 const ASIDE = /\s+[—–-]\s+\S.*$|\s*\([^()]*\)\s*$/;
 
 const unaside = (v: unknown): unknown => {
@@ -353,4 +362,32 @@ export async function fitWithRewrite(
     rewritten: { field, failure, ok: false },
     ...(better ? also : shrunk),
   };
+}
+
+const keyText = (s: unknown) =>
+  String(s ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * A matching slide's answer key is the pairs themselves: the slide shows every left and every right
+ * once and shuffles the right-hand side. So the key must be a permutation of the items shown: each
+ * left and each right used exactly once, none empty, and no card on both sides. Anything else marks
+ * a wrong match right (or leaves a card that matches nothing). Empty when the key holds.
+ */
+export function answerKeyFaults(form: string, out: Written): string[] {
+  if (form !== "matching") return [];
+  const pairs = (Array.isArray(out.pairs) ? out.pairs : []) as {
+    left?: unknown;
+    right?: unknown;
+  }[];
+  const lefts = pairs.map((p) => keyText(p.left));
+  const rights = pairs.map((p) => keyText(p.right));
+  const faults: string[] = [];
+  if (lefts.some((l) => !l) || rights.some((r) => !r)) faults.push("a pair has an empty side");
+  if (new Set(lefts).size !== lefts.length) faults.push("a left card is used twice");
+  if (new Set(rights).size !== rights.length) faults.push("a right card is used twice");
+  if (lefts.some((l) => rights.includes(l))) faults.push("a card is on both sides");
+  return faults;
 }

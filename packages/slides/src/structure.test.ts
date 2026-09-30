@@ -97,7 +97,9 @@ describe("options grid", () => {
       expect(panel.type).toBe("shape");
       expect(panel.revealStep).toBe(1);
       // The multiple choice is answered in place; the true/false correction and the open answer are on the panel.
-      expect(text(panel.doc)).toBe("2 False. Sediment scrapes. 3 Pieces of rock carried by water");
+      expect(text(panel.doc).replace(/\s+/g, " ")).toBe(
+        "2 False. Sediment scrapes. 3 Pieces of rock carried by water",
+      );
       expect(inside(page)).toBe(true);
       expect(page.every((e) => !e.locked)).toBe(true);
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { batchesOf } from "../stages/plan-write";
-import { fitWithRewrite, fitWritten, renderWritten, shrink } from "./fit";
+import { answerKeyFaults, fitWithRewrite, fitWritten, renderWritten, shrink } from "./fit";
 
 const explain = {
   heading: "Water moves round the Earth",
@@ -170,5 +170,23 @@ describe("shrink (mechanical, no call)", () => {
       "Hydrogen / oxygen",
       "Sodium / oxygen",
     ]);
+  });
+});
+
+describe("answerKeyFaults", () => {
+  const pairs = [
+    { left: "Igneous", right: "Formed when melted rock cools" },
+    { left: "Sedimentary", right: "Layers of sediment pressed together" },
+    { left: "Metamorphic", right: "Changed by heat and pressure" },
+  ];
+  it("accepts a key that uses each shown card once", () => {
+    expect(answerKeyFaults("matching", { pairs })).toEqual([]);
+    expect(answerKeyFaults("hinge", {})).toEqual([]);
+  });
+  it("rejects a key that is not a permutation of the cards", () => {
+    const twice = [pairs[0], { ...pairs[1], right: pairs[0]?.right }, pairs[2]];
+    expect(answerKeyFaults("matching", { pairs: twice })).toContain("a right card is used twice");
+    const both = [pairs[0], { left: "Sedimentary", right: "Igneous" }, pairs[2]];
+    expect(answerKeyFaults("matching", { pairs: both })).toContain("a card is on both sides");
   });
 });

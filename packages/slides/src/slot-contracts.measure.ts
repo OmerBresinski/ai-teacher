@@ -51,6 +51,29 @@ export const WORST: Record<TextKind, readonly string[]> = {
     "Explain why a plant kept in a dark cupboard for two weeks will die.",
     "Was the Treaty of Versailles the main reason for the crisis of 1923?",
   ],
+  "short-question": [
+    "Which outline would persuade the council best?",
+    "Which method finds two-fifths of £60?",
+  ],
+  option: [
+    "The government printed money to pay its debts",
+    "Factories stopped making goods to sell",
+    "Changes slowly, over several decades",
+    "A liquid that conducts electricity",
+  ],
+  outline: [
+    "Position, two reasons with examples, a request",
+    "Position, objection answered, weekly trial asked",
+    "Rhetorical questions, repetition, a slogan",
+    "Position, reasons, but no call to action",
+  ],
+  card: [
+    "Oak flowers are pollinated by the wind",
+    "Seeds develop inside the acorns",
+    "Acorns are carried off by jays",
+    "Acorns germinate and grow into seedlings",
+  ],
+  "short-instruction": ["Put the stages in the right order.", "Order the events of 1923."],
   instruction: [
     "Put the events of 1923 in the order they happened.",
     "Match each electrode word to its meaning.",
@@ -65,6 +88,9 @@ export const WORST: Record<TextKind, readonly string[]> = {
     "Holds the plant firmly in the ground",
   ],
   clause: [
+    // From the slide bench's KS4-5 writers (lab/slide-bench): a lead of one clause at its longest.
+    "In 2-bromo-2-methylpropane, the C–Br bond breaks first to form a tertiary carbocation.",
+    "A German household's cash savings bought less and less bread as prices rose in 1923.",
     "In electrolysis, the current is carried through the solution by electrons.",
     "Plants get the food they need to grow from the soil around their roots.",
   ],

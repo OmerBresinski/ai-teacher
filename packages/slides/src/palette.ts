@@ -412,7 +412,13 @@ export const PALETTE: readonly PaletteForm[] = [
     useWhen: "checking that pupils know the order of a genuine sequence",
     holds: [
       { unit: "instruction", slot: "stem", min: 1, max: 1 },
-      { unit: "step", plural: "steps, each a short label", slot: "steps", min: 4, max: 4 },
+      {
+        unit: "step",
+        plural: "steps, each a short label",
+        slot: "steps",
+        min: 4,
+        max: 4,
+      },
     ],
     renderer: { on: "slide", kind: "sort" },
     example: {

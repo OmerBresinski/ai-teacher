@@ -20,19 +20,25 @@ import type { SlideStructure } from "./structure";
 
 /** The kinds of text a slot's items are, with the plain words the writer reads. */
 export const TEXT_KINDS = {
-  heading: "a phrase that sits on one line",
-  sentence: "one sentence",
-  clause: "one sentence of a single clause",
-  question: "one question, in one sentence",
-  instruction: "one short instruction to pupils",
-  phrase: "a phrase, not a full sentence",
-  label: "a short label, not a sentence",
-  term: "a term or a short name, as written on a card",
+  heading: 'one line: one short main clause about one thing, with no "and", "but", "when" or list',
+  sentence: "one sentence of one or two clauses, at most two lines",
+  clause: "one sentence of a single clause, at most two lines",
+  question: "one question, at most two lines",
+  "short-question": "one question on one line",
+  instruction: "one short instruction to pupils, at most two lines",
+  "short-instruction": "one short instruction to pupils, on one line",
+  phrase: "a phrase on one line, not a full sentence",
+  option: "a short phrase, at most three short lines on its half-width card",
+  outline:
+    'one line across the slide: the idea, or the parts of an outline each named by a single term, like "Claim, reasons, rebuttal, request"',
+  label: "a short label, half a line, not a sentence",
+  term: "a term or a short name, half a line, as written on a card",
+  card: 'a short phrase on one line across the slide: one clause, with no "and"',
   answer: "a single term or number",
-  working: "one calculation or one short phrase",
-  "labelled-sentence": "a short label, a colon, then one sentence",
-  "gapped-sentence": "one sentence with each gap written as ___",
-  starter: "an unfinished sentence starter ending in …",
+  working: "one calculation or one short phrase, on one line",
+  "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
+  "gapped-sentence": "one sentence with each gap written as ___, at most two lines",
+  starter: 'an unfinished sentence starter, just its opening, ending in … ("I think… because…")',
   brief: "a description for whoever draws or finds it",
   paragraph: "a paragraph",
 } as const;
@@ -89,7 +95,7 @@ const lead: Slot = {
   unit: "sentence",
   min: 1,
   max: 1,
-  each: "sentence",
+  each: "clause",
   place: "slide",
 };
 const body = (max: number): Slot => ({
@@ -132,7 +138,8 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      lead,
+      // Measured: a list's lead holds two one-clause sentences over its two points.
+      { ...lead, max: 2 },
       { field: "points", unit: "item", min: 2, max: 2, each: "labelled-sentence", place: "slide" },
     ],
   },
@@ -228,7 +235,26 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
         min: 4,
         max: 4,
         fixed: true,
-        each: { text: "phrase", correct: "flag" },
+        each: { text: "option", correct: "flag" },
+        place: "slide",
+        rule: "one correct; each wrong one a mistake pupils make, written like the correct one",
+      },
+      one("explanation", "sentence", "notes"),
+    ],
+  },
+  {
+    form: "hinge",
+    layout: "stacked",
+    when: "options are ideas, methods or outlines, not single terms; each option runs across the slide",
+    slots: [
+      one("stem", "short-question"),
+      {
+        field: "options",
+        unit: "item",
+        min: 4,
+        max: 4,
+        fixed: true,
+        each: { text: "outline", correct: "flag" },
         place: "slide",
         rule: "one correct; each wrong one a mistake pupils make, written like the correct one",
       },
@@ -284,6 +310,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
         fixed: true,
         each: { left: "label", right: "label" },
         place: "slide",
+        rule: "each pair a right match; the slide shuffles the right-hand side",
       },
     ],
   },
@@ -309,14 +336,14 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     form: "sort",
     layout: "default",
     slots: [
-      one("stem", "instruction"),
+      one("stem", "short-instruction"),
       {
         field: "steps",
         unit: "item",
         min: 4,
         max: 4,
         fixed: true,
-        each: "term",
+        each: "card",
         place: "slide",
         rule: "in the right order; the slide shuffles them",
       },
@@ -567,6 +594,7 @@ export function specOfWriter(
             ? { explanation: sentencesOf(o.explanation) }
             : { notes: sentencesOf(o.explanation) }),
         } as unknown as SlideSpec,
+        ...(layout === "stacked" ? { variant: "stacked" } : {}),
         structure: {},
       };
     }
