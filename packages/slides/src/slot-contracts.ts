@@ -20,7 +20,7 @@ import type { SlideStructure } from "./structure";
 
 /** The kinds of text a slot's items are, with the plain words the writer reads. */
 export const TEXT_KINDS = {
-  heading: 'one line: one short clause about one thing, with no "and", "but" or list',
+  heading: 'one line: one short main clause about one thing, with no "and", "but", "when" or list',
   sentence: "one sentence of one or two clauses, at most two lines",
   clause: "one sentence of a single clause, at most two lines",
   question: "one question, at most two lines",
@@ -30,7 +30,7 @@ export const TEXT_KINDS = {
   phrase: "a phrase on one line, not a full sentence",
   option: "a short phrase, at most three short lines on its half-width card",
   outline:
-    'one line across the slide: the idea or outline named in brief, like "Claim, reasons, rebuttal, request"',
+    'one line across the slide: the idea, or the parts of an outline each named by a single term, like "Claim, reasons, rebuttal, request"',
   label: "a short label, half a line, not a sentence",
   term: "a term or a short name, half a line, as written on a card",
   card: 'a short phrase on one line across the slide: one clause, with no "and"',

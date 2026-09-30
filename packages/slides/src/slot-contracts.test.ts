@@ -102,7 +102,7 @@ describe("contractText", () => {
     expect(contractText("worked-example")).toBe(
       [
         "worked-example:",
-        '- heading: one line: one short clause about one thing, with no "and", "but" or list',
+        '- heading: one line: one short main clause about one thing, with no "and", "but", "when" or list',
         "- question: one question, at most two lines",
         "- steps: 2–4 lines, each one calculation or one short phrase, on one line (the last line gives the answer)",
       ].join("\n"),
