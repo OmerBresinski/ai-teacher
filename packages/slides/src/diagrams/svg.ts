@@ -32,6 +32,20 @@ export type Ctx = {
   stack: string;
   /** The label size in slide points: never below 14 (the back of the room). */
   fs: number;
+  /** When set, every text block drawn is recorded here (`diagramFaults` reads the geometry). */
+  rec?: DrawnText[];
+  /** With `rec`: the drawing's own strokes (outlines, lines, arrows) as segments, in points. */
+  strokes?: [number, number, number, number][];
+};
+
+/** One drawn text block: its box in the drawing's points, its words, and whether a line was cut. */
+export type DrawnText = {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  text: string;
+  cut: boolean;
 };
 
 export type Tone = "accent" | "accent2" | "muted" | "surface" | "none";
@@ -199,6 +213,19 @@ export function text(x: Ctx, px: number, py: number, lines: string[], o: TextOpt
   const halo = o.halo
     ? ` stroke="${o.halo}" stroke-width="${n(fs * 0.28)}" stroke-linejoin="round" paint-order="stroke"`
     : "";
+  if (x.rec && lines.length > 0) {
+    const bw = Math.max(...lines.map((l) => textWidth(l, x, fs, o.weight ?? 400)));
+    const anchor = o.anchor ?? "middle";
+    const x0 = anchor === "middle" ? px - bw / 2 : anchor === "end" ? px - bw : px;
+    x.rec.push({
+      x0,
+      x1: x0 + bw,
+      y0: top - fs * 0.8,
+      y1: top + block + fs * 0.25,
+      text: lines.join(" "),
+      cut: lines.some((l) => l.endsWith("…")),
+    });
+  }
   const spans = lines
     .map((l, i) => `<tspan x="${n(px)}" y="${n(top + i * lh)}">${esc(l)}</tspan>`)
     .join("");

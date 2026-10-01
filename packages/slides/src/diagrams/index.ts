@@ -14,7 +14,7 @@ import { drawLabelled } from "./labelled";
 import { drawLineGraph } from "./line-graph";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
-import { context, esc, n, text, wrap } from "./svg";
+import { context, type DrawnText, esc, n, text, wrap } from "./svg";
 import { drawTable } from "./table";
 
 export * from "./schema";
@@ -28,7 +28,13 @@ export function parseDiagram(spec: unknown): DiagramSpec | undefined {
   return r.success ? r.data : undefined;
 }
 
-function body(s: DiagramSpec, t: Theme, w: number, h: number): string {
+function body(
+  s: DiagramSpec,
+  t: Theme,
+  w: number,
+  h: number,
+  probe?: { rec: DrawnText[]; strokes: [number, number, number, number][]; ih: number },
+): string {
   const x = context(t, w, h);
   let top = 0;
   let head = "";
@@ -57,20 +63,22 @@ function body(s: DiagramSpec, t: Theme, w: number, h: number): string {
     top = fs * 1.7 + (lines.length - 1) * fs * 1.2;
   }
   const ih = h - top;
+  if (probe) probe.ih = ih;
+  const ix = probe ? { ...x, rec: probe.rec, strokes: probe.strokes } : x;
   const inner = (() => {
     switch (s.kind) {
       case "bar-model":
-        return drawBarModel(s, x, w, ih);
+        return drawBarModel(s, ix, w, ih);
       case "line-graph":
-        return drawLineGraph(s, x, w, ih);
+        return drawLineGraph(s, ix, w, ih);
       case "flow":
-        return drawFlow(s, x, w, ih);
+        return drawFlow(s, ix, w, ih);
       case "labelled-diagram":
-        return drawLabelled(s, x, w, ih);
+        return drawLabelled(s, ix, w, ih);
       case "number-line":
-        return drawNumberLine(s, x, w, ih);
+        return drawNumberLine(s, ix, w, ih);
       case "table":
-        return drawTable(s, x, w, ih);
+        return drawTable(s, ix, w, ih);
     }
   })();
   return top ? `${head}<g transform="translate(0,${n(top)})">${inner}</g>` : inner;
@@ -126,4 +134,95 @@ export function diagramElement(
     alt: s.alt,
     fit: "contain",
   } as ImageElement;
+}
+
+/**
+ * What is wrong with a spec drawn `size` (round G quality gate), in words the writer can act on;
+ * empty when nothing is. A diagram that draws is not a pass on its own: labels that collide, run
+ * off the drawing or are cut short, and panels meant to differ that draw the same, are faults.
+ */
+export function diagramFaults(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number },
+): string[] {
+  const s = parseDiagram(spec);
+  const w = Math.round(size.w);
+  const h = Math.round(size.h);
+  if (!s || !(w >= 80) || !(h >= 60)) return ["it does not draw"];
+  const probe = {
+    rec: [] as DrawnText[],
+    strokes: [] as [number, number, number, number][],
+    ih: h,
+  };
+  try {
+    body(s, theme, w, h, probe);
+  } catch {
+    return ["it does not draw"];
+  }
+  const { rec, strokes, ih } = probe;
+  const out: string[] = [];
+  // A label set across a line of the drawing (an outline, a river, an arrow) reads as clutter and
+  // hides what the line shows (F1 y8 drainage basin): its box, less a small margin, is crossed.
+  const crosses = (b: DrawnText, [ax, ay, bx, by]: [number, number, number, number]) => {
+    for (let t = 0; t <= 1; t += 1 / 40) {
+      const px = ax + (bx - ax) * t;
+      const py = ay + (by - ay) * t;
+      if (px > b.x0 + 3 && px < b.x1 - 3 && py > b.y0 + 4 && py < b.y1 - 4) return true;
+    }
+    return false;
+  };
+  for (const b of rec) {
+    if (strokes.some((sg) => crosses(b, sg)))
+      out.push(`the label "${b.text}" sits across a line of the drawing`);
+  }
+  const area = (b: DrawnText) => Math.max(1, (b.x1 - b.x0) * (b.y1 - b.y0));
+  const over = (a: DrawnText, b: DrawnText) =>
+    Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) *
+    Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  for (const b of rec) {
+    if (b.cut) out.push(`the label "${b.text}" is cut short`);
+    if (b.x0 < -2 || b.x1 > w + 2 || b.y0 < -2 || b.y1 > ih + 2)
+      out.push(`the label "${b.text}" runs off the drawing`);
+  }
+  for (let i = 0; i < rec.length; i++) {
+    for (let j = i + 1; j < rec.length; j++) {
+      const a = rec[i] as DrawnText;
+      const b = rec[j] as DrawnText;
+      if (over(a, b) > 0.15 * Math.min(area(a), area(b)))
+        out.push(`the labels "${a.text}" and "${b.text}" overlap`);
+    }
+  }
+  out.push(...samePanels(s));
+  return [...new Set(out)];
+}
+
+/** Panels meant to differ that draw the same: two particle boxes alike, or two series alike. */
+function samePanels(s: DiagramSpec): string[] {
+  const out: string[] = [];
+  if (s.kind === "labelled-diagram") {
+    const boxes = s.shapes.flatMap((sh) => (sh.type === "particles" ? [sh] : []));
+    const near = (a: number, b: number) => Math.abs(a - b) <= 0.15 * Math.max(a, b);
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        if (a && b && a.arrangement === b.arrangement && near(a.w, b.w) && near(a.h, b.h)) {
+          out.push(
+            `two particle boxes draw exactly the same (${a.arrangement}, the same size), so the picture shows no difference between them`,
+          );
+        }
+      }
+    }
+  }
+  if (s.kind === "line-graph") {
+    const key = (pts: unknown) => JSON.stringify(pts);
+    const seen = new Set<string>();
+    for (const series of s.series) {
+      const k = key(series.points);
+      if (seen.has(k)) out.push("two series draw the same line, so the graph shows no difference");
+      seen.add(k);
+    }
+  }
+  return [...new Set(out)];
 }

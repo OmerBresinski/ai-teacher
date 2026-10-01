@@ -5,6 +5,7 @@ import {
   type FactQuestion,
   type Finding,
   type ImageBrief,
+  type ImageElement,
   type KeyIdea,
   type Lesson,
   type LessonFacts,
@@ -15,6 +16,7 @@ import {
   type WorkedExample,
 } from "@tj/domain/documents";
 import {
+  deadBand,
   FIT_VERSION,
   fitsPlanned,
   getTheme,
@@ -24,7 +26,9 @@ import {
   SAFE,
   withDiagramDrawn,
   withoutPicture,
+  withPictureInSpace,
 } from "@tj/slides";
+import { DIAGRAM_DRAWN_NAME, diagramElement, diagramFaults } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
 import {
@@ -42,6 +46,7 @@ import {
   type Written,
   withSetTag,
 } from "../plan-write/fit";
+import { arithmeticFaults, namesNotShown, untaughtTerms, wrongSums } from "../plan-write/gates";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
 import { recheckKinds } from "../plan-write/recheck";
@@ -113,6 +118,18 @@ import { joinVersions, type PlacedPhoto, pickPhoto, plainSubject, withPhoto } fr
 import { existingTitle, materialiseTitle } from "./plan";
 import { audienceOf, BUDGET_FINDING, generationOf, planClassFor } from "./shared";
 import { runVerify } from "./verify";
+
+/** The question slides whose dead half the check-picture gate fills (round G). */
+const QUESTION_FORMS = new Set([
+  "hinge",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "open-response",
+  "check-set",
+  "exit-ticket",
+]);
 
 /** The title variants that carry a photograph, in the order drawTitle tries them. */
 const TITLE_PICTURE_ORDER = ["split", "photo-band", "photo-band-long"] as const;
@@ -582,7 +599,15 @@ export type PlanWriteReport = {
     };
     fixes: { slide: number; field: string; kind: string; problem: string; outcome: string }[];
   };
+  /**
+   * Round G quality gates: per gate, the slides that failed it, those its one re-ask put right, and
+   * those that took the safe fallback (full-width text, an item taken out, a dead half left).
+   */
+  gates?: Record<GateName, GateCount>;
 };
+
+export type GateName = "caption" | "diagram" | "checkPicture" | "arithmetic" | "untaught";
+export type GateCount = { hit: number; fixed: number; fallback: number; slides: number[] };
 
 export async function planWriteSlides(
   state: PipelineState,
@@ -892,13 +917,22 @@ export async function planWriteSlides(
       return { ...(photo ? withPlaced(fresh, photo) : fresh), id: old.id };
     });
 
-  /** Whether a diagram slot's spec draws; a slot that does not would stay empty. */
-  const diagramDraws = (layout: string, out: Written): boolean => {
+  /**
+   * What is wrong with a diagram slot's drawing on this slide (round G gate), or undefined when it
+   * draws well: it does not draw, or its labels collide, run off or are cut, or panels meant to
+   * differ draw the same.
+   */
+  const diagramProblem = (layout: string, out: Written): string | undefined => {
     const spec = out.diagram;
-    if (!spec || typeof spec !== "object") return false;
+    if (!spec || typeof spec !== "object") return `it does not draw (${diagramFault(spec)})`;
     const r = renderWritten("diagram-slot", layout, out);
     const slide = materialiseSlide(r.spec, themeId, codeMeta(), deps.ids, r.variant, r.structure);
-    return withDiagramDrawn(slide, getTheme(themeId), spec) !== slide;
+    const theme = getTheme(themeId);
+    const made = withDiagramDrawn(slide, theme, spec);
+    if (made === slide) return `it does not draw (${diagramFault(spec)})`;
+    const el = made.elements.find((e) => e.name === DIAGRAM_DRAWN_NAME);
+    const faults = el ? diagramFaults(spec, theme, { w: el.w, h: el.h }) : [];
+    return faults.length > 0 ? `it draws badly: ${faults.slice(0, 4).join("; ")}` : undefined;
   };
 
   /** A saved picture slide whose photo was not found: drawn again with the text full width. */
@@ -966,6 +1000,17 @@ export async function planWriteSlides(
   /* ---------------------------------------------------------- per-slide check (stream) */
 
   const verify = { corrections: 0, refitted: 0, rejected: 0 };
+  const gates: Record<GateName, GateCount> = {
+    caption: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    diagram: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    checkPicture: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    arithmetic: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    untaught: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+  };
+  const gateHit = (g: GateName, n: number) => {
+    gates[g].hit += 1;
+    gates[g].slides.push(n);
+  };
   const checker = checkBatcher({
     limit: SLIDE_CHECK_CONCURRENCY,
     maxGroup: CHECK_GROUP_MAX,
@@ -1244,8 +1289,10 @@ export async function planWriteSlides(
     }
     // A diagram slot whose spec does not draw is asked for ONCE more, told why, before the slide
     // gives up its picture: the taught drawing is worth one call.
-    if (s.form === "diagram-slot" && !diagramDraws(s.layout, fitted.out)) {
-      const why = diagramFault(fitted.out.diagram);
+    const problem = s.form === "diagram-slot" ? diagramProblem(s.layout, fitted.out) : undefined;
+    if (problem) gateHit("diagram", n);
+    if (s.form === "diagram-slot" && problem) {
+      const why = problem;
       const shape = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape;
       try {
         const { output } = await callWriter(
@@ -1254,7 +1301,7 @@ export async function planWriteSlides(
             rewrite: {
               slide: target(n),
               field: "diagram",
-              failure: `its diagram does not draw (${why}), so the slide would show no picture`,
+              failure: `${why}, so the slide would show no picture. Draw it again so it draws: every label clear of the other labels and of the drawing's lines, inside the drawing and whole, and parts meant to differ drawn differently`,
               current: fitted.out,
               reason: "check",
             },
@@ -1263,14 +1310,17 @@ export async function planWriteSlides(
           MAX_OUTPUT_TOKENS_REWRITE,
         );
         const next = { ...fitted.out, diagram: output.diagram };
-        const ok = diagramDraws(s.layout, next);
+        const ok = diagramProblem(s.layout, next) === undefined;
         deps.logger.info(
           { stage: "generate", call: "diagram-requery", slide: n, why, ok },
           "diagram written again",
         );
         if (ok) {
           const refit = fitWritten(s.form, s.layout, next);
-          if (refit.ok || !fitted.fit.ok) fitted = { ...fitted, out: next, fit: refit };
+          if (refit.ok || !fitted.fit.ok) {
+            fitted = { ...fitted, out: next, fit: refit };
+            gates.diagram.fixed += 1;
+          }
         }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") throw error;
@@ -1287,8 +1337,9 @@ export async function planWriteSlides(
       PICTURE_FORMS.has(s.form) &&
       (s.form === "photo"
         ? !deps.images
-        : s.form === "figure" || !diagramDraws(s.layout, fitted.out))
+        : s.form === "figure" || diagramProblem(s.layout, fitted.out) !== undefined)
     ) {
+      if (problem) gates.diagram.fallback += 1;
       deps.logger.info(
         { stage: "generate", slide: n, form: s.form },
         "slide drawn without its picture",
@@ -1889,6 +1940,231 @@ export async function planWriteSlides(
     };
   };
 
+  /* ---------------------------------------------------------- quality gates (round G) */
+
+  /**
+   * One gate's targeted re-ask: `field` written again told `failure`, kept only when `still` no
+   * longer holds and the slide still fits, then drawn again. False when the re-ask did not put it
+   * right; the caller takes its safe fallback.
+   */
+  const gateFix = async (
+    n: number,
+    field: string,
+    failure: string,
+    still: (out: Written) => boolean,
+  ): Promise<boolean> => {
+    const p = placed.find((x) => x.index === n - 1);
+    if (!p) return false;
+    const value = await checkRewrite(n, field, failure, p.out).catch(() => undefined);
+    if (value === undefined) return false;
+    const out = { ...p.out, [field]: value };
+    if (still(out)) return false;
+    const fitted = await fitWithRewrite(p.plan.form, p.plan.layout, out, async (f, why) => {
+      const v = await checkRewrite(n, f, why, out, "fit");
+      return v === undefined ? undefined : { [f]: v };
+    });
+    if (!fitted.fit.ok || still(fitted.out)) return false;
+    p.out = fitted.out;
+    await redraw(n - 1, { promptVersion: WRITE_SLIDES_VERSION, model: "gate", at: at() });
+    return true;
+  };
+
+  /** A slide's written fields changed in code (a fallback), kept only when the slide still fits. */
+  const gateSet = async (n: number, out: Written): Promise<boolean> => {
+    const p = placed.find((x) => x.index === n - 1);
+    if (!p || !fitWritten(p.plan.form, p.plan.layout, out).ok) return false;
+    p.out = out;
+    await redraw(n - 1, { promptVersion: WRITE_SLIDES_VERSION, model: "gate", at: at() });
+    return true;
+  };
+
+  /** Items of a list field that `bad` names taken out, when at least two are left. */
+  const withoutItems = (out: Written, field: string, bad: (t: string) => boolean) => {
+    const v = out[field];
+    if (field === "notes" && typeof v === "string") {
+      const kept = v.split(/(?<=[.!?])\s+/).filter((t) => !bad(t));
+      return { ...out, notes: kept.join(" ") };
+    }
+    if (!Array.isArray(v)) return undefined;
+    const kept = v.filter((x) => !bad(flat(x)));
+    return kept.length >= 2 && kept.length < v.length ? { ...out, [field]: kept } : undefined;
+  };
+
+  const gateFinding = (n: number, message: string) =>
+    findings.push({
+      check: "quality-gate",
+      severity: "warning",
+      target: lesson.slides[n - 1] ? { slideId: lesson.slides[n - 1]?.id } : {},
+      message,
+    });
+
+  const passSlides = () => placed.map((p) => ({ number: p.index + 1, row: p.plan, out: p.out }));
+
+  /**
+   * The gates over the written lesson, once every slide is checked and every photo placed:
+   * a photo's caption against its source, arithmetic recomputed, tested terms taught on a slide,
+   * then a question slide's dead half filled with the picture that taught it.
+   */
+  const runGates = async () => {
+    const exempt = `${brief.topic} ${base.title}`;
+    const named = (o: Written) =>
+      `${flat(o.heading)}. ${Array.isArray(o.body) ? flat(o.body[0]) : ""}`;
+    const work: Promise<void>[] = [];
+    for (const [index, photo] of photoOf) {
+      const p = placed.find((x) => x.index === index);
+      if (!p || index === 0 || p.plan.form !== "photo") continue;
+      const about = photo.about || photo.alt;
+      const n = index + 1;
+      const wrong = namesNotShown(named(p.out), about, exempt);
+      if (wrong.length === 0) continue;
+      gateHit("caption", n);
+      const inBody = Array.isArray(p.out.body) && wrong.some((w) => flat(p.out.body).includes(w));
+      const field = inBody ? "body" : "heading";
+      work.push(
+        (async () => {
+          const ok = await gateFix(
+            n,
+            field,
+            `it names ${wrong.join(", ")} as what the photograph shows, but the photograph's own source describes it as: "${about.slice(0, 300)}". Say only what that description names about the photograph (its place, object or person); the teaching stays`,
+            (o) => namesNotShown(named(o), about, exempt).length > 0,
+          );
+          if (ok) gates.caption.fixed += 1;
+          else {
+            // The safe fallback: the text full width, the photograph that is not what it says gone.
+            gates.caption.fallback += 1;
+            photoOf.delete(index);
+            await dropPicture(n);
+          }
+        })(),
+      );
+    }
+    await Promise.all(work);
+    work.length = 0;
+    for (const p of placed) {
+      const n = p.index + 1;
+      if (n <= FIXED_SLIDES) continue;
+      const faults = arithmeticFaults(p.out);
+      if (faults.length === 0) continue;
+      gateHit("arithmetic", n);
+      work.push(
+        (async () => {
+          let all = true;
+          for (const f of faults.slice(0, 2)) {
+            const ok = await gateFix(
+              n,
+              f.field,
+              f.failure,
+              (o) => wrongSums(flat(o[f.field])).length > 0,
+            );
+            if (ok) continue;
+            all = false;
+            const cut = withoutItems(p.out, f.field, (t) => wrongSums(t).length > 0);
+            if (!(cut && (await gateSet(n, cut))))
+              gateFinding(n, `A calculation on slide ${n} does not hold: ${f.failure}.`);
+          }
+          if (all) gates.arithmetic.fixed += 1;
+          else gates.arithmetic.fallback += 1;
+        })(),
+      );
+    }
+    await Promise.all(work);
+    work.length = 0;
+    for (const u of untaughtTerms(passSlides())) {
+      gateHit("untaught", u.number);
+      const q = u.terms.map((t) => `"${t}"`).join(", ");
+      const still = (o: Written) =>
+        untaughtTerms(passSlides().map((x) => (x.number === u.number ? { ...x, out: o } : x))).some(
+          (x) => x.number === u.number && x.field === u.field,
+        );
+      work.push(
+        (async () => {
+          const ok = await gateFix(
+            u.number,
+            u.field,
+            `it asks about ${q}, which no earlier slide shows (a term only in the notes is not taught). Ask only about what the earlier slides show; keep the other items as they are`,
+            still,
+          );
+          if (ok) {
+            gates.untaught.fixed += 1;
+            return;
+          }
+          gates.untaught.fallback += 1;
+          const p = placed.find((x) => x.index === u.number - 1);
+          const cut = p
+            ? withoutItems(p.out, u.field, (t) => u.terms.some((w) => t.toLowerCase().includes(w)))
+            : undefined;
+          if (!(cut && (await gateSet(u.number, cut))))
+            gateFinding(
+              u.number,
+              `Slide ${u.number} asks about ${q}, which no earlier slide teaches.`,
+            );
+        })(),
+      );
+    }
+    await Promise.all(work);
+    await writing;
+    // A question slide's dead half: the picture that taught its objective, under the questions.
+    const theme = getTheme(themeId);
+    for (const p of [...placed].sort((a, b) => a.index - b.index)) {
+      const n = p.index + 1;
+      const asks =
+        n > FIXED_SLIDES &&
+        p.plan.form !== "starter-set" &&
+        p.plan.role !== "retrieve" &&
+        (QUESTION_FORMS.has(p.plan.form) || p.plan.role === "practise");
+      const slide = lesson.slides[p.index];
+      if (!asks || !slide) continue;
+      const band = deadBand(slide);
+      if (!band) continue;
+      gateHit("checkPicture", n);
+      const source = [...placed]
+        .filter(
+          (q) =>
+            q.index < p.index &&
+            q.plan.role === "teach" &&
+            q.plan.objectives.some((o) => p.plan.objectives.includes(o)) &&
+            !noPicture.includes(q.index + 1) &&
+            (diagrams[String(q.index + 1)] !== undefined || photoOf.has(q.index)),
+        )
+        .sort((a, b) => b.index - a.index)[0];
+      if (!source) {
+        gates.checkPicture.fallback += 1;
+        continue;
+      }
+      const spec = diagrams[String(source.index + 1)];
+      const photo = photoOf.get(source.index);
+      let k = 0;
+      const ids = () => `${slide.id}~g${++k}`;
+      const picture = (b: { x: number; y: number; w: number; h: number }) => {
+        const w = Math.min(b.w, b.h * (spec ? 2 : 1.6));
+        const rect = { x: b.x + (b.w - w) / 2, y: b.y, w, h: b.h };
+        if (spec) {
+          if (diagramFaults(spec, theme, rect).length > 0) return undefined;
+          return diagramElement(spec, theme, rect, ids);
+        }
+        return photo
+          ? ({
+              id: ids(),
+              type: "image",
+              ...rect,
+              src: photo.src,
+              alt: photo.alt,
+              source: photo.source,
+              fit: "cover",
+            } as ImageElement)
+          : undefined;
+      };
+      const next = withPictureInSpace(slide, picture);
+      if (next === slide) {
+        gates.checkPicture.fallback += 1;
+        continue;
+      }
+      gates.checkPicture.fixed += 1;
+      await updateSlide(p.index, () => next);
+    }
+    deps.logger.info({ stage: "generate", call: "gates", gates }, "quality gates");
+  };
+
   let finalFacts = facts;
   let checksDoneMs: number | undefined;
   let photosDoneMs: number | undefined;
@@ -1908,6 +2184,9 @@ export async function planWriteSlides(
     await writing;
     throwIfAborted(deps.signal);
     masterCheck = await runMasterCheck();
+    await writing;
+    throwIfAborted(deps.signal);
+    await runGates();
     await writing;
     throwIfAborted(deps.signal);
     finalFacts = buildFacts();
@@ -2022,6 +2301,7 @@ export async function planWriteSlides(
           ...(photosDoneMs !== undefined ? { photosDoneMs } : {}),
           ...(lessonPass !== undefined ? { lessonPass } : {}),
           ...(masterCheck ? { masterCheck } : {}),
+          gates,
         }
       : { ...(noPicture.length > 0 ? { noPicture } : {}) }),
   };

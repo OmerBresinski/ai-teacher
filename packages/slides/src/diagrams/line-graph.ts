@@ -75,7 +75,7 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   // Axis titles.
   out.push(text(x, left + pw / 2, h - 2, [g.x.label], { v: "bottom", weight: 600 }));
   const yTitle = (label: string, cx: number, rot: number) =>
-    `<g transform="translate(${n(cx)},${n(top + ph / 2)}) rotate(${rot})">${text(x, 0, 0, [label], { weight: 600 })}</g>`;
+    `<g transform="translate(${n(cx)},${n(top + ph / 2)}) rotate(${rot})">${text({ ...x, rec: undefined }, 0, 0, [label], { weight: 600 })}</g>`;
   out.push(yTitle(g.y.label, fs * 0.7, -90));
   if (g.y2) out.push(yTitle(g.y2.label, w - fs * 0.7, 90));
 

@@ -1,0 +1,257 @@
+/**
+ * Round G quality gates that code can decide: arithmetic recomputed, a tested term taught on a
+ * slide, and a photo's caption against what the photo's own source says it shows. Each returns the
+ * field to write again and why; the caller re-asks once, then falls back (plan-write.ts).
+ */
+
+import { FIXED_SLIDES } from "./check";
+import type { Written } from "./fit";
+import type { PassSlide } from "./slide-check";
+
+const textOf = (v: unknown): string =>
+  typeof v === "string"
+    ? v
+    : Array.isArray(v)
+      ? v.map(textOf).join(" ")
+      : v && typeof v === "object"
+        ? Object.values(v).map(textOf).join(" ")
+        : "";
+
+/* ------------------------------------------------------------------ arithmetic */
+
+const UNITS = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+/** Number words (to ninety-nine, and "a hundred") as digits, so "three × five = fifteen" checks. */
+function digits(s: string): string {
+  return s
+    .replace(
+      new RegExp(
+        `\\b(${TENS.slice(2).join("|")})(?:[- ](${UNITS.slice(1, 10).join("|")}))?\\b`,
+        "gi",
+      ),
+      (_, t: string, u?: string) =>
+        String(TENS.indexOf(t.toLowerCase()) * 10 + (u ? UNITS.indexOf(u.toLowerCase()) : 0)),
+    )
+    .replace(new RegExp(`\\b(${UNITS.join("|")})\\b`, "gi"), (w: string) =>
+      String(UNITS.indexOf(w.toLowerCase())),
+    )
+    .replace(/\b(?:a|one) hundred\b/gi, "100");
+}
+
+/** A small expression (+ − × ÷, brackets) evaluated, or undefined when it is not one. */
+function evaluate(src: string): number | undefined {
+  const toks = src.match(/\d+(?:\.\d+)?|[-+*/()]/g);
+  if (!toks || toks.join("") !== src.replace(/\s+/g, "")) return undefined;
+  let i = 0;
+  const peek = () => toks[i];
+  const atom = (): number | undefined => {
+    const t = toks[i++];
+    if (t === "(") {
+      const v = sum();
+      if (toks[i++] !== ")") return undefined;
+      return v;
+    }
+    if (t === "-") {
+      const v = atom();
+      return v === undefined ? undefined : -v;
+    }
+    return t !== undefined && /^\d/.test(t) ? Number(t) : undefined;
+  };
+  const product = (): number | undefined => {
+    let v = atom();
+    while (v !== undefined && (peek() === "*" || peek() === "/")) {
+      const op = toks[i++];
+      const r = atom();
+      if (r === undefined) return undefined;
+      v = op === "*" ? v * r : r === 0 ? undefined : v / r;
+    }
+    return v;
+  };
+  const sum = (): number | undefined => {
+    let v = product();
+    while (v !== undefined && (peek() === "+" || peek() === "-")) {
+      const op = toks[i++];
+      const r = product();
+      if (r === undefined) return undefined;
+      v = op === "+" ? v + r : v - r;
+    }
+    return v;
+  };
+  const v = sum();
+  return i === toks.length ? v : undefined;
+}
+
+/** The text with operators made plain: × x * as *, ÷ as /, the dashes between numbers as minus. */
+function plainMaths(s: string): string {
+  return digits(s)
+    .replace(/[£$€°]/g, "")
+    .replace(/(\d),(\d{3})\b/g, "$1$2")
+    .replace(/(\d)\s*[×xX*]\s*(?=[\d(])/g, "$1 * ")
+    .replace(/÷/g, "/")
+    .replace(/(\d)\s*[−–]\s*(?=\d)/g, "$1 - ")
+    .replace(/[−–]/g, "-");
+}
+
+/**
+ * Every stated calculation in `text` that does not hold: "a op b = c" chains (each side
+ * recomputed), and ratio equalities ("2:3 = 4:6"). Text, units and percentages are left alone.
+ */
+export function wrongSums(text: string): string[] {
+  const out: string[] = [];
+  const t = plainMaths(text);
+  // A run of numbers, operators, brackets, colons and "=", with at least one "=".
+  for (const m of t.matchAll(/[\d(][\d\s.+\-*/():]*=[\d\s.+\-*/():=]*[\d)]/g)) {
+    const run = m[0];
+    const at = m.index ?? 0;
+    if (t[at + run.length] === "%" || /%/.test(run)) continue;
+    // A decimal point at the run's end is a sentence's full stop.
+    const parts = run.split("=").map((p) => p.trim().replace(/\.$/, ""));
+    if (parts.some((p) => p === "")) continue;
+    if (parts.every((p) => /^\d+(?:\.\d+)?\s*:\s*\d+(?:\.\d+)?$/.test(p))) {
+      const r = parts.map((p) => p.split(":").map((x) => Number(x.trim())) as [number, number]);
+      const [a, b] = r[0] as [number, number];
+      if (r.some(([c, d]) => Math.abs(a * d - b * c) > 1e-9)) out.push(run.trim());
+      continue;
+    }
+    if (parts.some((p) => p.includes(":"))) continue;
+    if (!parts.some((p) => /[-+*/]/.test(p.replace(/^-/, "")))) continue;
+    const vals = parts.map(evaluate);
+    if (vals.some((v) => v === undefined)) continue;
+    const first = vals[0] as number;
+    if (vals.some((v) => Math.abs((v as number) - first) > 1e-6 * Math.max(1, Math.abs(first))))
+      out.push(run.trim());
+  }
+  return out;
+}
+
+/** The fields of a written slide whose stated arithmetic does not hold, with the sums named. */
+export function arithmeticFaults(out: Written): { field: string; failure: string }[] {
+  const faults: { field: string; failure: string }[] = [];
+  for (const [field, v] of Object.entries(out)) {
+    if (field === "diagram" || field === "imageBrief") continue;
+    const wrong = wrongSums(textOf(v));
+    if (wrong.length > 0) {
+      faults.push({
+        field,
+        failure: `these calculations do not hold when worked out: ${wrong.map((w) => `"${w}"`).join(", ")}. Work each one out again and give the right result, and change any answer or reasoning that depends on it`,
+      });
+    }
+  }
+  return faults;
+}
+
+/* ------------------------------------------------------------------ taught on a slide */
+
+const STOP = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "their"]);
+const wordsOf = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z]+/g, " ")
+    .split(" ")
+    .filter((w) => w.length >= 5 && !STOP.has(w));
+/** Singular and plural, -ing and -ed forms meet at one stem. */
+const stem = (w: string) => w.replace(/(?:ies|es|s|ing|ed)$/, "").slice(0, 8);
+
+const TESTING = new Set([
+  "hinge",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "open-response",
+  "check-set",
+  "exit-ticket",
+]);
+
+/**
+ * A practice or check slide that asks about a term the lesson's plan names (its teaches and tests
+ * keys) which no earlier slide shows on the slide itself, only in notes or nowhere (F1b y5: the
+ * estuary, taught only in a slide's notes, then asked in practice). Per slide: the field that
+ * holds the term and the terms.
+ */
+export function untaughtTerms(
+  slides: readonly PassSlide[],
+): { number: number; field: string; terms: string[] }[] {
+  const ordered = [...slides].sort((a, b) => a.number - b.number);
+  const keys = new Set(
+    ordered
+      .flatMap((s) => [...s.row.teaches, ...s.row.tests])
+      .flatMap((k) => wordsOf(k.replace(/-/g, " "))),
+  );
+  const keyStems = new Map([...keys].map((k) => [stem(k), k]));
+  const shown = new Set<string>();
+  const out: { number: number; field: string; terms: string[] }[] = [];
+  for (const s of ordered) {
+    if (s.number <= FIXED_SLIDES) continue;
+    const asks =
+      (TESTING.has(s.row.form) || s.row.role === "practise") &&
+      s.row.form !== "starter-set" &&
+      s.row.role !== "retrieve";
+    if (asks) {
+      const byField = new Map<string, string[]>();
+      for (const [field, v] of Object.entries(s.out)) {
+        if (field === "notes" || field === "diagram" || field === "imageBrief") continue;
+        for (const w of wordsOf(textOf(v))) {
+          const k = keyStems.get(stem(w));
+          if (!k || shown.has(stem(w))) continue;
+          const list = byField.get(field) ?? [];
+          if (!list.includes(w)) byField.set(field, [...list, w]);
+        }
+      }
+      for (const [field, terms] of byField) out.push({ number: s.number, field, terms });
+    }
+    // What this slide shows (not its notes) counts as taught for every later slide.
+    const { notes: _n, imageBrief: _i, ...onSlide } = s.out;
+    for (const w of wordsOf(textOf(onSlide))) shown.add(stem(w));
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ photo caption */
+
+/**
+ * Proper names in `text` (a capitalised word not opening a sentence or a label) that the photo's
+ * own source does not name, leaving out names the lesson as a whole carries (`exempt`, the topic
+ * and title: "Roman", "Britain"). Empty when the text names only what the photo shows (F1a y4: a
+ * Pompeii street captioned "At Vindolanda", an El Jem mosaic captioned "At Fishbourne").
+ */
+export function namesNotShown(text: string, about: string, exempt: string): string[] {
+  const near = (w: string, pool: string) => {
+    const k = w.toLowerCase().slice(0, 5);
+    return pool
+      .toLowerCase()
+      .split(/[^a-z]+/)
+      .some((p) => p.length >= 3 && p.slice(0, 5) === k);
+  };
+  const names: string[] = [];
+  for (const m of text.matchAll(/(^|[.!?:;]\s+|\s)([A-Z][a-z]+(?:['’]s)?)/g)) {
+    const opener = m[1] !== " " && m[1] !== undefined && m[1].trim() !== "";
+    if (opener || (m.index ?? 0) === 0) continue;
+    const w = (m[2] ?? "").replace(/['’]s$/, "");
+    if (w.length < 3 || near(w, exempt) || near(w, about) || names.includes(w)) continue;
+    names.push(w);
+  }
+  return names;
+}

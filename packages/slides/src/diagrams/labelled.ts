@@ -444,6 +444,43 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
   }
   const { k, X, Y, placed, captions } = L;
 
+  if (x.strokes) {
+    const seg = (a: Pt, b: Pt) => x.strokes?.push([X(a[0]), Y(a[1]), X(b[0]), Y(b[1])]);
+    const ring = (pts: Pt[], closed: boolean) =>
+      pts.forEach((p, i) => {
+        const q = pts[i + 1] ?? (closed ? pts[0] : undefined);
+        if (q) seg(p, q);
+      });
+    const oval = (cx: number, cy: number, rx: number, ry: number) =>
+      ring(
+        Array.from(
+          { length: 16 },
+          (_, i): Pt => [
+            cx + rx * Math.cos((i * Math.PI) / 8),
+            cy + ry * Math.sin((i * Math.PI) / 8),
+          ],
+        ),
+        true,
+      );
+    const box = (bx: number, by: number, bw: number, bh: number) =>
+      ring(
+        [
+          [bx, by],
+          [bx + bw, by],
+          [bx + bw, by + bh],
+          [bx, by + bh],
+        ],
+        true,
+      );
+    for (const sh of s.shapes) {
+      if (sh.type === "polygon") ring(sh.points, true);
+      else if (sh.type === "line") ring(sh.points, false);
+      else if (sh.type === "arrow") seg(sh.from, sh.to);
+      else if (sh.type === "circle") oval(sh.cx, sh.cy, sh.r, sh.r);
+      else if (sh.type === "ellipse") oval(sh.cx, sh.cy, sh.rx, sh.ry);
+      else box(sh.x, sh.y, sh.w, sh.h);
+    }
+  }
   const out: string[] = [];
   for (const sh of s.shapes) {
     switch (sh.type) {

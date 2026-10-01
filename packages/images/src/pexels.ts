@@ -22,6 +22,9 @@ export interface PhotoResult {
   width: number;
   height: number;
   alt: string;
+  /** What the source says the photo shows (round G caption gate): Commons title, description and
+   * categories; Pexels' alt text. */
+  about?: string;
   photographer: string;
   photographerUrl: string;
   /** The photo's page on Pexels (`url` upstream). */

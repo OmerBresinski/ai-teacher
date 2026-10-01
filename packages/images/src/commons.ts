@@ -57,6 +57,7 @@ const PageSchema = z.object({
   title: z.string(),
   index: z.number().optional(),
   imageinfo: z.array(ImageInfoSchema).optional(),
+  categories: z.array(z.object({ title: z.string() })).optional(),
 });
 const ResponseSchema = z.object({
   query: z.object({ pages: z.array(PageSchema) }).optional(),
@@ -195,8 +196,17 @@ function toPhoto(
   const alt =
     metaText(info.extmetadata, "ImageDescription").slice(0, 200) ||
     page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, "");
+  const about = [
+    page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, ""),
+    metaText(info.extmetadata, "ImageDescription").slice(0, 400),
+    metaText(info.extmetadata, "ObjectName"),
+    ...(page.categories ?? []).map((c) => c.title.replace(/^Category:/i, "")),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return {
     id: `commons-${page.pageid}`,
+    about,
     width,
     height,
     alt,
@@ -327,7 +337,9 @@ export function createCommonsClient(
         p.set("gsrnamespace", "6");
         p.set("gsrsearch", allowDrawings ? query : `${query} filetype:bitmap`);
         p.set("gsrlimit", String(Math.min(Math.max(perPage, 1), 50)));
-        p.set("prop", "imageinfo");
+        p.set("prop", "imageinfo|categories");
+        p.set("clshow", "!hidden");
+        p.set("cllimit", "max");
         p.set("iiprop", "url|size|mime|extmetadata");
         p.set("iiurlwidth", String(LARGE_WIDTH));
         p.set(

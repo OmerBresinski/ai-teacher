@@ -42,7 +42,8 @@ import { WRITE_RULES } from "./write-slides";
  * explanation; practice kept over the hinge when slides are few) and write-slides.v22 (chunk lines). */
 /* v17 (round F1): plan-lesson.v20 (the title photograph is the lesson's subject; a check after each
  * objective's teaching, code adding any the rows leave out) and write-slides.v23; no swap changed. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v17";
+/* v18 (round G1): write-slides.v24 (calculations written as equations, so code recomputes them). */
+export const STREAM_LESSON_VERSION = "stream-lesson.v18";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 

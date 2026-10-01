@@ -68,6 +68,8 @@ export type PlacedPhoto = {
   alt: string;
   source: PhotoSource;
   evidence: PhotoEvidence;
+  /** What the photo's source says it shows (Commons title, description, categories; Pexels alt). */
+  about?: string;
 };
 
 /** The image element with the photograph on it; geometry and id are the placeholder's. */
@@ -689,5 +691,6 @@ async function store(
     alt: photo.alt || brief.subject,
     source: { ...stored.source, evidence },
     evidence,
+    about: photo.about || photo.alt,
   };
 }

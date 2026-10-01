@@ -43,7 +43,9 @@ import { type Audience, audienceBlock } from "./shared";
  * chunk, since D1's chunks ran to four and five lines and four of eleven teach slides overran. */
 /* v23 (round F1): a check code adds is written from the slides it checks, shown as written
  * (`taught`), so its questions ask what those slides show. */
-export const WRITE_SLIDES_VERSION = "write-slides.v23";
+/* v24 (round G1): any calculation in notes or an answer, a wrong answer's included, is written as an
+ * equation with its result, so code can recompute it (F1 y6: "thirteen litres suggests adding eight"). */
+export const WRITE_SLIDES_VERSION = "write-slides.v24";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -112,7 +114,7 @@ A photo's imageBrief names the real thing the slide teaches, which the photograp
 A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.
 Pictures are for whoever finds or draws them: the slide's text never repeats a brief. On a photo slide the photograph is the case: the first chunk points pupils at what to notice in it and what that shows ("The carved number: it tells a soldier how far it is to the next fort."), and the general rule follows.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
-The notes on every slide are what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next. On a practise slide they give every item's answer with its working, or the points a good written answer makes, then one harder challenge for pupils who finish early, with its answer.
+The notes on every slide are what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next. On a practise slide they give every item's answer with its working, or the points a good written answer makes, then one harder challenge for pupils who finish early, with its answer. Any calculation in the notes or an answer, a wrong answer's included, is written as an equation with its result ("24 ÷ 4 = 6").
 A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.`;
 
 const SYSTEM = `You are an experienced UK teacher writing the slides of a planned lesson. The plan fixes each slide's role, form, layout and what it teaches; you write the slides you are given, each in its form and layout. A row gives its slide's aim in a few words; the detail, the examples and any picture's description are yours. Nothing rewrites your words, so what you write is the slide.\n\n${HOUSE_RULES}\n${WRITE_RULES}`;
