@@ -29,7 +29,9 @@ import { WRITE_RULES } from "./write-slides";
 
 /* v10: plan-lesson.v13 and write-slides.v16 (round B base: A2 explanations that build plus A6 teaching
  * pictures); no swap changed. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v10";
+/* v11 (round B1, practice): plan-lesson.v14 and write-slides.v17; the practise-role swap is gone,
+ * since the shared role line now says what it said. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v11";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -44,10 +46,6 @@ function swap(text: string, from: string, to: string): string {
 export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
   ["- slides: one row for each slide", "- plan: one row for each slide"],
   ["the writer adds the detail", "the slide adds the detail"],
-  [
-    "practise (pupils use the idea on a new case, in their own words)",
-    "practise (pupils work alone on new cases, up to the hardest the lesson taught: a question set that steps up when its objective is to work something out, a written task when it is to explain or describe)",
-  ],
   [
     "The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.",
     "The objectives slide does not open the lesson; when the slides allow, the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. A hinge checks the idea everything after it depends on. The exit ticket is on the worksheet, so no slide is an exit. How many slides each idea takes and where the hinge falls are yours.",
