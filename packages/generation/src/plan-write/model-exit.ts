@@ -22,6 +22,8 @@ export type ModelExitItem = {
   form: ExitItemForm;
   /** The highest similarity to any in-lesson question. */
   similarity: number;
+  /** Round S2: too long for any layout of the closing slide, so printed on the worksheet only. */
+  worksheetOnly?: true;
 };
 
 export type ModelExitReport = {
@@ -31,6 +33,10 @@ export type ModelExitReport = {
   reasked: number;
   dropped: number;
   kept: number;
+  /** Items that fit only a closing layout other than the default (round S2). */
+  widerLayout: number;
+  /** Items kept on the worksheet only, the slide pointing to them (round S2). */
+  worksheetOnly: number;
 };
 
 /** How many items to ask for: one per objective, 3 to 4 in all. */
@@ -118,11 +124,23 @@ export function ordered(items: readonly ModelExitItem[], max: number): ModelExit
 export type ExitItemChecks = {
   /** Whether these items, together, fit the closing slide. */
   fits?: (items: readonly ModelExitItem[]) => boolean;
+  /** Whether they fit the closing slide in any of its layouts (round S2's second step). */
+  fitsAnyLayout?: (items: readonly ModelExitItem[]) => boolean;
   untaught?: (question: string) => string[];
 };
 
 const TOO_LONG =
-  "it didn't fit the slide beside the other items; use fewer options or a shorter stem";
+  "it didn't fit the slide beside the other items; write it in a more compact form: a short-answer question with no options, or a true-or-false statement with a line asking why";
+
+/**
+ * Round S2 (S2 y5: an item that never fitted was dropped, leaving two): the fallback for an item
+ * too long for the slide, so it is never lost. First it is asked again in a more compact form
+ * (a multiple-choice item becomes short answer, or true or false with a "why" line); one that
+ * still does not fit goes on the slide in a closing layout that holds it (`fitsAnyLayout`); one
+ * that fits none is kept on the worksheet's exit ticket and the slide points to it.
+ */
+const compactForm = (form: ExitItemForm): ExitItemForm =>
+  form === "multiple-choice" ? "explain" : form;
 
 /** Re-asks after the first call: enough to give each objective an item and reach the count. */
 export const EXIT_REASKS = 2;
@@ -146,9 +164,13 @@ export async function modelExitItems(
     reasked: 0,
     dropped: 0,
     kept: 0,
+    widerLayout: 0,
+    worksheetOnly: 0,
   };
   const kept: ModelExitItem[] = [];
   const rawOf = new Map<ModelExitItem, Raw>();
+  /** A re-ask owed for the fit alone, with the checked item it asks to shorten. */
+  const unfitted = new Map<object, ModelExitItem>();
   type Redo = NonNullable<ExitItemsInput["redo"]>[number];
   const review = (raws: readonly Raw[]) => {
     const redo: Redo[] = [];
@@ -168,12 +190,14 @@ export async function modelExitItems(
             kept.splice(kept.indexOf(longest), 1);
             const was = rawOf.get(longest);
             report.rejected.push({ question: longest.question, problem: TOO_LONG });
-            redo.push({
+            const entry = {
               objective: longest.objective + 1,
-              form: longest.form,
+              form: compactForm(longest.form),
               question: was?.question ?? longest.question,
               problem: TOO_LONG,
-            });
+            };
+            redo.push(entry);
+            unfitted.set(entry, longest);
           } else problem = TOO_LONG;
         }
       }
@@ -184,12 +208,14 @@ export async function modelExitItems(
         continue;
       }
       report.rejected.push({ question: raw.question, problem: problem ?? "" });
-      redo.push({
+      const entry = {
         objective: raw.objective,
-        form: raw.form,
+        form: problem === TOO_LONG ? compactForm(raw.form) : raw.form,
         question: raw.question,
         problem: problem ?? "",
-      });
+      };
+      redo.push(entry);
+      if (problem === TOO_LONG && "item" in v) unfitted.set(entry, v.item);
     }
     return redo;
   };
@@ -247,7 +273,25 @@ export async function modelExitItems(
       break;
     }
   }
-  report.dropped = redo.filter((r) => r.question !== "").length;
+  // Still owed after the re-asks: an item whose last version failed only the fit is kept, on the
+  // slide in a layout that holds it, else on the worksheet only. Any other is dropped.
+  const owed: Redo[] = [];
+  for (const r of redo) {
+    const item = unfitted.get(r);
+    if (!item || kept.length >= count) {
+      owed.push(r);
+      continue;
+    }
+    const onSlide = kept.filter((k) => !k.worksheetOnly);
+    if (checks.fitsAnyLayout?.([...onSlide, item])) {
+      kept.push(item);
+      report.widerLayout += 1;
+    } else {
+      kept.push({ ...item, worksheetOnly: true });
+      report.worksheetOnly += 1;
+    }
+  }
+  report.dropped = owed.filter((r) => r.question !== "").length;
   const items = ordered(kept, count);
   report.kept = items.length;
   return items.length > 0 ? { items, report } : undefined;

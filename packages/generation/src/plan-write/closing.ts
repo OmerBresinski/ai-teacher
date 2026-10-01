@@ -7,7 +7,7 @@ import {
   type SlideSpec,
   text,
 } from "@tj/slides";
-import { fitWritten, type Written } from "./fit";
+import { fitWritten, SET_VARIANTS, type Written } from "./fit";
 import { type FreshExitItem, freshExitItems, SIMILARITY_MAX, similarity } from "./fresh-exit";
 import { SET_MAX, setSchema } from "./menu";
 
@@ -120,10 +120,24 @@ const writtenOf = (questions: readonly ExitQuestion[], notes = WORKSHEET_NOTES):
 });
 
 /**
+ * Round S2: the closing set's layouts in the order tried, the default list first, then the list
+ * variants that set the items out differently. A set too long for one is drawn in the first that
+ * holds it (`closingLayoutOf`).
+ */
+export const EXIT_LAYOUTS: readonly string[] = [EXIT_FORM, ...SET_VARIANTS];
+
+const fitsSomeLayout = (written: Written) =>
+  EXIT_LAYOUTS.some((l) => fitWritten(EXIT_FORM, l, written).ok);
+
+/** The layout a closing set is drawn in: the first that holds it on every theme, else the default. */
+export const closingLayoutOf = (written: Written): string =>
+  EXIT_LAYOUTS.find((l) => fitWritten(EXIT_FORM, l, written).ok) ?? EXIT_FORM;
+
+/**
  * The closing set as the exit-ticket writer would have written it: the questions in order, at most
  * the set's `SET_MAX`, each kept only when the set with it still fits every theme with its answers
- * revealed (plan-write's own fit check), and the result within the set's schema. Undefined when no
- * question is kept: the closing slide then points to the worksheet.
+ * revealed in one of `EXIT_LAYOUTS` (plan-write's own fit check), and the result within the set's
+ * schema. Undefined when no question is kept: the closing slide then points to the worksheet.
  */
 export function closingQuestionsWritten(
   questions: readonly ExitQuestion[],
@@ -132,17 +146,37 @@ export function closingQuestionsWritten(
   const kept: ExitQuestion[] = [];
   for (const q of questions) {
     if (kept.length >= SET_MAX) break;
-    if (fitWritten(EXIT_FORM, EXIT_FORM, writtenOf([...kept, q], notes)).ok) kept.push(q);
+    if (fitsSomeLayout(writtenOf([...kept, q], notes))) kept.push(q);
   }
   if (kept.length === 0) return undefined;
   const out = writtenOf(kept, notes);
   return setSchema(EXIT_FORM).safeParse(out).success ? out : undefined;
 }
 
-/** Whether these questions, with their answers revealed, fit the closing slide on every theme. */
+/** Whether these questions, with their answers revealed, fit the closing slide's default layout. */
 export const closingFits = (questions: readonly ExitQuestion[]): boolean =>
   questions.length <= SET_MAX &&
   fitWritten(EXIT_FORM, EXIT_FORM, writtenOf(questions, FRESH_NOTES)).ok;
+
+/** Whether these questions fit the closing slide in any of its layouts (`EXIT_LAYOUTS`). */
+export const closingFitsAnyLayout = (questions: readonly ExitQuestion[]): boolean =>
+  questions.length <= SET_MAX && fitsSomeLayout(writtenOf(questions, FRESH_NOTES));
+
+/**
+ * The closing slide's line for exit items kept on the worksheet only (round S2), by their numbers
+ * there (their places in `items`, the order the worksheet prints them). Undefined when none is.
+ * It goes under the set in the bottom margin (`withClosingLine`), taking none of the set's room.
+ */
+export function worksheetPointerLine(
+  items: readonly { worksheetOnly?: boolean }[],
+): string | undefined {
+  const ns = items.flatMap((it, n) => (it.worksheetOnly ? [n + 1] : []));
+  if (ns.length === 0) return undefined;
+  const last = ns.pop();
+  return ns.length === 0
+    ? `See the worksheet for question ${last}.`
+    : `See the worksheet for questions ${ns.join(", ")} and ${last}.`;
+}
 
 /**
  * The closing set built from fresh items (`fresh-exit.ts`): questions the lesson has not asked,
@@ -159,18 +193,29 @@ export function freshClosingWritten(
  * The closing set from the model's exit items (round Q, `model-exit.ts`), in their order, each
  * kept while the set still fits the slide.
  */
-export const modelClosingWritten = (
-  items: readonly ExitQuestion[],
+export function modelClosingWritten(
+  items: readonly (ExitQuestion & { worksheetOnly?: boolean })[],
   cover?: {
-    items: readonly (ExitQuestion & { objective: number })[];
+    items: readonly (ExitQuestion & { objective: number; worksheetOnly?: boolean })[];
     fresh: readonly FreshExitItem[];
     objectiveIds: readonly string[];
   },
-): Written | undefined =>
-  closingQuestionsWritten(
-    cover ? coveringOrder(cover.items, cover.fresh, cover.objectiveIds) : items,
-    FRESH_NOTES,
+): Written | undefined {
+  // Round S2: an item that fits no layout stays on the worksheet and the slide points to it
+  // (`worksheetPointerLine`); no fresh item stands in for its objective.
+  const covered = new Set(
+    (cover?.items ?? []).filter((i) => i.worksheetOnly).map((i) => i.objective),
   );
+  const order = cover
+    ? coveringOrder(
+        cover.items.filter((i) => !i.worksheetOnly),
+        cover.fresh,
+        cover.objectiveIds,
+        covered,
+      )
+    : items.filter((i) => !i.worksheetOnly);
+  return closingQuestionsWritten(order, FRESH_NOTES);
+}
 
 /**
  * Round S (S1 y6: one exit item on the slide, not three): the order the closing set is filled in,
@@ -182,6 +227,8 @@ export function coveringOrder(
   model: readonly (ExitQuestion & { objective: number })[],
   fresh: readonly FreshExitItem[],
   objectiveIds: readonly string[],
+  /** Objectives already covered by a pointer to the worksheet: no fresh item is put in for them. */
+  covered: ReadonlySet<number> = new Set(),
 ): ExitQuestion[] {
   const freshOn = (o: number) =>
     fresh.filter((f) => f.objectiveRefs.includes(objectiveIds[o] ?? ""));
@@ -196,7 +243,8 @@ export function coveringOrder(
     out.push({ question: q.question, answer: q.answer });
   };
   objectiveIds.forEach((_, o) => {
-    const own = model.find((m) => m.objective === o) ?? freshOn(o)[0];
+    const own =
+      model.find((m) => m.objective === o) ?? (covered.has(o) ? undefined : freshOn(o)[0]);
     if (own) add(own);
   });
   for (const m of model) add(m);

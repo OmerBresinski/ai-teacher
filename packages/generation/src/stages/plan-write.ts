@@ -46,6 +46,8 @@ import {
 } from "../plan-write/check";
 import {
   closingFits,
+  closingFitsAnyLayout,
+  closingLayoutOf,
   closingLine,
   closingSlideFits,
   closingSpec,
@@ -55,6 +57,7 @@ import {
   freshClosingWritten,
   modelClosingWritten,
   withClosingLine,
+  worksheetPointerLine,
 } from "../plan-write/closing";
 import { diagramDisagreements } from "../plan-write/diagram-agree";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
@@ -2074,7 +2077,12 @@ export async function planWriteSlides(
           // Round S: an item too long for the slide, or on a term no teaching slide shows, is
           // asked again rather than trimmed off the slide later.
           ...(closing && brief.exitTicketOnSlides === true
-            ? { fits: (items) => items.length > SET_MAX || closingFits(items) }
+            ? {
+                fits: (items) => items.length > SET_MAX || closingFits(items),
+                // Round S2: still too long after the compact re-ask, an item goes on the slide in
+                // another closing layout that holds it, else on the worksheet only.
+                fitsAnyLayout: (items) => items.length > SET_MAX || closingFitsAnyLayout(items),
+              }
             : {}),
           untaught: (question) =>
             untaughtOnExit(
@@ -2133,9 +2141,17 @@ export async function planWriteSlides(
               })
             : freshClosingWritten(facts, slides)
           : undefined;
+      // Round S2: the set in the closing layout that holds it; a line under it points to any item
+      // kept on the worksheet only.
+      const pointer = exitItems && onSlides ? worksheetPointerLine(exitItems) : undefined;
+      const onSlide = onSlides
+        ? drawn(EXIT_FORM, closingLayoutOf(onSlides), onSlides, codeMeta())
+        : undefined;
       const slide = closing
-        ? onSlides
-          ? drawn(EXIT_FORM, EXIT_FORM, onSlides, codeMeta())
+        ? onSlide
+          ? pointer
+            ? withClosingLine(onSlide, pointer)
+            : onSlide
           : materialiseSlide(
               closingSpec(
                 questions,

@@ -1,0 +1,20 @@
+{
+  "source": "S2 y5-rivers (pv-s 70069c90), lab/visual/runs/S2t; exit-items log line. Kept items and rejected stems as recorded; answers of rejected items reconstructed (not logged).",
+  "objectives": [
+    "Describe a river’s journey from source to mouth, including changes in its channel and valley.",
+    "Explain how erosion, transport and deposition shape valleys, meanders and river mouths."
+  ],
+  "kept": [
+    {
+      "stem": "How can material worn away far upstream become part of a slip-off slope further downstream?",
+      "answer": "Erosion removes material upstream, transport carries it downstream, and slower water at the inner bank drops it by deposition.",
+      "objectiveRefs": ["o2"]
+    },
+    {
+      "stem": "What else helps downward erosion form a V-shaped valley? (A) Material breaks off the valley sides and moves downhill (B) Deposition builds up the valley sides (C) The river transports material uphill",
+      "answer": "(A) Material breaks off the valley sides and moves downhill",
+      "objectiveRefs": ["o2"]
+    }
+  ],
+  "closingNotes": "New questions on today's objectives, not ones asked earlier. Pupils answer alone; reveal the answers once they have written theirs.\nAnswers: 1. Usually, tributaries add water, so its channel becomes wider and deeper downstream. 2. Erosion removes material upstream, transport carries it downstream, and slower water at the inner bank drops it by deposition."
+}

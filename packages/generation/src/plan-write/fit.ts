@@ -75,6 +75,12 @@ export function withSetTag(slide: Slide, form: string, role?: string): Slide {
 
 type SetQuestion = { question: string; answer: string };
 
+/**
+ * A question set's other list layouts (round S): a set drawn by its `layout` when that names one,
+ * else in the kind's default. The closing set moves to one when its items do not fit the default.
+ */
+export const SET_VARIANTS: ReadonlySet<string> = new Set(["cards", "stepped"]);
+
 const notesOf = (...parts: unknown[]) =>
   parts.filter((p): p is string => typeof p === "string" && p.trim() !== "").join("\n");
 
@@ -106,7 +112,12 @@ export function drawable(form: string, fields: Written): Written {
 
 /** The slide spec a written slide makes, with its variant and structure; notes carried over. */
 export function renderWritten(form: string, layout: string, out: Written, role?: string): Rendered {
-  if (isSetForm(form)) return { spec: setSpec(form, out, role), structure: {} };
+  if (isSetForm(form))
+    return {
+      spec: setSpec(form, out, role),
+      ...(SET_VARIANTS.has(layout) ? { variant: layout } : {}),
+      structure: {},
+    };
   const { notes, ...fields } = out;
   const made = specOfWriter(form as PaletteFormId, drawable(form, fields), layout);
   if (!made) throw new Error(`plan-write: ${form} is not drawn on a slide`);
@@ -176,11 +187,14 @@ export function attribute(
  * A question set's failing themes, judged with its answers revealed, at body size (stepDown 0) as
  * every other slide is: the reveal no longer leaves the list stepped down (structure.ts).
  */
-function setFailing(spec: SlideSpec): string[] {
+function setFailing({ spec, variant }: Rendered): string[] {
   return THEMES.filter(
     (theme) =>
-      !slideFits(withAnswersReveal(materialiseSlide(spec, theme.id, FIT_META), theme.id), theme, 0)
-        .ok,
+      !slideFits(
+        withAnswersReveal(materialiseSlide(spec, theme.id, FIT_META, undefined, variant), theme.id),
+        theme,
+        0,
+      ).ok,
   ).map((t) => `${t.id}: overflow`);
 }
 
@@ -219,7 +233,7 @@ function failingLines(form: string, layout: string, out: Written, opts: FitOptio
       (l) => !HEADING_WRAP.test(l.slice(l.indexOf(": ") + 2)),
     );
   }
-  if (isSetForm(form)) return setFailing(renderWritten(form, layout, out).spec);
+  if (isSetForm(form)) return setFailing(renderWritten(form, layout, out));
   const { notes: _notes, ...fields } = out;
   const lines = contractFits(
     slotContract(form as PaletteFormId, layout),
