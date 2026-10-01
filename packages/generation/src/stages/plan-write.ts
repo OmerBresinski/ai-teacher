@@ -28,7 +28,12 @@ import {
   withoutPicture,
   withPictureInSpace,
 } from "@tj/slides";
-import { DIAGRAM_DRAWN_NAME, diagramElement, diagramFaults } from "@tj/slides/diagrams";
+import {
+  DIAGRAM_DRAWN_NAME,
+  diagramElement,
+  diagramFaults,
+  settleDiagram,
+} from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
 import {
@@ -37,6 +42,7 @@ import {
   checksToInsert,
   FIXED_SLIDES,
   type PlanCheck,
+  warmUpToInsert,
 } from "../plan-write/check";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
@@ -604,6 +610,12 @@ export type PlanWriteReport = {
    * those that took the safe fallback (full-width text, an item taken out, a dead half left).
    */
   gates?: Record<GateName, GateCount>;
+  /**
+   * Round H picture ladder for a diagram that does not draw cleanly: per slide, the rung that
+   * filled its picture (settled = drawn after code normalised it; simpler = the one re-ask;
+   * commons = a Commons diagram; photo = an on-topic photo; fullWidth = text only).
+   */
+  diagramRungs?: Record<string, "settled" | "simpler" | "commons" | "photo" | "fullWidth">;
 };
 
 export type GateName = "caption" | "diagram" | "checkPicture" | "arithmetic" | "untaught";
@@ -823,15 +835,26 @@ export async function planWriteSlides(
 
   /** Photos placed so far by slide index, so a slide drawn again keeps its photo. */
   const photoOf = new Map<number, PlacedPhoto>();
-  const withPlaced = (slide: Slide, photo: PlacedPhoto): Slide => ({
-    ...slide,
-    elements: slide.elements.map((e) =>
-      e.type === "image" && e.src === PLACEHOLDER_IMAGE ? withPhoto(e, photo) : e,
-    ),
-  });
+  /** Round H: slides whose picture is the Commons diagram that stood in for a drawing. */
+  const diagramPlaced = new Set<number>();
+  /** Round H: the Commons query for a slide whose drawing failed (rung b of the ladder). */
+  const diagramQuery = new Map<number, string>();
+  const diagramRungs: NonNullable<PlanWriteReport["diagramRungs"]> = {};
+  const withPlaced = (slide: Slide, photo: PlacedPhoto, index?: number): Slide =>
+    ({
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.type === "image" && e.src === PLACEHOLDER_IMAGE
+          ? // A diagram is read whole: contained in the slot, never cropped.
+            index !== undefined && diagramPlaced.has(index)
+            ? { ...withPhoto(e, photo), fit: "contain" }
+            : withPhoto(e, photo)
+          : e,
+      ),
+    }) as Slide;
   const placePhoto = (index: number, photo: PlacedPhoto) => {
     photoOf.set(index, photo);
-    return updateSlide(index, (slide) => withPlaced(slide, photo));
+    return updateSlide(index, (slide) => withPlaced(slide, photo, index));
   };
 
   const photoReady: NonNullable<PlanWriteReport["photoReady"]> = {};
@@ -854,6 +877,63 @@ export async function planWriteSlides(
         index,
         deps,
       );
+    // Round H ladder, rung b: a slide whose drawing failed first looks for a drawn diagram of the
+    // taught idea on Commons (SVG/PNG, the same licence rules), then (rung c) an on-topic photo.
+    const dq = diagramQuery.get(index);
+    const images = deps.images;
+    if (dq && images?.searchCommons) {
+      const diagramDeps = {
+        ...deps,
+        images: {
+          ...images,
+          diagrams: true,
+          search: async () => [],
+        },
+      };
+      const asDiagram = await pickPhoto(
+        {
+          ...lesson,
+          facts: {
+            ...baseFacts,
+            outline: outline.map((e, i) =>
+              i === index
+                ? {
+                    ...e,
+                    imageBrief: {
+                      subject: `${dq} diagram`.slice(0, 60),
+                      mustShow: [],
+                      purpose: "identify-parts" as const,
+                      specific: true,
+                    },
+                  }
+                : e,
+            ),
+          },
+        },
+        index,
+        diagramDeps,
+      ).catch((error) => {
+        if (error instanceof Error && error.name === "AbortError") throw error;
+        return { outcome: "empty" as const };
+      });
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "diagram-commons",
+          slide: index + 1,
+          query: dq,
+          outcome: asDiagram.outcome,
+        },
+        "Commons diagram for a drawing that failed",
+      );
+      if (asDiagram.outcome === "placed" && "photo" in asDiagram && asDiagram.photo) {
+        diagramPlaced.add(index);
+        diagramRungs[String(index + 1)] = "commons";
+        photoCounts.requested += 1;
+        photoCounts.placed += 1;
+        return asDiagram.photo;
+      }
+    }
     let picked = await tryOne(brief);
     const wider =
       picked.outcome === "placed" || picked.outcome === "busy" ? undefined : broadenedBrief(brief);
@@ -873,6 +953,7 @@ export async function planWriteSlides(
     );
     if (picked.outcome !== "placed") return undefined;
     photoCounts.placed += 1;
+    if (dq) diagramRungs[String(index + 1)] = "photo";
     return picked.photo;
   };
 
@@ -914,7 +995,7 @@ export async function planWriteSlides(
       const made = drawn(p.plan.form, p.plan.layout, p.out, meta, p.plan.role);
       const fresh = noPicture.includes(index + 1) ? fullWidth(made) : made;
       const photo = photoOf.get(index);
-      return { ...(photo ? withPlaced(fresh, photo) : fresh), id: old.id };
+      return { ...(photo ? withPlaced(fresh, photo, index) : fresh), id: old.id };
     });
 
   /**
@@ -922,6 +1003,20 @@ export async function planWriteSlides(
    * draws well: it does not draw, or its labels collide, run off or are cut, or panels meant to
    * differ draw the same.
    */
+  /**
+   * Round H: the diagram as code will draw it, normalised for the slot's size so it draws cleanly
+   * on every theme (a hydrograph's peaks and lag, a particle row's columns), or `out` unchanged.
+   */
+  const settled = (layout: string, out: Written): Written => {
+    const spec = out.diagram;
+    if (!spec || typeof spec !== "object") return out;
+    const r = renderWritten("diagram-slot", layout, out);
+    const slide = materialiseSlide(r.spec, themeId, codeMeta(), deps.ids, r.variant, r.structure);
+    const made = withDiagramDrawn(slide, getTheme(themeId), spec);
+    const el = made.elements.find((e) => e.name === DIAGRAM_DRAWN_NAME);
+    if (!el) return out;
+    return { ...out, diagram: settleDiagram(spec, { w: el.w, h: el.h }).spec };
+  };
   const diagramProblem = (layout: string, out: Written): string | undefined => {
     const spec = out.diagram;
     if (!spec || typeof spec !== "object") return `it does not draw (${diagramFault(spec)})`;
@@ -941,6 +1036,7 @@ export async function planWriteSlides(
     const p = placed.find((x) => x.index === index);
     if (!p) return;
     noPicture.push(n);
+    if (diagramQuery.has(index)) diagramRungs[String(n)] = "fullWidth";
     p.plan = { ...p.plan, ...NO_PICTURE_ROW };
     p.out = noPictureOf(p.out);
     table[index] = { ...(table[index] as PlanSlide), ...NO_PICTURE_ROW };
@@ -1287,10 +1383,14 @@ export async function planWriteSlides(
         fitted = { out: again.out, fit: fitWritten(s.form, s.layout, again.out) };
       }
     }
-    // A diagram slot whose spec does not draw is asked for ONCE more, told why, before the slide
-    // gives up its picture: the taught drawing is worth one call.
+    // A diagram is first settled in code (normalised for its slot, simpler forms on every theme).
+    if (s.form === "diagram-slot") fitted = { ...fitted, out: settled(s.layout, fitted.out) };
+    // Round H ladder for a drawing that still fails its gate, never a text-only picture slide:
+    // (a) ONE re-ask for a simpler drawing; (b) a Commons diagram of the taught idea; (c) an
+    // on-topic photo; (d) only then the text full width.
     const problem = s.form === "diagram-slot" ? diagramProblem(s.layout, fitted.out) : undefined;
     if (problem) gateHit("diagram", n);
+    let fallback: { query?: string; subject?: string } = {};
     if (s.form === "diagram-slot" && problem) {
       const why = problem;
       const shape = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape;
@@ -1301,25 +1401,42 @@ export async function planWriteSlides(
             rewrite: {
               slide: target(n),
               field: "diagram",
-              failure: `${why}, so the slide would show no picture. Draw it again so it draws: every label clear of the other labels and of the drawing's lines, inside the drawing and whole, and parts meant to differ drawn differently`,
+              failure: `${why}, so the slide would show no picture. Draw it again SIMPLER: half the labels or fewer, each one or two words, fewer and larger shapes, every label clear of the other labels and of the drawing's lines, and parts meant to differ drawn differently`,
               current: fitted.out,
               reason: "check",
             },
           },
-          z.object({ diagram: shape.diagram as z.ZodType }) as z.ZodType<Written>,
+          z.object({
+            diagram: shape.diagram as z.ZodType,
+            commonsQuery: z
+              .string()
+              .describe(
+                "if this drawing still cannot be used: 2 to 4 words naming the diagram to search for instead, e.g. storm hydrograph",
+              ),
+            photoSubject: z
+              .string()
+              .describe(
+                "and if no diagram is found: a real thing a photograph could show that teaches the same idea, e.g. a river in flood",
+              ),
+          }) as z.ZodType<Written>,
           MAX_OUTPUT_TOKENS_REWRITE,
         );
-        const next = { ...fitted.out, diagram: output.diagram };
+        fallback = {
+          query: typeof output.commonsQuery === "string" ? output.commonsQuery : undefined,
+          subject: typeof output.photoSubject === "string" ? output.photoSubject : undefined,
+        };
+        const next = settled(s.layout, { ...fitted.out, diagram: output.diagram });
         const ok = diagramProblem(s.layout, next) === undefined;
         deps.logger.info(
-          { stage: "generate", call: "diagram-requery", slide: n, why, ok },
-          "diagram written again",
+          { stage: "generate", call: "diagram-requery", slide: n, why, ok, fallback },
+          "diagram written again, simpler",
         );
         if (ok) {
           const refit = fitWritten(s.form, s.layout, next);
           if (refit.ok || !fitted.fit.ok) {
             fitted = { ...fitted, out: next, fit: refit };
             gates.diagram.fixed += 1;
+            diagramRungs[String(n)] = "simpler";
           }
         }
       } catch (error) {
@@ -1329,6 +1446,35 @@ export async function planWriteSlides(
           "diagram re-write failed",
         );
       }
+    } else if (s.form === "diagram-slot") {
+      diagramRungs[String(n)] = "settled";
+    }
+    if (
+      s.form === "diagram-slot" &&
+      deps.images &&
+      diagramProblem(s.layout, fitted.out) !== undefined
+    ) {
+      gates.diagram.fallback += 1;
+      const spec = fitted.out.diagram as { title?: unknown } | undefined;
+      const heading = typeof fitted.out.heading === "string" ? fitted.out.heading : "";
+      const title = typeof spec?.title === "string" ? spec.title : "";
+      diagramQuery.set(index, (fallback.query || title || heading).slice(0, 60));
+      const { diagram: _d, ...rest } = fitted.out;
+      const out2: Written = {
+        ...rest,
+        imageBrief: {
+          subject: plainSubject(fallback.subject || heading).slice(0, 60),
+          named: null,
+          mustShow: [],
+        },
+      };
+      s = { ...s, form: "photo", layout: "default" };
+      table[index] = s;
+      fitted = { out: out2, fit: fitWritten(s.form, s.layout, out2) };
+      deps.logger.info(
+        { stage: "generate", slide: n, query: diagramQuery.get(index) },
+        "drawing failed: Commons diagram, then photo",
+      );
     }
     // An empty picture or drawing never reaches the class: a figure brief (drawn later by no step
     // here), a diagram spec that does not draw, or a photo with no search to fill it takes the
@@ -1339,7 +1485,10 @@ export async function planWriteSlides(
         ? !deps.images
         : s.form === "figure" || diagramProblem(s.layout, fitted.out) !== undefined)
     ) {
-      if (problem) gates.diagram.fallback += 1;
+      if (problem) {
+        gates.diagram.fallback += 1;
+        diagramRungs[String(n)] = "fullWidth";
+      }
       deps.logger.info(
         { stage: "generate", slide: n, form: s.form },
         "slide drawn without its picture",
@@ -1511,8 +1660,14 @@ export async function planWriteSlides(
     // each its own slide straight after that teaching (the stream's own slides keep their order).
     const inserts = checksToInsert(c.plan.slides);
     const at = new Map(inserts.map((x) => [x.after, x.row]));
+    // Round H: a retrieval warm-up first after the objectives, written by code if the plan has none.
+    const warm = warmUpToInsert(c.plan.slides);
     const rows: PlanSlide[] = [];
     c.plan.slides.forEach((row, i) => {
+      if (warm && i === FIXED_SLIDES) {
+        rows.push(warm);
+        added.add(rows.length);
+      }
       rows.push(row);
       if (i >= FIXED_SLIDES) itemSlide.push(rows.length);
       const check = at.get(i + 1);
@@ -1521,7 +1676,12 @@ export async function planWriteSlides(
         added.add(rows.length);
       }
     });
-    slideCount = requested + inserts.length;
+    slideCount = requested + inserts.length + (warm ? 1 : 0);
+    if (warm)
+      deps.logger.info(
+        { stage: "generate", call: "warm-up", slide: FIXED_SLIDES + 1 },
+        "retrieval warm-up added",
+      );
     if (inserts.length > 0) {
       deps.logger.info(
         {
@@ -2162,7 +2322,7 @@ export async function planWriteSlides(
       gates.checkPicture.fixed += 1;
       await updateSlide(p.index, () => next);
     }
-    deps.logger.info({ stage: "generate", call: "gates", gates }, "quality gates");
+    deps.logger.info({ stage: "generate", call: "gates", gates, diagramRungs }, "quality gates");
   };
 
   let finalFacts = facts;
@@ -2302,6 +2462,7 @@ export async function planWriteSlides(
           ...(lessonPass !== undefined ? { lessonPass } : {}),
           ...(masterCheck ? { masterCheck } : {}),
           gates,
+          diagramRungs,
         }
       : { ...(noPicture.length > 0 ? { noPicture } : {}) }),
   };

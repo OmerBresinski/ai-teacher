@@ -114,10 +114,14 @@ export type CommonsVerdict =
  */
 export function judgeCommonsFile(
   page: CommonsPage,
-  opts: { allowDrawings?: boolean } = {},
+  opts: { allowDrawings?: boolean; diagrams?: boolean } = {},
 ): CommonsVerdict {
   const info = page.imageinfo?.[0];
   if (!info) return { ok: false, reason: "no image info" };
+  // Round H: a diagram search keeps only drawings and plain images (SVG, PNG), never photographs,
+  // scans or documents.
+  if (opts.diagrams && !DIAGRAM_MIME.has(info.mime))
+    return { ok: false, reason: `not a diagram (${info.mime})` };
   const meta = info.extmetadata;
   const title = page.title.replace(/^File:/i, "");
   if (!opts.allowDrawings) {
@@ -146,6 +150,8 @@ export function judgeCommonsFile(
   };
   return { ok: true, licence, credit };
 }
+
+const DIAGRAM_MIME = new Set(["image/svg+xml", "image/png"]);
 
 const TIER: Record<CommonsLicence, number> = {
   "public-domain": 0,
@@ -227,7 +233,7 @@ function toPhoto(
 /** The accepted, ranked photos of one API response (pure; the tests' fixtures go through here). */
 export function commonsPhotosOf(
   body: unknown,
-  opts: { allowDrawings?: boolean } = {},
+  opts: { allowDrawings?: boolean; diagrams?: boolean } = {},
 ): CommonsPhoto[] {
   const parsed = ResponseSchema.safeParse(body);
   if (!parsed.success) return [];
@@ -257,6 +263,8 @@ export interface CommonsSearchParams {
   query: string;
   perPage?: number;
   allowDrawings?: boolean;
+  /** Round H: drawings only (the File: namespace's SVG and PNG diagrams), same licence rules. */
+  diagrams?: boolean;
   signal?: AbortSignal;
   /**
    * How many photos come back with their `src.tiny` inlined as a data URL (default 8); the rest
@@ -325,7 +333,7 @@ export function createCommonsClient(
     return run;
   };
   return {
-    search: ({ query, perPage = 20, allowDrawings, signal, inline = 8 }) =>
+    search: ({ query, perPage = 20, allowDrawings, diagrams, signal, inline = 8 }) =>
       politely(async () => {
         const url = new URL(opts.apiUrl ?? API_URL);
         const p = url.searchParams;
@@ -335,7 +343,14 @@ export function createCommonsClient(
         p.set("maxlag", "5");
         p.set("generator", "search");
         p.set("gsrnamespace", "6");
-        p.set("gsrsearch", allowDrawings ? query : `${query} filetype:bitmap`);
+        p.set(
+          "gsrsearch",
+          diagrams
+            ? `${query} filetype:drawing`
+            : allowDrawings
+              ? query
+              : `${query} filetype:bitmap`,
+        );
         p.set("gsrlimit", String(Math.min(Math.max(perPage, 1), 50)));
         p.set("prop", "imageinfo|categories");
         p.set("clshow", "!hidden");
@@ -351,7 +366,10 @@ export function createCommonsClient(
           ...(signal ? { signal } : {}),
         });
         if (!res.ok) throw new CommonsError(res.status, `Commons search failed (${res.status})`);
-        const photos = commonsPhotosOf(await res.json(), { allowDrawings });
+        const photos = commonsPhotosOf(await res.json(), {
+          allowDrawings: allowDrawings || diagrams,
+          ...(diagrams ? { diagrams } : {}),
+        });
         return inlineThumbnails(photos, inline, fetchFn, agent, signal);
       }),
   };

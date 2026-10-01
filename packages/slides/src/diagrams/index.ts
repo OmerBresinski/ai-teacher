@@ -8,15 +8,18 @@
  */
 import type { ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { THEMES } from "../themes";
 import { drawBarModel } from "./bar-model";
 import { drawFlow } from "./flow";
 import { drawLabelled } from "./labelled";
 import { drawLineGraph } from "./line-graph";
+import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { context, type DrawnText, esc, n, text, wrap } from "./svg";
 import { drawTable } from "./table";
 
+export { isHydrograph, isParticleRow, normaliseDiagram, simplerDiagrams } from "./normalise";
 export * from "./schema";
 
 /** The drawn diagram's name in the layers list; present, export and print show it. */
@@ -33,7 +36,12 @@ function body(
   t: Theme,
   w: number,
   h: number,
-  probe?: { rec: DrawnText[]; strokes: [number, number, number, number][]; ih: number },
+  probe?: {
+    rec: DrawnText[];
+    strokes: [number, number, number, number][];
+    ih: number;
+    faults: string[];
+  },
 ): string {
   const x = context(t, w, h);
   let top = 0;
@@ -64,7 +72,7 @@ function body(
   }
   const ih = h - top;
   if (probe) probe.ih = ih;
-  const ix = probe ? { ...x, rec: probe.rec, strokes: probe.strokes } : x;
+  const ix = probe ? { ...x, rec: probe.rec, strokes: probe.strokes, faults: probe.faults } : x;
   const inner = (() => {
     switch (s.kind) {
       case "bar-model":
@@ -154,6 +162,7 @@ export function diagramFaults(
     rec: [] as DrawnText[],
     strokes: [] as [number, number, number, number][],
     ih: h,
+    faults: [] as string[],
   };
   try {
     body(s, theme, w, h, probe);
@@ -161,7 +170,7 @@ export function diagramFaults(
     return ["it does not draw"];
   }
   const { rec, strokes, ih } = probe;
-  const out: string[] = [];
+  const out: string[] = [...probe.faults];
   // A label set across a line of the drawing (an outline, a river, an arrow) reads as clutter and
   // hides what the line shows (F1 y8 drainage basin): its box, less a small margin, is crossed.
   const crosses = (b: DrawnText, [ax, ay, bx, by]: [number, number, number, number]) => {
@@ -225,4 +234,21 @@ function samePanels(s: DiagramSpec): string[] {
     }
   }
   return [...new Set(out)];
+}
+
+/**
+ * The spec code will draw (round H): normalised, then the first simpler form that draws without a
+ * fault at `size` on EVERY theme (a teacher may switch theme later), else the normalised one.
+ * `rung` says which form was taken (0 = as normalised); `clean` whether it passes everywhere.
+ */
+export function settleDiagram(
+  spec: unknown,
+  size: { w: number; h: number },
+): { spec: unknown; rung: number; clean: boolean } {
+  const forms = simplerDiagrams(spec);
+  for (const [rung, f] of forms.entries()) {
+    if (THEMES.every((t) => diagramFaults(f, t, size).length === 0))
+      return { spec: f, rung, clean: true };
+  }
+  return { spec: forms[0] ?? spec, rung: 0, clean: false };
 }

@@ -1,0 +1,360 @@
+{
+  "particlesG": {
+    "kind": "labelled-diagram",
+    "alt": "Equal-sized particles form regular rows in ice, an irregular close group in liquid water and a widely spaced group in water vapour.",
+    "title": "The same water particles",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "particles",
+        "arrangement": "solid",
+        "x": 3,
+        "y": 20,
+        "w": 48,
+        "h": 60,
+        "caption": "Ice"
+      },
+      {
+        "type": "particles",
+        "arrangement": "liquid",
+        "x": 56,
+        "y": 20,
+        "w": 48,
+        "h": 60,
+        "caption": "Liquid water"
+      },
+      {
+        "type": "particles",
+        "arrangement": "gas",
+        "x": 109,
+        "y": 20,
+        "w": 48,
+        "h": 60,
+        "caption": "Water vapour"
+      }
+    ],
+    "labels": [
+      {
+        "text": "Regular arrangement",
+        "at": [27, 75],
+        "side": "bottom"
+      },
+      {
+        "text": "Close particles",
+        "at": [80, 75],
+        "side": "bottom"
+      },
+      {
+        "text": "Large gaps",
+        "at": [133, 75],
+        "side": "bottom"
+      }
+    ]
+  },
+  "particlesWall": {
+    "kind": "labelled-diagram",
+    "alt": "Particle models show solid particles in fixed rows, liquid particles close together, and gas particles far apart with arrows showing movement towards a wall.",
+    "title": "The three states",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "particles",
+        "arrangement": "solid",
+        "x": 3,
+        "y": 20,
+        "w": 46,
+        "h": 60,
+        "caption": "Solid"
+      },
+      {
+        "type": "particles",
+        "arrangement": "liquid",
+        "x": 57,
+        "y": 20,
+        "w": 46,
+        "h": 60,
+        "caption": "Liquid"
+      },
+      {
+        "type": "particles",
+        "arrangement": "gas",
+        "x": 111,
+        "y": 20,
+        "w": 46,
+        "h": 60,
+        "caption": "Gas"
+      },
+      {
+        "type": "arrow",
+        "from": [126, 44],
+        "to": [143, 30]
+      },
+      {
+        "type": "line",
+        "points": [[157, 20], [157, 80]],
+        "dashed": false
+      }
+    ],
+    "labels": [
+      {
+        "text": "Fixed rows",
+        "at": [26, 70],
+        "side": "bottom"
+      },
+      {
+        "text": "Close together",
+        "at": [80, 70],
+        "side": "bottom"
+      },
+      {
+        "text": "Far apart",
+        "at": [130, 70],
+        "side": "bottom"
+      },
+      {
+        "text": "Random motion",
+        "at": [135, 37],
+        "side": "top"
+      },
+      {
+        "text": "Container wall",
+        "at": [157, 55],
+        "side": "right"
+      }
+    ]
+  },
+  "hydroCapacity": {
+    "kind": "line-graph",
+    "alt": "Rainfall peaks at hour two; discharge peaks at hour five at 80 cubic metres per second, above channel capacity of 60.",
+    "title": "The town's modelled storm",
+    "x": {
+      "label": "Time from storm start (hours)",
+      "min": 0,
+      "max": 8,
+      "step": 1
+    },
+    "y": {
+      "label": "Discharge (m\u00b3/s)",
+      "min": 0,
+      "max": 100,
+      "step": 20
+    },
+    "y2": {
+      "label": "Rainfall (mm/hour)",
+      "min": 0,
+      "max": 20,
+      "step": 5
+    },
+    "series": [
+      {
+        "label": "Discharge",
+        "points": [[0, 10], [1, 10], [2, 15], [3, 30], [4, 65], [5, 80], [6, 55], [7, 30], [8, 20]],
+        "style": "line",
+        "axis": "left"
+      },
+      {
+        "label": "Rainfall",
+        "points": [[0, 0], [1, 5], [2, 20], [3, 10], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0]],
+        "style": "bars",
+        "axis": "right"
+      },
+      {
+        "label": "Channel capacity",
+        "points": [[0, 60], [8, 60]],
+        "style": "line",
+        "axis": "left"
+      }
+    ],
+    "intervals": [
+      {
+        "from": 2,
+        "to": 5,
+        "label": "Lag time",
+        "y": 5
+      }
+    ]
+  },
+  "hydroLimbs": {
+    "kind": "line-graph",
+    "alt": "Model rainfall peaks at hour 2; discharge rises to a peak at hour 5, giving a three-hour lag before a falling limb.",
+    "title": "Illustrative Eden storm hydrograph",
+    "x": {
+      "label": "Time from storm start (hours)",
+      "min": 0,
+      "max": 8,
+      "step": 1
+    },
+    "y": {
+      "label": "Discharge (m\u00b3/s)",
+      "min": 0,
+      "max": 500,
+      "step": 100
+    },
+    "y2": {
+      "label": "Rainfall (mm)",
+      "min": 0,
+      "max": 25,
+      "step": 5
+    },
+    "series": [
+      {
+        "label": "Discharge",
+        "points": [
+          [0, 100],
+          [1, 110],
+          [2, 150],
+          [3, 240],
+          [4, 350],
+          [5, 450],
+          [6, 330],
+          [7, 230],
+          [8, 150]
+        ],
+        "style": "line",
+        "axis": "left"
+      },
+      {
+        "label": "Rainfall",
+        "points": [[0, 0], [1, 10], [2, 20], [3, 10], [4, 5], [5, 0], [6, 0], [7, 0], [8, 0]],
+        "style": "bars",
+        "axis": "right"
+      }
+    ],
+    "segments": [
+      {
+        "from": 1,
+        "to": 5,
+        "label": "Rising limb"
+      },
+      {
+        "from": 5,
+        "to": 8,
+        "label": "Falling limb"
+      }
+    ],
+    "annotations": [
+      {
+        "x": 2,
+        "y": 20,
+        "label": "Peak rainfall"
+      },
+      {
+        "x": 5,
+        "y": 450,
+        "label": "Peak discharge"
+      }
+    ],
+    "intervals": [
+      {
+        "from": 2,
+        "to": 5,
+        "label": "Lag time",
+        "y": 50
+      }
+    ]
+  },
+  "particlesA6": {
+    "kind": "labelled-diagram",
+    "alt": "Equal-sized particles form fixed rows in ice, an irregular close group in liquid water and a widely spaced group in water vapour.",
+    "title": "The particle model of water",
+    "canvas": "wide",
+    "shapes": [
+      {
+        "type": "particles",
+        "arrangement": "solid",
+        "x": 2,
+        "y": 15,
+        "w": 48,
+        "h": 70,
+        "caption": "Ice: solid"
+      },
+      {
+        "type": "particles",
+        "arrangement": "liquid",
+        "x": 56,
+        "y": 15,
+        "w": 48,
+        "h": 70,
+        "caption": "Water: liquid"
+      },
+      {
+        "type": "particles",
+        "arrangement": "gas",
+        "x": 110,
+        "y": 15,
+        "w": 48,
+        "h": 70,
+        "caption": "Vapour: gas"
+      }
+    ],
+    "labels": [
+      {
+        "text": "Fixed rows",
+        "at": [26, 50],
+        "side": "bottom"
+      },
+      {
+        "text": "Close together",
+        "at": [80, 50],
+        "side": "bottom"
+      },
+      {
+        "text": "Large gaps",
+        "at": [134, 50],
+        "side": "bottom"
+      }
+    ]
+  },
+  "hydroOnePeak": {
+    "kind": "line-graph",
+    "alt": "Model rainfall peaks at hour 2, while river discharge peaks at 80 cubic metres per second at hour 5, giving a three-hour lag time.",
+    "title": "Model Severn storm: illustrative data",
+    "x": {
+      "label": "Hours after storm begins",
+      "min": 0,
+      "max": 8,
+      "step": 1
+    },
+    "y": {
+      "label": "Discharge (m\u00b3/s)",
+      "min": 0,
+      "max": 100,
+      "step": 20
+    },
+    "y2": {
+      "label": "Rainfall (mm per hour)",
+      "min": 0,
+      "max": 20,
+      "step": 5
+    },
+    "series": [
+      {
+        "label": "River discharge",
+        "points": [[0, 10], [1, 10], [2, 15], [3, 30], [4, 55], [5, 80], [6, 60], [7, 40], [8, 25]],
+        "style": "line",
+        "axis": "left"
+      },
+      {
+        "label": "Rainfall",
+        "points": [[0, 0], [1, 5], [2, 20], [3, 10], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0]],
+        "style": "bars",
+        "axis": "right"
+      }
+    ],
+    "annotations": [
+      {
+        "x": 5,
+        "y": 80,
+        "label": "Peak discharge"
+      }
+    ],
+    "intervals": [
+      {
+        "from": 2,
+        "to": 5,
+        "label": "Lag time: 3 hours",
+        "y": 95
+      }
+    ]
+  }
+}

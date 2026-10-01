@@ -309,11 +309,24 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     const captions: Placed[] = [];
     // The px box each target's labels sit against: a particle box's includes its caption.
     const against = boxes.map(px);
+    // A particle box's words keep to its own column: never wider than the distance to the next
+    // box beside it (round H: "Liquid water" ran into "Close particles" on short slots).
+    const column = (i: number) => {
+      const b = against[i] as Box;
+      let pitch = Number.POSITIVE_INFINITY;
+      s.shapes.forEach((o, j) => {
+        if (j === i || o.type !== "particles") return;
+        const ob = against[j] as Box;
+        if (Math.min(b.y1, ob.y1) - Math.max(b.y0, ob.y0) <= 0) return;
+        pitch = Math.min(pitch, Math.abs((ob.x0 + ob.x1) / 2 - (b.x0 + b.x1) / 2));
+      });
+      return Math.min(Math.max(b.x1 - b.x0, lf * 4.5), pitch - lf * 0.6);
+    };
     // A particle box's caption sits right under it, before any label is placed.
     s.shapes.forEach((sh, i) => {
       if (sh.type !== "particles" || !sh.caption) return;
       const t = against[i] as Box;
-      const lines = wrap(sh.caption, x, Math.max(t.x1 - t.x0, lf * 4.5), 2, lf, 700);
+      const lines = wrap(sh.caption, x, column(i), 2, lf, 700);
       const bw = Math.max(...lines.map((l) => textWidth(l, x, lf, 700)));
       const cx = (t.x0 + t.x1) / 2;
       const box = { x0: cx - bw / 2, y0: t.y1 + lf * 0.3, x1: cx + bw / 2, y1: 0 };
@@ -324,6 +337,18 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     const shapePx = boxes.map(px);
     const sides = ["top", "bottom", "right", "left"] as const;
     for (const l of labels) {
+      // A particle box's description goes in the slot under its caption, in its column.
+      if (s.shapes[l.target]?.type === "particles") {
+        const t = against[l.target] as Box;
+        const lines = wrap(l.text, x, column(l.target), 3, lf, 400);
+        const bw = Math.max(...lines.map((ln) => textWidth(ln, x, lf, 400)));
+        const cx = (t.x0 + t.x1) / 2;
+        const y0 = t.y1 + lf * 0.2;
+        const box = { x0: cx - bw / 2, y0, x1: cx + bw / 2, y1: y0 + blockH(lines.length) };
+        placed.push({ lines, box, anchor: "middle", side: "bottom", weight: 400 });
+        against[l.target] = { ...t, y1: box.y1 };
+        continue;
+      }
       const t = against[l.target] as Box;
       const tp = shapePx[l.target] as Box;
       const to: Pt | undefined = l.part ? [X(l.at[0]), Y(l.at[1])] : undefined;
@@ -421,6 +446,11 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     return { k, X, Y, placed, captions, need };
   };
 
+  // Particle boxes whose words all sit in their columns under them may give those words more of
+  // the height: nothing is drawn over, so a short slot keeps every caption whole.
+  const wordsUnder =
+    s.shapes.some((sh) => sh.type === "particles") &&
+    labels.every((l) => s.shapes[l.target]?.type === "particles");
   // Fit: margins grow to what the labels need, a few rounds, never shrinking back.
   const m = { l: 4, r: 4, t: 4, b: 4 };
   let L = layout(m);
@@ -437,7 +467,7 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     const cap = (a: number, b: number, room: number): [number, number] =>
       a + b <= room ? [a, b] : [(a * room) / (a + b), (b * room) / (a + b)];
     [next.l, next.r] = cap(next.l, next.r, 0.4 * w);
-    [next.t, next.b] = cap(next.t, next.b, 0.4 * h);
+    [next.t, next.b] = cap(next.t, next.b, (wordsUnder ? 0.6 : 0.4) * h);
     if (next.l === m.l && next.r === m.r && next.t === m.t && next.b === m.b) break;
     Object.assign(m, next);
     L = layout(m);

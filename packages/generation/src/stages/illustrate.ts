@@ -663,8 +663,14 @@ async function searchPortraits(
   source: PhotoSourceName = "pexels",
 ): Promise<PhotoResult[] | "busy"> {
   if (source === "commons" && images.searchCommons) {
-    const photos = await images.searchCommons(query, { perPage: 20, signal });
-    return photos.filter((c) => c.width <= c.height * COMMONS_MAX_ASPECT);
+    const photos = await images.searchCommons(query, {
+      perPage: 20,
+      signal,
+      ...(images.diagrams ? { diagrams: true } : {}),
+    });
+    // A diagram is drawn to be read whole (contain), so a landscape one is kept.
+    const most = images.diagrams ? 2.4 : COMMONS_MAX_ASPECT;
+    return photos.filter((c) => c.width <= c.height * most);
   }
   try {
     const photos = await images.search(query, {

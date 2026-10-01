@@ -105,8 +105,13 @@ export interface PhotoPlacer {
    */
   searchCommons?(
     query: string,
-    opts: { perPage: number; signal: AbortSignal },
+    opts: { perPage: number; signal: AbortSignal; diagrams?: boolean },
   ): Promise<PhotoResult[]>;
+  /**
+   * Round H: this placer looks for a drawn diagram (Commons SVG/PNG) to stand in for a drawing
+   * that would not draw cleanly: Commons only, landscape kept.
+   */
+  diagrams?: boolean;
 }
 
 /**

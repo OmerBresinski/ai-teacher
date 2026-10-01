@@ -36,6 +36,8 @@ export type Ctx = {
   rec?: DrawnText[];
   /** With `rec`: the drawing's own strokes (outlines, lines, arrows) as segments, in points. */
   strokes?: [number, number, number, number][];
+  /** With `rec`: faults a renderer finds in its own layout (a squashed plot). */
+  faults?: string[];
 };
 
 /** One drawn text block: its box in the drawing's points, its words, and whether a line was cut. */

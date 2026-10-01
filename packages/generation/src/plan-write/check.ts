@@ -262,3 +262,27 @@ export function checksToInsert(slides: readonly PlanSlide[]): InsertedCheck[] {
       };
     });
 }
+
+/**
+ * The retrieval warm-up code guarantees (round H): the first slide after the objectives is a short
+ * retrieval starter on what pupils learned before that this lesson builds on. A plan that opens
+ * with a retrieve row or a starter set keeps it; otherwise this row goes in first. Teach slides are
+ * never taken for it.
+ */
+export function warmUpToInsert(slides: readonly PlanSlide[]): PlanSlide | undefined {
+  const first = slides[FIXED_SLIDES];
+  if (first && (first.role === "retrieve" || first.form === "starter-set")) return undefined;
+  return {
+    role: "retrieve",
+    objectives: [],
+    tests: [],
+    teaches: [],
+    purpose:
+      "retrieval warm-up: three short questions on what pupils learned before that this lesson builds on, never what it teaches",
+    parts: 3,
+    form: "starter-set",
+    layout: "default",
+    imageBrief: null,
+    figureBrief: null,
+  };
+}
