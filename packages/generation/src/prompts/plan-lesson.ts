@@ -15,7 +15,9 @@ import { type Audience, audienceBlock } from "./shared";
  * exactly in every deck (a floor is read as the target), so teaching is now the default job and the
  * non-teaching slides are listed as the only ones the lesson needs; code gives the teach count for
  * this deck's size in the user turn (teachRange). Plus photo-bench's plain title-picture subject. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v11";
+/* v12 (round A2, explanations that build): each idea goes concrete case, general rule, worked example,
+ * then use with less help (with the class, then alone). One sentence; the slide counts are unchanged. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v12";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -262,7 +264,8 @@ export const PLAN_RULES = `Decide the fields in this order:
 - slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
 The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.
-Order the ideas so each builds on the one before. Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
+Order the ideas so each builds on the one before. Each idea goes from a real case to the general rule it shows, then to a worked example of using it (a method's steps, or the reasoning from evidence to a conclusion), then to pupils using it with less help each time: first with the class, then alone.
+Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
 Teaching is a slide's job unless the lesson needs it for something else. After the objectives slide, about two thirds of the slides teach: the Slides line gives how many. Each objective has at least one teach slide, and each teach slide carries its idea's facts, example and explanation. The other slides are only these: an opening (a retrieve or a hook), a check after each idea or pair of ideas, and the hinge; a practise slide only when a slide is still spare. When the slides are few, the practise slide gives way first, then the opening, then the checks, which the hinge covers; the hinge and the teach slides stay.
 Each slide where pupils answer, sort, match or write asks something new.
 
