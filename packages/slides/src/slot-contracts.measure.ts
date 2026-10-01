@@ -414,7 +414,7 @@ export function chunksOfLines(
   const body = slide.elements.find(
     (e) => e.type === "text" && e.style.preset === "body" && (e.doc.content?.length ?? 0) >= 2,
   );
-  if (!body || body.type !== "text") return undefined;
+  if (body?.type !== "text") return undefined;
   const chunks = CHUNK_LABELS.map((l) =>
     chunkOfLines(l, lines, theme, body.w, body.style.fontSize),
   );
