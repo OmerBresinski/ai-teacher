@@ -6,7 +6,8 @@
  * - `countAnonymousLessonsToday` — lessons created this UTC day in Workspaces whose owner is still
  *   anonymous (a claimed Workspace drops out). A non-tenant query, so it lives here, not in a
  *   tenant repository (ADR 0007).
- * - `bumpAnonymousSignins` — the per-IP, per-UTC-day counter behind the sign-in ceiling.
+ * - `anonymousSigninsToday` / `bumpAnonymousSignins` — the per-IP, per-UTC-day counter behind the
+ *   sign-in ceiling.
  * - `anonymousSignInLimits` — middleware on `POST /auth/sign-in/anonymous`, mounted in `app.ts`
  *   before `auth.handler`: global cap first (403 anonymous_capacity),
  *   then the per-IP ceiling (429 rate_limited).
@@ -60,6 +61,15 @@ export async function countAnonymousLessonsToday(db: Sql): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
+/** Anonymous sign-ins counted for `ip` today (UTC). */
+export async function anonymousSigninsToday(db: Sql, ip: string): Promise<number> {
+  const rows = await db.sql<{ count: number }[]>`
+    select count from anonymous_signins
+    where ip = ${ip} and day = (now() at time zone 'utc')::date
+  `;
+  return rows[0]?.count ?? 0;
+}
+
 /** Count one anonymous sign-in for `ip` today (UTC) and answer the new total. */
 export async function bumpAnonymousSignins(db: Sql, ip: string): Promise<number> {
   const rows = await db.sql<{ count: number }[]>`
@@ -75,6 +85,11 @@ export async function bumpAnonymousSignins(db: Sql, ip: string): Promise<number>
  * Global cap, then per-IP ceiling, on the anonymous sign-in endpoint. Only `POST` is counted; a
  * request with no resolvable IP skips the ceiling (and says so once) rather than sharing one
  * bucket with every other such request.
+ *
+ * The ceiling counts sign-ins, not attempts: the counter goes up only after better-auth answers
+ * 2xx, so a request Turnstile refuses (400 or 403) costs the address nothing. Otherwise one device
+ * behind a school's shared address could lock the whole school out for the day with tokenless
+ * posts. Like the daily cap it is a soft count: concurrent sign-ins can pass the check together.
  */
 export function anonymousSignInLimits(db: Sql, env: AnonymousLimitsEnv): MiddlewareHandler<AppEnv> {
   const perIp = signinsPerIpDaily(env);
@@ -108,12 +123,18 @@ export function anonymousSignInLimits(db: Sql, env: AnonymousLimitsEnv): Middlew
       }
       return next();
     }
-    const count = await bumpAnonymousSignins(db, ip);
-    if (count > perIp) {
+    if ((await anonymousSigninsToday(db, ip)) >= perIp) {
       c.get("logger")?.warn({ perIp }, "anonymous sign-in refused: per-IP daily ceiling");
       return errorResponse(c, 429, "rate_limited", ANONYMOUS_RATE_LIMITED_MESSAGE);
     }
-    return next();
+    await next();
+    if (!c.res.ok) return;
+    try {
+      await bumpAnonymousSignins(db, ip);
+    } catch {
+      // The session is already minted; a failed count must not turn the sign-in into a 500.
+      c.get("logger")?.warn("anonymous sign-in: per-IP counter update failed");
+    }
   };
 }
 

@@ -2,8 +2,10 @@
  * `auth.anonymous-cleanup` (TEACH-222): once a day, delete anonymous users older than
  * `ANONYMOUS_USER_TTL_DAYS` together with whatever Workspace they still own. The FK cascade
  * (`workspaces.owner_user_id` → `documents`, `sources`, `job_events`) removes the rows; the stored
- * objects under `<workspaceId>/` are deleted here. A claimed Workspace (TEACH-224 hands it to the
- * signed-in user) is no longer owned by the anonymous user, so it is never touched.
+ * objects under `<workspaceId>/` are deleted here. The claim is not built yet: TEACH-224 will hand
+ * the Workspace to the new account by changing `owner_user_id`, so a claimed Workspace drops out of
+ * the select below. Until it lands, a visitor who signs in gets a new, empty Workspace, and the
+ * anonymous one is deleted here after the TTL like any other.
  *
  * A system job, not a `JobName`: it has no Workspace, emits no job events and nothing enqueues it
  * but the worker's own pg-boss cron. It follows the `ping.ts` shape (one handler, logger, signal)

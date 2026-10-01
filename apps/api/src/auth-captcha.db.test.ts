@@ -169,6 +169,37 @@ describeDb("Turnstile on sign-in (captcha plugin)", () => {
     expect(await usersCount()).toBe(0);
   });
 
+  test("the per-IP ceiling counts sign-ins: refused Turnstile attempts do not use it up", async () => {
+    const strict = createApp({
+      env: { ...TEST_ENV, ANONYMOUS_SIGNINS_PER_IP_DAILY: 1 },
+      db,
+      logger: silentLogger,
+      auth,
+    });
+    const fromSchool = (token?: string) =>
+      strict.request(`${BASE}/auth/sign-in/anonymous`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: WEB,
+          "x-forwarded-for": "192.0.2.61",
+          ...(token === undefined ? {} : { [CAPTCHA_HEADER]: token }),
+        },
+        body: "{}",
+      });
+    for (let i = 0; i < 3; i++) expect((await fromSchool()).status).toBe(400);
+    verdict = "fail";
+    expect((await fromSchool("forged-token")).status).toBe(403);
+
+    verdict = "pass";
+    const ok = await fromSchool("XXXX.DUMMY.TOKEN.XXXX");
+    expect(ok.status).toBe(200);
+    const over = await fromSchool("XXXX.DUMMY.TOKEN.XXXX");
+    expect(over.status).toBe(429);
+    expect(await over.json()).toMatchObject({ error: { code: "rate_limited" } });
+    expect(await usersCount()).toBe(1);
+  });
+
   test("row 5: Google sign-in is not gated", async () => {
     const res = await post("/sign-in/social", {
       provider: "google",
