@@ -45,27 +45,23 @@ export function stripListMarker(text: string): { text: string; numbered: boolean
 }
 
 /** Words that announce what follows: a dash after them reads as a colon. */
-const ANNOUNCES =
-  /\b(?:follows?|following|these|this|answer|rule|reasons?|results?|key|clues?|things|ways|steps|parts|two|three|four)$/i;
-
 /**
- * A dash as punctuation, by its sentence: one of a pair (an aside) is a comma; a lone one is a
- * colon when it introduces a list or the words before it announce what follows; else a comma.
+ * A dash as punctuation, by its sentence (orchestrator review, 1 Oct 2026: a comma between two
+ * clauses is a splice). One of a pair, around an aside, is a comma. A lone one joins two clauses
+ * with a colon, or with a semicolon when the sentence already has a colon (a labelled chunk).
  */
 function dashAs(before: string, after: string): string {
   const left = before.split(/[.!?]\s|\n/).pop() ?? "";
   const right = after.split(/[.!?](?:\s|$)|\n/)[0] ?? "";
   const dash = /\s—|—\s|\D—\D|\D\s–\s|\s–\s\D/;
-  const paired = dash.test(left) || dash.test(right);
-  if (paired || left.includes(":")) return ", ";
-  const list = (right.match(/,/g)?.length ?? 0) >= 1 && /,\s.*\b(?:and|or)\b|,.*,/.test(right);
-  return list || ANNOUNCES.test(left.trim()) ? ": " : ", ";
+  if (dash.test(left) || dash.test(right)) return ", ";
+  return left.includes(":") ? "; " : ": ";
 }
 
 /**
- * No em dash, and no en dash used as a dash. A spaced em dash, or a spaced en dash between words,
- * becomes a comma or a colon by context (`dashAs`). An unspaced em dash becomes a spaced hyphen
- * between numbers (a range) and a comma otherwise. An en dash between numbers (1990–1995,
+ * No em dash, and no en dash used as a dash. A dash between words (spaced em or en, or an
+ * unspaced em) becomes a colon, a pair a comma each (`dashAs`). An unspaced em dash between
+ * numbers becomes a spaced hyphen (a range). An en dash between numbers (1990–1995,
  * "60 – 10") and an unspaced one between words (Nazi–Soviet) is kept. A dash opening or closing
  * the text is dropped.
  */

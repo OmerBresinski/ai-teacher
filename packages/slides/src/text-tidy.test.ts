@@ -69,25 +69,42 @@ describe("stripListMarker", () => {
 
 describe("cleanDashes", () => {
   it.each([
-    // A lone spaced em dash: a comma by default.
-    ["Prices rose — each mark bought less.", "Prices rose, each mark bought less."],
+    // A lone spaced em dash between clauses: a colon.
+    ["Prices rose — each mark bought less.", "Prices rose: each mark bought less."],
     // A lone dash before a list: a colon.
     ["Three states — solid, liquid and gas.", "Three states: solid, liquid and gas."],
     // After words that announce what follows: a colon.
     ["Remember the rule — divide by the bottom.", "Remember the rule: divide by the bottom."],
     // A pair (an aside): both commas.
     ["The river — fast and full — floods the town.", "The river, fast and full, floods the town."],
-    // Already a colon before it: a comma.
-    ["Opening: propose cups — state the purpose", "Opening: propose cups, state the purpose"],
+    // Already a colon before it: a semicolon.
+    ["Opening: propose cups — state the purpose", "Opening: propose cups; state the purpose"],
     // A spaced en dash between words is a dash.
-    ["Prices rose – each mark bought less.", "Prices rose, each mark bought less."],
-    // Unspaced em dash between words: a comma.
-    ["Prices rose—each mark bought less.", "Prices rose, each mark bought less."],
+    ["Prices rose – each mark bought less.", "Prices rose: each mark bought less."],
+    // Unspaced em dash between words: a colon.
+    ["Prices rose—each mark bought less.", "Prices rose: each mark bought less."],
+    // The orchestrator's cases: one dash between clauses is a colon, never a comma splice.
+    [
+      "Building began in AD 122 — Rome marked a northern frontier",
+      "Building began in AD 122: Rome marked a northern frontier",
+    ],
+    [
+      "Forts held soldiers — Rome kept troops beside the frontier",
+      "Forts held soldiers: Rome kept troops beside the frontier",
+    ],
+    [
+      "Manganese dioxide provides another pathway — it acts as a catalyst",
+      "Manganese dioxide provides another pathway: it acts as a catalyst",
+    ],
+    [
+      "Between 1914–1918 — the war years — prices rose.",
+      "Between 1914–1918, the war years, prices rose.",
+    ],
     // Unspaced em dash in a number range: a spaced hyphen.
     ["Between 1990—1995 it grew.", "Between 1990 - 1995 it grew."],
     ["pages 4—6", "pages 4 - 6"],
     // A worked step's old separator.
-    ["60 − 0 = 60 cm³ — find the gas volume change", "60 − 0 = 60 cm³, find the gas volume change"],
+    ["60 − 0 = 60 cm³ — find the gas volume change", "60 − 0 = 60 cm³: find the gas volume change"],
     // Next to punctuation: just dropped.
     ["It was cold, — very cold.", "It was cold, very cold."],
     // Opening or closing dash: dropped.
@@ -158,11 +175,11 @@ describe("tidySlide", () => {
     expect(out.elements.some((e) => e.name === "Bullet")).toBe(false);
     const points = out.elements.filter((e) => e.name === "Point");
     expect(points.map((e) => plainOf((e as { doc: RichDoc }).doc)[0])).toEqual([
-      "Item 1, why",
-      "Item 2, why",
-      "Item 3, why",
+      "Item 1: why",
+      "Item 2: why",
+      "Item 3: why",
     ]);
-    expect(out.notes).toBe("1: x = 4, subtract 3.");
+    expect(out.notes).toBe("1: x = 4; subtract 3.");
     const first = numbers[0] as SlideElement & { style: { color?: string; fontSize?: number } };
     expect(first.style.color).toBe("#A94A18");
     expect(first.x).toBe(126 - 26);
@@ -177,7 +194,7 @@ describe("tidySlide", () => {
     const out = tidySlide(practise(true), { ordered: false });
     expect(out.elements.filter((e) => e.name === "Bullet")).toHaveLength(3);
     expect(plainOf((out.elements.find((e) => e.id === "p1") as { doc: RichDoc }).doc)[0]).toBe(
-      "Item 1, why",
+      "Item 1: why",
     );
   });
 
