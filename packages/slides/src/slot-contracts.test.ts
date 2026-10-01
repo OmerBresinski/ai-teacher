@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
 import type { RichDoc } from "@tj/domain/documents";
 import { docFromChunks, isChunked } from "./factories";
 import { materialiseSlide } from "./materialise";
@@ -13,8 +14,19 @@ import {
   TEXT_KINDS,
   writerSchema,
 } from "./slot-contracts";
-import { capacity, contractFits, countables, WORST, worstFill } from "./slot-contracts.measure";
+import {
+  capacity,
+  chunkLineCapacity,
+  chunksOfLines,
+  contractFits,
+  countables,
+  WORST,
+  worstFill,
+} from "./slot-contracts.measure";
 import { SlideSpecSchema } from "./specs";
+import { lineWidth, ruledLines } from "./text-measure";
+import { resolveTextStyle } from "./text-style";
+import { THEMES } from "./themes";
 
 const name = (c: SlotContract) => `${c.form}${c.layout === "default" ? "" : `/${c.layout}`}`;
 const onSlide = SLOT_CONTRACTS.filter((c) => specOfWriter(c.form, worstFill(c), c.layout));
@@ -181,6 +193,77 @@ describe("D1 labelled chunks", () => {
   it("a body with one label, or a ratio, stays plain text", () => {
     expect(isChunked(docFromChunks("Gas: the particles move fast."))).toBe(false);
     expect(isChunked(docFromChunks("Mix it 2:3 by volume.\nThen stir it well."))).toBe(false);
+  });
+});
+
+describe("E1 chunk fit: the ruler lays chunks out as the renderer does", () => {
+  const CHUNKED_FORMS = ["explain", "photo", "diagram-slot"] as const;
+  // The renderer's paragraph spacing, read from its own stylesheet: `.td-rt p { margin: 0 0 Xem }`.
+  const css = readFileSync(new URL("../../editor/src/styles/slide.css", import.meta.url), "utf8");
+  const gapEm = Number(/\.td-rt p \{\s*margin: 0 0 ([\d.]+)em;/.exec(css)?.[1]);
+
+  it("reads the renderer's paragraph gap", () => {
+    expect(gapEm).toBeGreaterThan(0);
+  });
+
+  it("a chunked body's box is its lines plus the renderer's gap between chunks, on all 10 themes", () => {
+    for (const form of CHUNKED_FORMS) {
+      const c = slotContract(form);
+      for (const theme of THEMES) {
+        const chunks = chunksOfLines(c, theme, 3) as string[];
+        const made = specOfWriter(form, { ...worstFill(c), body: chunks });
+        const slide = materialiseSlide(
+          made?.spec as never,
+          theme.id,
+          { lessonId: "l", slideId: "s" } as never,
+          undefined,
+          made?.variant,
+          made?.structure,
+        );
+        const body = slide.elements.find(
+          (e) => e.type === "text" && isChunked(e.doc),
+        ) as unknown as {
+          doc: RichDoc;
+          w: number;
+          h: number;
+          style: never;
+        };
+        const r = resolveTextStyle(body.style, theme, "body");
+        const lines = ruledLines(body.doc, "body", theme, body.w, r.fontSize);
+        const gaps = (body.doc.content?.length ?? 1) - 1;
+        const rendered = lines * r.fontSize * r.lineHeight + gaps * gapEm * r.fontSize;
+        // The box is rounded to the point, so within one point of the laid-out height.
+        expect([form, theme.id, lines]).toEqual([form, theme.id, 9]);
+        expect(Math.abs(body.h - rendered)).toBeLessThan(1);
+      }
+    }
+  });
+
+  it("a chunk's bold label is measured at bold width", () => {
+    for (const theme of THEMES) {
+      const text = "Why it works: it does.";
+      const room = lineWidth(text, "body", theme) + 1;
+      expect(lineWidth(text, "body", theme, 700)).toBeGreaterThan(room);
+      const doc = docFromChunks(`${text}\nX: y`);
+      expect(ruledLines(doc, "body", theme, room)).toBe(3);
+    }
+  });
+
+  it("each form's chunk line budget is under its measured capacity, so three full chunks fit", () => {
+    const lines = Object.fromEntries(
+      CHUNKED_FORMS.map((f) => [f, slotContract(f).slots.find((s) => s.field === "body")?.lines]),
+    );
+    const caps = Object.fromEntries(
+      CHUNKED_FORMS.map((f) => [f, chunkLineCapacity(slotContract(f))]),
+    );
+    expect(lines).toEqual({ explain: 2, photo: 3, "diagram-slot": 3 });
+    expect(caps).toEqual({ explain: 3, photo: 4, "diagram-slot": 4 });
+  });
+
+  it("the contract states the budget in lines, never words", () => {
+    expect(contractText("diagram-slot")).toContain("at most 3 lines each");
+    expect(contractText("explain")).toContain("at most 2 lines each");
+    expect(contractText("photo")).not.toMatch(/\bwords?\b/);
   });
 });
 

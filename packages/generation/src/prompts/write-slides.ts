@@ -38,7 +38,10 @@ import { type Audience, audienceBlock } from "./shared";
  * slide's body is now two or three labelled chunks (case, rule, why), each a short label and one or two
  * sentences; Years 1 to 6 get shorter sentences, not less of the idea (y5 judged too wordy); a photo
  * brief names what in the photo carries the idea, for the past what survives from that time (y4). */
-export const WRITE_SLIDES_VERSION = "write-slides.v21";
+/* v22 (round E1): a teach chunk's contract line now gives its lines (2 across the full slide, 3 beside a
+ * picture: about 55-60 words in three chunks, C2's clearest); the line calibration names a two-line
+ * chunk, since D1's chunks ran to four and five lines and four of eleven teach slides overran. */
+export const WRITE_SLIDES_VERSION = "write-slides.v22";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -91,7 +94,7 @@ export type WriteSlidesInput = {
 /** The writing rules, from "Pitch the content" to the end (reused by stream-lesson). */
 export const WRITE_RULES = `Pitch the content at what this year group's specification expects, and the language at the reading level given; explain any word a pupil at that level would not know.
 
-Fill each slot exactly as its contract line says: its count of items, lines or sentences, the kind of text each one is, and the lines it takes on the slide. A line here is a line of large projected type, much shorter than a line on a page: "Kenya is hotter than the Arctic" fills a heading's line; "Oak flowers are pollinated by the wind" fills the line of a full-width card; "I think the main reason was…" is half a line; "Positive ions move to the negative electrode, where they gain electrons." takes two lines of body text. Write the complete explanation: every step a pupil needs to follow the idea, in the plainest words that carry it, with nothing said twice. A slot's count is the most it holds, not a target. In Years 1 to 6, each sentence says one thing, in everyday words, and a chunk is one or two short sentences: the whole idea, in shorter sentences, never less of it. Everything taught is on the slide; the notes add the teacher's talk.
+Fill each slot exactly as its contract line says: its count of items, lines or sentences, the kind of text each one is, and the lines it takes on the slide. A line here is a line of large projected type, much shorter than a line on a page: "Kenya is hotter than the Arctic" fills a heading's line; "Oak flowers are pollinated by the wind" fills the line of a full-width card; "I think the main reason was…" is half a line; "Positive ions move to the negative electrode, where they gain electrons." takes two lines of body text, and so does the chunk "Gas: the particles are far apart and move fast. They spread out to fill any space." Write the complete explanation: every step a pupil needs to follow the idea, in the plainest words that carry it, with nothing said twice. A slot's count is the most it holds, not a target. In Years 1 to 6, each sentence says one thing, in everyday words, and a chunk is one or two short sentences: the whole idea, in shorter sentences, never less of it. Everything taught is on the slide; the notes add the teacher's talk.
 Where a slot's kind is a phrase, a label or a term, write that and not a sentence: "Heavier than water", not "The stone is heavier than the water it pushes aside."
 Each idea a row teaches appears on its slide itself, in the order the plan gives. The questions on other slides are written from them.
 A heading is the slide's idea as a claim on one line: a subject and one verb, with no full stop and no "and", "but" or list ("Cholera spread through water", not "Cholera spread through drinking water rather than bad air in 1854 London"). The reason and the case go in the body. A worked example's heading is the label of its method ("Finding a missing angle").

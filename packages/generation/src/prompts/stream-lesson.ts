@@ -38,7 +38,9 @@ import { WRITE_RULES } from "./write-slides";
  * reasoned working). */
 /* v15 (round D1): plan-lesson.v18 and write-slides.v21 (labelled chunks, shorter sentences for Years
  * 1 to 6, photos of the taught thing as taught); no swap changed. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v15";
+/* v16 (round E1): plan-lesson.v19 (a worked example among the teach slides for a method or stepped
+ * explanation; practice kept over the hinge when slides are few) and write-slides.v22 (chunk lines). */
+export const STREAM_LESSON_VERSION = "stream-lesson.v16";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 

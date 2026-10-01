@@ -315,7 +315,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
         [],
       );
-      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v15+");
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v16+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
       // Saves: the title, the header (title with objectives), then the slides in order.

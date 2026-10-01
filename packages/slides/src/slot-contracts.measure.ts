@@ -1,4 +1,5 @@
 import { PANEL, RESERVED_LINES } from "./explanation-metrics";
+import { docFromChunks } from "./factories";
 import { fitsPlanned, type ThemeFit } from "./fit-check";
 import { SAFE } from "./grid";
 import { materialiseSlide } from "./materialise";
@@ -14,7 +15,7 @@ import {
   type WriterOutput,
 } from "./slot-contracts";
 import { workingAndReason } from "./structure";
-import { countLines } from "./text-measure";
+import { countLines, ruledLines } from "./text-measure";
 import { THEMES } from "./themes";
 
 /*
@@ -364,12 +365,101 @@ export function capacity(contract: SlotContract, key: string, cap = 16): number 
   return best;
 }
 
+/* ------------------------------------------------- chunk line budgets (round E1) */
+
+const CHUNK_FILL =
+  "the particles gain energy when the substance is heated so they vibrate faster and move further apart until they break free of their fixed positions and slide past each other while the mass stays exactly the same because no particles are added or taken away".split(
+    " ",
+  );
+const CHUNK_LABELS = ["Melting ice", "The rule", "Why it works"];
+
+/** The longest chunk under `label` that takes exactly `lines` lines in a body `width` wide. */
+function chunkOfLines(
+  label: string,
+  lines: number,
+  theme: (typeof THEMES)[number],
+  width: number,
+  fontSize?: number,
+): string | undefined {
+  let best: string | undefined;
+  for (let n = 1; n <= CHUNK_FILL.length; n++) {
+    const text = `${label}: ${CHUNK_FILL.slice(0, n).join(" ")}.`;
+    // Two chunks so `docFromChunks` sets the label bold, as the slide does; the second is one line.
+    const l = ruledLines(docFromChunks(`${text}\nX: y`), "body", theme, width, fontSize) - 1;
+    if (l > lines) break;
+    if (l === lines) best = text;
+  }
+  return best;
+}
+
+/**
+ * Three chunks of exactly `lines` lines each on `theme`, in the column the form gives its body
+ * there; undefined when the column cannot be found or the bank cannot make that many lines.
+ */
+export function chunksOfLines(
+  contract: SlotContract,
+  theme: (typeof THEMES)[number],
+  lines: number,
+): string[] | undefined {
+  const made = specOfWriter(contract.form, worstFill(contract), contract.layout);
+  if (!made) return undefined;
+  const slide = materialiseSlide(
+    made.spec,
+    theme.id,
+    META,
+    undefined,
+    made.variant,
+    made.structure,
+  );
+  const body = slide.elements.find(
+    (e) => e.type === "text" && e.style.preset === "body" && (e.doc.content?.length ?? 0) >= 2,
+  );
+  if (!body || body.type !== "text") return undefined;
+  const chunks = CHUNK_LABELS.map((l) =>
+    chunkOfLines(l, lines, theme, body.w, body.style.fontSize),
+  );
+  return chunks.every(Boolean) ? (chunks as string[]) : undefined;
+}
+
+/**
+ * The most lines each of three chunks can take on every theme (the save gate, stepDown 0): the
+ * chunk slot's measured capacity, gaps between chunks included as the renderer sets them.
+ */
+export function chunkLineCapacity(contract: SlotContract, cap = 8): number {
+  let best = 0;
+  for (let lines = 1; lines <= cap; lines++) {
+    const fits = THEMES.every((theme) => {
+      const chunks = chunksOfLines(contract, theme, lines);
+      if (!chunks) return false;
+      const made = specOfWriter(
+        contract.form,
+        { ...worstFill(contract), body: chunks },
+        contract.layout,
+      );
+      return (
+        !!made &&
+        fitsPlanned(made.spec, {
+          stepDown: 0,
+          themes: [theme],
+          ...(made.variant ? { variant: made.variant } : {}),
+          structure: made.structure,
+        }).ok
+      );
+    });
+    if (!fits) break;
+    best = lines;
+  }
+  return best;
+}
+
 if (import.meta.main) {
   for (const contract of SLOT_CONTRACTS) {
     const full = contractFits(contract, worstFill(contract));
     const caps = countables(contract)
       .filter((c) => !c.fixed)
       .map((c) => `${c.key} ${c.max ?? "-"}→${capacity(contract, c.key)}`);
+    const chunked = contract.slots.find((s) => s.each === "chunk");
+    if (chunked) caps.push(`chunk lines ${chunked.lines ?? "-"}→${chunkLineCapacity(contract)}`);
     console.log(
       `${contract.form}/${contract.layout}: ${full.ok ? "fits" : `FAILS ${full.failing.slice(0, 4).join("; ")}`}  ${caps.join("  ")}`,
     );

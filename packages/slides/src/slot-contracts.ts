@@ -81,6 +81,11 @@ export type Slot = {
   place: SlotPlace;
   /** A structural rule the count alone does not say ("the last gives the answer"). */
   rule?: string;
+  /**
+   * The most lines each item takes on the slide, in the column the form gives it (round E1, a teach
+   * body's chunks). Measured with the headless ruler, gaps between chunks included, on every theme.
+   */
+  lines?: number;
 };
 
 export type SlotContract = {
@@ -111,10 +116,16 @@ const lead: Slot = {
 };
 /**
  * A teach slide's body (round D1): the idea in two or three labelled chunks, each its own
- * paragraph with its label set bold, never one paragraph. Three is a teaching cap, not a measured
- * one (`fixed`): the drift test still fills all three with the longest chunks on every theme.
+ * paragraph with its label set bold, never one paragraph. Three is a teaching cap (`fixed`).
+ * Round E1: each chunk also has a line budget for the column its form gives it, so three chunks
+ * come to about 55-60 words (C2's clearest teach slides had 59). Measured by
+ * `chunkLineCapacity` (`slot-contracts.measure.ts`) with the renderer's spacing between chunks:
+ * three chunks of four lines still fit beside a photo or a diagram (403-443 points) on all 10
+ * themes and three of three lines across the full measure (629 points); the budget sits a line
+ * under that, at the length that reads well (diagram slot and photo 3 lines, about 20 words a
+ * chunk; full measure 2 lines, about 22 words).
  */
-const chunks: Slot = {
+const chunks = (lines: number): Slot => ({
   field: "body",
   unit: "item",
   min: 2,
@@ -123,7 +134,8 @@ const chunks: Slot = {
   each: "chunk",
   place: "slide",
   rule: "each its own part of the idea, in teaching order",
-};
+  lines,
+});
 const body = (max: number): Slot => ({
   field: "body",
   unit: "sentence",
@@ -149,7 +161,7 @@ const one = (field: string, each: TextKind, place: SlotPlace = "slide"): Slot =>
  * slot hold one more than it says.
  */
 export const SLOT_CONTRACTS: readonly SlotContract[] = [
-  { form: "explain", layout: "default", slots: [heading, chunks] },
+  { form: "explain", layout: "default", slots: [heading, chunks(2)] },
   {
     form: "explain-callout",
     layout: "default",
@@ -213,7 +225,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      chunks,
+      chunks(3),
       {
         field: "imageBrief",
         unit: "item",
@@ -238,7 +250,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     // C2: one-clause sentences beside the drawing; three two-clause sentences left a quarter of
     // the column empty on most themes, and six single clauses fit the worst.
-    slots: [heading, chunks, one("diagram", "brief")],
+    slots: [heading, chunks(3), one("diagram", "brief")],
   },
   {
     form: "worked-example",
@@ -549,7 +561,10 @@ function slotLine(slot: Slot): string {
     slot.min === 1 && slot.max === 1 && typeof slot.each === "string"
       ? each
       : `${count} ${unit}, each ${typeof slot.each === "string" ? each : `with ${each}`}`;
-  return `${slot.field}: ${shape}${slot.rule ? ` (${slot.rule})` : ""}${PLACE[slot.place]}`;
+  const lines = slot.lines
+    ? `, ${slot.lines === 1 ? "one line" : `at most ${slot.lines} lines`} each`
+    : "";
+  return `${slot.field}: ${shape}${lines}${slot.rule ? ` (${slot.rule})` : ""}${PLACE[slot.place]}`;
 }
 
 /**
