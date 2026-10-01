@@ -55,7 +55,7 @@ const ANSWER_FORMS = new Set([
 ]);
 
 /** A written slide's own words: every field but the notes and the picture brief. */
-function shownText(out: Written): string {
+export function shownText(out: Written): string {
   const { notes: _n, imageBrief: _i, ...shown } = out;
   return textOf(shown);
 }

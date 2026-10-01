@@ -54,6 +54,7 @@ import {
   modelClosingWritten,
   withClosingLine,
 } from "../plan-write/closing";
+import { diagramDisagreements } from "../plan-write/diagram-agree";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
   fitWithRewrite,
@@ -88,6 +89,7 @@ import {
   noPictureOf,
   PICTURE_FORMS,
   SLIDE_CHECK_CONCURRENCY,
+  shownText,
   skipsCheck,
 } from "../plan-write/slide-check";
 import { PLAN_WRITE_VERSION, STREAM_WRITE_VERSION } from "../plan-write/steps";
@@ -1093,7 +1095,11 @@ export async function planWriteSlides(
     if (made === slide) return `it does not draw (${diagramFault(spec)})`;
     const el = made.elements.find((e) => e.name === DIAGRAM_DRAWN_NAME);
     const faults = el ? diagramFaults(spec, theme, { w: el.w, h: el.h }) : [];
-    return faults.length > 0 ? `it draws badly: ${faults.slice(0, 4).join("; ")}` : undefined;
+    if (faults.length > 0) return `it draws badly: ${faults.slice(0, 4).join("; ")}`;
+    // Round R: the drawing's labels and values must agree with the slide's own text.
+    const { diagram: _d, ...rest } = out;
+    const off = diagramDisagreements(spec, shownText(rest as Written));
+    return off.length > 0 ? `it disagrees with the slide: ${off.join("; ")}` : undefined;
   };
 
   /** A saved picture slide whose photo was not found: drawn again with the text full width. */
@@ -2557,7 +2563,10 @@ export async function planWriteSlides(
             q.plan.role === "teach" &&
             q.plan.objectives.some((o) => p.plan.objectives.includes(o)) &&
             !noPicture.includes(q.index + 1) &&
-            (diagrams[String(q.index + 1)] !== undefined || photoOf.has(q.index)),
+            (diagrams[String(q.index + 1)] !== undefined || photoOf.has(q.index)) &&
+            // Round R: a diagram moved under questions must agree with their numbers and ratios.
+            (diagrams[String(q.index + 1)] === undefined ||
+              diagramDisagreements(diagrams[String(q.index + 1)], shownText(p.out)).length === 0),
         )
         .sort((a, b) => b.index - a.index)[0];
       if (!source) {
