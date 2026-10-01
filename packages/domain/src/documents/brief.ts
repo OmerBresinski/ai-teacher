@@ -34,6 +34,11 @@ export type Brief = {
   level?: BriefLevel;
   /** Answers to the clarifying questions, keyed by the question id the brief screen chose. */
   answers?: Record<string, string>;
+  /**
+   * UX ruling 141's checkbox: the exit ticket's questions on the closing slide too, answers on
+   * reveal. Absent or false, the closing slide points to the worksheet's exit ticket.
+   */
+  exitTicketOnSlides?: boolean;
 };
 
 export const BriefSchema = z.strictObject({
@@ -48,4 +53,5 @@ export const BriefSchema = z.strictObject({
       message: `At most ${MAX_CLARIFYING_QUESTIONS} clarifying questions can be answered.`,
     })
     .optional(),
+  exitTicketOnSlides: z.boolean().optional(),
 });

@@ -4,11 +4,15 @@ import { DEMO_LESSON_FACTS, materialiseSlide } from "@tj/slides";
 import {
   CLOSING_LINE_NAME,
   closingLine,
+  closingQuestionsWritten,
   closingSlideFits,
   closingSpec,
   exitTicketQuestions,
   withClosingLine,
+  worksheetExitQuestions,
 } from "./closing";
+import { fitWritten, renderWritten } from "./fit";
+import { setSchema } from "./menu";
 
 const meta = { promptVersion: "test", model: "code", at: "2026-10-01T00:00:00.000Z" };
 
@@ -39,5 +43,38 @@ describe("the close (UX ruling 141)", () => {
     const lines = once.elements.filter((e) => e.name === CLOSING_LINE_NAME);
     expect(lines).toHaveLength(1);
     expect(JSON.stringify(lines[0])).toContain("(4 questions)");
+  });
+
+  test("the worksheet's exit questions: the recipe's fact questions, word for word", () => {
+    const asked = worksheetExitQuestions(DEMO_LESSON_FACTS);
+    const facts = DEMO_LESSON_FACTS.questions.slice(0, 3);
+    expect(asked).toEqual(facts.map((q) => ({ question: q.stem, answer: q.answer })));
+  });
+
+  test("a lesson with fewer fact questions has only those; the recipe's placeholders are left off", () => {
+    const one = { ...DEMO_LESSON_FACTS, questions: DEMO_LESSON_FACTS.questions.slice(0, 1) };
+    expect(worksheetExitQuestions(one)).toHaveLength(1);
+    expect(worksheetExitQuestions({ ...DEMO_LESSON_FACTS, questions: [] })).toEqual([]);
+  });
+
+  test("the closing set: within the exit-ticket set's schema, fitting every theme with answers revealed", () => {
+    const out = closingQuestionsWritten(worksheetExitQuestions(DEMO_LESSON_FACTS));
+    expect(out).toBeDefined();
+    if (!out) return;
+    expect(setSchema("exit-ticket").safeParse(out).success).toBe(true);
+    expect(fitWritten("exit-ticket", "exit-ticket", out).ok).toBe(true);
+    const r = renderWritten("exit-ticket", "exit-ticket", out);
+    expect(r.spec.kind).toBe("exit-ticket");
+  });
+
+  test("a question too long to fit is passed over; none at all leaves the reference slide", () => {
+    const long = {
+      question: "Explain why ".repeat(60).trim(),
+      answer: "Because. ".repeat(40).trim(),
+    };
+    const short = { question: "What is 2 + 2?", answer: "4" };
+    const out = closingQuestionsWritten([long, short]);
+    expect(out?.questions).toEqual([short]);
+    expect(closingQuestionsWritten([])).toBeUndefined();
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai";
 import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { type Lesson, OutlineEntrySchema } from "@tj/domain/documents";
+import { closingQuestionsWritten, worksheetExitQuestions } from "../plan-write/closing";
 import { isPlanWriteStamp } from "../plan-write/steps";
 import { romansLesson } from "../planner/testing";
 import { type PlanSlide, toWire } from "../prompts/plan-lesson";
@@ -287,6 +288,36 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
     expect(final.lesson.generation?.stage).toBe("planned");
     expect(final.lesson.facts?.slidePlan).toBeDefined();
     expect(final.lesson.slides).toHaveLength(1);
+  });
+
+  test("ruling 141's checkbox: the worksheet's exit questions on the closing slide, answers on reveal", async () => {
+    await inMode(undefined, async () => {
+      const ai = planWriteAi([]);
+      const l = streamLesson();
+      const on: Lesson = {
+        ...l,
+        brief: { ...(l.brief as NonNullable<Lesson["brief"]>), exitTicketOnSlides: true },
+      };
+      const final = await runLessonPipeline({ lesson: on }, recordingDeps(ai), {
+        planner: "plan-write",
+      });
+      const lesson = final.lesson;
+      // It replaces the reference slide: the same count, and still no model call for it.
+      expect(lesson.slides.map((s) => s.kind)).toEqual([...KINDS, "exit-ticket"]);
+      const close = lesson.slides.at(-1);
+      const words = JSON.stringify(close?.elements);
+      expect(words).not.toContain("Complete it on your worksheet.");
+      const asked = worksheetExitQuestions(lesson.facts as NonNullable<Lesson["facts"]>);
+      const kept = (closingQuestionsWritten(asked)?.questions ?? []) as typeof asked;
+      expect(kept.length).toBeGreaterThan(0);
+      expect(kept[0]).toEqual(asked[0] as (typeof asked)[number]);
+      for (const q of kept) {
+        expect(words).toContain(json(q.question).slice(1, -1));
+        // The answer is on the slide, hidden until the first reveal step.
+        const shown = close?.elements.find((e) => json(e).includes(json(q.answer).slice(1, -1)));
+        expect(shown?.revealStep).toBe(1);
+      }
+    });
   });
 
   test("the stream by default: one call plans and writes; a slide that fails its schema goes to a writer", async () => {

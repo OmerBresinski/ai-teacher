@@ -46,10 +46,13 @@ import {
 } from "../plan-write/check";
 import {
   closingLine,
+  closingQuestionsWritten,
   closingSlideFits,
   closingSpec,
+  EXIT_FORM,
   exitTicketQuestions,
   withClosingLine,
+  worksheetExitQuestions,
 } from "../plan-write/closing";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
@@ -1976,12 +1979,23 @@ export async function planWriteSlides(
   // The close (ruling 141): no model call. The closing slide goes after the practise slide.
   if (mode === "stream") {
     const questions = exitTicketQuestions(facts);
+    // Opt-in (ruling 141's checkbox): the worksheet's exit questions on the closing slide itself.
+    const onSlides =
+      closing && brief.exitTicketOnSlides === true
+        ? closingQuestionsWritten(worksheetExitQuestions(facts))
+        : undefined;
     if (closing) {
-      const spec = closingSpec(
-        questions,
-        objectives.map((o) => o.id),
-      );
-      const slide = materialiseSlide(spec, themeId, codeMeta(), deps.ids);
+      const slide = onSlides
+        ? drawn(EXIT_FORM, EXIT_FORM, onSlides, codeMeta())
+        : materialiseSlide(
+            closingSpec(
+              questions,
+              objectives.map((o) => o.id),
+            ),
+            themeId,
+            codeMeta(),
+            deps.ids,
+          );
       lesson = { ...lesson, slides: [...lesson.slides, slide] };
       slideCount += 1;
     } else {
@@ -1993,7 +2007,14 @@ export async function planWriteSlides(
       }
     }
     deps.logger.info(
-      { stage: "generate", call: "closing", slide: slideCount, ownSlide: closing, questions },
+      {
+        stage: "generate",
+        call: "closing",
+        slide: slideCount,
+        ownSlide: closing,
+        questions,
+        onSlides: onSlides ? (onSlides.questions as unknown[]).length : 0,
+      },
       "exit ticket reference added",
     );
   }
