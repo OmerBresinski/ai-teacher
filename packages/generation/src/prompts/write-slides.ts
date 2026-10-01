@@ -25,7 +25,12 @@ import { type Audience, audienceBlock } from "./shared";
  * points at what to notice. */
 /* v16 (merge, round B base): A2's and A6's v15 together. Both set a teach slide's first sentence (A2: the
  * case; A6: what to notice in the photo), so a photo slide's photograph is now its case. */
-export const WRITE_SLIDES_VERSION = "write-slides.v16";
+/* v17 (round B1, practice): a practise slide is an independent set, not one open question: a list of
+ * four to six numbered items on new cases in the lesson's context, stepping up from fluency through
+ * reasoning to an application or problem, every answer and its working in the notes (Opus oracle). */
+/* v18: exactly four items, a task heading, a short body (B1 run: five two-line items failed fit, the
+ * re-write cut one and the notes kept its answer; claim headings read as teaching). Not yet benched. */
+export const WRITE_SLIDES_VERSION = "write-slides.v18";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -86,13 +91,13 @@ A teach slide makes one claim, its heading, and its body backs that claim on the
 A worked example's question gives its case and what to find in one sentence ("Find angle x when the other two angles are 70° and 56°."), and each line of working is one calculation or one phrase ("180° − 126° = 54°", "so x is 54°"). Its notes show the first line, then ask the class for each later line before it is revealed.
 A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.
 Each check question has exactly one defensible answer.
-A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: where its objective is to work something out or identify it, a question set whose items step up from a plain case to that one; where it is to explain or describe, a written task that says what to write and what it must use.
+A practise slide is where pupils do the thinking, alone. It is a list: its heading names the task ("Your turn: share in a ratio"); its body is one short sentence saying what to show ("Draw a bar model for each one."); its points are exactly four items, each labelled with its number ("1", "2", …) and each on a case or numbers no slide used, set in this lesson's context. The items step up: first one or two fluency items, done in one step as taught; then reasoning items (explain why, spot the mistake, compare two cases, choose which method fits); last an application or problem that puts the idea to work in a new situation with more than one step, up to the hardest case the lesson taught. Where an objective is to explain or describe, its item asks for a short written answer and names the evidence or term it must use. Each item has one defensible answer.
 A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
 A photo's imageBrief names the real thing the slide teaches, which the photograph must show whole and centred: its subject in the few plain words a photo library would caption it with ("Roman milestone", "potassium permanganate crystals in water", "river level gauge", not "A photograph of a milestone by a road"), never a scene that only sets the theme. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
 A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.
 Pictures are for whoever finds or draws them: the slide's text never repeats a brief. On a photo slide the photograph is the case: the body's first sentence points pupils at what to notice in it and what that shows ("Look at the carved distance: it tells a soldier how far to the next fort."), and the general rule follows.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
-The notes on every slide are what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next.
+The notes on every slide are what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next. On a practise slide they give every item's answer with its working, or the points a good written answer makes, then one harder challenge for pupils who finish early, with its answer.
 A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.`;
 
 const SYSTEM = `You are an experienced UK teacher writing the slides of a planned lesson. The plan fixes each slide's role, form, layout and what it teaches; you write the slides you are given, each in its form and layout. A row gives its slide's aim in a few words; the detail, the examples and any picture's description are yours. Nothing rewrites your words, so what you write is the slide.\n\n${HOUSE_RULES}\n${WRITE_RULES}`;
