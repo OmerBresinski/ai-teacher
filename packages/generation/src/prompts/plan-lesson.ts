@@ -23,7 +23,8 @@ import { type Audience, audienceBlock } from "./shared";
 /* v14 (round B1, practice): practice was the thinnest part of every deck (one open question or none),
  * because the practise slide gave way first. Now the checks give way first, then the opening, then
  * practice; a practise slide is a list of items that step up, written by write-slides.v17. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v14";
+/* v15: four items, not four to six (B1 run: five two-line items failed fit and the re-write cut one). */
+export const PLAN_LESSON_VERSION = "plan-lesson.v15";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -277,7 +278,7 @@ Each slide where pupils answer, sort, match or write asks something new.
 
 Each row, fields in order, split by " | ", "-" for none:
 - role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on) or practise (pupils work alone through a set of new items that step up in difficulty).
-- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, or as a diagram slot when they make a process or a cycle, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out is a worked example; a practise slide is a list whose points are its items, four to six of them; a teach slide is a photo or a diagram slot unless its idea cannot be pictured: a diagram slot wherever the idea has a shape (a process, a cycle, a graph, a structure, a labelled cross-section, a bar model, a number line, a table), otherwise a photo of the real place, object, event or specimen it teaches. A slide whose idea cannot be pictured has none.
+- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, or as a diagram slot when they make a process or a cycle, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out is a worked example; a practise slide is a list whose four points are its items; a teach slide is a photo or a diagram slot unless its idea cannot be pictured: a diagram slot wherever the idea has a shape (a process, a cycle, a graph, a structure, a labelled cross-section, a bar model, a number line, a table), otherwise a photo of the real place, object, event or specimen it teaches. A slide whose idea cannot be pictured has none.
 - objectives: the numbers of the objectives it serves, split by commas; "-" for retrieve or hook.
 - parts: how many items its layout's counted slot will hold: its steps, points, sides, pairs, cards, terms, gaps, options, questions or sentences. The parts fit the layout's count. When an idea has more parts than a form holds, choose a form that holds them or split the idea over two slides.
 - aim: what the slide does, in a few words; the writer adds the detail.
