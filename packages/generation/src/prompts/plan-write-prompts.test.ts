@@ -143,8 +143,8 @@ const PINNED = {
     hash: "1eaf4c203ff62b14ed593344b4fea90986c69b09ec25ec115aa4b0e7d18d3072",
   },
   master: {
-    version: "master-check.v2",
-    hash: "611e1dffed44d28a182b1a60795479232f1432e717f1d33ab5592355c3d6b4f8",
+    version: "master-check.v3",
+    hash: "a8c990e2b3d77788b2ff31a621f88b0274dc0a672bf8a810a430c993c97d54c1",
   },
 };
 
