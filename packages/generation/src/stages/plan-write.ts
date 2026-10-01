@@ -1,3 +1,4 @@
+import { costUsd } from "@tj/ai";
 import { safeError } from "@tj/domain";
 import {
   DEFAULT_SLIDE_COUNT,
@@ -33,6 +34,7 @@ import {
   type Written,
   withSetTag,
 } from "../plan-write/fit";
+import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
 import { recheckKinds } from "../plan-write/recheck";
 import {
@@ -550,6 +552,15 @@ export type PlanWriteReport = {
   /** Stream: the master check's fixes over the whole lesson, each with its reason and outcome. */
   masterCheck?: {
     ms: number;
+    /** The one call alone (b4: its model, effort, latency and cost, apart from the re-writes). */
+    call?: {
+      model: string;
+      effort: string;
+      ms: number;
+      costUsd: number | null;
+      inputTokens?: number | undefined;
+      outputTokens?: number | undefined;
+    };
     fixes: { slide: number; field: string; kind: string; problem: string; outcome: string }[];
   };
 };
@@ -1624,18 +1635,36 @@ export async function planWriteSlides(
       fixed: table.flatMap((row, i) => (fixedRoles.has(row.role) ? [i + 1] : [])),
     };
     let fixes: z.infer<typeof masterCheckSchema>["fixes"];
+    let callLog: NonNullable<PlanWriteReport["masterCheck"]>["call"];
+    const effort = planWriteCheckerEffort();
     try {
       const call = await callStructured({
         deps,
         stage: "generate",
         cls,
-        effort: "low",
+        effort,
         prompt: asPrompt<MasterCheckInput>(MASTER_CHECK_VERSION, masterCheckPrompt(input)),
         input,
         schema: masterCheckSchema,
         maxOutputTokens: MAX_OUTPUT_TOKENS_MASTER_CHECK,
       });
       fixes = (call.output as z.infer<typeof masterCheckSchema>).fixes;
+      const { inputTokens, outputTokens, cachedInputTokens } = call.usage;
+      callLog = {
+        model: call.modelId,
+        effort,
+        ms: Date.now() - t0,
+        costUsd:
+          inputTokens !== undefined && outputTokens !== undefined
+            ? costUsd(call.modelId, { inputTokens, outputTokens, cachedInputTokens })
+            : null,
+        inputTokens,
+        outputTokens,
+      };
+      deps.logger.info(
+        { stage: "generate", call: "master-check-call", ...callLog, fixes: fixes.length },
+        "master check call",
+      );
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw error;
       deps.logger.warn(
@@ -1714,7 +1743,11 @@ export async function planWriteSlides(
       { stage: "generate", call: "master-check", fixes: log.length, ms },
       "plan-write master check",
     );
-    return { ms, fixes: log.sort((a, b) => a.slide - b.slide) };
+    return {
+      ms,
+      ...(callLog ? { call: callLog } : {}),
+      fixes: log.sort((a, b) => a.slide - b.slide),
+    };
   };
 
   let finalFacts = facts;
