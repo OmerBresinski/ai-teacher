@@ -465,20 +465,20 @@ const text = () => z.string().trim().min(1);
 /**
  * A reasoned step carries its reason in brackets at its end (the worked example's reason column).
  * It was after " — " until spike/fmt: generated text has no em dashes (Greg, 1 Oct 2026).
+ *
+ * On the wire as a `pattern` so the model is held to it while it writes (round S: as a `refine`
+ * only, 8 of R's stream slides failed it and each waited on a writer re-ask). ASCII letters only:
+ * OpenAI refuses the whole schema over `\p{L}` (HTTP 400 on every stream write, round M), so the
+ * pattern stays in the subset `wire-patterns.test.ts` checks.
  */
-const REASONED = /\S\s*\([^()]*\p{L}{2}[^()]*\)\s*$/u;
-
-/**
- * Checked by a `refine`, not `.regex()`: a regex becomes a JSON-schema `pattern` on the wire, and
- * OpenAI refuses the whole schema over `\p{L}` (HTTP 400 on every stream write, round M, 1 Oct
- * 2026). A refine never reaches the provider's schema; zod still checks the answer.
- */
-const reasoned = (s: string) => REASONED.test(s);
+export const REASONED_STEP = /\S\s*\([^()]*[A-Za-z]{2}[^()]*\)\s*$/;
 
 function kindSchema(kind: TextKind) {
   const t =
     kind === "reasoned-step"
-      ? text().refine(reasoned, { message: "the reason goes in brackets at the end of the step" })
+      ? text().regex(REASONED_STEP, {
+          message: "the reason goes in brackets at the end of the step",
+        })
       : text();
   return t.describe(TEXT_KINDS[kind]);
 }

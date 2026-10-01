@@ -297,3 +297,20 @@ describe("contractText", () => {
     }
   });
 });
+
+describe("round S: the reasoned step's bracket rule is on the wire", () => {
+  it("a reasoned step's schema carries an ASCII pattern the model is held to", async () => {
+    const { z } = await import("zod");
+    const { REASONED_STEP, writerSchema } = await import("./slot-contracts");
+    expect(REASONED_STEP.source).not.toMatch(/\\[pP]\{/);
+    expect(REASONED_STEP.test("2x + 6 = 18 (subtract 2x)")).toBe(true);
+    expect(REASONED_STEP.test("Workers stopped work (production fell)")).toBe(true);
+    expect(REASONED_STEP.test("Workers stopped work (production fell).")).toBe(false);
+    expect(REASONED_STEP.test("Workers stopped work: production fell")).toBe(false);
+    expect(REASONED_STEP.test("x = 3 (2)")).toBe(false);
+    const wire = JSON.stringify(
+      z.toJSONSchema(writerSchema("worked-example"), { unrepresentable: "any" }),
+    );
+    expect(wire).toContain('"pattern"');
+  });
+});

@@ -141,7 +141,13 @@ function writerCallOf(text: string): WriteSlidesInput {
 
 function planWriteAi(
   calls: WriteSlidesInput[],
-  opts: { longHinge?: boolean; masterFixes?: unknown[]; exitItems?: unknown[] } = {},
+  opts: {
+    longHinge?: boolean;
+    masterFixes?: unknown[];
+    exitItems?: unknown[];
+    /** Round S: held until this resolves, to show the lesson is editable without the items. */
+    exitGate?: () => Promise<void>;
+  } = {},
 ) {
   const fallback: FakeScriptEntry = async (call: FakeCall) => {
     const version = call.context?.promptVersion ?? "";
@@ -196,7 +202,10 @@ function planWriteAi(
     }
     if (version.startsWith("master-check")) return json({ fixes: opts.masterFixes ?? [] });
     // Round Q: without items given, the exit-items call fails and round P's items stand in.
-    if (version.startsWith("exit-items") && opts.exitItems) return json({ items: opts.exitItems });
+    if (version.startsWith("exit-items") && opts.exitItems) {
+      await opts.exitGate?.();
+      return json({ items: opts.exitItems });
+    }
     if (version.startsWith("verify-facts")) return json({ corrections: [] });
     if (version.startsWith("evaluate")) return json({ findings: [] });
     if (version.startsWith("repair")) return json(FIXTURES.repair);
@@ -371,6 +380,57 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(words).toContain("Twelve pencils are put into four equal groups.");
       const sheet = recipeById("exit-ticket")?.build(lesson.facts) ?? [];
       expect(JSON.stringify(sheet)).toContain("Twelve pencils");
+    });
+  });
+
+  test("round S: the lesson is editable before the exit items land; they are drawn in place after", async () => {
+    await inMode(undefined, async () => {
+      const items = [
+        {
+          objective: 1,
+          form: "apply",
+          answer: "12 ÷ 4 = 3 in each group.",
+          question: "Twelve pencils are put into four equal groups. How many are in each group?",
+          wrongOptions: [],
+        },
+      ];
+      let deps: ReturnType<typeof recordingDeps> | undefined;
+      let editableFirst = false;
+      // The exit-items call answers only once "Slides ready" is out: were the editable save to
+      // wait for it, this would never come and the call gives up after 2 s.
+      const exitGate = async () => {
+        for (let i = 0; i < 200; i++) {
+          if (deps?.progress.some((p) => p.message === "Slides ready")) {
+            editableFirst = true;
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+      };
+      const ai = planWriteAi([], { exitItems: items, exitGate });
+      deps = recordingDeps(ai);
+      const l = streamLesson();
+      const on: Lesson = {
+        ...l,
+        brief: { ...(l.brief as NonNullable<Lesson["brief"]>), exitTicketOnSlides: true },
+      };
+      const final = await runLessonPipeline({ lesson: on }, deps, { planner: "plan-write" });
+      expect(editableFirst).toBe(true);
+      // The editable save already had its close (round P's items), at the same slide count.
+      const ready = deps.progress.findIndex((p) => p.message === "Slides ready");
+      const atReady = deps.persisted.find(
+        (x) => x.updatedAt === deps?.progress[ready]?.documentUpdatedAt,
+      );
+      expect(atReady?.lesson.slides.length).toBe(final.lesson.slides.length);
+      expect(JSON.stringify(atReady?.lesson.slides.at(-1)?.elements)).not.toContain(
+        "Twelve pencils",
+      );
+      // Then the model's items, in place: same slide id, on the slide and in the worksheet's facts.
+      const close = final.lesson.slides.at(-1);
+      expect(close?.id).toBe(atReady?.lesson.slides.at(-1)?.id as string);
+      expect(JSON.stringify(close?.elements)).toContain("Twelve pencils");
+      const exit = (final.lesson.facts?.questions ?? []).filter((q) => q.use === "exit");
+      expect(exit.map((q) => q.answer)).toEqual(["12 ÷ 4 = 3 in each group."]);
     });
   });
 

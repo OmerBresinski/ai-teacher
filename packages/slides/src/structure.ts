@@ -3074,6 +3074,11 @@ export function workingAndReason(step: string): [string, string | undefined] {
   const maths = (x: string) => /[=×÷+\-−/^%²³]|\d/.test(x);
   const bracket = /^(.*\S)\s*\(([^()]+)\)\s*$/.exec(step);
   if (bracket && maths(bracket[1] as string)) return [bracket[1] as string, bracket[2] as string];
+  // Since spike/fmt a reasoned step is "working (reason)" in any subject, maths or not: a closing
+  // bracket with words in it is the reason, as the dash was (round S: y4-plants and y9-weimar's
+  // worked examples drew whole in the working column and overflowed on every theme).
+  if (bracket && /[A-Za-z]{2}/.test(bracket[2] as string))
+    return [bracket[1] as string, bracket[2] as string];
   for (const sep of [" — ", " – ", " because ", ": ", "; ", ", so "]) {
     const at = step.indexOf(sep);
     if (at <= 0) continue;

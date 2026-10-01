@@ -2079,9 +2079,76 @@ export async function planWriteSlides(
   };
 
   // The close (ruling 141). The closing slide goes after the practise slide.
+  //
+  // Round S: the exit items' call starts here, once every teaching slide has landed, and runs
+  // beside the slide checks still in flight and the master check. The lesson does not wait for it
+  // to become editable (R waited ~15 s). The close is drawn now from what the facts already hold
+  // (round P's items, as when the call fails) and drawn again in place when the model's items land.
+  /** The model's exit items, applied in place; resolved once they are (or the call failed). */
+  let exitItemsDone: Promise<void> = Promise.resolve();
   if (mode === "stream") {
-    const exitItems = await writeExitItems();
-    if (exitItems) {
+    const closeAt = closing ? lesson.slides.length : lesson.slides.length - 1;
+    const closeFor = (
+      exitItems: Awaited<ReturnType<typeof writeExitItems>>,
+      slides: readonly Slide[],
+      base: Slide | undefined,
+    ) => {
+      const questions = exitTicketQuestions(facts);
+      // Opt-in (ruling 141's checkbox): the exit questions on the closing slide itself; Round P's
+      // code-built items until (or unless) the model's call returns.
+      const onSlides =
+        closing && brief.exitTicketOnSlides === true
+          ? exitItems
+            ? modelClosingWritten(exitItems)
+            : freshClosingWritten(facts, slides)
+          : undefined;
+      const slide = closing
+        ? onSlides
+          ? drawn(EXIT_FORM, EXIT_FORM, onSlides, codeMeta())
+          : materialiseSlide(
+              closingSpec(
+                questions,
+                objectives.map((o) => o.id),
+              ),
+              themeId,
+              codeMeta(),
+              deps.ids,
+            )
+        : base
+          ? withClosingLine(base, closingLine(questions))
+          : undefined;
+      return {
+        slide,
+        questions,
+        onSlides: onSlides ? (onSlides.questions as unknown[]).length : 0,
+      };
+    };
+    const logClose = (c: ReturnType<typeof closeFor>, patched: boolean) =>
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "closing",
+          slide: closeAt + 1,
+          ownSlide: closing,
+          questions: c.questions,
+          onSlides: c.onSlides,
+          patched,
+          ms: Date.now() - startedAt,
+        },
+        patched ? "exit ticket redrawn with the model's items" : "exit ticket reference added",
+      );
+    const exitCall = writeExitItems();
+    const first = closeFor(undefined, lesson.slides, lesson.slides[closeAt]);
+    if (first.slide) {
+      const made = first.slide;
+      lesson = closing
+        ? { ...lesson, slides: [...lesson.slides, made] }
+        : { ...lesson, slides: lesson.slides.map((s, i) => (i === closeAt ? made : s)) };
+      if (closing) slideCount += 1;
+    }
+    logClose(first, false);
+    exitItemsDone = exitCall.then(async (exitItems) => {
+      if (!exitItems) return;
       // Ids from q901, clear of the slides' own questions however a rebuild numbers them.
       exitQuestions = exitItems.map((i, n) => ({
         id: `q${901 + n}`,
@@ -2092,49 +2159,18 @@ export async function planWriteSlides(
         use: "exit" as const,
       }));
       facts.questions.push(...exitQuestions);
-    }
-    const questions = exitTicketQuestions(facts);
-    // Opt-in (ruling 141's checkbox): the exit questions on the closing slide itself; Round P's
-    // code-built items only when the model's call failed.
-    const onSlides =
-      closing && brief.exitTicketOnSlides === true
-        ? exitItems
-          ? modelClosingWritten(exitItems)
-          : freshClosingWritten(facts, lesson.slides)
-        : undefined;
-    if (closing) {
-      const slide = onSlides
-        ? drawn(EXIT_FORM, EXIT_FORM, onSlides, codeMeta())
-        : materialiseSlide(
-            closingSpec(
-              questions,
-              objectives.map((o) => o.id),
-            ),
-            themeId,
-            codeMeta(),
-            deps.ids,
-          );
-      lesson = { ...lesson, slides: [...lesson.slides, slide] };
-      slideCount += 1;
-    } else {
-      const last = lesson.slides.length - 1;
-      const slide = lesson.slides[last];
-      if (slide) {
-        const marked = withClosingLine(slide, closingLine(questions));
-        lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === last ? marked : s)) };
-      }
-    }
-    deps.logger.info(
-      {
-        stage: "generate",
-        call: "closing",
-        slide: slideCount,
-        ownSlide: closing,
-        questions,
-        onSlides: onSlides ? (onSlides.questions as unknown[]).length : 0,
-      },
-      "exit ticket reference added",
-    );
+      throwIfAborted(deps.signal);
+      const again = closeFor(exitItems, lesson.slides, lesson.slides[closeAt]);
+      const made = again.slide;
+      // The last slide may have been drawn again by a check since: its line goes on that version.
+      if (made)
+        await updateSlide(closeAt, (old) =>
+          closing ? { ...made, id: old.id } : withClosingLine(old, closingLine(again.questions)),
+        );
+      logClose(again, true);
+    });
+    // Awaited after the editable save; marked handled so an abort before then is not unhandled.
+    exitItemsDone.catch(() => undefined);
   }
 
   const asGenerated = (l: Lesson, f: LessonFacts): Lesson => {
@@ -2625,7 +2661,8 @@ export async function planWriteSlides(
     ]);
     await writing;
     throwIfAborted(deps.signal);
-    masterCheck = await runMasterCheck();
+    // The exit items' call (started before the editable save) runs beside the master check.
+    [masterCheck] = await Promise.all([runMasterCheck(), exitItemsDone]);
     await writing;
     throwIfAborted(deps.signal);
     await runGates();

@@ -411,4 +411,20 @@ describe("workingAndReason: a reasoned step (C2)", () => {
       "the total over 5 parts",
     ]);
   });
+
+  test("round S: a bracketed reason is the reason in any subject, maths or not", () => {
+    // R's y4-plants and y9-weimar: drawn whole in the working column, they overflowed every theme.
+    expect(
+      workingAndReason(
+        "A root and shoot grow, and the seedling becomes an oak (roots take in water; leaves make food)",
+      ),
+    ).toEqual([
+      "A root and shoot grow, and the seedling becomes an oak",
+      "roots take in water; leaves make food",
+    ]);
+    expect(
+      workingAndReason("Workers stopped work in passive resistance (production in the Ruhr fell)"),
+    ).toEqual(["Workers stopped work in passive resistance", "production in the Ruhr fell"]);
+    expect(workingAndReason("£45 ÷ 5 = £9 (each part)")).toEqual(["£45 ÷ 5 = £9", "each part"]);
+  });
 });
