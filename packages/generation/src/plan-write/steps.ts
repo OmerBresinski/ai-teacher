@@ -89,7 +89,8 @@ export function planWriteRoute(
     const v = context?.promptVersion ?? "";
     if (v.startsWith("plan-lesson.") || v.startsWith("stream-lesson.")) return plannerModel;
     if (v.startsWith("write-slides.")) return writerModel;
-    if (v.startsWith("master-check.")) return checkerModel;
+    // Round J: the caption-claims check (a place's geography, a date) on the checker's model too.
+    if (v.startsWith("master-check.") || v.startsWith("caption-claims.")) return checkerModel;
     return undefined;
   };
 }

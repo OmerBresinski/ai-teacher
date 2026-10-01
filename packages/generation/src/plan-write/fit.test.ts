@@ -55,10 +55,13 @@ describe("plan-write fit and re-write", () => {
     expect(failed.out).toBe(out);
     expect(failed.fit.ok).toBe(false);
     expect(failed.rewritten).toMatchObject({ field: "heading", ok: false });
+    // Round J: a heading still wrapping after its re-writes is taken at its measured height; with
+    // nothing under it running past the safe area the slide fits, the heading's re-write not done.
     const same = await fitWithRewrite("explain", "default", out, async () => ({
       heading: longHeading,
     }));
-    expect(same.fit.ok).toBe(false);
+    expect(same.out).toEqual(out);
+    expect(same.fit.ok).toBe(true);
     expect(same.rewritten?.ok).toBe(false);
   });
 

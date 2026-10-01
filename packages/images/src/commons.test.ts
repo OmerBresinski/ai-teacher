@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   COMMONS_USER_AGENT,
   commonsPhotosOf,
+  coordinatesOf,
   createCommonsClient,
   judgeCommonsFile,
   licenceClass,
@@ -163,5 +164,15 @@ describe("Commons licence filter", () => {
     expect(url.searchParams.get("gsrnamespace")).toBe("6");
     expect(url.searchParams.get("maxlag")).toBe("5");
     expect(url.searchParams.get("iiextmetadatafilter")).toContain("LicenseShortName");
+  });
+});
+
+describe("Commons coordinates (round J: a caption's place claim is checked against them)", () => {
+  test("the photo's GPS position is given in its about text; none when the page has none", () => {
+    expect(
+      coordinatesOf({ GPSLatitude: { value: "52.521170" }, GPSLongitude: { value: "-3.416597" } }),
+    ).toBe("taken at 52.5212, -3.4166 (latitude, longitude)");
+    expect(coordinatesOf({ ImageDescription: { value: "x" } })).toBe("");
+    expect(coordinatesOf(undefined)).toBe("");
   });
 });

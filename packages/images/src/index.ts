@@ -8,6 +8,7 @@ export {
   type CommonsPhoto,
   type CommonsSearchParams,
   commonsPhotosOf,
+  coordinatesOf,
   createCommonsClient,
   judgeCommonsFile,
   licenceClass,

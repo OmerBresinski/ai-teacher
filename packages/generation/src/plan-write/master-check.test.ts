@@ -31,6 +31,7 @@ describe("master check model and effort switch", () => {
     const route = planWriteRoute("p", "w", "c");
     expect(route(undefined, { promptVersion: MASTER_CHECK_VERSION })).toBe("c");
     expect(route(undefined, { promptVersion: "write-slides.v16" })).toBe("w");
-    expect(route(undefined, { promptVersion: "verify-facts.v9" })).toBeUndefined();
+    expect(route(undefined, { promptVersion: "caption-claims.v1" })).toBe("c");
+    expect(route(undefined, { promptVersion: "verify-facts.v10" })).toBeUndefined();
   });
 });

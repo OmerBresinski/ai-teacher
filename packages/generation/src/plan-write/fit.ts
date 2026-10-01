@@ -206,7 +206,17 @@ function drawnFailing(form: string, layout: string, out: Written): string[] {
   });
 }
 
-function failingLines(form: string, layout: string, out: Written): string[] {
+/** `headingAsIs`: a heading that wraps is taken as it is, at its measured height (round J). */
+type FitOptions = { headingAsIs?: boolean };
+
+const HEADING_WRAP = /^heading on \d+ lines/;
+
+function failingLines(form: string, layout: string, out: Written, opts: FitOptions = {}): string[] {
+  if (opts.headingAsIs) {
+    return failingLines(form, layout, out).filter(
+      (l) => !HEADING_WRAP.test(l.slice(l.indexOf(": ") + 2)),
+    );
+  }
   if (isSetForm(form)) return setFailing(renderWritten(form, layout, out).spec);
   const { notes: _notes, ...fields } = out;
   const lines = contractFits(
@@ -242,11 +252,12 @@ export function locate(
   form: string,
   layout: string,
   out: Written,
+  opts: FitOptions = {},
 ): { field: string; item?: number } | undefined {
   // Each failing theme's reasons ("overflow, overlap, stepped down"), counted, so a probe that
   // lifts one reason on a theme still counts.
   const count = (o: Written) =>
-    failingLines(form, layout, o).reduce(
+    failingLines(form, layout, o, opts).reduce(
       (n, l) => n + (l.split(": ")[1] ?? "").split(", ").length,
       0,
     );
@@ -272,9 +283,18 @@ export function locate(
 
 const GENERAL = /runs past|overlaps|below body size|cover the questions/;
 
-/** Judge a written slide; on failure, the field to re-write and why. */
-export function fitWritten(form: string, layout: string, out: Written): FitResult {
-  const lines = failingLines(form, layout, out);
+/**
+ * Judge a written slide; on failure, the field to re-write and why. With `headingAsIs` a heading
+ * that wraps is not itself a failure: the slide is measured with the heading at its actual wrapped
+ * height (the look moves everything under it down), and an overflow is the field under it.
+ */
+export function fitWritten(
+  form: string,
+  layout: string,
+  out: Written,
+  opts: FitOptions = {},
+): FitResult {
+  const lines = failingLines(form, layout, out, opts);
   if (lines.length === 0) return { ok: true };
   const found = lines.map((l) => attribute(l, form, layout, out));
   // A heading on two lines pushes everything under it down: on a theme where it wraps, an overflow
@@ -289,9 +309,12 @@ export function fitWritten(form: string, layout: string, out: Written): FitResul
   }
   const general = found.filter((f) => f.field !== "heading" && GENERAL.test(f.what));
   if (general.length > 0) {
-    const at = locate(form, layout, out);
+    const at = locate(form, layout, out, opts);
     if (at) {
-      const where = at.item ? `; it is item ${at.item} of ${at.field} that does not fit` : "";
+      const under = opts.headingAsIs
+        ? "; the heading above it stays on two lines, so it has that much less room"
+        : "";
+      const where = `${at.item ? `; it is item ${at.item} of ${at.field} that does not fit` : ""}${under}`;
       for (const f of general) {
         f.field = at.field;
         f.what = `${f.what}${where}`;
@@ -342,8 +365,9 @@ export async function fitWithRewrite(
   const again = fitWritten(form, layout, next);
   if (again.ok) return { out: next, fit: again, rewritten: { field, failure, ok: true } };
   const better = again.themes.length <= first.themes.length;
-  const kept = better ? next : out;
-  const keptFit = better ? again : first;
+  let kept = better ? next : out;
+  let keptFit: FitResult = better ? again : first;
+  let rewritten = { field, failure, ok: false };
   // A second re-write, told what the slide shows now: a heading that still wraps, or the field the
   // first re-write uncovered (the body under a heading now on one line). Any other field keeps its
   // one re-write (a hinge then goes to its re-check, UX ruling 136).
@@ -353,15 +377,33 @@ export async function fitWithRewrite(
       const third = { ...kept, [keptFit.field]: patch2[keptFit.field] };
       const fit3 = fitWritten(form, layout, third);
       if (fit3.ok || fit3.themes.length <= keptFit.themes.length) {
-        return {
-          out: third,
-          fit: fit3,
-          rewritten: { field: keptFit.field, failure: keptFit.failure, ok: fit3.ok },
-        };
+        rewritten = { field: keptFit.field, failure: keptFit.failure, ok: fit3.ok };
+        kept = third;
+        keptFit = fit3;
       }
     }
   }
-  return { out: kept, fit: keptFit, rewritten: { field, failure, ok: false } };
+  if (keptFit.ok || keptFit.field !== "heading") return { out: kept, fit: keptFit, rewritten };
+  // Round J (I1a y9 s4): a heading still on two lines after its re-writes is taken as it is, and
+  // the slide is judged at the heading's actual wrapped height (the look moves everything under it
+  // down). It fits when nothing under the heading runs past the safe area; otherwise the field
+  // under it gets one re-write, told the heading takes the room. Still failing: flagged as before.
+  const under = fitWritten(form, layout, kept, { headingAsIs: true });
+  if (under.ok) return { out: kept, fit: under, rewritten };
+  if (under.field === "heading") return { out: kept, fit: keptFit, rewritten };
+  const patch3 = await rewrite(under.field, under.failure).catch(() => undefined);
+  if (patch3 && under.field in patch3) {
+    const fourth = { ...kept, [under.field]: patch3[under.field] };
+    const fit4 = fitWritten(form, layout, fourth, { headingAsIs: true });
+    if (fit4.ok) {
+      return {
+        out: fourth,
+        fit: fit4,
+        rewritten: { field: under.field, failure: under.failure, ok: true },
+      };
+    }
+  }
+  return { out: kept, fit: keptFit, rewritten };
 }
 
 const keyText = (s: unknown) =>

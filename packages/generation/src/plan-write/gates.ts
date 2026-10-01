@@ -6,7 +6,7 @@
 
 import { FIXED_SLIDES } from "./check";
 import type { Written } from "./fit";
-import type { PassSlide } from "./slide-check";
+import { fieldOfEvidence, type PassSlide } from "./slide-check";
 
 const textOf = (v: unknown): string =>
   typeof v === "string"
@@ -254,4 +254,81 @@ export function namesNotShown(text: string, about: string, exempt: string): stri
     names.push(w);
   }
   return names;
+}
+
+/* ------------------------------------------------------------------ caption claims (round J) */
+
+/** One claim a photo slide's text makes about its photograph, as the caption-claims check gave it. */
+export type CaptionClaim = { slide: number; quote: string; supported: boolean; why: string };
+
+const claimWords = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .split(/[^a-z0-9']+/)
+    .filter(Boolean)
+    .join(" ");
+
+/**
+ * The claims the check could not support, each on the field (heading or body; never the notes)
+ * whose text carries its quote, one per slide and field. A quote the slide does not carry is
+ * dropped: the check must point at words that are there.
+ */
+export function unsupportedClaims(
+  claims: CaptionClaim[],
+  outOf: (slide: number) => Written | undefined,
+): { slide: number; field: string; quote: string; why: string }[] {
+  const found: { slide: number; field: string; quote: string; why: string }[] = [];
+  for (const c of claims) {
+    const out = outOf(c.slide);
+    if (c.supported || !out || claimWords(c.quote).split(" ").length < 3) continue;
+    const field = fieldOfEvidence(out, c.quote);
+    if (!field || field === "notes") continue;
+    const had = found.find((f) => f.slide === c.slide && f.field === field);
+    if (had) {
+      had.quote = `${had.quote}" and "${c.quote}`;
+      had.why = `${had.why} ${c.why}`;
+    } else found.push({ slide: c.slide, field, quote: c.quote, why: c.why });
+  }
+  return found;
+}
+
+/** Does `out[field]` still carry the claim's words? */
+export function carriesClaim(out: Written, field: string, quote: string): boolean {
+  const have = ` ${claimWords(textOf(out[field]))} `;
+  return quote
+    .split('" and "')
+    .some((q) => claimWords(q) !== "" && have.includes(` ${claimWords(q)} `));
+}
+
+/**
+ * The safe fallback when a re-write does not take an unsupported claim out: the sentences that carry
+ * it are removed from the body, so the caption names only what the photograph shows. Undefined when
+ * that would leave a chunk with no text after its label, or the claim is in the heading.
+ */
+export function withoutClaim(out: Written, field: string, quote: string): Written | undefined {
+  const v = out[field];
+  if (field === "heading" || !Array.isArray(v)) return undefined;
+  let removed = false;
+  const strip = (t: string): string | undefined => {
+    const label = /^([^:]{1,40}:)\s*/.exec(t);
+    const body = label ? t.slice(label[0].length) : t;
+    const sentences = body.split(/(?<=[.!?])\s+/);
+    const kept = sentences.filter((x) => !carriesClaim({ x }, "x", quote));
+    if (kept.length === sentences.length) return t;
+    removed = true;
+    if (kept.length === 0) return undefined;
+    return `${label ? `${label[1]} ` : ""}${kept.join(" ")}`;
+  };
+  const next: unknown[] = [];
+  for (const item of v) {
+    if (typeof item !== "string") {
+      next.push(item);
+      continue;
+    }
+    const t = strip(item);
+    if (t === undefined) return undefined;
+    next.push(t);
+  }
+  return removed ? { ...out, [field]: next } : undefined;
 }

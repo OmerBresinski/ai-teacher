@@ -52,7 +52,15 @@ import {
   type Written,
   withSetTag,
 } from "../plan-write/fit";
-import { arithmeticFaults, namesNotShown, untaughtTerms, wrongSums } from "../plan-write/gates";
+import {
+  arithmeticFaults,
+  carriesClaim,
+  namesNotShown,
+  unsupportedClaims,
+  untaughtTerms,
+  withoutClaim,
+  wrongSums,
+} from "../plan-write/gates";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
 import { recheckKinds } from "../plan-write/recheck";
@@ -82,6 +90,11 @@ import {
 } from "../plan-write/stream";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { verifyFactsPrompt } from "../prompts";
+import {
+  CAPTION_CLAIMS_VERSION,
+  type CaptionClaimsInput,
+  captionClaimsPrompt,
+} from "../prompts/caption-claims";
 import {
   MASTER_CHECK_KINDS,
   MASTER_CHECK_VERSION,
@@ -160,6 +173,17 @@ export const WRITER_OUTPUT_TOKENS_BASE = 1500;
 export const WRITER_OUTPUT_TOKENS_PER_SLIDE = 1500;
 const MAX_OUTPUT_TOKENS_REWRITE = 2000;
 const MAX_OUTPUT_TOKENS_MASTER_CHECK = 3000;
+const MAX_OUTPUT_TOKENS_CAPTION_CLAIMS = 2000;
+const captionClaimsSchema = z.object({
+  claims: z.array(
+    z.object({
+      slide: z.number().int(),
+      quote: z.string(),
+      supported: z.boolean(),
+      why: z.string(),
+    }),
+  ),
+});
 /** At most this many master-check fixes are applied, in the order the checker gave them. */
 const MASTER_CHECK_MAX_FIXES = 6;
 const masterCheckSchema = z.object({
@@ -2165,6 +2189,81 @@ export async function planWriteSlides(
    * a photo's caption against its source, arithmetic recomputed, tested terms taught on a slide,
    * then a question slide's dead half filled with the picture that taught it.
    */
+  /**
+   * Round J (I1a y5 s8): what each photo slide says about its photograph (where it is, which part of
+   * a river or place, what it is near, a date or position) checked as claims against the photo's own
+   * source record, coordinates included when its page gives them. An unsupported claim gets one
+   * re-write; failing that its sentence goes, so the caption names only what the photo shows; and
+   * failing that the photograph goes.
+   */
+  const captionClaimsGate = async () => {
+    const t0 = Date.now();
+    const slides = [...photoOf].flatMap(([index, photo]) => {
+      const p = placed.find((x) => x.index === index);
+      if (!p || index === 0 || p.plan.form !== "photo") return [];
+      const { notes: _n, imageBrief: _i, ...onSlide } = p.out;
+      const source = (photo.about || photo.alt).slice(0, 700);
+      return [{ number: index + 1, text: flat(onSlide), source }];
+    });
+    if (slides.length === 0) return;
+    const input: CaptionClaimsInput = { topic: brief.topic, slides };
+    let claims: z.infer<typeof captionClaimsSchema>["claims"];
+    try {
+      const call = await callStructured({
+        deps,
+        stage: "generate",
+        cls,
+        effort: planWriteCheckerEffort(),
+        prompt: asPrompt<CaptionClaimsInput>(CAPTION_CLAIMS_VERSION, captionClaimsPrompt(input)),
+        input,
+        schema: captionClaimsSchema,
+        maxOutputTokens: MAX_OUTPUT_TOKENS_CAPTION_CLAIMS,
+      });
+      claims = (call.output as z.infer<typeof captionClaimsSchema>).claims;
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "caption-claims",
+          model: call.modelId,
+          ms: Date.now() - t0,
+          claims,
+        },
+        "caption claims call",
+      );
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.warn(
+        { stage: "generate", call: "caption-claims", err: safeError(error) },
+        "caption claims check failed; the captions are kept",
+      );
+      return;
+    }
+    const outOf = (n: number) => placed.find((x) => x.index === n - 1)?.out;
+    // One after another: two claims on one slide re-write it in turn, each on the last saved.
+    for (const f of unsupportedClaims(claims, outOf)) {
+      const out = outOf(f.slide);
+      if (!out || !photoOf.has(f.slide - 1) || !carriesClaim(out, f.field, f.quote)) continue;
+      gateHit("caption", f.slide);
+      const photo = photoOf.get(f.slide - 1);
+      const about = (photo?.about || photo?.alt || "").slice(0, 300);
+      const ok = await gateFix(
+        f.slide,
+        f.field,
+        `it says "${f.quote}" about the photograph, which the photograph's own source does not support (${f.why}). The source describes it as: "${about}". Say only what that source shows in the photograph, with no added claim about where it is, which part of a place it shows, what it is near or when; the teaching stays`,
+        (o) => carriesClaim(o, f.field, f.quote),
+      );
+      if (ok) {
+        gates.caption.fixed += 1;
+        continue;
+      }
+      gates.caption.fallback += 1;
+      const stripped = withoutClaim(outOf(f.slide) ?? out, f.field, f.quote);
+      if (stripped && (await gateSet(f.slide, stripped))) continue;
+      photoOf.delete(f.slide - 1);
+      await dropPicture(f.slide);
+    }
+  };
+
   const runGates = async () => {
     const exempt = `${brief.topic} ${base.title}`;
     const named = (o: Written) =>
@@ -2200,6 +2299,7 @@ export async function planWriteSlides(
     }
     await Promise.all(work);
     work.length = 0;
+    await captionClaimsGate();
     for (const p of placed) {
       const n = p.index + 1;
       if (n <= FIXED_SLIDES) continue;

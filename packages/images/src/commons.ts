@@ -69,6 +69,17 @@ const metaText = (meta: Record<string, { value?: unknown }> | undefined, key: st
   return typeof v === "string" ? stripHtml(v) : "";
 };
 
+/**
+ * Where the photo was taken, when its Commons page gives it (round J): "taken at 52.5212, -3.4166",
+ * so a caption's claim about the place (which part of a river, what it is near) can be checked.
+ */
+export function coordinatesOf(meta: Record<string, { value?: unknown }> | undefined): string {
+  const lat = Number.parseFloat(metaText(meta, "GPSLatitude"));
+  const lon = Number.parseFloat(metaText(meta, "GPSLongitude"));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "";
+  return `taken at ${lat.toFixed(4)}, ${lon.toFixed(4)} (latitude, longitude)`;
+}
+
 /** Commons metadata values are HTML fragments; the stored credit is plain text. */
 export function stripHtml(html: string): string {
   return html
@@ -206,6 +217,7 @@ function toPhoto(
     page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, ""),
     metaText(info.extmetadata, "ImageDescription").slice(0, 400),
     metaText(info.extmetadata, "ObjectName"),
+    coordinatesOf(info.extmetadata),
     ...(page.categories ?? []).map((c) => c.title.replace(/^Category:/i, "")),
   ]
     .filter(Boolean)
@@ -359,7 +371,7 @@ export function createCommonsClient(
         p.set("iiurlwidth", String(LARGE_WIDTH));
         p.set(
           "iiextmetadatafilter",
-          "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName",
+          "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|GPSLatitude|GPSLongitude",
         );
         const res = await fetchFn(url.toString(), {
           headers: { "User-Agent": agent, "Api-User-Agent": agent },
