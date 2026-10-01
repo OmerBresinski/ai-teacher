@@ -194,7 +194,10 @@ export type OakMatch = {
   keyStage: KeyStage;
 };
 
-/** A hit is taken at similarity 0.15 or more; 0.10 to 0.15 only when its title shares a topic word. */
+/**
+ * A hit is taken at similarity 0.15 or more (0.10 to 0.15 when its title shares a topic word), and
+ * only when its title is on the topic: two shared topic words, or one making half its title.
+ */
 export const MIN_SIMILARITY = 0.15;
 export const WEAK_SIMILARITY = 0.1;
 
@@ -220,13 +223,14 @@ export function matchOakLessons(
     for (const [q, kind] of queries) {
       if (!q) continue;
       for (const hit of source.search(q, stage, subject)) {
-        const overlap = new Set(
-          words(hit.lessonTitle)
-            .map(stem)
-            .filter((s) => topicStems.has(s)),
-        ).size;
+        const own = new Set(words(hit.lessonTitle).map(stem));
+        const overlap = [...own].filter((s) => topicStems.has(s)).length;
+        // On the topic: two shared words, or one that is half the hit's own title. One shared word
+        // in a long title is how noise looks ("Germany" in a medieval empress's early life).
+        const onTopic = overlap >= 2 || (overlap >= 1 && overlap * 2 >= own.size);
         const ok =
-          hit.similarity >= MIN_SIMILARITY || (hit.similarity >= WEAK_SIMILARITY && overlap > 0);
+          onTopic &&
+          (hit.similarity >= MIN_SIMILARITY || (hit.similarity >= WEAK_SIMILARITY && overlap > 0));
         if (!ok) continue;
         const was = best.get(hit.lessonSlug);
         if (was && was.similarity >= hit.similarity) continue;
@@ -275,6 +279,9 @@ export const PACK_CAPS = { keywords: 6, keyPoints: 5, misconceptions: 2, exitIte
 
 const clean = (s: string) =>
   s
+    .replace(/\$\$/g, "")
+    .replace(/\\div/g, "÷")
+    .replace(/\\times/g, "×")
     .replace(/\{\{\}\}/g, "___")
     .replace(/\s+/g, " ")
     .trim();
@@ -301,6 +308,14 @@ export function textExitItems(quiz: OakQuiz | null, max: number = PACK_CAPS.exit
     const right = dedupe(answers.filter((a) => a.distractor !== true).map(text));
     const wrong = dedupe(answers.filter((a) => a.distractor === true).map(text));
     if (right.length === 0) continue;
+    // The same problem asked again (as an equation, or reworded): keep the first.
+    const ws = new Set(clean(q.question).toLowerCase().split(/\W+/));
+    const seen = out.some((o) => {
+      const os = new Set(o.q.toLowerCase().split(/\W+/));
+      const shared = [...ws].filter((w) => os.has(w)).length;
+      return shared / Math.min(ws.size, os.size) >= 0.6;
+    });
+    if (seen) continue;
     out.push({
       q: clean(q.question),
       right: q.questionType === "short-answer" ? right.slice(0, 1) : right,
@@ -384,7 +399,7 @@ export function renderOakPack(pack: OakPack, yearGroup?: string): string {
   for (const k of pack.keywords) lines.push(`- ${k.term}: ${k.def}`);
   for (const p of pack.keyPoints) lines.push(`- ${p}`);
   for (const m of pack.misconceptions)
-    lines.push(`- Pupils may think: ${m.wrong} In fact: ${m.fix}`);
+    lines.push(`- Where pupils go wrong: ${m.wrong} What helps: ${m.fix}`);
   if (pack.exitItems.length > 0) {
     lines.push("Questions these lessons end on:");
     for (const e of pack.exitItems) {
@@ -393,7 +408,7 @@ export function renderOakPack(pack: OakPack, yearGroup?: string): string {
     }
   }
   lines.push(
-    `Write every word yourself: never copy its sentences or questions. Each "Pupils may think" line is a wrong idea your teach slides correct.${pack.exitItems.length > 0 ? " Write your check, hinge and practise questions in the style of its questions (a wrong option is an answer a wrong idea gives), on your own cases and numbers." : ""}`,
+    `Write every word yourself: never copy its sentences or questions. Your teach slides head off each "Where pupils go wrong" line.${pack.exitItems.length > 0 ? " Write your check, hinge and practise questions in the style of its questions (a wrong option is an answer a wrong idea gives), on your own cases and numbers." : ""}`,
   );
   return lines.join("\n");
 }
@@ -413,6 +428,27 @@ export function oakCredits(pack: OakPack): ContentCredit[] {
 /** A rough token count for the pack's prompt block (characters / 4). */
 export const approxTokens = (text: string) => Math.ceil(text.length / 4);
 
+/** The pack's prompt budget: about 450 tokens, the use line included. */
+export const PACK_TOKENS = 450;
+
+/**
+ * The pack trimmed to the budget: exit items first (down to two), then key points (to three), then
+ * keywords (to three); the misconceptions are kept whole.
+ */
+export function fitOakPack(pack: OakPack, yearGroup?: string, max = PACK_TOKENS): OakPack {
+  const p = {
+    ...pack,
+    exitItems: [...pack.exitItems],
+    keyPoints: [...pack.keyPoints],
+    keywords: [...pack.keywords],
+  };
+  const over = () => approxTokens(renderOakPack(p, yearGroup)) > max;
+  while (over() && p.exitItems.length > 2) p.exitItems.pop();
+  while (over() && p.keyPoints.length > 3) p.keyPoints.pop();
+  while (over() && p.keywords.length > 3) p.keywords.pop();
+  return p;
+}
+
 /**
  * The pack for a lesson, when `OAK_PACKS=1` and a lesson matches: the planner's reference block and
  * the lesson's credits. Null otherwise.
@@ -424,7 +460,8 @@ export function oakPackFor(
 ): { pack: OakPack; text: string; credits: ContentCredit[] } | null {
   if (!oakPacksOn(env) || !lesson.brief) return null;
   const brief = { topic: lesson.brief.topic, subject: lesson.subject, yearGroup: lesson.yearGroup };
-  const pack = buildOakPack(matchOakLessons(brief, source), source);
-  if (!pack) return null;
+  const built = buildOakPack(matchOakLessons(brief, source), source);
+  if (!built) return null;
+  const pack = fitOakPack(built, lesson.yearGroup);
   return { pack, text: renderOakPack(pack, lesson.yearGroup), credits: oakCredits(pack) };
 }

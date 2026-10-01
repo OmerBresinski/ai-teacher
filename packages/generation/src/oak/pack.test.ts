@@ -5,7 +5,9 @@ import { LessonSchema } from "@tj/domain/documents";
 import { planLessonPrompt } from "../prompts/plan-lesson";
 import {
   adjacentKeyStage,
+  approxTokens,
   buildOakPack,
+  fitOakPack,
   type KeyStage,
   keyStageForYear,
   matchOakLessons,
@@ -19,6 +21,7 @@ import {
   oakPacksOn,
   oakQueries,
   oakSubject,
+  PACK_TOKENS,
   renderOakPack,
   textExitItems,
 } from "./pack";
@@ -137,6 +140,21 @@ describe("matcher (synthetic)", () => {
       ["journeys", "core"],
     ]);
   });
+  test("one shared word in a long title is noise, however similar", () => {
+    const src = fake({
+      hits: {
+        "ks3|history|weimar germany": [
+          {
+            lessonSlug: "empress",
+            lessonTitle: "The early life of an empress of Germany",
+            similarity: 0.17,
+          },
+        ],
+      },
+    });
+    const weimar = { topic: "Weimar Germany: a crisis", subject: "History", yearGroup: "Year 9" };
+    expect(matchOakLessons(weimar, src)).toEqual([]);
+  });
   test("no match in the key stage falls back to the adjacent one; nothing anywhere gives no pack", () => {
     const hit = { lessonSlug: "older", lessonTitle: "River journeys", similarity: 0.3 };
     const src = fake({
@@ -220,7 +238,7 @@ describe("pack builder (synthetic)", () => {
     );
     const text = renderOakPack(p as never, "Year 5");
     expect(text).toContain("- term0: def 0");
-    expect(text).toContain("- Pupils may think: Wrong one. In fact: Right one.");
+    expect(text).toContain("- Where pupils go wrong: Wrong one. What helps: Right one.");
     expect(text).toContain("- Q? Right: yes. Wrong: no.");
     expect(text).toContain("never copy its sentences or questions");
     expect(text).toContain("in the style of its questions");
@@ -358,14 +376,22 @@ describe.skipIf(!haveRaw)("matcher and pack on the probe's cached raw JSON", () 
     expect(p?.exitItems).toEqual([]);
     expect(p?.keywords.length).toBeGreaterThan(0);
   });
-  test("every pack renders within about 450 tokens", () => {
+  test("a repeated problem is kept once; equations lose their LaTeX", () => {
+    const items = textExitItems(rawSource.quiz("solve-problems-involving-ratio"), 6);
+    expect(items.map((e) => e.right.join()).join(" ")).not.toContain("$$");
+    const firsts = items.map((e) => e.q.slice(0, 20));
+    expect(new Set(firsts).size).toBe(firsts.length);
+  });
+  test("every pack fits about 450 tokens, misconceptions whole", () => {
     for (const [t, s, y] of [
       ["Ratio: solving problems involving the relative sizes of two quantities", "Maths", "Year 6"],
       ["Rivers: the journey of a river from source to mouth", "Geography", "Year 5"],
       ["Weimar Germany: the hyperinflation crisis of 1923", "History", "Year 9"],
     ] as const) {
       const { p } = pack(t, s, y);
-      expect(Math.ceil(renderOakPack(p as never, y).length / 4)).toBeLessThan(600);
+      const fitted = fitOakPack(p as OakPack, y);
+      expect(approxTokens(renderOakPack(fitted, y))).toBeLessThanOrEqual(PACK_TOKENS);
+      expect(fitted.misconceptions).toEqual((p as OakPack).misconceptions);
     }
   });
 });
