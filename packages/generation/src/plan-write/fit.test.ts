@@ -209,3 +209,21 @@ describe("a check-set given the practise role (smoke pw7: practice read 'Quick c
     expect(heading()).toBe("Quick check");
   });
 });
+
+describe("a practise slide drawn as a list (round C1: B1's practice read as a list)", () => {
+  test("is tagged PRACTICE; a list with any other role keeps its own tag", () => {
+    const out = {
+      heading: "Your turn: share in a ratio",
+      body: "Draw a bar model for each one.",
+      points: ["1 Share 12 in 1:2", "2 Share 20 in 2:3", "3 Spot the mistake", "4 A recipe"],
+    };
+    const tagOf = (role?: string) => {
+      const r = renderWritten("list", "default", out, role);
+      const slide = materialiseSlide(r.spec, "chalk", META, () => "x", r.variant, r.structure);
+      const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
+      return tag && tag.type === "text" ? JSON.stringify(tag.doc) : "";
+    };
+    expect(tagOf("practise")).toContain("PRACTICE");
+    expect(tagOf("teach")).not.toContain("PRACTICE");
+  });
+});

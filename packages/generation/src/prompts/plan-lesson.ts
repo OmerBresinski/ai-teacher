@@ -24,7 +24,12 @@ import { type Audience, audienceBlock } from "./shared";
  * because the practise slide gave way first. Now the checks give way first, then the opening, then
  * practice; a practise slide is a list of items that step up, written by write-slides.v17. */
 /* v15: four items, not four to six (B1 run: five two-line items failed fit and the re-write cut one). */
-export const PLAN_LESSON_VERSION = "plan-lesson.v15";
+/* v16 (round C1): coverage guard (B1 lost y9 by narrowing the objectives so practice fitted, and the
+ * crisis's end went untaught): the objectives cover the whole topic and are set before the slides;
+ * teach slides are counted first and practice takes only a slide left over. B5's returning case only
+ * (no linking phrases, no pitch table): the last slide settles the opening's question or case; when it
+ * is the practise slide, its last item does. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v16";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -265,15 +270,15 @@ Never invent or include the name of any pupil, student or member of staff.`;
 /** The planning rules, from "Decide the fields" to the end (reused by stream-lesson). */
 export const PLAN_RULES = `Decide the fields in this order:
 - misconception: the one wrong idea about this topic that matters most for these pupils, then the correct idea.
-- objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. They go on their own slide straight after the title; code adds both, as slides 1 and 2.
+- objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. Together they cover the whole topic the title names, and they are set first: no objective is dropped or narrowed to make room for a slide. They go on their own slide straight after the title; code adds both, as slides 1 and 2.
 - runningExample: one case, context or question the whole lesson returns to, so the slides tell one story.
 - titlePicture: the photograph on the title slide, a real place, thing or event this lesson teaches, filling the frame: its subject in a few plain words, and up to three things it must show.
 - slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
 The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.
-Order the ideas so each builds on the one before. Each idea goes from a real case to the general rule it shows, then to a worked example of using it (a method's steps, or the reasoning from evidence to a conclusion), then to pupils using it with less help each time: first with the class, then alone.
+Order the ideas so each builds on the one before. Each idea goes from a real case to the general rule it shows, then to a worked example of using it (a method's steps, or the reasoning from evidence to a conclusion), then to pupils using it with less help each time: first with the class, then alone. The last slide comes back to the question or case the lesson opened with (a hook's question, otherwise the running example as first shown) and settles it with what the lesson taught; when the last slide is the practise slide, its last item does this.
 Every objective is taught on a slide before any slide tests it, and pupils do what it says on a later slide.
-Teaching is a slide's job unless the lesson needs it for something else. After the objectives slide, about two thirds of the slides teach: the Slides line gives how many. Each objective has at least one teach slide, and each teach slide carries its idea's facts, example and explanation. The other slides are only these: an opening (a retrieve or a hook), a check after each idea or pair of ideas, the hinge, and one practise slide after the hinge, where pupils work alone. When the slides are few, the checks give way first, since the hinge covers them, then the opening, then the practise slide; the hinge and the teach slides stay.
+Teaching is a slide's job unless the lesson needs it for something else. After the objectives slide, about two thirds of the slides teach: the Slides line gives how many. Each objective has at least one teach slide, and each teach slide carries its idea's facts, example and explanation. The teach slides are counted first, every objective's included; the other slides share what is left and are only these: an opening (a retrieve or a hook), a check after each idea or pair of ideas, the hinge, and one practise slide after the hinge, where pupils work alone. The practise slide never takes a slide an objective needs for its teaching. When the slides are few, the checks give way first, since the hinge covers them, then the opening, then the practise slide; the hinge and the teach slides stay.
 Each slide where pupils answer, sort, match or write asks something new.
 
 Each row, fields in order, split by " | ", "-" for none:

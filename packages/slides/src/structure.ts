@@ -83,6 +83,11 @@ export type CompareSide = { label: string; note?: string; points: string[] };
  */
 export type SlideStructure = {
   /**
+   * A kind tag in place of the kind's own (`KIND_TAGS`), drawn by the look on a headed slide:
+   * generation's practise slide is a list, a teaching kind, tagged PRACTICE (round C1).
+   */
+  tag?: string;
+  /**
    * The side a photo or diagram slot takes (look/slides-layout), left when absent. Generation
    * alternates it over a deck's slot slides (`alternateSlotSides` is the same rule for a whole deck).
    */

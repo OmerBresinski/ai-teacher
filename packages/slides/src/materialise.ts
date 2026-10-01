@@ -239,14 +239,18 @@ export function lookAndFitPages(
   }
   // The structure pass places its components under the heading as the fit sets it, so it runs on
   // the fitted look.
-  const looked = fitSlide(applyLook(slide, theme, ids), theme).slide;
+  const looked = fitSlide(applyLook(slide, theme, ids, { tag: structure.tag }), theme).slide;
   const pages = structureSlide(looked, theme, structure, ids, options);
   const done = pages.flatMap((page) => {
     const looked = fitSlide(page, theme);
     const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);
     if (!split || looked.overflow.length === 0) return [looked.slide];
     const paragraph = fitSlide(
-      withTerms(applyLook(slide, theme, ids, { lead: false }), theme, structure.terms),
+      withTerms(
+        applyLook(slide, theme, ids, { lead: false, tag: structure.tag }),
+        theme,
+        structure.terms,
+      ),
       theme,
     ).slide;
     // With pages, a paragraph that still overruns at the floor continues (UX ruling 91).

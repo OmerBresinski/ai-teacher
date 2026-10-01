@@ -32,7 +32,9 @@ import { WRITE_RULES } from "./write-slides";
 /* v11 (round B1, practice): plan-lesson.v14 and write-slides.v17; the practise-role swap is gone,
  * since the shared role line now says what it said. */
 /* v12: plan-lesson.v15 and write-slides.v18 (four practice items, a task heading). Not yet benched. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v12";
+/* v13 (round C1): plan-lesson.v16 (coverage guard, returning case) and write-slides.v19 (an easy entry
+ * item first); no swap changed. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v13";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 

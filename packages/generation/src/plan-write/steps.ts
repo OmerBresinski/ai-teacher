@@ -82,8 +82,8 @@ export const PLAN_WRITE_WRITER_MODEL = "openai/gpt-6-luna";
 export function planWriteRoute(
   plannerModel: string = PLAN_WRITE_PLANNER_MODEL,
   writerModel: string = PLAN_WRITE_WRITER_MODEL,
-  /** The master check's model (PLAN_WRITE_CHECKER_MODEL; unset, the writer's). */
-  checkerModel: string = planWriteCheckerModel(writerModel),
+  /** The master check's model (env PLAN_WRITE_CHECKER_MODEL; unset, Sol at low). */
+  checkerModel: string = planWriteCheckerModel(),
 ) {
   return (_cls: unknown, context: { promptVersion?: string } | undefined): string | undefined => {
     const v = context?.promptVersion ?? "";

@@ -113,7 +113,8 @@ export function renderWritten(form: string, layout: string, out: Written, role?:
   return {
     spec: spec as SlideSpec,
     ...(made.variant ? { variant: made.variant } : {}),
-    structure: made.structure,
+    // A practise slide is a teaching kind (a list) tagged PRACTICE; the look makes room for the tag.
+    structure: role === "practise" ? { ...made.structure, tag: "PRACTICE" } : made.structure,
   };
 }
 

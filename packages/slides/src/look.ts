@@ -493,6 +493,8 @@ function workedCard(els: SlideElement[], t: Theme): SlideElement[] {
 export type LookOptions = {
   /** Split a teaching paragraph into a lead and a card (default). Off when that would not fit. */
   lead?: boolean;
+  /** A kind tag in place of the kind's own (`SlideStructure.tag`). */
+  tag?: string;
 };
 
 export function applyLook(
@@ -505,7 +507,7 @@ export function applyLook(
     return slide;
   }
   if (slide.kind === "title") return cover(slide, t);
-  const label = KIND_TAGS[slide.kind];
+  const label = options.tag ?? KIND_TAGS[slide.kind];
   if (!label && !UNTAGGED_HEADED.has(slide.kind)) return slide;
 
   // The hairline under the heading: the topmost full-width rule. A vocabulary grid's rules between
