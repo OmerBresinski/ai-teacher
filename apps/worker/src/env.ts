@@ -31,6 +31,8 @@ export const EnvSchema = z
     AI_MODEL_SMALL: z.string().min(1).default(DEFAULT_MODEL_IDS.small),
     // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------
     AI_LESSON_COST_CAP_USD: z.coerce.number().nonnegative().default(0.5),
+    /** TEACH-222: unclaimed anonymous users older than this many days are deleted daily. */
+    ANONYMOUS_USER_TTL_DAYS: z.coerce.number().int().min(0).default(14),
     AI_LESSON_TOKEN_CAP: z.coerce.number().int().positive().default(300_000),
     /** Per-worksheet spend cap (ADR 0030 item 1): the `lesson.worksheet` job's own budget, never the lesson's. */
     AI_WORKSHEET_COST_CAP_USD: z.coerce.number().nonnegative().default(0.1),

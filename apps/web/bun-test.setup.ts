@@ -9,3 +9,4 @@
 process.env.VITE_API_URL = "/api";
 process.env.VITE_APP_ENV = "development";
 delete process.env.PROD;
+delete process.env.VITE_TURNSTILE_SITE_KEY;

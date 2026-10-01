@@ -4,7 +4,12 @@ import { type BossJob, createBoss, ensureQueues, type JobsContext, runJob } from
 import { createWorkerDeps } from "./deps";
 import { parseEnv } from "./env";
 import { publicJobFailure } from "./job-errors";
-import { registry } from "./jobs";
+import {
+  ANONYMOUS_CLEANUP_CRON,
+  ANONYMOUS_CLEANUP_QUEUE,
+  registry,
+  runAnonymousCleanup,
+} from "./jobs";
 import { createLogger } from "./logger";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
@@ -62,6 +67,28 @@ for (const name of Object.values(JobName)) {
   );
   logger.info({ queue: name, concurrency: env.WORKER_CONCURRENCY }, "worker registered");
 }
+
+// TEACH-222: the daily anonymous cleanup, a system job on pg-boss cron (not a `JobName`: no
+// Workspace, no job events). `schedule` is idempotent; only the worker runs the cron (ADR 0006).
+await boss.createQueue(ANONYMOUS_CLEANUP_QUEUE);
+await boss.schedule(ANONYMOUS_CLEANUP_QUEUE, ANONYMOUS_CLEANUP_CRON, {}, { tz: "UTC" });
+await boss.work(ANONYMOUS_CLEANUP_QUEUE, { batchSize: 1 }, async () => {
+  await runAnonymousCleanup({
+    sql,
+    storage: deps.storage,
+    ttlDays: env.ANONYMOUS_USER_TTL_DAYS,
+    logger: logger.child({ job: ANONYMOUS_CLEANUP_QUEUE }),
+    signal: shutdown.signal,
+  });
+});
+logger.info(
+  {
+    queue: ANONYMOUS_CLEANUP_QUEUE,
+    cron: ANONYMOUS_CLEANUP_CRON,
+    ttlDays: env.ANONYMOUS_USER_TTL_DAYS,
+  },
+  "worker registered",
+);
 
 const server = Bun.serve({
   port: env.PORT,

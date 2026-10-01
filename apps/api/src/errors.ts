@@ -21,6 +21,10 @@ export const ERROR_CODES = [
   "service_unavailable",
   "internal_error",
   "http_error",
+  // TEACH-222: what an anonymous (signed-out) session is refused.
+  "sign_in_required",
+  "anonymous_limit",
+  "anonymous_capacity",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -115,6 +119,21 @@ export class SourceRefusedError extends HTTPException {
   }
 }
 
+/** The anonymous-session refusals (TEACH-222): each is a `403` with its own envelope code. */
+export type AnonymousRefusalCode = "sign_in_required" | "anonymous_limit" | "anonymous_capacity";
+
+/**
+ * A `403` for an anonymous session, thrown from inside a handler or transaction (e.g. the
+ * re-plan cap) so the envelope carries `code` rather than the generic `forbidden`.
+ */
+export class AnonymousRefusedError extends HTTPException {
+  readonly code: AnonymousRefusalCode;
+  constructor(code: AnonymousRefusalCode, message: string) {
+    super(403, { message });
+    this.code = code;
+  }
+}
+
 export function zodFields(error: ZodError): string[] {
   const fields = new Set<string>();
   for (const issue of error.issues) fields.add(String(issue.path[0] ?? "(root)"));
@@ -200,7 +219,10 @@ export function classifyError(err: unknown): ClassifiedError {
   }
   if (err instanceof HTTPException) {
     const status = err.status as ContentfulStatusCode;
-    const code = STATUS_TO_CODE[status] ?? (status >= 500 ? "internal_error" : "http_error");
+    const code =
+      err instanceof AnonymousRefusedError
+        ? err.code
+        : (STATUS_TO_CODE[status] ?? (status >= 500 ? "internal_error" : "http_error"));
     const message =
       err.message && err.message.trim() !== "" ? err.message : defaultMessageFor(status);
     return {

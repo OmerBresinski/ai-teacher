@@ -54,6 +54,36 @@ const optionalString = z
 const CONSOLE_MAIL_IN_PRODUCTION_ERROR =
   "console is not allowed in production (set ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1 to accept that sign-in links are printed to the log)";
 
+/**
+ * Cloudflare's published always-pass Turnstile test secret. Railway PR environments (copies of
+ * production, but served to Vercel previews on hostnames the real widget does not list) run with
+ * it; see `withPrEnvironmentDefaults`.
+ */
+export const TURNSTILE_TEST_SECRET_KEY = "1x0000000000000000000000000000000AA";
+
+/**
+ * A Railway PR environment (`ai-teacher-pr-352`, `pr-b6d0f8-352`), from the platform-injected
+ * `RAILWAY_ENVIRONMENT_NAME`. Production is named `production` and never matches.
+ */
+export function isRailwayPrEnvironment(name: string | undefined): boolean {
+  return name !== undefined && name !== "production" && /(^|-)pr-/.test(name);
+}
+
+/**
+ * In a Railway PR environment the Turnstile secret is always Cloudflare's test secret: the preview
+ * web build sends test tokens (`scripts/vercel-env.ts`), and a copied production secret would
+ * reject them. Production is untouched and still requires the real key.
+ */
+export function withPrEnvironmentDefaults(
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  if (!isRailwayPrEnvironment(source.RAILWAY_ENVIRONMENT_NAME)) return source;
+  return { ...source, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY };
+}
+
+export const TURNSTILE_REQUIRED_IN_PRODUCTION =
+  "required in production: anonymous and magic-link sign-in are gated by Cloudflare Turnstile (TEACH-243)";
+
 export const COOKIE_SAMESITE_VALUES = ["lax", "none", "strict"] as const;
 
 export const MAIL_PROVIDERS = ["console", "resend"] as const;
@@ -123,8 +153,26 @@ export const EnvSchema = z
     ENABLE_TEST_ROUTES: optionalString,
     /** `"1"` enables the dev/test `x-tj-workspace-id` header shim. Never in production. */
     ALLOW_WORKSPACE_HEADER_SHIM: optionalString,
+    /** TEACH-222: anonymous sessions one client IP may mint per UTC day (school NAT: generous). */
+    ANONYMOUS_SIGNINS_PER_IP_DAILY: z.coerce.number().int().min(1).default(20),
+    /** TEACH-222: anonymous lessons created per UTC day across every Workspace. */
+    ANONYMOUS_LESSONS_DAILY_CAP: z.coerce.number().int().min(0).default(200),
+    /** TEACH-222: the request header holding the client IP (e.g. `cf-connecting-ip`); unset → better-auth's `x-forwarded-for`. */
+    AUTH_IP_HEADER: optionalString,
+    /**
+     * Cloudflare Turnstile secret (TEACH-243). Set: anonymous and magic-link sign-in require a
+     * token (`auth/captcha.ts`). Required in production; unset elsewhere turns the check off.
+     */
+    TURNSTILE_SECRET_KEY: optionalString,
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === "production" && !env.TURNSTILE_SECRET_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["TURNSTILE_SECRET_KEY"],
+        message: TURNSTILE_REQUIRED_IN_PRODUCTION,
+      });
+    }
     if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {
       ctx.addIssue({
         code: "custom",
@@ -201,7 +249,10 @@ function describeIssue(issue: z.core.$ZodIssue): string {
 }
 
 /** Pure: parse `source` (defaults to `process.env`) into a typed `Env` or a list of errors. */
-export function parseEnv(source: Record<string, string | undefined> = process.env): ParseEnvResult {
+export function parseEnv(
+  rawSource: Record<string, string | undefined> = process.env,
+): ParseEnvResult {
+  const source = withPrEnvironmentDefaults(rawSource);
   const result = EnvSchema.safeParse(source);
   if (result.success) return { ok: true, env: result.data };
   const errors = result.error.issues.map((issue) => ({

@@ -475,8 +475,119 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     const me = await app.request(`${BASE}/me`, { headers: { cookie } });
     expect(me.status).toBe(200);
     expect(await me.json()).toEqual({
-      user: { id: userId, email, name: "Factory" },
+      user: { id: userId, email, name: "Factory", isAnonymous: false },
       workspaceId,
     });
+  });
+
+  // --- anonymous sessions (TEACH-223) -----------------------------------------------------------
+
+  // No flag: anonymous sign-in is on with the default env (Greg, 28 Sep 2026).
+  const anonApp = app;
+
+  async function signInAnonymously(target = anonApp) {
+    const res = await target.request(`${BASE}/auth/sign-in/anonymous`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB },
+      body: "{}",
+    });
+    return { res, cookie: cookieHeaderFromResponse(res) };
+  }
+  async function userRow(id: string) {
+    return (
+      await db.sql<{ id: string; is_anonymous: boolean }[]>`
+        select id, is_anonymous from users where id = ${id}`
+    )[0];
+  }
+  async function meBody(target: typeof app, cookie: string) {
+    const res = await target.request(`${BASE}/me`, { headers: { cookie } });
+    expect(res.status).toBe(200);
+    return (await res.json()) as {
+      user: { id: string; email: string; isAnonymous: boolean };
+      workspaceId: string;
+    };
+  }
+
+  test("anonymous sign-in → session cookie, is_anonymous row, personal workspace, /me isAnonymous", async () => {
+    const { res, cookie } = await signInAnonymously();
+    expect(res.status).toBe(200);
+    expect(cookie).toContain("tj.session_token=");
+
+    const me = await meBody(anonApp, cookie);
+    expect(me.user.isAnonymous).toBe(true);
+    expect(await userRow(me.user.id)).toEqual({ id: me.user.id, is_anonymous: true });
+    const ws = await workspacesFor(me.user.id);
+    expect([...ws]).toEqual([{ id: me.workspaceId, name: "Personal" }]);
+
+    // better-auth 1.7.2's placeholder: a random local part on the reserved `.invalid` TLD, so it
+    // can never clash with a teacher's address or receive mail.
+    expect(me.user.email).toMatch(/^[a-z0-9]+@anonymous\.placeholder\.invalid$/);
+  });
+
+  test("anonymous user cannot delete itself: 400 DELETE_ANONYMOUS_USER_DISABLED", async () => {
+    const { cookie } = await signInAnonymously();
+    const { user } = await meBody(anonApp, cookie);
+    const res = await anonApp.request(`${BASE}/auth/delete-anonymous-user`, {
+      method: "POST",
+      headers: { cookie, origin: WEB, "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "DELETE_ANONYMOUS_USER_DISABLED" });
+    expect(await userRow(user.id)).toBeDefined();
+    expect(await workspacesFor(user.id)).toHaveLength(1);
+  });
+
+  /**
+   * Anonymous session, then the same browser completes a magic-link sign-in for a new email. The
+   * verify request carries the anonymous cookie, which is what fires the plugin's link hook.
+   */
+  async function linkAnonymousToMagicLink(target: typeof app, email: string) {
+    const { cookie: anonCookie } = await signInAnonymously(target);
+    const anon = await meBody(target, anonCookie);
+    const link = await requestMagicLink(email);
+    const verify = await target.request(link, {
+      redirect: "manual",
+      headers: { cookie: anonCookie },
+    });
+    expect(verify.status).toBe(302);
+    const cookie = cookieHeaderFromResponse(verify);
+    expect(cookie).toContain("tj.session_token=");
+    return { anon, cookie };
+  }
+
+  test("linking keeps the anonymous user and its workspace (disableDeleteAnonymousUser)", async () => {
+    const { anon, cookie } = await linkAnonymousToMagicLink(anonApp, "linked@example.test");
+
+    const signedIn = await meBody(anonApp, cookie);
+    expect(signedIn.user.email).toBe("linked@example.test");
+    expect(signedIn.user.isAnonymous).toBe(false);
+    expect(signedIn.user.id).not.toBe(anon.user.id);
+    expect(signedIn.workspaceId).not.toBe(anon.workspaceId);
+
+    expect(await userRow(anon.user.id)).toEqual({ id: anon.user.id, is_anonymous: true });
+    expect([...(await workspacesFor(anon.user.id))]).toEqual([
+      { id: anon.workspaceId, name: "Personal" },
+    ]);
+  });
+
+  test("control: with the plugin default the same link deletes the anonymous user and workspace", async () => {
+    // Proves the test above exercises the plugin's link hook: flip the option on a separate
+    // instance and the anonymous user (and, by cascade, its workspace) is gone.
+    const defaultAuth = createAuth({ env: AUTH_ENV, db, mail, logger: silentLogger });
+    const plugin = defaultAuth.options.plugins.find((p) => p.id === "anonymous");
+    if (!plugin?.options) throw new Error("anonymous plugin not registered");
+    expect(plugin.options.disableDeleteAnonymousUser).toBe(true);
+    plugin.options.disableDeleteAnonymousUser = false;
+    const defaultApp = createApp({
+      env: TEST_ENV,
+      db,
+      logger: silentLogger,
+      auth: defaultAuth,
+    });
+
+    const { anon } = await linkAnonymousToMagicLink(defaultApp, "control@example.test");
+    expect(await userRow(anon.user.id)).toBeUndefined();
+    expect(await workspacesFor(anon.user.id)).toHaveLength(0);
   });
 });

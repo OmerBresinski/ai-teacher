@@ -12,7 +12,15 @@ export function meRoutes() {
       return errorResponse(c, 401, "unauthorized", UNAUTHORIZED_MESSAGE, false);
     }
     return c.json(
-      { user: { id: user.id, email: user.email, name: user.name }, workspaceId: workspaceId },
+      {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          isAnonymous: user.isAnonymous === true,
+        },
+        workspaceId: workspaceId,
+      },
       200,
     );
   });

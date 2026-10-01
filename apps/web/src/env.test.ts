@@ -6,6 +6,7 @@ describe("parseEnv", () => {
     expect(parseEnv({}, false)).toEqual({
       VITE_API_URL: "/api",
       VITE_APP_ENV: "development",
+      VITE_TURNSTILE_SITE_KEY: undefined,
       VITE_SHOW_SLOT_PLACEHOLDERS: "1",
     });
   });
@@ -17,8 +18,29 @@ describe("parseEnv", () => {
   it("requires an absolute API url in a production build", () => {
     expect(() => parseEnv({ VITE_API_URL: "/api" }, true)).toThrow(/absolute http\(s\) URL/);
     expect(
-      parseEnv({ VITE_API_URL: "https://api.example.test", VITE_APP_ENV: "production" }, true),
+      parseEnv(
+        {
+          VITE_API_URL: "https://api.example.test",
+          VITE_APP_ENV: "production",
+          VITE_TURNSTILE_SITE_KEY: "0x4AAA",
+        },
+        true,
+      ),
     ).toMatchObject({ VITE_API_URL: "https://api.example.test" });
+  });
+
+  it("requires a Turnstile site key in a production build only (TEACH-243)", () => {
+    const prod = { VITE_API_URL: "https://api.example.test", VITE_APP_ENV: "production" };
+    expect(() => parseEnv(prod, true)).toThrow(/VITE_TURNSTILE_SITE_KEY: required/);
+    expect(() => parseEnv({ ...prod, VITE_TURNSTILE_SITE_KEY: "  " }, true)).toThrow(
+      /VITE_TURNSTILE_SITE_KEY/,
+    );
+    expect(parseEnv({ ...prod, VITE_APP_ENV: "preview" }, true).VITE_TURNSTILE_SITE_KEY).toBe(
+      undefined,
+    );
+    expect(parseEnv({ VITE_TURNSTILE_SITE_KEY: "1x00000000000000000000AA" }, false)).toMatchObject({
+      VITE_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+    });
   });
 });
 
@@ -30,7 +52,14 @@ describe("slot placeholders (look/image-slot)", () => {
     );
     expect(
       slotPlaceholdersEnabled(
-        parseEnv({ VITE_APP_ENV: "production", VITE_API_URL: "https://api.example.test" }, true),
+        parseEnv(
+          {
+            VITE_APP_ENV: "production",
+            VITE_API_URL: "https://api.example.test",
+            VITE_TURNSTILE_SITE_KEY: "0x4AAA",
+          },
+          true,
+        ),
       ),
     ).toBe(true);
   });

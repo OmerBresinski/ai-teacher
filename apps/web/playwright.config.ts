@@ -101,6 +101,9 @@ export default defineConfig({
         // Blank means unset (apps/api/src/env.ts), so e2e always runs with Google off (TEACH-31).
         GOOGLE_CLIENT_ID: "",
         GOOGLE_CLIENT_SECRET: "",
+        // Cloudflare's always-pass Turnstile test secret (TEACH-243): sign-in is gated as in
+        // production, and siteverify accepts any token, including the widget's test token.
+        TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
         STORAGE_ROOT: E2E_STORAGE_ROOT,
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },
@@ -142,7 +145,12 @@ export default defineConfig({
             timeout: 180_000,
             stdout,
             stderr: "pipe" as const,
-            env: { VITE_API_URL: E2E_API_URL, VITE_APP_ENV: "preview" },
+            env: {
+              VITE_API_URL: E2E_API_URL,
+              VITE_APP_ENV: "preview",
+              // Always-pass Turnstile test site key (TEACH-243); the widget runs for real.
+              VITE_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+            },
           },
         ]),
     ...(E2E_KIT

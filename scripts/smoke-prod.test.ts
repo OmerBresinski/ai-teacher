@@ -38,12 +38,20 @@ function fakeApi(): typeof fetch {
     ) {
       return new Response("too large", { status: 413 });
     }
+    // TEACH-243: the captcha plugin answers 400 MISSING_RESPONSE without a Turnstile token.
+    if (url.pathname === "/auth/sign-in/magic-link" && !headers.get("x-captcha-response")) {
+      return Response.json({ code: "MISSING_RESPONSE" }, { status: 400 });
+    }
     // TEACH-31: better-auth answers 404 PROVIDER_NOT_FOUND for a provider it has no credentials for.
     if (url.pathname === "/auth/sign-in/social") {
       const body = typeof init?.body === "string" ? JSON.parse(init.body) : {};
       return body.provider === "google"
         ? Response.json({ url: "https://accounts.google.com/o/oauth2/v2/auth", redirect: false })
         : Response.json({ code: "PROVIDER_NOT_FOUND" }, { status: 404 });
+    }
+    // TEACH-223/243: anonymous sign-in without a Turnstile token is 400 MISSING_RESPONSE.
+    if (url.pathname === "/auth/sign-in/anonymous" && !headers.get("x-captcha-response")) {
+      return Response.json({ code: "MISSING_RESPONSE" }, { status: 400 });
     }
     // TEACH-81: the dev-only ping routes answer 404 before the session guard in production.
     if (url.pathname === "/jobs/ai-ping" || url.pathname === "/jobs/ping") {
@@ -56,8 +64,8 @@ function fakeApi(): typeof fetch {
 describe("smoke-prod", () => {
   test("every case passes against a correctly guarded api", async () => {
     const results = await runSmoke("https://api.example.test", smokeCases(WEB), fakeApi());
-    expect(results.every((r) => r.ok)).toBe(true);
-    expect(results.length).toBe(25);
+    expect(results.filter((r) => !r.ok).map((r) => [r.name, r.actual])).toEqual([]);
+    expect(results.length).toBe(28);
   });
 
   test("catches the 2026-09-05 regression: cross-site header rejected despite allowed Origin", async () => {
@@ -72,6 +80,8 @@ describe("smoke-prod", () => {
       "/me",
       "/events",
       "/jobs/0192f7a0-0000-7000-8000-000000000042/events",
+      "/auth/sign-in/anonymous",
+      "/documents/0192f7a0-0000-7000-8000-000000000042",
       "/jobs/ai-ping",
       "/lessons",
       "/briefs/parse",
@@ -82,7 +92,22 @@ describe("smoke-prod", () => {
       "/sources",
       "/auth/sign-in/magic-link",
       "/auth/sign-in/social",
+      "/auth/sign-in/magic-link",
     ]);
+  });
+
+  test("the Turnstile case fails when magic-link sign-in is not gated (TEACH-243)", async () => {
+    const ungated: typeof fetch = (async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/auth/sign-in/magic-link" && init?.method === "POST") {
+        const body = typeof init.body === "string" ? init.body : "";
+        if (body.length < 1024) return Response.json({ status: true });
+      }
+      return fakeApi()(input, init);
+    }) as typeof fetch;
+    const results = await runSmoke("https://api.example.test", smokeCases(WEB), ungated);
+    const failed = results.filter((r) => !r.ok);
+    expect(failed.map((r) => [r.path, r.actual])).toEqual([["/auth/sign-in/magic-link", 200]]);
   });
 
   test("the google case fails when production has no google credentials (TEACH-31)", async () => {

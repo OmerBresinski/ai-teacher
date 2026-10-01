@@ -100,9 +100,14 @@ describe("infra/env.contract.ts", () => {
     expect(railwayNames("api", "pr")).toContain("WEB_ORIGIN_PATTERNS");
     expect(railwayNames("api", "production")).toContain("WEB_ORIGIN_PATTERNS");
     expect(railwayNames("api", "production")).not.toContain("ENABLE_TEST_ROUTES");
-    expect(vercelNames("production")).toEqual(["VITE_API_URL", "VITE_APP_ENV"]);
+    expect(vercelNames("production")).toEqual([
+      "VITE_API_URL",
+      "VITE_APP_ENV",
+      "VITE_TURNSTILE_SITE_KEY",
+    ]);
     expect(vercelNames("preview")).toEqual([
       "VITE_APP_ENV",
+      "VITE_TURNSTILE_SITE_KEY",
       "RAILWAY_PR_API_URL_TEMPLATE",
       "VITE_API_URL_FALLBACK",
     ]);
