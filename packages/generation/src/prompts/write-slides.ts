@@ -41,7 +41,9 @@ import { type Audience, audienceBlock } from "./shared";
 /* v22 (round E1): a teach chunk's contract line now gives its lines (2 across the full slide, 3 beside a
  * picture: about 55-60 words in three chunks, C2's clearest); the line calibration names a two-line
  * chunk, since D1's chunks ran to four and five lines and four of eleven teach slides overran. */
-export const WRITE_SLIDES_VERSION = "write-slides.v22";
+/* v23 (round F1): a check code adds is written from the slides it checks, shown as written
+ * (`taught`), so its questions ask what those slides show. */
+export const WRITE_SLIDES_VERSION = "write-slides.v23";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -89,6 +91,8 @@ export type WriteSlidesInput = {
     current: Record<string, unknown>;
     kinds: { kind: string; contract: string }[];
   };
+  /** The written slides a check code added asks about (notes left out), in slide order. */
+  taught?: { number: number; written: Record<string, unknown> }[];
 };
 
 /** The writing rules, from "Pitch the content" to the end (reused by stream-lesson). */
@@ -194,5 +198,12 @@ export function writeSlidesPrompt(input: WriteSlidesInput): { system: string; us
         : `slides ${nums[0]} to ${nums[nums.length - 1]}`;
   lines.push(`Write ${which}.`);
   for (const t of input.slides) lines.push("", targetBlock(t, input.table));
+  if (input.taught && input.taught.length > 0) {
+    lines.push(
+      "",
+      `The slides that ${which} checks, as written. Ask only about what they show, as they word it:`,
+      ...input.taught.map((t) => `Slide ${t.number}: ${JSON.stringify(t.written)}`),
+    );
+  }
   return { system: SYSTEM, user: lines.join("\n") };
 }

@@ -119,27 +119,27 @@ const RECHECK_SAMPLE: WriteSlidesInput = {
 
 const PINNED = {
   plan: {
-    version: "plan-lesson.v19",
-    hash: "0e1c09bf4aaf8420ac3eea53ed6726628e1ac648c18fc77127fdc136df9232f6",
+    version: "plan-lesson.v20",
+    hash: "1dc422b7bf51091a034cbcad413414d6d320c3bbe4f4abba3b58488c557df0cd",
   },
   write: {
-    version: "write-slides.v22",
+    version: "write-slides.v23",
     hash: "650e1c54ccb107f17dcc0a4c88b39d931b968f4e1fda6c4a8e1cb6099778e1ed",
   },
   stream: {
-    version: "stream-lesson.v16",
-    hash: "7810c874c85b477120c7a6bb8ad251d72b383e84aff88dd399cc9568ffb066b9",
+    version: "stream-lesson.v17",
+    hash: "efce4c10f61a9e729049e44196ec4e5ff8212a5b952e5a7bbeaf272eec5159f8",
   },
   rewrite: {
-    version: "write-slides.v22",
+    version: "write-slides.v23",
     hash: "a10c8b1cbcd6ebddadb55f7708a60203322a761cae9299f288f989c8507c66d8",
   },
   recheck: {
-    version: "write-slides.v22",
+    version: "write-slides.v23",
     hash: "d22ca9e07ba4bc2be8bad0643c8fbcf4ba0464190ef7a360f9697d80690e72e6",
   },
   check: {
-    version: "write-slides.v22",
+    version: "write-slides.v23",
     hash: "a420a852c1a3c6ac9e493212dd55a5981d3098888fb212bc4e41886faf1c5da4",
   },
   master: {

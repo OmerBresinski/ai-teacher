@@ -38,7 +38,8 @@ const PLAN = {
     row({ role: "objectives", form: "objectives", objectives: [1, 2] }),
     row({ role: "starter", form: "starter-set", parts: 2 }),
     row({ teaches: ["forts"] }),
-    row({ objectives: [2], teaches: ["life"] }),
+    // Serves both objectives, so the hinge after it checks objective 1's teaching (checksToInsert).
+    row({ objectives: [1, 2], teaches: ["life"] }),
     row({ role: "hinge", form: "hinge", parts: 4, tests: ["forts"] }),
     row({ objectives: [2], teaches: ["daily life"] }),
     // No exit slide: the exit ticket is on the worksheet (UX rulings 134–140); a closing check.
@@ -315,7 +316,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
         [],
       );
-      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v16+");
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v17+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
       // Saves: the title, the header (title with objectives), then the slides in order.

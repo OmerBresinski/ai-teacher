@@ -40,7 +40,9 @@ import { WRITE_RULES } from "./write-slides";
  * 1 to 6, photos of the taught thing as taught); no swap changed. */
 /* v16 (round E1): plan-lesson.v19 (a worked example among the teach slides for a method or stepped
  * explanation; practice kept over the hinge when slides are few) and write-slides.v22 (chunk lines). */
-export const STREAM_LESSON_VERSION = "stream-lesson.v16";
+/* v17 (round F1): plan-lesson.v20 (the title photograph is the lesson's subject; a check after each
+ * objective's teaching, code adding any the rows leave out) and write-slides.v23; no swap changed. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v17";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 

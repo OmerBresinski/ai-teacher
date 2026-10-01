@@ -21,12 +21,20 @@ import {
   type MaterialiseMeta,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
+  SAFE,
   withDiagramDrawn,
   withoutPicture,
 } from "@tj/slides";
 import { z } from "zod";
 import { callStructured } from "../call";
-import { blocking, checkPlan, FIXED_SLIDES, type PlanCheck } from "../plan-write/check";
+import {
+  blocking,
+  checkPlan,
+  checksToInsert,
+  FIXED_SLIDES,
+  type PlanCheck,
+} from "../plan-write/check";
+import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
   fitWithRewrite,
   fitWritten,
@@ -334,6 +342,17 @@ export async function planWritePlan(
 
 type Placed = { index: number; plan: PlanSlide; out: Written };
 
+/** Why a written diagram does not draw, in words the writer can act on. */
+export function diagramFault(spec: unknown): string {
+  if (!spec || typeof spec !== "object") return "no diagram was written";
+  const r = DiagramSpecSchema.safeParse(spec);
+  if (r.success) return "it does not fit beside the text; draw it with fewer parts";
+  const issue = r.error.issues[0];
+  return issue
+    ? `${issue.path.join(".") || "the spec"}: ${issue.message}`
+    : "its spec is not valid";
+}
+
 const flat = (v: unknown): string =>
   typeof v === "string"
     ? v
@@ -591,7 +610,13 @@ export async function planWriteSlides(
     objectives = base.facts?.objectives ?? [];
   }
   let table: PlanSlide[] = record.plan.slides;
-  const slideCount = mode === "stream" ? (brief.slideCount ?? DEFAULT_SLIDE_COUNT) : table.length;
+  const requested = mode === "stream" ? (brief.slideCount ?? DEFAULT_SLIDE_COUNT) : table.length;
+  /** The slides to write: the count asked for, plus any check code adds (`checksToInsert`). */
+  let slideCount = requested;
+  /** The stream's slide i (0-based, after the objectives) is this slide number. */
+  const itemSlide: number[] = [];
+  /** Slides code added as checks, by number. */
+  const added = new Set<number>();
   const themeId = base.themeId;
   const cls = planClassFor(base, deps);
   const audience = audienceOf(base);
@@ -843,12 +868,26 @@ export async function planWriteSlides(
       : slide;
   };
 
+  /**
+   * A slide whose picture could not be supplied: its words across the whole slide, never in a
+   * column beside an empty half (E1 y8 s3). Only the body under the heading widens.
+   */
+  const fullWidth = (slide: Slide): Slide => ({
+    ...slide,
+    elements: slide.elements.map((e) =>
+      e.type === "text" && e.style.preset === "body" && e.x === SAFE.x && e.w < SAFE.w
+        ? { ...e, w: SAFE.w }
+        : e,
+    ),
+  });
+
   /** A slide drawn again from its placed record (form and fields now), keeping id and photo. */
   const redraw = (index: number, meta: MaterialiseMeta) =>
     updateSlide(index, (old) => {
       const p = placed.find((x) => x.index === index);
       if (!p) return old;
-      const fresh = drawn(p.plan.form, p.plan.layout, p.out, meta, p.plan.role);
+      const made = drawn(p.plan.form, p.plan.layout, p.out, meta, p.plan.role);
+      const fresh = noPicture.includes(index + 1) ? fullWidth(made) : made;
       const photo = photoOf.get(index);
       return { ...(photo ? withPlaced(fresh, photo) : fresh), id: old.id };
     });
@@ -1203,6 +1242,44 @@ export async function planWriteSlides(
         fitted = { out: again.out, fit: fitWritten(s.form, s.layout, again.out) };
       }
     }
+    // A diagram slot whose spec does not draw is asked for ONCE more, told why, before the slide
+    // gives up its picture: the taught drawing is worth one call.
+    if (s.form === "diagram-slot" && !diagramDraws(s.layout, fitted.out)) {
+      const why = diagramFault(fitted.out.diagram);
+      const shape = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape;
+      try {
+        const { output } = await callWriter(
+          {
+            ...writerInput([target(n)]),
+            rewrite: {
+              slide: target(n),
+              field: "diagram",
+              failure: `its diagram does not draw (${why}), so the slide would show no picture`,
+              current: fitted.out,
+              reason: "check",
+            },
+          },
+          z.object({ diagram: shape.diagram as z.ZodType }) as z.ZodType<Written>,
+          MAX_OUTPUT_TOKENS_REWRITE,
+        );
+        const next = { ...fitted.out, diagram: output.diagram };
+        const ok = diagramDraws(s.layout, next);
+        deps.logger.info(
+          { stage: "generate", call: "diagram-requery", slide: n, why, ok },
+          "diagram written again",
+        );
+        if (ok) {
+          const refit = fitWritten(s.form, s.layout, next);
+          if (refit.ok || !fitted.fit.ok) fitted = { ...fitted, out: next, fit: refit };
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") throw error;
+        deps.logger.warn(
+          { stage: "generate", call: "diagram-requery", slide: n, err: safeError(error) },
+          "diagram re-write failed",
+        );
+      }
+    }
     // An empty picture or drawing never reaches the class: a figure brief (drawn later by no step
     // here), a diagram spec that does not draw, or a photo with no search to fill it takes the
     // no-picture layout, its text full width.
@@ -1234,13 +1311,14 @@ export async function planWriteSlides(
     if (s.form === "diagram-slot" && fitted.out.diagram && typeof fitted.out.diagram === "object") {
       diagrams[String(n)] = fitted.out.diagram;
     }
-    const slide = drawn(
+    const made = drawn(
       s.form,
       s.layout,
       fitted.out,
       { promptVersion: WRITE_SLIDES_VERSION, model: modelId, at: at() },
       s.role,
     );
+    const slide = noPicture.includes(n) ? fullWidth(made) : made;
     if (!fitted.fit.ok) {
       findings.push({
         check: "fit",
@@ -1323,7 +1401,7 @@ export async function planWriteSlides(
     void flush();
   };
 
-  const runBatch = async (batch: number[]) => {
+  const runBatch = async (batch: number[], extra: Partial<WriteSlidesInput> = {}) => {
     const targets = batch.map(target);
     const schema = z.object(
       Object.fromEntries(
@@ -1333,7 +1411,7 @@ export async function planWriteSlides(
     for (const attempt of [1, 2] as const) {
       try {
         const { output, modelId } = await callWriter(
-          writerInput(targets),
+          { ...writerInput(targets), ...extra },
           schema,
           WRITER_OUTPUT_TOKENS_BASE + WRITER_OUTPUT_TOKENS_PER_SLIDE * batch.length,
         );
@@ -1378,8 +1456,39 @@ export async function planWriteSlides(
       })),
       ...c.problems,
     ];
-    record = { plan: c.plan, switched: c.switched, problems, repaired: false };
-    table = [...c.plan.slides];
+    // The checks code guarantees: one after each objective's teaching where the plan has none,
+    // each its own slide straight after that teaching (the stream's own slides keep their order).
+    const inserts = checksToInsert(c.plan.slides);
+    const at = new Map(inserts.map((x) => [x.after, x.row]));
+    const rows: PlanSlide[] = [];
+    c.plan.slides.forEach((row, i) => {
+      rows.push(row);
+      if (i >= FIXED_SLIDES) itemSlide.push(rows.length);
+      const check = at.get(i + 1);
+      if (check) {
+        rows.push(check);
+        added.add(rows.length);
+      }
+    });
+    slideCount = requested + inserts.length;
+    if (inserts.length > 0) {
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "checks",
+          added: [...added],
+          after: inserts.map((x) => x.after),
+        },
+        "checks added after objectives' teaching",
+      );
+    }
+    record = {
+      plan: { ...c.plan, slides: rows },
+      switched: c.switched,
+      problems,
+      repaired: false,
+    };
+    table = [...rows];
     objectives =
       state.pinObjectives && (base.facts?.objectives.length ?? 0) > 0
         ? (base.facts?.objectives ?? [])
@@ -1440,8 +1549,34 @@ export async function planWriteSlides(
     const landed = new Set<number>();
     const pending: Promise<void>[] = [];
     let header = false;
+    /** Each slide's landing, so a check code added waits for the teaching it checks. */
+    const landing = new Map<number, Promise<void>>();
+    /** A check code added: written once the slides it follows have landed, from their words. */
+    const writeCheck = (n: number) => {
+      if (landed.has(n)) return;
+      landed.add(n);
+      const row = table[n - 1] as PlanSlide;
+      const before = [...landing.entries()].filter(([m]) => m < n).map(([, p]) => p);
+      pending.push(
+        Promise.allSettled(before).then(() => {
+          const taught = placed
+            .filter(
+              (p) =>
+                p.index < n - 1 &&
+                p.plan.role === "teach" &&
+                p.plan.objectives.some((o) => row.objectives.includes(o)),
+            )
+            .sort((a, b) => a.index - b.index)
+            .map((p) => {
+              const { notes: _notes, ...shown } = p.out;
+              return { number: p.index + 1, written: shown };
+            });
+          return runBatch([n], { taught });
+        }),
+      );
+    };
     const close = (i: number, raw: unknown) => {
-      const n = i + 1 + FIXED_SLIDES;
+      const n = itemSlide[i] ?? i + 1 + FIXED_SLIDES + added.size;
       if (landed.has(n)) return;
       if (n > slideCount) {
         deps.logger.warn({ stage: "generate", slide: n }, "stream wrote a slide past the count");
@@ -1467,7 +1602,10 @@ export async function planWriteSlides(
       }
       table[n - 1] = got ? { ...row, form: got.form, layout: got.layout } : row;
       if (got?.out) {
-        pending.push(land(n, got.out, streamModel));
+        const p = land(n, got.out, streamModel);
+        landing.set(n, p);
+        pending.push(p);
+        if (added.has(n + 1)) writeCheck(n + 1);
         return;
       }
       deps.logger.warn(
@@ -1513,6 +1651,7 @@ export async function planWriteSlides(
         "stream failed after its header; the rest is written by writers",
       );
     }
+    for (const n of added) writeCheck(n);
     for (let n = FIXED_SLIDES + 1; n <= slideCount; n++) {
       if (landed.has(n)) continue;
       landed.add(n);
@@ -1533,7 +1672,7 @@ export async function planWriteSlides(
     }
   } else {
     const numbers = table.map((_, i) => i + 1).filter((n) => n > FIXED_SLIDES);
-    await Promise.all(batchesOf(numbers).map(runBatch));
+    await Promise.all(batchesOf(numbers).map((b) => runBatch(b)));
   }
   throwIfAborted(deps.signal);
   await flush();
@@ -1863,7 +2002,7 @@ export async function planWriteSlides(
     repaired: record.repaired,
     slides: report.sort((a, b) => a.slide - b.slide),
     mode,
-    requested: slideCount,
+    requested,
     delivered: lesson.slides.length - missing.length,
     fitFirstTime: report.filter((r) => r.fits && !r.rewritten).length,
     ...(stream.headerMs !== undefined

@@ -12,6 +12,7 @@ import {
   slotContract,
   specOfWriter,
   THEMES,
+  withDiagramDrawn,
 } from "@tj/slides";
 import { withAnswersReveal } from "../planner/coded-slides";
 import { isSetForm, partsField, type SetForm } from "./menu";
@@ -181,10 +182,43 @@ function setFailing(spec: SlideSpec): string[] {
   ).map((t) => `${t.id}: overflow`);
 }
 
+/**
+ * A diagram slot whose spec draws is laid out again around the drawing (`withDiagramDrawn`): the
+ * words move to the other column with the drawing's own box, so the slot's measure alone can pass a
+ * body that overruns once drawn (E1 y4 s4 on chalk, crayon and beacon). Each theme's drawn slide is
+ * judged at body size, as the class sees it.
+ */
+function drawnFailing(form: string, layout: string, out: Written): string[] {
+  const spec = out.diagram;
+  if (form !== "diagram-slot" || !spec || typeof spec !== "object") return [];
+  const r = renderWritten(form, layout, out);
+  return THEMES.flatMap((theme) => {
+    const slide = materialiseSlide(r.spec, theme.id, FIT_META, undefined, r.variant, r.structure);
+    const drawn = withDiagramDrawn(slide, theme, spec);
+    if (drawn === slide) return [];
+    const f = slideFits(drawn, theme, 0);
+    if (f.ok) return [];
+    const why = [
+      ...(f.overflow.length > 0 ? ["overflow"] : []),
+      ...(f.overlaps > 0 ? ["overlap"] : []),
+    ];
+    return [`${theme.id}: ${why.join(", ") || "overflow"}`];
+  });
+}
+
 function failingLines(form: string, layout: string, out: Written): string[] {
   if (isSetForm(form)) return setFailing(renderWritten(form, layout, out).spec);
   const { notes: _notes, ...fields } = out;
-  return contractFits(slotContract(form as PaletteFormId, layout), drawable(form, fields)).failing;
+  const lines = contractFits(
+    slotContract(form as PaletteFormId, layout),
+    drawable(form, fields),
+  ).failing;
+  const seen = new Set(lines.map((l) => l.slice(0, l.indexOf(": "))));
+  // One line per theme: a theme the slot measure already fails keeps its own reasons.
+  return [
+    ...lines,
+    ...drawnFailing(form, layout, out).filter((l) => !seen.has(l.split(": ")[0] ?? "")),
+  ];
 }
 
 /** A probe value: every text cut to its first two words (measured only, never saved). */
@@ -243,7 +277,17 @@ export function fitWritten(form: string, layout: string, out: Written): FitResul
   const lines = failingLines(form, layout, out);
   if (lines.length === 0) return { ok: true };
   const found = lines.map((l) => attribute(l, form, layout, out));
-  const general = found.filter((f) => GENERAL.test(f.what));
+  // A heading on two lines pushes everything under it down: on a theme where it wraps, an overflow
+  // is the heading's, and the re-write goes to the heading before the body is touched.
+  const wraps = new Map(found.filter((f) => f.field === "heading").map((f) => [f.theme, f]));
+  for (const f of found) {
+    const h = wraps.get(f.theme);
+    if (h && f !== h && GENERAL.test(f.what)) {
+      f.field = "heading";
+      f.what = `${h.what}, so the text under it runs past the slide's safe area`;
+    }
+  }
+  const general = found.filter((f) => f.field !== "heading" && GENERAL.test(f.what));
   if (general.length > 0) {
     const at = locate(form, layout, out);
     if (at) {
@@ -298,11 +342,26 @@ export async function fitWithRewrite(
   const again = fitWritten(form, layout, next);
   if (again.ok) return { out: next, fit: again, rewritten: { field, failure, ok: true } };
   const better = again.themes.length <= first.themes.length;
-  return {
-    out: better ? next : out,
-    fit: better ? again : first,
-    rewritten: { field, failure, ok: false },
-  };
+  const kept = better ? next : out;
+  const keptFit = better ? again : first;
+  // A second re-write, told what the slide shows now: a heading that still wraps, or the field the
+  // first re-write uncovered (the body under a heading now on one line). Any other field keeps its
+  // one re-write (a hinge then goes to its re-check, UX ruling 136).
+  if (!keptFit.ok && (keptFit.field === "heading" || keptFit.field !== field)) {
+    const patch2 = await rewrite(keptFit.field, keptFit.failure).catch(() => undefined);
+    if (patch2 && keptFit.field in patch2) {
+      const third = { ...kept, [keptFit.field]: patch2[keptFit.field] };
+      const fit3 = fitWritten(form, layout, third);
+      if (fit3.ok || fit3.themes.length <= keptFit.themes.length) {
+        return {
+          out: third,
+          fit: fit3,
+          rewritten: { field: keptFit.field, failure: keptFit.failure, ok: fit3.ok },
+        };
+      }
+    }
+  }
+  return { out: kept, fit: keptFit, rewritten: { field, failure, ok: false } };
 }
 
 const keyText = (s: unknown) =>

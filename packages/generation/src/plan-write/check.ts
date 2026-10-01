@@ -192,3 +192,73 @@ export function blocking(problems: readonly PlanProblem[]): PlanProblem[] {
 /** Whether a form is one the writer fills (not the title or the objectives, which code prints). */
 export const writtenForm = (form: string) => form !== "title" && form !== "objectives";
 export { isSetForm };
+
+/** The roles that check what was just taught: a code-placed check counts only these. */
+const CHECKING_ROLES = new Set(["check", "hinge", "practise"]);
+
+/** One check code adds to a plan: its row, placed straight after the slide numbered `after`. */
+export type InsertedCheck = { after: number; row: PlanSlide };
+
+/**
+ * The checks code guarantees (UX rulings 135 and 136): after each objective's teaching, before
+ * the next teach slide, one row that checks it (a check, the hinge or the practise slide, whichever
+ * the plan put there). Where the plan has none, a short check-set on that objective's taught ideas
+ * goes straight after its last teach slide. Teach slides are never taken for it: the lesson grows
+ * by the checks added. Objectives taught by the same last slide share one check.
+ */
+export function checksToInsert(slides: readonly PlanSlide[]): InsertedCheck[] {
+  const teachOf = new Map<number, number[]>();
+  slides.forEach((s, i) => {
+    if (i < FIXED_SLIDES || s.role !== "teach") return;
+    for (const o of s.objectives) teachOf.set(o, [...(teachOf.get(o) ?? []), i]);
+  });
+  const byLast = new Map<number, number[]>();
+  for (const [o, rows] of [...teachOf.entries()].sort((a, b) => a[0] - b[0])) {
+    const last = Math.max(...rows);
+    const taught = new Set(rows.flatMap((i) => slides[i]?.teaches ?? []));
+    let checked = false;
+    for (let j = last + 1; j < slides.length; j++) {
+      const s = slides[j] as PlanSlide;
+      if (s.role === "teach") break;
+      if (
+        CHECKING_ROLES.has(s.role) &&
+        (s.objectives.includes(o) || s.tests.some((t) => taught.has(t)))
+      ) {
+        checked = true;
+        break;
+      }
+    }
+    if (!checked) byLast.set(last, [...(byLast.get(last) ?? []), o]);
+  }
+  return [...byLast.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([last, objs]) => {
+      const tests = [
+        ...new Set(
+          slides.flatMap((s, i) =>
+            i >= FIXED_SLIDES &&
+            i <= last &&
+            s.role === "teach" &&
+            s.objectives.some((o) => objs.includes(o))
+              ? s.teaches
+              : [],
+          ),
+        ),
+      ];
+      return {
+        after: last + 1,
+        row: {
+          role: "check",
+          objectives: objs,
+          tests,
+          teaches: [],
+          purpose: `quick check on objective ${objs.join(" and ")} as just taught`,
+          parts: 3,
+          form: "check-set",
+          layout: "default",
+          imageBrief: null,
+          figureBrief: null,
+        },
+      };
+    });
+}
