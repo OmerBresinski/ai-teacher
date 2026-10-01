@@ -36,6 +36,7 @@ import {
 } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
+import { approxTokens, oakPackFor } from "../oak/pack";
 import {
   blocking,
   checkPlan,
@@ -273,6 +274,20 @@ export async function planWritePlan(
   const brief = lesson.brief;
   if (!brief) throw new Error("plan-write: the lesson has no brief");
   const startedAt = new Date(deps.now()).toISOString();
+  // spike/k1-oak (OAK_PACKS=1): the lesson carries the Oak attribution from the start; the
+  // planner reads the pack itself (oakPackFor again, from the disk cache) where its prompt is built.
+  const oak = oakPackFor(lesson);
+  if (oak) {
+    lesson = { ...lesson, contentCredits: oak.credits };
+    deps.logger.info(
+      {
+        stage: "plan",
+        oak: oak.pack.lessons.map((l) => ({ slug: l.slug, match: l.match, licence: l.licence })),
+        tokens: approxTokens(oak.text),
+      },
+      "oak pack",
+    );
+  }
   if (!existingTitle(lesson)) {
     const { generation: _none, ...bare } = lesson;
     lesson = { ...bare, slides: [materialiseTitle(bare, deps)] };
@@ -291,6 +306,7 @@ export async function planWritePlan(
     ...(brief.classContext?.priorKnowledge
       ? { priorKnowledge: brief.classContext.priorKnowledge }
       : {}),
+    ...(oak ? { reference: oak.text } : {}),
     slideCount,
     menu,
   };
@@ -681,6 +697,8 @@ export async function planWriteSlides(
   const themeId = base.themeId;
   const cls = planClassFor(base, deps);
   const audience = audienceOf(base);
+  /** spike/k1-oak: the planner's Oak reference block (OAK_PACKS=1 and a match), else undefined. */
+  const oakReference = oakPackFor(base)?.text;
   const startedAt = Date.parse(base.generation?.startedAt ?? "") || Date.now();
   const at = () => deps.now().toISOString();
   const findings: Finding[] = [...(base.generation?.findings ?? [])];
@@ -1776,6 +1794,7 @@ export async function planWriteSlides(
       ...(brief.classContext?.priorKnowledge
         ? { priorKnowledge: brief.classContext.priorKnowledge }
         : {}),
+      ...(oakReference ? { reference: oakReference } : {}),
       slideCount,
       menu,
     };

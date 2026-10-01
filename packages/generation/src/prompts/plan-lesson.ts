@@ -46,7 +46,12 @@ import { type Audience, audienceBlock } from "./shared";
 /* v21 (round I1): the diagram-slot shapes name the code-drawn templates (particle arrangement, storm
  * hydrograph, timeline, layers, cycle, river valley or meander), so the planner gives those ideas a
  * diagram slot; the palette's diagram contract lists the templates and when each fits. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v21";
+/* v22 (round K1, spike/k1-oak): an optional reference block in the user turn (`reference`, an Oak
+ * knowledge pack rendered by oak/pack.ts behind OAK_PACKS=1), placed after the teacher's answers and
+ * before the Slides line. The block carries its own use line (write every word yourself; correct
+ * each "Pupils may think" line on a teach slide; questions in the style of its exit items). With
+ * no pack the prompt text is v21's byte for byte; the system text never changes. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v22";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -66,6 +71,8 @@ export type PlanLessonInput = {
   /** The brief's clarifying answers, as the teacher gave them. */
   answers?: Record<string, string>;
   priorKnowledge?: string;
+  /** Reference material for this topic (an Oak knowledge pack, plan-lesson.v22), rendered with its use line. */
+  reference?: string;
   /** Exactly this many slides, the title included. */
   slideCount: number;
   menu: PlanMenuEntry[];
@@ -335,6 +342,7 @@ export function planLessonPrompt(input: PlanLessonInput): { system: string; user
   }
   const answers = Object.values(input.answers ?? {}).filter((a) => a.trim().length > 0);
   if (answers.length > 0) lines.push(`The teacher's answers: ${answers.join("; ")}`);
+  if (input.reference?.trim()) lines.push("", input.reference.trim(), "");
   lines.push(
     `Slides: ${n}. Slide 1 is the title and slide 2 the objectives; write ${n - FIXED_ROWS} rows, for slides 3 to ${n}. ${teachRange(n - FIXED_ROWS)} of them teach.`,
   );

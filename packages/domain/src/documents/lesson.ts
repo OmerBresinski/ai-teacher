@@ -63,7 +63,34 @@ export type Lesson = {
   sources?: SourceRef[];
   /** ADR 0029: the plan revision the teacher is looking at, and whether it is confirmed. */
   plan?: LessonPlan;
+  /**
+   * spike/k1-oak: attribution for curriculum content the planner drew on (an Oak lesson under OGL
+   * v3), for the info dot and the export credits (ruling 139 style). Never shown on a slide.
+   */
+  contentCredits?: ContentCredit[];
 };
+
+/** One attribution line for reference content a lesson was planned from. */
+export type ContentCredit = {
+  provider: "oak";
+  /** The source lesson's slug. */
+  slug: string;
+  title: string;
+  /** The licence's attribution statement, as the licensor words it. */
+  text: string;
+  licenceUrl: string;
+  /** The source lesson's page. */
+  url?: string;
+};
+
+export const ContentCreditSchema = z.strictObject({
+  provider: z.literal("oak"),
+  slug: z.string(),
+  title: z.string(),
+  text: z.string(),
+  licenceUrl: z.url(),
+  url: z.url().optional(),
+});
 
 export type LessonArtefacts = { worksheetId: Id };
 
@@ -118,6 +145,8 @@ export const LessonSchema = z.object({
   sources: z.array(SourceRefSchema).optional(),
   // ADR 0029.
   plan: LessonPlanSchema.optional(),
+  // spike/k1-oak.
+  contentCredits: z.array(ContentCreditSchema).optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {
