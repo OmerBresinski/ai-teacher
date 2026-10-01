@@ -43,9 +43,17 @@ async function recordEveryFrame(page: Page, selector: string, read: "offsetY" | 
   return () => page.evaluate(() => (window as unknown as { recorded: number[] }).recorded);
 }
 
+/** A script served by the app itself; not Turnstile's cross-origin loader or its blob: workers. */
+function isOwnScript(page: Page, url: string): boolean {
+  return new URL(url).origin === new URL(page.url()).origin;
+}
+
 test("the cast arrives from behind the card and keeps moving", async ({ page }) => {
+  // Only this app's own chunks: third-party scripts (Turnstile) can redirect and have no body.
   const gsap = page.waitForResponse(async (response) =>
-    response.request().resourceType() === "script"
+    response.request().resourceType() === "script" &&
+    isOwnScript(page, response.url()) &&
+    response.ok()
       ? (await response.text()).includes("GreenSock")
       : false,
   );
@@ -108,17 +116,26 @@ test("the card eases to its new height when the link is sent", async ({ page }) 
   await page.goto("/sign-in");
   const card = page.locator("[data-sign-in-card]");
   await page.getByLabel("Email address").fill(uniqueEmail("height"));
+  // Turnstile's invisible check finishes first, as it would while a person types; otherwise the
+  // send waits on it and the ease lands after the 1.5 s recording.
+  await expect(page.locator('[name="cf-turnstile-response"]')).not.toHaveValue("");
   const before = (await card.boundingBox())?.height ?? 0;
-  // The card's height on every frame for 1.5 s, started before the click.
+  // The card's height on every frame, started before the click, until 1.5 s after it first moves
+  // (the api checks the Turnstile token with Cloudflare before it sends, which can take over a
+  // second), at most 8 s.
   const recorded = page.evaluate(
     () =>
       new Promise<number[]>((resolve) => {
         const element = document.querySelector("[data-sign-in-card]");
         const seen: number[] = [];
         const started = performance.now();
+        let moved: number | undefined;
         const step = () => {
+          const now = performance.now();
           if (element) seen.push(element.getBoundingClientRect().height);
-          if (performance.now() - started < 1500) requestAnimationFrame(step);
+          if (moved === undefined && seen.length > 1 && seen.at(-1) !== seen[0]) moved = now;
+          const recording = moved === undefined ? now - started < 8000 : now - moved < 1500;
+          if (recording) requestAnimationFrame(step);
           else resolve(seen);
         };
         step();
@@ -128,7 +145,10 @@ test("the card eases to its new height when the link is sent", async ({ page }) 
   await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
   const heights = await recorded;
   const after = heights.at(-1) ?? 0;
-  expect(Math.abs(after - before), `form ${before}px, sent ${after}px`).toBeGreaterThan(8);
+  expect(
+    Math.abs(after - before),
+    `form ${before}px, sent ${after}px, ${heights.length} frames: ${[...new Set(heights.map(Math.round))].join(",")}`,
+  ).toBeGreaterThan(8);
   // Frames strictly between the two heights: it travelled rather than jumped.
   const [low, high] = [Math.min(before, after), Math.max(before, after)];
   const between = new Set(heights.filter((h) => h > low + 1 && h < high - 1).map(Math.round));
@@ -148,7 +168,7 @@ test("with reduced motion the cast never moves and GSAP is never fetched", async
   await page.waitForTimeout(800);
   expect(await bodyOf(page, "support")).toBe(first);
   // Every chunk this page fetched, read for GSAP's banner: none of them may be GSAP.
-  for (const url of scripts) {
+  for (const url of scripts.filter((url) => isOwnScript(page, url))) {
     const body = await (await page.request.get(url)).text();
     expect(body, url).not.toContain("GreenSock");
   }

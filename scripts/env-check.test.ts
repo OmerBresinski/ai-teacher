@@ -38,6 +38,12 @@ const VERCEL_PREVIEW_JSON = JSON.stringify({
       target: ["preview"],
     },
     { key: "VITE_APP_ENV", value: "preview", type: "encrypted", target: ["preview"] },
+    {
+      key: "VITE_TURNSTILE_SITE_KEY",
+      value: "SECRETVALUE123",
+      type: "encrypted",
+      target: ["production", "preview"],
+    },
     { key: "VITE_API_URL", value: "SECRETVALUE123", type: "encrypted", target: ["production"] },
   ],
 });
@@ -98,8 +104,12 @@ describe("parseVercelEnv*", () => {
       "RAILWAY_PR_API_URL_TEMPLATE",
       "VITE_API_URL_FALLBACK",
       "VITE_APP_ENV",
+      "VITE_TURNSTILE_SITE_KEY",
     ]);
-    expect(parseVercelEnvJson(VERCEL_PREVIEW_JSON, "production")).toEqual(["VITE_API_URL"]);
+    expect(parseVercelEnvJson(VERCEL_PREVIEW_JSON, "production")).toEqual([
+      "VITE_API_URL",
+      "VITE_TURNSTILE_SITE_KEY",
+    ]);
     expect(parseVercelEnvJson("Retrieving project…", "preview")).toBeNull();
     expect(parseVercelEnvJson("{}", "preview")).toBeNull();
   });
@@ -191,6 +201,7 @@ describe("targets and reports", () => {
     ) as ReturnType<typeof buildTargets>[number];
     const report = compareNames(target, ["VITE_APP_ENV"]);
     expect(fixCommands(report)).toEqual([
+      "vercel env add VITE_TURNSTILE_SITE_KEY preview   # then paste <value>",
       "vercel env add RAILWAY_PR_API_URL_TEMPLATE preview   # then paste <value>",
       "vercel env add VITE_API_URL_FALLBACK preview   # then paste <value>",
     ]);
@@ -219,8 +230,9 @@ describe("targets and reports", () => {
     const target = buildTargets({}).find(
       (t) => t.provider === "vercel" && t.environment === "production",
     ) as ReturnType<typeof buildTargets>[number];
-    expect(formatReport(compareNames(target, ["VITE_API_URL", "VITE_APP_ENV"]), false)).toEqual([
-      "ok    Vercel teaching-journey-web / production: 2 expected name(s) present, none extra",
+    const names = ["VITE_API_URL", "VITE_APP_ENV", "VITE_TURNSTILE_SITE_KEY"];
+    expect(formatReport(compareNames(target, names), false)).toEqual([
+      "ok    Vercel teaching-journey-web / production: 3 expected name(s) present, none extra",
     ]);
   });
 });

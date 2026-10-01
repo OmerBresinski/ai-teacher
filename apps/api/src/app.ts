@@ -16,7 +16,15 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
-import type { Auth } from "./auth/auth";
+import { anonymousGuard } from "./auth/anonymous-guard";
+import {
+  anonymousSignInLimits,
+  countAnonymousLessonsToday,
+  lessonsDailyCap,
+  signinsPerIpDaily,
+} from "./auth/anonymous-limits";
+import { ANONYMOUS_SIGN_IN_PATH, AUTH_BASE_PATH, type Auth } from "./auth/auth";
+import { ipSourceDescription } from "./auth/client-ip";
 import { requireSession } from "./auth/require-session";
 import { smallJsonBodyLimit } from "./body-limits";
 import type { AppEnv } from "./context";
@@ -60,7 +68,15 @@ import { type ExtractionRunner, InProcessExtractionRunner } from "./sources/runn
 export interface CreateAppOptions {
   env: Pick<Env, "NODE_ENV" | "LOG_LEVEL" | "MAIL_PROVIDER" | "WEB_ORIGIN"> &
     Partial<
-      Pick<Env, "ALLOW_WORKSPACE_HEADER_SHIM" | "ENABLE_TEST_ROUTES" | "WEB_ORIGIN_PATTERNS">
+      Pick<
+        Env,
+        | "ALLOW_WORKSPACE_HEADER_SHIM"
+        | "ENABLE_TEST_ROUTES"
+        | "WEB_ORIGIN_PATTERNS"
+        | "ANONYMOUS_SIGNINS_PER_IP_DAILY"
+        | "ANONYMOUS_LESSONS_DAILY_CAP"
+        | "AUTH_IP_HEADER"
+      >
     >;
   /**
    * `sql` for `/health` and the session guard; `unsafeDb` for the document routes, which scope it
@@ -163,7 +179,7 @@ function buildApp({
     origin: (origin) => (allowed(origin) ? origin : null),
     credentials: true,
     maxAge: 600,
-    allowHeaders: ["Content-Type", "x-request-id", "Last-Event-ID"],
+    allowHeaders: ["Content-Type", "x-request-id", "Last-Event-ID", "x-captcha-response"],
     exposeHeaders: ["x-request-id"],
   });
   app.use(async (c, next) => {
@@ -195,10 +211,30 @@ function buildApp({
   if (auth) {
     // Count bytes without imposing JSON: OAuth POST callbacks may be URL-encoded forms.
     app.use("/auth/*", smallJsonBodyLimit());
+    // TEACH-222: signed-out lessons are always on. Before better-auth creates an anonymous user,
+    // the global daily cap (403 anonymous_capacity) and the per-IP daily ceiling (429
+    // rate_limited) run; Turnstile (TEACH-243) is then checked inside better-auth.
+    // Matched on the normalised path so a trailing slash or other casing cannot skip the limits.
+    const anonymousSignIn = `${AUTH_BASE_PATH}${ANONYMOUS_SIGN_IN_PATH}`;
+    const limits = anonymousSignInLimits(db, env);
+    app.use("/auth/*", async (c, next) => {
+      if (c.req.path.replace(/\/+$/, "").toLowerCase() !== anonymousSignIn) return next();
+      return limits(c, next);
+    });
+    logger.info(
+      {
+        ...ipSourceDescription(env),
+        perIpDaily: signinsPerIpDaily(env),
+        lessonsDailyCap: lessonsDailyCap(env),
+      },
+      "anonymous lessons: client IP source for the per-IP ceiling",
+    );
     app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
   }
   const csrf = rejectCrossSiteRequests(allowed);
   const guard = requireSession(auth, db, { allowHeaderShim });
+  // TEACH-222: after the session guard, anonymous sessions get the default-deny allow-list.
+  const anonymous = anonymousGuard();
   // TEACH-81: the diagnostic ping routes do not exist in production. Registered before the
   // `/jobs/*` guards so the answer is 404, not a 401 that says the route is there.
   if (!devJobRoutesEnabled(env)) {
@@ -223,6 +259,7 @@ function buildApp({
   for (const path of PROTECTED_PATHS) {
     app.use(path, csrf);
     app.use(path, guard);
+    app.use(path, anonymous);
   }
   // Every request on these ends in a model call (ADR 0024 §15): one shared per-Workspace limiter.
   app.use("/jobs/ai-ping", rateLimitByWorkspace(aiLimiter));
@@ -262,7 +299,16 @@ function buildApp({
       ),
     )
     .route("/", documentRoutes(db.unsafeDb))
-    .route("/", lessonRoutes(db.unsafeDb, eventsRuntime, { worksheetSingletonS }))
+    .route(
+      "/",
+      lessonRoutes(db.unsafeDb, eventsRuntime, {
+        worksheetSingletonS,
+        anonymous: {
+          dailyCap: lessonsDailyCap(env),
+          countToday: () => countAnonymousLessonsToday(db),
+        },
+      }),
+    )
     .route("/", briefRoutes(ai));
 
   // TEACH-22/121: test-only routes, outside the RPC contract (`AppType` stays clean). The seed

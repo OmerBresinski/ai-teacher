@@ -4,6 +4,7 @@ import {
   resolveSiteArgs,
   resolveWebEnv,
   shellQuote,
+  TURNSTILE_TEST_SITE_KEY,
   toExportLines,
 } from "./vercel-env";
 
@@ -105,8 +106,24 @@ describe("shell output", () => {
         source: "railway-pr-template",
       }),
     ).toBe(
-      "export VITE_APP_ENV='preview'\nexport VITE_API_URL='https://api-ai-teacher-pr-1.up.railway.app'",
+      "export VITE_APP_ENV='preview'\nexport VITE_API_URL='https://api-ai-teacher-pr-1.up.railway.app'\n" +
+        `export VITE_TURNSTILE_SITE_KEY='${TURNSTILE_TEST_SITE_KEY}'`,
     );
+  });
+
+  test("only a preview on its Railway PR api gets the Turnstile test site key (TEACH-223)", () => {
+    for (const source of ["explicit", "fallback"] as const) {
+      expect(
+        toExportLines({ VITE_APP_ENV: "preview", VITE_API_URL: "https://api.dayback.app", source }),
+      ).not.toContain("VITE_TURNSTILE_SITE_KEY");
+    }
+    expect(
+      toExportLines({
+        VITE_APP_ENV: "production",
+        VITE_API_URL: "https://api.dayback.app",
+        source: "explicit",
+      }),
+    ).not.toContain("VITE_TURNSTILE_SITE_KEY");
   });
 });
 

@@ -83,6 +83,25 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       expect: 401,
     },
     {
+      // TEACH-223/243: anonymous sign-in is always on, behind Turnstile. Without a token the
+      // captcha plugin answers 400 before a user exists; a 200 here means anyone can mint a user.
+      name: "anonymous sign-in without a Turnstile token is refused (400)",
+      method: "POST",
+      path: "/auth/sign-in/anonymous",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 400,
+    },
+    // TEACH-222
+    {
+      // The anonymous guard runs after the session guard: without a session a save is 401. A 403
+      // here (sign_in_required, or a CSRF refusal) means the guard order changed.
+      name: "app origin, PUT /documents JSON, reaches the session guard before the anonymous guard",
+      method: "PUT",
+      path: "/documents/0192f7a0-0000-7000-8000-000000000042",
+      headers: { ...browser, "Content-Type": "application/json" },
+      expect: 401,
+    },
+    {
       // TEACH-81 (audit F05): the diagnostic ping routes are not mounted in production. The 404
       // comes before the session guard, so a 401 here means the dev-only routes are back.
       name: "dev-only ping route is absent in production (404, not 401)",
@@ -274,6 +293,19 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
         "access-control-allow-origin": webOrigin,
         "access-control-allow-credentials": "true",
       },
+    },
+    // TEACH-243
+    {
+      // Turnstile gates magic-link sign-in: without an `x-captcha-response` token the captcha
+      // plugin answers 400 MISSING_RESPONSE before any mail is sent. A 200 means anyone can make
+      // the api email any address. The address is on a reserved TLD, so nothing is delivered even
+      // if the gate regresses. Spends one of better-auth's three `/sign-in*` requests per 10 s.
+      name: "magic-link sign-in without a Turnstile token is refused (400)",
+      method: "POST",
+      path: "/auth/sign-in/magic-link",
+      headers: { ...browser, "Content-Type": "application/json" },
+      body: () => JSON.stringify({ email: "smoke@example.invalid", callbackURL: `${webOrigin}/` }),
+      expect: 400,
     },
   ];
 }

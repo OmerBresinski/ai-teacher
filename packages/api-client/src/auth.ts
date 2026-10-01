@@ -1,6 +1,8 @@
 /**
  * better-auth client for `apps/web` (ADR 0008). Talks to the api's `/auth/*` endpoints with
- * cookies included; the magic-link plugin adds `signIn.magicLink({ email, callbackURL })`.
+ * cookies included; the magic-link plugin adds `signIn.magicLink({ email, callbackURL })` and the
+ * anonymous plugin `signIn.anonymous()` (TEACH-223; the api requires a Turnstile token in the
+ * `x-captcha-response` header).
  *
  * ```ts
  * const authClient = createAuthClient(import.meta.env.VITE_API_URL);
@@ -11,7 +13,7 @@
  * `baseUrl` is the API origin (e.g. `http://localhost:3001`); the `/auth` base path is appended
  * here so the server (`basePath: "/auth"`) and the client cannot drift apart.
  */
-import { magicLinkClient } from "better-auth/client/plugins";
+import { anonymousClient, magicLinkClient } from "better-auth/client/plugins";
 import { createAuthClient as createBetterAuthClient } from "better-auth/react";
 
 export const AUTH_BASE_PATH = "/auth";
@@ -20,7 +22,7 @@ export function createAuthClient(baseUrl: string) {
   const origin = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   return createBetterAuthClient({
     baseURL: `${origin}${AUTH_BASE_PATH}`,
-    plugins: [magicLinkClient()],
+    plugins: [magicLinkClient(), anonymousClient()],
     fetchOptions: { credentials: "include" },
   });
 }

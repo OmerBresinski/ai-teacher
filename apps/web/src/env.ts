@@ -11,6 +11,14 @@ export const EnvSchema = z.object({
   VITE_API_URL: z.string().min(1).default("/api"),
   VITE_APP_ENV: z.enum(["development", "preview", "production"]).default("development"),
   /**
+   * Cloudflare Turnstile site key (TEACH-243). Set: sign-in runs the widget and sends its token.
+   * Required in a production build; blank is the same as unset.
+   */
+  VITE_TURNSTILE_SITE_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v.trim() === "" ? undefined : v.trim())),
+  /**
    * "1" draws every slide's photo and diagram slots in present as placeholders saying what the
    * model asked for, for testing and screenshots (look/image-slot). On by default while the
    * image system is being built; set "0" to lay slides out as if the slots were empty.
@@ -30,6 +38,16 @@ export function parseEnv(source: Record<string, unknown>, isProdBuild: boolean):
     throw new Error(
       "Invalid web environment:\n  VITE_API_URL: must be an absolute http(s) URL in a production build " +
         `(got "${result.data.VITE_API_URL}"). The /api dev proxy only exists under \`vite dev\`.`,
+    );
+  }
+  if (
+    isProdBuild &&
+    result.data.VITE_APP_ENV === "production" &&
+    !result.data.VITE_TURNSTILE_SITE_KEY
+  ) {
+    throw new Error(
+      "Invalid web environment:\n  VITE_TURNSTILE_SITE_KEY: required in a production build " +
+        "(the api refuses magic-link sign-in without a Turnstile token, TEACH-243).",
     );
   }
   return result.data;

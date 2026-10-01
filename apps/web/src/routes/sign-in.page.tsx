@@ -15,6 +15,12 @@ import { type CastMood, type CastTargets, SignInCast } from "@/components/brand/
 import { PAPER_GLOW, SIGN_IN_LOCKUP } from "@/components/brand/sign-in-chrome";
 import { GoogleLogo } from "@/components/google-logo";
 import { MicrosoftLogo } from "@/components/microsoft-logo";
+import {
+  captchaHeaders,
+  isCaptchaError,
+  TurnstileWidget,
+  useTurnstileToken,
+} from "@/components/turnstile";
 import { useContentHeight } from "@/hooks/use-content-height";
 import { authClient } from "@/lib/auth";
 import { fetchAuthProviders } from "@/lib/auth-providers";
@@ -91,12 +97,14 @@ export function socialStartError(error: { status?: number; code?: string }): Soc
 }
 
 const SEND_ERROR = "We could not send the link. Please check the address and try again.";
+/** Turnstile could not vouch for this browser (TEACH-243); a retry runs a fresh challenge. */
+const CHECK_ERROR = "We could not finish a quick security check. Please try again.";
 
 type Status =
   | { kind: "idle" }
   | { kind: "sending" }
   | { kind: "sent"; email: string }
-  | { kind: "error" };
+  | { kind: "error"; reason: "send" | "check" };
 
 /**
  * "Continue with Google" / "… Microsoft" have their own status: it never shares a state with the
@@ -114,6 +122,7 @@ export function SignInPage() {
   // (ADR 0008 amendment of 2026-09-27, item 6).
   const [microsoftOn, setMicrosoftOn] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
+  const turnstile = useTurnstileToken({ action: "magic-link" });
   const emailField = useRef<HTMLInputElement>(null);
   const [cardBody, cardSize] = useContentHeight<HTMLDivElement>();
   // The provider button pressed last, which the cast watches as the teacher leaves for it.
@@ -182,17 +191,34 @@ export function SignInPage() {
     if (!address) return;
     setStatus({ kind: "sending" });
     setSocial((current) => (current?.state === "opening" ? current : null));
+    let token: string | null;
+    try {
+      token = await turnstile.getToken();
+    } catch {
+      turnstile.reset();
+      setStatus({ kind: "error", reason: "check" });
+      return;
+    }
     try {
       const { error } = await authClient.signIn.magicLink({
         email: address,
         callbackURL: callbackUrl(window.location.origin, redirect),
         errorCallbackURL: errorCallbackUrl(window.location.origin, redirect),
+        // Turnstile off (no site key): no header, and the api does not ask for one.
+        ...(token ? { fetchOptions: { headers: captchaHeaders(token) } } : {}),
       });
-      setStatus(error ? { kind: "error" } : { kind: "sent", email: address });
+      setStatus(
+        error
+          ? { kind: "error", reason: isCaptchaError(error) ? "check" : "send" }
+          : { kind: "sent", email: address },
+      );
     } catch {
       // A network failure rejects instead of resolving with `error`. Left in "sending", the page
       // would disable both ways in for good.
-      setStatus({ kind: "error" });
+      setStatus({ kind: "error", reason: "send" });
+    } finally {
+      // Tokens are single use: the next attempt needs a fresh one, whatever happened.
+      turnstile.reset();
     }
   }
 
@@ -342,6 +368,7 @@ export function SignInPage() {
                         {sending ? "Sending…" : "Email me a link"}
                       </Button>
                     </div>
+                    <TurnstileWidget turnstile={turnstile} className="mt-1" />
                   </form>
                 </>
               )}
@@ -376,7 +403,7 @@ function oneAlert({
 }): string | null {
   if (notice) return notice;
   if (status.kind === "sent") return null;
-  if (status.kind === "error") return SEND_ERROR;
+  if (status.kind === "error") return status.reason === "check" ? CHECK_ERROR : SEND_ERROR;
   return socialError ?? (errorCode ? signInErrorMessage(errorCode, via) : null);
 }
 

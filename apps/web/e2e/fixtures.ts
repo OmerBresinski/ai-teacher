@@ -32,7 +32,9 @@ export async function requestMagicLink(
   const errorCallbackURL = new URL("/sign-in", E2E_WEB_URL);
   errorCallbackURL.searchParams.set("redirect", callbackPath);
   const res = await request.post(`${E2E_API_URL}/auth/sign-in/magic-link`, {
-    headers: { origin: E2E_WEB_URL },
+    // The api gates magic-link sign-in with Turnstile (TEACH-243); the e2e api runs the always-pass
+    // test secret, which accepts Cloudflare's dummy token.
+    headers: { origin: E2E_WEB_URL, "x-captcha-response": "XXXX.DUMMY.TOKEN.XXXX" },
     data: {
       email,
       callbackURL: `${E2E_WEB_URL}${callbackPath}`,

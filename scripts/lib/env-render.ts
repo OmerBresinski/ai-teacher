@@ -291,7 +291,8 @@ keywords = ["${name}"]`;
 # Extends gitleaks' default rules with one rule per secret-scoped variable of the environment
 # contract: a literal \`NAME=<20+ chars>\` for any of them fails the pre-commit hook
 # (\`gitleaks protect --staged\`) and the CI \`secrets\` job. Examples, docs and tests are allowed to
-# show placeholders; the compose credentials (postgres/postgres) are synthetic and allowed.
+# show placeholders; the compose credentials (postgres/postgres) and Cloudflare's published
+# Turnstile test secrets are synthetic and allowed.
 # Vendored agent skills (\`.agents/skills/\`, ADR 0017) carry upstream example strings, never ours.
 title = "Teaching Journey"
 
@@ -311,6 +312,10 @@ regexes = [
   '''postgres://postgres:postgres@(localhost|host\\.docker\\.internal|127\\.0\\.0\\.1)''',
   '''\\$\\{\\{[^}]+\\}\\}''',
   '''(process|import\\.meta)\\.env\\.''',
+  # Cloudflare's published Turnstile test secrets (always pass / fail / spend) and the constant
+  # that holds them: dev, e2e and Railway PR environments run on them (TEACH-223).
+  '''^[123]x0{31}AA$''',
+  '''^TURNSTILE_TEST_SECRET_KEY$''',
 ]
 
 ${rules}

@@ -42,6 +42,7 @@ import { zValidator } from "@hono/zod-validator";
 import {
   bindSourcesToLesson,
   clearGenerating,
+  countLessons,
   createDocument,
   DOCUMENTS_REQUEST_ID_INDEX,
   type DocumentRow,
@@ -87,9 +88,17 @@ import { defaultPracticeMinutes, isRecipeId, newWorksheet, resolveRecipe } from 
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import {
+  ANONYMOUS_CAPACITY_MESSAGE,
+  ANONYMOUS_LESSON_LIMIT,
+  ANONYMOUS_LIMIT_MESSAGE,
+  ANONYMOUS_REPLAN_LIMIT,
+  createKeyedQueue,
+  REPLAN_LIMIT_MESSAGE,
+} from "../auth/anonymous-limits";
 import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
-import { ConflictError } from "../errors";
+import { AnonymousRefusedError, ConflictError } from "../errors";
 import type { EventsRuntime } from "../events/runtime";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
@@ -390,16 +399,56 @@ async function restoreSources(ws: WorkspaceDb, lessonId: LessonId, change: Sourc
   await bindSourcesToLesson(ws, change.removed, lessonId);
 }
 
+/**
+ * Quotas for anonymous sessions on the create and re-plan routes (TEACH-222). `app.ts` builds it
+ * from the env; absent (unit tests of other routes) → a cap of 0, so anonymous creates are refused
+ * as over capacity (fail closed).
+ */
+export interface AnonymousLessonPolicy {
+  /** `ANONYMOUS_LESSONS_DAILY_CAP`. */
+  dailyCap: number;
+  /** Anonymous lessons created today across every Workspace (`countAnonymousLessonsToday`). */
+  countToday: () => Promise<number>;
+}
+
 export interface LessonRouteOptions {
   /** The `lesson.worksheet` throttle slot in seconds; tests shorten `WORKSHEET_SINGLETON_S`. */
   worksheetSingletonS?: number;
+  anonymous?: AnonymousLessonPolicy;
+}
+
+const NO_CAPACITY_POLICY: AnonymousLessonPolicy = {
+  dailyCap: 0,
+  countToday: async () => 0,
+};
+
+/**
+ * The anonymous create checks, in order (after the `requestId` replay, so a repeat always answers
+ * its lesson): two lessons per Workspace (ruling 111), then the global daily cap.
+ */
+async function assertAnonymousMayCreate(
+  ws: Parameters<typeof countLessons>[0],
+  policy: AnonymousLessonPolicy,
+): Promise<void> {
+  if ((await countLessons(ws)) >= ANONYMOUS_LESSON_LIMIT) {
+    throw new AnonymousRefusedError("anonymous_limit", ANONYMOUS_LIMIT_MESSAGE);
+  }
+  if ((await policy.countToday()) >= policy.dailyCap) {
+    throw new AnonymousRefusedError("anonymous_capacity", ANONYMOUS_CAPACITY_MESSAGE);
+  }
 }
 
 export function lessonRoutes(
   unsafeDb: ScopableDb,
   runtime: EventsRuntime | undefined,
-  { worksheetSingletonS = WORKSHEET_SINGLETON_S }: LessonRouteOptions = {},
+  {
+    worksheetSingletonS = WORKSHEET_SINGLETON_S,
+    anonymous = NO_CAPACITY_POLICY,
+  }: LessonRouteOptions = {},
 ) {
+  // Anonymous creates run one at a time per Workspace so two parallel briefs cannot both pass
+  // the two-lesson count before either inserts.
+  const anonymousCreates = createKeyedQueue();
   return new Hono<AppEnv>()
     .post(
       "/lessons",
@@ -423,20 +472,34 @@ export function lessonRoutes(
         }
         const lesson = lessonFromBrief(input, newId<LessonId>(), new Date());
         const sourceIds = input.sourceIds ?? [];
+        const create = async () => {
+          try {
+            return await createLessonAndEnqueue(ws, rt, lesson, sourceIds, {
+              skipPlanning,
+              requestId,
+            });
+          } catch (error) {
+            // Two requests with one `requestId` raced past the read: the loser answers the winner's.
+            const winner =
+              requestId !== undefined && isUniqueViolation(error, DOCUMENTS_REQUEST_ID_INDEX)
+                ? await findLessonByRequestId(ws, requestId)
+                : null;
+            if (winner === null) throw error;
+            return replayed(winner);
+          }
+        };
         let created: Awaited<ReturnType<typeof createLessonAndEnqueue>>;
-        try {
-          created = await createLessonAndEnqueue(ws, rt, lesson, sourceIds, {
-            skipPlanning,
-            requestId,
+        if (c.get("user")?.isAnonymous === true) {
+          created = await anonymousCreates(workspaceId, async () => {
+            // Re-read under the queue: the same `requestId` may have landed while this waited.
+            const landed =
+              requestId !== undefined ? await findLessonByRequestId(ws, requestId) : null;
+            if (landed !== null) return replayed(landed);
+            await assertAnonymousMayCreate(ws, anonymous);
+            return create();
           });
-        } catch (error) {
-          // Two requests with one `requestId` raced past the read: the loser answers the winner's.
-          const winner =
-            requestId !== undefined && isUniqueViolation(error, DOCUMENTS_REQUEST_ID_INDEX)
-              ? await findLessonByRequestId(ws, requestId)
-              : null;
-          if (winner === null) throw error;
-          created = replayed(winner);
+        } else {
+          created = await create();
         }
         c.get("logger")?.info(
           { ...created, sources: sourceIds.length, skipPlanning },
@@ -458,6 +521,7 @@ export function lessonRoutes(
         const input = c.req.valid("json");
         const ws = forWorkspace(unsafeDb, workspaceId);
         const jobId = newId<JobId>();
+        const anonymousUser = c.get("user")?.isAnonymous === true;
         const {
           lesson,
           previous,
@@ -475,6 +539,11 @@ export function lessonRoutes(
                 throw new ConflictError("generating", CONFIRMED_MESSAGE, {
                   revision: stored.plan.revision,
                 });
+              }
+              // SO-1: an anonymous plan is revision 1 plus one per re-plan; three re-plans, then
+              // sign in. Checked inside the row transaction, so parallel re-plans cannot slip by.
+              if (anonymousUser && (stored.plan?.revision ?? 1) > ANONYMOUS_REPLAN_LIMIT) {
+                throw new AnonymousRefusedError("sign_in_required", REPLAN_LIMIT_MESSAGE);
               }
               const next = replanLesson(stored, input, { jobId, sources: sources?.sources });
               return { lesson: next.lesson, meta: next.pinned };

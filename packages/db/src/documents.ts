@@ -24,6 +24,7 @@ import {
   lt,
   or,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { z } from "zod";
 import { hasQueuedJobEvent, terminalJobEventFor } from "./job-events";
@@ -358,6 +359,19 @@ export async function findLessonByRequestId(
     .select(documents, and(eq(documents.kind, "lesson"), eq(documents.requestId, requestId)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * How many lessons the Workspace holds, soft-deleted ones included (TEACH-222: the anonymous
+ * two-lesson quota counts what was made, so deleting one never frees a slot).
+ */
+export async function countLessons(ws: WorkspaceDb): Promise<number> {
+  const rows = await ws.project(
+    { n: sql<number>`count(*)::int` },
+    documents,
+    eq(documents.kind, "lesson"),
+  );
+  return rows[0]?.n ?? 0;
 }
 
 // --- writes ------------------------------------------------------------------------------------

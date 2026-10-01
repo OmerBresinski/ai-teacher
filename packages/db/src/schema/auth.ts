@@ -8,7 +8,9 @@ import { boolean, index, pgTable, text, timestamp, uniqueIndex } from "drizzle-o
  * - table names are snake_case plural (`users`, `sessions`, `accounts`, `verifications`); the
  *   adapter is configured with `usePlural: true` so the model `user` maps to the export `users`;
  * - timestamps are `timestamptz` like the rest of the schema (the CLI emits `timestamp`);
- * - index names are snake_case.
+ * - index names are snake_case;
+ * - `is_anonymous` is the `anonymous` plugin's `user.isAnonymous` field (TEACH-223), `not null`
+ *   where the plugin leaves it optional, so every existing row reads as a signed-in teacher.
  *
  * Ids are `text` because better-auth mints its own (non-UUID) ids; `workspaces.owner_user_id`
  * keeps the same type so it can reference `users.id`.
@@ -24,6 +26,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  isAnonymous: boolean("is_anonymous").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .$onUpdate(() => new Date())
