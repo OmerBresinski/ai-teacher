@@ -44,6 +44,13 @@ import {
   type PlanCheck,
   warmUpToInsert,
 } from "../plan-write/check";
+import {
+  closingLine,
+  closingSlideFits,
+  closingSpec,
+  exitTicketQuestions,
+  withClosingLine,
+} from "../plan-write/closing";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
   fitWithRewrite,
@@ -672,8 +679,16 @@ export async function planWriteSlides(
   }
   let table: PlanSlide[] = record.plan.slides;
   const requested = mode === "stream" ? (brief.slideCount ?? DEFAULT_SLIDE_COUNT) : table.length;
-  /** The slides to write: the count asked for, plus any check code adds (`checksToInsert`). */
-  let slideCount = requested;
+  /**
+   * UX ruling 141: the stream closes on a code-built slide pointing to the worksheet's exit
+   * ticket. It takes the last slide asked for when the rest still has room; else it is a line on
+   * the last slide.
+   */
+  const closing = mode === "stream" && closingSlideFits(requested);
+  /** The slides the model plans and writes: the count asked for, less the closing slide. */
+  const planned = closing ? requested - 1 : requested;
+  /** The slides to write: those planned, plus any check code adds (`checksToInsert`). */
+  let slideCount = planned;
   /** The stream's slide i (0-based, after the objectives) is this slide number. */
   const itemSlide: number[] = [];
   /** Slides code added as checks, by number. */
@@ -1700,7 +1715,7 @@ export async function planWriteSlides(
         added.add(rows.length);
       }
     });
-    slideCount = requested + inserts.length + (warm ? 1 : 0);
+    slideCount = planned + inserts.length + (warm ? 1 : 0);
     if (warm)
       deps.logger.info(
         { stage: "generate", call: "warm-up", slide: FIXED_SLIDES + 1 },
@@ -1957,6 +1972,31 @@ export async function planWriteSlides(
     return built;
   };
   const facts = buildFacts();
+
+  // The close (ruling 141): no model call. The closing slide goes after the practise slide.
+  if (mode === "stream") {
+    const questions = exitTicketQuestions(facts);
+    if (closing) {
+      const spec = closingSpec(
+        questions,
+        objectives.map((o) => o.id),
+      );
+      const slide = materialiseSlide(spec, themeId, codeMeta(), deps.ids);
+      lesson = { ...lesson, slides: [...lesson.slides, slide] };
+      slideCount += 1;
+    } else {
+      const last = lesson.slides.length - 1;
+      const slide = lesson.slides[last];
+      if (slide) {
+        const marked = withClosingLine(slide, closingLine(questions));
+        lesson = { ...lesson, slides: lesson.slides.map((s, i) => (i === last ? marked : s)) };
+      }
+    }
+    deps.logger.info(
+      { stage: "generate", call: "closing", slide: slideCount, ownSlide: closing, questions },
+      "exit ticket reference added",
+    );
+  }
 
   const asGenerated = (l: Lesson, f: LessonFacts): Lesson => {
     const generation = generationOf(l);

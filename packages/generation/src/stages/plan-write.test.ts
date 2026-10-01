@@ -205,6 +205,12 @@ const lesson8 = (): Lesson => {
   return { ...l, brief: { ...(l.brief as NonNullable<Lesson["brief"]>), slideCount: 8 } };
 };
 
+/** The stream's fixture: the model writes 8 and code adds the closing slide (ruling 141). */
+const streamLesson = (): Lesson => {
+  const l = romansLesson();
+  return { ...l, brief: { ...(l.brief as NonNullable<Lesson["brief"]>), slideCount: 9 as 8 } };
+};
+
 /** Runs `fn` with PLAN_WRITE_MODE set (undefined: unset, the default). */
 async function inMode<T>(mode: string | undefined, fn: () => Promise<T>): Promise<T> {
   const before = process.env.PLAN_WRITE_MODE;
@@ -288,12 +294,19 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       const calls: WriteSlidesInput[] = [];
       const ai = planWriteAi(calls);
       const deps = recordingDeps(ai);
-      const final = await runLessonPipeline({ lesson: lesson8() }, deps, { planner: "plan-write" });
+      const final = await runLessonPipeline({ lesson: streamLesson() }, deps, {
+        planner: "plan-write",
+      });
       const lesson = final.lesson;
       const versions = ai.calls.map((c) => c.context?.promptVersion ?? "");
       expect(versions.filter((v) => v.startsWith("plan-lesson"))).toEqual([]);
       expect(versions.filter((v) => v.startsWith("stream-lesson"))).toHaveLength(1);
-      expect(lesson.slides.map((s) => s.kind)).toEqual(KINDS);
+      expect(lesson.slides.map((s) => s.kind)).toEqual([...KINDS, "plenary"]);
+      // Ruling 141: the closing slide is code's, after the practise slide, with no model call.
+      const close = JSON.stringify(lesson.slides.at(-1)?.elements);
+      expect(close).toContain("Exit ticket");
+      expect(close).toContain("Complete it on your worksheet.");
+      expect(close).toMatch(/\d questions?, on your own/);
       // No photo search in these deps: the title stands alone, never beside an empty frame.
       expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(false);
       // Slide 6's hinge had no options: written again by a writer; slide 5's heading re-written.
@@ -336,7 +349,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
           { slide: 4, field: "nope", kind: "contradiction", problem: "No such field." },
         ],
       });
-      const final = await runLessonPipeline({ lesson: lesson8() }, recordingDeps(ai), {
+      const final = await runLessonPipeline({ lesson: streamLesson() }, recordingDeps(ai), {
         planner: "plan-write",
       });
       const prompts = ai.calls.filter((c) => c.context?.promptVersion?.startsWith("master-check"));
