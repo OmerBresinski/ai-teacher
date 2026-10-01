@@ -47,7 +47,8 @@ export function drawTable(t: Table, x: Ctx, w: number, h: number): string {
     const cut = lines.some((r, i) =>
       r.some((cell, j) => cell.join(" ") !== (all[i]?.[j] ?? "").trim().split(/\s+/).join(" ")),
     );
-    if ((tableH <= h && !cut) || fs <= 14) {
+    // Round A6: the width counts too; a long word at the larger label size ran past the panel.
+    if ((tableH <= h && !cut && tableW <= w + 0.5) || fs <= 14) {
       const ox = (w - tableW) / 2;
       let y = 0;
       const out: string[] = [];

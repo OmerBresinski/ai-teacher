@@ -118,28 +118,28 @@ const RECHECK_SAMPLE: WriteSlidesInput = {
 
 const PINNED = {
   plan: {
-    version: "plan-lesson.v12",
-    hash: "7c210c27eecb75a779c3702006572ecfbe026a6d5ba7be138cc0f9124dc27ec9",
+    version: "plan-lesson.v13",
+    hash: "11c19f5a9c7c8e0178083aa20d865153a3abb58bd11c9dc63d5e1dcbf992fadd",
   },
   write: {
-    version: "write-slides.v15",
-    hash: "7f37f87a970e022ae3db5468cc05088d7bd26c12d4ea9469ed6abf12e37a28a4",
+    version: "write-slides.v16",
+    hash: "cb943cdd94b8195c1b5623696e2b0d0b6712b15ed9ac292beb02dfe8f50d24ed",
   },
   stream: {
-    version: "stream-lesson.v9",
-    hash: "7f28761d52dcf71fef04194e1d3ed244e5a8c9ebdba8bab5c8a73eb844dc5f88",
+    version: "stream-lesson.v10",
+    hash: "ace3ac4d2e8673fb791c790a2c2dbc3043c550555205ddb7fd7e104d687b8e01",
   },
   rewrite: {
-    version: "write-slides.v15",
-    hash: "5ddc4c4262409d551d4193d7fd4c36e4fb85a7492d67099f83b6db1b5c9303b4",
+    version: "write-slides.v16",
+    hash: "804ba5f288700b13c92e3fa05be188cd09939d9c8ef20544ed4cebe28db6d1bf",
   },
   recheck: {
-    version: "write-slides.v15",
-    hash: "75b74613f45b1706d26ddbdc496ae983a127f24bee0812d186b9029fa65f98e8",
+    version: "write-slides.v16",
+    hash: "eb0195f5c971051aa6f46b4bb4eedfc34a2e958049f72550d5bc7b6621385cfe",
   },
   check: {
-    version: "write-slides.v15",
-    hash: "afd316addfd5ab7cc9924d1275131c3c20c6c8b82cb46fc9b3c9838a29f3edb3",
+    version: "write-slides.v16",
+    hash: "de5862dbf32fe2ec7ed918a198da92c564e764878af82607e547e09edab32148",
   },
 };
 
@@ -179,7 +179,7 @@ describe("plan-write prompt versions", () => {
     }
     expect(system).not.toContain("The shape is yours to choose");
     expect(system.indexOf("a retrieve slide on the earlier learning")).toBeLessThan(
-      system.indexOf("most teach slides carry a picture"),
+      system.indexOf("a teach slide is a photo or a diagram slot"),
     );
   });
 

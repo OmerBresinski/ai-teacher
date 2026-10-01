@@ -381,3 +381,31 @@ describe("tables", () => {
     }
   });
 });
+
+describe("table width (round A6)", () => {
+  test("a three-column table at the larger label size stays inside its panel", () => {
+    const { drawTable } = require("./table") as typeof import("./table");
+    const { context } = require("./svg") as typeof import("./svg");
+    const x = context(getTheme("chalk"), 403, 340);
+    const svg = drawTable(
+      {
+        kind: "table",
+        header: ["Shape", "Volume", "Compressibility"],
+        rows: [
+          ["Fixed", "Fixed", "Hardly, close particles"],
+          ["Container's shape", "Fixed", "Hardly, close particles"],
+          ["Container's shape", "Container's volume", "Easy: large gaps"],
+        ],
+      } as never,
+      x,
+      403,
+      340,
+    );
+    const rects = [...svg.matchAll(/<rect x="([-\d.]+)" y="[-\d.]+" width="([\d.]+)"/g)];
+    expect(rects.length).toBeGreaterThan(0);
+    for (const m of rects) {
+      expect(Number(m[1])).toBeGreaterThanOrEqual(-0.5);
+      expect(Number(m[1]) + Number(m[2])).toBeLessThanOrEqual(403.5);
+    }
+  });
+});

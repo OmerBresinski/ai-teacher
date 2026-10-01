@@ -21,7 +21,11 @@ import { type Audience, audienceBlock } from "./shared";
 /* v15 (round A2, explanations that build; ruling 140's larger body): a slot's lines are for the complete
  * explanation, not the fewest words; a teach slide is one claim backed on the slide, case first then the
  * general rule; a worked example fades (the teacher shows the first step, the class gives the rest). */
-export const WRITE_SLIDES_VERSION = "write-slides.v15";
+/* v15 (round A6): the photo subject is worded as a photo library captions it; a photo slide's first sentence
+ * points at what to notice. */
+/* v16 (merge, round B base): A2's and A6's v15 together. Both set a teach slide's first sentence (A2: the
+ * case; A6: what to notice in the photo), so a photo slide's photograph is now its case. */
+export const WRITE_SLIDES_VERSION = "write-slides.v16";
 
 /** One slide this call writes: its row number, form, layout and contract. */
 export type WriteSlideTarget = {
@@ -84,9 +88,9 @@ A check, hinge or practise slide asks about what its tests name, as the earlier 
 Each check question has exactly one defensible answer.
 A practise slide is work pupils do alone, on cases or numbers no teach slide used, up to the hardest case the lesson taught: where its objective is to work something out or identify it, a question set whose items step up from a plain case to that one; where it is to explain or describe, a written task that says what to write and what it must use.
 A hinge's options are each a word, a number or a short phrase: answers only, each the same kind of answer as the right one and about as long. Each wrong one is a mistake pupils really make, and the misconception is one of them; why each is wrong goes in the notes. A true-false statement is one whole claim, true or false as written.
-A photo's imageBrief names the real thing the slide teaches, which the photograph must show whole and centred: its subject in a few plain words ("Roman milestone", not "A photograph of a milestone by a road"), never a scene that only sets the theme. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
+A photo's imageBrief names the real thing the slide teaches, which the photograph must show whole and centred: its subject in the few plain words a photo library would caption it with ("Roman milestone", "potassium permanganate crystals in water", "river level gauge", not "A photograph of a milestone by a road"), never a scene that only sets the theme. When a photo must show one specific place, artefact, person or specimen, its named field gives that thing's proper name; otherwise named is null.
 A diagram slot's diagram is the kind of drawing that shows what the slide's text says, and it marks what the text names (a graph whose text names its peak marks the peak). Each label names a different real part, once, and sits on or points at the shape it names.
-Pictures are for whoever finds or draws them: the slide's text never repeats a brief or describes the picture.
+Pictures are for whoever finds or draws them: the slide's text never repeats a brief. On a photo slide the photograph is the case: the body's first sentence points pupils at what to notice in it and what that shows ("Look at the carved distance: it tells a soldier how far to the next fort."), and the general rule follows.
 An explain-callout's callout states the misconception as wrong, with "not" ("Evaporation is not the same as boiling.").
 The notes on every slide are what you say aloud as it is shown, with no timings. On a teach slide they tell the slide in your words (an analogy, the question you ask the class); everything a question tests is on a slide itself. On a question slide they open with the answer and why it is right, then what each wrong answer shows and what to do next.
 A subject specialist checks every slide before the lesson is taught: give each date, number, name and rule as this year group's specification states it.`;
