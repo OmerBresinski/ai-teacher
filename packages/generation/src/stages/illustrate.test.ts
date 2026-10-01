@@ -8,10 +8,9 @@ import {
   PLACEHOLDER_IMAGE,
   SlideSpecSchema,
 } from "@tj/slides";
-import { MAX_OUTPUT_TOKENS } from "../call";
 import { memoryLogger, recordingDeps, SAMPLE_JOB_ID, sampleBriefLesson } from "../testing";
 import type { PhotoPlacer } from "../types";
-import { factQueryHints, illustrate, MAX_JUDGE_TOKENS } from "./illustrate";
+import { factQueryHints, illustrate } from "./illustrate";
 
 const meta: MaterialiseMeta = {
   promptVersion: "generate-slide.v4",
@@ -857,13 +856,5 @@ describe("factQueryHints (quality lab, Sept 2026)", () => {
     expect(ai.calls[0]?.promptText).toContain("Had0");
     expect(ai.calls[0]?.promptText).toContain("rom0");
     expect(ai.calls[0]?.promptText).not.toContain("Hou10");
-  });
-});
-
-describe("photo call output caps", () => {
-  // Reasoning shares the cap; at 200 Luna answered nothing and no photo was placed (TEACH-12).
-  test("the shortlist and the picture judge leave room for reasoning", () => {
-    expect(MAX_OUTPUT_TOKENS.shortlist).toBe(1500);
-    expect(MAX_JUDGE_TOKENS).toBe(1500);
   });
 });

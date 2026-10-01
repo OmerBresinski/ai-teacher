@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { AiError, createBudget, ProviderFailure } from "@tj/ai";
+import { AiError, createAi, createBudget, ProviderFailure } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { shapeIssue, slideSpecSchemaFor } from "@tj/slides";
 import { APICallError, type Schema } from "ai";
@@ -461,6 +461,53 @@ describe("callStructured", () => {
     });
     expect(ai.calls.map((c) => c.imageParts)).toEqual([2, 2]);
     expect(ai.calls[0]?.promptText).toContain("hi");
+  });
+
+  test("TEACH-12: an image call on the default direct OpenAI route is budgeted and sent, not refused", async () => {
+    const bodies: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ""));
+      return Response.json({
+        id: "c",
+        object: "chat.completion",
+        created: 0,
+        model: "gpt-6-luna",
+        choices: [
+          {
+            index: 0,
+            message: { role: "assistant", content: JSON.stringify({ answer: "42" }) },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 900, completion_tokens: 10, total_tokens: 910 },
+      });
+    }) as unknown as typeof globalThis.fetch;
+    // The real client, so the budget is keyed by the bare id the direct provider reports.
+    const d = { ...deps(createFakeAi()), ai: createAi({ OPENAI_API_KEY: "k" }) };
+    const thumbnail = "https://images.pexels.com/photos/1/pexels-photo-1.jpeg?h=130";
+    try {
+      const result = await callStructured({
+        deps: d,
+        stage: "illustrate",
+        cls: "standard",
+        effort: "low",
+        prompt,
+        input: "hi",
+        schema,
+        maxOutputTokens: 100,
+        // As the judge sends them: an https URL, which OpenAI takes as is (nothing is downloaded).
+        images: [{ id: "a", url: thumbnail }],
+      });
+      expect(result.modelId).toBe("gpt-6-luna");
+      expect(result.output).toEqual({ answer: "42" });
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toContain('"model":"gpt-6-luna"');
+    expect(bodies[0]).toContain(`"image_url":{"url":"${thumbnail}"}`);
+    expect(d.budget.totals().calls).toBe(1);
   });
 
   test("image parts go as `file` parts with the image's media type (the SDK's `image` part is deprecated)", () => {

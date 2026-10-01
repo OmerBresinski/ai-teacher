@@ -4,7 +4,6 @@ import { generateText } from "ai";
 import pino from "pino";
 import {
   createAi,
-  createBudget,
   DEFAULT_MODEL_IDS,
   DEFAULT_REGION,
   isAiError,
@@ -12,7 +11,6 @@ import {
   isGatewayModelId,
   isOpenAiModelId,
   OPENAI_PREFIX,
-  withGenerationBudget,
 } from "./index";
 
 function createMemoryLogger() {
@@ -268,60 +266,6 @@ describe("OpenAI direct (`openai/<model>` ids, ADR 0031)", () => {
     expect(request?.body).toContain('"model":"gpt-5.6-luna"');
     expect(request?.body).not.toContain("openai/");
     expect(request?.headers.authorization).toBe("Bearer k");
-  });
-
-  test("A1b: an image call on the default direct route is budgeted and sent, not refused (photo-pick)", async () => {
-    const bodies: string[] = [];
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
-      bodies.push(String(init?.body ?? ""));
-      return Response.json({
-        id: "c",
-        object: "chat.completion",
-        created: 0,
-        model: "gpt-6-luna",
-        choices: [
-          { index: 0, message: { role: "assistant", content: "ok" }, finish_reason: "stop" },
-        ],
-        usage: { prompt_tokens: 900, completion_tokens: 10, total_tokens: 910 },
-      });
-    }) as unknown as typeof globalThis.fetch;
-    const png = new Uint8Array(24);
-    png.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
-    new DataView(png.buffer).setUint32(16, 64);
-    new DataView(png.buffer).setUint32(20, 64);
-    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
-    try {
-      const ai = createAi({ OPENAI_API_KEY: "k" });
-      // As `callStructured` does: the budget is keyed by the id the routed model reports.
-      const routed = ai.model("standard");
-      if (typeof routed === "string") throw new Error("expected a model object");
-      expect(routed.modelId).toBe("gpt-6-luna");
-      const result = await generateText({
-        model: withGenerationBudget(routed, routed.modelId, budget),
-        maxOutputTokens: 100,
-        maxRetries: 0,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "pick a photo" },
-              { type: "file", mediaType: "image/png", data: png },
-            ],
-          },
-        ],
-      });
-      expect(result.text).toBe("ok");
-    } finally {
-      globalThis.fetch = realFetch;
-    }
-    expect(bodies).toHaveLength(1);
-    expect(bodies[0]).toContain('"model":"gpt-6-luna"');
-    expect(bodies[0]).toContain("image_url");
-    const totals = budget.totals();
-    expect(totals.calls).toBe(1);
-    expect(totals.inputTokens).toBe(900);
-    expect(totals.costUsd).toBeGreaterThan(0);
   });
 
   test("A2: the same client rejects a Bedrock id at model(), naming the Bedrock variable", () => {
