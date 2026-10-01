@@ -42,7 +42,9 @@ export function drawNumberLine(l: NumberLine, x: Ctx, w: number, h: number): str
     arrowHead(w - end, y, 0, y, fs * 0.8, c.ink),
   );
   const labelled = (v: number) => {
-    const r = (v - l.min) / every;
+    // Counted from zero when the line crosses it (round I: −5 to 5 at every 2 lost its 0).
+    const origin = l.min <= 0 && l.max >= 0 ? 0 : l.min;
+    const r = (v - origin) / every;
     return Math.abs(r - Math.round(r)) < 1e-6;
   };
   for (const v of values) {
