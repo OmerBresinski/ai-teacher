@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai";
 import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { type Lesson, OutlineEntrySchema } from "@tj/domain/documents";
-import { closingQuestionsWritten, worksheetExitQuestions } from "../plan-write/closing";
+import { freshClosingWritten } from "../plan-write/closing";
+import { inLessonQuestions, SIMILARITY_MAX, similarity } from "../plan-write/fresh-exit";
 import { isPlanWriteStamp } from "../plan-write/steps";
 import { romansLesson } from "../planner/testing";
 import { type PlanSlide, toWire } from "../prompts/plan-lesson";
@@ -307,10 +308,18 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       const close = lesson.slides.at(-1);
       const words = JSON.stringify(close?.elements);
       expect(words).not.toContain("Complete it on your worksheet.");
-      const asked = worksheetExitQuestions(lesson.facts as NonNullable<Lesson["facts"]>);
-      const kept = (closingQuestionsWritten(asked)?.questions ?? []) as typeof asked;
+      const before = lesson.slides.slice(0, -1);
+      const facts = lesson.facts as NonNullable<Lesson["facts"]>;
+      const kept = (freshClosingWritten(facts, before)?.questions ?? []) as {
+        question: string;
+        answer: string;
+      }[];
       expect(kept.length).toBeGreaterThan(0);
-      expect(kept[0]).toEqual(asked[0] as (typeof asked)[number]);
+      // Fresh: none of them is, or is close to, a question the lesson asked before its close.
+      const earlier = inLessonQuestions(before);
+      for (const q of kept) {
+        for (const e of earlier) expect(similarity(q.question, e)).toBeLessThan(SIMILARITY_MAX);
+      }
       for (const q of kept) {
         expect(words).toContain(json(q.question).slice(1, -1));
         // The answer is on the slide, hidden until the first reveal step.

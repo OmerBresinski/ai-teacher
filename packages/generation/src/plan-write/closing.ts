@@ -8,6 +8,7 @@ import {
   text,
 } from "@tj/slides";
 import { fitWritten, type Written } from "./fit";
+import { type FreshExitItem, freshExitItems } from "./fresh-exit";
 import { SET_MAX, setSchema } from "./menu";
 
 /*
@@ -108,10 +109,14 @@ export function worksheetExitQuestions(facts: LessonFacts): ExitQuestion[] {
   });
 }
 
-const writtenOf = (questions: readonly ExitQuestion[]): Written => ({
+const WORKSHEET_NOTES =
+  "The same questions as the worksheet's exit ticket. Pupils answer alone; reveal the answers once they have written theirs.";
+const FRESH_NOTES =
+  "New questions on today's objectives, not ones asked earlier. Pupils answer alone; reveal the answers once they have written theirs.";
+
+const writtenOf = (questions: readonly ExitQuestion[], notes = WORKSHEET_NOTES): Written => ({
   questions: questions.map(({ question, answer }) => ({ question, answer })),
-  notes:
-    "The same questions as the worksheet's exit ticket. Pupils answer alone; reveal the answers once they have written theirs.",
+  notes,
 });
 
 /**
@@ -120,13 +125,34 @@ const writtenOf = (questions: readonly ExitQuestion[]): Written => ({
  * revealed (plan-write's own fit check), and the result within the set's schema. Undefined when no
  * question is kept: the closing slide then points to the worksheet.
  */
-export function closingQuestionsWritten(questions: readonly ExitQuestion[]): Written | undefined {
+export function closingQuestionsWritten(
+  questions: readonly ExitQuestion[],
+  notes = WORKSHEET_NOTES,
+): Written | undefined {
   const kept: ExitQuestion[] = [];
   for (const q of questions) {
     if (kept.length >= SET_MAX) break;
-    if (fitWritten(EXIT_FORM, EXIT_FORM, writtenOf([...kept, q])).ok) kept.push(q);
+    if (fitWritten(EXIT_FORM, EXIT_FORM, writtenOf([...kept, q], notes)).ok) kept.push(q);
   }
   if (kept.length === 0) return undefined;
-  const out = writtenOf(kept);
+  const out = writtenOf(kept, notes);
   return setSchema(EXIT_FORM).safeParse(out).success ? out : undefined;
 }
+
+/**
+ * The closing set built from fresh items (`fresh-exit.ts`): questions the lesson has not asked,
+ * one per objective while there is room, each fitting the slide with its answer revealed.
+ */
+export function freshClosingWritten(
+  facts: LessonFacts,
+  slides: readonly Slide[],
+): Written | undefined {
+  return closingQuestionsWritten(freshClosingItems(facts, slides), FRESH_NOTES);
+}
+
+/** The fresh items the closing set is built from, with their forms, objectives and similarity. */
+export const freshClosingItems = (facts: LessonFacts, slides: readonly Slide[]): FreshExitItem[] =>
+  freshExitItems(facts, slides, {
+    max: SET_MAX,
+    fits: (qs) => fitWritten(EXIT_FORM, EXIT_FORM, writtenOf(qs, FRESH_NOTES)).ok,
+  });

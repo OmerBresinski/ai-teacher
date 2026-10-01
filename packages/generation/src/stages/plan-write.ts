@@ -46,13 +46,12 @@ import {
 } from "../plan-write/check";
 import {
   closingLine,
-  closingQuestionsWritten,
   closingSlideFits,
   closingSpec,
   EXIT_FORM,
   exitTicketQuestions,
+  freshClosingWritten,
   withClosingLine,
-  worksheetExitQuestions,
 } from "../plan-write/closing";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
@@ -1979,10 +1978,10 @@ export async function planWriteSlides(
   // The close (ruling 141): no model call. The closing slide goes after the practise slide.
   if (mode === "stream") {
     const questions = exitTicketQuestions(facts);
-    // Opt-in (ruling 141's checkbox): the worksheet's exit questions on the closing slide itself.
+    // Opt-in (ruling 141's checkbox): fresh exit questions on the closing slide itself.
     const onSlides =
       closing && brief.exitTicketOnSlides === true
-        ? closingQuestionsWritten(worksheetExitQuestions(facts))
+        ? freshClosingWritten(facts, lesson.slides)
         : undefined;
     if (closing) {
       const slide = onSlides
