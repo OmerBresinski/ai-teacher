@@ -132,7 +132,10 @@ function writerCallOf(text: string): WriteSlidesInput {
   };
 }
 
-function planWriteAi(calls: WriteSlidesInput[], opts: { longHinge?: boolean } = {}) {
+function planWriteAi(
+  calls: WriteSlidesInput[],
+  opts: { longHinge?: boolean; masterFixes?: unknown[] } = {},
+) {
   const fallback: FakeScriptEntry = async (call: FakeCall) => {
     const version = call.context?.promptVersion ?? "";
     if (version.startsWith("check-input")) return json({ findings: [] });
@@ -184,6 +187,7 @@ function planWriteAi(calls: WriteSlidesInput[], opts: { longHinge?: boolean } = 
         ),
       );
     }
+    if (version.startsWith("master-check")) return json({ fixes: opts.masterFixes ?? [] });
     if (version.startsWith("verify-facts")) return json({ corrections: [] });
     if (version.startsWith("evaluate")) return json({ findings: [] });
     if (version.startsWith("repair")) return json(FIXTURES.repair);
@@ -315,6 +319,37 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       const counts = deps.persisted.map((p) => p.lesson.slides.length);
       expect(counts[0]).toBe(1);
       expect(counts).toEqual([...counts].sort((a, b) => a - b));
+    });
+  });
+
+  test("the stream's master check reads the whole lesson once; its fixes go through the named-field re-write", async () => {
+    await inMode(undefined, async () => {
+      const calls: WriteSlidesInput[] = [];
+      const ai = planWriteAi(calls, {
+        masterFixes: [
+          { slide: 7, field: "heading", kind: "join", problem: "Does not follow slide 6." },
+          { slide: 1, field: "title", kind: "duplicate", problem: "The title is fixed." },
+          { slide: 4, field: "nope", kind: "contradiction", problem: "No such field." },
+        ],
+      });
+      const final = await runLessonPipeline({ lesson: lesson8() }, recordingDeps(ai), {
+        planner: "plan-write",
+      });
+      const prompts = ai.calls.filter((c) => c.context?.promptVersion?.startsWith("master-check"));
+      expect(prompts).toHaveLength(1);
+      // The checker sees every slide, the title and objectives marked fixed.
+      expect(prompts[0]?.promptText).toContain("Fixed slides: 1, 2");
+      expect(prompts[0]?.promptText).toContain("Slide 8 (");
+      const master = ai.calls.filter((c) =>
+        c.promptText.includes("Reading the whole lesson found this (join)"),
+      );
+      expect(master).toHaveLength(1);
+      expect(
+        calls.filter((c) => c.rewrite?.field === "title" || c.rewrite?.field === "nope"),
+      ).toEqual([]);
+      expect(JSON.stringify(final.lesson.slides[6]?.elements)).toContain(
+        "Soldiers lived inside the fort",
+      );
     });
   });
 

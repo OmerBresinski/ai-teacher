@@ -62,6 +62,12 @@ import {
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { verifyFactsPrompt } from "../prompts";
 import {
+  MASTER_CHECK_KINDS,
+  MASTER_CHECK_VERSION,
+  type MasterCheckInput,
+  masterCheckPrompt,
+} from "../prompts/master-check";
+import {
   PLAN_LESSON_VERSION,
   type PlanLessonInput,
   type PlanLessonWire,
@@ -120,6 +126,19 @@ export const MAX_OUTPUT_TOKENS_PLAN = 16000;
 export const WRITER_OUTPUT_TOKENS_BASE = 1500;
 export const WRITER_OUTPUT_TOKENS_PER_SLIDE = 1500;
 const MAX_OUTPUT_TOKENS_REWRITE = 2000;
+const MAX_OUTPUT_TOKENS_MASTER_CHECK = 3000;
+/** At most this many master-check fixes are applied, in the order the checker gave them. */
+const MASTER_CHECK_MAX_FIXES = 6;
+const masterCheckSchema = z.object({
+  fixes: z.array(
+    z.object({
+      slide: z.number().int(),
+      field: z.string(),
+      kind: z.enum(MASTER_CHECK_KINDS),
+      problem: z.string(),
+    }),
+  ),
+});
 /** The single stream: the plan header and every slide in one answer. */
 export const MAX_OUTPUT_TOKENS_STREAM = 16000;
 /** Slides per writer call. */
@@ -528,6 +547,11 @@ export type PlanWriteReport = {
   photosDoneMs?: number;
   /** Faults the lesson-level pass found (taught before tested, one hinge, objectives slide). */
   lessonPass?: number;
+  /** Stream: the master check's fixes over the whole lesson, each with its reason and outcome. */
+  masterCheck?: {
+    ms: number;
+    fixes: { slide: number; field: string; kind: string; problem: string; outcome: string }[];
+  };
 };
 
 export async function planWriteSlides(
@@ -1574,10 +1598,130 @@ export async function planWriteSlides(
   const editableMs = Date.now() - startedAt;
   await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
 
+  /**
+   * The master check (stream): one call reads the whole lesson once every slide is written and
+   * checked, and names fields to write again for problems between slides (a broken join, the
+   * running example dropped or changed, a term used before it is taught, a contradiction, a
+   * repeat). Each fix is a named-field re-write and the fit, as a slide check's: saved only when
+   * the slide still fits, never shortened, split or moved to the notes. Title and objectives are
+   * fixed. Every fix is logged with its reason and outcome.
+   */
+  const runMasterCheck = async (): Promise<PlanWriteReport["masterCheck"]> => {
+    const t0 = Date.now();
+    const fixedRoles = new Set(["title", "objectives"]);
+    const sorted = [...placed].sort((a, b) => a.index - b.index);
+    const input: MasterCheckInput = {
+      audience,
+      topic: brief.topic,
+      objectives: objectives.map((o) => o.text),
+      runningExample: record.plan.runningExample,
+      slides: sorted.map((p) => ({
+        number: p.index + 1,
+        role: p.plan.role,
+        form: p.plan.form,
+        written: p.out as Record<string, unknown>,
+      })),
+      fixed: table.flatMap((row, i) => (fixedRoles.has(row.role) ? [i + 1] : [])),
+    };
+    let fixes: z.infer<typeof masterCheckSchema>["fixes"];
+    try {
+      const call = await callStructured({
+        deps,
+        stage: "generate",
+        cls,
+        effort: "low",
+        prompt: asPrompt<MasterCheckInput>(MASTER_CHECK_VERSION, masterCheckPrompt(input)),
+        input,
+        schema: masterCheckSchema,
+        maxOutputTokens: MAX_OUTPUT_TOKENS_MASTER_CHECK,
+      });
+      fixes = (call.output as z.infer<typeof masterCheckSchema>).fixes;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.warn(
+        { stage: "generate", call: "master-check", err: safeError(error) },
+        "master check failed; the lesson is kept",
+      );
+      return undefined;
+    }
+    // One re-write per field: reasons for the same field are joined.
+    type Ask = { slide: number; field: string; kind: string; problem: string };
+    const asks = new Map<string, Ask>();
+    const log: NonNullable<PlanWriteReport["masterCheck"]>["fixes"] = [];
+    for (const f of fixes) {
+      const p = placed.find((x) => x.index === f.slide - 1);
+      const skip = fixedRoles.has(table[f.slide - 1]?.role ?? "")
+        ? "fixed slide"
+        : !p || fixedRoles.has(p.plan.role)
+          ? "no such slide"
+          : !(
+                f.field in
+                (slideWriterSchema(p.plan.form, p.plan.layout) as unknown as z.ZodObject).shape
+              )
+            ? "no such field"
+            : undefined;
+      if (skip) {
+        log.push({ ...f, outcome: `skipped: ${skip}` });
+        continue;
+      }
+      const key = `${f.slide}:${f.field}`;
+      const had = asks.get(key);
+      if (had) had.problem = `${had.problem}; ${f.problem}`;
+      else if (asks.size < MASTER_CHECK_MAX_FIXES) asks.set(key, { ...f });
+      else log.push({ ...f, outcome: "skipped: over the fix limit" });
+    }
+    const applyOne = async (f: Ask) => {
+      const index = f.slide - 1;
+      const p = placed.find((x) => x.index === index) as Placed;
+      const before = p.out;
+      const failure = `Reading the whole lesson found this (${f.kind}): ${f.problem}`;
+      const value = await checkRewrite(f.slide, f.field, failure, before);
+      if (value === undefined) return "re-write failed";
+      const out = { ...before, [f.field]: value };
+      const fitted = await fitWithRewrite(p.plan.form, p.plan.layout, out, async (field, why) => {
+        const v = await checkRewrite(f.slide, field, why, out, "fit");
+        return v === undefined ? undefined : { [field]: v };
+      });
+      if (!fitted.fit.ok) return `not saved: does not fit (${fitted.fit.failure})`;
+      p.out = fitted.out;
+      await redraw(index, {
+        promptVersion: joinVersions(WRITE_SLIDES_VERSION, MASTER_CHECK_VERSION),
+        model: "master-check",
+        at: at(),
+      });
+      return "saved";
+    };
+    // Different slides in parallel; fields of one slide one after another, each on the last saved.
+    const bySlide = new Map<number, Ask[]>();
+    for (const f of asks.values()) bySlide.set(f.slide, [...(bySlide.get(f.slide) ?? []), f]);
+    await Promise.all(
+      [...bySlide.values()].map(async (list) => {
+        for (const f of list) {
+          const outcome = await applyOne(f).catch((error) => {
+            if (error instanceof Error && error.name === "AbortError") throw error;
+            return `failed: ${safeError(error).type}`;
+          });
+          log.push({ ...f, outcome });
+          deps.logger.info(
+            { stage: "generate", call: "master-check-fix", ...f, outcome },
+            "master check fix",
+          );
+        }
+      }),
+    );
+    const ms = Date.now() - t0;
+    deps.logger.info(
+      { stage: "generate", call: "master-check", fixes: log.length, ms },
+      "plan-write master check",
+    );
+    return { ms, fixes: log.sort((a, b) => a.slide - b.slide) };
+  };
+
   let finalFacts = facts;
   let checksDoneMs: number | undefined;
   let photosDoneMs: number | undefined;
   let lessonPass: number | undefined;
+  let masterCheck: PlanWriteReport["masterCheck"];
   if (mode === "stream") {
     // Each slide was checked as it closed; what is left are the checks and photos still in flight,
     // then the lesson pass for the rules that span slides.
@@ -1589,6 +1733,9 @@ export async function planWriteSlides(
         photosDoneMs = Date.now() - startedAt;
       }),
     ]);
+    await writing;
+    throwIfAborted(deps.signal);
+    masterCheck = await runMasterCheck();
     await writing;
     throwIfAborted(deps.signal);
     finalFacts = buildFacts();
@@ -1702,6 +1849,7 @@ export async function planWriteSlides(
           ...(checksDoneMs !== undefined ? { checksDoneMs } : {}),
           ...(photosDoneMs !== undefined ? { photosDoneMs } : {}),
           ...(lessonPass !== undefined ? { lessonPass } : {}),
+          ...(masterCheck ? { masterCheck } : {}),
         }
       : { ...(noPicture.length > 0 ? { noPicture } : {}) }),
   };

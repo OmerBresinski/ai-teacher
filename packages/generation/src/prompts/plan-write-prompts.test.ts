@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { contractFor, planMenu } from "../plan-write/menu";
 import { audienceOf } from "../stages/shared";
 import { sampleBriefLesson } from "../testing";
+import { MASTER_CHECK_VERSION, type MasterCheckInput, masterCheckPrompt } from "./master-check";
 import {
   PLAN_LESSON_VERSION,
   type PlanLessonInput,
@@ -141,6 +142,30 @@ const PINNED = {
     version: "write-slides.v16",
     hash: "de5862dbf32fe2ec7ed918a198da92c564e764878af82607e547e09edab32148",
   },
+  master: {
+    version: "master-check.v1",
+    hash: "cf3c7992a712c5aa96c6178b0fd631c0d265e05a1fd6729e407dbaf4ca06a7a1",
+  },
+};
+
+const MASTER_SAMPLE: MasterCheckInput = {
+  audience,
+  topic: "States of matter",
+  objectives: ["Describe how particles sit in a solid"],
+  runningExample: "an ice cube melting on a plate",
+  fixed: [1, 2],
+  slides: [
+    {
+      number: 3,
+      role: "teach",
+      form: "explain",
+      written: {
+        heading: "Particles in a solid",
+        body: ["They vibrate in fixed places."],
+        notes: "Say it.",
+      },
+    },
+  ],
 };
 
 describe("plan-write prompt versions", () => {
@@ -155,6 +180,7 @@ describe("plan-write prompt versions", () => {
       rewrite: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(REWRITE_SAMPLE)) },
       recheck: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(RECHECK_SAMPLE)) },
       check: { version: WRITE_SLIDES_VERSION, hash: hash(writeSlidesPrompt(CHECK_SAMPLE)) },
+      master: { version: MASTER_CHECK_VERSION, hash: hash(masterCheckPrompt(MASTER_SAMPLE)) },
     }).toEqual(PINNED);
   });
 
@@ -164,6 +190,7 @@ describe("plan-write prompt versions", () => {
       writeSlidesPrompt(WRITE_SAMPLE),
       writeSlidesPrompt(REWRITE_SAMPLE),
       streamLessonPrompt(STREAM_SAMPLE),
+      masterCheckPrompt(MASTER_SAMPLE),
     ]) {
       const text = `${p.system}\n${p.user}`;
       expect(text).not.toMatch(/shorten|too long|\bwords? (limit|max)|\bcharacters\b/i);

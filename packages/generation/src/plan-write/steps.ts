@@ -85,7 +85,7 @@ export function planWriteRoute(
   return (_cls: unknown, context: { promptVersion?: string } | undefined): string | undefined => {
     const v = context?.promptVersion ?? "";
     if (v.startsWith("plan-lesson.") || v.startsWith("stream-lesson.")) return plannerModel;
-    if (v.startsWith("write-slides.")) return writerModel;
+    if (v.startsWith("write-slides.") || v.startsWith("master-check.")) return writerModel;
     return undefined;
   };
 }
