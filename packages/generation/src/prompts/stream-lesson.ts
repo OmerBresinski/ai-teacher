@@ -43,7 +43,9 @@ import { WRITE_RULES } from "./write-slides";
 /* v17 (round F1): plan-lesson.v20 (the title photograph is the lesson's subject; a check after each
  * objective's teaching, code adding any the rows leave out) and write-slides.v23; no swap changed. */
 /* v18 (round G1): write-slides.v24 (calculations written as equations, so code recomputes them). */
-export const STREAM_LESSON_VERSION = "stream-lesson.v18";
+/* v19 (round I1): plan-lesson.v21 (diagram slots for the template ideas); the diagram contract lists
+ * the templates first. No swap changed. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v19";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 

@@ -1401,7 +1401,7 @@ export async function planWriteSlides(
             rewrite: {
               slide: target(n),
               field: "diagram",
-              failure: `${why}, so the slide would show no picture. Draw it again SIMPLER: half the labels or fewer, each one or two words, fewer and larger shapes, every label clear of the other labels and of the drawing's lines, and parts meant to differ drawn differently`,
+              failure: `${why}, so the slide would show no picture. Draw it again SIMPLER: when a template (particles, hydrograph, timeline, layers, cycle, river, bar-model, number-line) shows this idea, use that template; otherwise half the labels or fewer, each one or two words, fewer and larger shapes, every label clear of the other labels and of the drawing's lines, and parts meant to differ drawn differently`,
               current: fitted.out,
               reason: "check",
             },

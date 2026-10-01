@@ -203,8 +203,147 @@ const table = z.object({
     .max(8),
 });
 
+// ─── templates (round I): pick one, fill its slots; code draws every line and label ──────────
+
+const particles = z.object({
+  kind: z.literal("particles"),
+  ...common,
+  show: z
+    .enum(["states", "diffusion", "dissolving"])
+    .describe("states: one panel per state; diffusion or dissolving: a before and an after panel"),
+  states: z
+    .array(z.enum(["solid", "liquid", "gas"]))
+    .min(1)
+    .max(3)
+    .describe("for show states: the states to draw, each once, in order"),
+  captions: z
+    .array(text(16))
+    .max(3)
+    .optional()
+    .describe("a name over each panel; default the state or Before / After"),
+  notes: z
+    .array(text(28))
+    .max(3)
+    .optional()
+    .describe("one short description under each panel, e.g. fixed rows"),
+  arrows: z
+    .array(text(14))
+    .max(2)
+    .optional()
+    .describe("words on the arrow between neighbouring panels, e.g. melting"),
+  motion: z.boolean().optional().describe("movement marks on the particles"),
+  key: z
+    .array(text(18))
+    .length(2)
+    .optional()
+    .describe("diffusion or dissolving: what the two colours are"),
+});
+
+const hydrograph = z.object({
+  kind: z.literal("hydrograph"),
+  ...common,
+  shape: z
+    .enum(["flashy", "gentle"])
+    .describe("flashy: short lag, high steep peak; gentle: long lag, low broad peak"),
+  values: z
+    .object({
+      peakRainfall: z.number().positive().optional().describe("mm"),
+      peakDischarge: z.number().positive().optional().describe("m³/s"),
+      baseFlow: z.number().optional().describe("m³/s"),
+      lagHours: z.number().positive().optional(),
+    })
+    .optional()
+    .describe("only numbers the slide uses; with none the axes carry titles only"),
+  marks: z
+    .array(
+      z.enum([
+        "peak-rainfall",
+        "peak-discharge",
+        "lag-time",
+        "rising-limb",
+        "falling-limb",
+        "base-flow",
+      ]),
+    )
+    .optional()
+    .describe("the features labelled; default all six"),
+});
+
+const timeline = z.object({
+  kind: z.literal("timeline"),
+  ...common,
+  events: z
+    .array(z.object({ date: text(14), text: text(40) }))
+    .min(3)
+    .max(7)
+    .describe("in time order"),
+  period: z
+    .object({ from: z.number().int(), to: z.number().int(), label: text(24) })
+    .optional()
+    .describe("a highlighted span from one event to a later one, by their 1-based positions"),
+});
+
+const layers = z.object({
+  kind: z.literal("layers"),
+  ...common,
+  layers: z
+    .array(z.object({ label: text(24), thickness: z.number().min(1).max(3).optional() }))
+    .min(3)
+    .max(6)
+    .describe("top to bottom, each named on a leader line; thickness 1 to 3"),
+});
+
+const cycle = z.object({
+  kind: z.literal("cycle"),
+  ...common,
+  steps: z.array(text(32)).min(3).max(5).describe("clockwise from the top, each different"),
+});
+
+const river = z.object({
+  kind: z.literal("river"),
+  ...common,
+  view: z
+    .enum(["v-valley", "meander-section", "meander-plan"])
+    .describe(
+      "v-valley: upper-course cross-section; meander-section: across a bend; meander-plan: a bend from above",
+    ),
+  labels: z
+    .array(
+      z.object({
+        part: z
+          .enum([
+            "valley-side",
+            "channel",
+            "river-bed",
+            "vertical-erosion",
+            "river-cliff",
+            "slip-off-slope",
+            "fastest-flow",
+            "erosion",
+            "deposition",
+            "outer-bank",
+            "inner-bank",
+            "flow-direction",
+          ])
+          .describe(
+            "v-valley: valley-side, channel, river-bed, vertical-erosion; meander-section: river-cliff, slip-off-slope, fastest-flow, erosion, deposition, outer-bank, inner-bank; meander-plan: outer-bank, inner-bank, river-cliff, slip-off-slope, fastest-flow, flow-direction",
+          ),
+        text: text(24),
+      }),
+    )
+    .min(1)
+    .max(6)
+    .describe("each part once; code knows where every part is"),
+});
+
 /** One diagram, told apart by `kind`. */
 export const DiagramSpecSchema = z.discriminatedUnion("kind", [
+  particles,
+  hydrograph,
+  timeline,
+  layers,
+  cycle,
+  river,
   barModel,
   lineGraph,
   flow,
@@ -222,7 +361,7 @@ export const DIAGRAM_KINDS = DiagramSpecSchema.options.map((o) => o.shape.kind.v
  * the limits, and a spec over one lands as a teaching slide without the drawing.
  */
 export const DIAGRAM_CONTRACT = [
-  `- diagram: the drawing itself, as a diagram spec of one kind (${DIAGRAM_KINDS.join(", ")}); never shown as text. Its text is labels, not sentences: a label, annotation, interval, series name, particle caption or table header is one to three words; an axis label is a few words with its unit; a flow step is a short phrase and a flow arrow one or two words; a table cell is a short phrase; the title is one short line and the alt one sentence. A field with nothing to say is left out, never empty.`,
+  `- diagram: the drawing itself, as a diagram spec of one kind; never shown as text. Templates come first: particles (arrangement of particles in solids, liquids and gases, diffusion, dissolving), hydrograph (a storm hydrograph), timeline (dated events in order), layers (a layered structure or cross-section), cycle (a cycle of three to five steps), river (a V-shaped valley, or a meander across or from above), bar-model and number-line. A template's slots are its words and values only; code draws it. Use a template whenever it shows the idea, and the free kinds (line-graph, labelled-diagram, flow, table) only when none does. Its text is labels, not sentences: a label, annotation, interval, series name, particle caption or table header is one to three words; an axis label is a few words with its unit; a flow step is a short phrase and a flow arrow one or two words; a table cell is a short phrase; the title is one short line and the alt one sentence. A field with nothing to say is left out, never empty.`,
   "  - line-graph: an annotation marks one point of one series, at that point's own x and y (on the series' own axis), and its label names that series' feature (\"Peak rainfall\" at the tallest rainfall bar, \"Peak discharge\" at the top of the discharge line). An interval's y is in the left axis's units, below both curves' peaks. A lag time is an interval from the rainfall peak's x to the discharge peak's x.",
   "  - labelled-diagram: shapes on a canvas 100 high (100 or 160 wide). Each label's point is inside or on the shape it names; a label is 1 to 3 words, one per shape, at most 6. Particle boxes are one per state, the caption the state's name; a label on a particle box says something the caption does not (\"fixed rows\", never the state's name again).",
 ].join("\n");

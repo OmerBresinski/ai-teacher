@@ -21,11 +21,67 @@ import {
 
 type Pt = [number, number];
 
+/**
+ * Round I, template first: a free-drawn storm hydrograph or particle row becomes its hand-built
+ * template, carrying the writer's numbers and words; undefined when it cannot.
+ */
+export function asTemplate(s: DiagramSpec): DiagramSpec | undefined {
+  // Only the plain storm hydrograph (rain and discharge); one with a threshold keeps its drawing.
+  if (s.kind === "line-graph" && isHydrograph(s) && s.series.length === 2) {
+    const rain = s.series.find((x) => x.style === "bars");
+    const flow = s.series.find((x) => x.style !== "bars");
+    const rp = rain ? peak(rain.points) : undefined;
+    const fp = flow ? peak(flow.points) : undefined;
+    const base = flow?.points[0]?.[1];
+    const lag = rp && fp && fp[0] > rp[0] ? fp[0] - rp[0] : undefined;
+    const span = s.x.max - s.x.min;
+    const t: DiagramSpec = {
+      kind: "hydrograph",
+      alt: s.alt,
+      ...(s.title ? { title: s.title } : {}),
+      shape: lag !== undefined && lag / span > 0.3 ? "gentle" : "flashy",
+      values: {
+        ...(rp && rp[1] > 0 ? { peakRainfall: rp[1] } : {}),
+        ...(fp && fp[1] > 0 ? { peakDischarge: fp[1] } : {}),
+        ...(base !== undefined && fp && base >= 0 && base < fp[1] ? { baseFlow: base } : {}),
+        ...(lag ? { lagHours: lag } : {}),
+      },
+    };
+    const r = DiagramSpecSchema.safeParse(t);
+    return r.success ? r.data : undefined;
+  }
+  if (s.kind === "labelled-diagram" && isParticleRow(s)) {
+    const boxes = s.shapes
+      .flatMap((sh, i) => (sh.type === "particles" ? [{ sh, i }] : []))
+      .sort((a, b) => a.sh.x - b.sh.x);
+    const states = boxes.map((b) => b.sh.arrangement);
+    if (new Set(states).size !== states.length) return undefined;
+    const own = (i: number) =>
+      s.labels.find((l) => resolveLabels({ ...s, labels: [l] })[0]?.target === i)?.text;
+    const notes = boxes.map((b) => own(b.i));
+    const caps = boxes.map((b) => b.sh.caption);
+    const t = {
+      kind: "particles",
+      alt: s.alt,
+      ...(s.title ? { title: s.title } : {}),
+      states,
+      ...(caps.every(Boolean) ? { captions: caps } : {}),
+      ...(notes.every(Boolean) ? { notes } : {}),
+      ...(s.shapes.some((sh) => sh.type === "arrow") ? {} : {}),
+    };
+    const r = DiagramSpecSchema.safeParse(t);
+    return r.success ? r.data : undefined;
+  }
+  return undefined;
+}
+
 /** `spec` with the core kinds' geometry decided in code; anything else as it came. */
 export function normaliseDiagram(spec: unknown): unknown {
   const r = DiagramSpecSchema.safeParse(spec);
   if (!r.success) return spec;
   const s = r.data;
+  const tpl = asTemplate(s);
+  if (tpl) return tpl;
   const out: DiagramSpec | undefined =
     s.kind === "line-graph" && isHydrograph(s)
       ? normaliseHydrograph(s)
@@ -227,6 +283,19 @@ export function simplerDiagrams(spec: unknown): unknown[] {
       bare as LabelledDiagram,
       { ...s, labels: [] },
     );
+  }
+  if (s.kind === "particles") {
+    const { title: _t, ...bare } = s;
+    const { notes: _n, ...plain } = bare;
+    out.push(bare as DiagramSpec, plain as DiagramSpec);
+  }
+  if (["hydrograph", "timeline", "layers", "cycle", "river"].includes(s.kind) && s.title) {
+    const { title: _t, ...bare } = s;
+    out.push(bare as DiagramSpec);
+  }
+  if (s.kind === "hydrograph") {
+    const { title: _t, ...bare } = s;
+    out.push({ ...bare, marks: ["peak-rainfall", "peak-discharge", "lag-time"] } as DiagramSpec);
   }
   return out.filter((v) => DiagramSpecSchema.safeParse(v).success);
 }

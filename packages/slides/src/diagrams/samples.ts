@@ -3,6 +3,7 @@
  * would fill them. The snapshot tests and the visual page draw these.
  */
 import type { DiagramSpecInput } from "./schema";
+import { TEMPLATE_SPECS } from "./template-specs";
 
 export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
   "bar-model-ratio": {
@@ -276,4 +277,10 @@ export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
       ["Gas", "Random, far apart", "Move fast in all directions"],
     ],
   },
+  particles: TEMPLATE_SPECS["particles-three"] as DiagramSpecInput,
+  hydrograph: TEMPLATE_SPECS["hydrograph-flashy"] as DiagramSpecInput,
+  timeline: TEMPLATE_SPECS["timeline-romans"] as DiagramSpecInput,
+  layers: TEMPLATE_SPECS["layers-earth"] as DiagramSpecInput,
+  cycle: TEMPLATE_SPECS["cycle-water"] as DiagramSpecInput,
+  river: TEMPLATE_SPECS["river-meander-section"] as DiagramSpecInput,
 };

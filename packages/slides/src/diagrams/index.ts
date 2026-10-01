@@ -18,6 +18,14 @@ import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { context, type DrawnText, esc, n, text, wrap } from "./svg";
 import { drawTable } from "./table";
+import {
+  drawCycle,
+  drawHydrograph,
+  drawLayers,
+  drawParticles,
+  drawRiver,
+  drawTimeline,
+} from "./templates";
 
 export { isHydrograph, isParticleRow, normaliseDiagram, simplerDiagrams } from "./normalise";
 export * from "./schema";
@@ -87,6 +95,18 @@ function body(
         return drawNumberLine(s, ix, w, ih);
       case "table":
         return drawTable(s, ix, w, ih);
+      case "particles":
+        return drawParticles(s, ix, w, ih);
+      case "hydrograph":
+        return drawHydrograph(s, ix, w, ih);
+      case "timeline":
+        return drawTimeline(s, ix, w, ih);
+      case "layers":
+        return drawLayers(s, ix, w, ih);
+      case "cycle":
+        return drawCycle(s, ix, w, ih);
+      case "river":
+        return drawRiver(s, ix, w, ih);
     }
   })();
   return top ? `${head}<g transform="translate(0,${n(top)})">${inner}</g>` : inner;

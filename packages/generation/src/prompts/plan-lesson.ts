@@ -43,7 +43,10 @@ import { type Audience, audienceBlock } from "./shared";
 /* v20 (round F1): the title photograph is the lesson's subject itself, never a mood scene or the
  * running example's setting; after each objective's teaching comes a check on it, and one that
  * does not fit the rows is left to code (checksToInsert), so the checks no longer give way first. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v20";
+/* v21 (round I1): the diagram-slot shapes name the code-drawn templates (particle arrangement, storm
+ * hydrograph, timeline, layers, cycle, river valley or meander), so the planner gives those ideas a
+ * diagram slot; the palette's diagram contract lists the templates and when each fits. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v21";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -298,7 +301,7 @@ Each slide where pupils answer, sort, match or write asks something new.
 
 Each row, fields in order, split by " | ", "-" for none:
 - role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on) or practise (pupils work alone through a set of new items that step up in difficulty).
-- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, or as a diagram slot when they make a process or a cycle, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out, or an explanation they will build step by step, is a worked example; a practise slide is a list whose four points are its items; a teach slide is a photo or a diagram slot unless its idea cannot be pictured: a diagram slot wherever the idea has a shape (a process, a cycle, a graph, a structure, a labelled cross-section, a bar model, a number line, a table), otherwise a photo of the real place, object, event or specimen it teaches. A slide whose idea cannot be pictured, or that no photograph could show as taught, has none.
+- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, or as a diagram slot when they make a process or a cycle, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out, or an explanation they will build step by step, is a worked example; a practise slide is a list whose four points are its items; a teach slide is a photo or a diagram slot unless its idea cannot be pictured: a diagram slot wherever the idea has a shape (a particle arrangement, a storm hydrograph, a timeline of dates, layers, a cycle, a river valley or meander, a bar model, a number line, a process, a graph, a structure, a labelled cross-section, a table), otherwise a photo of the real place, object, event or specimen it teaches. A slide whose idea cannot be pictured, or that no photograph could show as taught, has none.
 - objectives: the numbers of the objectives it serves, split by commas; "-" for retrieve or hook.
 - parts: how many items its layout's counted slot will hold: its steps, points, sides, pairs, cards, terms, gaps, options, questions or sentences. The parts fit the layout's count. When an idea has more parts than a form holds, choose a form that holds them or split the idea over two slides.
 - aim: what the slide does, in a few words; the writer adds the detail.

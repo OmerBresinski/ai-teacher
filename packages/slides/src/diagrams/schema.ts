@@ -295,6 +295,158 @@ export const TableSchema = z
     return t.rows.every((r) => r.length === cols);
   }, "every row has one cell per column");
 
+// ─── templates (round I) ────────────────────────────────────────────────────────────────────
+// Hand-built textbook figures: the writer picks one and fills small typed slots; code owns all
+// geometry, so a template draws cleanly on every theme and slot.
+
+const STATE = z.enum(["solid", "liquid", "gas"]);
+
+export const ParticlesSchema = z
+  .object({
+    kind: z.literal("particles"),
+    ...common,
+    /** states: one panel per state; diffusion and dissolving: a before and an after panel. */
+    show: z.enum(["states", "diffusion", "dissolving"]).default("states"),
+    states: z.array(STATE).min(1).max(3).default(["solid", "liquid", "gas"]),
+    /** A name over each panel (default the state's name, or Before / After). */
+    captions: z.array(label(16)).max(3).optional(),
+    /** A short description under each panel ("fixed rows"). */
+    notes: z.array(label(28)).max(3).optional(),
+    /** Words on the arrow between neighbouring panels ("melting"). */
+    arrows: z.array(label(14)).max(2).optional(),
+    /** Movement marks: vibration in a solid, short arrows in a liquid or gas. */
+    motion: z.boolean().default(false),
+    /** For diffusion and dissolving: what the two colours are (a key under the panels). */
+    key: z.tuple([label(18), label(18)]).optional(),
+  })
+  .refine(
+    (p) => new Set(p.states).size === p.states.length,
+    "each state appears once, so the panels differ",
+  );
+
+export const HydrographSchema = z.object({
+  kind: z.literal("hydrograph"),
+  ...common,
+  /** flashy: short lag, steep high peak; gentle: long lag, low broad peak. */
+  shape: z.enum(["flashy", "gentle"]).default("flashy"),
+  /** Optional numbers; with none the axes carry titles only. */
+  values: z
+    .object({
+      peakRainfall: z.number().positive().finite().optional(),
+      peakDischarge: z.number().positive().finite().optional(),
+      baseFlow: z.number().nonnegative().finite().optional(),
+      lagHours: z.number().positive().finite().optional(),
+    })
+    .optional(),
+  /** Which features are labelled (default all six). */
+  marks: z
+    .array(
+      z.enum([
+        "peak-rainfall",
+        "peak-discharge",
+        "lag-time",
+        "rising-limb",
+        "falling-limb",
+        "base-flow",
+      ]),
+    )
+    .optional(),
+});
+
+export const TimelineSchema = z
+  .object({
+    kind: z.literal("timeline"),
+    ...common,
+    /** In time order, evenly spaced. */
+    events: z
+      .array(z.object({ date: label(14), text: label(40) }))
+      .min(3)
+      .max(7),
+    /** A highlighted span between two events (1-based positions in `events`). */
+    period: z
+      .object({ from: z.number().int().min(1), to: z.number().int().min(1), label: label(24) })
+      .optional(),
+  })
+  .refine(
+    (t) => !t.period || (t.period.to > t.period.from && t.period.to <= t.events.length),
+    "a period runs from an earlier event to a later one",
+  );
+
+export const LayersSchema = z.object({
+  kind: z.literal("layers"),
+  ...common,
+  /** Top to bottom, each named by a label on a leader line; thickness 1 to 3. */
+  layers: z
+    .array(z.object({ label: label(24), thickness: z.number().min(1).max(3).default(1) }))
+    .min(3)
+    .max(6),
+});
+
+export const CycleSchema = z
+  .object({
+    kind: z.literal("cycle"),
+    ...common,
+    /** Clockwise from the top. */
+    steps: z.array(label(32)).min(3).max(5),
+  })
+  .refine(
+    (c) => new Set(c.steps.map((s) => s.toLowerCase())).size === c.steps.length,
+    "each step appears once",
+  );
+
+export const RIVER_PARTS = {
+  "v-valley": ["valley-side", "channel", "river-bed", "vertical-erosion"],
+  "meander-section": [
+    "river-cliff",
+    "slip-off-slope",
+    "fastest-flow",
+    "erosion",
+    "deposition",
+    "outer-bank",
+    "inner-bank",
+  ],
+  "meander-plan": [
+    "outer-bank",
+    "inner-bank",
+    "river-cliff",
+    "slip-off-slope",
+    "fastest-flow",
+    "flow-direction",
+  ],
+} as const;
+
+export const RiverSchema = z
+  .object({
+    kind: z.literal("river"),
+    ...common,
+    view: z.enum(["v-valley", "meander-section", "meander-plan"]),
+    /** Each part named once; code knows where every part is. */
+    labels: z
+      .array(
+        z.object({
+          part: z.enum([...new Set(Object.values(RIVER_PARTS).flat())] as [string, ...string[]]),
+          text: label(24),
+        }),
+      )
+      .min(1)
+      .max(6),
+  })
+  .superRefine((r, ctx) => {
+    const ok = RIVER_PARTS[r.view] as readonly string[];
+    const seen = new Set<string>();
+    r.labels.forEach((l, i) => {
+      if (!ok.includes(l.part))
+        ctx.addIssue({
+          code: "custom",
+          message: `no ${l.part} in a ${r.view}`,
+          path: ["labels", i],
+        });
+      if (seen.has(l.part))
+        ctx.addIssue({ code: "custom", message: "each part once", path: ["labels", i] });
+      seen.add(l.part);
+    });
+  });
+
 // ─── the union ──────────────────────────────────────────────────────────────────────────────
 
 export const DiagramSpecSchema = z.discriminatedUnion("kind", [
@@ -304,6 +456,12 @@ export const DiagramSpecSchema = z.discriminatedUnion("kind", [
   LabelledDiagramSchema,
   NumberLineSchema,
   TableSchema,
+  ParticlesSchema,
+  HydrographSchema,
+  TimelineSchema,
+  LayersSchema,
+  CycleSchema,
+  RiverSchema,
 ]);
 
 export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
@@ -315,6 +473,24 @@ export type Flow = z.infer<typeof FlowSchema>;
 export type LabelledDiagram = z.infer<typeof LabelledDiagramSchema>;
 export type NumberLine = z.infer<typeof NumberLineSchema>;
 export type Table = z.infer<typeof TableSchema>;
+export type Particles = z.infer<typeof ParticlesSchema>;
+export type Hydrograph = z.infer<typeof HydrographSchema>;
+export type Timeline = z.infer<typeof TimelineSchema>;
+export type Layers = z.infer<typeof LayersSchema>;
+export type Cycle = z.infer<typeof CycleSchema>;
+export type River = z.infer<typeof RiverSchema>;
+
+/** The hand-built templates (round I): code owns their geometry; the picture ladder tries them first. */
+export const TEMPLATE_KINDS = [
+  "particles",
+  "hydrograph",
+  "timeline",
+  "layers",
+  "cycle",
+  "river",
+  "bar-model",
+  "number-line",
+] as const;
 
 export const DIAGRAM_KINDS: DiagramKind[] = [
   "bar-model",
@@ -323,4 +499,10 @@ export const DIAGRAM_KINDS: DiagramKind[] = [
   "labelled-diagram",
   "number-line",
   "table",
+  "particles",
+  "hydrograph",
+  "timeline",
+  "layers",
+  "cycle",
+  "river",
 ];

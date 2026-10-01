@@ -29,23 +29,22 @@ describe("H1 core diagrams", () => {
     });
   }
 
-  test("a hydrograph gains its missing peak label and the lag between the peaks", () => {
+  test("a plain storm hydrograph becomes the hydrograph template, keeping its numbers (round I)", () => {
     const g = parseDiagram(normaliseDiagram(specs.hydroOnePeak));
-    if (g?.kind !== "line-graph") throw new Error("not a line graph");
-    expect(g.annotations.map((a) => a.label)).toContain("Peak rainfall");
-    expect(g.intervals).toHaveLength(1);
-    expect(g.intervals[0]?.y).toBeUndefined();
+    if (g?.kind !== "hydrograph") throw new Error(`not the template: ${g?.kind}`);
+    expect(g.values?.peakDischarge).toBeGreaterThan(0);
+    expect(g.values?.lagHours).toBeGreaterThan(0);
   });
 
-  test("a particle row is equal boxes in one row, one description under each", () => {
+  test("a hydrograph with a threshold line keeps its own drawing", () => {
+    expect(parseDiagram(normaliseDiagram(specs.hydroCapacity))?.kind).toBe("line-graph");
+  });
+
+  test("a particle row becomes the particles template, one note per state (round I)", () => {
     const d = parseDiagram(normaliseDiagram(specs.particlesWall));
-    if (d?.kind !== "labelled-diagram") throw new Error("not a labelled diagram");
-    const boxes = d.shapes.filter((s) => s.type === "particles");
-    expect(boxes).toHaveLength(3);
-    expect(new Set(boxes.map((b) => (b.type === "particles" ? b.w : 0))).size).toBe(1);
-    expect(d.shapes.some((s) => s.type === "line")).toBe(false);
-    expect(d.labels.every((l) => l.side === "bottom")).toBe(true);
-    expect(d.labels.map((l) => l.text)).not.toContain("Container wall");
+    if (d?.kind !== "particles") throw new Error(`not the template: ${d?.kind}`);
+    expect(d.states).toHaveLength(3);
+    expect(new Set(d.states).size).toBe(3);
   });
 
   test("a spec of another kind comes back unchanged", () => {
