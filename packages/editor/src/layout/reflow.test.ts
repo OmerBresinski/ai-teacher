@@ -233,6 +233,8 @@ describe("reflowSlide — push down", () => {
 
 describe("reflowSlide — step down", () => {
   test("steps body type down one stop when the slide overruns the safe area", () => {
+    // Chalk's teaching body already sits at the floor; playground's (22) has a stop under it.
+    const theme = getTheme("playground");
     const el = textEl("a", {
       x: SAFE.x,
       y: SAFE.y,

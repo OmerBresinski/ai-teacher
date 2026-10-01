@@ -78,12 +78,14 @@ describe("the floor clamps every path to the same number", () => {
       expect(resolveFontSize(theme, preset, 12, role)).toBe(relaxed);
       expect(resolveFontSize(theme, preset, 200, role)).toBe(200);
     }
-    // Chalk: an option card 31 → 29, a question stem 38 → 36, body 26 → 24, small stays at 24.
+    // Chalk: an option card 31 → 29 (the display body stop the teaching cut keeps on the ladder),
+    // a question stem 38 → 36; the teaching body sits at its floor of 20 with no stop under it;
+    // small 24 → 20, the teaching body stop under it.
     const chalk = getTheme("chalk");
     expect(resolveFontSize(chalk, "small", 12, "option")).toBe(29);
     expect(resolveFontSize(chalk, "heading", 12, "question")).toBe(36);
-    expect(resolveFontSize(chalk, "body", 12)).toBe(24);
-    expect(resolveFontSize(chalk, "small", 12)).toBe(24);
+    expect(resolveFontSize(chalk, "body", 12)).toBe(20);
+    expect(resolveFontSize(chalk, "small", 12)).toBe(20);
   });
   test("reports the role on the resolved style, so the toolbar and the exporter agree", () => {
     expect(resolveTextStyle({ preset: "heading" }, theme).role).toBe("heading");

@@ -25,6 +25,9 @@ const TEACH = 0.7;
 type Stops = [number, number][]; // [size@800, lineHeight] in order title, subtitle, heading, body, small, caption
 const PRESETS: TextPreset[] = ["title", "subtitle", "heading", "body", "small", "caption"];
 
+/** Each theme's display body stop, before the teaching cut (keyed by the theme's `sizes` object). */
+const RAW_BODY = new WeakMap<Record<TextPreset, number>, number>();
+
 function type(stops: Stops) {
   const sizes = {} as Record<TextPreset, number>;
   const lineHeights = {} as Record<TextPreset, number>;
@@ -32,6 +35,7 @@ function type(stops: Stops) {
     const preset = PRESETS[i];
     if (!preset) return;
     sizes[preset] = Math.round(size * S * (preset === "body" ? TEACH : 1));
+    if (preset === "body") RAW_BODY.set(sizes, Math.round(size * S));
     lineHeights[preset] = lh;
   });
   return { sizes, lineHeights };
@@ -362,6 +366,17 @@ const BASE: Theme[] = [
 
 /** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
 export const THEMES: Theme[] = BASE;
+
+const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
+  BASE.map((t) => [t.id, RAW_BODY.get(t.sizes)]),
+);
+
+/**
+ * The theme's display body stop, which the teaching cut took off `sizes.body`. It stays a stop of
+ * the step-down ladder, so an option card or a question stem still steps one display stop under
+ * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`.
+ */
+export const displayBodyStop = (theme: Theme): number | undefined => DISPLAY_BODY[theme.id];
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
