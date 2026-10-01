@@ -122,7 +122,7 @@ export type ExitItemChecks = {
 };
 
 const TOO_LONG =
-  "it is too long to fit on the slide beside the other items; write it shorter: a question of at most 12 words and an answer of at most 12 words";
+  "it didn't fit the slide beside the other items; use fewer options or a shorter stem";
 
 /** Re-asks after the first call: enough to give each objective an item and reach the count. */
 export const EXIT_REASKS = 2;

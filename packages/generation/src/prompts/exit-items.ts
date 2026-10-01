@@ -11,9 +11,8 @@ import { type Audience, audienceBlock, example } from "./shared";
  */
 export const EXIT_ITEMS_VERSION = "exit-items.v2";
 /* v2 (round S): a re-ask can ask for a new item on an objective that has none (no question to
- * fix), and names an item too long for the slide or asking about a term no slide teaches. Word
- * limits cut to what three items fit on the closing slide with answers shown (S1: 25 and 20 words
- * let one item fill it). */
+ * fix), and names an item that did not fit the slide or asks about a term no slide teaches. No
+ * word budgets: size comes from the item and option counts and the fit check in code. */
 
 export const EXIT_ITEM_FORMS = ["apply", "explain", "multiple-choice"] as const;
 
@@ -70,8 +69,8 @@ const SYSTEM = [
   "Write the number of items you are asked for: one on each objective, in objective order, then any extra on the objective that most needs checking. Each item:",
   "- objective: the number of the objective it tests;",
   '- form: "apply" (use the method or idea on a new case), "explain" (say how or why) or "multiple-choice" (two or three wrong options, each a mistake a pupil in this lesson would really make). Use at least two different forms;',
-  "- answer: the model answer a teacher marks against, written before the question. It answers the question in full in at most 12 words: the working and result for an apply item, the reason itself for an explain item, the correct option for a multiple-choice item. Write any calculation as an equation with its result (15 ÷ 5 = 3);",
-  "- question: at most 12 words, a multiple-choice item's options apart (each option at most six words), answerable from the slides alone, and new: not one of the lesson's questions reworded, and on a different case or angle from them;",
+  "- answer: the model answer a teacher marks against, written before the question. It answers the question in full in one sentence: the working and result for an apply item, the reason itself for an explain item, the correct option for a multiple-choice item. Write any calculation as an equation with its result (15 ÷ 5 = 3);",
+  "- question: one sentence, answerable from the slides alone, and new: not one of the lesson's questions reworded, and on a different case or angle from them;",
   "- wrongOptions: the wrong options for a multiple-choice item, otherwise [].",
   "",
   "Use only what the teaching slides teach: no fact, term or method they do not give.",
