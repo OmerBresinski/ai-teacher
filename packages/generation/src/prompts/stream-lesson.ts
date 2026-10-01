@@ -36,7 +36,9 @@ import { WRITE_RULES } from "./write-slides";
  * item first); no swap changed. */
 /* v14 (round C2): plan-lesson.v17 and write-slides.v20 (C2 capacities; a worked example's full
  * reasoned working). */
-export const STREAM_LESSON_VERSION = "stream-lesson.v14";
+/* v15 (round D1): plan-lesson.v18 and write-slides.v21 (labelled chunks, shorter sentences for Years
+ * 1 to 6, photos of the taught thing as taught); no swap changed. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v15";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -56,8 +58,8 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
     "The objectives slide does not open the lesson; when the slides allow, the first row does: a retrieve slide on the earlier learning this lesson builds on, or a hook when it builds on none. A hinge checks the idea everything after it depends on. The exit ticket is on the worksheet, so no slide is an exit. How many slides each idea takes and where the hinge falls are yours.",
   ],
   [
-    "A slide whose idea cannot be pictured has none.",
-    "A slide whose idea cannot be pictured has none. A picture sits beside a teach slide's explanation; it never takes the place of a starter, a check or a practise slide.",
+    "A slide whose idea cannot be pictured, or that no photograph could show as taught, has none.",
+    "A slide whose idea cannot be pictured, or that no photograph could show as taught, has none. A picture sits beside a teach slide's explanation; it never takes the place of a starter, a check or a practise slide.",
   ],
   [
     "Each check question has exactly one defensible answer.",

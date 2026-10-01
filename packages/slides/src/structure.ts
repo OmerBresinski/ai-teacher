@@ -11,7 +11,7 @@ import type {
   TextStyle,
   Theme,
 } from "@tj/domain/documents";
-import { docFromBullets, docFromText, uid } from "./factories";
+import { docFromBullets, docFromText, isChunked, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { GUTTER, SAFE, SPACE, snapY } from "./grid";
 import {
@@ -974,6 +974,7 @@ export function inferStructure(
 /* ---------------------------------------------------------------- the pass */
 
 const isText = (e: SlideElement): e is TextElement => e.type === "text";
+
 const LEAD_CARD = "Explanation card";
 
 /**
@@ -1477,6 +1478,8 @@ function structureContent(
       isText(e) && e.style.preset === "body" && (!e.name || e.name === LEAD_CARD),
   );
   if (bodies.length === 0) return plain;
+  // A body in labelled chunks (round D1, `docFromChunks`) is already set out in parts: it stays.
+  if (bodies.length === 1 && isChunked((bodies[0] as TextElement).doc)) return plain;
   const top = Math.min(...bodies.map((b) => b.y));
   // A content spec's `points` arrive as a bullet list at the end of its body (`bodyWithPoints`):
   // the prose is the words, the list the points.
@@ -2023,19 +2026,23 @@ function composeBesideSlot(
   if (!first) return [withTerms(slide, t, hints.terms)];
   // The slot is the right panel of the two-column composition, the words the left column.
   const prose = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
-  const asPanel = splitContent(
-    slide,
-    t,
-    bodies,
-    first.y,
-    prose,
-    bodies.flatMap((b) => pointsOf(b.doc)),
-    {},
-    hints,
-    ids,
-    slot,
-    paginate,
-  );
+  // A body in labelled chunks (round D1) keeps its chunks beside the slot: no panel, no points.
+  const chunked = bodies.length === 1 && isChunked(first.doc);
+  const asPanel =
+    !chunked &&
+    splitContent(
+      slide,
+      t,
+      bodies,
+      first.y,
+      prose,
+      bodies.flatMap((b) => pointsOf(b.doc)),
+      {},
+      hints,
+      ids,
+      slot,
+      paginate,
+    );
   if (asPanel) return [asPanel];
   const top = first.y;
   const x = first.x;
@@ -2044,7 +2051,7 @@ function composeBesideSlot(
   // With pages the words fill the column beside the slot at the body size, as many points or
   // sentences as fit, and only the rest continues (look/image-slot): a list stays a list.
   const points = hints.points?.length ? hints.points : bodies.flatMap((b) => pointsOf(b.doc));
-  if (paginate) {
+  if (paginate && !chunked) {
     const keep = slide.elements.filter((e) => e !== slot && !bodies.includes(e as TextElement));
     const listed = points.length >= 2;
     const lead = listed ? joinSentences(bodies.map((b) => docText(proseOf(b.doc)))) : "";

@@ -9,7 +9,7 @@ import type {
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
 import { type DiagramSpecInput, diagramElement } from "./diagrams";
-import { docFromText, uid } from "./factories";
+import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
 import { HEADING_NAME, isBackdrop } from "./reflow";
@@ -282,6 +282,8 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
   // A body with `points` (materialise `bodyWithPoints`) ends in a bullet list: the lead is taken
   // from the paragraphs before it, and the list goes under the lead with whatever follows it.
   const nodes = body.doc.content ?? [];
+  // A body in labelled chunks (`docFromChunks`) is already set out in parts: it keeps them.
+  if (isChunked(body.doc)) return els;
   const listAt = nodes.findIndex((n) => n.type === "bulletList");
   const list = listAt < 0 ? [] : nodes.slice(listAt);
   const words =

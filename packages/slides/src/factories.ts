@@ -29,6 +29,43 @@ export function docFromText(text: string): RichDoc {
   };
 }
 
+/** A chunk's label: up to four words before a colon that ends it (not a ratio like 2:3). */
+const CHUNK_LABEL = /^([^:\n.!?]{1,40}?):\s+(\S.*)$/;
+
+/**
+ * Text → rich doc, one paragraph a line, as `docFromText`; when there are two or more lines and
+ * every one is a labelled chunk ("Gas: the particles…"), each label is set bold (round D1).
+ */
+export function docFromChunks(text: string): RichDoc {
+  const lines = text.split("\n");
+  const parts = lines.map((l) => CHUNK_LABEL.exec(l.trim()));
+  const chunked =
+    lines.length >= 2 &&
+    parts.every((m) => m !== null && (m[1] ?? "").trim().split(/\s+/).length <= 4);
+  if (!chunked) return docFromText(text);
+  return {
+    type: "doc",
+    content: parts.map((m) => ({
+      type: "paragraph",
+      content: [
+        { type: "text", text: `${(m?.[1] ?? "").trim()}:`, marks: [{ type: "bold" }] },
+        { type: "text", text: ` ${m?.[2] ?? ""}` },
+      ],
+    })),
+  };
+}
+
+/** A body written as labelled chunks: two or more paragraphs, each opening on a bold label. */
+export function isChunked(doc: RichDoc): boolean {
+  const nodes = doc.content ?? [];
+  return (
+    nodes.length >= 2 &&
+    nodes.every(
+      (n) => n.type === "paragraph" && !!n.content?.[0]?.marks?.some((m) => m.type === "bold"),
+    )
+  );
+}
+
 /** Bulleted list rich doc. */
 export function docFromBullets(items: string[]): RichDoc {
   return {

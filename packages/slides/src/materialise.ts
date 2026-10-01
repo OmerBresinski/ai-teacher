@@ -17,7 +17,7 @@ import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj
 import { applyCallout, detachCallout, isCalloutElement, placeCallout } from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
 import { DIAGRAM_DRAWN_NAME, type DiagramSpecInput, parseDiagram } from "./diagrams";
-import { docFromBullets, docFromText, uid } from "./factories";
+import { docFromBullets, docFromChunks, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
@@ -833,8 +833,8 @@ function withCallout(
  * included, under it.
  */
 export function bodyWithPoints(body: string, points: string[] | undefined): RichDoc {
-  if (!points?.length) return docFromText(body);
-  const text = body.trim() ? (docFromText(body).content ?? []) : [];
+  if (!points?.length) return docFromChunks(body);
+  const text = body.trim() ? (docFromChunks(body).content ?? []) : [];
   return { type: "doc", content: [...text, ...(docFromBullets(points).content ?? [])] };
 }
 
@@ -1113,7 +1113,7 @@ function optionsOf(laid: Layout): OptionElement[] {
 }
 
 function setText(element: TextElement | undefined, text: string): void {
-  setDoc(element, docFromText(text));
+  setDoc(element, docFromChunks(text));
 }
 
 function setDoc(element: TextElement | OptionElement | undefined, doc: RichDoc): void {

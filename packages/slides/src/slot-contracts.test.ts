@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import type { RichDoc } from "@tj/domain/documents";
+import { docFromChunks, isChunked } from "./factories";
+import { materialiseSlide } from "./materialise";
 import { PALETTE_FORM_IDS } from "./palette";
 import {
   contractText,
@@ -119,9 +122,43 @@ describe("C2 capacities and the worked example's full working", () => {
   it("teaching slots hold more than round B's contracts", () => {
     const max = (form: Parameters<typeof slotContract>[0], field: string) =>
       slotContract(form).slots.find((s) => s.field === field)?.max;
-    expect(max("diagram-slot", "body")).toBe(6);
     expect(max("compare", "body")).toBe(4);
     expect(max("sequence", "body")).toBe(3);
+  });
+});
+
+describe("D1 labelled chunks", () => {
+  it("a teach body is two or three labelled chunks, and all three fit on every theme", () => {
+    for (const form of ["explain", "photo", "diagram-slot"] as const) {
+      const c = slotContract(form);
+      const body = c.slots.find((s) => s.field === "body");
+      expect([body?.min, body?.max, body?.each]).toEqual([2, 3, "chunk"]);
+      expect(contractFits(c, worstFill(c)).failing).toEqual([]);
+    }
+  });
+
+  it("each chunk is its own paragraph with its label bold, kept whole beside a slot", () => {
+    for (const form of ["explain", "photo", "diagram-slot"] as const) {
+      const made = specOfWriter(form, worstFill(slotContract(form)));
+      const slide = materialiseSlide(
+        made?.spec as never,
+        "chalk",
+        { lessonId: "l", slideId: "s" } as never,
+        undefined,
+        made?.variant,
+        made?.structure,
+      );
+      const body = slide.elements.find((e) => e.type === "text" && e.doc.content?.length === 3) as
+        | { doc: RichDoc }
+        | undefined;
+      expect(body && isChunked(body.doc)).toBe(true);
+      expect(body?.doc.content?.[1]?.content?.[0]?.text).toBe("In 1923:");
+    }
+  });
+
+  it("a body with one label, or a ratio, stays plain text", () => {
+    expect(isChunked(docFromChunks("Gas: the particles move fast."))).toBe(false);
+    expect(isChunked(docFromChunks("Mix it 2:3 by volume.\nThen stir it well."))).toBe(false);
   });
 });
 

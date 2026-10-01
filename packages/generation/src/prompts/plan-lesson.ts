@@ -32,7 +32,10 @@ import { type Audience, audienceBlock } from "./shared";
 /* v17 (round C2): no rule text changed; the menu's contracts carry C2's measured capacities (list 4
  * points, compare sentences, sequence clauses, a diagram slot's six clauses, a worked example's three
  * to six reasoned steps). */
-export const PLAN_LESSON_VERSION = "plan-lesson.v17";
+/* v18 (round D1): a photo, the title's included, shows the taught thing as the lesson teaches it (for the
+ * past, what survives from that time, never today's place where none of it shows); when no photograph
+ * can, the slide has no photo. y4's Roman-road lesson opened on a modern road. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v18";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {
@@ -276,6 +279,7 @@ export const PLAN_RULES = `Decide the fields in this order:
 - objectives: what pupils will be able to do by the end, each on one line, starting with a verb. Usually three; one or two only when the topic is a single method or skill. Pitch them at what this year group's specification expects, harder cases included. Together they cover the whole topic the title names, and they are set first: no objective is dropped or narrowed to make room for a slide. They go on their own slide straight after the title; code adds both, as slides 1 and 2.
 - runningExample: one case, context or question the whole lesson returns to, so the slides tell one story.
 - titlePicture: the photograph on the title slide, a real place, thing or event this lesson teaches, filling the frame: its subject in a few plain words, and up to three things it must show.
+A photograph shows the taught thing as the lesson teaches it: for the past, what survives from that time (remains, an artefact, a preserved site), never the place as it is today where nothing of that time can be seen.
 - slides: one row for each slide after the objectives slide, as "${ROW_FORMAT}".
 
 The shape is yours to choose as good teaching for this topic and this age: whether the lesson opens by recalling earlier learning, with a hook, or straight into teaching; where a hinge checks the idea everything after it depends on, before pupils work alone; and where pupils practise and apply. The exit ticket is on the worksheet, so no slide is an exit.
@@ -286,7 +290,7 @@ Each slide where pupils answer, sort, match or write asks something new.
 
 Each row, fields in order, split by " | ", "-" for none:
 - role: retrieve (recalls earlier learning), hook (a question, case or picture that opens the puzzle), teach, check (a quick question on what was just taught), hinge (the check the rest of the lesson depends on) or practise (pupils work alone through a set of new items that step up in difficulty).
-- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, or as a diagram slot when they make a process or a cycle, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out is a worked example; a practise slide is a list whose four points are its items; a teach slide is a photo or a diagram slot unless its idea cannot be pictured: a diagram slot wherever the idea has a shape (a process, a cycle, a graph, a structure, a labelled cross-section, a bar model, a number line, a table), otherwise a photo of the real place, object, event or specimen it teaches. A slide whose idea cannot be pictured has none.
+- form and layout: from the palette, chosen by the shape of the content and its count. A diagram slot, whose labels take any number of parts, draws a process, a structure or a layout. Steps, stages or a chain of events are taught as a sequence, or as a diagram slot when they make a process or a cycle, and a sort only checks an order already taught; a hinge's options are each a word, a number or a short phrase, and when the natural options would be whole ideas, methods or outlines the check takes another form; two things set side by side are a compare; a method pupils will carry out is a worked example; a practise slide is a list whose four points are its items; a teach slide is a photo or a diagram slot unless its idea cannot be pictured: a diagram slot wherever the idea has a shape (a process, a cycle, a graph, a structure, a labelled cross-section, a bar model, a number line, a table), otherwise a photo of the real place, object, event or specimen it teaches. A slide whose idea cannot be pictured, or that no photograph could show as taught, has none.
 - objectives: the numbers of the objectives it serves, split by commas; "-" for retrieve or hook.
 - parts: how many items its layout's counted slot will hold: its steps, points, sides, pairs, cards, terms, gaps, options, questions or sentences. The parts fit the layout's count. When an idea has more parts than a form holds, choose a form that holds them or split the idea over two slides.
 - aim: what the slide does, in a few words; the writer adds the detail.

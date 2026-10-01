@@ -39,6 +39,8 @@ export const TEXT_KINDS = {
   "reasoned-step":
     'one step of the working on one line, then " — " and the reason for that step ("£45 ÷ 5 = £9 — each part is the total over the 5 parts")',
   "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
+  chunk:
+    'one part of the idea: a short label (a name or a short phrase, not a sentence), a colon, then one or two short sentences ("Gas: the particles are far apart and move fast. They spread out to fill any space.")',
   "gapped-sentence": "one sentence with each gap written as ___, at most two lines",
   starter: 'an unfinished sentence starter, just its opening, ending in … ("I think… because…")',
   brief: "the real thing it shows, named plainly, as a search would name it",
@@ -107,6 +109,21 @@ const lead: Slot = {
   each: "clause",
   place: "slide",
 };
+/**
+ * A teach slide's body (round D1): the idea in two or three labelled chunks, each its own
+ * paragraph with its label set bold, never one paragraph. Three is a teaching cap, not a measured
+ * one (`fixed`): the drift test still fills all three with the longest chunks on every theme.
+ */
+const chunks: Slot = {
+  field: "body",
+  unit: "item",
+  min: 2,
+  max: 3,
+  fixed: true,
+  each: "chunk",
+  place: "slide",
+  rule: "each its own part of the idea, in teaching order",
+};
 const body = (max: number): Slot => ({
   field: "body",
   unit: "sentence",
@@ -132,7 +149,7 @@ const one = (field: string, each: TextKind, place: SlotPlace = "slide"): Slot =>
  * slot hold one more than it says.
  */
 export const SLOT_CONTRACTS: readonly SlotContract[] = [
-  { form: "explain", layout: "default", slots: [heading, body(8)] },
+  { form: "explain", layout: "default", slots: [heading, chunks] },
   {
     form: "explain-callout",
     layout: "default",
@@ -196,7 +213,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      body(6),
+      chunks,
       {
         field: "imageBrief",
         unit: "item",
@@ -221,7 +238,7 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     // C2: one-clause sentences beside the drawing; three two-clause sentences left a quarter of
     // the column empty on most themes, and six single clauses fit the worst.
-    slots: [heading, { ...body(6), each: "clause" }, one("diagram", "brief")],
+    slots: [heading, chunks, one("diagram", "brief")],
   },
   {
     form: "worked-example",
@@ -550,6 +567,9 @@ export function contractText(form: PaletteFormId, layout = "default"): string {
 const sentencesOf = (v: unknown): string =>
   Array.isArray(v) ? (v as string[]).join(" ") : String(v);
 
+/** The forms whose body is labelled chunks: one paragraph each (`docFromChunks` sets the labels bold). */
+const CHUNKED = new Set<string>(["explain", "photo", "diagram-slot"]);
+
 /**
  * The slide spec a writer's output makes, with the variant and structure the form renders in:
  * what the drift test measures and what the design step hands `materialiseSlide`. Undefined for an
@@ -567,7 +587,10 @@ export function specOfWriter(
       kind: "content",
       ...base,
       heading: o.heading,
-      body: sentencesOf(o.body),
+      body:
+        CHUNKED.has(form) && Array.isArray(o.body)
+          ? (o.body as string[]).map((c) => c.trim()).join("\n")
+          : sentencesOf(o.body),
       ...extra,
     } as unknown as SlideSpec,
     variant: "headed",
