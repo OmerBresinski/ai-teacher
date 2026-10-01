@@ -468,8 +468,18 @@ const text = () => z.string().trim().min(1);
  */
 const REASONED = /\S\s*\([^()]*\p{L}{2}[^()]*\)\s*$/u;
 
+/**
+ * Checked by a `refine`, not `.regex()`: a regex becomes a JSON-schema `pattern` on the wire, and
+ * OpenAI refuses the whole schema over `\p{L}` (HTTP 400 on every stream write, round M, 1 Oct
+ * 2026). A refine never reaches the provider's schema; zod still checks the answer.
+ */
+const reasoned = (s: string) => REASONED.test(s);
+
 function kindSchema(kind: TextKind) {
-  const t = kind === "reasoned-step" ? text().regex(REASONED) : text();
+  const t =
+    kind === "reasoned-step"
+      ? text().refine(reasoned, { message: "the reason goes in brackets at the end of the step" })
+      : text();
   return t.describe(TEXT_KINDS[kind]);
 }
 
