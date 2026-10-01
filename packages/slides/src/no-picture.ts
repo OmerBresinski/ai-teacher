@@ -6,7 +6,7 @@ import type { SlideStructure } from "./structure";
  * or diagram slot never reaches the class). Generation calls `withoutPicture` when a slide's
  * photograph or diagram could not be supplied, and materialises what it returns instead:
  *
- * - title `split` / `photo-band` -> title `stack` (the big title on the theme's title art);
+ * - title `split` / `photo-band` / `photo-band-long` -> title `stack` (the big title on the theme's title art);
  * - `image-text` -> `content` `headed` (heading, body and callout kept; the caption goes);
  * - a `diagram` slide -> `content` `headed` (heading and body kept; the figure goes);
  * - `content` with a diagram instruction or a photo brief -> the same slide without the slot, the
@@ -24,7 +24,7 @@ export type WithoutPicture = {
 
 /** Title variants that carry a photograph, and the art-backed one they fall back to. */
 export const TITLE_NO_PICTURE_VARIANT = "stack";
-export const TITLE_PICTURE_VARIANTS: readonly string[] = ["split", "photo-band"];
+export const TITLE_PICTURE_VARIANTS: readonly string[] = ["split", "photo-band", "photo-band-long"];
 /** The variant a picture slide re-materialised as content takes. */
 export const CONTENT_NO_PICTURE_VARIANT = "headed";
 

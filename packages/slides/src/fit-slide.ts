@@ -11,6 +11,7 @@ import { explanationReserve, owesExplanationLane, RESERVED_LINES } from "./expla
 import { contains } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
 import { ACCENT_ABOVE, AGENDA_DIVIDER, OPTICAL_BIAS } from "./layouts";
+import { isBleed } from "./lint";
 import { OPTION, SAFE_BOTTOM } from "./metrics";
 import {
   isFrozen,
@@ -200,10 +201,17 @@ function preferColumn(slide: Slide, grid: ReflowResult, column: ReflowResult): b
   return !gridFits && foot(column.elements) < foot(grid.elements);
 }
 
-/** Past the safe area as drawn (the lint's test); the engine's 4% cushion is for its own fit. */
+/**
+ * Past the safe area as drawn (the lint's test); the engine's 4% cushion is for its own fit. A shape
+ * run to the slide's edge on purpose (the photo-band title's band, `isBleed`) is not an overflow,
+ * as the lint does not report it either.
+ */
 const overflowOf = (slide: Slide): Id[] =>
   slide.elements
-    .filter((el) => !isFrozen(el) && el.y + el.h > SAFE_BOTTOM + 0.5)
+    .filter(
+      (el) =>
+        !isFrozen(el) && !(el.type === "shape" && isBleed(el)) && el.y + el.h > SAFE_BOTTOM + 0.5,
+    )
     .map((el) => el.id);
 
 /**

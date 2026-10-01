@@ -1045,8 +1045,8 @@ function photo(rect: Rect): ImageElement {
  * and higher where it does not: a two-line title on the 48pt title floor plus the class line
  * will not fit under 340 inside the safe area on any theme.
  */
-function titlePhotoBand(t: Theme): Layout {
-  const titleH = boxH(t, "title", 2);
+function titlePhotoBand(t: Theme, lines = 2): Layout {
+  const titleH = boxH(t, "title", lines);
   const subH = boxH(t, "small");
   const stackH = titleH + SPACE[1] + subH;
   const bandY = Math.min(340, snapY(SAFE_BOTTOM - stackH - SPACE[3]));
@@ -1075,6 +1075,13 @@ function titlePhotoBand(t: Theme): Layout {
     ],
   };
 }
+
+/**
+ * Title, `photo-band-long`: `photo-band` with a band tall enough for a three-line title, for a
+ * long title that neither `split` nor `photo-band` sets at the title floor (ruling 134: the title
+ * always has a picture).
+ */
+const titlePhotoBandLong = (t: Theme): Layout => titlePhotoBand(t, 3);
 
 /** Title, `split`: the stack on the left over three lines, a photograph filling the right half. */
 function titleSplit(t: Theme): Layout {
@@ -1342,7 +1349,13 @@ function steppedList(t: Theme, kind: ListKind): Layout {
 /* ------------------------------------------------------------------ */
 
 /** The variant names, typed so a filler's comparison and a catalogue entry are both checked. */
-export const TITLE_VARIANT_NAMES = ["stack", "photo-band", "split", "agenda"] as const;
+export const TITLE_VARIANT_NAMES = [
+  "stack",
+  "photo-band",
+  "split",
+  "agenda",
+  "photo-band-long",
+] as const;
 export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column", "callout-row"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
 /** The diagram's compositions: the default, and the wider figure a template may ask for. */
@@ -1451,6 +1464,11 @@ export const LAYOUT_CATALOGUE: {
       composition: "agenda",
       description: "The title left, the lesson's objectives on the right",
     },
+    {
+      name: "photo-band-long",
+      composition: "photo-band",
+      description: "A photograph filling the slide, a long title in a taller band across its foot",
+    },
   ],
   objectives: LIST_VARIANTS,
   starter: LIST_VARIANTS,
@@ -1550,6 +1568,8 @@ function titleVariant(t: Theme, variant: number | string): Layout {
   switch (variantName("title", variant)) {
     case "photo-band":
       return titlePhotoBand(t);
+    case "photo-band-long":
+      return titlePhotoBandLong(t);
     case "split":
       return titleSplit(t);
     case "agenda":

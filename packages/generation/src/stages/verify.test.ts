@@ -4,7 +4,13 @@ import { type Audience, verifyFactsPrompt } from "../prompts";
 import { assignFactIds, type VerifyCorrection, verifyOutputSchemaFor } from "../specs";
 import { answeringAi, callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
 import { touchesCorrected } from "./generate";
-import { applyVerifyPatch, runVerify, VERIFY_FAILED_FINDING, verifyFinding } from "./verify";
+import {
+  applyVerifyPatch,
+  runVerify,
+  VERIFY_FAILED_FINDING,
+  verifyFinding,
+  withoutFactTags,
+} from "./verify";
 
 /* `applyVerifyPatch` (TEACH-212): pure, immutable, schema-parsed. */
 
@@ -372,5 +378,18 @@ describe("verify: the starter's retrieval questions (l6c)", () => {
     expect(touchesCorrected(starter, slide, new Set(["r2"]))).toBe(true);
     expect(touchesCorrected(content, slide, new Set(["r2"]))).toBe(false);
     expect(touchesCorrected(starter, slide, new Set(["v1"]))).toBe(false);
+  });
+});
+
+describe("withoutFactTags", () => {
+  test("drops the tags factsBlock prints after a fact's text, and nothing else", () => {
+    const stem = "If there are 9 more blue beads than red beads, how many red beads are there?";
+    expect(withoutFactTags(`${stem} (use: slide) [o2, o3]`)).toBe(stem);
+    expect(withoutFactTags(`${stem} (core, use: exit) [o1]`)).toBe(stem);
+    expect(withoutFactTags("Ten trillion marks [heads off m1]")).toBe("Ten trillion marks");
+    expect(withoutFactTags("The ratio (2:3) [sic]")).toBe("The ratio (2:3) [sic]");
+    expect(withoutFactTags("Share 35 in the ratio 2:3 (use the bar)")).toBe(
+      "Share 35 in the ratio 2:3 (use the bar)",
+    );
   });
 });

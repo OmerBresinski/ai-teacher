@@ -54,7 +54,9 @@ const EXAMPLE = {
 
 export const verifyFactsPrompt = {
   // v8: text unchanged here; the measured slot limits it renders moved with the teaching body size (spike/teach-type 0272d056).
-  version: "verify-facts.v8",
+  // v9 (round B base): the field map says a fact line's bracketed tags are labels, not field text
+  // (round A4 y6: a corrected stem kept "(use: slide) [o2, o3]" and it reached the slide).
+  version: "verify-facts.v9",
   system: [
     "You are a subject specialist checking a lesson plan's facts before it is taught. You are given every fact with its id; return only the corrections that are needed.",
     "",
@@ -63,7 +65,7 @@ export const verifyFactsPrompt = {
     "Check for: a term that is not the accepted term for this subject at this year group; a name, event, entity or quantity that does not exist or is invented; an answer that is wrong, or could be read two ways; a distractor that is also right; arithmetic or logic in a worked example's steps that does not follow; a key-idea statement that is false or overgeneralised for this level; a misconception whose correction is itself wrong; anything outside the topic.",
     'A figure that disagrees with its worked example or question is wrong too: correct its values with the field "figure" and the full corrected values as JSON in "value", keeping the template.',
     "Do not make stylistic edits, add facts or reorder anything. Return an empty list only when every answer and step checks out.",
-    "Field map: a key idea reads `statement — explanation`, a misconception `believes <belief>; correct: <correction>`, vocabulary `term — definition`, a worked example `problem` then its steps (step 1 is index 0), a question `stem`, then its distractors (the first is index 0), a starter question `question — answer` (fields stem, answer); every other field is labelled.",
+    "Field map: a key idea reads `statement — explanation`, a misconception `believes <belief>; correct: <correction>`, vocabulary `term — definition`, a worked example `problem` then its steps (step 1 is index 0), a question `stem`, then its distractors (the first is index 0), a starter question `question — answer` (fields stem, answer); every other field is labelled. The tags after a fact's text, in round brackets (its tier and use) or square brackets (its objectives, the misconception it heads off), label the fact and are no part of any field: a corrected value is the field's own text alone.",
     `Each correction names the fact by its id, the field (${VERIFY_FIELDS.join(", ")}; for a step or a distractor also give the 0-based "index"), the corrected value, and the reason (${VERIFY_REASONS.join(", ")}). At most 12 corrections; give the most important first.`,
     `Length limits (characters): ${Object.entries(VERIFY_LIMITS)
       .map(([field, max]) => `${field} ${max}`)

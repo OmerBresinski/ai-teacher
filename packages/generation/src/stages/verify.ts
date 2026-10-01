@@ -197,6 +197,15 @@ function figureValuesOf(
 }
 
 /**
+ * `factsBlock` labels a fact line with its tags after the text: `(core, use: slide)`, `[o2, o3]`,
+ * `[heads off m1]`. A correction copied from that line can carry them (y6-ratio, round A4: a stem
+ * ending "(use: slide) [o2, o3]" reached the slide); they are labels, never the field's text.
+ */
+const FACT_TAGS =
+  /(?:\s*\((?:(?:easy|core|stretch), )?use: (?:slide|exit)\)|\s*\((?:easy|core|stretch)\)|\s*\[(?:heads off )?[a-z]+\d+(?:, [a-z]+\d+)*\])+\s*$/;
+export const withoutFactTags = (value: string): string => value.replace(FACT_TAGS, "");
+
+/**
  * Apply the corrections in order. Every correction is first checked against the facts with the same
  * factory the model's answer went through (`verifyOutputSchemaFor`), so a direct caller cannot
  * bypass the field, index and per-field limit rules: an invalid correction is skipped, never
@@ -209,8 +218,9 @@ export function applyVerifyPatch(
   const next: LessonFacts = structuredClone(facts);
   const applied: VerifyCorrection[] = [];
   const schema = verifyOutputSchemaFor(facts);
-  for (const c of corrections) {
-    if (!schema.safeParse({ corrections: [c] }).success) continue;
+  for (const raw of corrections) {
+    if (!schema.safeParse({ corrections: [raw] }).success) continue;
+    const c = raw.field === "figure" ? raw : { ...raw, value: withoutFactTags(raw.value) };
     const r = retrievalIndexOf(c.factId);
     if (r !== undefined) {
       // l6c: a starter tests earlier learning, outside this lesson's topic by design, so an

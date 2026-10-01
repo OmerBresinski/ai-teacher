@@ -617,9 +617,11 @@ function fillTitle(spec: SlideSpecOf<"title">, laid: Layout, variant: TitleVaria
     return laid;
   }
   setText(textOf(laid, "title"), spec.title);
-  // The photo-band variant sets the class line in `small`, named so it can be found.
+  // The photo-band variants set the class line in `small`, named so it can be found.
   setText(
-    variant === "photo-band" ? slot(laid, "Subtitle") : textOf(laid, "subtitle"),
+    variant === "photo-band" || variant === "photo-band-long"
+      ? slot(laid, "Subtitle")
+      : textOf(laid, "subtitle"),
     spec.subtitle,
   );
   return laid;

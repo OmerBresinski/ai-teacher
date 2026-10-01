@@ -98,6 +98,9 @@ import { existingTitle, materialiseTitle } from "./plan";
 import { audienceOf, BUDGET_FINDING, generationOf, planClassFor } from "./shared";
 import { runVerify } from "./verify";
 
+/** The title variants that carry a photograph, in the order drawTitle tries them. */
+const TITLE_PICTURE_ORDER = ["split", "photo-band", "photo-band-long"] as const;
+
 /*
  * Plan-write's two steps (spike/plan-write). `planWritePlan`: the title saved before any call, one
  * planner call designs the whole lesson as a slide table, the code check (`checkPlan`) with at most
@@ -599,12 +602,16 @@ export async function planWriteSlides(
         : materialiseSlide(spec, themeId, codeMeta(), deps.ids);
     };
     const pic = table[0]?.imageBrief;
-    // The picture takes the right half when the title fits beside it; otherwise the title stands alone.
-    // Only with a photo search to fill it: an empty frame never reaches the class.
-    const split =
-      pic && deps.images ? fitsPlanned(spec, { variant: "split", stepDown: 0 }).ok : false;
-    const drawnTitle = split
-      ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, "split")
+    // The title always has a picture (ruling 134): beside the title when it fits there, else under
+    // it in a band, a taller band for a long title. Only with a photo search to fill it: an empty
+    // frame never reaches the class, so the picture-less title stays the fallback.
+    const pictureVariant =
+      pic && deps.images
+        ? TITLE_PICTURE_ORDER.find((variant) => fitsPlanned(spec, { variant, stepDown: 0 }).ok)
+        : undefined;
+    const split = pictureVariant !== undefined;
+    const drawnTitle = pictureVariant
+      ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, pictureVariant)
       : titleWithoutPicture();
     lesson = { ...lesson, slides: [{ ...drawnTitle, id: title.id }] };
     const imageBrief: ImageBrief | undefined =
