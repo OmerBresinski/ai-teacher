@@ -36,6 +36,8 @@ export const TEXT_KINDS = {
   card: 'a short phrase on one line across the slide: one clause, with no "and"',
   answer: "a single term or number",
   working: "one calculation or one short phrase, on one line",
+  "reasoned-step":
+    'one step of the working on one line, then " — " and the reason for that step ("£45 ÷ 5 = £9 — each part is the total over the 5 parts")',
   "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
   "gapped-sentence": "one sentence with each gap written as ___, at most two lines",
   starter: 'an unfinished sentence starter, just its opening, ending in … ("I think… because…")',
@@ -145,9 +147,10 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      // Measured at the teaching body size (spike/teach-type): eight points, then five lead clauses.
+      // Measured at the teaching body size (C2): four points under up to five lead clauses. The
+      // eight the contract said was a repeated bank text hiding a dropped point.
       { ...lead, max: 5 },
-      { field: "points", unit: "item", min: 2, max: 8, each: "labelled-sentence", place: "slide" },
+      { field: "points", unit: "item", min: 2, max: 4, each: "labelled-sentence", place: "slide" },
     ],
   },
   {
@@ -155,14 +158,16 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      lead,
+      // C2: each side's points are whole sentences (what and why), under a lead of up to four
+      // clauses; phrases held 4 a side under one clause, about half the words.
+      { ...lead, max: 4 },
       {
         field: "compare",
         unit: "item",
         min: 2,
         max: 2,
         fixed: true,
-        each: { label: "label", points: { unit: "item", min: 2, max: 4, each: "phrase" } },
+        each: { label: "label", points: { unit: "item", min: 1, max: 2, each: "sentence" } },
         place: "slide",
         rule: "two sides, left then right",
       },
@@ -173,13 +178,14 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
     layout: "default",
     slots: [
       heading,
-      lead,
+      // C2: each step is a one-clause sentence (what happens), under up to three lead clauses.
+      { ...lead, max: 3 },
       {
         field: "steps",
         unit: "item",
         min: 2,
-        max: 4,
-        each: "phrase",
+        max: 3,
+        each: "clause",
         place: "slide",
         rule: "in order",
       },
@@ -213,7 +219,9 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
   {
     form: "diagram-slot",
     layout: "default",
-    slots: [heading, body(3), one("diagram", "brief")],
+    // C2: one-clause sentences beside the drawing; three two-clause sentences left a quarter of
+    // the column empty on most themes, and six single clauses fit the worst.
+    slots: [heading, { ...body(6), each: "clause" }, one("diagram", "brief")],
   },
   {
     form: "worked-example",
@@ -224,13 +232,13 @@ export const SLOT_CONTRACTS: readonly SlotContract[] = [
       {
         field: "steps",
         unit: "line",
-        // One line of working is not a procedure shown step by step, and the recipe has no strip
-        // for it: the working card it keeps sets the question a stop down on three themes.
-        min: 2,
+        // C2: the full working, never one step: at least three, each with its reason beside it
+        // (the row's reason column), the last giving the answer.
+        min: 3,
         max: 6,
-        each: "working",
+        each: "reasoned-step",
         place: "slide",
-        rule: "the last line gives the answer",
+        rule: "the whole working, every step with its reason; the last line gives the answer",
       },
     ],
   },
@@ -425,8 +433,12 @@ export const layoutsOf = (form: PaletteFormId): SlotContract[] =>
 
 const text = () => z.string().trim().min(1);
 
+/** A reasoned step carries its reason after " — " (the worked example's reason column). */
+const REASONED = /\S\s—\s\S/;
+
 function kindSchema(kind: TextKind) {
-  return text().describe(TEXT_KINDS[kind]);
+  const t = kind === "reasoned-step" ? text().regex(REASONED) : text();
+  return t.describe(TEXT_KINDS[kind]);
 }
 
 function counted<T extends z.ZodTypeAny>(item: T, min: number, max: number | undefined) {

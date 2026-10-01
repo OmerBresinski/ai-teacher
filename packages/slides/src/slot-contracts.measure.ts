@@ -111,6 +111,13 @@ export const WORST: Record<TextKind, readonly string[]> = {
     "Amy: 2 × £9 = £18, Ben: 3 × £9 = £27",
     "Subtract 7 from both sides: 3x = 12",
   ],
+  "reasoned-step": [
+    "One part: £45 ÷ 5 = £9 — the total over the 5 equal parts",
+    "Amy: 2 × £9 = £18 — Amy has 2 of the parts",
+    "Ice particles vibrate faster — they gain energy from the room",
+    "Subtract 7 from both sides: 3x = 12 — undo the + 7",
+    "1923: prices doubled every few days — more money was printed",
+  ],
   "labelled-sentence": [
     "Current: a larger current discharges more ions at each electrode every second.",
     "Concentration: a stronger solution puts more ions close to each of the electrodes.",
@@ -230,12 +237,17 @@ export function contractFits(contract: SlotContract, out: WriterOutput): Contrac
     if (placed && !slide.elements.some((e) => e.name === placed))
       failing.push(`${theme.id}: no ${placed}`);
     // A worked step is drawn as its working and its reason, in their own columns.
+    // A bank repeats once a slot outgrows it, so a text is kept only when the slide shows it as
+    // many times as it was written: a dropped repeat no longer hides behind its first copy.
+    const times = (needle: string) => shown.split(norm(needle)).length - 1;
+    const written = writtenTexts(contract, out);
+    const wanted = (t: string) => written.filter((w) => w === t).length;
     const kept = (t: string) => {
-      if (shown.includes(norm(t))) return true;
+      if (times(t) >= wanted(t)) return true;
       const [working, reason] = workingAndReason(t);
-      return !!reason && shown.includes(norm(working)) && shown.includes(norm(reason));
+      return !!reason && times(working) >= wanted(t) && times(reason) >= wanted(t);
     };
-    const lost = writtenTexts(contract, out).filter((t) => !kept(t));
+    const lost = written.filter((t) => !kept(t));
     if (lost.length) failing.push(`${theme.id}: not kept "${lost[0]?.slice(0, 40)}"`);
     if (typeof spec.heading === "string") {
       const el = slide.elements.find((e) => e.name === HEADING_NAME);
@@ -335,7 +347,7 @@ export function countables(
  * The most of `key` that fits with every other slot at its contract maximum, searched from the
  * slot's minimum up to `cap`. 0 when even the minimum does not fit.
  */
-export function capacity(contract: SlotContract, key: string, cap = 8): number {
+export function capacity(contract: SlotContract, key: string, cap = 16): number {
   const c = countables(contract).find((x) => x.key === key);
   if (!c) throw new Error(`${contract.form}: no slot ${key}`);
   let best = 0;

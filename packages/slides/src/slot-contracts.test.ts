@@ -91,9 +91,37 @@ describe("writerSchema", () => {
 
   it("describes each slot's shape in its field", () => {
     const json = JSON.stringify(writerSchema("worked-example").shape.steps?.description);
-    expect(json).toContain("one calculation or one short phrase");
+    expect(json).toContain("and the reason for that step");
     expect(json).toContain("the last line gives the answer");
     expect(writerSchema("compare").shape.compare?.description).toContain("two sides");
+  });
+});
+
+describe("C2 capacities and the worked example's full working", () => {
+  it("a worked example takes at least three steps, each with its reason after the dash", () => {
+    const schema = writerSchema("worked-example");
+    const fill = worstFill(slotContract("worked-example"));
+    const steps = fill.steps as string[];
+    expect(schema.safeParse(fill).success).toBe(true);
+    expect(schema.safeParse({ ...fill, steps: steps.slice(0, 2) }).success).toBe(false);
+    expect(schema.safeParse({ ...fill, steps: ["£45 ÷ 5 = £9", ...steps.slice(1)] }).success).toBe(
+      false,
+    );
+  });
+
+  it("a repeated bank text no longer hides a dropped list point", () => {
+    // The old contract's eight points (the bank holds three) only fitted because a dropped repeat
+    // matched its first copy.
+    const list = slotContract("list");
+    expect(contractFits(list, worstFill(list, { points: 8 })).ok).toBe(false);
+  });
+
+  it("teaching slots hold more than round B's contracts", () => {
+    const max = (form: Parameters<typeof slotContract>[0], field: string) =>
+      slotContract(form).slots.find((s) => s.field === field)?.max;
+    expect(max("diagram-slot", "body")).toBe(6);
+    expect(max("compare", "body")).toBe(4);
+    expect(max("sequence", "body")).toBe(3);
   });
 });
 
@@ -104,7 +132,7 @@ describe("contractText", () => {
         "worked-example:",
         '- heading: one line: one short main clause about one thing, with no "and", "but", "when" or list',
         "- question: one question, at most two lines",
-        "- steps: 2–6 lines, each one calculation or one short phrase, on one line (the last line gives the answer)",
+        '- steps: 3–6 lines, each one step of the working on one line, then " — " and the reason for that step ("£45 ÷ 5 = £9 — each part is the total over the 5 parts") (the whole working, every step with its reason; the last line gives the answer)',
       ].join("\n"),
     );
     expect(contractText("hinge", "why")).toContain("hinge (why):");
@@ -115,7 +143,7 @@ describe("contractText", () => {
       "explanation: one sentence of one or two clauses, at most two lines, goes in the teacher notes",
     );
     expect(contractText("compare")).toContain(
-      "compare: 2 items, each with label: a short label, half a line, not a sentence; points: 2–4 items, each a phrase on one line, not a full sentence (two sides, left then right)",
+      "compare: 2 items, each with label: a short label, half a line, not a sentence; points: 1–2 items, each one sentence of one or two clauses, at most two lines (two sides, left then right)",
     );
   });
 

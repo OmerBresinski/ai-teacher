@@ -3069,6 +3069,9 @@ export function workingAndReason(step: string): [string, string | undefined] {
     if (!a || !b) continue;
     if (maths(b) && !maths(a)) return [b, a];
     if (maths(a) && !maths(b)) return [a, b];
+    // A reasoned step (C2) is "working — reason" in any subject, maths or not: the dash wins
+    // over a colon or comma inside the working.
+    if (sep === " — ") return [a, b];
   }
   return [step, undefined];
 }

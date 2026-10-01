@@ -29,7 +29,10 @@ import { type Audience, audienceBlock } from "./shared";
  * teach slides are counted first and practice takes only a slide left over. B5's returning case only
  * (no linking phrases, no pitch table): the last slide settles the opening's question or case; when it
  * is the practise slide, its last item does. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v16";
+/* v17 (round C2): no rule text changed; the menu's contracts carry C2's measured capacities (list 4
+ * points, compare sentences, sequence clauses, a diagram slot's six clauses, a worked example's three
+ * to six reasoned steps). */
+export const PLAN_LESSON_VERSION = "plan-lesson.v17";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {

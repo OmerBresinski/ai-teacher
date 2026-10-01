@@ -33,8 +33,20 @@ function body(s: DiagramSpec, t: Theme, w: number, h: number): string {
   let top = 0;
   let head = "";
   if (s.title) {
-    const fs = Math.round(x.fs * 1.1);
-    const lines = wrap(s.title, x, w, 1, fs, 700);
+    // A title is never cut (C2, B0's y4 tables): one line at its own size, else two lines, else
+    // two lines at the body size; only a title past all three keeps the ellipsis.
+    const whole = (fs: number, n: number) => {
+      const l = wrap(s.title as string, x, w, n, fs, 700);
+      return l[l.length - 1]?.endsWith("…") ? undefined : l;
+    };
+    const big = Math.round(x.fs * 1.1);
+    const fit = (whole(big, 1) && { fs: big, lines: whole(big, 1) as string[] }) ||
+      (whole(big, 2) && { fs: big, lines: whole(big, 2) as string[] }) ||
+      (whole(x.fs, 2) && { fs: x.fs, lines: whole(x.fs, 2) as string[] }) || {
+        fs: x.fs,
+        lines: wrap(s.title, x, w, 2, x.fs, 700),
+      };
+    const { fs, lines } = fit;
     head = text(x, w / 2, 0, lines, {
       v: "top",
       fs,
@@ -42,7 +54,7 @@ function body(s: DiagramSpec, t: Theme, w: number, h: number): string {
       family: x.title,
       fill: t.colors.heading ?? t.colors.ink,
     });
-    top = fs * 1.7;
+    top = fs * 1.7 + (lines.length - 1) * fs * 1.2;
   }
   const ih = h - top;
   const inner = (() => {

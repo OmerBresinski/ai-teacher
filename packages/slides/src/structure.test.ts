@@ -26,6 +26,7 @@ import {
   STEP_ARROW_NAME,
   STEP_NAME,
   stepsStrip,
+  workingAndReason,
 } from "./structure";
 import { getTheme } from "./themes";
 
@@ -396,5 +397,18 @@ describe("overflow fixes", () => {
     expect(text((named(pages[1]?.elements ?? [], "Heading")[0] as TextElement).doc)).toBe(
       "Long (continued)",
     );
+  });
+});
+
+describe("workingAndReason: a reasoned step (C2)", () => {
+  test("splits on the dash in any subject, before a colon inside the working", () => {
+    expect(workingAndReason("Ice particles vibrate faster — they gain energy")).toEqual([
+      "Ice particles vibrate faster",
+      "they gain energy",
+    ]);
+    expect(workingAndReason("One part: £45 ÷ 5 = £9 — the total over 5 parts")).toEqual([
+      "One part: £45 ÷ 5 = £9",
+      "the total over 5 parts",
+    ]);
   });
 });

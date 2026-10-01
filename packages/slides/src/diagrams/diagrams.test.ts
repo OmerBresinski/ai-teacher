@@ -409,3 +409,20 @@ describe("table width (round A6)", () => {
     }
   });
 });
+
+describe("diagram titles (C2)", () => {
+  test("a title too long for one line wraps to two, never cut with an ellipsis", () => {
+    const spec = {
+      kind: "table",
+      title: "Attacks before lasting conquest",
+      alt: "Roman attacks on Britain",
+      header: ["Date", "Leader", "Result"],
+      rows: [["55 BC", "Julius Caesar", "No lasting conquest"]],
+    };
+    for (const theme of THEMES) {
+      const svg = renderDiagram(spec, theme, { w: 403, h: 385 }) ?? "";
+      expect(svg, theme.id).not.toContain("…");
+      expect(svg, theme.id).toContain("conquest");
+    }
+  });
+});

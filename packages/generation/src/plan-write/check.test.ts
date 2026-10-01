@@ -120,12 +120,12 @@ describe("plan-write menu", () => {
     const m = planMenu("science");
     expect(m.filter((e) => e.form === "hinge").map((e) => e.layout)).toEqual(["default", "why"]);
     expect(m.find((e) => e.form === "diagram-slot")?.contract).toContain("diagram spec");
-    expect(m.find((e) => e.form === "sequence")?.capacity).toBe(4);
+    expect(m.find((e) => e.form === "sequence")?.capacity).toBe(3);
     expect(m.find((e) => e.form === "check-set")?.contract).toContain("questions:");
     // The exit ticket is on the worksheet (UX rulings 134–140), and a figure draws on no step here.
     expect(m.some((e) => e.form === "exit-ticket" || e.form === "figure")).toBe(false);
     expect(m.every((e) => e.contract.length > 0)).toBe(true);
-    // Measured at the teaching body size (spike/teach-type): a list holds eight points.
-    expect(layoutCapacity("list", "default")).toBe(8);
+    // Measured at the teaching body size (C2, repeats counted): a list holds four points.
+    expect(layoutCapacity("list", "default")).toBe(4);
   });
 });

@@ -34,7 +34,9 @@ import { WRITE_RULES } from "./write-slides";
 /* v12: plan-lesson.v15 and write-slides.v18 (four practice items, a task heading). Not yet benched. */
 /* v13 (round C1): plan-lesson.v16 (coverage guard, returning case) and write-slides.v19 (an easy entry
  * item first); no swap changed. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v13";
+/* v14 (round C2): plan-lesson.v17 and write-slides.v20 (C2 capacities; a worked example's full
+ * reasoned working). */
+export const STREAM_LESSON_VERSION = "stream-lesson.v14";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
