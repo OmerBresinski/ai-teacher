@@ -3,6 +3,7 @@ import { PLAN_LESSON_VERSION } from "../prompts/plan-lesson";
 import { STREAM_LESSON_VERSION } from "../prompts/stream-lesson";
 import { WRITE_SLIDES_VERSION } from "../prompts/write-slides";
 import { STAGE_CHECKPOINT } from "../types";
+import { planWriteCheckerModel } from "./master-check";
 
 /*
  * Plan-write's place among the planners (spike/plan-write), behind `AI_LESSON_PLANNER=plan-write`:
@@ -81,11 +82,14 @@ export const PLAN_WRITE_WRITER_MODEL = "openai/gpt-6-luna";
 export function planWriteRoute(
   plannerModel: string = PLAN_WRITE_PLANNER_MODEL,
   writerModel: string = PLAN_WRITE_WRITER_MODEL,
+  /** The master check's model (PLAN_WRITE_CHECKER_MODEL; unset, the writer's). */
+  checkerModel: string = planWriteCheckerModel(writerModel),
 ) {
   return (_cls: unknown, context: { promptVersion?: string } | undefined): string | undefined => {
     const v = context?.promptVersion ?? "";
     if (v.startsWith("plan-lesson.") || v.startsWith("stream-lesson.")) return plannerModel;
     if (v.startsWith("write-slides.")) return writerModel;
+    if (v.startsWith("master-check.")) return checkerModel;
     return undefined;
   };
 }
