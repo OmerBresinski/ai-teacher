@@ -37,7 +37,7 @@ export const TEXT_KINDS = {
   answer: "a single term or number",
   working: "one calculation or one short phrase, on one line",
   "reasoned-step":
-    'one step of the working on one line, then the reason for that step in brackets ("£45 ÷ 5 = £9 (each part is the total over the 5 parts)")',
+    'one step of the working on one line, then the reason for that step in brackets at its end ("£45 ÷ 5 = £9 (each part is the total over the 5 parts)", "The ice melts (the room is warmer than 0 °C)")',
   "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
   chunk:
     'one part of the idea: a short label (a name or a short phrase, not a sentence), a colon, then one or two short sentences ("Gas: the particles are far apart and move fast. They spread out to fill any space.")',
@@ -470,15 +470,22 @@ const text = () => z.string().trim().min(1);
  * only, 8 of R's stream slides failed it and each waited on a writer re-ask). ASCII letters only:
  * OpenAI refuses the whole schema over `\p{L}` (HTTP 400 on every stream write, round M), so the
  * pattern stays in the subset `wire-patterns.test.ts` checks.
+ *
+ * A full stop after the bracket is allowed and taken off (round S: the provider is not held to the
+ * pattern, strict mode being off, and a worded step is a sentence: every step of S1 y5 s7 and y9
+ * s5 and s10 failed, maths none; each failure went to a writer, whose longer steps overflowed).
  */
-export const REASONED_STEP = /\S\s*\([^()]*[A-Za-z]{2}[^()]*\)\s*$/;
+export const REASONED_STEP = /\S\s*\([^()]*[A-Za-z]{2}[^()]*\)\.?\s*$/;
+const STOP_AFTER_BRACKET = /\)\s*\.\s*$/;
 
 function kindSchema(kind: TextKind) {
   const t =
     kind === "reasoned-step"
-      ? text().regex(REASONED_STEP, {
-          message: "the reason goes in brackets at the end of the step",
-        })
+      ? text()
+          .regex(REASONED_STEP, {
+            message: "the reason goes in brackets at the end of the step",
+          })
+          .overwrite((s) => s.replace(STOP_AFTER_BRACKET, ")"))
       : text();
   return t.describe(TEXT_KINDS[kind]);
 }

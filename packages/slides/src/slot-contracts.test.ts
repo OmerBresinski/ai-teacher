@@ -274,7 +274,7 @@ describe("contractText", () => {
         "worked-example:",
         '- heading: one line: one short main clause about one thing, with no "and", "but", "when" or list',
         "- question: one question, at most two lines",
-        '- steps: 3–6 lines, each one step of the working on one line, then the reason for that step in brackets ("£45 ÷ 5 = £9 (each part is the total over the 5 parts)") (the whole working, every step with its reason; the last line gives the answer)',
+        '- steps: 3–6 lines, each one step of the working on one line, then the reason for that step in brackets at its end ("£45 ÷ 5 = £9 (each part is the total over the 5 parts)", "The ice melts (the room is warmer than 0 °C)") (the whole working, every step with its reason; the last line gives the answer)',
       ].join("\n"),
     );
     expect(contractText("hinge", "why")).toContain("hinge (why):");
@@ -305,7 +305,8 @@ describe("round S: the reasoned step's bracket rule is on the wire", () => {
     expect(REASONED_STEP.source).not.toMatch(/\\[pP]\{/);
     expect(REASONED_STEP.test("2x + 6 = 18 (subtract 2x)")).toBe(true);
     expect(REASONED_STEP.test("Workers stopped work (production fell)")).toBe(true);
-    expect(REASONED_STEP.test("Workers stopped work (production fell).")).toBe(false);
+    // Round S: a worded step written as a sentence passes; the schema takes the full stop off.
+    expect(REASONED_STEP.test("Workers stopped work (production fell).")).toBe(true);
     expect(REASONED_STEP.test("Workers stopped work: production fell")).toBe(false);
     expect(REASONED_STEP.test("x = 3 (2)")).toBe(false);
     const wire = JSON.stringify(

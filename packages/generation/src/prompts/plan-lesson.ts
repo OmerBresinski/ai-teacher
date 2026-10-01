@@ -47,7 +47,8 @@ import { type Audience, audienceBlock } from "./shared";
  * hydrograph, timeline, layers, cycle, river valley or meander), so the planner gives those ideas a
  * diagram slot; the palette's diagram contract lists the templates and when each fits. */
 /* v22 (spike/fmt): text unchanged here; the worked step's contract line it shows gives the reason in brackets, not after an em dash. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v22";
+/* v23 (round S): the reasoned-step contract line gives a worded example beside the maths one. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v23";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {

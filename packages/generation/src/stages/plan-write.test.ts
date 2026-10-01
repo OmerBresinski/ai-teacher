@@ -370,7 +370,9 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       });
       const lesson = final.lesson;
       const versions = ai.calls.map((c) => c.context?.promptVersion ?? "");
-      expect(versions.filter((v) => v.startsWith("exit-items"))).toHaveLength(1);
+      // Round S: two items are short of three, so the set is asked for more (twice); this mock
+      // answers the same each time, so the repeats are refused and the two stand.
+      expect(versions.filter((v) => v.startsWith("exit-items"))).toHaveLength(3);
       const exit = (lesson.facts?.questions ?? []).filter((q) => q.use === "exit");
       expect(exit.map((q) => q.answer)).toEqual([
         "12 ÷ 4 = 3 in each group.",
@@ -474,7 +476,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
         [],
       );
-      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v20+");
+      expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v21+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);
       // Saves: the title, the header (title with objectives), then the slides in order.

@@ -1,0 +1,170 @@
+{
+  "source": "round S1 (spike/s-candidate 86c29096) stored lessons: y5-rivers slides as drawn (slide 7 the writer-failure discussion), y6-ratio model exit items",
+  "y5Slides": [
+    {
+      "number": 1,
+      "row": {
+        "role": "title",
+        "form": "title",
+        "layout": "default",
+        "objectives": [1, 2, 3],
+        "teaches": [],
+        "tests": [],
+        "purpose": "the lesson title and its picture",
+        "parts": 0
+      },
+      "body": "Rivers: the journey of a river from source to mouth Year 5 · Geography"
+    },
+    {
+      "number": 2,
+      "row": {
+        "role": "objectives",
+        "form": "objectives",
+        "layout": "default",
+        "objectives": [1, 2, 3],
+        "teaches": [],
+        "tests": [],
+        "purpose": "the lesson's objectives",
+        "parts": 0
+      },
+      "body": "By the end of this lesson I can describe a river’s journey through its three courses, using source, tributary, confluence and mouth. explain how erosion, transport and deposition shape river valleys and bends. explain what happens at a river’s mouth, including how a delta can form."
+    },
+    {
+      "number": 3,
+      "row": {
+        "role": "retrieve",
+        "form": "starter-set",
+        "layout": "default",
+        "objectives": [],
+        "teaches": [],
+        "tests": [],
+        "purpose": "retrieval warm-up: three short questions on what pupils learned before that this lesson builds on, never what it teaches",
+        "parts": 3
+      },
+      "body": "Do now STARTER What is precipitation? Water falling from clouds What does a map key explain? The map’s symbols What do contour lines close together show? A steep slope"
+    },
+    {
+      "number": 4,
+      "row": {
+        "role": "teach",
+        "form": "diagram-slot",
+        "layout": "default",
+        "objectives": [1],
+        "teaches": ["river-route", "tributaries"],
+        "tests": [],
+        "purpose": "follow the river from hillside to sea",
+        "parts": 3
+      },
+      "body": "A river flows from source to mouth Downhill journey:  Water flows from the hillside towards lower land. The slope usually becomes gentler downstream. Three courses:  The upper course is usually steep and narrow. The middle and lower courses are usually wider and deeper. Tributaries:  Smaller rivers join at confluences, adding water to the river."
+    },
+    {
+      "number": 5,
+      "row": {
+        "role": "check",
+        "form": "check-set",
+        "layout": "default",
+        "objectives": [1],
+        "teaches": [],
+        "tests": ["river-route", "tributaries"],
+        "purpose": "check the journey vocabulary",
+        "parts": 3
+      },
+      "body": "Quick check CHECK What is the beginning of a river called? Source Which course lies between upper and lower? Middle course What is the meeting point of two rivers called? Confluence"
+    },
+    {
+      "number": 6,
+      "row": {
+        "role": "teach",
+        "form": "diagram-slot",
+        "layout": "default",
+        "objectives": [2],
+        "teaches": ["river-processes", "upper-valley"],
+        "tests": [],
+        "purpose": "connect river processes to valley shape",
+        "parts": 3
+      },
+      "body": "Erosion cuts into the upper valley Our hillside:  The river cuts down into its bed, making a narrow valley. River processes:  Erosion wears away rock and soil; transport carries the material downstream. Deposition drops some of the load where the water slows enough. Steep sides:  The river cuts down faster than it cuts sideways. Loose material moves downhill, making the valley V-shaped."
+    },
+    {
+      "number": 7,
+      "row": {
+        "role": "teach",
+        "form": "worked-example",
+        "layout": "default",
+        "objectives": [2],
+        "teaches": ["bend-change"],
+        "tests": [],
+        "purpose": "explain how a bend changes",
+        "parts": 4
+      },
+      "body": "explain how a bend changes"
+    },
+    {
+      "number": 8,
+      "row": {
+        "role": "hinge",
+        "form": "hinge",
+        "layout": "default",
+        "objectives": [2],
+        "teaches": [],
+        "tests": ["river-processes", "bend-change"],
+        "purpose": "check where deposition happens",
+        "parts": 4
+      },
+      "body": "Where can our river deposit its carried material?"
+    },
+    {
+      "number": 9,
+      "row": {
+        "role": "teach",
+        "form": "photo",
+        "layout": "default",
+        "objectives": [3],
+        "teaches": ["river-mouth", "delta-formation"],
+        "tests": [],
+        "purpose": "explain deposition at the mouth",
+        "parts": 3
+      },
+      "body": "Deposition can build a delta At this mouth:  This landform is a delta. Our lower course:  A floodplain is flat land beside the river that can flood. Delta formation:  Water drops material if it slows enough as it enters the sea. A delta grows if more arrives than waves and tides remove."
+    },
+    {
+      "number": 10,
+      "row": {
+        "role": "practise",
+        "form": "list",
+        "layout": "default",
+        "objectives": [1, 2, 3],
+        "teaches": [],
+        "tests": [
+          "river-route",
+          "tributaries",
+          "river-processes",
+          "upper-valley",
+          "bend-change",
+          "river-mouth",
+          "delta-formation"
+        ],
+        "purpose": "apply learning and settle the hillside-to-sea journey",
+        "parts": 4
+      },
+      "body": "Your turn: explain a river’s journey PRACTICE Explain how erosion and deposition shape a river. 1) Source: Explain why the spring is called the river’s source. 2) Joining rivers: Explain what makes the smaller river a tributary and where the confluence is. 3) River bend: Explain how faster flow shapes the steep outer bank through erosion. 4) Hillside to sea: Explain how erosion and deposition shape the valley, bend and possible delta."
+    }
+  ],
+  "y6ExitItems": [
+    {
+      "question": "Orange to purple beads is 5:2. What does this tell you about the two colours? (A) There are five equal parts of orange beads for every two equal parts of purple beads (B) There are exactly five orange beads and two purple beads (C) There are two equal parts of orange beads for every five equal parts of purple beads (D) There are five more orange beads than purple beads",
+      "answer": "(A) There are five equal parts of orange beads for every two equal parts of purple beads",
+      "objective": 0
+    },
+    {
+      "question": "A bag contains 54 counters altogether. Red to blue is 4:5. Find both counts, showing how you find one part.",
+      "answer": "4 + 5 = 9; 54 ÷ 9 = 6; 4 × 6 = 24 red; 5 × 6 = 30 blue.",
+      "objective": 1
+    },
+    {
+      "question": "Gold to silver stickers is 4:7. There are 18 more silver stickers. Find both counts, showing how you find one part.",
+      "answer": "7 − 4 = 3; 18 ÷ 3 = 6; 4 × 6 = 24 gold; 7 × 6 = 42 silver.",
+      "objective": 1
+    }
+  ]
+}

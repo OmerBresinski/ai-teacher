@@ -8,7 +8,7 @@ import {
   text,
 } from "@tj/slides";
 import { fitWritten, type Written } from "./fit";
-import { type FreshExitItem, freshExitItems } from "./fresh-exit";
+import { type FreshExitItem, freshExitItems, SIMILARITY_MAX, similarity } from "./fresh-exit";
 import { SET_MAX, setSchema } from "./menu";
 
 /*
@@ -139,6 +139,11 @@ export function closingQuestionsWritten(
   return setSchema(EXIT_FORM).safeParse(out).success ? out : undefined;
 }
 
+/** Whether these questions, with their answers revealed, fit the closing slide on every theme. */
+export const closingFits = (questions: readonly ExitQuestion[]): boolean =>
+  questions.length <= SET_MAX &&
+  fitWritten(EXIT_FORM, EXIT_FORM, writtenOf(questions, FRESH_NOTES)).ok;
+
 /**
  * The closing set built from fresh items (`fresh-exit.ts`): questions the lesson has not asked,
  * one per objective while there is room, each fitting the slide with its answer revealed.
@@ -154,8 +159,50 @@ export function freshClosingWritten(
  * The closing set from the model's exit items (round Q, `model-exit.ts`), in their order, each
  * kept while the set still fits the slide.
  */
-export const modelClosingWritten = (items: readonly ExitQuestion[]): Written | undefined =>
-  closingQuestionsWritten(items, FRESH_NOTES);
+export const modelClosingWritten = (
+  items: readonly ExitQuestion[],
+  cover?: {
+    items: readonly (ExitQuestion & { objective: number })[];
+    fresh: readonly FreshExitItem[];
+    objectiveIds: readonly string[];
+  },
+): Written | undefined =>
+  closingQuestionsWritten(
+    cover ? coveringOrder(cover.items, cover.fresh, cover.objectiveIds) : items,
+    FRESH_NOTES,
+  );
+
+/**
+ * Round S (S1 y6: one exit item on the slide, not three): the order the closing set is filled in,
+ * so the slide's room goes to coverage first. One item per objective (the model's, else a fresh
+ * code-built one on it), then the model's other items, then the fresh ones to make up the set.
+ * A fresh item too like one already in is left out.
+ */
+export function coveringOrder(
+  model: readonly (ExitQuestion & { objective: number })[],
+  fresh: readonly FreshExitItem[],
+  objectiveIds: readonly string[],
+): ExitQuestion[] {
+  const freshOn = (o: number) =>
+    fresh.filter((f) => f.objectiveRefs.includes(objectiveIds[o] ?? ""));
+  const out: ExitQuestion[] = [];
+  const add = (q: ExitQuestion) => {
+    if (
+      out.some(
+        (x) => x.question === q.question || similarity(x.question, q.question) >= SIMILARITY_MAX,
+      )
+    )
+      return;
+    out.push({ question: q.question, answer: q.answer });
+  };
+  objectiveIds.forEach((_, o) => {
+    const own = model.find((m) => m.objective === o) ?? freshOn(o)[0];
+    if (own) add(own);
+  });
+  for (const m of model) add(m);
+  for (const f of fresh) add(f);
+  return out;
+}
 
 /** The fresh items the closing set is built from, with their forms, objectives and similarity. */
 export const freshClosingItems = (facts: LessonFacts, slides: readonly Slide[]): FreshExitItem[] =>

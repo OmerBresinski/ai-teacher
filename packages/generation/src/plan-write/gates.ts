@@ -196,13 +196,19 @@ export function arithmeticFaults(out: Written): { field: string; failure: string
 
 /* ------------------------------------------------------------------ taught on a slide */
 
-const STOP = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "their"]);
+// Round S: four-letter words count (S1 y5: a plan key's only content word had four letters, so
+// questions on it were never checked); the common four-letter words are stopped instead.
+const STOP = new Set(
+  "the and for with that this from into their what when where which each they them than then does have more most some your will only also make show give take".split(
+    " ",
+  ),
+);
 const wordsOf = (s: string) =>
   s
     .toLowerCase()
     .replace(/[^a-z]+/g, " ")
     .split(" ")
-    .filter((w) => w.length >= 5 && !STOP.has(w));
+    .filter((w) => w.length >= 4 && !STOP.has(w));
 /** Singular and plural, -ing and -ed forms meet at one stem. */
 const stem = (w: string) => w.replace(/(?:ies|es|s|ing|ed)$/, "").slice(0, 8);
 
@@ -215,13 +221,18 @@ const TESTING = new Set([
   "open-response",
   "check-set",
   "exit-ticket",
+  // A discussion poses a question too (S1 y5: a teach slide whose writer failed was drawn as a
+  // discussion of its purpose, a bare question on a term no slide had taught).
+  "discussion",
 ]);
 
 /**
  * A practice or check slide that asks about a term the lesson's plan names (its teaches and tests
  * keys) which no earlier slide shows on the slide itself, only in notes or nowhere (F1b y5: the
  * estuary, taught only in a slide's notes, then asked in practice). Per slide: the field that
- * holds the term and the terms.
+ * holds the term and the terms. Only a slide that teaches counts as showing a term: a question
+ * slide naming it has not taught it (round S, S1 y5: a bare discussion prompt counted as teaching
+ * the term two later practice items asked about).
  */
 export function untaughtTerms(
   slides: readonly PassSlide[],
@@ -254,11 +265,41 @@ export function untaughtTerms(
       }
       for (const [field, terms] of byField) out.push({ number: s.number, field, terms });
     }
-    // What this slide shows (not its notes) counts as taught for every later slide.
+    // What a teaching slide shows (not its notes) counts as taught for every later slide.
+    if (asks) continue;
     const { notes: _n, imageBrief: _i, ...onSlide } = s.out;
     for (const w of wordsOf(textOf(onSlide))) shown.add(stem(w));
   }
   return out;
+}
+
+/**
+ * The exit ticket's questions checked the same way, after every slide: per question that asks
+ * about a planned term no teaching slide shows, its index and the terms.
+ */
+export function untaughtOnExit(
+  slides: readonly PassSlide[],
+  questions: readonly string[],
+): { item: number; terms: string[] }[] {
+  const after = Math.max(FIXED_SLIDES, ...slides.map((s) => s.number)) + 1;
+  const keys = [...new Set(slides.flatMap((s) => [...s.row.teaches, ...s.row.tests]))];
+  return questions.flatMap((question, item) => {
+    const exit = {
+      number: after,
+      row: {
+        ...(slides[0]?.row as PassSlide["row"]),
+        form: "exit-ticket",
+        role: "check",
+        teaches: [],
+        tests: keys,
+      },
+      out: { question },
+    } as PassSlide;
+    const terms = untaughtTerms([...slides, exit])
+      .filter((u) => u.number === after)
+      .flatMap((u) => u.terms);
+    return terms.length > 0 ? [{ item, terms }] : [];
+  });
 }
 
 /* ------------------------------------------------------------------ photo caption */

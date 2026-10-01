@@ -45,11 +45,13 @@ import {
   warmUpToInsert,
 } from "../plan-write/check";
 import {
+  closingFits,
   closingLine,
   closingSlideFits,
   closingSpec,
   EXIT_FORM,
   exitTicketQuestions,
+  freshClosingItems,
   freshClosingWritten,
   modelClosingWritten,
   withClosingLine,
@@ -69,12 +71,13 @@ import {
   carriesClaim,
   namesNotShown,
   unsupportedClaims,
+  untaughtOnExit,
   untaughtTerms,
   withoutClaim,
   wrongSums,
 } from "../plan-write/gates";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
-import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
+import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
 import { recheckKinds } from "../plan-write/recheck";
 import {
@@ -1655,7 +1658,19 @@ export async function planWriteSlides(
     const out: Written = { prompt: s.purpose, footnote: [], notes: "" };
     const index = n - 1;
     const slide = drawn("discussion", "default", out, codeMeta());
-    placed.push({ index, plan: { ...s, form: "discussion", layout: "default" }, out });
+    // Round S (S1 y5): it teaches nothing now, so what it was to teach is only asked about here and
+    // later; the untaught gate and the lesson pass see that.
+    placed.push({
+      index,
+      plan: {
+        ...s,
+        form: "discussion",
+        layout: "default",
+        teaches: [],
+        tests: [...new Set([...s.tests, ...s.teaches])],
+      },
+      out,
+    });
     report.push({ slide: n, form: "discussion", layout: "default", fits: true });
     outline[index] = {
       id: `s${n}`,
@@ -2055,6 +2070,18 @@ export async function planWriteSlides(
           asked: inLessonQuestions(lesson.slides),
         },
         call,
+        {
+          // Round S: an item too long for the slide, or on a term no teaching slide shows, is
+          // asked again rather than trimmed off the slide later.
+          ...(closing && brief.exitTicketOnSlides === true
+            ? { fits: (items) => items.length > SET_MAX || closingFits(items) }
+            : {}),
+          untaught: (question) =>
+            untaughtOnExit(
+              placed.map((p) => ({ number: p.index + 1, row: p.plan, out: p.out })),
+              [question],
+            )[0]?.terms ?? [],
+        },
       );
       deps.logger.info(
         {
@@ -2099,7 +2126,11 @@ export async function planWriteSlides(
       const onSlides =
         closing && brief.exitTicketOnSlides === true
           ? exitItems
-            ? modelClosingWritten(exitItems)
+            ? modelClosingWritten(exitItems, {
+                items: exitItems,
+                fresh: freshClosingItems(facts, slides),
+                objectiveIds: objectives.map((o) => o.id),
+              })
             : freshClosingWritten(facts, slides)
           : undefined;
       const slide = closing
@@ -2578,6 +2609,25 @@ export async function planWriteSlides(
     }
     await Promise.all(work);
     await writing;
+    // Round S: once every re-write has landed (checks, master check, the gates above), the whole
+    // lesson again, the exit items included; what still asks about an untaught term is reported.
+    for (const u of untaughtTerms(passSlides())) {
+      const message = `Slide ${u.number} asks about ${u.terms.map((t) => `"${t}"`).join(", ")}, which no earlier slide teaches.`;
+      if (!findings.some((f) => f.message === message)) gateFinding(u.number, message);
+    }
+    const exitAt = closing && brief.exitTicketOnSlides === true ? lesson.slides.length : undefined;
+    if (exitAt !== undefined && exitQuestions.length > 0)
+      for (const u of untaughtOnExit(
+        passSlides(),
+        exitQuestions.map((q) => q.stem),
+      )) {
+        gateHit("untaught", exitAt);
+        gates.untaught.fallback += 1;
+        gateFinding(
+          exitAt,
+          `Exit item ${u.item + 1} asks about ${u.terms.map((t) => `"${t}"`).join(", ")}, which no slide teaches.`,
+        );
+      }
     // A question slide's dead half: the picture that taught its objective, under the questions.
     const theme = getTheme(themeId);
     for (const p of [...placed].sort((a, b) => a.index - b.index)) {

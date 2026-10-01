@@ -100,7 +100,7 @@ describe("reviewItem", () => {
 });
 
 describe("modelExitItems", () => {
-  test("re-asks once for the failed items, then drops what still fails", async () => {
+  test("re-asks the failed items up to twice, then drops what still fails", async () => {
     const inputs: ExitItemsInput[] = [];
     const call = async (input: ExitItemsInput): Promise<ExitItemsOutput> => {
       inputs.push(input);
@@ -115,11 +115,11 @@ describe("modelExitItems", () => {
       return { items: [item({ objective: 2, question: "Simplify the ratio 6:9, please." })] };
     };
     const got = await modelExitItems(BASE, call);
-    expect(inputs.length).toBe(2);
+    expect(inputs.length).toBe(3);
     expect(inputs[0]?.count).toBe(3);
     expect(inputs[1]?.redo?.map((r) => r.objective)).toEqual([2]);
     expect(got?.items.map((i) => i.objective)).toEqual([0, 2]);
-    expect(got?.report).toMatchObject({ written: 3, reasked: 1, dropped: 1, kept: 2 });
+    expect(got?.report).toMatchObject({ written: 3, reasked: 2, dropped: 1, kept: 2 });
   });
   test("a failed re-ask drops only its items; the first call's failure is the caller's", async () => {
     let n = 0;
