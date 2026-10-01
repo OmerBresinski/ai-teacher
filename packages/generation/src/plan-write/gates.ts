@@ -146,6 +146,38 @@ export function wrongSums(text: string): string[] {
   return out;
 }
 
+/**
+ * `text` with each wrong "a op b = c" put right in place: c becomes the recomputed result when c
+ * appears just once in the text, so nothing else leans on it. A result rounded to the decimals it
+ * shows is not wrong. The sums that cannot be put right that way (a chain, a ratio, a result used
+ * again, a number in words) are named in `unfixed` with their true result.
+ */
+export function recomputeSums(text: string): { text: string; fixed: number; unfixed: string[] } {
+  let out = text;
+  let fixed = 0;
+  const unfixed: string[] = [];
+  for (const run of wrongSums(text)) {
+    const parts = run.split("=").map((p) => p.trim().replace(/\.$/, ""));
+    const value = parts.length === 2 ? evaluate(parts[0] ?? "") : undefined;
+    const stated = parts[1] ?? "";
+    if (value === undefined || !/^\d+(?:\.\d+)?$/.test(stated)) {
+      unfixed.push(run);
+      continue;
+    }
+    const decimals = (stated.split(".")[1] ?? "").length;
+    if (decimals > 0 && Math.abs(value - Number(stated)) <= 0.5 * 10 ** -decimals + 1e-9) continue;
+    const shown = Number.isInteger(Number(value.toFixed(6)))
+      ? String(Math.round(value))
+      : String(Number(value.toFixed(Math.max(decimals, 2))));
+    const at = new RegExp(`(?<![\\d.])${stated.replace(".", "\\.")}(?!\\d|\\.\\d)`, "g");
+    if ((out.match(at) ?? []).length === 1) {
+      out = out.replace(at, shown);
+      fixed += 1;
+    } else unfixed.push(`${parts[0]} = ${shown}, not ${stated}`);
+  }
+  return { text: out, fixed, unfixed };
+}
+
 /** The fields of a written slide whose stated arithmetic does not hold, with the sums named. */
 export function arithmeticFaults(out: Written): { field: string; failure: string }[] {
   const faults: { field: string; failure: string }[] = [];

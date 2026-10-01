@@ -194,13 +194,21 @@ const exitTicket: WorksheetRecipe = {
   jobs: ["check"],
   minutes: [5, 5],
   build: (facts) => {
-    const questions = questionsFrom(facts, [1, 1, 1]);
+    // The questions written for the exit ticket (`use: "exit"`, up to four) when the lesson has
+    // them; otherwise its first three. A fourth is left to the model when there are fewer.
+    const exit = (facts?.questions ?? []).filter((q) => q.use === "exit").slice(0, 4);
+    const questions =
+      exit.length > 0
+        ? exit.map((q) => question(q.stem, 1, q.answer, [q.id]))
+        : questionsFrom(facts, [1, 1, 1]);
     const refs = facts ? factRefsOf(questions) : undefined;
     return [
       instructions("Answer each question in one or two sentences.", refs),
       ...questions,
       cite({ id: uid(), type: "answer-box", heightPt: 90, label: "One thing I learned" }, refs),
-      placeholder("a fourth question on the objective the class found hardest.", refs),
+      ...(questions.length < 4
+        ? [placeholder("a fourth question on the objective the class found hardest.", refs)]
+        : []),
     ];
   },
 };

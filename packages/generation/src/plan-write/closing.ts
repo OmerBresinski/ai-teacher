@@ -150,6 +150,13 @@ export function freshClosingWritten(
   return closingQuestionsWritten(freshClosingItems(facts, slides), FRESH_NOTES);
 }
 
+/**
+ * The closing set from the model's exit items (round Q, `model-exit.ts`), in their order, each
+ * kept while the set still fits the slide.
+ */
+export const modelClosingWritten = (items: readonly ExitQuestion[]): Written | undefined =>
+  closingQuestionsWritten(items, FRESH_NOTES);
+
 /** The fresh items the closing set is built from, with their forms, objectives and similarity. */
 export const freshClosingItems = (facts: LessonFacts, slides: readonly Slide[]): FreshExitItem[] =>
   freshExitItems(facts, slides, {

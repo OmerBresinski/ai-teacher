@@ -51,6 +51,7 @@ import {
   EXIT_FORM,
   exitTicketQuestions,
   freshClosingWritten,
+  modelClosingWritten,
   withClosingLine,
 } from "../plan-write/closing";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
@@ -61,6 +62,7 @@ import {
   type Written,
   withSetTag,
 } from "../plan-write/fit";
+import { inLessonQuestions } from "../plan-write/fresh-exit";
 import {
   arithmeticFaults,
   carriesClaim,
@@ -72,6 +74,7 @@ import {
 } from "../plan-write/gates";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, slideWriterSchema } from "../plan-write/menu";
+import { modelExitItems } from "../plan-write/model-exit";
 import { recheckKinds } from "../plan-write/recheck";
 import {
   answerKeyMismatches,
@@ -104,6 +107,13 @@ import {
   type CaptionClaimsInput,
   captionClaimsPrompt,
 } from "../prompts/caption-claims";
+import {
+  EXIT_ITEMS_VERSION,
+  type ExitItemsInput,
+  type ExitItemsOutput,
+  exitItemsPrompt,
+  exitItemsSchema,
+} from "../prompts/exit-items";
 import {
   MASTER_CHECK_KINDS,
   MASTER_CHECK_VERSION,
@@ -182,6 +192,21 @@ export const WRITER_OUTPUT_TOKENS_BASE = 1500;
 export const WRITER_OUTPUT_TOKENS_PER_SLIDE = 1500;
 const MAX_OUTPUT_TOKENS_REWRITE = 2000;
 const MAX_OUTPUT_TOKENS_MASTER_CHECK = 3000;
+const MAX_OUTPUT_TOKENS_EXIT_ITEMS = 3000;
+const EXIT_ITEMS_TIMEOUT_MS = 60_000;
+/** The forms that teach (the exit items are written from these alone); the rest ask. */
+const EXIT_TEACHING_FORMS = new Set([
+  "explain",
+  "explain-callout",
+  "list",
+  "compare",
+  "sequence",
+  "photo",
+  "figure",
+  "diagram-slot",
+  "worked-example",
+  "vocabulary",
+]);
 const MAX_OUTPUT_TOKENS_CAPTION_CLAIMS = 2000;
 const captionClaimsSchema = z.object({
   claims: z.array(
@@ -1938,6 +1963,8 @@ export async function planWriteSlides(
 
   // Facts from what the slides show, in slide order (built again once the checks have landed).
   const refsOf = new Map<number, string[]>();
+  /** The exit ticket's questions (round Q), kept across every rebuild of the facts. */
+  let exitQuestions: LessonFacts["questions"] = [];
   const buildFacts = (): LessonFacts => {
     const counters: Record<string, number> = {};
     const next = (prefix: string) => {
@@ -1971,17 +1998,103 @@ export async function planWriteSlides(
       if (entry) entry.factRefs = [...objectiveIds(p.plan), ...refs];
     }
     if (retrieval.length > 0) built.retrieval = retrieval;
+    built.questions.push(...exitQuestions);
     return built;
   };
   const facts = buildFacts();
 
-  // The close (ruling 141): no model call. The closing slide goes after the practise slide.
+  /*
+   * Round Q: the exit ticket's items from one call on the checker's model, written from the
+   * teaching slides and checked in code (`plan-write/model-exit.ts`). They become the lesson's
+   * exit questions (`use: "exit"`), which the worksheet's exit ticket prints, and the closing
+   * slide's set when the brief asks for it. Undefined when the call fails or nothing survives.
+   */
+  const writeExitItems = async () => {
+    const t0 = Date.now();
+    const effort = planWriteCheckerEffort();
+    const slides = [...placed]
+      .sort((a, b) => a.index - b.index)
+      .filter((p) => EXIT_TEACHING_FORMS.has(p.plan.form))
+      .map((p) => {
+        const { notes: _n, imageBrief: _i, ...written } = p.out as Record<string, unknown>;
+        return { number: p.index + 1, form: p.plan.form, written };
+      });
+    let cost = 0;
+    let calls = 0;
+    const call = async (input: ExitItemsInput) => {
+      const c = await callStructured({
+        deps,
+        stage: "generate",
+        cls,
+        effort,
+        prompt: asPrompt<ExitItemsInput>(EXIT_ITEMS_VERSION, exitItemsPrompt(input)),
+        input,
+        schema: exitItemsSchema,
+        maxOutputTokens: MAX_OUTPUT_TOKENS_EXIT_ITEMS,
+        timeoutMs: EXIT_ITEMS_TIMEOUT_MS,
+      });
+      calls += 1;
+      const { inputTokens, outputTokens, cachedInputTokens } = c.usage;
+      if (inputTokens !== undefined && outputTokens !== undefined)
+        cost += costUsd(c.modelId, { inputTokens, outputTokens, cachedInputTokens }) ?? 0;
+      return c.output as ExitItemsOutput;
+    };
+    try {
+      const got = await modelExitItems(
+        {
+          audience,
+          topic: brief.topic,
+          objectives: objectives.map((o) => o.text),
+          slides,
+          asked: inLessonQuestions(lesson.slides),
+        },
+        call,
+      );
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "exit-items",
+          ms: Date.now() - t0,
+          calls,
+          costUsd: cost,
+          ...(got?.report ?? { kept: 0 }),
+        },
+        "exit items written",
+      );
+      return got?.items;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.warn(
+        { stage: "generate", call: "exit-items", err: safeError(error) },
+        "exit items failed; round P items kept",
+      );
+      return undefined;
+    }
+  };
+
+  // The close (ruling 141). The closing slide goes after the practise slide.
   if (mode === "stream") {
+    const exitItems = await writeExitItems();
+    if (exitItems) {
+      // Ids from q901, clear of the slides' own questions however a rebuild numbers them.
+      exitQuestions = exitItems.map((i, n) => ({
+        id: `q${901 + n}`,
+        stem: i.question,
+        answer: i.answer,
+        reasoning: "",
+        objectiveRefs: objectives[i.objective] ? [objectives[i.objective]?.id ?? ""] : [],
+        use: "exit" as const,
+      }));
+      facts.questions.push(...exitQuestions);
+    }
     const questions = exitTicketQuestions(facts);
-    // Opt-in (ruling 141's checkbox): fresh exit questions on the closing slide itself.
+    // Opt-in (ruling 141's checkbox): the exit questions on the closing slide itself; Round P's
+    // code-built items only when the model's call failed.
     const onSlides =
       closing && brief.exitTicketOnSlides === true
-        ? freshClosingWritten(facts, lesson.slides)
+        ? exitItems
+          ? modelClosingWritten(exitItems)
+          : freshClosingWritten(facts, lesson.slides)
         : undefined;
     if (closing) {
       const slide = onSlides

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai";
 import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { type Lesson, OutlineEntrySchema } from "@tj/domain/documents";
+import { recipeById } from "@tj/slides";
 import { freshClosingWritten } from "../plan-write/closing";
 import { inLessonQuestions, SIMILARITY_MAX, similarity } from "../plan-write/fresh-exit";
 import { isPlanWriteStamp } from "../plan-write/steps";
@@ -140,7 +141,7 @@ function writerCallOf(text: string): WriteSlidesInput {
 
 function planWriteAi(
   calls: WriteSlidesInput[],
-  opts: { longHinge?: boolean; masterFixes?: unknown[] } = {},
+  opts: { longHinge?: boolean; masterFixes?: unknown[]; exitItems?: unknown[] } = {},
 ) {
   const fallback: FakeScriptEntry = async (call: FakeCall) => {
     const version = call.context?.promptVersion ?? "";
@@ -194,6 +195,8 @@ function planWriteAi(
       );
     }
     if (version.startsWith("master-check")) return json({ fixes: opts.masterFixes ?? [] });
+    // Round Q: without items given, the exit-items call fails and round P's items stand in.
+    if (version.startsWith("exit-items") && opts.exitItems) return json({ items: opts.exitItems });
     if (version.startsWith("verify-facts")) return json({ corrections: [] });
     if (version.startsWith("evaluate")) return json({ findings: [] });
     if (version.startsWith("repair")) return json(FIXTURES.repair);
@@ -326,6 +329,48 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
         const shown = close?.elements.find((e) => json(e).includes(json(q.answer).slice(1, -1)));
         expect(shown?.revealStep).toBe(1);
       }
+    });
+  });
+
+  test("round Q: the model's exit items, checked, go to the closing slide and the worksheet's exit ticket", async () => {
+    await inMode(undefined, async () => {
+      const items = [
+        {
+          objective: 1,
+          form: "apply",
+          answer: "12 ÷ 4 = 3 in each group.",
+          question: "Twelve pencils are put into four equal groups. How many are in each group?",
+          wrongOptions: [],
+        },
+        {
+          objective: 1,
+          form: "multiple-choice",
+          answer: "The parts must be equal.",
+          question: "What must be true of the groups when you share fairly?",
+          wrongOptions: ["They must be large.", "There must be two of them."],
+        },
+      ];
+      const ai = planWriteAi([], { exitItems: items });
+      const l = streamLesson();
+      const on: Lesson = {
+        ...l,
+        brief: { ...(l.brief as NonNullable<Lesson["brief"]>), exitTicketOnSlides: true },
+      };
+      const final = await runLessonPipeline({ lesson: on }, recordingDeps(ai), {
+        planner: "plan-write",
+      });
+      const lesson = final.lesson;
+      const versions = ai.calls.map((c) => c.context?.promptVersion ?? "");
+      expect(versions.filter((v) => v.startsWith("exit-items"))).toHaveLength(1);
+      const exit = (lesson.facts?.questions ?? []).filter((q) => q.use === "exit");
+      expect(exit.map((q) => q.answer)).toEqual([
+        "12 ÷ 4 = 3 in each group.",
+        expect.stringMatching(/^\([ABC]\) The parts must be equal$/),
+      ]);
+      const words = JSON.stringify(lesson.slides.at(-1)?.elements);
+      expect(words).toContain("Twelve pencils are put into four equal groups.");
+      const sheet = recipeById("exit-ticket")?.build(lesson.facts) ?? [];
+      expect(JSON.stringify(sheet)).toContain("Twelve pencils");
     });
   });
 
