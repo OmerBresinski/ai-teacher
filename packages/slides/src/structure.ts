@@ -2091,7 +2091,8 @@ function composeBesideSlot(
   const words = bodies.map((b) => docText(b.doc)).join(" ");
   const keep = slide.elements.filter((e) => e !== slot && !bodies.includes(e as TextElement));
   const para = (words: string, size: number, width: number): TextElement => {
-    const doc = docFromText(words);
+    // Labelled chunks keep their paragraphs and bold labels; other words are one paragraph.
+    const doc = chunked ? first.doc : docFromText(words);
     return text(
       ids,
       {

@@ -124,6 +124,7 @@ export const WORST: Record<TextKind, readonly string[]> = {
     "Temperature: warmer ions move faster, so they reach the electrodes more quickly.",
   ],
   chunk: [
+    "Melting ice: heating gives the particles energy, so they vibrate faster. They break free of fixed positions and slide past each other.",
     "Liquid: the particles touch but slide past each other. A liquid flows and takes its container's shape.",
     "In 1923: a loaf of bread cost 200 billion marks. Prices doubled every few days.",
     "Why it matters: savers lost everything, because their money would no longer buy anything at all.",

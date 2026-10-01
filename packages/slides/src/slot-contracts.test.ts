@@ -152,8 +152,30 @@ describe("D1 labelled chunks", () => {
         | { doc: RichDoc }
         | undefined;
       expect(body && isChunked(body.doc)).toBe(true);
-      expect(body?.doc.content?.[1]?.content?.[0]?.text).toBe("In 1923:");
+      expect(body?.doc.content?.[1]?.content?.[0]?.text).toBe("Liquid:");
     }
+  });
+
+  it("chunks too long for the column at body size keep their paragraphs when stepped down", () => {
+    const long =
+      "Ice: in the sealed jar, the ice particles stay the same as the solid melts. They move past each other, so the water changes shape; none escape, so the mass stays the same.";
+    const made = specOfWriter("diagram-slot", {
+      heading: "Particles form three states",
+      body: [long, long.replace("Ice:", "The model:"), long.replace("Ice:", "Gas:")],
+      diagram: "Three boxes of particles",
+    });
+    const slide = materialiseSlide(
+      made?.spec as never,
+      "chalk",
+      { lessonId: "l", slideId: "s" } as never,
+      undefined,
+      made?.variant,
+      made?.structure,
+    );
+    const body = slide.elements.find(
+      (e) => e.type === "text" && JSON.stringify(e.doc).includes("sealed jar"),
+    ) as { doc: RichDoc } | undefined;
+    expect(body && isChunked(body.doc)).toBe(true);
   });
 
   it("a body with one label, or a ratio, stays plain text", () => {
