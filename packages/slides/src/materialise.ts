@@ -66,6 +66,7 @@ import {
   withTerms,
 } from "./structure";
 import { measureHeadless } from "./text-measure";
+import { NUMBER_NAME, tidySlide } from "./text-tidy";
 import { withThemeColours } from "./theme-colours";
 import { getTheme } from "./themes";
 
@@ -240,7 +241,14 @@ export function lookAndFitPages(
   // The structure pass places its components under the heading as the fit sets it, so it runs on
   // the fitted look.
   const looked = fitSlide(applyLook(slide, theme, ids, { tag: structure.tag }), theme).slide;
-  const pages = structureSlide(looked, theme, structure, ids, options);
+  // One list kind a slide, the marker drawn by the slide, never typed by the writer (spike/fmt):
+  // a numbered list runs on across its pages.
+  let next = 1;
+  const pages = structureSlide(looked, theme, structure, ids, options).map((page) => {
+    const tidied = tidySlide(page, { ordered: structure.ordered, start: next });
+    next += tidied.elements.filter((e) => e.name === NUMBER_NAME).length;
+    return tidied;
+  });
   const done = pages.flatMap((page) => {
     const looked = fitSlide(page, theme);
     const split = looked.slide.elements.some((e) => e.name === KEY_IDEA_NAME);

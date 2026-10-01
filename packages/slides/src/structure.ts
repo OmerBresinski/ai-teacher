@@ -88,6 +88,11 @@ export type SlideStructure = {
    */
   tag?: string;
   /**
+   * The slide's list is numbered (order matters: generation's practise slide). Its points carry no
+   * marker of their own; the slide draws "1)" where a dot would go (`tidySlide`, spike/fmt).
+   */
+  ordered?: boolean;
+  /**
    * The side a photo or diagram slot takes (look/slides-layout), left when absent. Generation
    * alternates it over a deck's slot slides (`alternateSlotSides` is the same rule for a whole deck).
    */

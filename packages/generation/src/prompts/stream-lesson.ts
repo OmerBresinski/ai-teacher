@@ -45,7 +45,8 @@ import { WRITE_RULES } from "./write-slides";
 /* v18 (round G1): write-slides.v24 (calculations written as equations, so code recomputes them). */
 /* v19 (round I1): plan-lesson.v21 (diagram slots for the template ideas); the diagram contract lists
  * the templates first. No swap changed. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v19";
+/* v20 (spike/fmt): write-slides.v25 (no em dashes; practise items unnumbered, the slide numbers them). */
+export const STREAM_LESSON_VERSION = "stream-lesson.v20";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 

@@ -1,4 +1,5 @@
 import { describe, expect, it, test } from "bun:test";
+import { richDocToPlainText } from "@tj/domain/documents";
 import { KIND_TAG_NAME, materialiseSlide } from "@tj/slides";
 import { batchesOf } from "../stages/plan-write";
 import { answerKeyFaults, fitWithRewrite, fitWritten, renderWritten, withSetTag } from "./fit";
@@ -228,5 +229,36 @@ describe("a practise slide drawn as a list (round C1: B1's practice read as a li
     };
     expect(tagOf("practise")).toContain("PRACTICE");
     expect(tagOf("teach")).not.toContain("PRACTICE");
+  });
+
+  test("is numbered by the slide: '1)' where the dot was, the writer's own number stripped (spike/fmt)", () => {
+    let n = 0;
+    const out = {
+      heading: "Your turn: share in a ratio",
+      body: "Draw a bar model for each one.",
+      points: [
+        "1: Share 12 in 1:2.",
+        "2: Share 20 in 2:3.",
+        "3: Spot the mistake.",
+        "4: Scale a recipe.",
+      ],
+    };
+    const draw = (role?: string, written = out) => {
+      const r = renderWritten("list", "default", written, role);
+      return materialiseSlide(r.spec, "chalk", META, () => `e${n++}`, r.variant, r.structure);
+    };
+    const texts = (slide: ReturnType<typeof draw>, name: string) =>
+      slide.elements
+        .filter((e) => e.name === name)
+        .map((e) => (e.type === "text" ? richDocToPlainText(e.doc) : ""));
+    const practise = draw("practise");
+    expect(texts(practise, "Number")).toEqual(["1)", "2)", "3)", "4)"]);
+    expect(practise.elements.some((e) => e.name === "Bullet")).toBe(false);
+    expect(texts(practise, "Point")[0]).toBe("Share 12 in 1:2.");
+    // A teaching list keeps its dots; one the writer numbered reads as ordered.
+    const bare = { ...out, points: out.points.map((p) => p.slice(3)) };
+    const teach = draw("teach", bare);
+    expect(teach.elements.some((e) => e.name === "Number")).toBe(false);
+    expect(teach.elements.some((e) => e.name === "Bullet")).toBe(true);
   });
 });

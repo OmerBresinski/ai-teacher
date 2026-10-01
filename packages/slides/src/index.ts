@@ -41,6 +41,7 @@ export * from "./specs";
 export * from "./structure";
 export * from "./text-measure";
 export * from "./text-style";
+export * from "./text-tidy";
 export { themedColour, withThemeColours } from "./theme-colours";
 export * from "./themes";
 export * from "./worksheet";

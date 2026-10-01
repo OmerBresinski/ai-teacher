@@ -2,7 +2,7 @@ import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { safeError } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
-import { type FitReport, fitReport } from "@tj/slides";
+import { cleanDashesDeep, type FitReport, fitReport, tidySlides } from "@tj/slides";
 import { z } from "zod";
 import {
   PLAN_WRITE_CHECKPOINT,
@@ -366,6 +366,13 @@ export async function runLessonPipeline(
   let checkedMs: number | undefined;
   const tracked: PipelineDeps = {
     ...deps,
+    // Every saved lesson and worksheet has its generated text tidied in code (spike/fmt): no
+    // manual list markers, one list kind a slide, no em dashes.
+    persist: (lesson, worksheet) =>
+      deps.persist(
+        { ...lesson, slides: tidySlides(lesson.slides) },
+        worksheet ? cleanDashesDeep(worksheet) : worksheet,
+      ),
     onProgress: (percent, message, stage, documentUpdatedAt) => {
       if (stage === "generate" || stage === "illustrate") readableMs = Date.now() - startedAt;
       if (stage === "evaluate" || stage === "repair") checkedMs = Date.now() - startedAt;

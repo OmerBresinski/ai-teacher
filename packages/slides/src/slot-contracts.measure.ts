@@ -113,11 +113,11 @@ export const WORST: Record<TextKind, readonly string[]> = {
     "Subtract 7 from both sides: 3x = 12",
   ],
   "reasoned-step": [
-    "One part: £45 ÷ 5 = £9 — the total over the 5 equal parts",
-    "Amy: 2 × £9 = £18 — Amy has 2 of the parts",
-    "Ice particles vibrate faster — they gain energy from the room",
-    "Subtract 7 from both sides: 3x = 12 — undo the + 7",
-    "1923: prices doubled every few days — more money was printed",
+    "One part: £45 ÷ 5 = £9 (the total over the 5 equal parts)",
+    "Amy: 2 × £9 = £18 (Amy has 2 of the parts)",
+    "Ice particles vibrate faster (they gain energy from the room)",
+    "Subtract 7 from both sides: 3x = 12 (undo the + 7)",
+    "1923: prices doubled every few days (more money was printed)",
   ],
   "labelled-sentence": [
     "Current: a larger current discharges more ions at each electrode every second.",

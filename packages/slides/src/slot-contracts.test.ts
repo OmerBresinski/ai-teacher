@@ -106,14 +106,14 @@ describe("writerSchema", () => {
 
   it("describes each slot's shape in its field", () => {
     const json = JSON.stringify(writerSchema("worked-example").shape.steps?.description);
-    expect(json).toContain("and the reason for that step");
+    expect(json).toContain("the reason for that step in brackets");
     expect(json).toContain("the last line gives the answer");
     expect(writerSchema("compare").shape.compare?.description).toContain("two sides");
   });
 });
 
 describe("C2 capacities and the worked example's full working", () => {
-  it("a worked example takes at least three steps, each with its reason after the dash", () => {
+  it("a worked example takes at least three steps, each with its reason in brackets", () => {
     const schema = writerSchema("worked-example");
     const fill = worstFill(slotContract("worked-example"));
     const steps = fill.steps as string[];
@@ -274,7 +274,7 @@ describe("contractText", () => {
         "worked-example:",
         '- heading: one line: one short main clause about one thing, with no "and", "but", "when" or list',
         "- question: one question, at most two lines",
-        '- steps: 3–6 lines, each one step of the working on one line, then " — " and the reason for that step ("£45 ÷ 5 = £9 — each part is the total over the 5 parts") (the whole working, every step with its reason; the last line gives the answer)',
+        '- steps: 3–6 lines, each one step of the working on one line, then the reason for that step in brackets ("£45 ÷ 5 = £9 (each part is the total over the 5 parts)") (the whole working, every step with its reason; the last line gives the answer)',
       ].join("\n"),
     );
     expect(contractText("hinge", "why")).toContain("hinge (why):");

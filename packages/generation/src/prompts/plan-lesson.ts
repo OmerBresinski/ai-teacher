@@ -46,7 +46,8 @@ import { type Audience, audienceBlock } from "./shared";
 /* v21 (round I1): the diagram-slot shapes name the code-drawn templates (particle arrangement, storm
  * hydrograph, timeline, layers, cycle, river valley or meander), so the planner gives those ideas a
  * diagram slot; the palette's diagram contract lists the templates and when each fits. */
-export const PLAN_LESSON_VERSION = "plan-lesson.v21";
+/* v22 (spike/fmt): text unchanged here; the worked step's contract line it shows gives the reason in brackets, not after an em dash. */
+export const PLAN_LESSON_VERSION = "plan-lesson.v22";
 
 /** One form and layout on the planner's menu, with its measured capacity and contract text. */
 export type PlanMenuEntry = {

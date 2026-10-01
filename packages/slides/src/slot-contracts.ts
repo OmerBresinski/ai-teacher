@@ -37,7 +37,7 @@ export const TEXT_KINDS = {
   answer: "a single term or number",
   working: "one calculation or one short phrase, on one line",
   "reasoned-step":
-    'one step of the working on one line, then " — " and the reason for that step ("£45 ÷ 5 = £9 — each part is the total over the 5 parts")',
+    'one step of the working on one line, then the reason for that step in brackets ("£45 ÷ 5 = £9 (each part is the total over the 5 parts)")',
   "labelled-sentence": "a short label, a colon, then one sentence, at most two lines in all",
   chunk:
     'one part of the idea: a short label (a name or a short phrase, not a sentence), a colon, then one or two short sentences ("Gas: the particles are far apart and move fast. They spread out to fill any space.")',
@@ -462,8 +462,11 @@ export const layoutsOf = (form: PaletteFormId): SlotContract[] =>
 
 const text = () => z.string().trim().min(1);
 
-/** A reasoned step carries its reason after " — " (the worked example's reason column). */
-const REASONED = /\S\s—\s\S/;
+/**
+ * A reasoned step carries its reason in brackets at its end (the worked example's reason column).
+ * It was after " — " until spike/fmt: generated text has no em dashes (Greg, 1 Oct 2026).
+ */
+const REASONED = /\S\s*\([^()]*\p{L}{2}[^()]*\)\s*$/u;
 
 function kindSchema(kind: TextKind) {
   const t = kind === "reasoned-step" ? text().regex(REASONED) : text();
