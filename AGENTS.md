@@ -159,11 +159,11 @@ Code and Cursor. Check your own tool list and map by **capability**, not by name
   Attaching the same file to the Linear issue with
   `linear_prepare_attachment_upload` is fine as an extra; it is not the PR deliverable. The branch is
   never merged and never rebased; it is not on CI.
-- **Reviewer model.** In order: GPT-5.6 Luna; if unavailable, Claude Sonnet 5; if neither is
-  available, ask a human to review. The reviewer must be a different model from the implementer:
-  skip a candidate that is the implementer's own model and move to the next. Do not substitute
-  another model. In OpenCode the choice is pinned in the user's global `reviewer` agent
-  definition, not here.
+- **Reviewer model.** In order: GPT-5.6 Luna; if unavailable, Claude Sonnet 5.5; if unavailable,
+  Claude Sonnet 5; if none is available, ask a human to review. The reviewer must be a different
+  model from the implementer: skip a candidate that is the implementer's own model and move to the
+  next. Do not substitute another model. In OpenCode the choice is pinned in the user's global
+  `reviewer` agent definition, not here.
 
 Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
 fixed cost regardless of how little it does. Batch independent tool calls into one message. Never
