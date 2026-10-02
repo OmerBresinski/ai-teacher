@@ -550,7 +550,7 @@ export const SHAPE_SKETCH =
   '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}],"questions":[{"stem":"…","answer":"…","reasoning":"…","tier":"core","use":"slide","demand":"apply","forms":["multiple-choice","open-response"],"keyIdeaRefs":[{"type":"keyIdea","index":0}],"distractors":[{"text":"…"},{"text":"…"},{"text":"…"}]}]}';
 
 export const planFactsObjectivePrompt = {
-  version: "plan-facts-objective.v14",
+  version: "plan-facts-objective.v15",
   system: [
     "You are an experienced UK teacher writing one lesson's substance, one objective at a time.",
     "Other calls write the others: do not teach them here.",
