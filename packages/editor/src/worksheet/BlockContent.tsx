@@ -321,7 +321,11 @@ const HEADER_FIELDS = [
   ["showClass", "Class", "ws-field-class"],
 ] as const;
 
-export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
+/**
+ * The printed header. The time and marks line (`SheetMeta`) is for the teacher planning the
+ * lesson, so the pupil's printed copy leaves it out (TEACH-86; AUDIT §4 "about 15 min" fault).
+ */
+export function SheetHeader({ worksheet, mode }: { worksheet: Worksheet; mode?: SheetMode }) {
   const { header } = worksheet;
   const fields = HEADER_FIELDS.filter(([flag]) => header[flag]);
   return (
@@ -343,7 +347,9 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
       {header.subtitle !== undefined ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
+      {mode === "print" ? null : (
+        <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
+      )}
     </header>
   );
 }

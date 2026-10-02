@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
-import { WORKSHEET_RECIPES } from "@tj/editor/worksheet-editor";
+import { GENERATED_RECIPES } from "@tj/editor/worksheet-editor";
 import {
   Button,
   Dialog,
@@ -168,7 +168,7 @@ export function LessonWorksheets({
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value="auto">Suggested for this lesson</SelectItem>
-                  {WORKSHEET_RECIPES.map((recipe) => (
+                  {GENERATED_RECIPES.map((recipe) => (
                     <SelectItem key={recipe.id} value={recipe.id}>
                       {recipe.name}
                     </SelectItem>

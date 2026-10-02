@@ -2,7 +2,7 @@ import { type LessonFacts, pupilObjective, type Worksheet } from "@tj/domain/doc
 import { newWorksheet, numberQuestions } from "./worksheet-factories";
 import {
   type Job,
-  suggestRecipe,
+  suggestFrameRecipe,
   WORKSHEET_RECIPES,
   type WorksheetRecipe,
 } from "./worksheet-recipes";
@@ -88,7 +88,9 @@ export function visibleRecipes(job: Job | null): readonly WorksheetRecipe[] {
 
 // The suggestion rule moved to `@tj/slides` with the recipes (ADR 0030 item 4): the API resolves
 // `"auto"` with it. Re-exported so the page and `./worksheet-creation` importers are unchanged.
-export { suggestRecipe };
+// This flow builds a sheet with no model call, so it suggests among the nine frame recipes, never
+// "Follows the lesson" (TEACH-86), which only the worksheet job can write.
+export const suggestRecipe = suggestFrameRecipe;
 
 /** The recipe Kind has selected: the teacher's pick, or the suggestion when there is none. */
 export function selectedRecipe(state: CreateState, facts?: LessonFacts): WorksheetRecipe | null {

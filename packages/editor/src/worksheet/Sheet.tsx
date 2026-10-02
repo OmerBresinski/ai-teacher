@@ -73,7 +73,7 @@ export function PageView({
       style={mode === "edit" ? { boxShadow: "var(--shadow-slide)" } : undefined}
     >
       <div className="ws-content">
-        {page.index === 0 ? (header ?? <SheetHeader worksheet={worksheet} />) : null}
+        {page.index === 0 ? (header ?? <SheetHeader worksheet={worksheet} mode={mode} />) : null}
         {children}
         {page.index === 0 && page.items.length === 0 ? empty : null}
       </div>

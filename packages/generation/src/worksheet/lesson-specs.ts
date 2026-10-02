@@ -1,0 +1,268 @@
+import type { BlockSpec } from "@tj/slides";
+import {
+  blockSpecUnion,
+  editorialIssue,
+  noPictureReference,
+  type SpecSchemaOptions,
+  shapeIssue,
+} from "@tj/slides";
+import { z } from "zod";
+import { normaliseStem } from "./cycles";
+
+/*
+ * What the "Follows the lesson" call returns (TEACH-86; brief `scratchpad/t86-PROMPT-BRIEF.md`).
+ * One task per learning cycle, in lesson order, each a supported part then a stretch part, plus
+ * the exit ticket when one was asked for (rulings 141, 108). Blocks are the writable block specs
+ * (`blockSpecUnion`). Shape rules fail the call after its one retry: tasks out of order or naming
+ * a cycle the lesson has not got, an exit ticket that was not asked for (or missing, or over
+ * three items). The pedagogy rules are editorial (TEACH-257), accepted on the retry and recorded
+ * as findings: every cycle has a task, the supported part opens with a closed or short form, the
+ * stretch has an open question, an open question's answer is 2 or 3 model points, marks only
+ * where exam-style items are allowed and each marked item opens with a command word, and no exit
+ * question repeats a slide question word for word.
+ */
+
+/** Block types the exit ticket may use: quick to mark. */
+export const EXIT_TICKET_TYPES = ["question", "multiple-choice"] as const;
+/** Ruling 108: an exit ticket holds at most three questions. */
+export const MAX_EXIT_QUESTIONS = 3;
+/** A question with this many answer lines or more is open: its answer is model points. */
+export const OPEN_ANSWER_LINES = 3;
+
+/** Exam command words (AQA, Edexcel, OCR glossaries), as a marked item opens with them. */
+export const COMMAND_WORDS = [
+  "analyse",
+  "assess",
+  "calculate",
+  "compare",
+  "complete",
+  "define",
+  "describe",
+  "determine",
+  "discuss",
+  "draw",
+  "estimate",
+  "evaluate",
+  "examine",
+  "explain",
+  "give",
+  "how far",
+  "identify",
+  "interpret",
+  "justify",
+  "label",
+  "name",
+  "outline",
+  "plot",
+  "predict",
+  "show",
+  "sketch",
+  "state",
+  "suggest",
+  "summarise",
+  "to what extent",
+  "use",
+  "write",
+] as const;
+
+const SUPPORTED_TYPES: ReadonlySet<string> = new Set([
+  "fill-gap",
+  "word-bank",
+  "multiple-choice",
+  "matching",
+]);
+
+function shape(soft: boolean) {
+  const text = z.string().trim().min(1);
+  return z.strictObject({
+    tasks: z
+      .array(
+        z.strictObject({
+          cycle: z.number().int().min(1),
+          title: text,
+          instruction: text,
+          supported: z.array(blockSpecUnion({ soft })).min(1),
+          stretch: z.array(blockSpecUnion({ soft })).min(1),
+        }),
+      )
+      .min(1),
+    exitTicket: z.array(blockSpecUnion({ soft })).nullable(),
+  });
+}
+export type LessonSheetOutput = z.infer<ReturnType<typeof shape>>;
+export type LessonSheetTask = LessonSheetOutput["tasks"][number];
+
+export type LessonSheetContext = {
+  /** How many learning cycles the lesson has (`lessonCycles`). */
+  cycles: number;
+  examStyle: boolean;
+  exitTicket: boolean;
+  /** Normalised stems the slides already asked (`slideQuestionStems`). */
+  slideStems: readonly string[];
+};
+
+/** The model points of an open answer: one per non-empty line. */
+export const answerPoints = (answer: string): string[] =>
+  answer
+    .split("\n")
+    .map((line) => line.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim())
+    .filter(Boolean);
+
+const opensWithCommandWord = (text: string): boolean => {
+  const lower = text.trim().toLowerCase();
+  return COMMAND_WORDS.some((word) => lower.startsWith(word));
+};
+
+/** True for a block that is a supported (closed or short) form. */
+export function isSupportedForm(block: BlockSpec): boolean {
+  if (SUPPORTED_TYPES.has(block.type)) return true;
+  return block.type === "question" && block.answerLines < OPEN_ANSWER_LINES;
+}
+
+/** How many points an open answer needs: 2–3, or up to its marks for a longer marked item. */
+export function pointsRange(block: BlockSpec & { type: "question" }): [number, number] {
+  return [2, Math.max(3, block.marks ?? 0)];
+}
+
+export function lessonSheetSchemaFor(
+  context: LessonSheetContext,
+  options: SpecSchemaOptions = {},
+): z.ZodType<LessonSheetOutput> {
+  const soft = options.soft === true;
+  const slideStems = new Set(context.slideStems);
+  return shape(soft).superRefine((sheet, ctx) => {
+    let last = 0;
+    const covered = new Set<number>();
+    const each = (block: BlockSpec, path: (string | number)[]) => {
+      if (block.type === "question") {
+        if (block.marks !== undefined && !context.examStyle) {
+          ctx.addIssue(
+            editorialIssue(
+              "Marks belong to exam-style items, which this year group does not get; leave `marks` out.",
+              [...path, "marks"],
+            ),
+          );
+        }
+        if (block.marks !== undefined && context.examStyle && !opensWithCommandWord(block.text)) {
+          ctx.addIssue(
+            editorialIssue(
+              `A marked item opens with an exam command word (${COMMAND_WORDS.slice(0, 6).join(", ")} …).`,
+              [...path, "text"],
+            ),
+          );
+        }
+        if (block.answerLines >= OPEN_ANSWER_LINES) {
+          const [low, high] = pointsRange(block);
+          const n = answerPoints(block.answer).length;
+          if (n < low || n > high) {
+            ctx.addIssue(
+              editorialIssue(
+                `An open question's answer is ${low} to ${high} model points, one per line; this one has ${n}.`,
+                [...path, "answer"],
+              ),
+            );
+          }
+        }
+      }
+      noPictureReference(block, {
+        addIssue: (issue: { path?: PropertyKey[] }) =>
+          ctx.addIssue({ ...issue, path: [...path, ...(issue.path ?? [])] } as never),
+      } as unknown as z.RefinementCtx);
+    };
+    sheet.tasks.forEach((task, i) => {
+      if (task.cycle > context.cycles) {
+        ctx.addIssue(
+          shapeIssue(
+            `There is no cycle ${task.cycle}; the lesson has ${context.cycles}.`,
+            ["tasks", i, "cycle"],
+            "unknown cycle",
+          ),
+        );
+      } else if (task.cycle <= last) {
+        ctx.addIssue(
+          shapeIssue(
+            `Task ${i + 1} follows cycle ${task.cycle} after cycle ${last}; one task per cycle, in lesson order.`,
+            ["tasks", i, "cycle"],
+            "cycle order",
+          ),
+        );
+      }
+      last = Math.max(last, task.cycle);
+      covered.add(task.cycle);
+      if (soft) return;
+      if (!task.supported.some(isSupportedForm)) {
+        ctx.addIssue(
+          editorialIssue(
+            "The supported part needs a closed or short form (fill-gap, word bank, multiple choice, matching, or a short-answer question).",
+            ["tasks", i, "supported"],
+          ),
+        );
+      }
+      if (!task.stretch.some((b) => b.type === "question")) {
+        ctx.addIssue(
+          editorialIssue("The stretch needs an open question (explain, apply, a problem).", [
+            "tasks",
+            i,
+            "stretch",
+          ]),
+        );
+      }
+      task.supported.forEach((b, j) => {
+        each(b, ["tasks", i, "supported", j]);
+      });
+      task.stretch.forEach((b, j) => {
+        each(b, ["tasks", i, "stretch", j]);
+      });
+    });
+    if (context.exitTicket) {
+      const exit = sheet.exitTicket;
+      if (exit === null || exit.length === 0 || exit.length > MAX_EXIT_QUESTIONS) {
+        ctx.addIssue(
+          shapeIssue(
+            `The exit ticket holds 1 to ${MAX_EXIT_QUESTIONS} questions.`,
+            ["exitTicket"],
+            "exit ticket count",
+          ),
+        );
+      } else {
+        exit.forEach((block, j) => {
+          if (!(EXIT_TICKET_TYPES as readonly string[]).includes(block.type)) {
+            ctx.addIssue(
+              shapeIssue(
+                `An exit-ticket item is a question or multiple choice, not "${block.type}".`,
+                ["exitTicket", j, "type"],
+                "exit ticket type",
+              ),
+            );
+            return;
+          }
+          if (soft) return;
+          const stem = "text" in block ? normaliseStem(block.text) : "";
+          if (slideStems.has(stem)) {
+            ctx.addIssue(
+              editorialIssue(
+                "This exit question repeats a slide question word for word; ask it a new way.",
+                ["exitTicket", j, "text"],
+              ),
+            );
+          }
+          each(block, ["exitTicket", j]);
+        });
+      }
+    } else if (sheet.exitTicket !== null && sheet.exitTicket.length > 0) {
+      ctx.addIssue(
+        shapeIssue(
+          "No exit ticket was asked for; answer null.",
+          ["exitTicket"],
+          "exit ticket unasked",
+        ),
+      );
+    }
+    if (soft) return;
+    for (let c = 1; c <= context.cycles; c++) {
+      if (!covered.has(c)) {
+        ctx.addIssue(editorialIssue(`Cycle ${c} has no task.`, ["tasks"]));
+      }
+    }
+  });
+}

@@ -6,6 +6,7 @@
  */
 
 export * from "./demo-facts";
+export * from "./empty-blocks";
 export * from "./factories";
 export * from "./minutes";
 export * from "./recipes";

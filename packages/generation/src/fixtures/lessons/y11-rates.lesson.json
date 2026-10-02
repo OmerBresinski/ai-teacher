@@ -1,0 +1,3601 @@
+{
+  "version": 1,
+  "id": "fit-vis-J1v-y11-chemistry-rates-of-reaction-mupd21ym",
+  "title": "Rates of reaction",
+  "themeId": "chalk",
+  "slides": [
+    {
+      "id": "f5mupd22li",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "f1kmupd2vl9",
+          "type": "shape",
+          "shape": "rect",
+          "x": 58,
+          "y": 139,
+          "w": 67,
+          "h": 4,
+          "fill": "#A94A18",
+          "name": "Accent rule",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:23.853Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1lmupd2vl9",
+          "type": "text",
+          "x": 58,
+          "y": 168,
+          "w": 844,
+          "h": 21,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:23.853Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1mmupd2vl9",
+          "type": "text",
+          "x": 58,
+          "y": 201,
+          "w": 773,
+          "h": 68,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Rates of reaction" }] }
+            ]
+          },
+          "style": { "preset": "title", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:23.853Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1nmupd2vl9",
+          "type": "text",
+          "x": 58,
+          "y": 286,
+          "w": 629,
+          "h": 60,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Year 11 · Chemistry" }]
+              }
+            ]
+          },
+          "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:23.853Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "ffmupd2ktz",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "fcmupd2kty",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 44,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fgmupd2ktz",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fhmupd2ku1",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 133,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fimupd2ku1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 147,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fjmupd2ku1",
+          "type": "text",
+          "x": 117,
+          "y": 147,
+          "w": 771,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "measure reaction rate from experimental data and calculate mean rates and instantaneous rates from graphs."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 1",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fkmupd2ku1",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 259,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "flmupd2ku1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 273,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fmmupd2ku1",
+          "type": "text",
+          "x": 117,
+          "y": 273,
+          "w": 771,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "explain the effects of concentration, gas pressure, temperature and surface area using collision theory."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 2",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fnmupd2ku1",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 385,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fomupd2ku1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 399,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fpmupd2ku1",
+          "type": "text",
+          "x": 117,
+          "y": 399,
+          "w": 771,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "explain how catalysts increase reaction rate using activation energy and reaction profiles."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 3",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:58:09.910Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f7jmupd3tvj",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "f7fmupd3tvj",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7kmupd3tvj",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 121,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "STARTER" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7lmupd3tvj",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7mmupd3tvj",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7nmupd3tvj",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 154,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7omupd3tvj",
+          "type": "text",
+          "x": 117,
+          "y": 154,
+          "w": 490,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In the particle model, how do particles in a liquid move?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7pmupd3tvj",
+          "type": "text",
+          "x": 626,
+          "y": 154,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Randomly" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7qmupd3tvj",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 261,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7rmupd3tvj",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 275,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7smupd3tvj",
+          "type": "text",
+          "x": 117,
+          "y": 275,
+          "w": 490,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What unit could you use to measure the volume of a gas?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7tmupd3tvj",
+          "type": "text",
+          "x": 626,
+          "y": 275,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "cm³" }] }]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7umupd3tvj",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 382,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7vmupd3tvj",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 396,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7wmupd3tvj",
+          "type": "text",
+          "x": 117,
+          "y": 396,
+          "w": 490,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "On a graph showing change over time, which axis usually shows time?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7xmupd3tvj",
+          "type": "text",
+          "x": 626,
+          "y": 396,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "The x-axis" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:59:08.287Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "1. Particles in a liquid move randomly. This is part of the particle model; we will build on it when we consider collisions. 2. Gas volume can be measured in cubic centimetres (cm³). This gives us a unit for the gas produced in the reaction. 3. Time usually goes on the x-axis. This lets us track how a measured quantity changes over time.\nAnswers: 1. Randomly 2. cm³ 3. The x-axis"
+    },
+    {
+      "id": "f1hmupd2vie",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f2hmupd326d",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Gas production reveals reaction rate" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:32.389Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2kmupd326d~1",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 403,
+          "h": 324,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Marble reaction:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Collect the carbon dioxide in a gas syringe. Record its volume at intervals."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Rate:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Measure product formed per unit time. Gas volume is measured in cm³/s."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Graph:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " The gradient is the change in gas volume divided by the time taken. A steeper gradient means more gas forms each second; a tangent gives the rate at one instant."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:32.389Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2kmupd326d~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 119,
+          "w": 403,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20378%22%20width%3D%22403%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22Carbon%20dioxide%20volume%20rises%20to%2060%20cubic%20centimetres%20at%2030%20seconds%2C%20then%20stays%20constant%3B%20a%20tangent%20touches%20the%20curve%20at%2010%20seconds.%22%3E%3Ctitle%3ECarbon%20dioxide%20volume%20rises%20to%2060%20cubic%20centimetres%20at%2030%20seconds%2C%20then%20stays%20constant%3B%20a%20tangent%20touches%20the%20curve%20at%2010%20seconds.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2226%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2220.8%22%3ECarbon%20dioxide%20from%20marble%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C44.2)%22%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%22265.8%22%20x2%3D%22390.73%22%20y2%3D%22265.8%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2260.14%22%20y%3D%22272.8%22%3E0%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%22215.91%22%20x2%3D%22390.73%22%20y2%3D%22215.91%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2260.14%22%20y%3D%22222.91%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%22166.03%22%20x2%3D%22390.73%22%20y2%3D%22166.03%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2260.14%22%20y%3D%22173.03%22%3E40%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%22116.14%22%20x2%3D%22390.73%22%20y2%3D%22116.14%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2260.14%22%20y%3D%22123.14%22%3E60%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%22265.8%22%20x2%3D%2268.14%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2268.14%22%20y%3D%22289.8%22%3E0%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22148.79%22%20y1%3D%22265.8%22%20x2%3D%22148.79%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22148.79%22%20y%3D%22289.8%22%3E10%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22229.44%22%20y1%3D%22265.8%22%20x2%3D%22229.44%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22229.44%22%20y%3D%22289.8%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22310.08%22%20y1%3D%22265.8%22%20x2%3D%22310.08%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22310.08%22%20y%3D%22289.8%22%3E30%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22390.73%22%20y1%3D%22265.8%22%20x2%3D%22390.73%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22390.73%22%20y%3D%22289.8%22%3E40%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%2291.2%22%20x2%3D%2268.14%22%20y2%3D%22265.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%2F%3E%3Cline%20x1%3D%2268.14%22%20y1%3D%22265.8%22%20x2%3D%22390.73%22%20y2%3D%22265.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22229.44%22%20y%3D%22325.8%22%3ETime%20(s)%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(16.8%2C178.5)%20rotate(-90)%22%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%220%22%20y%3D%228.4%22%3EGas%20volume%20(cm%C2%B3)%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cpolyline%20points%3D%2268.14%2C265.8%20108.46%2C215.91%20148.79%2C178.5%20189.11%2C151.06%20229.44%2C128.61%20269.76%2C118.64%20310.08%2C116.14%20390.73%2C116.14%22%20fill%3D%22none%22%20stroke%3D%22%23A94A18%22%20stroke-width%3D%225.28%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpolyline%20points%3D%2268.14%2C240.86%20148.79%2C178.5%20229.44%2C116.14%22%20fill%3D%22none%22%20stroke%3D%22%234A5D8C%22%20stroke-width%3D%225.28%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22148.79%22%20y1%3D%22178.5%22%20x2%3D%22187.19%22%20y2%3D%22221.7%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22148.79%22%20cy%3D%22178.5%22%20r%3D%227.2%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%225.6%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22191.19%22%20y%3D%22237.7%22%3EInstantaneous%20rate%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22310.08%22%20y1%3D%22116.14%22%20x2%3D%22300.48%22%20y2%3D%2290.22%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22310.08%22%20cy%3D%22116.14%22%20r%3D%227.2%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22end%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%225.6%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22296.48%22%20y%3D%2285.22%22%3EPlateau%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2216.8%22%20x2%3D%2224%22%20y2%3D%2216.8%22%20stroke%3D%22%23A94A18%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2233.6%22%20y%3D%2223.8%22%3ECarbon%20dioxide%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22206.04%22%20y1%3D%2216.8%22%20x2%3D%22230.04%22%20y2%3D%2216.8%22%20stroke%3D%22%234A5D8C%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22239.64%22%20y%3D%2223.8%22%3ETangent%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Carbon dioxide volume rises to 60 cubic centimetres at 30 seconds, then stays constant; a tangent touches the curve at 10 seconds.",
+          "fit": "contain"
+        },
+        {
+          "id": "f2kmupd326d~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "Our marble chips produce carbon dioxide as they react with excess hydrochloric acid. Excess means there is more acid than the marble needs, so the marble runs out first. Connect the flask to a gas syringe, check for leaks and start recording as the reactants meet. A balance is an alternative: escaping carbon dioxide causes mass loss. Rate describes how quickly the change happens, not just how much gas is eventually made. Point to the steep early section and the flat final section. To find a rate at one instant, draw a tangent that follows the curve's direction at that point, then calculate its gradient. This graph shows illustrative experimental data."
+    },
+    {
+      "id": "f1vmupd2xop",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f1pmupd2xop",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Calculating reaction rates" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1rmupd2xop",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 31,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What are the mean rate over 30 s and the rate at 10 s for the marble reaction?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1smupd2xop",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 182,
+          "w": 844,
+          "h": 305,
+          "fill": "#F2E3D1",
+          "radius": 14,
+          "name": "Working card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1tmupd2xop",
+          "type": "text",
+          "x": 72,
+          "y": 196,
+          "w": 816,
+          "h": 21,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1umupd2xop",
+          "type": "text",
+          "x": 72,
+          "y": 223,
+          "w": 816,
+          "h": 221,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "orderedList",
+                "attrs": { "start": 1 },
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Mean rate = quantity change ÷ time — use the whole interval"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "60 − 0 = 60 cm³ — find the gas volume change" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "60 ÷ 30 = 2 cm³/s — the mean rate over 30 s" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Tangent rise = 60 − 10 = 50 cm³ — use two points on the tangent"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Tangent run = 20 − 0 = 20 s — use those points' times"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "50 ÷ 20 = 2.5 cm³/s — the instantaneous rate at 10 s"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "revealStep": 1,
+          "reveal": "rise",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1wmupd2xop",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1xmupd2xop",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:26.569Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Show the first line, then ask the class to supply each later line before revealing it. For the mean rate, the volume change is 60 − 0 = 60 cm³, so 60 ÷ 30 = 2 cm³/s. For the instantaneous rate, use the tangent rather than two points on the reaction curve. Its rise is 60 − 10 = 50 cm³ and its run is 20 − 0 = 20 s, giving 50 ÷ 20 = 2.5 cm³/s. Choose well-separated points on the tangent to reduce reading error. Explain that a mean smooths out the changing rate, whereas an instantaneous rate describes one moment. A mass-loss calculation uses the same method with grams."
+    },
+    {
+      "id": "f22mupd31b5",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "f4omupd3emx",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4tmupd3emx",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 121,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "CHECK" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4umupd3emx",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4vmupd3emx",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 147,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4wmupd3emx",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 161,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4xmupd3emx",
+          "type": "text",
+          "x": 117,
+          "y": 161,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "How can you measure the carbon dioxide made?" }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4ymupd3emx",
+          "type": "text",
+          "x": 117,
+          "y": 199,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Use a gas syringe; record volume over time." }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4zmupd3emx",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 281,
+          "w": 844,
+          "h": 61,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f50mupd3emx",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 295,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f51mupd3emx",
+          "type": "text",
+          "x": 117,
+          "y": 295,
+          "w": 490,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What does a steeper gradient show?" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f52mupd3emx",
+          "type": "text",
+          "x": 626,
+          "y": 295,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "A faster rate." }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f53mupd3emx",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 377,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f54mupd3emx",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 391,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f55mupd3emx",
+          "type": "text",
+          "x": 117,
+          "y": 391,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What are the mean rate and rate at 10 s?" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f56mupd3emx",
+          "type": "text",
+          "x": 117,
+          "y": 429,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "2 cm³/s mean; 2.5 cm³/s at 10 s." }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:58:48.536Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Answers: 1. Collect the carbon dioxide in a gas syringe and record its volume at intervals; divide the gas volume change by the time taken to find the rate in cm³/s. 2. A steeper gradient means a faster rate; the gradient of a tangent gives the rate at that instant. If pupils say the curve’s height gives the rate, revisit the difference between volume and gradient. 3. The mean rate is 2 cm³/s and the rate at 10 s is 2.5 cm³/s. For the mean, 60 cm³ ÷ 30 s = 2 cm³/s. For the tangent, (60 − 10) cm³ ÷ (20 − 0) s = 2.5 cm³/s. If pupils use 60 ÷ 10, remind them that the instantaneous rate comes from the tangent’s rise divided by its run, not the total volume divided by the time shown.\nAnswers: 1. Use a gas syringe; record volume over time. 2. A faster rate. 3. 2 cm³/s mean; 2.5 cm³/s at 10 s."
+    },
+    {
+      "id": "f3qmupd34xg",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f3nmupd34xg",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 44,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Successful collisions control reaction rate" }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:35.956Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3qmupd34xg~1",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 403,
+          "h": 417,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Marble reaction:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " More concentrated acid produces carbon dioxide faster. More acid particles collide with the marble each second."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Collision theory:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Reacting particles must collide with enough energy. Activation energy is the minimum energy needed for a reaction."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Other factors:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Higher gas pressure or greater solid surface area increases collision frequency. Higher temperature increases the proportion of collisions with enough energy."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:35.956Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3qmupd34xg~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 119,
+          "w": 403,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20378%22%20width%3D%22403%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22A%20table%20links%20increased%20concentration%2C%20gas%20pressure%2C%20surface%20area%20and%20temperature%20to%20changes%20in%20particle%20collisions.%22%3E%3Ctitle%3EA%20table%20links%20increased%20concentration%2C%20gas%20pressure%2C%20surface%20area%20and%20temperature%20to%20changes%20in%20particle%20collisions.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2226%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2220.8%22%3EIncreasing%20reaction%20rate%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C44.2)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22403%22%20height%3D%2251.2%22%20fill%3D%22%23A94A18%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22700%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%229.6%22%20y%3D%2221.6%22%3EFactor%3C%2Ftspan%3E%3Ctspan%20x%3D%229.6%22%20y%3D%2240.8%22%3Eincreased%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22700%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%2221.6%22%3EParticle%3C%2Ftspan%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%2240.8%22%3Echange%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22700%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%2221.6%22%3ECollision%3C%2Ftspan%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%2240.8%22%3Eeffect%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%2251.2%22%20width%3D%22403%22%20height%3D%2251.2%22%20fill%3D%22%23FFFBF0%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%229.6%22%20y%3D%2282.4%22%3EConcentration%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%2272.8%22%3EMore%20per%20unit%3C%2Ftspan%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%2292%22%3Evolume%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%2272.8%22%3EMore%3C%2Ftspan%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%2292%22%3Efrequent%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%22102.4%22%20width%3D%22403%22%20height%3D%2251.2%22%20fill%3D%22%23f1dfcd%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%229.6%22%20y%3D%22133.6%22%3EGas%20pressure%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22124%22%3EGas%20particles%3C%2Ftspan%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22143.2%22%3Ecloser%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22124%22%3EMore%3C%2Ftspan%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22143.2%22%3Efrequent%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%22153.6%22%20width%3D%22403%22%20height%3D%2251.2%22%20fill%3D%22%23FFFBF0%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%229.6%22%20y%3D%22184.8%22%3ESurface%20area%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22175.2%22%3EMore%20exposed%3C%2Ftspan%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22194.4%22%3Eparticles%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22175.2%22%3EMore%3C%2Ftspan%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22194.4%22%3Efrequent%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%22204.8%22%20width%3D%22403%22%20height%3D%2251.2%22%20fill%3D%22%23f1dfcd%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%229.6%22%20y%3D%22236%22%3ETemperature%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22236%22%3EFaster%20particles%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22226.4%22%3EMore%3C%2Ftspan%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22245.6%22%3Efrequent%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%22256%22%20width%3D%22403%22%20height%3D%2251.2%22%20fill%3D%22%23FFFBF0%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%229.6%22%20y%3D%22287.2%22%3ETemperature%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22277.6%22%3EMore%20above%3C%2Ftspan%3E%3Ctspan%20x%3D%22152.28%22%20y%3D%22296.8%22%3Eenergy%20barrier%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22277.6%22%3EMore%3C%2Ftspan%3E%3Ctspan%20x%3D%22296.35%22%20y%3D%22296.8%22%3Esuccessful%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22142.68%22%20y1%3D%220%22%20x2%3D%22142.68%22%20y2%3D%22307.2%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%22286.75%22%20y1%3D%220%22%20x2%3D%22286.75%22%20y2%3D%22307.2%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%2251.2%22%20x2%3D%22403%22%20y2%3D%2251.2%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22102.4%22%20x2%3D%22403%22%20y2%3D%22102.4%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22153.6%22%20x2%3D%22403%22%20y2%3D%22153.6%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22204.8%22%20x2%3D%22403%22%20y2%3D%22204.8%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22256%22%20x2%3D%22403%22%20y2%3D%22256%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22403%22%20height%3D%22307.2%22%20fill%3D%22none%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A table links increased concentration, gas pressure, surface area and temperature to changes in particle collisions.",
+          "fit": "contain"
+        },
+        {
+          "id": "f3qmupd34xg~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "Collision theory explains a reaction through the behaviour of particles. Collisions below the activation energy do not cause a reaction. Increasing concentration puts more dissolved reacting particles into the same volume. Increasing pressure compresses reacting gases: this explanation applies to gases, not to marble chips in acid. Breaking a solid into smaller pieces exposes more particles without changing its mass. Heating increases particles' kinetic energy, the energy of movement. They move faster and collide more often, but the crucial extra effect is that a greater proportion of collisions reaches the activation energy. Heating does not lower that energy barrier."
+    },
+    {
+      "id": "f42mupd38ss",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f3wmupd38ss",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Explaining a faster reaction" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3ymupd38ss",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 62,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why does powdered marble react faster than equal-mass chips with the same excess acid?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3zmupd38ss",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 210,
+          "w": 844,
+          "h": 277,
+          "fill": "#F2E3D1",
+          "radius": 14,
+          "name": "Working card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f40mupd38ss",
+          "type": "text",
+          "x": 72,
+          "y": 224,
+          "w": 816,
+          "h": 22,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f41mupd38ss",
+          "type": "text",
+          "x": 72,
+          "y": 251,
+          "w": 816,
+          "h": 222,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "orderedList",
+                "attrs": { "start": 1 },
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Same marble mass and excess acid — only the surface area changes"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Powder has more exposed surface — acid reaches more marble particles"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "More collisions happen each second — more particles can react"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "More successful collisions form gas faster — the same marble mass gives the same final gas volume"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "revealStep": 1,
+          "reveal": "rise",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f43mupd38ss",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f44mupd38ss",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:40.972Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Reveal the first line and ask the class for each later line before showing it. Both experiments use the same marble mass, acid concentration, acid volume and temperature. Powder has a larger total exposed surface area, so acid particles can reach more marble particles at once. There are more collisions per second and therefore more successful collisions per second. The reaction is faster, but the same amount of marble produces the same final gas volume because acid remains in excess. Powder does not lower activation energy. Ask pupils to rehearse the explanation using surface area, collision frequency and successful collisions."
+    },
+    {
+      "id": "f49mupd3aif",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "f45mupd3aif",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4amupd3aif",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 121,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "CHECK" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4bmupd3aif",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4cmupd3aif",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4dmupd3aif",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 154,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4emupd3aif",
+          "type": "text",
+          "x": 117,
+          "y": 154,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why does more concentrated acid produce carbon dioxide faster?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4fmupd3aif",
+          "type": "text",
+          "x": 117,
+          "y": 192,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "More particles per unit volume cause more frequent collisions."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4gmupd3aif",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 261,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4hmupd3aif",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 275,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4imupd3aif",
+          "type": "text",
+          "x": 117,
+          "y": 275,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What must be true for a collision to cause a reaction?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4jmupd3aif",
+          "type": "text",
+          "x": 117,
+          "y": 313,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "It must have at least the activation energy." }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4kmupd3aif",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 382,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4lmupd3aif",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 396,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4mmupd3aif",
+          "type": "text",
+          "x": 117,
+          "y": 396,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why does powdered marble react faster than equal-mass chips?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4nmupd3aif",
+          "type": "text",
+          "x": 117,
+          "y": 434,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "It has more exposed surface, causing more frequent collisions."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T09:58:43.191Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "The answers are: 1. More concentrated acid has more particles per unit volume, so particles collide with the marble more often each second. 2. Activation energy is the minimum energy needed for a reaction; a collision must have at least this much energy to react. 3. Powdered marble has more exposed surface, so acid particles collide with it more often. More successful collisions form carbon dioxide faster, but the same marble mass gives the same final gas volume. If pupils say that every collision reacts, revisit the rule that collisions need enough energy. If they say higher temperature only makes collisions more frequent, return to the table: it also increases the proportion of collisions with enough energy.\nAnswers: 1. More particles per unit volume cause more frequent collisions. 2. It must have at least the activation energy. 3. It has more exposed surface, causing more frequent collisions."
+    },
+    {
+      "id": "f6qmupd3knf",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f79mupd3ssn",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Catalysts lower activation energy" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:59:06.887Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7cmupd3ssn~1",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 403,
+          "h": 355,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Hydrogen peroxide:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Manganese dioxide speeds its breakdown into water and oxygen. The catalyst is not used up."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Alternative route:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " A catalyst gives the reaction a route with lower activation energy. At the same temperature, more collisions have enough energy to react."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Reaction profile:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Activation energy is the rise from the reactants to the peak. Reactant and product energies stay unchanged."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T09:59:06.887Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7cmupd3ssn~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 119,
+          "w": 403,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20378%22%20width%3D%22403%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22Two%20reaction%20pathways%20start%20and%20finish%20at%20the%20same%20energy%3B%20the%20catalysed%20pathway%20has%20a%20lower%20peak.%22%3E%3Ctitle%3ETwo%20reaction%20pathways%20start%20and%20finish%20at%20the%20same%20energy%3B%20the%20catalysed%20pathway%20has%20a%20lower%20peak.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2226%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2220.8%22%3ECatalysed%20reaction%20profile%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C44.2)%22%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22265.8%22%20x2%3D%22391%22%20y2%3D%22265.8%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%22272.8%22%3E0%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22225.12%22%20x2%3D%22391%22%20y2%3D%22225.12%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%22232.12%22%3E20%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22184.44%22%20x2%3D%22391%22%20y2%3D%22184.44%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%22191.44%22%3E40%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22143.76%22%20x2%3D%22391%22%20y2%3D%22143.76%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%22150.76%22%3E60%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22103.08%22%20x2%3D%22391%22%20y2%3D%22103.08%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%22110.08%22%3E80%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%2262.4%22%20x2%3D%22391%22%20y2%3D%2262.4%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2269.88%22%20y%3D%2269.4%22%3E100%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22265.8%22%20x2%3D%2277.88%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2277.88%22%20y%3D%22289.8%22%3E0%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22156.16%22%20y1%3D%22265.8%22%20x2%3D%22156.16%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22156.16%22%20y%3D%22289.8%22%3E1%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22234.44%22%20y1%3D%22265.8%22%20x2%3D%22234.44%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22234.44%22%20y%3D%22289.8%22%3E2%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22312.72%22%20y1%3D%22265.8%22%20x2%3D%22312.72%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22312.72%22%20y%3D%22289.8%22%3E3%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22391%22%20y1%3D%22265.8%22%20x2%3D%22391%22%20y2%3D%22271.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%236E6656%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22391%22%20y%3D%22289.8%22%3E4%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%2262.4%22%20x2%3D%2277.88%22%20y2%3D%22265.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%2F%3E%3Cline%20x1%3D%2277.88%22%20y1%3D%22265.8%22%20x2%3D%22391%22%20y2%3D%22265.8%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22234.44%22%20y%3D%22325.8%22%3EReaction%20progress%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(16.8%2C164.1)%20rotate(-90)%22%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%220%22%20y%3D%228.4%22%3ERelative%20energy%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cpolyline%20points%3D%2277.88%2C184.44%20156.16%2C133.59%20234.44%2C62.4%20312.72%2C174.27%20391%2C225.12%22%20fill%3D%22none%22%20stroke%3D%22%23A94A18%22%20stroke-width%3D%225.28%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpolyline%20points%3D%2277.88%2C184.44%20156.16%2C164.1%20234.44%2C143.76%20312.72%2C194.61%20391%2C225.12%22%20fill%3D%22none%22%20stroke%3D%22%234A5D8C%22%20stroke-width%3D%225.28%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%2216.8%22%20x2%3D%2224%22%20y2%3D%2216.8%22%20stroke%3D%22%23A94A18%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2233.6%22%20y%3D%2223.8%22%3EUncatalysed%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22178.62%22%20y1%3D%2216.8%22%20x2%3D%22202.62%22%20y2%3D%2216.8%22%20stroke%3D%22%234A5D8C%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22212.22%22%20y%3D%2223.8%22%3ECatalysed%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Two reaction pathways start and finish at the same energy; the catalysed pathway has a lower peak.",
+          "fit": "contain"
+        },
+        {
+          "id": "f7cmupd3ssn~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "The vertical scale is illustrative relative energy, not measured data. Trace each route from the same reactant energy. Activation energy is measured from the reactants to the peak, not from zero. The uncatalysed barrier is 100 − 40 = 60 relative units; the catalysed barrier is 60 − 40 = 20 relative units. The catalyst changes the pathway, not the reactant or product energies, so the overall energy change is unchanged. Different reactions need different catalysts. Manganese dioxide is a catalyst for hydrogen peroxide decomposition; do not assume it catalyses the marble reaction."
+    },
+    {
+      "id": "f5pmupd3iz9",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f5jmupd3iz9",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Explaining catalyst action" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5lmupd3iz9",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 62,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why does manganese dioxide produce oxygen faster from hydrogen peroxide at the same temperature?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5mmupd3iz9",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 210,
+          "w": 844,
+          "h": 277,
+          "fill": "#F2E3D1",
+          "radius": 14,
+          "name": "Working card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5nmupd3iz9",
+          "type": "text",
+          "x": 72,
+          "y": 224,
+          "w": 816,
+          "h": 22,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5omupd3iz9",
+          "type": "text",
+          "x": 72,
+          "y": 251,
+          "w": 816,
+          "h": 222,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "orderedList",
+                "attrs": { "start": 1 },
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Manganese dioxide provides another pathway — it acts as a catalyst"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "The pathway has lower activation energy — the energy barrier is smaller"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "More collisions meet the energy requirement — the temperature is unchanged"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Oxygen forms faster — the catalyst is not used up overall"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "revealStep": 1,
+          "reveal": "rise",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5qmupd3iz9",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5rmupd3iz9",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:54.165Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Show the first line, then ask the class to predict each later line before revealing it. Keep temperature and the amount and concentration of hydrogen peroxide unchanged. The explanation must connect an alternative pathway to lower activation energy, then to more successful collisions per second. The catalyst does not make particles hotter. It may take part in intermediate steps, but it is regenerated and is not used up overall. For a fixed amount of hydrogen peroxide undergoing complete decomposition, it changes how quickly oxygen forms, not the final amount."
+    },
+    {
+      "id": "f5xmupd3jz3",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "f5smupd3jz3",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 86,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What does heating increase that a catalyst lowers?" }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:55.455Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5tmupd3jz3",
+          "type": "option",
+          "x": 58,
+          "y": 147,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Particles' kinetic energy" }]
+              }
+            ]
+          },
+          "label": "A",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:55.455Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5umupd3jz3",
+          "type": "option",
+          "x": 58,
+          "y": 231,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Activation energy" }] }
+            ]
+          },
+          "label": "B",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:55.455Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5vmupd3jz3",
+          "type": "option",
+          "x": 58,
+          "y": 315,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Neither of these" }] }
+            ]
+          },
+          "label": "C",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:55.455Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5wmupd3jz3",
+          "type": "option",
+          "x": 58,
+          "y": 399,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Both of these" }] }
+            ]
+          },
+          "label": "D",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:55.455Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5ymupd3jz3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:58:55.455Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          { "id": "f5tmupd3jz3", "correct": false },
+          { "id": "f5umupd3jz3", "correct": false },
+          { "id": "f5vmupd3jz3", "correct": true },
+          { "id": "f5wmupd3jz3", "correct": false }
+        ]
+      },
+      "notes": "Heating increases particles' kinetic energy, whereas a catalyst lowers activation energy.\nNeither of these is correct: heating increases particles' kinetic energy, but a catalyst does not lower it; a catalyst lowers activation energy, but heating does not increase it. Choosing particles' kinetic energy suggests the pupil thinks catalysts slow particles down. Choosing activation energy suggests the pupil thinks heating raises the energy barrier. Choosing both conflates the energy particles have with the energy they need. Revisit the collision table and reaction profile if either energy is confused before pupils work independently."
+    },
+    {
+      "id": "f6wmupd3q1y",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f6tmupd3q1y",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Your turn: explain reaction rates" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6ymupd3q1y",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 135,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "PRACTICE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6zmupd3q1y",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f70mupd3q1y",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Show your working or write a short explanation." }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f71mupd3q1y",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 199,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f72mupd3q1y",
+          "type": "text",
+          "x": 84,
+          "y": 189,
+          "w": 818,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1: A reaction loses 1.8 g in 60 s; calculate its mean rate."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f73mupd3q1y",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 241,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f74mupd3q1y",
+          "type": "text",
+          "x": 84,
+          "y": 231,
+          "w": 818,
+          "h": 56,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2: A tangent rises from 12 to 42 cm³ between 4 and 14 s; calculate the instantaneous rate."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f75mupd3q1y",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 311,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f76mupd3q1y",
+          "type": "text",
+          "x": 84,
+          "y": 301,
+          "w": 818,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3: A catalyst is said to heat particles; correct this using activation energy."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f77mupd3q1y",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 353,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f78mupd3q1y",
+          "type": "text",
+          "x": 84,
+          "y": 343,
+          "w": 818,
+          "h": 56,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "4: Our 60 cm³ marble reaction now finishes in 15 s with powder; calculate its mean rate and explain the unchanged final volume."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T09:59:03.333Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "1: Mean rate = 1.8 ÷ 60 = 0.03 g/s. 2: Rise = 42 − 12 = 30 cm³; run = 14 − 4 = 10 s; instantaneous rate = 30 ÷ 10 = 3 cm³/s. 3: A catalyst provides an alternative pathway with lower activation energy, so more collisions are successful at the same temperature; it does not heat the particles. 4: Mean rate = 60 ÷ 15 = 4 cm³/s. The original mean rate was 60 ÷ 30 = 2 cm³/s. Powder exposes a greater surface area, increasing collision frequency and successful collisions per second. Equal marble mass with excess acid produces the same final 60 cm³: rate changes, not the amount available to react. This settles our opening marble case. Harder challenge: the same gas reaction gives 48 cm³ after 12 s and 72 cm³ after 24 s; compare its mean rate in this interval with 4 cm³/s and explain why the comparison is not an instantaneous rate. Volume change = 72 − 48 = 24 cm³; time change = 24 − 12 = 12 s; mean rate = 24 ÷ 12 = 2 cm³/s. It is half of 4 cm³/s and averages a whole interval rather than using a tangent at one instant."
+    }
+  ],
+  "createdAt": "2026-10-01T09:57:45.454Z",
+  "updatedAt": "2026-10-01T09:57:45.454Z",
+  "fitVersion": 3,
+  "subject": "Chemistry",
+  "ageBand": "ks4",
+  "yearGroup": "Year 11",
+  "language": "en-GB",
+  "brief": { "topic": "Rates of reaction", "durationMin": 60, "slideCount": 10 },
+  "facts": {
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Measure reaction rate from experimental data and calculate mean rates and instantaneous rates from graphs."
+      },
+      {
+        "id": "o2",
+        "text": "Explain the effects of concentration, gas pressure, temperature and surface area using collision theory."
+      },
+      {
+        "id": "o3",
+        "text": "Explain how catalysts increase reaction rate using activation energy and reaction profiles."
+      }
+    ],
+    "vocabulary": [],
+    "workedExamples": [
+      {
+        "id": "x1",
+        "problem": "What are the mean rate over 30 s and the rate at 10 s for the marble reaction?",
+        "steps": [
+          "Mean rate = quantity change ÷ time — use the whole interval",
+          "60 − 0 = 60 cm³ — find the gas volume change",
+          "60 ÷ 30 = 2 cm³/s — the mean rate over 30 s",
+          "Tangent rise = 60 − 10 = 50 cm³ — use two points on the tangent",
+          "Tangent run = 20 − 0 = 20 s — use those points' times",
+          "50 ÷ 20 = 2.5 cm³/s — the instantaneous rate at 10 s"
+        ],
+        "answer": "50 ÷ 20 = 2.5 cm³/s — the instantaneous rate at 10 s",
+        "objectiveRefs": ["o1"]
+      },
+      {
+        "id": "x2",
+        "problem": "Why does powdered marble react faster than equal-mass chips with the same excess acid?",
+        "steps": [
+          "Same marble mass and excess acid — only the surface area changes",
+          "Powder has more exposed surface — acid reaches more marble particles",
+          "More collisions happen each second — more particles can react",
+          "More successful collisions form gas faster — the same marble mass gives the same final gas volume"
+        ],
+        "answer": "More successful collisions form gas faster — the same marble mass gives the same final gas volume",
+        "objectiveRefs": ["o2"]
+      },
+      {
+        "id": "x3",
+        "problem": "Why does manganese dioxide produce oxygen faster from hydrogen peroxide at the same temperature?",
+        "steps": [
+          "Manganese dioxide provides another pathway — it acts as a catalyst",
+          "The pathway has lower activation energy — the energy barrier is smaller",
+          "More collisions meet the energy requirement — the temperature is unchanged",
+          "Oxygen forms faster — the catalyst is not used up overall"
+        ],
+        "answer": "Oxygen forms faster — the catalyst is not used up overall",
+        "objectiveRefs": ["o3"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "stem": "How can you measure the carbon dioxide made?",
+        "answer": "Use a gas syringe; record volume over time.",
+        "reasoning": "",
+        "objectiveRefs": ["o1"],
+        "use": "slide"
+      },
+      {
+        "id": "q2",
+        "stem": "What does a steeper gradient show?",
+        "answer": "A faster rate.",
+        "reasoning": "",
+        "objectiveRefs": ["o1"],
+        "use": "slide"
+      },
+      {
+        "id": "q3",
+        "stem": "What are the mean rate and rate at 10 s?",
+        "answer": "2 cm³/s mean; 2.5 cm³/s at 10 s.",
+        "reasoning": "",
+        "objectiveRefs": ["o1"],
+        "use": "slide"
+      },
+      {
+        "id": "q4",
+        "stem": "Why does more concentrated acid produce carbon dioxide faster?",
+        "answer": "More particles per unit volume cause more frequent collisions.",
+        "reasoning": "",
+        "objectiveRefs": ["o2"],
+        "use": "slide"
+      },
+      {
+        "id": "q5",
+        "stem": "What must be true for a collision to cause a reaction?",
+        "answer": "It must have at least the activation energy.",
+        "reasoning": "",
+        "objectiveRefs": ["o2"],
+        "use": "slide"
+      },
+      {
+        "id": "q6",
+        "stem": "Why does powdered marble react faster than equal-mass chips?",
+        "answer": "It has more exposed surface, causing more frequent collisions.",
+        "reasoning": "",
+        "objectiveRefs": ["o2"],
+        "use": "slide"
+      },
+      {
+        "id": "q7",
+        "stem": "What does heating increase that a catalyst lowers?",
+        "answer": "Neither of these",
+        "reasoning": "Heating increases particles' kinetic energy, whereas a catalyst lowers activation energy.",
+        "objectiveRefs": ["o2", "o3"],
+        "distractors": [
+          { "text": "Particles' kinetic energy" },
+          { "text": "Activation energy" },
+          { "text": "Both of these" }
+        ],
+        "use": "slide"
+      }
+    ],
+    "misconceptions": [
+      {
+        "id": "m1",
+        "belief": "A faster reaction means particles collide more often, regardless of their energy. In fact, reaction requires successful collisions: particles must collide with at least the activation energy, and temperature also changes the proportion of collisions that meet this requirement.",
+        "correction": "",
+        "objectiveRefs": ["o1", "o2", "o3"]
+      }
+    ],
+    "outline": [
+      { "id": "s1", "kind": "title", "factRefs": ["o1", "o2", "o3"] },
+      { "id": "s2", "kind": "objectives", "factRefs": ["o1", "o2", "o3"] },
+      {
+        "id": "s3",
+        "kind": "starter",
+        "factRefs": ["o1"],
+        "brief": {
+          "adds": "retrieval warm-up: three short questions on what pupils learned before that this lesson builds on, never what it teaches"
+        },
+        "phase": "starter"
+      },
+      {
+        "id": "s4",
+        "kind": "content",
+        "factRefs": ["o1", "k1"],
+        "brief": { "adds": "measure gas production over time" },
+        "phase": "explain"
+      },
+      {
+        "id": "s5",
+        "kind": "worked-example",
+        "factRefs": ["o1", "x1"],
+        "brief": { "adds": "calculate mean and instantaneous rates" },
+        "phase": "explain"
+      },
+      {
+        "id": "s6",
+        "kind": "starter",
+        "factRefs": ["o1", "q1", "q2", "q3"],
+        "brief": { "adds": "quick check on objective 1 as just taught" },
+        "phase": "check"
+      },
+      {
+        "id": "s7",
+        "kind": "content",
+        "factRefs": ["o2", "k2"],
+        "brief": { "adds": "connect reaction conditions to successful collisions" },
+        "phase": "explain"
+      },
+      {
+        "id": "s8",
+        "kind": "worked-example",
+        "factRefs": ["o2", "x2"],
+        "brief": { "adds": "explain a faster marble reaction" },
+        "phase": "explain"
+      },
+      {
+        "id": "s9",
+        "kind": "starter",
+        "factRefs": ["o2", "q4", "q5", "q6"],
+        "brief": { "adds": "quick check on objective 2 as just taught" },
+        "phase": "check"
+      },
+      {
+        "id": "s10",
+        "kind": "content",
+        "factRefs": ["o3", "k3"],
+        "brief": { "adds": "show the lower activation energy of a catalyst" },
+        "phase": "explain"
+      },
+      {
+        "id": "s11",
+        "kind": "worked-example",
+        "factRefs": ["o3", "x3"],
+        "brief": { "adds": "explain a catalyst using its reaction pathway" },
+        "phase": "explain"
+      },
+      {
+        "id": "s12",
+        "kind": "multiple-choice",
+        "factRefs": ["o2", "o3", "q7"],
+        "brief": { "adds": "distinguish heating from catalysis" },
+        "phase": "check"
+      },
+      {
+        "id": "s13",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3", "k4"],
+        "brief": { "adds": "apply rates independently and settle the marble case" },
+        "phase": "explain"
+      }
+    ],
+    "durationMin": 60,
+    "keyIdeas": [
+      {
+        "id": "k1",
+        "statement": "Gas production reveals reaction rate",
+        "explanation": "Marble reaction: Collect the carbon dioxide in a gas syringe. Record its volume at intervals. Rate: Measure product formed per unit time. Gas volume is measured in cm³/s. Graph: The gradient is the change in gas volume divided by the time taken. A steeper gradient means more gas forms each second; a tangent gives the rate at one instant. line-graph Carbon dioxide volume rises to 60 cubic centimetres at 30 seconds, then stays constant; a tangent touches the curve at 10 seconds. Carbon dioxide from marble Time (s)    Gas volume (cm³)    Carbon dioxide                 line left Tangent       line left    Plateau   Instantaneous rate",
+        "example": "",
+        "objectiveRefs": ["o1"]
+      },
+      {
+        "id": "k2",
+        "statement": "Successful collisions control reaction rate",
+        "explanation": "Marble reaction: More concentrated acid produces carbon dioxide faster. More acid particles collide with the marble each second. Collision theory: Reacting particles must collide with enough energy. Activation energy is the minimum energy needed for a reaction. Other factors: Higher gas pressure or greater solid surface area increases collision frequency. Higher temperature increases the proportion of collisions with enough energy. table A table links increased concentration, gas pressure, surface area and temperature to changes in particle collisions. Increasing reaction rate Factor increased Particle change Collision effect Concentration More per unit volume More frequent Gas pressure Gas particles closer More frequent Surface area More exposed particles More frequent Temperature Faster particles More frequent Temperature More above energy barrier More successful",
+        "example": "",
+        "objectiveRefs": ["o2"]
+      },
+      {
+        "id": "k3",
+        "statement": "Catalysts lower activation energy",
+        "explanation": "Hydrogen peroxide: Manganese dioxide speeds its breakdown into water and oxygen. The catalyst is not used up. Alternative route: A catalyst gives the reaction a route with lower activation energy. At the same temperature, more collisions have enough energy to react. Reaction profile: Activation energy is the rise from the reactants to the peak. Reactant and product energies stay unchanged. line-graph Two reaction pathways start and finish at the same energy; the catalysed pathway has a lower peak. Catalysed reaction profile Reaction progress    Relative energy    Uncatalysed           line left Catalysed           line left",
+        "example": "",
+        "objectiveRefs": ["o3"]
+      },
+      {
+        "id": "k4",
+        "statement": "Your turn: explain reaction rates",
+        "explanation": "Show your working or write a short explanation. 1: A reaction loses 1.8 g in 60 s; calculate its mean rate. 2: A tangent rises from 12 to 42 cm³ between 4 and 14 s; calculate the instantaneous rate. 3: A catalyst is said to heat particles; correct this using activation energy. 4: Our 60 cm³ marble reaction now finishes in 15 s with powder; calculate its mean rate and explain the unchanged final volume.",
+        "example": "",
+        "objectiveRefs": ["o1", "o2", "o3"]
+      }
+    ],
+    "retrieval": [
+      {
+        "question": "In the particle model, how do particles in a liquid move?",
+        "answer": "Randomly"
+      },
+      { "question": "What unit could you use to measure the volume of a gas?", "answer": "cm³" },
+      {
+        "question": "On a graph showing change over time, which axis usually shows time?",
+        "answer": "The x-axis"
+      }
+    ]
+  },
+  "generation": {
+    "jobId": "fixture-y11-rates",
+    "stage": "repaired",
+    "startedAt": "2026-10-01T10:00:00.000Z",
+    "promptVersions": {},
+    "usage": { "calls": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0 },
+    "findings": []
+  }
+}

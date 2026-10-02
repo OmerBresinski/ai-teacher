@@ -8,15 +8,19 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { DEMO_LESSON_FACTS } from "./demo-facts";
+import { emptyBlocks, recipeForFacts } from "./empty-blocks";
 import { numberQuestions } from "./factories";
 import {
   defaultPracticeMinutes,
+  GENERATED_RECIPES,
   isPlaceholder,
   isRecipeId,
   JOBS,
+  LESSON_RECIPE,
   PLACEHOLDER_QUESTION,
   recipeById,
   resolveRecipe,
+  suggestFrameRecipe,
   suggestRecipe,
   WORKSHEET_RECIPES,
   type WorksheetRecipe,
@@ -40,17 +44,24 @@ describe("demo facts", () => {
 });
 
 describe("suggestRecipe / resolveRecipe / defaultPracticeMinutes", () => {
-  test("misconceptions win, then a worked example, then Knowledge check", () => {
-    expect(suggestRecipe(facts)).toBe("misconception-check");
-    expect(suggestRecipe({ ...facts, misconceptions: [] })).toBe("worked-example");
-    expect(suggestRecipe({ ...facts, misconceptions: [], workedExamples: [] })).toBe(
-      "knowledge-check",
-    );
+  test("TEACH-86: a generated lesson (it has facts) is suggested Follows the lesson", () => {
+    expect(suggestRecipe(facts)).toBe("lesson");
+    expect(suggestRecipe({ ...facts, misconceptions: [], workedExamples: [] })).toBe("lesson");
     expect(suggestRecipe(undefined)).toBe("knowledge-check");
   });
 
+  test("frame-only surfaces: misconceptions win, then a worked example, then Knowledge check", () => {
+    expect(suggestFrameRecipe(facts)).toBe("misconception-check");
+    expect(suggestFrameRecipe({ ...facts, misconceptions: [] })).toBe("worked-example");
+    expect(suggestFrameRecipe({ ...facts, misconceptions: [], workedExamples: [] })).toBe(
+      "knowledge-check",
+    );
+    expect(suggestFrameRecipe(undefined)).toBe("knowledge-check");
+  });
+
   test("auto resolves to the suggestion; a named recipe is itself", () => {
-    expect(resolveRecipe("auto", facts).id).toBe("misconception-check");
+    expect(resolveRecipe("auto", facts).id).toBe("lesson");
+    expect(resolveRecipe("lesson", facts)).toBe(LESSON_RECIPE);
     expect(resolveRecipe("auto").id).toBe("knowledge-check");
     expect(resolveRecipe("exit-ticket", facts).id).toBe("exit-ticket");
   });
@@ -83,7 +94,9 @@ describe("worksheet recipes", () => {
   });
 
   test("the catalogue is the domain's id list, in order, so the request schema and the job agree", () => {
-    expect(WORKSHEET_RECIPES.map((r) => r.id)).toEqual([...WORKSHEET_RECIPE_IDS]);
+    expect(GENERATED_RECIPES.map((r) => r.id)).toEqual([...WORKSHEET_RECIPE_IDS]);
+    expect(WORKSHEET_RECIPES.map((r) => r.id)).not.toContain("lesson");
+    expect(isRecipeId("lesson")).toBe(true);
     expect(isRecipeId("cloze")).toBe(true);
     expect(isRecipeId("nope")).toBe(false);
   });
@@ -384,5 +397,38 @@ describe("worksheet recipes", () => {
     expect(built.flatMap((b) => (b.type === "question" ? [b.marks] : []))).toEqual([
       1, 1, 2, 2, 3, 4,
     ]);
+  });
+});
+
+describe("TEACH-86: Follows the lesson and the empty-block fallback", () => {
+  test("the lesson frame is one placeholder the job replaces", () => {
+    const blocks = LESSON_RECIPE.build(facts);
+    expect(blocks).toHaveLength(1);
+    expect(blocks.every(isPlaceholder)).toBe(true);
+    expect(defaultPracticeMinutes(LESSON_RECIPE)).toBe(20);
+  });
+
+  test("a recipe whose frame prints an empty block falls back to lesson, with the reasons", () => {
+    const thin = { ...facts, vocabulary: [], questions: [] };
+    const cloze = recipeForFacts(resolveRecipe("cloze"), thin);
+    expect(cloze.recipe).toBe(LESSON_RECIPE);
+    expect(cloze.fellBackFrom).toEqual({
+      recipeId: "cloze",
+      reasons: ["The word bank has fewer than 3 words."],
+    });
+    const exit = recipeForFacts(resolveRecipe("exit-ticket"), thin);
+    expect(exit.fellBackFrom?.reasons[0]).toContain(PLACEHOLDER_QUESTION);
+    expect(recipeForFacts(resolveRecipe("word-search"), thin).recipe.id).toBe("lesson");
+    expect(recipeForFacts(resolveRecipe("matching"), thin).recipe.id).toBe("lesson");
+  });
+
+  test("with full facts every recipe keeps itself and prints no empty block", () => {
+    // Exam style asks for six questions; the demo lesson has five, so it pads and falls back.
+    expect(recipeForFacts(resolveRecipe("exam-style"), facts).recipe.id).toBe("lesson");
+    for (const recipe of WORKSHEET_RECIPES.filter((r) => r.id !== "exam-style")) {
+      const choice = recipeForFacts(recipe, facts);
+      expect(choice.recipe.id).toBe(recipe.id);
+      expect(emptyBlocks(recipe.build(facts))).toEqual([]);
+    }
   });
 });

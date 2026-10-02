@@ -1,0 +1,2515 @@
+{
+  "version": 1,
+  "id": "fit-vis-J1v-y13-psychology-freud-mupd3zdw",
+  "title": "Freud's psychoanalytic theories. Consider supporting and contrasting schools of ",
+  "themeId": "chalk",
+  "slides": [
+    {
+      "id": "f5mupd40g1",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "f6mupd4dms",
+          "type": "shape",
+          "shape": "rect",
+          "x": 58,
+          "y": 48,
+          "w": 67,
+          "h": 4,
+          "fill": "#A94A18",
+          "name": "Accent rule",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7mupd4dms",
+          "type": "text",
+          "x": 58,
+          "y": 77,
+          "w": 844,
+          "h": 21,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f8mupd4dms",
+          "type": "text",
+          "x": 58,
+          "y": 110,
+          "w": 773,
+          "h": 273,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Freud's psychoanalytic theories. Consider supporting and contrasting schools of "
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "title", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f9mupd4dms",
+          "type": "text",
+          "x": 58,
+          "y": 400,
+          "w": 629,
+          "h": 60,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Year 13 · Psychology" }]
+              }
+            ]
+          },
+          "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "femupd4dmt",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "fbmupd4dms",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 44,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "ffmupd4dmt",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fgmupd4dmv",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 133,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fhmupd4dmv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 147,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fimupd4dmv",
+          "type": "text",
+          "x": 117,
+          "y": 147,
+          "w": 771,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "explain Freud's account of personality, defence mechanisms and psychosexual development."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 1",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fjmupd4dmv",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 259,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fkmupd4dmv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 273,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "flmupd4dmv",
+          "type": "text",
+          "x": 117,
+          "y": 273,
+          "w": 771,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "apply psychoanalytic concepts to behaviour and the aims of psychoanalysis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 2",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fmmupd4dmv",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 385,
+          "w": 844,
+          "h": 93,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fnmupd4dmv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 399,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fomupd4dmv",
+          "type": "text",
+          "x": 117,
+          "y": 399,
+          "w": 771,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "evaluate psychoanalytic explanations using evidence and contrasting psychological approaches."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 3",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T09:59:33.892Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f6nmupd5qrm",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "f6jmupd5qrm",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6omupd5qrm",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 121,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "STARTER" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6pmupd5qrm",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6qmupd5qrm",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6rmupd5qrm",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 154,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6smupd5qrm",
+          "type": "text",
+          "x": 117,
+          "y": 154,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What can a correlation between two variables show?" }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6tmupd5qrm",
+          "type": "text",
+          "x": 117,
+          "y": 192,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "An association, not causation." }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6umupd5qrm",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 261,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6vmupd5qrm",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 275,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6wmupd5qrm",
+          "type": "text",
+          "x": 117,
+          "y": 275,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Before conditioning, what is a neutral stimulus?" }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6xmupd5qrm",
+          "type": "text",
+          "x": 117,
+          "y": 313,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A stimulus that does not produce the target response."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6ymupd5qrm",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 382,
+          "w": 844,
+          "h": 99,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6zmupd5qrm",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 396,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f70mupd5qrm",
+          "type": "text",
+          "x": 117,
+          "y": 396,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What do schemas influence in the cognitive approach?" }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f71mupd5qrm",
+          "type": "text",
+          "x": 117,
+          "y": 434,
+          "w": 771,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "How people process and interpret information." }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:00:37.570Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "1. A correlation shows an association between two variables, but does not establish that one causes the other. If pupils claim it proves causation, revisit the difference between association and cause before moving on. 2. Before conditioning, a neutral stimulus does not produce the target response. If pupils describe it as already producing that response, recap the stages of classical conditioning. 3. Schemas influence how people process and interpret information. If pupils say schemas are behaviours or emotions, revisit how prior knowledge shapes information processing.\nAnswers: 1. An association, not causation. 2. A stimulus that does not produce the target response. 3. How people process and interpret information."
+    },
+    {
+      "id": "f2qmupd50ub",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f48mupd5bmr",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Personality reflects unconscious conflict" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:17.954Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4bmupd5bmr~1",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 403,
+          "h": 324,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "A case:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " An adult forgets a presentation and dreams of being judged. Freud might explore unconscious conflict."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "The rule:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " The id seeks pleasure, the superego represents moral standards, and the ego balances these with reality."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Defence mechanisms:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Freud proposed that the ego uses unconscious strategies, such as repression, to reduce anxiety. This is an interpretation, not proof."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:17.954Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4bmupd5bmr~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 119,
+          "w": 403,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20378%22%20width%3D%22403%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22The%20id%20and%20superego%20each%20point%20towards%20the%20ego%2C%20showing%20competing%20pressures%20on%20it.%22%3E%3Ctitle%3EThe%20id%20and%20superego%20each%20point%20towards%20the%20ego%2C%20showing%20competing%20pressures%20on%20it.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2226%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2220.8%22%3EFreud%E2%80%99s%20model%20of%20personality%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C44.2)%22%3E%3Ccircle%20cx%3D%2279.28%22%20cy%3D%2296.46%22%20r%3D%2253.66%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2279.28%22%20cy%3D%22237.34%22%20r%3D%2253.66%22%20fill%3D%22%234A5D8C%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22257.05%22%20cy%3D%22166.9%22%20r%3D%2263.73%22%20fill%3D%22%23dedfde%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cline%20x1%3D%22132.95%22%20y1%3D%22109.88%22%20x2%3D%22180.22%22%20y2%3D%22138.77%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22193.32%2C146.78%20171.43%2C145.77%20182.45%2C127.75%22%20fill%3D%22%232C2A24%22%2F%3E%3Cline%20x1%3D%22132.95%22%20y1%3D%22223.92%22%20x2%3D%22180.22%22%20y2%3D%22195.03%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22193.32%2C187.02%20182.45%2C206.05%20171.43%2C188.03%22%20fill%3D%22%232C2A24%22%2F%3E%3Cline%20x1%3D%2279.28%22%20y1%3D%2229.4%22%20x2%3D%2279.28%22%20y2%3D%2296.46%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2279.28%22%20cy%3D%2296.46%22%20r%3D%223.84%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%226.72%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%2279.28%22%20y%3D%2221.2%22%3EId%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%2279.28%22%20y1%3D%22304.4%22%20x2%3D%2279.28%22%20y2%3D%22237.34%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2279.28%22%20cy%3D%22237.34%22%20r%3D%223.84%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%226.72%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%2279.28%22%20y%3D%22324.6%22%3ESuperego%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22332.18%22%20y1%3D%22166.9%22%20x2%3D%22257.05%22%20y2%3D%22166.9%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22257.05%22%20cy%3D%22166.9%22%20r%3D%223.84%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%226.72%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22335.18%22%20y%3D%22172.9%22%3EEgo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "The id and superego each point towards the ego, showing competing pressures on it.",
+          "fit": "contain"
+        },
+        {
+          "id": "f4bmupd5bmr~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "Freud proposed that personality involves three parts, not three separate people inside us. Ask: what is each part trying to do? The id seeks immediate satisfaction; the superego represents moral standards; the ego negotiates between these demands and the limits of reality. When the demands conflict, Freud argued that this can create anxiety. The ego may use a defence mechanism, an unconscious way of reducing anxiety. Repression, for example, means keeping distressing thoughts out of conscious awareness. These are Freud’s proposed interpretations of behaviour; the model does not by itself prove what caused a particular action."
+    },
+    {
+      "id": "f45mupd55ib",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f58mupd5ess",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 44,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Freud proposed five psychosexual stages" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:00:22.059Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5amupd5ess",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 844,
+          "h": 262,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "A proposed link:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Freud might interpret approval-seeking as unresolved childhood conflict. Anxiety alone cannot prove this."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "The stages:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Freud proposed that libido, or psychosexual energy, focuses on different areas as children develop. Each stage brings a conflict."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Fixation:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Freud proposed that too much or too little gratification could leave libido tied to a stage. He linked anal fixation with excessive orderliness or messiness."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:00:22.059Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5cmupd5ess",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:00:22.059Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "These are conventional approximate stage ages, not established biological boundaries. Explain that libido has a broader meaning in Freud's developmental account than adult sexual activity. In the phallic stage, Freud proposed the Oedipus complex: a boy's unconscious desire for his mother and rivalry with his father, resolved through identification with the father. Identification means adopting another person's values and characteristics; Freud linked it to superego development. His account of girls invoked penis envy and was asymmetrical and controversial; the term Electra complex was introduced by Jung, not Freud. Latency involves relative dormancy of psychosexual energy. Fixation is a proposed lasting developmental attachment, not a synonym for any current defence. Freud's claims about gender and development require critical evaluation."
+    },
+    {
+      "id": "f17mupd4vlm",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "f7imupd6216",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 195,
+          "fill": "#FFFBF0",
+          "stroke": "#A94A18",
+          "strokeWidth": 2.5,
+          "radius": 14,
+          "name": "Prompt card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:52.170Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7jmupd6216",
+          "type": "text",
+          "x": 87,
+          "y": 72,
+          "w": 786,
+          "h": 137,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How does repression differ from anal fixation in Freud's theory?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "align": "center",
+            "valign": "middle"
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:52.170Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7lmupd6216",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:52.170Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f17mupd4vlm~g1",
+          "type": "image",
+          "name": "Diagram",
+          "x": 235,
+          "y": 252,
+          "w": 490,
+          "h": 245,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20490%20245%22%20width%3D%22490%22%20height%3D%22245%22%20role%3D%22img%22%20aria-label%3D%22The%20id%20and%20superego%20each%20point%20towards%20the%20ego%2C%20showing%20competing%20pressures%20on%20it.%22%3E%3Ctitle%3EThe%20id%20and%20superego%20each%20point%20towards%20the%20ego%2C%20showing%20competing%20pressures%20on%20it.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22245%22%20y%3D%2214.4%22%3EFreud%E2%80%99s%20model%20of%20personality%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C30.6)%22%3E%3Ccircle%20cx%3D%22174.5%22%20cy%3D%2266.79%22%20r%3D%2230.79%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22174.5%22%20cy%3D%22147.61%22%20r%3D%2230.79%22%20fill%3D%22%234A5D8C%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22276.49%22%20cy%3D%22107.2%22%20r%3D%2236.56%22%20fill%3D%22%23dedfde%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222.5%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cline%20x1%3D%22205.29%22%20y1%3D%2274.49%22%20x2%3D%22231.19%22%20y2%3D%2290.31%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22239.93%2C95.65%20225.33%2C94.99%20232.68%2C82.97%22%20fill%3D%22%232C2A24%22%2F%3E%3Cline%20x1%3D%22205.29%22%20y1%3D%22139.91%22%20x2%3D%22231.19%22%20y2%3D%22124.09%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22239.93%2C118.75%20232.68%2C131.43%20225.33%2C119.41%22%20fill%3D%22%232C2A24%22%2F%3E%3Cline%20x1%3D%22174.5%22%20y1%3D%2225%22%20x2%3D%22174.5%22%20y2%3D%2266.79%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22174.5%22%20cy%3D%2266.79%22%20r%3D%223.5%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%225.6%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22174.5%22%20y%3D%2218%22%3EId%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22174.5%22%20y1%3D%22189.4%22%20x2%3D%22174.5%22%20y2%3D%22147.61%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22174.5%22%20cy%3D%22147.61%22%20r%3D%223.5%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%225.6%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22174.5%22%20y%3D%22206.4%22%3ESuperego%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22322.05%22%20y1%3D%22107.2%22%20x2%3D%22276.49%22%20y2%3D%22107.2%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22276.49%22%20cy%3D%22107.2%22%20r%3D%223.5%22%20fill%3D%22%232C2A24%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%20stroke%3D%22%23FAF4E6%22%20stroke-width%3D%225.6%22%20stroke-linejoin%3D%22round%22%20paint-order%3D%22stroke%22%3E%3Ctspan%20x%3D%22325.05%22%20y%3D%22112.2%22%3EEgo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "The id and superego each point towards the ego, showing competing pressures on it.",
+          "fit": "contain"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "Repression is an unconscious defence that excludes distressing material from awareness. Anal fixation is a lasting attachment of libido to the anal stage after unresolved conflict."
+      },
+      "notes": "The answer distinguishes an unconscious defence from a proposed developmental outcome: repression excludes distressing material from awareness, whereas anal fixation concerns libido remaining attached to the anal stage. Calling both conscious choices shows confusion about unconscious processes. Calling fixation a temporary response to anxiety confuses developmental theory with defence mechanisms. Revisit the two definitions before moving on; ask the class to supply the distinction together."
+    },
+    {
+      "id": "f31mupd51pl",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f2vmupd51pk",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Building a psychoanalytic interpretation" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2xmupd51pl",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 62,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How might psychoanalysis interpret an adult's forgotten presentation appointment and dreams about being judged?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2ymupd51pl",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 210,
+          "w": 844,
+          "h": 277,
+          "fill": "#F2E3D1",
+          "radius": 14,
+          "name": "Working card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2zmupd51pl",
+          "type": "text",
+          "x": 72,
+          "y": 224,
+          "w": 816,
+          "h": 22,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f30mupd51pl",
+          "type": "text",
+          "x": 72,
+          "y": 251,
+          "w": 816,
+          "h": 222,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "orderedList",
+                "attrs": { "start": 1 },
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Anxiety, forgetting and dream reports — the adult reports these experiences"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Infer possible fear of judgement — it may conflict with the wish to succeed"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Explore free associations and dreams — psychoanalysis uses them to examine unconscious conflict"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Keep this as a hypothesis — the reports do not prove its cause"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "revealStep": 1,
+          "reveal": "rise",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f32mupd51pl",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f33mupd51pl",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:05.096Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Show the observations first. Ask the class what Freud might infer before revealing the second line, then invite suggestions for investigation before revealing the third, and ask how certain the conclusion is before revealing the last. Free association means saying whatever comes to mind without censoring it. In dream analysis, manifest content is the remembered dream and latent content is its proposed hidden meaning; a dream about judgement is not automatically its own explanation. Psychoanalysis aims to make unconscious conflict conscious so it can be understood and worked through. Transference, feelings towards significant people being redirected towards the therapist, may also be explored. These techniques generate interpretations rather than independently confirming their truth."
+    },
+    {
+      "id": "f39mupd52pm",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "f7mmupd63tw",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 86,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What does forgetting one presentation appointment establish about its cause?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:54.500Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7nmupd63tw",
+          "type": "option",
+          "x": 58,
+          "y": 147,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Unconscious repression" }]
+              }
+            ]
+          },
+          "label": "A",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:54.500Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7omupd63tw",
+          "type": "option",
+          "x": 58,
+          "y": 231,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "An unconscious conflict is not proven" }]
+              }
+            ]
+          },
+          "label": "B",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:54.500Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7pmupd63tw",
+          "type": "option",
+          "x": 58,
+          "y": 315,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Anal fixation" }] }
+            ]
+          },
+          "label": "C",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:54.500Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7qmupd63tw",
+          "type": "option",
+          "x": 58,
+          "y": 399,
+          "w": 844,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Superego absence" }] }
+            ]
+          },
+          "label": "D",
+          "textStyle": { "padding": 10 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:54.500Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7smupd63tw",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:00:54.500Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          { "id": "f7nmupd63tw", "correct": false },
+          { "id": "f7omupd63tw", "correct": true },
+          { "id": "f7pmupd63tw", "correct": false },
+          { "id": "f7qmupd63tw", "correct": false }
+        ]
+      },
+      "notes": "Forgetting is consistent with several explanations, so it does not establish an unconscious cause.\nInsufficient evidence is correct: the observation does not distinguish an unconscious conflict from other causes. Unconscious repression treats an interpretation as proof, our central misconception. Anal fixation wrongly infers a particular developmental history from one event. Superego absence wrongly treats forgetting as evidence that moral standards are missing. If pupils choose any inferred cause, return to the observation–hypothesis distinction in the worked example before introducing evaluation."
+    },
+    {
+      "id": "f55mupd5dt0",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f52mupd5dt0",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Evidence has limits" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:20.772Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f55mupd5dt0~1",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 403,
+          "h": 324,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Little Hans:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Freud linked a boy’s horse phobia to fear of his father. The account came largely from his father."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Support:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " The case fitted Freud’s interpretation. Research supports some processing outside awareness, not necessarily Freud’s conflicts."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Limits:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Selective interpretation weakens objectivity. If any outcome can support a theory, it is hard to falsify."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:00:20.772Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f55mupd5dt0~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 119,
+          "w": 403,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20378%22%20width%3D%22403%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22Three%20evidence%20sources%20are%20paired%20with%20what%20they%20can%20support%20and%20what%20they%20cannot%20establish%20about%20Freud's%20theories.%22%3E%3Ctitle%3EThree%20evidence%20sources%20are%20paired%20with%20what%20they%20can%20support%20and%20what%20they%20cannot%20establish%20about%20Freud's%20theories.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2226%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2220.8%22%3EEvidence%20versus%20inference%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C44.2)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22403%22%20height%3D%2257.6%22%20fill%3D%22%23A94A18%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22700%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.8%22%20y%3D%2235.1%22%3EEvidence%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22700%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%2224.3%22%3EPossible%3C%2Ftspan%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%2245.9%22%3Esupport%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22700%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%2235.1%22%3ELimit%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%2257.6%22%20width%3D%22403%22%20height%3D%2257.6%22%20fill%3D%22%23FFFBF0%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.8%22%20y%3D%2292.7%22%3ELittle%20Hans%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%2281.9%22%3EInterpretative%3C%2Ftspan%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%22103.5%22%3Efit%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%2281.9%22%3EIndirect%3C%2Ftspan%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22103.5%22%3Ereport%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%22115.2%22%20width%3D%22403%22%20height%3D%2279.2%22%20fill%3D%22%23f1dfcd%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.8%22%20y%3D%22150.3%22%3EUnconscious%3C%2Ftspan%3E%3Ctspan%20x%3D%2210.8%22%20y%3D%22171.9%22%3Eprocessing%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%22150.3%22%3EOutside%3C%2Ftspan%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%22171.9%22%3Eawareness%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22139.5%22%3ENot%3C%2Ftspan%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22161.1%22%3Erepression%3C%2Ftspan%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22182.7%22%3Eproof%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%220%22%20y%3D%22194.4%22%20width%3D%22403%22%20height%3D%2279.2%22%20fill%3D%22%23FFFBF0%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210.8%22%20y%3D%22229.5%22%3ETherapy%3C%2Ftspan%3E%3Ctspan%20x%3D%2210.8%22%20y%3D%22251.1%22%3Eimprovement%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%22229.5%22%3ETreatment%3C%2Ftspan%3E%3Ctspan%20x%3D%22154.06%22%20y%3D%22251.1%22%3Ebenefit%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22400%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22218.7%22%3ENot%3C%2Ftspan%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22240.3%22%3Etheory%3C%2Ftspan%3E%3Ctspan%20x%3D%22300.34%22%20y%3D%22261.9%22%3Eproof%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22143.26%22%20y1%3D%220%22%20x2%3D%22143.26%22%20y2%3D%22273.6%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%22289.54%22%20y1%3D%220%22%20x2%3D%22289.54%22%20y2%3D%22273.6%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%2257.6%22%20x2%3D%22403%22%20y2%3D%2257.6%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22115.2%22%20x2%3D%22403%22%20y2%3D%22115.2%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22194.4%22%20x2%3D%22403%22%20y2%3D%22194.4%22%20stroke%3D%22%23E7DCC4%22%20stroke-width%3D%221.5%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22403%22%20height%3D%22273.6%22%20fill%3D%22none%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Three evidence sources are paired with what they can support and what they cannot establish about Freud's theories.",
+          "fit": "contain"
+        },
+        {
+          "id": "f55mupd5dt0~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "Little Hans is the published case label, not an invented pupil name. Freud published the case in 1909. Work through the evaluation: a detailed account can illustrate a theory, but an interpretation based largely on the father's reports lacks independent verification and may reflect expectations. One case also has limited generalisability. Falsifiability means that possible evidence could show a claim to be wrong. If agreement confirms an interpretation while disagreement is labelled resistance, it becomes difficult to specify disconfirming evidence. Distinguish unconscious information processing from Freud's dynamic unconscious, where distressing wishes are repressed. Likewise, improvement during psychodynamic treatment can support its usefulness without proving its explanation; support, expectation or the therapeutic relationship may contribute. Freud's attention to childhood and unconscious processes was influential, but influence is not evidence of accuracy."
+    },
+    {
+      "id": "f5gmupd5hks",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f66mupd5pj0",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Approaches explain anxiety differently" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6bmupd5pj0",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6cmupd5pj0",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 844,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Presentation anxiety permits competing explanations." }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Body",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6dmupd5pj0",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 168,
+          "w": 407,
+          "h": 230,
+          "fill": "#FFFBF0",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Compare card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6emupd5pj0",
+          "type": "text",
+          "x": 72,
+          "y": 182,
+          "w": 379,
+          "h": 22,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Psychodynamic" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6fmupd5pj0",
+          "type": "text",
+          "x": 72,
+          "y": 209,
+          "w": 379,
+          "h": 147,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bulletList",
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Freud links anxiety to unconscious conflict and early experience."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Later psychodynamic theories retain unconscious processes but stress relationships."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Body",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6gmupd5pj0",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 494,
+          "y": 168,
+          "w": 407,
+          "h": 230,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Compare card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6hmupd5pj0",
+          "type": "text",
+          "x": 508,
+          "y": 182,
+          "w": 379,
+          "h": 22,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Other approaches" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6imupd5pj0",
+          "type": "text",
+          "x": 508,
+          "y": 209,
+          "w": 379,
+          "h": 175,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bulletList",
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Behaviourism explains anxiety as learned fear; avoidance may be reinforced by relief."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Cognitive theory focuses on feared predictions; humanism stresses choice and personal growth."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Body",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:35.964Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Use the presentation case to explain each alternative. Behaviourism could propose that a humiliating presentation conditioned fear; avoiding later presentations brings relief, negatively reinforcing avoidance. Negative reinforcement means strengthening behaviour by removing something unpleasant, not punishment. Cognitive theory would examine predictions such as expecting every mistake to lead to rejection. These accounts suggest checking learning history, avoidance and explicit predictions rather than only interpreting dreams. Humanistic psychology emphasises subjective experience, personal growth and free will: it challenges psychic determinism, the claim that behaviour is driven by prior unconscious causes. Later psychodynamic approaches, including object relations theories, preserve attention to unconscious processes and early experience while placing greater weight on relationships. A biological account could also examine inherited vulnerability or physiological threat responses. More measurable predictions help compare explanations; no school is established merely by naming it."
+    },
+    {
+      "id": "f5tmupd5n3y",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f72mupd5vph",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Your turn: assess psychoanalytic claims" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f77mupd5vph",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 135,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "PRACTICE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f78mupd5vph",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f79mupd5vph",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Write short answers using the relevant concepts." }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7amupd5vph",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 199,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7bmupd5vph",
+          "type": "text",
+          "x": 84,
+          "y": 189,
+          "w": 818,
+          "h": 56,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1: Explain why redirecting anger from a manager to a safer target fits displacement."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7cmupd5vph",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 269,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7dmupd5vph",
+          "type": "text",
+          "x": 84,
+          "y": 259,
+          "w": 818,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2: Explain how free association helps psychoanalysis explore unconscious conflict."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7emupd5vph",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 311,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7fmupd5vph",
+          "type": "text",
+          "x": 84,
+          "y": 301,
+          "w": 818,
+          "h": 56,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3: Explain why improved presentation confidence after therapy does not prove a psychosexual fixation."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7gmupd5vph",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 381,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f7hmupd5vph",
+          "type": "text",
+          "x": 84,
+          "y": 371,
+          "w": 818,
+          "h": 56,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "4: Compare Freud’s interpretation with learned avoidance, then explain why relief does not establish the cause."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:00:43.973Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "1: The defence is displacement because the emotion is redirected from the manager to a safer target. 2: Free association involves reporting thoughts without censorship; psychoanalysis uses these associations to explore unconscious conflict and bring it into awareness. Dream reports can provide material for that exploration, not proof of a hidden meaning. 3: Improvement supports a possible treatment benefit but does not establish a developmental cause; support or changed expectations could explain improvement, and no evidence of a particular stage conflict is given. 4: Freud might interpret forgetting and judgement dreams as expressions of unconscious conflict. Behaviourism could explain avoidance through negative reinforcement: cancellation removes anxiety, making later avoidance more likely. Relief supplies relevant evidence for that alternative but does not establish the complete causal history. The original observations therefore do not prove unconscious conflict, repression or fixation. Challenge: Describe one finding that would favour the learned-avoidance account. Answer: A repeated pattern in which cancellation produces immediate relief and subsequent avoidance becomes more frequent would fit its prediction, although competing explanations would still need consideration."
+    }
+  ],
+  "createdAt": "2026-10-01T09:59:15.428Z",
+  "updatedAt": "2026-10-01T09:59:15.428Z",
+  "fitVersion": 3,
+  "subject": "Psychology",
+  "ageBand": "post16",
+  "yearGroup": "Year 13",
+  "language": "en-GB",
+  "brief": {
+    "topic": "Freud's psychoanalytic theories. Consider supporting and contrasting schools of thought.",
+    "durationMin": 60,
+    "slideCount": 10
+  },
+  "facts": {
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Explain Freud's account of personality, defence mechanisms and psychosexual development."
+      },
+      {
+        "id": "o2",
+        "text": "Apply psychoanalytic concepts to behaviour and the aims of psychoanalysis."
+      },
+      {
+        "id": "o3",
+        "text": "Evaluate psychoanalytic explanations using evidence and contrasting psychological approaches."
+      }
+    ],
+    "vocabulary": [],
+    "workedExamples": [
+      {
+        "id": "x1",
+        "problem": "How might psychoanalysis interpret an adult's forgotten presentation appointment and dreams about being judged?",
+        "steps": [
+          "Anxiety, forgetting and dream reports — the adult reports these experiences",
+          "Infer possible fear of judgement — it may conflict with the wish to succeed",
+          "Explore free associations and dreams — psychoanalysis uses them to examine unconscious conflict",
+          "Keep this as a hypothesis — the reports do not prove its cause"
+        ],
+        "answer": "Keep this as a hypothesis — the reports do not prove its cause",
+        "objectiveRefs": ["o2"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "stem": "How does repression differ from anal fixation in Freud's theory?",
+        "answer": "Repression is an unconscious defence that excludes distressing material from awareness. Anal fixation is a lasting attachment of libido to the anal stage after unresolved conflict.",
+        "reasoning": "",
+        "objectiveRefs": ["o1"],
+        "use": "slide"
+      },
+      {
+        "id": "q2",
+        "stem": "What does forgetting one presentation appointment establish about its cause?",
+        "answer": "An unconscious conflict is not proven",
+        "reasoning": "Forgetting is consistent with several explanations, so it does not establish an unconscious cause.",
+        "objectiveRefs": ["o1", "o2"],
+        "distractors": [
+          { "text": "Unconscious repression" },
+          { "text": "Anal fixation" },
+          { "text": "Superego absence" }
+        ],
+        "use": "slide"
+      }
+    ],
+    "misconceptions": [
+      {
+        "id": "m1",
+        "belief": "Freud's theories reveal the proven hidden cause of a person's behaviour. Correct idea: psychoanalysis offers interpretations of unconscious conflict, but these interpretations need evaluation against evidence and alternative explanations.",
+        "correction": "",
+        "objectiveRefs": ["o1", "o2", "o3"]
+      }
+    ],
+    "outline": [
+      { "id": "s1", "kind": "title", "factRefs": ["o1", "o2", "o3"] },
+      { "id": "s2", "kind": "objectives", "factRefs": ["o1", "o2", "o3"] },
+      {
+        "id": "s3",
+        "kind": "starter",
+        "factRefs": ["o1"],
+        "brief": {
+          "adds": "retrieval warm-up: three short questions on what pupils learned before that this lesson builds on, never what it teaches"
+        },
+        "phase": "starter"
+      },
+      {
+        "id": "s4",
+        "kind": "content",
+        "factRefs": ["o1", "k1"],
+        "brief": { "adds": "explain conflict within personality" },
+        "phase": "explain"
+      },
+      {
+        "id": "s5",
+        "kind": "content",
+        "factRefs": ["o1", "k2"],
+        "brief": { "adds": "explain development through psychosexual stages" },
+        "phase": "explain"
+      },
+      {
+        "id": "s6",
+        "kind": "open-response",
+        "factRefs": ["o1", "q1"],
+        "brief": { "adds": "distinguish defence from fixation" },
+        "phase": "check"
+      },
+      {
+        "id": "s7",
+        "kind": "worked-example",
+        "factRefs": ["o2", "x1"],
+        "brief": { "adds": "model a cautious psychoanalytic interpretation" },
+        "phase": "explain"
+      },
+      {
+        "id": "s8",
+        "kind": "multiple-choice",
+        "factRefs": ["o1", "o2", "q2"],
+        "brief": { "adds": "distinguish interpretation from established cause" },
+        "phase": "check"
+      },
+      {
+        "id": "s9",
+        "kind": "content",
+        "factRefs": ["o3", "k3"],
+        "brief": { "adds": "weigh supporting evidence against limitations" },
+        "phase": "explain"
+      },
+      {
+        "id": "s10",
+        "kind": "content",
+        "factRefs": ["o3", "k4"],
+        "brief": { "adds": "contrast explanations of anxiety" },
+        "phase": "explain"
+      },
+      {
+        "id": "s11",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3", "k5"],
+        "brief": { "adds": "apply critically then settle the running case" },
+        "phase": "explain"
+      }
+    ],
+    "durationMin": 60,
+    "keyIdeas": [
+      {
+        "id": "k1",
+        "statement": "Personality reflects unconscious conflict",
+        "explanation": "A case: An adult forgets a presentation and dreams of being judged. Freud might explore unconscious conflict. The rule: The id seeks pleasure, the superego represents moral standards, and the ego balances these with reality. Defence mechanisms: Freud proposed that the ego uses unconscious strategies, such as repression, to reduce anxiety. This is an interpretation, not proof. labelled-diagram The id and superego each point towards the ego, showing competing pressures on it. Freud’s model of personality wide circle    accent circle    accent2 circle    muted arrow     arrow     Id   top Superego   bottom Ego   right",
+        "example": "",
+        "objectiveRefs": ["o1"]
+      },
+      {
+        "id": "k2",
+        "statement": "Freud proposed five psychosexual stages",
+        "explanation": "A proposed link: Freud might interpret approval-seeking as unresolved childhood conflict. Anxiety alone cannot prove this. The stages: Freud proposed that libido, or psychosexual energy, focuses on different areas as children develop. Each stage brings a conflict. Fixation: Freud proposed that too much or too little gratification could leave libido tied to a stage. He linked anal fixation with excessive orderliness or messiness.",
+        "example": "",
+        "objectiveRefs": ["o1"]
+      },
+      {
+        "id": "k3",
+        "statement": "Evidence has limits",
+        "explanation": "Little Hans: Freud linked a boy’s horse phobia to fear of his father. The account came largely from his father. Support: The case fitted Freud’s interpretation. Research supports some processing outside awareness, not necessarily Freud’s conflicts. Limits: Selective interpretation weakens objectivity. If any outcome can support a theory, it is hard to falsify. table Three evidence sources are paired with what they can support and what they cannot establish about Freud's theories. Evidence versus inference Evidence Possible support Limit Little Hans Interpretative fit Indirect report Unconscious processing Outside awareness Not repression proof Therapy improvement Treatment benefit Not theory proof",
+        "example": "",
+        "objectiveRefs": ["o3"]
+      },
+      {
+        "id": "k4",
+        "statement": "Approaches explain anxiety differently",
+        "explanation": "Presentation anxiety permits competing explanations. Psychodynamic Freud links anxiety to unconscious conflict and early experience. Later psychodynamic theories retain unconscious processes but stress relationships. Other approaches Behaviourism explains anxiety as learned fear; avoidance may be reinforced by relief. Cognitive theory focuses on feared predictions; humanism stresses choice and personal growth.",
+        "example": "",
+        "objectiveRefs": ["o3"]
+      },
+      {
+        "id": "k5",
+        "statement": "Your turn: assess psychoanalytic claims",
+        "explanation": "Write short answers using the relevant concepts. 1: Explain why redirecting anger from a manager to a safer target fits displacement. 2: Explain how free association helps psychoanalysis explore unconscious conflict. 3: Explain why improved presentation confidence after therapy does not prove a psychosexual fixation. 4: Compare Freud’s interpretation with learned avoidance, then explain why relief does not establish the cause.",
+        "example": "",
+        "objectiveRefs": ["o1", "o2", "o3"]
+      }
+    ],
+    "retrieval": [
+      {
+        "question": "What can a correlation between two variables show?",
+        "answer": "An association, not causation."
+      },
+      {
+        "question": "Before conditioning, what is a neutral stimulus?",
+        "answer": "A stimulus that does not produce the target response."
+      },
+      {
+        "question": "What do schemas influence in the cognitive approach?",
+        "answer": "How people process and interpret information."
+      }
+    ]
+  },
+  "generation": {
+    "jobId": "fixture-y13-freud",
+    "stage": "repaired",
+    "startedAt": "2026-10-01T10:00:00.000Z",
+    "promptVersions": {},
+    "usage": { "calls": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0 },
+    "findings": []
+  }
+}

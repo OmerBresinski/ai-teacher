@@ -26,6 +26,7 @@ export {
   worksheetFromRecipe,
 } from "../model/worksheet-creation";
 export {
+  GENERATED_RECIPES,
   JOBS,
   type Job,
   recipeById,

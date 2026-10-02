@@ -121,8 +121,10 @@ test("each registered prompt uses its stage-specific deadline across version bum
     "plan-teach-objective": 45,
     "plan-question-set": 60,
   };
+  // The lesson-sheet call (TEACH-86) writes a whole sheet: 240 s, after the fill's 180.
   const legacy = [
-    180, 180, 300, 300, 300, 300, 300, 180, 180, 300, 180, 180, 180, 180, 300, 180, 180, 300, 300,
+    180, 180, 300, 300, 300, 300, 300, 180, 180, 300, 180, 240, 180, 180, 180, 300, 180, 180, 300,
+    300,
   ];
   const expected = Object.values(PROMPTS).map(
     (prompt, i) => byName[prompt.version.replace(/\.v\d+$/, "")] ?? (legacy[i] as number),

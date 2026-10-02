@@ -27,6 +27,7 @@ import {
   type PipelineStageName,
   type PipelineState,
 } from "./types";
+import { LESSON_SHEET_ENTRY, lessonSheetEntry } from "./worksheet/fake-lesson-sheet";
 
 /*
  * Test helpers for the pipeline and its consumers (ADR 0025 §22): the fixtures as typed values,
@@ -164,6 +165,8 @@ export function worksheetScript(
   return [
     options.fill ?? json(FIXTURES.worksheetFill),
     ...Array.from({ length: options.repairs ?? 0 }, () => json(repair)),
+    // TEACH-86: "Follows the lesson" answers from its own prompt; `routed` gives it that call only.
+    lessonSheetEntry(),
   ];
 }
 
@@ -221,6 +224,16 @@ export function routed(
     if (version.startsWith("generate-worksheet-fill")) {
       return takeAt(pending.findIndex((e) => Array.isArray(parsed(e)?.slots)));
     }
+    // TEACH-86: the lesson-sheet call takes the fake writer, or a scripted answer with `tasks`.
+    if (version.startsWith("generate-worksheet-lesson")) {
+      const at = pending.findIndex(
+        (e) =>
+          (typeof e === "function" && LESSON_SHEET_ENTRY in e) ||
+          Array.isArray(parsed(e)?.tasks) ||
+          isMiss(e),
+      );
+      if (at !== -1) return takeAt(at);
+    }
     // The photo judge runs inside Generate alongside the slide calls (TEACH-220), so its reply is
     // found by shape too, not by position.
     if (version.startsWith("pick-or-requery-photo")) {
@@ -239,7 +252,13 @@ export function routed(
         pending.findIndex((e) => isMiss(e) || (kind !== undefined && parsed(e)?.kind === kind)),
       );
     }
-    return pending.shift();
+    // The dedicated worksheet answers (a slot fill, the lesson-sheet writer) are never handed to
+    // another call — e.g. the repair after a lesson sheet — while a general entry is waiting.
+    const general = pending.findIndex(
+      (e) =>
+        !(typeof e === "function" && LESSON_SHEET_ENTRY in e) && !Array.isArray(parsed(e)?.slots),
+    );
+    return general === -1 ? pending.shift() : takeAt(general);
   };
   const pace = options.pace ?? 0;
   return script.map(() => async (call: FakeCall) => {
@@ -423,3 +442,4 @@ export function memoryLogger(): { lines: string[]; logger: Logger } {
 }
 
 export * from "./planner/testing";
+export * from "./worksheet/fake-lesson-sheet";

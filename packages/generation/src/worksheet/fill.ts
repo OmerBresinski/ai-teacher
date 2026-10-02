@@ -3,6 +3,7 @@ import { defaultInstruction, TASK_BLOCK_TYPES } from "@tj/domain/documents";
 import {
   docFromText,
   isPlaceholder,
+  LESSON_RECIPE,
   type MaterialiseMeta,
   materialiseBlock,
   numberQuestions,
@@ -15,6 +16,7 @@ import { stemPlan } from "../stages/question-pool";
 import { audienceOf, shapeOf } from "../stages/shared";
 import type { PipelineDeps } from "../types";
 import { type FillSlot, objectivesPractisedBy } from "./frame";
+import { fillLessonSheet } from "./lesson-sheet";
 import { worksheetFillSchemaFor } from "./specs";
 
 /*
@@ -34,6 +36,8 @@ export interface FillInput {
   lesson: Lesson;
   facts: LessonFacts;
   practiceMinutes: number;
+  /** "Follows the lesson" only: end the sheet with the exit ticket (rulings 141, 108). */
+  exitTicket?: boolean;
 }
 
 export interface FillResult {
@@ -43,6 +47,8 @@ export interface FillResult {
   reservedStems: string[];
   /** Set when a call was made. */
   modelId?: string;
+  /** The prompt the call used, when one was made. */
+  promptVersion?: string;
 }
 
 export type FillDeps = Pick<
@@ -52,6 +58,13 @@ export type FillDeps = Pick<
 
 export async function fillFrame(input: FillInput, deps: FillDeps): Promise<FillResult> {
   const { worksheet, fillSlots, recipe, lesson, facts, practiceMinutes } = input;
+  // TEACH-86: "Follows the lesson" has no slots to fill; one call writes the sheet from the slides.
+  if (recipe.id === LESSON_RECIPE.id) {
+    return fillLessonSheet(
+      { worksheet, lesson, practiceMinutes, exitTicket: input.exitTicket ?? false },
+      deps,
+    );
+  }
   const { pool, reservedForWorksheet } = stemPlan(facts);
   if (fillSlots.length === 0) {
     return {
@@ -129,6 +142,7 @@ export async function fillFrame(input: FillInput, deps: FillDeps): Promise<FillR
     findings,
     reservedStems: reservedForWorksheet,
     modelId: call.modelId,
+    promptVersion: generateWorksheetFillPrompt.version,
   };
 }
 

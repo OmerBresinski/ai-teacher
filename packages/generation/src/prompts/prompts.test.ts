@@ -105,6 +105,30 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
       minutesBudget: 15,
     },
   },
+  "generate-worksheet-lesson": {
+    lessonTitle: "States of matter",
+    fit: { ageBand: "ks3", yearGroup: "Year 8", subject: "Science", examStyle: false },
+    objectives: facts.objectives.map(({ id, text }) => ({ id, text })),
+    misconceptions: facts.misconceptions.map(({ id, belief, correction }) => ({
+      id,
+      belief,
+      correction,
+    })),
+    cycles: [
+      {
+        index: 1,
+        title: "Particles in a solid",
+        objectiveIds: [facts.objectives[0]?.id ?? "o1"],
+        slides: [
+          { id: "s4", part: "teach", text: "Particles in a solid\nThey vibrate in fixed places." },
+          { id: "s5", part: "check", text: "Which state keeps its shape?\nCorrect: Solid" },
+        ],
+      },
+    ],
+    exitTicket: true,
+    slideStems: ["which state keeps its shape"],
+    practiceMinutes: 20,
+  },
   "parse-brief": {
     text: "Year 8 states of matter, 50 minutes, lower set",
     yearGroups: ["Year 7", "Year 8", "Year 9"],
@@ -245,6 +269,11 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "generate-worksheet-fill": {
     version: "generate-worksheet-fill.v2",
     hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
+  },
+  "generate-worksheet-lesson": {
+    // TEACH-86: a draft placeholder until the prompt-engineer's v2 (scratchpad/t86-PROMPT-BRIEF.md).
+    version: "generate-worksheet-lesson.v1",
+    hash: "92c1c480cabd19bc7f5d6f39977b8f65123ac0a96c2578df33fb20713aa5a9ba",
   },
   "parse-brief": {
     version: "parse-brief.v2",

@@ -139,3 +139,23 @@ describe("answerEntry", () => {
     expect(answerEntry(matching)?.lines).toEqual([`L1: ${letters[0]} R1`, `L2: ${letters[1]} R2`]);
   });
 });
+
+describe("open answers (TEACH-86)", () => {
+  test("model points print one per line in the answer key", () => {
+    const block: WorksheetBlock = {
+      id: "q",
+      type: "question",
+      doc: docFromText("Explain why a catalyst speeds up a reaction."),
+      number: 3,
+      answerLines: 4,
+      answer:
+        "You might have suggested:\n- It lowers the activation energy.\n- More collisions succeed.",
+    };
+    expect(answerEntry(block)?.lines).toEqual([
+      "You might have suggested:",
+      "- It lowers the activation energy.",
+      "- More collisions succeed.",
+    ]);
+    expect(answerEntry({ ...block, answer: "  " })?.lines).toEqual(["No answer recorded."]);
+  });
+});

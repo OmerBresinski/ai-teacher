@@ -27,7 +27,7 @@ import {
   StageFailure,
 } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
-import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
+import { RECIPE_PROMPT_VERSION, recipeForFacts, resolveRecipe, uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
 
@@ -79,7 +79,24 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         { capUsd: deps.worksheetCapUsd, capTokens: deps.caps.capTokens },
         { spent: prior?.usage },
       );
-      const recipe = resolveRecipe(recipeId, facts);
+      // TEACH-86 FR 6: a recipe whose frame would print an empty block from these facts (no
+      // vocabulary, too few questions) is swapped for "Follows the lesson", and the log says why.
+      const requested = resolveRecipe(recipeId, facts);
+      const { recipe, fellBackFrom } = recipeForFacts(requested, facts);
+      if (fellBackFrom) {
+        logger.info(
+          {
+            lessonId,
+            worksheetId,
+            requested: fellBackFrom.recipeId,
+            reasons: fellBackFrom.reasons,
+          },
+          "worksheet recipe fell back to lesson: the facts would leave a block empty",
+        );
+      }
+      // Rulings 141 and 108: the teacher asked for the exit ticket; under "Follows the lesson" it
+      // becomes the sheet's last task (the slides pointing to one ask for it too, `fillLessonSheet`).
+      const exitTicket = requested.id === "exit-ticket";
       const stage = "worksheet" as const;
       const pipelineDeps: FillDeps = {
         ai: deps.ai,
@@ -136,7 +153,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
 
       await ctx.progress(20, "Writing the questions", { stage, documentUpdatedAt: framedAt });
       const filled = await fillFrame(
-        { ...frame, recipe, lesson, facts, practiceMinutes },
+        { ...frame, recipe, lesson, facts, practiceMinutes, exitTicket },
         pipelineDeps,
       );
       const filledGeneration: WorksheetGeneration = {
@@ -144,13 +161,18 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         stage: "filled",
         promptVersions: {
           ...generation.promptVersions,
-          ...(filled.modelId !== undefined ? { fill: generateWorksheetFillPrompt.version } : {}),
+          ...(filled.modelId !== undefined
+            ? { fill: filled.promptVersion ?? generateWorksheetFillPrompt.version }
+            : {}),
         },
         usage: budget.totals(),
         findings: filled.findings,
       };
+      // The lesson sheet decides `showMarks` itself (marked items at KS4 and post-16, ruling 146).
+      const { showMarks: _framedMarks, ...unmarked } = framed;
       const filledSheet: Worksheet = {
-        ...framed,
+        ...(recipe.id === "lesson" ? unmarked : framed),
+        ...(recipe.id === "lesson" && filled.worksheet.showMarks ? { showMarks: true } : {}),
         blocks: filled.worksheet.blocks,
         generation: filledGeneration,
       };

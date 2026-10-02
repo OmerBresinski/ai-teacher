@@ -110,7 +110,8 @@ describe("Sheet", () => {
       />,
     );
     expect(printOff.container.querySelectorAll(".ws-marks")).toHaveLength(0);
-    expect(printOff.container.querySelector(".ws-meta")?.textContent).toMatch(/^about \d+ min$/);
+    // TEACH-86: the time and marks line is the teacher's; the pupil's printed copy leaves it out.
+    expect(printOff.container.querySelector(".ws-meta")).toBeNull();
     expect(printOff.getByRole("heading", { level: 2, name: "Answer key" })).toBeInTheDocument();
     expect(printOff.container.querySelectorAll(".ws-key-entry").length).toBeGreaterThan(0);
     cleanup();
@@ -118,13 +119,19 @@ describe("Sheet", () => {
       <Sheet worksheet={off} theme={getTheme(off.themeId)} pages={paginateFlat(off)} mode="edit" />,
     );
     expect(editOff.container.querySelectorAll(".ws-marks")).toHaveLength(0);
+    expect(editOff.container.querySelector(".ws-meta")?.textContent).toMatch(/^about \d+ min$/);
     cleanup();
     const on = { ...sheet, showMarks: true };
     const printOn = render(
       <Sheet worksheet={on} theme={getTheme(on.themeId)} pages={paginateFlat(on)} mode="print" />,
     );
     expect(printOn.container.querySelectorAll(".ws-marks").length).toBeGreaterThan(0);
-    expect(printOn.container.querySelector(".ws-meta")?.textContent).toMatch(
+    expect(printOn.container.querySelector(".ws-meta")).toBeNull();
+    cleanup();
+    const editOn = render(
+      <Sheet worksheet={on} theme={getTheme(on.themeId)} pages={paginateFlat(on)} mode="edit" />,
+    );
+    expect(editOn.container.querySelector(".ws-meta")?.textContent).toMatch(
       /^\d+ marks? · about \d+ min$/,
     );
   });

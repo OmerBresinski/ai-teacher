@@ -26,6 +26,8 @@ export type FillSlot = WorksheetFillSlot;
  * model nothing (the seeded word search; the exam paper drawn whole from the lesson's questions).
  */
 export const SLOT_TYPES: Record<RecipeId, FillBlockType[]> = {
+  // TEACH-86: the whole sheet is written by its own call (`fillLessonSheet`), not into a slot.
+  lesson: [],
   "exit-ticket": ["question"],
   "knowledge-check": ["multiple-choice"],
   "misconception-check": ["multiple-choice", "question"],
@@ -98,6 +100,7 @@ export function buildFrame(input: BuildFrameInput, deps: Pick<PipelineDeps, "now
   const fillSlots: FillSlot[] = [];
   blocks.forEach((block, index) => {
     if (!isPlaceholder(block)) return;
+    if (recipe.id === "lesson") return;
     if (allowedTypes.length === 0) {
       throw new Error(`recipe ${recipe.id} left a placeholder but names no slot types`);
     }

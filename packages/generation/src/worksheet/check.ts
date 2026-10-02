@@ -1,7 +1,7 @@
 import { isAiError } from "@tj/ai";
 import type { Finding, Lesson, Worksheet } from "@tj/domain/documents";
 import { checkLesson } from "@tj/domain/documents";
-import { estimateMinutes, numberQuestions } from "@tj/slides";
+import { emptyBlocks, estimateMinutes, numberQuestions } from "@tj/slides";
 import { repairBlock, repairTargets } from "../stages/repair";
 import { audienceOf, BUDGET_FINDING, shapeOf } from "../stages/shared";
 import { BudgetExceeded, type PipelineDeps, StageFailure, throwIfAborted } from "../types";
@@ -39,6 +39,23 @@ export function practiceTimeFinding(
   };
 }
 
+/** The `check` name of an empty or placeholder block (TEACH-86 FR 6). */
+export const EMPTY_BLOCK_CHECK = "empty-block";
+
+/**
+ * TEACH-86 FR 6: a block that would print empty (no text, a word bank or matching under three
+ * entries, a word search with nothing to find) or as `PLACEHOLDER_QUESTION` is an `error`, so the
+ * one repair pass rewrites it.
+ */
+export function emptyBlockFindings(worksheet: Pick<Worksheet, "blocks">): Finding[] {
+  return emptyBlocks(worksheet.blocks).map(({ blockId, reason }) => ({
+    check: EMPTY_BLOCK_CHECK,
+    severity: "error",
+    target: { blockId },
+    message: `${reason} A teacher cannot photocopy it as it is.`,
+  }));
+}
+
 export interface CheckInput {
   lesson: Lesson;
   worksheet: Worksheet;
@@ -68,6 +85,7 @@ export async function checkWorksheet(input: CheckInput, deps: CheckDeps): Promis
     worksheet.blocks.some((block) => block.id === finding.target.blockId);
   const before = [
     ...checkLesson(lesson, input.worksheet).filter(onSheet(input.worksheet)),
+    ...emptyBlockFindings(input.worksheet),
     ...input.findings,
   ];
   const audience = audienceOf(lesson);
@@ -115,6 +133,7 @@ export async function checkWorksheet(input: CheckInput, deps: CheckDeps): Promis
   const timing = practiceTimeFinding(worksheet, practiceMinutes);
   const findings = [
     ...checkLesson(lesson, worksheet).filter(onSheet(worksheet)),
+    ...emptyBlockFindings(worksheet),
     ...input.findings.filter(
       (f) => f.target.blockId === undefined || !repaired.has(f.target.blockId),
     ),

@@ -75,8 +75,17 @@ export function answerEntry(block: WorksheetBlock): AnswerEntry | null {
 
   switch (block.type) {
     case "question": {
-      const answer = block.answer?.trim();
-      return { id: block.id, number, marks: block.marks, lines: [answer || NO_ANSWER] };
+      // An open answer is model points, one per line (TEACH-86): each prints on its own line.
+      const lines = (block.answer ?? "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+      return {
+        id: block.id,
+        number,
+        marks: block.marks,
+        lines: lines.length ? lines : [NO_ANSWER],
+      };
     }
     case "multiple-choice": {
       const correct = block.options

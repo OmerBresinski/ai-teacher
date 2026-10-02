@@ -3,6 +3,7 @@ import { evaluatePrompt } from "./evaluate";
 import { generateSlidePrompt } from "./generate-slide";
 import { generateWorksheetPrompt } from "./generate-worksheet";
 import { generateWorksheetFillPrompt } from "./generate-worksheet-fill";
+import { generateWorksheetLessonPrompt } from "./generate-worksheet-lesson";
 import { parseBriefPrompt } from "./parse-brief";
 import { pickOrRequeryPrompt } from "./pick-or-requery-photo";
 import { planFactsPrompt } from "./plan-facts";
@@ -38,6 +39,7 @@ export type {
   WorksheetFillRecipe,
   WorksheetFillSlot,
 } from "./generate-worksheet-fill";
+export type { GenerateWorksheetLessonInput } from "./generate-worksheet-lesson";
 export type { ParseBriefFields, ParseBriefInput } from "./parse-brief";
 export type { PickOrRequeryInput } from "./pick-or-requery-photo";
 export type { PlanFactsInput } from "./plan-facts";
@@ -55,6 +57,7 @@ export {
   evaluatePrompt,
   generateSlidePrompt,
   generateWorksheetFillPrompt,
+  generateWorksheetLessonPrompt,
   generateWorksheetPrompt,
   parseBriefPrompt,
   pickOrRequeryPrompt,
@@ -83,6 +86,7 @@ export const PROMPTS = {
   "generate-slide": generateSlidePrompt,
   "generate-worksheet": generateWorksheetPrompt,
   "generate-worksheet-fill": generateWorksheetFillPrompt,
+  "generate-worksheet-lesson": generateWorksheetLessonPrompt,
   "parse-brief": parseBriefPrompt,
   "pick-or-requery-photo": pickOrRequeryPrompt,
   "shortlist-photos": shortlistPhotosPrompt,
@@ -106,6 +110,7 @@ export const PROMPT_VERSIONS = {
   "generate-slide": generateSlidePrompt.version,
   "generate-worksheet": generateWorksheetPrompt.version,
   "generate-worksheet-fill": generateWorksheetFillPrompt.version,
+  "generate-worksheet-lesson": generateWorksheetLessonPrompt.version,
   "parse-brief": parseBriefPrompt.version,
   "pick-or-requery-photo": pickOrRequeryPrompt.version,
   "shortlist-photos": shortlistPhotosPrompt.version,

@@ -317,6 +317,7 @@ export function ObjectivesStep({
 
 export type WorksheetDraft = { id: string; recipe: string; minutes: string };
 const RECIPES = [
+  { value: "lesson", label: "Follows the lesson" },
   { value: "knowledge-check", label: "Knowledge check" },
   { value: "exit-ticket", label: "Exit ticket" },
   { value: "cloze", label: "Fill the gaps" },

@@ -102,7 +102,7 @@ function LessonIntake({
   const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
   const [slideCount, setSlideCount] = useState("8");
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
-    { id: "initial", recipe: "knowledge-check", minutes: "10" },
+    { id: "initial", recipe: "lesson", minutes: "20" },
   ]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

@@ -1,0 +1,3141 @@
+{
+  "version": 1,
+  "id": "fit-vis-J1v-y5-maths-fractions-of-amounts-mupd65m1",
+  "title": "Fractions of amounts",
+  "themeId": "chalk",
+  "slides": [
+    {
+      "id": "f5mupd66hv",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "f6mupd6ka9",
+          "type": "image",
+          "x": 480,
+          "y": 0,
+          "w": 480,
+          "h": 540,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a0f6e9-6433-72f8-806b-810986c150ca.jpg",
+          "alt": "Delicious lemon-shaped cheese mini cakes displayed on an elegant tray.",
+          "fit": "cover",
+          "name": "Photo",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.824Z"
+          },
+          "authoredBy": "ai",
+          "source": {
+            "provider": "pexels",
+            "id": "38006307",
+            "pageUrl": "https://www.pexels.com/photo/lemon-shaped-cheese-cakes-on-a-tray-38006307/",
+            "photographer": "Nur Nur",
+            "photographerUrl": "https://www.pexels.com/@nurbis",
+            "evidence": {
+              "visible": ["Equal-sized cakes", "Whole tray"],
+              "count": "several",
+              "alt": "Delicious lemon-shaped cheese mini cakes displayed on an elegant tray.",
+              "promptVersion": "pick-or-requery-photo.v9",
+              "thumbnail": "https://images.pexels.com/photos/38006307/pexels-photo-38006307.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          }
+        },
+        {
+          "id": "f7mupd6ka9",
+          "type": "shape",
+          "shape": "rect",
+          "x": 58,
+          "y": 76,
+          "w": 67,
+          "h": 4,
+          "fill": "#A94A18",
+          "name": "Accent rule",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.824Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f8mupd6ka9",
+          "type": "text",
+          "x": 58,
+          "y": 105,
+          "w": 403,
+          "h": 21,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "LESSON" }] }]
+          },
+          "style": { "preset": "caption", "autoHeight": true, "color": "#6E6656" },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.824Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f9mupd6ka9",
+          "type": "text",
+          "x": 58,
+          "y": 138,
+          "w": 403,
+          "h": 136,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Fractions of amounts" }]
+              }
+            ]
+          },
+          "style": { "preset": "title", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.824Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "famupd6ka9",
+          "type": "text",
+          "x": 58,
+          "y": 291,
+          "w": 403,
+          "h": 121,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Year 5 · Maths" }] }
+            ]
+          },
+          "style": { "preset": "subtitle", "autoHeight": true, "color": "#6E6656" },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.824Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "ffmupd6kaa",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "fcmupd6kaa",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "By the end of this lesson I can" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fgmupd6kaa",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fhmupd6kac",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 175,
+          "w": 844,
+          "h": 65,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fimupd6kac",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 189,
+          "w": 35,
+          "h": 35,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 19,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fjmupd6kac",
+          "type": "text",
+          "x": 121,
+          "y": 189,
+          "w": 767,
+          "h": 37,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calculate unit and non-unit proper fractions of amounts."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 26,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 1",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fkmupd6kac",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 278,
+          "w": 844,
+          "h": 101,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "flmupd6kac",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 292,
+          "w": 35,
+          "h": 35,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 19,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "fmmupd6kac",
+          "type": "text",
+          "x": 121,
+          "y": 292,
+          "w": 767,
+          "h": 73,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "calculate improper fractions and mixed-number fractions of amounts."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 26,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Objective 2",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2"],
+            "promptVersion": "stream-lesson.v19+write-slides.v24",
+            "model": "code",
+            "at": "2026-10-01T10:01:15.825Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f55mupd7e4o",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "f51mupd7e4o",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Do now" }] }]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f56mupd7e4o",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 121,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "STARTER" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f57mupd7e4o",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f58mupd7e4o",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 168,
+          "w": 844,
+          "h": 61,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f59mupd7e4o",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 182,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5amupd7e4o",
+          "type": "text",
+          "x": 117,
+          "y": 182,
+          "w": 490,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "What is 24 ÷ 6?" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5bmupd7e4o",
+          "type": "text",
+          "x": 626,
+          "y": 182,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "4" }] }]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5cmupd7e4o",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 267,
+          "w": 844,
+          "h": 61,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5dmupd7e4o",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 281,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5emupd7e4o",
+          "type": "text",
+          "x": 117,
+          "y": 281,
+          "w": 490,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "What is 7 × 4?" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5fmupd7e4o",
+          "type": "text",
+          "x": 626,
+          "y": 281,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "28" }] }]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5gmupd7e4o",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 366,
+          "w": 844,
+          "h": 61,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5hmupd7e4o",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 380,
+          "w": 31,
+          "h": 31,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5imupd7e4o",
+          "type": "text",
+          "x": 117,
+          "y": 380,
+          "w": 490,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "In 3/8, which number is the numerator?" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f5jmupd7e4o",
+          "type": "text",
+          "x": 626,
+          "y": 380,
+          "w": 262,
+          "h": 33,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 23,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6-luna",
+            "at": "2026-10-01T10:01:54.504Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Answers: 1. 24 ÷ 6 = 4. Sharing 24 into 6 equal groups gives 4 in each group. 2. 7 × 4 = 28. Four groups of 7 make 28. 3. The numerator is 3 and the denominator is 8. The numerator is the top number; the denominator is the bottom number. If an answer to question 1 is not 4, revisit division facts. If an answer to question 2 is not 28, revisit the 7 times table. If the numbers in question 3 are swapped, recap the names of the top and bottom numbers in a fraction.\nAnswers: 1. 4 2. 28 3. 3"
+    },
+    {
+      "id": "f1emupd6oow",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f1bmupd6oow",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "The denominator sets the equal parts" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:21.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1emupd6oow~1",
+          "type": "text",
+          "x": 58,
+          "y": 119,
+          "w": 403,
+          "h": 231,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "One tray:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " There are 24 cakes. One quarter of the tray holds 6 cakes."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Fraction words:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " The denominator is the bottom number. It tells us how many equal parts make one whole."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "One part:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " A unit fraction has 1 on top. Divide the amount by the denominator."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:21.536Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1emupd6oow~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 119,
+          "w": 403,
+          "h": 378,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20378%22%20width%3D%22403%22%20height%3D%22378%22%20role%3D%22img%22%20aria-label%3D%22A%20tray%20of%2024%20cakes%20is%20split%20into%20four%20equal%20parts%20of%206%20cakes%2C%20with%20one%20part%20shaded.%22%3E%3Ctitle%3EA%20tray%20of%2024%20cakes%20is%20split%20into%20four%20equal%20parts%20of%206%20cakes%2C%20with%20one%20part%20shaded.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2226%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2220.8%22%3EOne%20quarter%20of%20a%20tray%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C44.2)%22%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2272.55%22%20y%3D%22204.1%22%3ECakes%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2288.95%22%20y%3D%22154.9%22%20width%3D%2278.01%22%20height%3D%2281.6%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22127.96%22%20y%3D%22204.1%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22166.96%22%20y%3D%22154.9%22%20width%3D%2278.01%22%20height%3D%2281.6%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22205.97%22%20y%3D%22204.1%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22244.98%22%20y%3D%22154.9%22%20width%3D%2278.01%22%20height%3D%2281.6%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22283.98%22%20y%3D%22204.1%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22322.99%22%20y%3D%22154.9%22%20width%3D%2278.01%22%20height%3D%2281.6%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22361.99%22%20y%3D%22204.1%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M88.95%2C146.5%20Q88.95%2C136.9%2098.55%2C136.9%20L235.38%2C136.9%20Q244.98%2C136.9%20244.98%2C127.3%20Q244.98%2C136.9%20254.58%2C136.9%20L391.4%2C136.9%20Q401%2C136.9%20401%2C146.5%22%20fill%3D%22none%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2224%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22244.98%22%20y%3D%22112.9%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A tray of 24 cakes is split into four equal parts of 6 cakes, with one part shaded.",
+          "fit": "contain"
+        },
+        {
+          "id": "f1emupd6oow~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "Our bakery tray holds 24 cakes. Eventually we must work out an order of 1 5/6 trays. Start with one quarter of a tray. Point to the four equal parts: 24 ÷ 4 = 6. The denominator counts the equal parts, not the cakes in each part. Explain that the whole here is one full tray."
+    },
+    {
+      "id": "f1nmupd6rau",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f1hmupd6rau",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Finding a non-unit fraction" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1jmupd6rau",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 31,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "How many cakes are in 3/4 of a tray of 24 cakes?" }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true, "fontSize": 20 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1omupd6rau",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1pmupd6rau",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1qmupd6rau",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 217,
+          "w": 844,
+          "h": 62,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Step card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1rmupd6rau",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 231,
+          "w": 30,
+          "h": 30,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1smupd6rau",
+          "type": "text",
+          "x": 116,
+          "y": 231,
+          "w": 243,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "24 ÷ 4 = 6" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Step 1",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1tmupd6rau",
+          "type": "text",
+          "x": 378,
+          "y": 231,
+          "w": 510,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "find one quarter" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "small",
+            "fontSize": 24,
+            "lineHeight": 1.4,
+            "color": "#6E6656"
+          },
+          "name": "Row side",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1umupd6rau",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 298,
+          "w": 844,
+          "h": 62,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Step card",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1vmupd6rau",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 312,
+          "w": 30,
+          "h": 30,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1wmupd6rau",
+          "type": "text",
+          "x": 116,
+          "y": 312,
+          "w": 243,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "6 × 3 = 18" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Step 2",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1xmupd6rau",
+          "type": "text",
+          "x": 378,
+          "y": 312,
+          "w": 510,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "count three quarters" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "small",
+            "fontSize": 24,
+            "lineHeight": 1.4,
+            "color": "#6E6656"
+          },
+          "name": "Row side",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1ymupd6rau",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 379,
+          "w": 844,
+          "h": 62,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Step card",
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f1zmupd6rau",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 393,
+          "w": 30,
+          "h": 30,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f20mupd6rau",
+          "type": "text",
+          "x": 116,
+          "y": 393,
+          "w": 243,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "3/4 of 24 = 18 cakes" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Step 3",
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f21mupd6rau",
+          "type": "text",
+          "x": 378,
+          "y": 393,
+          "w": 510,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "give the amount" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "small",
+            "fontSize": 24,
+            "lineHeight": 1.4,
+            "color": "#6E6656"
+          },
+          "name": "Row side",
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:24.918Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "A proper fraction has a numerator smaller than its denominator. The numerator is the top number: it counts the parts we need. A non-unit fraction has more than 1 on top. Show the first line, then ask the class for each later line before revealing it. Three quarters means three of the equal parts, so 6 × 3 = 18. State the general method: divide by the denominator, then multiply by the numerator. This also works for unit fractions, where the numerator is 1."
+    },
+    {
+      "id": "f26mupd6tgv",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "f22mupd6tgv",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Quick check" }] }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f27mupd6tgv",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 121,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "CHECK" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f28mupd6tgv",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f29mupd6tgv",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 153,
+          "w": 844,
+          "h": 65,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2amupd6tgv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 167,
+          "w": 35,
+          "h": 35,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 19,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2bmupd6tgv",
+          "type": "text",
+          "x": 121,
+          "y": 167,
+          "w": 488,
+          "h": 37,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is 1/5 of 30 cakes?" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 26,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2cmupd6tgv",
+          "type": "text",
+          "x": 628,
+          "y": 167,
+          "w": 260,
+          "h": 37,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "6 cakes" }] }]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 26,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2dmupd6tgv",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 256,
+          "w": 844,
+          "h": 65,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2emupd6tgv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 270,
+          "w": 35,
+          "h": 35,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 19,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2fmupd6tgv",
+          "type": "text",
+          "x": 121,
+          "y": 270,
+          "w": 488,
+          "h": 37,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is 2/3 of 30 cakes?" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 26,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f2gmupd6tgv",
+          "type": "text",
+          "x": 628,
+          "y": 270,
+          "w": 260,
+          "h": 37,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "20 cakes" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 26,
+            "lineHeight": 1.4,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "name": "Row reveal",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:27.727Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f26mupd6tgv~g1",
+          "type": "image",
+          "name": "Diagram",
+          "x": 318,
+          "y": 335,
+          "w": 324,
+          "h": 162,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20324%20162%22%20width%3D%22324%22%20height%3D%22162%22%20role%3D%22img%22%20aria-label%3D%22A%20tray%20of%2024%20cakes%20is%20split%20into%20four%20equal%20parts%20of%206%20cakes%2C%20with%20one%20part%20shaded.%22%3E%3Ctitle%3EA%20tray%20of%2024%20cakes%20is%20split%20into%20four%20equal%20parts%20of%206%20cakes%2C%20with%20one%20part%20shaded.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22162%22%20y%3D%2214.4%22%3EOne%20quarter%20of%20a%20tray%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C30.6)%22%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2248.37%22%20y%3D%2290.5%22%3ECakes%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2259.97%22%20y%3D%2257.7%22%20width%3D%2265.51%22%20height%3D%2254.4%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2292.72%22%20y%3D%2290.5%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22125.48%22%20y%3D%2257.7%22%20width%3D%2265.51%22%20height%3D%2254.4%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22158.23%22%20y%3D%2290.5%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22190.98%22%20y%3D%2257.7%22%20width%3D%2265.51%22%20height%3D%2254.4%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22223.74%22%20y%3D%2290.5%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22256.49%22%20y%3D%2257.7%22%20width%3D%2265.51%22%20height%3D%2254.4%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22289.25%22%20y%3D%2290.5%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M59.97%2C52.1%20Q59.97%2C45.7%2066.37%2C45.7%20L184.58%2C45.7%20Q190.98%2C45.7%20190.98%2C39.3%20Q190.98%2C45.7%20197.38%2C45.7%20L315.6%2C45.7%20Q322%2C45.7%20322%2C52.1%22%20fill%3D%22none%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22190.98%22%20y%3D%2229.7%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A tray of 24 cakes is split into four equal parts of 6 cakes, with one part shaded.",
+          "fit": "contain"
+        }
+      ],
+      "notes": "Answers: 30 ÷ 5 = 6 cakes; 30 ÷ 3 = 10 and 10 × 2 = 20 cakes. Ask pupils to propose the first calculation, then complete the working together. Multiplying by the denominator suggests that equal sharing is not secure. Dividing by the numerator suggests that the two fraction numbers have been confused. Return to the equal parts of the tray if needed.\nAnswers: 1. 6 cakes 2. 20 cakes"
+    },
+    {
+      "id": "f38mupd70fi",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f35mupd70fi",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 89,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Improper fractions can exceed one whole" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1.08 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.750Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f38mupd70fi~1",
+          "type": "text",
+          "x": 58,
+          "y": 161,
+          "w": 403,
+          "h": 262,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Five quarters:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Each quarter-tray holds 6 cakes. Five quarters hold 30 cakes."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "The rule:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " An improper fraction has a numerator at least as large as its denominator."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "More than one:", "marks": [{ "type": "bold" }] },
+                  {
+                    "type": "text",
+                    "text": " Four quarters make one tray. Five quarters need one extra quarter-tray."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body" },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.750Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f38mupd70fi~2",
+          "type": "image",
+          "name": "Diagram",
+          "x": 499,
+          "y": 161,
+          "w": 403,
+          "h": 336,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20403%20336%22%20width%3D%22403%22%20height%3D%22336%22%20role%3D%22img%22%20aria-label%3D%22One%20complete%20tray%20has%20four%20shaded%20parts%20of%206%20cakes%2C%20and%20a%20second%20tray%20has%20one%20shaded%20part%20of%206%20cakes.%22%3E%3Ctitle%3EOne%20complete%20tray%20has%20four%20shaded%20parts%20of%206%20cakes%2C%20and%20a%20second%20tray%20has%20one%20shaded%20part%20of%206%20cakes.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2223%22%20font-weight%3D%22700%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.5%22%20y%3D%2218.4%22%3EFive%20quarters%20of%20a%20tray%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C39.1)%22%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2266.8%22%20y%3D%22110.65%22%3ETray%201%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2281.4%22%20y%3D%2267.6%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22121.35%22%20y%3D%22110.65%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22161.3%22%20y%3D%2267.6%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.25%22%20y%3D%22110.65%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22241.2%22%20y%3D%2267.6%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22281.15%22%20y%3D%22110.65%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22321.1%22%20y%3D%2267.6%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22361.05%22%20y%3D%22110.65%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M81.4%2C60.25%20Q81.4%2C51.85%2089.8%2C51.85%20L232.8%2C51.85%20Q241.2%2C51.85%20241.2%2C43.45%20Q241.2%2C51.85%20249.6%2C51.85%20L392.6%2C51.85%20Q401%2C51.85%20401%2C60.25%22%20fill%3D%22none%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22241.2%22%20y%3D%2230.85%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%2266.8%22%20y%3D%22251.35%22%3ETray%202%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%2281.4%22%20y%3D%22208.3%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23A94A18%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%23FAF4E6%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22121.35%22%20y%3D%22251.35%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22161.3%22%20y%3D%22208.3%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22201.25%22%20y%3D%22251.35%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22241.2%22%20y%3D%22208.3%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22281.15%22%20y%3D%22251.35%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22321.1%22%20y%3D%22208.3%22%20width%3D%2279.9%22%20height%3D%2271.4%22%20fill%3D%22%23f1dfcd%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22361.05%22%20y%3D%22251.35%22%3E6%3C%2Ftspan%3E%3C%2Ftext%3E%3Cpath%20d%3D%22M81.4%2C200.95%20Q81.4%2C192.55%2089.8%2C192.55%20L232.8%2C192.55%20Q241.2%2C192.55%20241.2%2C184.15%20Q241.2%2C192.55%20249.6%2C192.55%20L392.6%2C192.55%20Q401%2C192.55%20401%2C200.95%22%20fill%3D%22none%22%20stroke%3D%22%232C2A24%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Lexend%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22600%22%20fill%3D%22%232C2A24%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22241.2%22%20y%3D%22171.55%22%3E24%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "One complete tray has four shaded parts of 6 cakes, and a second tray has one shaded part of 6 cakes.",
+          "fit": "contain"
+        },
+        {
+          "id": "f38mupd70fi~3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true
+        }
+      ],
+      "notes": "Count the five shaded quarter-trays. Each has the same size: 24 ÷ 4 = 6. Altogether, 6 × 5 = 30. A fraction is not always less than one whole. If the numerator equals the denominator, it is exactly one whole; if it is larger, the fraction is greater than one. The unshaded spaces are not part of the order."
+    },
+    {
+      "id": "f3hmupd70lh",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f3bmupd70lh",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Finding an improper fraction" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3dmupd70lh",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 31,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "How many cakes are in 7/6 of a tray of 24 cakes?" }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true, "fontSize": 20 },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3imupd70lh",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3jmupd70li",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3kmupd70li",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 217,
+          "w": 844,
+          "h": 62,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Step card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3lmupd70li",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 231,
+          "w": 30,
+          "h": 30,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3mmupd70li",
+          "type": "text",
+          "x": 116,
+          "y": 231,
+          "w": 243,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "24 ÷ 6 = 4" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Step 1",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3nmupd70li",
+          "type": "text",
+          "x": 378,
+          "y": 231,
+          "w": 510,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "find one sixth" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "small",
+            "fontSize": 24,
+            "lineHeight": 1.4,
+            "color": "#6E6656"
+          },
+          "name": "Row side",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3omupd70li",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 298,
+          "w": 844,
+          "h": 62,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Step card",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3pmupd70li",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 312,
+          "w": 30,
+          "h": 30,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "2" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3qmupd70li",
+          "type": "text",
+          "x": 116,
+          "y": 312,
+          "w": 243,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "4 × 7 = 28" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Step 2",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3rmupd70li",
+          "type": "text",
+          "x": 378,
+          "y": 312,
+          "w": 510,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "count seven sixths" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "small",
+            "fontSize": 24,
+            "lineHeight": 1.4,
+            "color": "#6E6656"
+          },
+          "name": "Row side",
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3smupd70li",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 379,
+          "w": 844,
+          "h": 62,
+          "fill": "#FFFBF0",
+          "stroke": "#E7DCC4",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Step card",
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3tmupd70li",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 72,
+          "y": 393,
+          "w": 30,
+          "h": 30,
+          "fill": "#A94A18",
+          "stroke": "#A94A18",
+          "strokeWidth": 1.5,
+          "radius": 12,
+          "name": "Row badge",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "3" }] }]
+          },
+          "textStyle": {
+            "preset": "caption",
+            "fontSize": 17,
+            "color": "#FAF4E6",
+            "align": "center",
+            "valign": "middle",
+            "fontWeight": 700
+          },
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3umupd70li",
+          "type": "text",
+          "x": 116,
+          "y": 393,
+          "w": 243,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "7/6 of 24 = 28 cakes" }]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "lineHeight": 1.4,
+            "color": "#2C2A24"
+          },
+          "name": "Step 3",
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f3vmupd70li",
+          "type": "text",
+          "x": 378,
+          "y": 393,
+          "w": 510,
+          "h": 34,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "more than one tray" }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "small",
+            "fontSize": 24,
+            "lineHeight": 1.4,
+            "color": "#6E6656"
+          },
+          "name": "Row side",
+          "revealStep": 2,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:36.965Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Show the first line. Ask the class for each later line before revealing it. The method has not changed: divide by the denominator, then multiply by the numerator. Here 24 ÷ 6 = 4 and 4 × 7 = 28. Six sixths fill a tray; the seventh sixth adds 4 cakes. This explains why 28 cakes is a sensible answer."
+    },
+    {
+      "id": "f42mupd73j0",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "f4cmupd7ac3",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Finding a mixed-number fraction" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4emupd7ac3",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 31,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How many cakes are in 1 2/3 trays if one tray holds 24 cakes?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4fmupd7ac3",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 182,
+          "w": 844,
+          "h": 305,
+          "fill": "#F2E3D1",
+          "radius": 14,
+          "name": "Working card",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4gmupd7ac3",
+          "type": "text",
+          "x": 72,
+          "y": 196,
+          "w": 816,
+          "h": 21,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "WORKING" }] }]
+          },
+          "style": {
+            "preset": "caption",
+            "autoHeight": true,
+            "color": "#A94A18",
+            "fontWeight": 700
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4hmupd7ac3",
+          "type": "text",
+          "x": 72,
+          "y": 223,
+          "w": 816,
+          "h": 183,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "orderedList",
+                "attrs": { "start": 1 },
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "1 = 3/3 — write the whole in thirds" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "1 2/3 = 5/3 — include the extra two thirds" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [{ "type": "text", "text": "24 ÷ 3 = 8 — find one third" }]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [{ "type": "text", "text": "8 × 5 = 40 — count five thirds" }]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "1 2/3 of 24 = 40 cakes — give the answer" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "preset": "body", "autoHeight": true },
+          "revealStep": 1,
+          "reveal": "rise",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4jmupd7ac3",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 214,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "WORKED EXAMPLE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4kmupd7ac3",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24+verify-facts.v10",
+            "model": "slide-check",
+            "at": "2026-10-01T10:01:49.587Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "A mixed number has a whole-number part and a fraction part. Show the first line, then ask for each later line before revealing it. One whole contains three thirds, so 1 2/3 = 5/3. Then use the same method: 24 ÷ 3 = 8 and 8 × 5 = 40. To convert any mixed number, count the denominator's number of parts for each whole, then include the numerator's extra parts. Keep the same denominator."
+    },
+    {
+      "id": "f4amupd76eq",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "f45mupd76eq",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 92,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is 5/4 of a batch of 16 cakes?" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:44.497Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f46mupd76eq",
+          "type": "option",
+          "x": 58,
+          "y": 147,
+          "w": 413,
+          "h": 106,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "20" }] }]
+          },
+          "label": "A",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:44.497Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f47mupd76eq",
+          "type": "option",
+          "x": 489,
+          "y": 147,
+          "w": 413,
+          "h": 106,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "12" }] }]
+          },
+          "label": "B",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:44.497Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f48mupd76eq",
+          "type": "option",
+          "x": 58,
+          "y": 267,
+          "w": 413,
+          "h": 106,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "4" }] }]
+          },
+          "label": "C",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:44.497Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f49mupd76eq",
+          "type": "option",
+          "x": 489,
+          "y": 267,
+          "w": 413,
+          "h": 106,
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "80" }] }]
+          },
+          "label": "D",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:44.497Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f4bmupd76eq",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gpt-6.1-sol",
+            "at": "2026-10-01T10:01:44.497Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          { "id": "f46mupd76eq", "correct": true },
+          { "id": "f47mupd76eq", "correct": false },
+          { "id": "f48mupd76eq", "correct": false },
+          { "id": "f49mupd76eq", "correct": false }
+        ],
+        "explanation": "Five equal quarter-parts"
+      },
+      "notes": "The answer is 20: 16 ÷ 4 = 4 and 4 × 5 = 20. The answer 12 can come from treating five quarters as three quarters to keep the result below a whole: 4 × 3 = 12. This reveals the main misconception. The answer 4 stops after finding one quarter: 16 ÷ 4 = 4. The answer 80 ignores the denominator: 16 × 5 = 80. If pupils choose a wrong answer, revisit the five shaded quarter-parts before independent practice."
+    },
+    {
+      "id": "f4omupd7b3y",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "f6gmupd7ml7",
+          "type": "text",
+          "x": 58,
+          "y": 84,
+          "w": 844,
+          "h": 41,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Your turn: find fractions of cake orders" }]
+              }
+            ]
+          },
+          "style": { "preset": "heading", "autoHeight": true, "fontSize": 41, "lineHeight": 1 },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6lmupd7ml7",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 135,
+          "h": 28,
+          "name": "Kind tag",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "PRACTICE" }] }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "color": "#A94A18",
+            "fontWeight": 700,
+            "background": "#F2E3D1",
+            "radius": 99,
+            "padding": 3,
+            "align": "center",
+            "autoHeight": false
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6mmupd7ml7",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 531,
+          "w": 960,
+          "h": 9,
+          "fill": "#A94A18",
+          "name": "Accent bar",
+          "locked": true,
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6nmupd7ml7",
+          "type": "text",
+          "x": 58,
+          "y": 140,
+          "w": 844,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Show your working." }] }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 20,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6omupd7ml7",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 199,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6pmupd7ml7",
+          "type": "text",
+          "x": 84,
+          "y": 189,
+          "w": 818,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1: Find 1/3 of 18 cakes and explain why you divide by 3 first."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6qmupd7ml7",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 241,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6rmupd7ml7",
+          "type": "text",
+          "x": 84,
+          "y": 231,
+          "w": 818,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2: Find 3/5 of 35 cakes and explain why you multiply by 3 next."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6smupd7ml7",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 283,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6tmupd7ml7",
+          "type": "text",
+          "x": 84,
+          "y": 273,
+          "w": 818,
+          "h": 28,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3: Explain why 9/8 of 32 cakes is greater than 32, using the numerator."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6umupd7ml7",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 325,
+          "w": 8,
+          "h": 8,
+          "fill": "#A94A18",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "f6vmupd7ml7",
+          "type": "text",
+          "x": 84,
+          "y": 315,
+          "w": 818,
+          "h": 56,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "4: A tray holds 24 cakes; find how many cakes are needed for 1 5/6 trays and explain your method."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": { "autoHeight": true, "preset": "body", "fontSize": 20, "lineHeight": 1.4 },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "write-slides.v24",
+            "model": "gate",
+            "at": "2026-10-01T10:02:05.467Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Work alone. Item 1: 18 ÷ 3 = 6 cakes. Item 2: 35 ÷ 5 = 7 and 7 × 3 = 21 cakes. Item 3: 32 ÷ 8 = 4 and 4 × 9 = 36 cakes. A good explanation says that the numerator counts nine eighths, whereas eight eighths already make the whole batch; the extra eighth adds 4 cakes. Item 4 settles the opening bakery order: 1 = 6/6, so 1 5/6 = 11/6; 24 ÷ 6 = 4 and 4 × 11 = 44 cakes. Harder challenge: an order of 2 3/4 trays contains 66 cakes; how many cakes fit one tray? Answer: 2 3/4 = 11/4, 66 ÷ 11 = 6 cakes per quarter-tray, and 6 × 4 = 24 cakes per tray."
+    }
+  ],
+  "createdAt": "2026-10-01T10:00:56.809Z",
+  "updatedAt": "2026-10-01T10:00:56.809Z",
+  "fitVersion": 3,
+  "subject": "Maths",
+  "ageBand": "ks2",
+  "yearGroup": "Year 5",
+  "language": "en-GB",
+  "brief": { "topic": "Fractions of amounts", "durationMin": 60, "slideCount": 10 },
+  "facts": {
+    "objectives": [
+      { "id": "o1", "text": "Calculate unit and non-unit proper fractions of amounts." },
+      { "id": "o2", "text": "Calculate improper fractions and mixed-number fractions of amounts." }
+    ],
+    "vocabulary": [],
+    "workedExamples": [
+      {
+        "id": "x1",
+        "problem": "How many cakes are in 3/4 of a tray of 24 cakes?",
+        "steps": [
+          "24 ÷ 4 = 6 — find one quarter",
+          "6 × 3 = 18 — count three quarters",
+          "3/4 of 24 = 18 cakes — give the amount"
+        ],
+        "answer": "3/4 of 24 = 18 cakes — give the amount",
+        "objectiveRefs": ["o1"]
+      },
+      {
+        "id": "x2",
+        "problem": "How many cakes are in 7/6 of a tray of 24 cakes?",
+        "steps": [
+          "24 ÷ 6 = 4 — find one sixth",
+          "4 × 7 = 28 — count seven sixths",
+          "7/6 of 24 = 28 cakes — more than one tray"
+        ],
+        "answer": "7/6 of 24 = 28 cakes — more than one tray",
+        "objectiveRefs": ["o2"]
+      },
+      {
+        "id": "x3",
+        "problem": "How many cakes are in 1 2/3 trays if one tray holds 24 cakes?",
+        "steps": [
+          "1 = 3/3 — write the whole in thirds",
+          "1 2/3 = 5/3 — include the extra two thirds",
+          "24 ÷ 3 = 8 — find one third",
+          "8 × 5 = 40 — count five thirds",
+          "1 2/3 of 24 = 40 cakes — give the answer"
+        ],
+        "answer": "1 2/3 of 24 = 40 cakes — give the answer",
+        "objectiveRefs": ["o2"]
+      }
+    ],
+    "questions": [
+      {
+        "id": "q1",
+        "stem": "What is 1/5 of 30 cakes?",
+        "answer": "6 cakes",
+        "reasoning": "",
+        "objectiveRefs": ["o1"],
+        "use": "slide"
+      },
+      {
+        "id": "q2",
+        "stem": "What is 2/3 of 30 cakes?",
+        "answer": "20 cakes",
+        "reasoning": "",
+        "objectiveRefs": ["o1"],
+        "use": "slide"
+      },
+      {
+        "id": "q3",
+        "stem": "What is 5/4 of a batch of 16 cakes?",
+        "answer": "20",
+        "reasoning": "Five equal quarter-parts",
+        "objectiveRefs": ["o1", "o2"],
+        "distractors": [{ "text": "12" }, { "text": "4" }, { "text": "80" }],
+        "use": "slide"
+      }
+    ],
+    "misconceptions": [
+      {
+        "id": "m1",
+        "belief": "A fraction of an amount must be smaller than the amount. In fact, a fraction greater than one gives more than the original amount: the denominator sets the equal parts and the numerator counts them.",
+        "correction": "",
+        "objectiveRefs": ["o1", "o2"]
+      }
+    ],
+    "outline": [
+      { "id": "s1", "kind": "title", "factRefs": ["o1", "o2"] },
+      { "id": "s2", "kind": "objectives", "factRefs": ["o1", "o2"] },
+      {
+        "id": "s3",
+        "kind": "starter",
+        "factRefs": ["o1"],
+        "brief": {
+          "adds": "retrieval warm-up: three short questions on what pupils learned before that this lesson builds on, never what it teaches"
+        },
+        "phase": "starter"
+      },
+      {
+        "id": "s4",
+        "kind": "content",
+        "factRefs": ["o1", "k1"],
+        "brief": { "adds": "find one equal part of a tray" },
+        "phase": "explain"
+      },
+      {
+        "id": "s5",
+        "kind": "worked-example",
+        "factRefs": ["o1", "x1"],
+        "brief": { "adds": "calculate a non-unit fraction" },
+        "phase": "explain"
+      },
+      {
+        "id": "s6",
+        "kind": "starter",
+        "factRefs": ["o1", "q1", "q2"],
+        "brief": { "adds": "calculate proper fractions together" },
+        "phase": "check"
+      },
+      {
+        "id": "s7",
+        "kind": "content",
+        "factRefs": ["o2", "k2"],
+        "brief": { "adds": "show fractions greater than one" },
+        "phase": "explain"
+      },
+      {
+        "id": "s8",
+        "kind": "worked-example",
+        "factRefs": ["o2", "x2"],
+        "brief": { "adds": "calculate an improper fraction" },
+        "phase": "explain"
+      },
+      {
+        "id": "s9",
+        "kind": "worked-example",
+        "factRefs": ["o2", "x3"],
+        "brief": { "adds": "calculate a mixed-number fraction" },
+        "phase": "explain"
+      },
+      {
+        "id": "s10",
+        "kind": "multiple-choice",
+        "factRefs": ["o1", "o2", "q3"],
+        "brief": { "adds": "check the divide then multiply method" },
+        "phase": "check"
+      },
+      {
+        "id": "s11",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "k3"],
+        "brief": { "adds": "practise independently then settle the bakery order" },
+        "phase": "explain"
+      }
+    ],
+    "durationMin": 60,
+    "keyIdeas": [
+      {
+        "id": "k1",
+        "statement": "The denominator sets the equal parts",
+        "explanation": "One tray: There are 24 cakes. One quarter of the tray holds 6 cakes. Fraction words: The denominator is the bottom number. It tells us how many equal parts make one whole. One part: A unit fraction has 1 on top. Divide the amount by the denominator. bar-model A tray of 24 cakes is split into four equal parts of 6 cakes, with one part shaded. One quarter of a tray Cakes  6   6   6   6  24",
+        "example": "",
+        "objectiveRefs": ["o1"]
+      },
+      {
+        "id": "k2",
+        "statement": "Improper fractions can exceed one whole",
+        "explanation": "Five quarters: Each quarter-tray holds 6 cakes. Five quarters hold 30 cakes. The rule: An improper fraction has a numerator at least as large as its denominator. More than one: Four quarters make one tray. Five quarters need one extra quarter-tray. bar-model One complete tray has four shaded parts of 6 cakes, and a second tray has one shaded part of 6 cakes. Five quarters of a tray Tray 1  6   6   6   6  24 Tray 2  6   6   6   6  24",
+        "example": "",
+        "objectiveRefs": ["o2"]
+      },
+      {
+        "id": "k3",
+        "statement": "Your turn: find fractions of cake orders",
+        "explanation": "Show your working. 1: Find 1/3 of 18 cakes and explain why you divide by 3 first. 2: Find 3/5 of 35 cakes and explain why you multiply by 3 next. 3: Explain why 9/8 of 32 cakes is greater than 32, using the numerator. 4: A tray holds 24 cakes; find how many cakes are needed for 1 5/6 trays and explain your method.",
+        "example": "",
+        "objectiveRefs": ["o1", "o2"]
+      }
+    ],
+    "retrieval": [
+      { "question": "What is 24 ÷ 6?", "answer": "4" },
+      { "question": "What is 7 × 4?", "answer": "28" },
+      { "question": "In 3/8, which number is the numerator?", "answer": "3" }
+    ]
+  },
+  "generation": {
+    "jobId": "fixture-y5-fractions",
+    "stage": "repaired",
+    "startedAt": "2026-10-01T10:00:00.000Z",
+    "promptVersions": {},
+    "usage": { "calls": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0 },
+    "findings": []
+  }
+}

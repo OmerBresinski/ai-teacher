@@ -72,6 +72,8 @@ export type WorksheetGenerationStage = (typeof WORKSHEET_GENERATION_STAGES)[numb
  * `/worksheet` request, the job payload and `Worksheet.generation` all validate against it.
  */
 export const WORKSHEET_RECIPE_IDS = [
+  // TEACH-86: the default for a generated lesson, built from its slides by the worksheet job.
+  "lesson",
   "exit-ticket",
   "knowledge-check",
   "misconception-check",

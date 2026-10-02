@@ -462,7 +462,7 @@ export const WORKSHEET_RECIPES: readonly WorksheetRecipe[] = [
 ];
 
 export function recipeById(id: string): WorksheetRecipe | undefined {
-  return WORKSHEET_RECIPES.find((r) => r.id === id);
+  return GENERATED_RECIPES.find((r) => r.id === id);
 }
 
 export function isRecipeId(id: string): id is RecipeId {
@@ -470,11 +470,43 @@ export function isRecipeId(id: string): id is RecipeId {
 }
 
 /**
- * Which recipe gets the one Suggested pill: a pure rule on the facts. Misconceptions present →
- * Misconception check; a worked example present → Worked example and practice; otherwise
- * Knowledge check. No facts at all reads as Knowledge check too.
+ * The default for a generated lesson (TEACH-86, ruling 144): no fixed block list. The frame is one
+ * placeholder; the worksheet job reads the finished lesson's slides and writes one task per
+ * learning cycle in its place (`@tj/generation` `fillLessonSheet`). Not in `WORKSHEET_RECIPES`:
+ * those build a whole sheet with no model call, which the frame-only surfaces (`/worksheets/new`,
+ * the add-block dialog) rely on.
+ */
+export const LESSON_RECIPE: WorksheetRecipe = {
+  id: "lesson",
+  name: "Follows the lesson",
+  line: "One task for each part of the lesson, supported first, then a stretch, with answers.",
+  jobs: ["practise"],
+  minutes: [15, 25],
+  build: (facts) => [
+    placeholder(
+      "one task for each learning cycle of the finished lesson, supported first and then stretched.",
+      facts?.objectives.map((o) => o.id),
+    ),
+  ],
+};
+
+/** Every recipe a generation request may name: the lesson default, then the nine. */
+export const GENERATED_RECIPES: readonly WorksheetRecipe[] = [LESSON_RECIPE, ...WORKSHEET_RECIPES];
+
+/**
+ * Which recipe gets the one Suggested pill: a generated lesson (it has facts) gets "Follows the
+ * lesson" (TEACH-86). No facts at all reads as Knowledge check.
  */
 export function suggestRecipe(facts?: LessonFacts): RecipeId {
+  return facts ? "lesson" : "knowledge-check";
+}
+
+/**
+ * The suggestion among the nine frame recipes, for the surfaces that build a sheet with no model
+ * call: misconceptions present → Misconception check; a worked example present → Worked example
+ * and practice; otherwise Knowledge check.
+ */
+export function suggestFrameRecipe(facts?: LessonFacts): RecipeId {
   if (facts && facts.misconceptions.length > 0) return "misconception-check";
   if (facts && facts.workedExamples.length > 0) return "worked-example";
   return "knowledge-check";
