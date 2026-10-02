@@ -7,6 +7,10 @@ import { FIXTURES, PLAN_SKELETONS, sampleBriefLesson } from "../testing";
 import { FIGURE_FIT, FIGURE_NUMBERS, FIGURE_UNKNOWN, FIGURE_VALUES } from "./figures";
 import { generateSlidePrompt, ownMisconceptions } from "./generate-slide";
 import { generateWorksheetFillPrompt, type WorksheetFill } from "./generate-worksheet-fill";
+import {
+  type GenerateWorksheetLessonInput,
+  generateWorksheetLessonPrompt,
+} from "./generate-worksheet-lesson";
 import { promptHash } from "./hash";
 import {
   PROMPT_VERSIONS,
@@ -271,9 +275,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "generate-worksheet-lesson": {
-    // TEACH-86: a draft placeholder until the prompt-engineer's v2 (scratchpad/t86-PROMPT-BRIEF.md).
-    version: "generate-worksheet-lesson.v1",
-    hash: "92c1c480cabd19bc7f5d6f39977b8f65123ac0a96c2578df33fb20713aa5a9ba",
+    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder).
+    version: "generate-worksheet-lesson.v2",
+    hash: "bb1f5914ffb0f010a0343d8c475c61547d427929863eab05094354e49f5924f6",
   },
   "parse-brief": {
     version: "parse-brief.v2",
@@ -1133,5 +1137,44 @@ describe("verify-facts v6: the field map names a starter line's fields", () => {
     expect(verifyFactsPrompt.system).toContain(
       "a starter question `question — answer` (fields stem, answer); every other field is labelled.",
     );
+  });
+});
+
+describe("generate-worksheet-lesson (TEACH-86)", () => {
+  const base = SAMPLE_INPUTS["generate-worksheet-lesson"] as GenerateWorksheetLessonInput;
+  const prompt = generateWorksheetLessonPrompt;
+
+  test("the user turn carries the derived sizes the system text points at", () => {
+    const text = prompt.user({
+      ...base,
+      practiceMinutes: 20,
+      cycles: [...base.cycles, ...base.cycles],
+    });
+    expect(text).toContain("about 20 minutes, so about 10 minutes per task.");
+    expect(prompt.system).toContain("minutes per task the user turn gives");
+    expect(prompt.system).toContain("As many items as the exit-ticket line says");
+  });
+
+  test("the exit ticket asks one per objective, at most three", () => {
+    const o = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ id: `o${i + 1}`, text: `Objective ${i + 1}` }));
+    expect(prompt.user({ ...base, objectives: o(2) })).toContain(
+      "Exit ticket: yes, 2 questions, one per objective, in order.",
+    );
+    expect(prompt.user({ ...base, objectives: o(5) })).toContain(
+      "Exit ticket: yes, 3 questions, one for each of the 3 objectives that matter most.",
+    );
+    expect(prompt.user({ ...base, exitTicket: false })).toContain("Exit ticket: no (answer null).");
+  });
+
+  test("exam style and the misconception's correction", () => {
+    expect(prompt.user(base)).toContain("Exam-style marked items: not used for this class");
+    expect(prompt.user({ ...base, fit: { ...base.fit, examStyle: true } })).toContain(
+      "Exam-style marked items: allowed",
+    );
+    const m = { id: "m1", belief: "Heavier things fall faster.", correction: "" };
+    const text = prompt.user({ ...base, misconceptions: [m] });
+    expect(text).toContain("m1: Heavier things fall faster.");
+    expect(text).not.toContain("Correction:");
   });
 });
