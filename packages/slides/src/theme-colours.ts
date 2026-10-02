@@ -66,7 +66,7 @@ function themedDoc(doc: RichDoc, theme: Theme): RichDoc {
   return { ...doc, content: walk(doc.content) ?? [] } as RichDoc;
 }
 
-function themedElement(e: SlideElement, theme: Theme): SlideElement {
+function themedElement(e: SlideElement, theme: Theme, docs: boolean): SlideElement {
   const out = { ...e } as Record<string, unknown> & SlideElement;
   for (const key of ["fill", "stroke", "color"] as const) {
     const v = (e as Record<string, unknown>)[key];
@@ -77,11 +77,19 @@ function themedElement(e: SlideElement, theme: Theme): SlideElement {
   const ts = (e as { textStyle?: { color?: string } }).textStyle;
   if (ts?.color) out.textStyle = { ...ts, color: themedColour(ts.color, theme) };
   const doc = (e as { doc?: RichDoc }).doc;
-  if (doc) out.doc = themedDoc(doc, theme);
+  if (doc && docs) out.doc = themedDoc(doc, theme);
   return out;
 }
 
-/** The slide with every theme-token colour drawn in `theme`. */
-export function withThemeColours(slide: Slide, theme: Theme): Slide {
-  return { ...slide, elements: slide.elements.map((e) => themedElement(e, theme)) };
+/**
+ * The slide with every theme-token colour drawn in `theme`. `docs: false` leaves each element's
+ * rich text as stored: the editor seeds Tiptap from the doc it draws and saves what Tiptap holds,
+ * so a themed doc there would write the remapped colours into the lesson on the first keystroke.
+ */
+export function withThemeColours(
+  slide: Slide,
+  theme: Theme,
+  { docs = true }: { docs?: boolean } = {},
+): Slide {
+  return { ...slide, elements: slide.elements.map((e) => themedElement(e, theme, docs)) };
 }

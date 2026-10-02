@@ -102,8 +102,12 @@ export function SlideView({
    * (`slot-placeholders.ts`) no longer draws briefs outside the editor.
    */
   const slide = useMemo(
-    // Look colours are theme tokens, drawn in the slide's own theme whatever theme wrote them.
-    () => withThemeColours(mode === "edit" ? given : withoutDiagramSlot(given, theme), theme),
+    // Look colours are theme tokens, drawn in the slide's own theme whatever theme wrote them. The
+    // editor keeps each text's stored doc: its Tiptap editors save the doc they were given.
+    () =>
+      mode === "edit"
+        ? withThemeColours(given, theme, { docs: false })
+        : withThemeColours(withoutDiagramSlot(given, theme), theme),
     [given, theme, mode],
   );
   /**

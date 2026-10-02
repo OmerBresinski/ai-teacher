@@ -39,9 +39,9 @@ export function hasExplanationPanel(question: QuestionData | undefined): boolean
  * not, since the editor draws the panel there to type in.
  */
 export function owesExplanationLane(slide: Pick<Slide, "question" | "elements">): boolean {
-  if (!hasExplanationPanel(slide.question)) return false;
-  const reason = (slide.question as { explanation?: unknown }).explanation;
-  if (typeof reason === "string" && reason.trim().length > 0) return true;
+  const q = slide.question;
+  if (q?.type !== "true-false" && q?.type !== "multiple-choice") return false;
+  if (q.explanation?.trim()) return true;
   return !isGeneratedSlide(slide);
 }
 

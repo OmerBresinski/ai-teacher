@@ -438,6 +438,8 @@ describe("review fixes (look/slides-layout)", () => {
     // Relaid as present draws it: every sentence still said, in whatever order the layout reads.
     const said = words([shown]);
     for (const sentence of words([cover]).split(/(?<=\.) /)) expect(said).toContain(sentence);
+    // The export draws no box for it either.
+    expect(presentedSlide(cover, t).elements.some((e) => e.name === PHOTO_NAME)).toBe(false);
     // A filled slot is a photograph, not a brief.
     expect(isOpenPhotoSlot({ ...(slot as ImageElement), src: "/files/a.jpg" })).toBe(false);
   });

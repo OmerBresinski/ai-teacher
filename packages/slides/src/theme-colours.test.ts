@@ -60,6 +60,11 @@ describe("withThemeColours in a lesson's own theme", () => {
     expect(drawn?.style.color).toBe("#F3F5F8");
     const mark = drawn?.doc.content?.[0]?.content?.[0]?.marks?.[0];
     expect(mark?.attrs?.color).toBe("#F3F5F8");
+    // The editor's copy keeps the stored doc (its Tiptap editors save what they were seeded with)
+    // and themes the rest.
+    const [edited] = withThemeColours(slide, exam, { docs: false }).elements as TextElement[];
+    expect(edited?.doc).toBe(box.doc);
+    expect(edited?.style.color).toBe("#F3F5F8");
   });
 
   test("a colour no theme uses is the teacher's own and is left as it is", () => {

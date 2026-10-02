@@ -8,7 +8,7 @@ import { setSlotPlaceholders } from "./slot-placeholders";
 
 /*
  * look/image-slot: an open photo slot is the editor's placeholder and never an empty box in
- * present or export; the demo switch draws every slot in present, never in capture.
+ * present or export. A slot brief is drawn in the editor only, whatever the demo switch says.
  */
 
 const theme = getTheme("chalk");
@@ -65,7 +65,13 @@ describe("an open photo slot", () => {
 });
 
 describe("the demo switch", () => {
-  test("on, present and thumbnails still never draw a brief", () => {
+  test("on or off, present and the viewer never draw a brief; the editor always does", () => {
+    for (const on of [true, false]) {
+      setSlotPlaceholders(on);
+      expect(
+        shown(withPhoto, "edit").querySelector('[data-slot-placeholder="photo"]'),
+      ).not.toBeNull();
+    }
     setSlotPlaceholders(true);
     for (const mode of ["present", "view"] as const) {
       expect(shown(withPhoto, mode).querySelector("[data-slot-placeholder]")).toBeNull();
