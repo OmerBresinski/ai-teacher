@@ -58,7 +58,9 @@ describeDb("auth.anonymous-cleanup", () => {
     const expired = await anonymousUser(15);
     const claimed = await anonymousUser(15);
     const fresh = await anonymousUser(1);
-    // TEACH-224's claim: the Workspace now belongs to a signed-in teacher.
+    // TEACH-224's claim: the Workspace now belongs to a signed-in teacher. These are the two
+    // statements `claimAnonymousWorkspace` (apps/api/src/auth/claim.ts) runs; an app cannot import
+    // another, so the api's `claim.db.test.ts` checks the function leaves exactly this state.
     const teacher = await createTestUserWithWorkspace(db.unsafeDb);
     await db.sql`delete from workspaces where owner_user_id = ${teacher.userId}`;
     await db.sql`
@@ -88,6 +90,45 @@ describeDb("auth.anonymous-cleanup", () => {
 
     const counters = await db.sql<{ ip: string }[]>`select ip from anonymous_signins`;
     expect(counters.map((r) => r.ip)).toEqual(["203.0.113.2"]);
+  });
+
+  test("a claim that lands between the select and the delete keeps the Workspace and its objects", async () => {
+    const raced = await anonymousUser(15);
+    const teacher = await createTestUserWithWorkspace(db.unsafeDb);
+    await db.sql`delete from workspaces where owner_user_id = ${teacher.userId}`;
+    // Stand-in for TEACH-224's claim committing after the job's select: the moment the job deletes
+    // the anonymous user, the Workspace is handed over first, as `claimAnonymousWorkspace` does.
+    await db.sql.unsafe(`
+      create or replace function tj_test_claim_race() returns trigger language plpgsql as $$
+      begin
+        update workspaces set owner_user_id = '${teacher.userId}' where owner_user_id = old.id;
+        return old;
+      end $$`);
+    await db.sql.unsafe(`
+      create trigger tj_test_claim_race before delete on users
+      for each row when (old.id = '${raced.userId}') execute function tj_test_claim_race()`);
+    try {
+      const result = await runAnonymousCleanup({ sql: db.sql, storage, ttlDays: 14, logger });
+      expect(result).toEqual({ users: 1, workspaces: 0, objects: 0, objectFailures: 0 });
+    } finally {
+      await db.sql`drop trigger if exists tj_test_claim_race on users`;
+      await db.sql`drop function if exists tj_test_claim_race()`;
+    }
+    expect(await count("users", raced.userId)).toBe(0);
+    expect(await count("workspaces", raced.workspaceId)).toBe(1);
+    expect(await count("documents", raced.workspaceId)).toBe(1);
+    expect(await exists(raced.key)).toBe(true);
+  });
+
+  test("expired pending claims are swept; live ones and other verifications stay", async () => {
+    await db.sql`
+      insert into verifications (id, identifier, value, expires_at, created_at, updated_at)
+      values ('v1', 'claim:old@example.test', 'a1', now() - interval '1 minute', now(), now()),
+             ('v2', 'claim:live@example.test', 'a2', now() + interval '1 hour', now(), now()),
+             ('v3', 'magic-token', '{}', now() - interval '1 minute', now(), now())`;
+    await runAnonymousCleanup({ sql: db.sql, storage, ttlDays: 14, logger });
+    const left = await db.sql<{ id: string }[]>`select id from verifications order by id`;
+    expect(left.map((r) => r.id)).toEqual(["v2", "v3"]);
   });
 
   test("a signed-in user is never deleted, however old", async () => {

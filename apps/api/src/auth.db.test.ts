@@ -12,22 +12,33 @@ import {
   spyOn,
   test,
 } from "bun:test";
-import { insertJobEvent } from "@tj/db";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createDocument, forWorkspace, insertJobEvent } from "@tj/db";
 import {
   cookieHeaderFromResponse,
   createTestUserWithWorkspace,
   issueSessionCookie,
   withTestDb,
 } from "@tj/db/testing";
-import { type JobId, newId, type WorkspaceId } from "@tj/domain";
+import { type JobId, newId, storageKey, type WorkspaceId } from "@tj/domain";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
 import type { JobsContext } from "@tj/jobs";
+import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "./app";
 import { type AuthEnv, createAuth } from "./auth/auth";
 import { createPersonalWorkspace, logUsersWithoutWorkspace } from "./auth/workspace-hook";
 import { SMALL_JSON_BODY_BYTES } from "./body-limits";
 import { createEventsRuntime } from "./events/runtime";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
-import { captureLogger, silentLogger, TEST_ENV, verifyUrlFromEmailLink } from "./test-helpers";
+import {
+  captureLogger,
+  silentLogger,
+  TEST_ENV,
+  verifyUrlFromEmailLink,
+  withFailingWorkspaceHandover,
+} from "./test-helpers";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -61,10 +72,18 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     mail.clear();
   });
 
-  async function requestMagicLink(email: string): Promise<string> {
-    const res = await app.request(`${BASE}/auth/sign-in/magic-link`, {
+  /** Ask for a link as the web does; `cookie` is the asking browser's session, if any. */
+  async function requestMagicLink(
+    email: string,
+    { target = app, cookie }: { target?: typeof app; cookie?: string } = {},
+  ): Promise<string> {
+    const res = await target.request(`${BASE}/auth/sign-in/magic-link`, {
       method: "POST",
-      headers: { "content-type": "application/json", origin: WEB },
+      headers: {
+        "content-type": "application/json",
+        origin: WEB,
+        ...(cookie ? { cookie } : {}),
+      },
       body: JSON.stringify({ email, callbackURL: `${WEB}/` }),
     });
     expect(res.status).toBe(200);
@@ -556,24 +575,10 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     return { anon, cookie };
   }
 
-  test("linking keeps the anonymous user and its workspace (disableDeleteAnonymousUser)", async () => {
-    const { anon, cookie } = await linkAnonymousToMagicLink(anonApp, "linked@example.test");
-
-    const signedIn = await meBody(anonApp, cookie);
-    expect(signedIn.user.email).toBe("linked@example.test");
-    expect(signedIn.user.isAnonymous).toBe(false);
-    expect(signedIn.user.id).not.toBe(anon.user.id);
-    expect(signedIn.workspaceId).not.toBe(anon.workspaceId);
-
-    expect(await userRow(anon.user.id)).toEqual({ id: anon.user.id, is_anonymous: true });
-    expect([...(await workspacesFor(anon.user.id))]).toEqual([
-      { id: anon.workspaceId, name: "Personal" },
-    ]);
-  });
-
-  test("control: with the plugin default the same link deletes the anonymous user and workspace", async () => {
-    // Proves the test above exercises the plugin's link hook: flip the option on a separate
-    // instance and the anonymous user (and, by cascade, its workspace) is gone.
+  test("control: with the plugin default the same link deletes the anonymous user", async () => {
+    // Proves the claim tests below exercise the plugin's link hook: flip the option on a separate
+    // instance and the anonymous user is gone. Its Workspace survives only because `onLinkAccount`
+    // ran first and handed it to the new account; for an existing account it would cascade away.
     const defaultAuth = createAuth({ env: AUTH_ENV, db, mail, logger: silentLogger });
     const plugin = defaultAuth.options.plugins.find((p) => p.id === "anonymous");
     if (!plugin?.options) throw new Error("anonymous plugin not registered");
@@ -586,8 +591,231 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       auth: defaultAuth,
     });
 
-    const { anon } = await linkAnonymousToMagicLink(defaultApp, "control@example.test");
+    const { anon, cookie } = await linkAnonymousToMagicLink(defaultApp, "control@example.test");
     expect(await userRow(anon.user.id)).toBeUndefined();
     expect(await workspacesFor(anon.user.id)).toHaveLength(0);
+    expect((await meBody(defaultApp, cookie)).workspaceId).toBe(anon.workspaceId);
+  });
+
+  // --- claim on sign-in (TEACH-224) -------------------------------------------------------------
+
+  describe("claim on sign-in (TEACH-224)", () => {
+    const claimLog = captureLogger();
+    const storageRoot = mkdtempSync(join(tmpdir(), "tj-224-"));
+    const storage = new LocalDiskStorage(storageRoot);
+    const claimAuth = createAuth({ env: AUTH_ENV, db, mail, logger: claimLog.logger });
+    const claimApp = createApp({
+      env: TEST_ENV,
+      db,
+      logger: silentLogger,
+      auth: claimAuth,
+      storage,
+    });
+
+    afterAll(() => rmSync(storageRoot, { recursive: true, force: true }));
+    beforeEach(() => {
+      claimLog.lines.length = 0;
+    });
+
+    /** Browser 1: an anonymous session whose Workspace holds lesson L and one picture. */
+    async function visitorWithLesson() {
+      const { cookie } = await signInAnonymously(claimApp);
+      const me = await meBody(claimApp, cookie);
+      const ws = me.workspaceId as WorkspaceId;
+      const lesson = await createDocument(
+        forWorkspace(db.unsafeDb, ws),
+        "lesson",
+        generatedLesson(),
+      );
+      const key = storageKey(ws, "images", "a.png");
+      await storage.put(key, new Uint8Array([1, 2, 3]), { contentType: "image/png" });
+      return { cookie, userId: me.user.id, workspaceId: me.workspaceId, lessonId: lesson.id, key };
+    }
+    /** Open the verify URL as the confirm page's button does, from `cookie`'s browser if given. */
+    async function verify(link: string, cookie?: string) {
+      const res = await claimApp.request(link, {
+        redirect: "manual",
+        headers: cookie ? { cookie } : {},
+      });
+      expect(res.status).toBe(302);
+      const signedIn = cookieHeaderFromResponse(res);
+      expect(signedIn).toContain("tj.session_token=");
+      return signedIn;
+    }
+    const get = (cookie: string, path: string) =>
+      claimApp.request(`${BASE}${path}`, { headers: { cookie } });
+    async function claimRows() {
+      return [
+        ...(await db.sql<{ identifier: string; value: string }[]>`
+          select identifier, value from verifications where identifier like 'claim:%'`),
+      ];
+    }
+    function logged(msg: string) {
+      return claimLog.lines
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .filter((line) => line.msg === msg)
+        .map(({ level, claim, via, anonymousUserId, userId }) => ({
+          level,
+          claim,
+          via,
+          anonymousUserId,
+          userId,
+        }));
+    }
+    const workspaceCount = async () =>
+      Number((await db.sql`select count(*)::text as c from workspaces`)[0]?.c);
+
+    test("rows 1 and 8: a link opened in the visitor's browser hands the Workspace over", async () => {
+      const a = await visitorWithLesson();
+      // Asked for without the anonymous cookie, so no pending row: `onLinkAccount` alone claims.
+      const link = await requestMagicLink("new-teacher@example.test", { target: claimApp });
+      expect(await claimRows()).toEqual([]);
+
+      const cookie = await verify(link, a.cookie);
+      const n = await meBody(claimApp, cookie);
+      expect(n.user.isAnonymous).toBe(false);
+      expect(n.workspaceId).toBe(a.workspaceId);
+      // N's own empty Workspace is gone; the anonymous user stays, owning nothing.
+      expect(await workspaceCount()).toBe(1);
+      expect(await workspacesFor(a.userId)).toHaveLength(0);
+      expect(await userRow(a.userId)).toEqual({ id: a.userId, is_anonymous: true });
+
+      expect((await get(cookie, `/documents/${a.lessonId}`)).status).toBe(200);
+      expect((await get(cookie, `/files/${a.key}`)).status).toBe(200);
+      expect(logged("anonymous workspace claim")).toEqual([
+        {
+          level: 30,
+          claim: "claimed",
+          via: "link",
+          anonymousUserId: a.userId,
+          userId: n.user.id,
+        },
+      ]);
+      expect(claimLog.lines.join("\n")).not.toContain("new-teacher@example.test");
+    });
+
+    test("row 3: asked for in browser 1, opened in browser 2: the pending row claims", async () => {
+      const a = await visitorWithLesson();
+      const link = await requestMagicLink("phone@example.test", {
+        target: claimApp,
+        cookie: a.cookie,
+      });
+      expect(await claimRows()).toEqual([
+        { identifier: "claim:phone@example.test", value: a.userId },
+      ]);
+
+      const cookie = await verify(link); // a fresh cookie jar
+      const n = await meBody(claimApp, cookie);
+      expect(n.workspaceId).toBe(a.workspaceId);
+      expect(await claimRows()).toEqual([]);
+      expect((await get(cookie, `/documents/${a.lessonId}`)).status).toBe(200);
+      expect((await get(cookie, `/files/${a.key}`)).status).toBe(200);
+      expect(logged("anonymous workspace claim")).toEqual([
+        {
+          level: 30,
+          claim: "claimed",
+          via: "pending",
+          anonymousUserId: a.userId,
+          userId: n.user.id,
+        },
+      ]);
+      expect(claimLog.lines.join("\n")).not.toContain("phone@example.test");
+    });
+
+    test("pending row and same browser: the pending claim runs first, the link finds nothing", async () => {
+      const a = await visitorWithLesson();
+      const link = await requestMagicLink("both@example.test", {
+        target: claimApp,
+        cookie: a.cookie,
+      });
+      const n = await meBody(claimApp, await verify(link, a.cookie));
+      expect(n.workspaceId).toBe(a.workspaceId);
+      expect(logged("anonymous workspace claim").map(({ claim, via }) => ({ claim, via }))).toEqual(
+        [
+          { claim: "claimed", via: "pending" },
+          { claim: "nothing-to-claim", via: "link" },
+        ],
+      );
+    });
+
+    test("row 4: an existing account signing in from the visitor's browser declines", async () => {
+      const e = await createTestUserWithWorkspace(db.unsafeDb, { email: "existing@example.test" });
+      const own = await createDocument(
+        forWorkspace(db.unsafeDb, e.workspaceId),
+        "lesson",
+        generatedLesson(),
+      );
+      const a = await visitorWithLesson();
+      const link = await requestMagicLink("existing@example.test", {
+        target: claimApp,
+        cookie: a.cookie,
+      });
+
+      const cookie = await verify(link, a.cookie);
+      expect((await meBody(claimApp, cookie)).workspaceId).toBe(e.workspaceId);
+      expect([...(await workspacesFor(e.userId))].map((w) => w.id)).toEqual([e.workspaceId]);
+      expect([...(await workspacesFor(a.userId))].map((w) => w.id)).toEqual([a.workspaceId]);
+      expect((await get(cookie, `/documents/${own.id}`)).status).toBe(200);
+      expect((await get(cookie, `/documents/${a.lessonId}`)).status).toBe(404);
+      expect(logged("anonymous workspace claim").map(({ claim, via }) => ({ claim, via }))).toEqual(
+        [
+          { claim: "declined-existing", via: "pending" },
+          { claim: "declined-existing", via: "link" },
+        ],
+      );
+    });
+
+    test("row 5: a pending claim past its hour is removed and ignored", async () => {
+      const a = await visitorWithLesson();
+      const link = await requestMagicLink("slow@example.test", {
+        target: claimApp,
+        cookie: a.cookie,
+      });
+      await db.sql`update verifications set expires_at = now() - interval '1 second'
+        where identifier = 'claim:slow@example.test'`;
+
+      const n = await meBody(claimApp, await verify(link));
+      expect(n.workspaceId).not.toBe(a.workspaceId);
+      expect([...(await workspacesFor(a.userId))].map((w) => w.id)).toEqual([a.workspaceId]);
+      expect(await claimRows()).toEqual([]);
+      expect(logged("anonymous workspace claim")).toEqual([]);
+    });
+
+    test("row 6: no claim row without an anonymous session, nor from a signed-in browser", async () => {
+      await requestMagicLink("plain@example.test", { target: claimApp });
+      expect(await claimRows()).toEqual([]);
+      const signedIn = await verify(
+        await requestMagicLink("plain@example.test", { target: claimApp }),
+      );
+      await requestMagicLink("someone@example.test", { target: claimApp, cookie: signedIn });
+      expect(await claimRows()).toEqual([]);
+    });
+
+    test("row 7: a failing claim still signs the teacher in and leaves both Workspaces whole", async () => {
+      const a = await visitorWithLesson();
+      const link = await requestMagicLink("fault@example.test", {
+        target: claimApp,
+        cookie: a.cookie,
+      });
+      let cookie = "";
+      await withFailingWorkspaceHandover(db, async () => {
+        cookie = await verify(link, a.cookie);
+      });
+
+      const n = await meBody(claimApp, cookie);
+      expect(n.workspaceId).not.toBe(a.workspaceId);
+      expect([...(await workspacesFor(a.userId))].map((w) => w.id)).toEqual([a.workspaceId]);
+      expect(await workspaceCount()).toBe(2);
+      expect(logged("anonymous workspace claim failed")).toEqual([
+        {
+          level: 50,
+          claim: undefined,
+          via: "pending",
+          anonymousUserId: a.userId,
+          userId: n.user.id,
+        },
+        { level: 50, claim: undefined, via: "link", anonymousUserId: a.userId, userId: n.user.id },
+      ]);
+    });
   });
 });

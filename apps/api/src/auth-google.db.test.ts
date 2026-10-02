@@ -5,11 +5,14 @@
  * decodes. Skips visibly when the database is unreachable.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { createDocument, forWorkspace } from "@tj/db";
 import { cookieHeaderFromResponse, withTestDb } from "@tj/db/testing";
+import type { WorkspaceId } from "@tj/domain";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { createApp } from "./app";
 import { type AuthEnv, createAuth } from "./auth/auth";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
-import { silentLogger, TEST_ENV, verifyUrlFromEmailLink } from "./test-helpers";
+import { captureLogger, silentLogger, TEST_ENV, verifyUrlFromEmailLink } from "./test-helpers";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -86,23 +89,32 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
   if (!t.ok) return;
   const db = t.db;
   const mail = new CaptureMailSender();
-  const auth = createAuth({ env: AUTH_ENV, db, mail, logger: silentLogger });
+  const authLog = captureLogger();
+  const auth = createAuth({ env: AUTH_ENV, db, mail, logger: authLog.logger });
   const app = createApp({ env: TEST_ENV, db, logger: silentLogger, auth });
 
   afterAll(() => db.close());
   beforeEach(async () => {
     await db.truncateTenantTables();
     mail.clear();
+    authLog.lines.length = 0;
   });
   afterEach(() => {
     globalThis.fetch = realFetch;
   });
 
-  /** `POST /auth/sign-in/social` as the web sends it; returns the state and the state cookie. */
-  async function startGoogleSignIn() {
+  /**
+   * `POST /auth/sign-in/social` as the web sends it, from a browser holding `browser`'s cookies if
+   * given; returns the state and the browser's cookies with the state cookie added.
+   */
+  async function startGoogleSignIn(browser?: string) {
     const res = await app.request(`${BASE}/auth/sign-in/social`, {
       method: "POST",
-      headers: { "content-type": "application/json", origin: WEB },
+      headers: {
+        "content-type": "application/json",
+        origin: WEB,
+        ...(browser ? { cookie: browser } : {}),
+      },
       body: JSON.stringify({
         provider: "google",
         callbackURL: `${WEB}/`,
@@ -114,7 +126,7 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
     const { url } = (await res.json()) as { url: string };
     const state = new URL(url).searchParams.get("state");
     if (!state) throw new Error("no state in the Google authorization URL");
-    const cookie = cookieHeaderFromResponse(res);
+    const cookie = [browser, cookieHeaderFromResponse(res)].filter(Boolean).join("; ");
     expect(cookie).toContain("tj.state=");
     return { state, cookie };
   }
@@ -127,8 +139,8 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
   }
 
   /** Start, let Google answer with `profile`, and follow the callback without redirecting. */
-  async function signInWithGoogle(profile: GoogleProfile) {
-    const { state, cookie } = await startGoogleSignIn();
+  async function signInWithGoogle(profile: GoogleProfile, browser?: string) {
+    const { state, cookie } = await startGoogleSignIn(browser);
     const seen = stubGoogleTokenEndpoint(profile);
     const res = await googleCallback(new URLSearchParams({ code: "c", state }), cookie);
     expect(seen).toEqual([GOOGLE_TOKEN_ENDPOINT]);
@@ -204,6 +216,45 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
     const me = await app.request(`${BASE}/me`, { headers: { cookie } });
     expect(me.status).toBe(200);
     expect(((await me.json()) as { user: { id: string } }).user.id).toBe(userId);
+  });
+
+  test("TEACH-224 row 2: a new Google account in the visitor's browser takes the lesson", async () => {
+    const anon = await app.request(`${BASE}/auth/sign-in/anonymous`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB },
+      body: "{}",
+    });
+    const anonCookie = cookieHeaderFromResponse(anon);
+    const visitor = (await (
+      await app.request(`${BASE}/me`, { headers: { cookie: anonCookie } })
+    ).json()) as { user: { id: string }; workspaceId: string };
+    const lesson = await createDocument(
+      forWorkspace(db.unsafeDb, visitor.workspaceId as WorkspaceId),
+      "lesson",
+      generatedLesson(),
+    );
+
+    const res = await signInWithGoogle(ADA, anonCookie);
+    expect(res.status).toBe(302);
+    const cookie = cookieHeaderFromResponse(res);
+    const userId = (await userByEmail(ADA.email))?.id ?? "";
+    const me = await app.request(`${BASE}/me`, { headers: { cookie } });
+    expect(((await me.json()) as { workspaceId: string }).workspaceId).toBe(visitor.workspaceId);
+    expect(await workspaceCount(userId)).toBe(1);
+    expect(await workspaceCount(visitor.user.id)).toBe(0);
+    const doc = await app.request(`${BASE}/documents/${lesson.id}`, { headers: { cookie } });
+    expect(doc.status).toBe(200);
+    const claims = authLog.lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .filter((line) => line.msg === "anonymous workspace claim");
+    expect(claims).toEqual([
+      expect.objectContaining({
+        claim: "claimed",
+        via: "link",
+        anonymousUserId: visitor.user.id,
+        userId,
+      }),
+    ]);
   });
 
   test("a verified Google email links to the magic-link user and copies name and photo once", async () => {

@@ -7,6 +7,9 @@
  * Anonymous sessions (`POST /auth/sign-in/anonymous`, TEACH-223) are always on, bounded by the
  * daily cap and per-IP ceiling in `app.ts` (TEACH-222) and Turnstile (TEACH-243); an anonymous
  * user gets its personal Workspace from the same `databaseHooks.user.create.after` hook as everyone else.
+ * A new account signing in after it claims that Workspace (`claim.ts`, TEACH-224): through
+ * `onLinkAccount` on the same browser, or through the pending claim `sendMagicLink` writes and
+ * `databaseHooks.session.create.after` completes on another device.
  *
  * Mounted at `/auth/*` by `app.ts` (`basePath: "/auth"`), so the browser-facing endpoints are
  * `POST /auth/sign-in/magic-link`, `GET /auth/magic-link/verify`, `GET /auth/get-session`,
@@ -23,6 +26,7 @@ import type { Env } from "../env";
 import type { Logger } from "../logger";
 import type { MailSender } from "../mail";
 import { captchaPlugins } from "./captcha";
+import { claimOnLink, claimPending, recordPendingClaim } from "./claim";
 import { authIpAddress } from "./client-ip";
 import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
@@ -198,6 +202,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
         // The email links to the web's confirm page, not to the verify endpoint: a mail scanner's
         // GET must not spend the single-use token (TEACH-246).
         sendMagicLink: async ({ email, url }, ctx) => {
+          if (ctx) await recordPendingClaim(db, logger, ctx, email);
           const link = confirmPageUrl(url, env.WEB_ORIGIN[0] as string, (origin) =>
             Boolean(ctx?.context.isTrustedOrigin(origin)),
           );
@@ -206,7 +211,14 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
       }),
       // Linking must never delete the anonymous user: its workspace (and every lesson in it)
       // cascades from `users.id`, and the claim step needs it alive (TEACH-223).
-      anonymous({ disableDeleteAnonymousUser: true }),
+      anonymous({
+        disableDeleteAnonymousUser: true,
+        onLinkAccount: ({ anonymousUser, newUser }) =>
+          claimOnLink(db, logger, {
+            anonymousUserId: anonymousUser.user.id,
+            userId: newUser.user.id,
+          }),
+      }),
       ...captchaPlugins(env),
     ],
     socialProviders: socialProviders(env, logger),
@@ -234,6 +246,15 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
         create: {
           after: async (user) => {
             await createPersonalWorkspace(db, user.id);
+          },
+        },
+      },
+      // Every sign-in on every device, so `claimPending` is one query when there is no claim and
+      // never throws into the sign-in.
+      session: {
+        create: {
+          after: async (session) => {
+            await claimPending(db, logger, session.userId);
           },
         },
       },

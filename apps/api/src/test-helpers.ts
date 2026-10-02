@@ -69,3 +69,26 @@ export function verifyUrlFromEmailLink(link: string | undefined, apiBase: string
   verify.search = confirm.search;
   return verify.toString();
 }
+
+/**
+ * Make the claim's handover (`update workspaces set owner_user_id …`, TEACH-224) fail inside its
+ * transaction while `run` executes, after the target's empty Workspace was already deleted in it.
+ * A trigger on the shared test database, so it is always dropped again.
+ */
+export async function withFailingWorkspaceHandover(
+  db: Pick<DbHandle, "sql">,
+  run: () => Promise<void>,
+): Promise<void> {
+  await db.sql.unsafe(`
+    create or replace function tj_test_fail_claim() returns trigger language plpgsql as $$
+    begin raise exception 'injected claim fault'; end $$`);
+  await db.sql.unsafe(`
+    create trigger tj_test_fail_claim before update of owner_user_id on workspaces
+    for each row execute function tj_test_fail_claim()`);
+  try {
+    await run();
+  } finally {
+    await db.sql`drop trigger if exists tj_test_fail_claim on workspaces`;
+    await db.sql`drop function if exists tj_test_fail_claim()`;
+  }
+}
