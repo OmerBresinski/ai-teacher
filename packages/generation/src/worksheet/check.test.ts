@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
-import type { Finding, Lesson, WorksheetBlock } from "@tj/domain/documents";
+import type { Finding, Lesson, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { docFromText, estimateMinutes, resolveRecipe } from "@tj/slides";
 import { repairPrompt } from "../prompts";
 import { assignFactIds } from "../specs";
@@ -12,7 +12,12 @@ import {
   sampleBriefLesson,
   scriptedWorksheetAi,
 } from "../testing";
-import { checkWorksheet, PRACTICE_TIME_CHECK, practiceTimeFinding } from "./check";
+import {
+  checkWorksheet,
+  PRACTICE_TIME_CHECK,
+  practiceTimeFinding,
+  withoutStrayMarks,
+} from "./check";
 import { fillFrame } from "./fill";
 import { buildFrame } from "./frame";
 
@@ -194,5 +199,27 @@ describe("checkWorksheet", () => {
     expect(result.repaired).toBe(0);
     expect(result.findings).toEqual(findings);
     void docFromText;
+  });
+});
+
+describe("withoutStrayMarks (eval, 2 Oct)", () => {
+  const question = {
+    id: "q1",
+    type: "question",
+    doc: { type: "doc", content: [] },
+    answer: "8",
+    answerLines: 2,
+    marks: 2,
+  } as unknown as WorksheetBlock;
+  const sheet = (showMarks?: boolean) =>
+    ({ blocks: [], ...(showMarks ? { showMarks } : {}) }) as unknown as Worksheet;
+
+  test("a repaired block on an unmarked sheet (Year 5) loses the marks the repair added", () => {
+    const out = withoutStrayMarks(question, sheet());
+    expect("marks" in out).toBe(false);
+  });
+
+  test("a marked sheet (KS4, Exam style) keeps them", () => {
+    expect(withoutStrayMarks(question, sheet(true))).toBe(question);
   });
 });

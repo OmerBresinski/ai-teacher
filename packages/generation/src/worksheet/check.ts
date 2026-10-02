@@ -1,5 +1,5 @@
 import { isAiError } from "@tj/ai";
-import type { Finding, Lesson, Worksheet } from "@tj/domain/documents";
+import type { Finding, Lesson, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { checkLesson } from "@tj/domain/documents";
 import { emptyBlocks, estimateMinutes, numberQuestions } from "@tj/slides";
 import { repairBlock, repairTargets } from "../stages/repair";
@@ -105,7 +105,9 @@ export async function checkWorksheet(input: CheckInput, deps: CheckDeps): Promis
         deps,
       );
       if (!result) continue;
-      blocks = blocks.map((b, i) => (i === index ? result.block : b));
+      blocks = blocks.map((b, i) =>
+        i === index ? withoutStrayMarks(result.block, input.worksheet) : b,
+      );
       repaired.add(block.id);
       extra.push(...result.findings);
     } catch (error) {
@@ -151,4 +153,15 @@ export async function checkWorksheet(input: CheckInput, deps: CheckDeps): Promis
     "worksheet checked",
   );
   return { worksheet, findings, repaired: repaired.size };
+}
+
+/**
+ * A repair rewrites one block and may add marks. A sheet that does not show marks (below KS4 on
+ * "Follows the lesson", ruling 146; any frame recipe without them) keeps the block unmarked.
+ */
+export function withoutStrayMarks(block: WorksheetBlock, sheet: Worksheet): WorksheetBlock {
+  if (sheet.showMarks === true || block.type !== "question" || block.marks === undefined)
+    return block;
+  const { marks: _dropped, ...rest } = block;
+  return rest;
 }
