@@ -208,3 +208,56 @@ describe("keep with next (TEACH-86)", () => {
     expect(pages.map((p) => p.items.map((it) => it.key))).toEqual([["h"], ["q"]]);
   });
 });
+
+describe("the exit ticket stays on one page (TEACH-86)", () => {
+  const item = (id: string, type: "heading" | "instructions" | "paragraph", text = id) =>
+    ({
+      key: id,
+      kind: "block" as const,
+      block: {
+        id,
+        type,
+        doc: docFromText(text),
+        ...(type === "heading" ? { level: 2 as const } : {}),
+      },
+    }) as FlowItem;
+  const exit = [
+    item("x", "heading", "Exit ticket"),
+    item("xi", "instructions"),
+    item("x1", "paragraph"),
+    item("x2", "paragraph"),
+    item("x3", "paragraph"),
+  ];
+  const keys = (pages: { items: FlowItem[] }[]) => pages.map((p) => p.items.map((it) => it.key));
+
+  test("an exit ticket that would cross the page foot starts a fresh page", () => {
+    const h = { a: 300, x: 40, xi: 30, x1: 100, x2: 100, x3: 100 };
+    const { pages } = paginate([item("a", "paragraph"), ...exit], h, 0, 600);
+    expect(keys(pages)).toEqual([["a"], ["x", "xi", "x1", "x2", "x3"]]);
+  });
+
+  test("one that fits stays where it is", () => {
+    const h = { a: 100, x: 40, xi: 30, x1: 100, x2: 100, x3: 100 };
+    const { pages } = paginate([item("a", "paragraph"), ...exit], h, 0, 600);
+    expect(keys(pages)).toEqual([["a", "x", "xi", "x1", "x2", "x3"]]);
+  });
+
+  test("one taller than a page flows on as before; other headings are not held together", () => {
+    const tall = { a: 300, x: 40, xi: 30, x1: 300, x2: 300, x3: 300 };
+    expect(keys(paginate([item("a", "paragraph"), ...exit], tall, 0, 600).pages)).toEqual([
+      ["a"],
+      ["x", "xi", "x1"],
+      ["x2", "x3"],
+    ]);
+    const task = [
+      item("t", "heading", "Task B: Rates"),
+      item("t1", "paragraph"),
+      item("t2", "paragraph"),
+    ];
+    const h = { a: 300, t: 40, t1: 200, t2: 200 };
+    expect(keys(paginate([item("a", "paragraph"), ...task], h, 0, 600).pages)).toEqual([
+      ["a", "t", "t1"],
+      ["t2"],
+    ]);
+  });
+});

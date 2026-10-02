@@ -1,4 +1,4 @@
-import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import { richDocToPlainText, type Worksheet, type WorksheetBlock } from "@tj/domain/documents";
 import { type AnswerEntry, answerKey } from "./answers";
 import { CONTENT_H } from "./metrics";
 
@@ -58,6 +58,27 @@ const leadsIn = (item: FlowItem) =>
 /** The answer key always starts a fresh page (research/02 decision 17). */
 const startsPage = (item: FlowItem) => item.kind === "key-title";
 
+/**
+ * The exit ticket is torn off and handed in, so it prints on one page (TEACH-86): its heading and
+ * every block after it up to the next heading, the strip or the answer key. Returns, per item that
+ * starts such a group, the keys in the group.
+ */
+export function keepTogetherGroups(items: FlowItem[]): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  items.forEach((item, i) => {
+    if (item.kind !== "block" || item.block.type !== "heading") return;
+    const doc = (item.block as { doc?: Parameters<typeof richDocToPlainText>[0] }).doc;
+    if (!doc || !/^exit ticket$/i.test(richDocToPlainText(doc).trim())) return;
+    const keys = [item.key];
+    for (const next of items.slice(i + 1)) {
+      if (next.kind !== "block" || next.block.type === "heading" || isPageBreak(next)) break;
+      keys.push(next.key);
+    }
+    groups.set(item.key, keys);
+  });
+  return groups;
+}
+
 export function paginate(
   items: FlowItem[],
   heights: Record<string, number>,
@@ -77,7 +98,15 @@ export function paginate(
     used = 0;
   };
 
+  const groups = keepTogetherGroups(items);
   for (const item of items) {
+    // Keep together: a group that would cross the foot of this page starts a fresh one, when it
+    // fits on a page of its own (a longer one flows as usual).
+    const group = groups.get(item.key);
+    if (group && current.length > 0) {
+      const total = group.reduce((sum, key) => sum + (heights[key] ?? 0), 0);
+      if (used + total > available() && total <= contentH) flush();
+    }
     // A page break carries no height of its own: it ends the page it sits on. But a break that
     // lands on an otherwise-empty page — a fresh page with nothing on it yet — has nothing to
     // break, so it is a no-op: it stays on the page without flushing. This covers both a leading
