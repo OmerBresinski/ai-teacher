@@ -281,9 +281,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "generate-worksheet-lesson": {
-    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count.
-    version: "generate-worksheet-lesson.v3",
-    hash: "aeb56145090e554d08ad98676fae038b77ca0877c517fce4330288e916b45f9c",
+    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count; v4 answers the v3 eval.
+    version: "generate-worksheet-lesson.v4",
+    hash: "8c99f7a62298ef0f5f43f6eb5f70e2377addf37c85775fda9617318af35e4fad",
   },
   "parse-brief": {
     version: "parse-brief.v2",
@@ -1161,11 +1161,11 @@ describe("generate-worksheet-lesson (TEACH-86)", () => {
     expect(prompt.system).toContain("As many items as the exit-ticket line says");
   });
 
-  test("the exit ticket asks one per objective, at most three", () => {
+  test("the exit ticket asks three, one per objective first", () => {
     const o = (n: number) =>
       Array.from({ length: n }, (_, i) => ({ id: `o${i + 1}`, text: `Objective ${i + 1}` }));
     expect(prompt.user({ ...base, objectives: o(2) })).toContain(
-      "Exit ticket: yes, 2 questions, one per objective, in order.",
+      "Exit ticket: yes, 3 questions, one per objective in order, then the rest on the misconception or the hardest point.",
     );
     expect(prompt.user({ ...base, objectives: o(5) })).toContain(
       "Exit ticket: yes, 3 questions, one for each of the 3 objectives that matter most.",
