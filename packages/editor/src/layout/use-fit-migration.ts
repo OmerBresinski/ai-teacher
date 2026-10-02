@@ -18,7 +18,9 @@ import { tidySlideReducer } from "./tidy";
  * 1. warms the ruler for the whole deck in one batch, then lints every slide as the renderer will
  *    draw it;
  * 2. tidies the flagged ones inside one transaction, so a teacher's undo returns the lesson to the
- *    layout they arrived with in a single press;
+ *    layout they arrived with in a single press. A generated slide (`isGeneratedSlide`) is tidied
+ *    with `split: false` — Tidy's default for it — so the first open never adds a page to a
+ *    generated lesson; generation saves its slides fitted and stamped, and this is then a no-op;
  * 3. stamps the lesson with the current `FIT_VERSION` before that transaction opens and without an
  *    undo entry (`setFitVersion` is silent), so undo restores the layout and leaves the stamp;
  * 4. says so, once, when a slide actually moved.

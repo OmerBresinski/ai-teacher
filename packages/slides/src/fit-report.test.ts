@@ -68,10 +68,12 @@ describe("fitReport", () => {
     expect(report.callouts).toEqual({ planned: 1, placed: 0 });
   });
 
-  test("a slide past the safe area counts on every theme and adds a page on a stale open", () => {
+  test("a slide past the safe area counts on every theme; only a teacher's adds a page on open", () => {
     const over = make(content("Too much", long));
     const report = fitReport(lesson([over]));
     expect(Object.values(report.overflowing).every((count) => count === 1)).toBe(true);
+    // Generated (every element the AI's): Tidy reflows it and adds no page.
+    expect(report.pagesOnOpen).toBe(0);
     const edited = {
       ...over,
       elements: over.elements.map((e, i) =>

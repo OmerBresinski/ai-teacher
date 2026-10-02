@@ -1,9 +1,8 @@
 /**
- * The demo and screenshot switch (look/image-slot): with it on, present and the viewer draw every
- * slot a slide keeps — an open photo slot and an undrawn diagram — as a placeholder saying what
- * the model asked for, so a screenshot shows where pictures go. Off by default. The web app turns
- * it on from `VITE_SHOW_SLOT_PLACEHOLDERS=1`, never in a production build (`apps/web` `main.tsx`);
- * export and capture never draw it. The editor always draws an open photo slot's placeholder.
+ * The demo switch (look/image-slot), set by the web app from `VITE_SHOW_SLOT_PLACEHOLDERS`
+ * (`apps/web` `main.tsx`). Since TEACH-14 no renderer reads it: a slot brief is the teacher's note,
+ * so the editor always draws an open photo slot and an undrawn diagram as a placeholder, and
+ * present, the viewer, thumbnails and capture never do, whatever the switch says.
  */
 let on = false;
 

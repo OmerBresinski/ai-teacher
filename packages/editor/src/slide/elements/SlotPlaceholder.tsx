@@ -4,8 +4,8 @@ import { Camera, Shapes } from "lucide-react";
 
 /**
  * Where a photograph or a diagram goes, and what the model asked for (look/image-slot): a tinted
- * box, a small muted icon at its corner and caption-size muted words. The editor draws an open
- * photo slot this way; present draws both only under the demo switch (`slot-placeholders.ts`).
+ * box, a small muted icon at its corner and caption-size muted words. The editor alone draws an
+ * open photo slot and an undrawn diagram this way; present, the viewer and thumbnails never do.
  * The words are clamped to the lines the box holds (a brief runs to 400 characters) and end in an
  * ellipsis; the whole brief is the box's hover title.
  */

@@ -3,6 +3,7 @@ import { createBudget } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import { type Lesson, parseLesson } from "@tj/domain/documents";
 import type { StoredPhoto } from "@tj/images";
+import { FIT_VERSION } from "@tj/slides";
 import { PROMPT_VERSIONS } from "./prompts";
 import { assignFactIds } from "./specs";
 import { GENERATE_CONCURRENCY } from "./stages/generate";
@@ -589,7 +590,7 @@ describe("runLessonPipeline", () => {
 
   test("writes one generation summary line with counts, never content", async () => {
     const { lines, logger } = memoryLogger();
-    await runLessonPipeline(
+    const { lesson } = await runLessonPipeline(
       { lesson: sampleBriefLesson() },
       recordingDeps(scriptedPipelineAi(), { logger }),
     );
@@ -603,6 +604,9 @@ describe("runLessonPipeline", () => {
     expect(summary.generation.durationMs).toEqual(expect.any(Number));
     // The fit block rides on the same line; the content check below covers it too.
     expect(summary.generation.fit.slides.stored).toBeGreaterThan(0);
+    // Saved fitted and stamped, so the editor's first open adds no page.
+    expect(lesson.fitVersion).toBe(FIT_VERSION);
+    expect(summary.generation.fit.pagesOnOpen).toBe(0);
     expect(lines.join("\n")).not.toContain("particle");
   });
 

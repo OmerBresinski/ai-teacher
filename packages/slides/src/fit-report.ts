@@ -5,7 +5,7 @@ import { fitSlide } from "./fit-slide";
 import { BODY_Y } from "./layouts";
 import { lintAsDrawn } from "./lint";
 import { SAFE_BOTTOM } from "./metrics";
-import { isQuestionSlide } from "./reflow";
+import { isGeneratedSlide, isQuestionSlide } from "./reflow";
 import { measureHeadless } from "./text-measure";
 import { FIT_VERSION, getTheme, THEMES } from "./themes";
 
@@ -59,7 +59,8 @@ const hasCallout = (slide: Slide) =>
 /**
  * Pages the first open adds, headless: none for a lesson stamped with the current `fitVersion`
  * (the migration reads one number and stops). Otherwise, for each slide the migration flags on the
- * lesson's own theme, that Tidy is allowed to split (not `isQuestionSlide`), and that still
+ * lesson's own theme, that Tidy is allowed to split (neither `isQuestionSlide` nor
+ * `isGeneratedSlide`), and that still
  * overflows once fitted: the overrun past the safe area in continuation bodies (heading band to
  * foot), at least one.
  */
@@ -70,7 +71,8 @@ export function estimatePagesOnOpen(lesson: Lesson): number {
   const page = SAFE_BOTTOM - BODY_Y;
   let pages = 0;
   for (const slide of lesson.slides) {
-    if (isQuestionSlide(slide) || lintAsDrawn(slide, measure, theme).ok) continue;
+    if (isQuestionSlide(slide) || isGeneratedSlide(slide) || lintAsDrawn(slide, measure, theme).ok)
+      continue;
     const fitted = fitSlide(slide, theme);
     if (fitted.overflow.length === 0) continue;
     const over = new Set(fitted.overflow);

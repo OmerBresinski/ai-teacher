@@ -76,9 +76,10 @@ function speechPath(w: number, h: number, radius: number): string {
 }
 
 export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<ShapeElement>) {
-  // A diagram slot outside the editor is only drawn under the demo switch (`SlideView`): as the
-  // same placeholder as an open photo slot, "Diagram: <instruction>" in small muted type.
-  if (element.name === DIAGRAM_NAME && mode !== "edit") {
+  // A diagram brief is the teacher's note: the editor draws it as a subtle placeholder, and
+  // present, thumbnails and capture never draw it.
+  if (element.name === DIAGRAM_NAME) {
+    if (mode !== "edit") return null;
     return (
       <SlotPlaceholder
         kind="diagram"

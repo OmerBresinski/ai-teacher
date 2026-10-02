@@ -8,12 +8,21 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { BODY_Y, HEADING_GAP, KIND_TAG_NAME, SAFE, SPACE, snapY } from "@tj/slides";
+import {
+  BODY_Y,
+  HEADING_GAP,
+  isGeneratedSlide,
+  KIND_TAG_NAME,
+  owesExplanationLane,
+  SAFE,
+  SPACE,
+  snapY,
+} from "@tj/slides";
 import { cloneSlide, docFromText, uid } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
-import { explanationReserve, hasExplanationPanel, reservedLines } from "./explanation";
+import { explanationReserve, reservedLines } from "./explanation";
 import {
   docLineCount,
   isBackdrop,
@@ -341,7 +350,7 @@ function markContinued(slide: Slide, theme: Theme): void {
  * the safe area to its "Why?" panel, so the engine keeps that lane clear.
  */
 const reflowOptions = (slide: Slide, theme: Theme, measure: Measurer) =>
-  hasExplanationPanel(slide.question)
+  owesExplanationLane(slide)
     ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, reservedLines(slide, theme, measure)) }
     : {};
 
@@ -667,12 +676,14 @@ const MAX_CONTINUATIONS = 6;
 /**
  * Reflow a slide and, while it still will not fit at the smallest legible size, carry the overspill
  * onto a continuation slide — and reflow that too, so each continuation is filled before the next
- * one starts.
+ * one starts. With `split` false it reflows and restacks only: what still does not fit is reported,
+ * and no continuation is made.
  */
 function fitAndSplit(
   slide: Slide,
   theme: Theme,
   measure: Measurer,
+  split = true,
 ): { slides: Slide[]; results: ReflowResult[] } {
   const slides: Slide[] = [];
   const results: ReflowResult[] = [];
@@ -691,7 +702,7 @@ function fitAndSplit(
       }
     }
 
-    if (result.splitAt !== undefined && round < MAX_CONTINUATIONS) {
+    if (split && result.splitAt !== undefined && round < MAX_CONTINUATIONS) {
       const plan = planSplit(current, result.elements, result.overflow, theme, measure);
       if (plan) {
         current = { ...current, elements: plan.head };
@@ -731,6 +742,16 @@ const sizeOf = (el: SlideElement): number | undefined =>
 const docOf = (el: SlideElement): RichDoc | undefined =>
   reducers.isTextLike(el) ? el.doc : undefined;
 
+export type TidyOptions = {
+  /**
+   * May the tidy carry overspill onto continuation slides? Defaults to true for a teacher's slide
+   * and false for a generated one (`isGeneratedSlide`): generation saves its slides fitted, so Tidy
+   * only reflows, restacks and steps them, and never adds pages to a generated lesson. A teacher's
+   * first edit or insert makes the slide theirs, and Tidy may split it again.
+   */
+  split?: boolean;
+};
+
 /**
  * Tidy one slide. Safe to call on a slide that is already tidy: it reports `changed: false` and
  * returns the same lesson object, so the button never dirties a clean document.
@@ -739,12 +760,14 @@ export function tidySlide(
   lesson: Lesson,
   slideId: Id,
   measure: Measurer,
+  options: TidyOptions = {},
 ): { lesson: Lesson; outcome: TidyOutcome } {
   const slide = lesson.slides.find((s) => s.id === slideId);
   if (!slide) return { lesson, outcome: EMPTY };
 
   const theme = getTheme(lesson.themeId);
-  const { slides, results } = fitAndSplit(slide, theme, measure);
+  const split = options.split ?? !isGeneratedSlide(slide);
+  const { slides, results } = fitAndSplit(slide, theme, measure, split);
 
   const head = results[0];
   const tidied = slides[0];
@@ -814,8 +837,12 @@ export function tidySlide(
  * `tidySlide` in reducer shape, for `history.dispatch`: returns `{ lesson, outcome }` so the caller
  * gets the toast's numbers back from the same call that wrote the document.
  */
-export const tidySlideReducer = (lesson: Lesson, slideId: Id, measure: Measurer) =>
-  tidySlide(lesson, slideId, measure);
+export const tidySlideReducer = (
+  lesson: Lesson,
+  slideId: Id,
+  measure: Measurer,
+  options?: TidyOptions,
+) => tidySlide(lesson, slideId, measure, options);
 
 /**
  * The sentence the toast shows. Plain counting — and it says so when something still does not fit,

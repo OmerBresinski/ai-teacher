@@ -215,3 +215,18 @@ found missing were added as `bun test` files (`layout/reflow`, `layout/explanati
 `lesson/canvas/place-slide-actions`, `lesson/slide-commands`), the handoff acceptance lines as
 `apps/web/e2e/handoff.spec.ts`, and every editor route and overlay is under axe in the three themes
 (`a11y.spec.ts`).
+
+## Amendment (2026-10-02, TEACH-14) — generated slides are saved fitted; Tidy never adds pages to them
+
+Supersedes the first rule of the TEACH-251 amendment for generated lessons. Generate now writes the
+lesson with the current `FIT_VERSION`: every slide it saves was fitted by `materialiseSlide` with
+the headless ruler and checked by a save gate (`fitsPlanned` at one step down, all ten themes,
+logged as `save gate`), so the first open reads one number and does nothing. The linter,
+`renderedHeights` and `fitsPlanned` live in `@tj/slides`, so the worker and the editor measure
+with one ruler.
+
+A generated slide is one whose every element carries `authoredBy: "ai"` (`isGeneratedSlide`). Tidy
+on such a slide defaults to `split: false`: it reflows, restacks and steps type, and reports what
+still does not fit, but never makes a continuation slide. The first-open migration, a re-theme and
+the Tidy button all take that default. Once a teacher types in a slide or adds an element to it,
+the slide is theirs and Tidy may split it as before.

@@ -213,6 +213,15 @@ const QUESTION_KINDS: ReadonlySet<Slide["kind"]> = new Set([
 export const isQuestionSlide = (slide: Pick<Slide, "kind" | "question">): boolean =>
   slide.question !== undefined || QUESTION_KINDS.has(slide.kind);
 
+/**
+ * A slide as generation wrote it: every element carries `authoredBy: "ai"`. The first text edit
+ * flips an element to `"teacher"` (`flipToTeacher`), and an element a teacher inserts carries no
+ * `authoredBy`, so either makes the slide the teacher's.
+ */
+export function isGeneratedSlide(slide: Pick<Slide, "elements">): boolean {
+  return slide.elements.length > 0 && slide.elements.every((el) => el.authoredBy === "ai");
+}
+
 /** Never repositioned by the engine (SPEC: images and locked elements stay put). */
 export function isFrozen(el: SlideElement): boolean {
   return (
@@ -222,6 +231,30 @@ export function isFrozen(el: SlideElement): boolean {
     isBackdrop(el) ||
     (el.type === "shape" && el.name === ANSWERS_NAME)
   );
+}
+
+/**
+ * A gap text's doc as the renderer sets it, for measuring: each `[[gap:id]]` token is drawn as a
+ * blank holding its hidden answer (`.td-gap`: the answer in a heavier weight, 0.14em each side,
+ * at least 1.6em), so it is measured as the answer and an en space, or two capitals for a short
+ * one. Measured as the token itself, a gap's width followed its random id, and the same slide
+ * fitted on one run and overflowed on the next.
+ */
+function gapsAsDrawn(doc: RichDoc, question: Slide["question"] | undefined): RichDoc {
+  const answers = new Map(
+    question?.type === "fill-gap" ? question.gaps.map((g) => [g.id, g.answer] as const) : [],
+  );
+  const blank = (id: string): string => {
+    const answer = answers.get(id) ?? "";
+    return answer.length >= 2 ? `${answer}\u2002` : "MM";
+  };
+  const walk = (node: RichNode): RichNode =>
+    node.type === "text" && typeof node.text === "string"
+      ? { ...node, text: node.text.replace(/\[\[gap:([^\]]*)\]\]/g, (_, id: string) => blank(id)) }
+      : node.content
+        ? { ...node, content: node.content.map(walk) }
+        : node;
+  return walk(doc as RichNode) as RichDoc;
 }
 
 /** The text carried by an element, plus the chrome its renderer draws around it. */
@@ -240,7 +273,7 @@ export function textPartsOf(
   if (el.type === "text" || el.type === "gap-text") {
     const pad = el.style.padding ?? 0;
     return {
-      doc: el.doc,
+      doc: el.type === "gap-text" ? gapsAsDrawn(el.doc, slide?.question) : el.doc,
       style: el.style,
       preset: el.style.preset,
       inset: pad * 2,

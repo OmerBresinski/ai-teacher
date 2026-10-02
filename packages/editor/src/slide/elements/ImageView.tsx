@@ -27,8 +27,10 @@ import { SlotPlaceholder } from "./SlotPlaceholder";
  */
 export function ImageView(props: ElementViewProps<ImageElement>) {
   // A photo slot no photograph has filled (look/image-slot): drawn as what it should show. Present
-  // and export lay it out away (`withoutDiagramSlot`) unless the demo switch is on.
+  // and export lay it out away (`withoutDiagramSlot`); the brief is the teacher's alone, so outside
+  // the editor an open slot draws nothing.
   if (isOpenPhotoSlot(props.element)) {
+    if (props.mode !== "edit") return null;
     const { element, theme } = props;
     return (
       <SlotPlaceholder
