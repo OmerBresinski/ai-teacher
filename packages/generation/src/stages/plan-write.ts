@@ -80,12 +80,29 @@ import {
   wrongSums,
 } from "../plan-write/gates";
 import {
+  CHUNK_SPINE_VERSION,
+  CHUNK_WRITE_VERSION,
+  type ChunkInput,
+  chunkExtras,
+  chunkLenient,
+  chunkOf,
+  chunkPrompt,
+  chunkSchema,
+  crossChunkCheck,
+  rowsFrom,
+  type Spine,
+  type SpineInput,
+  spinePrompt,
+  spineSchema,
+} from "../plan-write/lab-chunks";
+import {
   decideStructure,
   gatewayEvaluator,
   STREAM_STRUCTURE_VERSION,
   type StructureRun,
   structureBlock,
   stubEvaluator,
+  yearOf,
 } from "../plan-write/lab-structure";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
@@ -641,6 +658,7 @@ export type PlanWriteReport = {
   firstSlideMs?: number;
   /** TEACH-179 lab: the decision model's structure, its timing and cost, and whether the rows kept it. */
   labStructure?: unknown;
+  labChunks?: unknown;
   editableMs: number;
   verify: { corrections: number; refitted: number; rejected: number };
   photos: { requested: number; placed: number };
@@ -1843,6 +1861,13 @@ export async function planWriteSlides(
       figureBrief: null,
     };
 
+  /** TEACH-179 round 2: chunk mode (LAB_CHUNK_MODEL set): spine call, then one streamed chunk per objective. */
+  const labChunks: {
+    model?: string;
+    spineMs?: number;
+    spine?: Spine;
+    chunks: { chunk: number; slides: number[]; ms: number; error?: string }[];
+  } = { chunks: [] };
   let labStructure: StructureRun | undefined;
   let labStructureAtMs: number | undefined;
   let labStructureError: string | undefined;
@@ -1969,39 +1994,174 @@ export async function planWriteSlides(
       }
       if (header) for (let i = 0; i < slides.length - 1; i++) close(i, slides[i]);
     };
-    try {
-      const call = await callStructured({
+    const runChunks = async (ls: StructureRun) => {
+      const t0 = Date.now();
+      const k = ls.structure.objectives;
+      const spineInput: SpineInput = {
+        topic: brief.topic,
+        audience,
+        ...(brief.answers ? { answers: brief.answers } : {}),
+        ...(brief.classContext?.priorKnowledge
+          ? { priorKnowledge: brief.classContext.priorKnowledge }
+          : {}),
+        cycles: k,
+      };
+      const sp = await callStructured({
         deps,
         stage: "generate",
         cls,
         effort: "low",
-        prompt: asPrompt<StreamLessonInput>(
-          labStructure
-            ? `${STREAM_LESSON_VERSION}+${STREAM_STRUCTURE_VERSION}`
-            : STREAM_LESSON_VERSION,
-          streamLessonPrompt(input),
-        ),
-        input,
-        schema: streamLessonSchema(menu) as unknown as z.ZodType<StreamLessonWire>,
-        lenient: streamLessonLenient,
-        maxOutputTokens: MAX_OUTPUT_TOKENS_STREAM,
-        onPartial,
+        prompt: asPrompt<SpineInput>(CHUNK_SPINE_VERSION, spinePrompt(spineInput)),
+        input: spineInput,
+        schema: spineSchema(k) as unknown as z.ZodType<Spine>,
+        maxOutputTokens: 6000,
       });
-      const w = call.output;
-      if (!header) {
-        header = true;
-        takeHeader(w, menu);
-      }
-      w.slides.forEach((raw, i) => {
-        close(i, raw);
-      });
-    } catch (error) {
-      if (!header || (error instanceof Error && error.name === "AbortError")) throw error;
-      deps.logger.error(
-        { stage: "generate", call: "stream", err: safeError(error) },
-        "stream failed after its header; the rest is written by writers",
+      const spine = sp.output;
+      labChunks.spineMs = Date.now() - t0;
+      labChunks.spine = spine;
+      header = true;
+      takeHeader(
+        {
+          misconception: spine.misconception,
+          objectives: spine.objectives,
+          runningExample: spine.runningExample,
+          titlePicture: spine.titlePicture,
+          plan: rowsFrom(ls.structure, spine, menu),
+        },
+        menu,
       );
-    }
+      const groups = new Map<number, { n: number; row: PlanSlide }[]>();
+      for (let n = FIXED_SLIDES + 1; n <= slideCount; n++) {
+        const row = table[n - 1];
+        if (!row) continue;
+        const c = Math.min(spine.objectives.length, chunkOf(row));
+        groups.set(c, [...(groups.get(c) ?? []), { n, row }]);
+      }
+      const ranges = [...groups].map(([chunk, xs]) => ({
+        chunk,
+        from: xs[0]?.n ?? 0,
+        to: xs[xs.length - 1]?.n ?? 0,
+      }));
+      const extras = chunkExtras(ls.structure, yearOf(base.yearGroup ?? ""));
+      const routedC = deps.ai.model(cls, callContext(deps, "generate", CHUNK_WRITE_VERSION, "low"));
+      const chunkModel = typeof routedC === "string" ? routedC : routedC.modelId;
+      labChunks.model = chunkModel;
+      const landAt = (n: number, raw: unknown) => {
+        if (landed.has(n)) return;
+        landed.add(n);
+        stream.slidesMs[n] = Date.now() - startedAt;
+        const got =
+          raw && typeof raw === "object"
+            ? checkStreamed(raw as Record<string, unknown>, menu)
+            : undefined;
+        const row = rowFor(n);
+        if (got?.out) {
+          table[n - 1] = { ...row, form: got.form, layout: got.layout };
+          const p = land(n, got.out, chunkModel);
+          landing.set(n, p);
+          pending.push(p);
+          return;
+        }
+        deps.logger.warn(
+          { stage: "generate", slide: n, problem: got?.problem ?? "unknown kind" },
+          "chunk slide not drawable; written again by a writer",
+        );
+        pending.push(runBatch([n]));
+      };
+      await Promise.all(
+        [...groups].map(async ([chunk, xs]) => {
+          const c0 = Date.now();
+          const forms = new Set(xs.map((x) => x.row.form));
+          const chunkInput: ChunkInput = {
+            topic: brief.topic,
+            audience,
+            spine,
+            chunk,
+            ranges,
+            slides: xs,
+            menu,
+            extras,
+          };
+          const onChunk = (partial: unknown) => {
+            const items = (partial as { slides?: unknown[] })?.slides;
+            if (!Array.isArray(items)) return;
+            for (let i = 0; i < items.length - 1; i++) {
+              const x = xs[i];
+              if (x) landAt(x.n, items[i]);
+            }
+          };
+          let error: string | undefined;
+          try {
+            const call = await callStructured({
+              deps,
+              stage: "generate",
+              cls,
+              effort: "low",
+              prompt: asPrompt<ChunkInput>(CHUNK_WRITE_VERSION, chunkPrompt(chunkInput)),
+              input: chunkInput,
+              schema: chunkSchema(menu.filter((m) => forms.has(m.form))) as unknown as z.ZodType<{
+                slides: Record<string, unknown>[];
+              }>,
+              lenient: chunkLenient,
+              maxOutputTokens: Math.min(16_000, 3_000 * xs.length),
+              onPartial: onChunk,
+            });
+            call.output.slides.forEach((raw, i) => {
+              const x = xs[i];
+              if (x) landAt(x.n, raw);
+            });
+          } catch (e) {
+            if (e instanceof Error && e.name === "AbortError") throw e;
+            error = e instanceof Error ? e.message : String(e);
+            deps.logger.error(
+              { stage: "generate", call: "chunk", chunk, err: error },
+              "chunk failed",
+            );
+          }
+          labChunks.chunks.push({
+            chunk,
+            slides: xs.map((x) => x.n),
+            ms: Date.now() - c0,
+            ...(error ? { error } : {}),
+          });
+        }),
+      );
+    };
+    if (labStructure && process.env.LAB_CHUNK_MODEL) await runChunks(labStructure);
+    else
+      try {
+        const call = await callStructured({
+          deps,
+          stage: "generate",
+          cls,
+          effort: "low",
+          prompt: asPrompt<StreamLessonInput>(
+            labStructure
+              ? `${STREAM_LESSON_VERSION}+${STREAM_STRUCTURE_VERSION}`
+              : STREAM_LESSON_VERSION,
+            streamLessonPrompt(input),
+          ),
+          input,
+          schema: streamLessonSchema(menu) as unknown as z.ZodType<StreamLessonWire>,
+          lenient: streamLessonLenient,
+          maxOutputTokens: MAX_OUTPUT_TOKENS_STREAM,
+          onPartial,
+        });
+        const w = call.output;
+        if (!header) {
+          header = true;
+          takeHeader(w, menu);
+        }
+        w.slides.forEach((raw, i) => {
+          close(i, raw);
+        });
+      } catch (error) {
+        if (!header || (error instanceof Error && error.name === "AbortError")) throw error;
+        deps.logger.error(
+          { stage: "generate", call: "stream", err: safeError(error) },
+          "stream failed after its header; the rest is written by writers",
+        );
+      }
     for (const n of added) writeCheck(n);
     for (let n = FIXED_SLIDES + 1; n <= slideCount; n++) {
       if (landed.has(n)) continue;
@@ -2885,6 +3045,21 @@ export async function planWriteSlides(
     failedBatches,
     ...(firstSlideMs !== undefined ? { firstSlideMs } : {}),
     editableMs,
+    ...(labChunks.spine
+      ? {
+          labChunks: {
+            ...labChunks,
+            cross: crossChunkCheck(
+              placed.map((p) => ({
+                n: p.index + 1,
+                chunk: Math.min(labChunks.spine?.objectives.length ?? 1, chunkOf(p.plan)),
+                out: p.out,
+              })),
+              labChunks.spine,
+            ),
+          },
+        }
+      : {}),
     ...(labStructure || labStructureError
       ? {
           labStructure: {

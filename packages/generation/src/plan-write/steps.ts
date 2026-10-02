@@ -89,6 +89,8 @@ export function planWriteRoute(
     const v = context?.promptVersion ?? "";
     if (v.startsWith("plan-lesson.") || v.startsWith("stream-lesson.")) return plannerModel;
     if (v.startsWith("write-slides.")) return writerModel;
+    // TEACH-179 lab: the spine and chunk writers go to LAB_CHUNK_MODEL.
+    if (v.startsWith("chunk-")) return process.env.LAB_CHUNK_MODEL ?? writerModel;
     // Round J: the caption-claims check (a place's geography, a date) on the checker's model too.
     // Round Q: the exit items too.
     if (
