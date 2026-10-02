@@ -4,7 +4,7 @@
  * nothing enumerates addresses. Synthetic recipients and `CaptureMailSender` only.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { withTestDb } from "@tj/db/testing";
+import { cookieHeaderFromResponse, withTestDb } from "@tj/db/testing";
 import { createApp } from "./app";
 import { type AuthEnv, createAuth, RATE_LIMIT_NO_IP_MESSAGE } from "./auth/auth";
 import { magicLinkRecipientKey } from "./auth/magic-link-bounds";
@@ -48,10 +48,10 @@ describeDb("magic-link send bounds (TEACH-300)", () => {
     lines.length = 0;
   });
 
-  async function request(email: string) {
+  async function request(email: string, cookie?: string) {
     const res = await app.request(`${BASE}/auth/sign-in/magic-link`, {
       method: "POST",
-      headers: { "content-type": "application/json", origin: WEB },
+      headers: { "content-type": "application/json", origin: WEB, ...(cookie ? { cookie } : {}) },
       body: JSON.stringify({ email, callbackURL: `${WEB}/` }),
     });
     return { status: res.status, body: await res.text() };
@@ -63,9 +63,18 @@ describeDb("magic-link send bounds (TEACH-300)", () => {
     expect((await request("Bounded@Example.test")).status).toBe(200);
     expect(mail.all).toHaveLength(2);
 
-    const over = await request("BOUNDED@example.test");
+    // From a signed-out visitor's browser, so an admitted send would also write a pending claim.
+    const anonymous = await app.request(`${BASE}/auth/sign-in/anonymous`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: WEB },
+      body: "{}",
+    });
+    expect(anonymous.status).toBe(200);
+    const over = await request("BOUNDED@example.test", cookieHeaderFromResponse(anonymous));
     expect(over).toEqual(first);
     expect(mail.all).toHaveLength(2);
+    const claims = await db.sql`select 1 from verifications where identifier like 'claim:%'`;
+    expect(claims).toHaveLength(0);
 
     const bounded = lines.filter((l) => l.includes("magic link not sent: send bound reached"));
     expect(bounded).toHaveLength(1);

@@ -16,12 +16,9 @@ const h = (init: Record<string, string>) => new Headers(init);
 const RAILWAY = { AUTH_IP_HEADER: "x-real-ip" };
 const UNSET = {};
 
-/** better-auth's resolution under the options `auth.ts` passes; `null` instead of test localhost. */
+/** better-auth's resolution under the options `auth.ts` passes (under test, `null` is localhost). */
 function betterAuthIp(headers: Headers, env: { AUTH_IP_HEADER?: string }): string | null {
-  const ip = getIP(headers, {
-    advanced: { ipAddress: authIpAddress({ NODE_ENV: "test", ...env }) },
-  });
-  return ip === "127.0.0.1" && clientIp(headers, env) === null ? null : ip;
+  return getIP(headers, { advanced: { ipAddress: authIpAddress({ NODE_ENV: "test", ...env }) } });
 }
 
 const CASES: [string, Record<string, string>, { AUTH_IP_HEADER?: string }, string | null][] = [
@@ -82,7 +79,7 @@ describe("one client identity for both limiters (TEACH-300)", () => {
   for (const [name, headers, env, expected] of CASES) {
     test(name, () => {
       expect(clientIp(h(headers), env)).toBe(expected);
-      expect(betterAuthIp(h(headers), env)).toBe(expected);
+      expect(betterAuthIp(h(headers), env)).toBe(expected ?? "127.0.0.1");
     });
   }
 

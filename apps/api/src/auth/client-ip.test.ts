@@ -6,7 +6,7 @@ const h = (init: Record<string, string>) => new Headers(init);
 describe("client IP (TEACH-222)", () => {
   test("default: x-forwarded-for, trusted only with exactly one address (TEACH-300)", () => {
     expect(clientIp(h({ "x-forwarded-for": "203.0.113.9" }), {})).toBe("203.0.113.9");
-    expect(clientIp(h({ "x-forwarded-for": "1.1.1.1, 203.0.113.9" }), {})).toBeNull();
+    expect(clientIp(h({ "x-forwarded-for": "198.51.100.1, 203.0.113.9" }), {})).toBeNull();
   });
 
   test("absent or empty header → null", () => {
@@ -18,7 +18,7 @@ describe("client IP (TEACH-222)", () => {
     const env = { AUTH_IP_HEADER: "CF-Connecting-IP" };
     expect(ipHeaderName(env)).toBe("cf-connecting-ip");
     expect(
-      clientIp(h({ "cf-connecting-ip": "198.51.100.4", "x-forwarded-for": "9.9.9.9" }), env),
+      clientIp(h({ "cf-connecting-ip": "198.51.100.4", "x-forwarded-for": "198.51.100.9" }), env),
     ).toBe("198.51.100.4");
     expect(authIpAddress({ NODE_ENV: "test", ...env })).toEqual({
       ipAddressHeaders: ["cf-connecting-ip"],
