@@ -30,7 +30,8 @@ function fakeApi(): typeof fetch {
       });
     }
     // TEACH-223/243/249: anonymous sign-in without a Turnstile token is 400 MISSING_RESPONSE from
-    // any origin. `/auth/*` has no CSRF guard and better-auth checks Origin only with a cookie.
+    // any origin: the api's CSRF guard does not cover `/auth/*`, and better-auth checks Origin only
+    // with a cookie. This fake models that path only.
     if (url.pathname === "/auth/sign-in/anonymous" && !headers.get("x-captcha-response")) {
       return Response.json({ code: "MISSING_RESPONSE" }, { status: 400 });
     }
@@ -123,6 +124,21 @@ describe("smoke-prod", () => {
     const failed = results.filter((r) => !r.ok);
     expect(failed.map((r) => [r.path, r.headers?.Origin, r.actual])).toEqual([
       ["/auth/sign-in/anonymous", WEB, 200],
+      ["/auth/sign-in/anonymous", "https://evil.example", 200],
+    ]);
+  });
+
+  test("only the foreign-origin case fails when a foreign page can sign in anonymously", async () => {
+    const openToForeign: typeof fetch = (async (input, init) => {
+      const origin = new Headers(init?.headers).get("origin");
+      if (new URL(String(input)).pathname === "/auth/sign-in/anonymous" && origin !== WEB) {
+        return Response.json({ token: "t", user: { isAnonymous: true } });
+      }
+      return fakeApi()(input, init);
+    }) as typeof fetch;
+    const results = await runSmoke("https://api.example.test", smokeCases(WEB), openToForeign);
+    const failed = results.filter((r) => !r.ok);
+    expect(failed.map((r) => [r.path, r.headers?.Origin, r.actual])).toEqual([
       ["/auth/sign-in/anonymous", "https://evil.example", 200],
     ]);
   });

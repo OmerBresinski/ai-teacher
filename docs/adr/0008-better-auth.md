@@ -119,90 +119,92 @@ amendment's item 1 asked for, and replaces that item and item 6 for Microsoft on
 
 ## Amendment (2026-10-02, TEACH-249): anonymous sessions and the first signed-out lesson
 
-Project **First lesson before sign-in** lets a visitor make a lesson before signing in (rulings
-109 to 112). TEACH-222, TEACH-223, TEACH-224, TEACH-243 and TEACH-244 built it; this records the
+Project **First lesson before sign-in** lets a visitor make a lesson before signing in (rulings 109
+to 112). TEACH-222, TEACH-223, TEACH-224, TEACH-243 and TEACH-244 built it; this records the
 engineering decisions. The magic link itself (the confirm page and the 15-minute expiry) is the
 TEACH-246 amendment above and is not repeated here.
 
 1. **Anonymous users.** better-auth's `anonymous` plugin (`apps/api/src/auth/auth.ts`) answers
-   `POST /auth/sign-in/anonymous` with a new user and an ordinary session cookie. The user is
-   marked by `users.is_anonymous` (`packages/db/src/schema/auth.ts`, migration
+   `POST /auth/sign-in/anonymous` with a new user and an ordinary session cookie. The user is marked
+   by `users.is_anonymous` (`packages/db/src/schema/auth.ts`, migration
    `0009_users_is_anonymous.sql`), and `GET /me` reports `isAnonymous`
    (`apps/api/src/routes/me.ts`). It gets its personal Workspace from the same
    `databaseHooks.user.create.after` hook as every other user, so the lesson routes need no second
    code path. Anonymous sign-in is always on; there is no feature flag. The brakes are items 5, 6
    and 8.
-2. **The anonymous user is not deleted on link.** `disableDeleteAnonymousUser: true` (`auth.ts`).
-   By default the plugin deletes the anonymous user when the browser signs in to a real account.
+2. **The anonymous user is not deleted on link.** `disableDeleteAnonymousUser: true` (`auth.ts`). By
+   default the plugin deletes the anonymous user when the browser signs in to a real account.
    `workspaces.owner_user_id` cascades on delete (`packages/db/src/schema/workspaces.ts`), so the
-   Workspace and its lessons would go with it before the claim could hand them over. The
-   anonymous `users` row stays until the cleanup job (item 7).
-3. **The claim hands the Workspace over.** `claimAnonymousWorkspace`
-   (`apps/api/src/auth/claim.ts`) changes `workspaces.owner_user_id` from the anonymous user to the
-   new account in one transaction. No row moves: storage keys start with the Workspace id
-   (`<workspaceId>/…`, checked by `GET /files/*`), so lesson ids, `/l/<id>` URLs and pictures stay
-   valid. The new account's own empty Workspace is deleted first, because each user owns one. The
-   anonymous user's sessions are deleted in the same transaction: an open `/events` stream
+   Workspace and its lessons would go with it before the claim could hand them over. The anonymous
+   `users` row stays until the cleanup job (item 7).
+3. **The claim hands the Workspace over.** `claimAnonymousWorkspace` (`apps/api/src/auth/claim.ts`)
+   changes `workspaces.owner_user_id` from the anonymous user to the new account in one transaction.
+   No row moves: storage keys start with the Workspace id (`<workspaceId>/…`, checked by
+   `GET /files/*` in `apps/api/src/routes/files.ts`), so lesson ids, `/l/<id>` URLs and pictures
+   stay valid. The new account's own empty Workspace is deleted first, because each user owns one.
+   The anonymous user's sessions are deleted in the same transaction: an open `/events` stream
    re-checks only its session, and a live anonymous session would otherwise get a fresh Workspace,
    with a fresh lesson allowance, on its next request.
    - **New accounts only (ruling 112).** An account created more than 10 minutes ago
-     (`NEW_ACCOUNT_MINUTES`), or whose Workspace holds any document or source, declines. The
-     lessons then stay with the anonymous user until the cleanup job.
+     (`NEW_ACCOUNT_MINUTES`), or whose Workspace holds any document or source, declines. The lessons
+     then stay with the anonymous user until the cleanup job.
    - **Same browser.** The plugin's `onLinkAccount` calls `claimOnLink` (`auth.ts`). better-auth
      runs it after any sign-in that sets a session on a browser holding an anonymous session: the
      magic-link verify, and the Google and Microsoft callbacks (the plugin carries the anonymous
      user id in the OAuth state).
-   - **Another device.** `sendMagicLink` calls `recordPendingClaim`. When the browser asking for
-     the link is anonymous, it writes one `verifications` row. The identifier is `claim:` plus an
+   - **Another device.** `sendMagicLink` calls `recordPendingClaim`. When the browser asking for the
+     link is anonymous, it writes one `verifications` row. The identifier is `claim:` plus an
      HMAC-SHA256 of the lower-cased address under `BETTER_AUTH_SECRET` (`pendingClaimIdentifier`),
-     the value is the anonymous user id, and the row lasts one hour (`PENDING_CLAIM_TTL_MINUTES`).
-     A newer send for the same address replaces it. The identifier is not the plain address:
+     the value is the anonymous user id, and the row lasts one hour (`PENDING_CLAIM_TTL_MINUTES`). A
+     newer send for the same address replaces it. The identifier is not the plain address:
      better-auth's `GET /auth/magic-link/verify?token=…` consumes any `verifications` row by
      identifier, so anyone who knows the address could delete a guessable row. The HMAC also keeps
      the address out of the table. `databaseHooks.session.create.after` calls `claimPending` on
-     every sign-in on every device. It takes the row and hands over in one transaction, so a claim
-     that fails keeps its row for the next sign-in within the hour. The claim goes to whoever
-     proves the inbox; no token rides in the callback URL.
+     every sign-in on every device except an anonymous one. It takes the row and hands over in one
+     transaction, so a claim that fails keeps its row for the next sign-in within the hour. The
+     claim goes to whoever proves the inbox; no token rides in the callback URL.
    - **The browser's own lesson wins.** better-auth runs `session.create.after` before the plugin's
      `onLinkAccount`. When the browser finishing sign-in holds a live anonymous session whose
-     Workspace has a lesson, `claimPending` drops the pending row (`superseded`) and
-     `onLinkAccount` claims that browser's lesson. An anonymous session with no lesson does not
-     outrank the row, so a phone that never made a lesson still receives the laptop's.
+     Workspace has a lesson, `claimPending` drops the pending row (`superseded`) and `onLinkAccount`
+     claims that browser's lesson. An anonymous session with no lesson does not outrank the row, so
+     a phone that never made a lesson still receives the laptop's.
    - **A dead session cookie.** After a claim from another device, the first browser still holds a
-     cookie for a deleted session (and, for up to five minutes, a signed cookie cache). better-auth
-     would answer its next anonymous sign-in with 400 "already signed in anonymously".
+     cookie for a deleted session, and for up to five minutes a signed cookie cache. While the cache
+     lasts, better-auth answers its next anonymous sign-in with 400
+     `ANONYMOUS_USERS_CANNOT_SIGN_IN_AGAIN_ANONYMOUSLY`. After that, the dead token makes
+     better-auth's own session lookup expire the new session's cookies in the same response.
      `anonymousSignInDropsDeadSession` (`auth.ts`), a `hooks.before` on `/sign-in/anonymous`,
      removes the session cookies from that request when the token names no live session, so the
-     browser can sign in anonymously again.
+     browser gets a working anonymous session again.
    - **Accepted limitation.** Someone who knows an address can replace its pending row within the
      hour by asking for a magic link to it from their own anonymous session. Cross-device, or when
      the visitor's anonymous session holds no lesson, the visitor then gets the other browser's
      lesson instead of their own; theirs stays with the anonymous user until the cleanup job.
-     Nothing is read or taken: proving the inbox can only receive a lesson. Binding the claim to
-     the magic-link token would close this, at the cost of "any sign-in within the hour" (for
-     example Google on another device).
+     Nothing is read or taken: proving the inbox can only receive a lesson. Binding the claim to the
+     magic-link token would close this, at the cost of "any sign-in within the hour" (for example
+     Google on another device).
 4. **What an anonymous session may do.** `anonymousGuard` (`apps/api/src/auth/anonymous-guard.ts`)
-   runs on every protected path after `requireSession` (`apps/api/src/app.ts`), so a request with
-   no session is still 401 first. For an anonymous user it is default deny: reads (`GET`, `HEAD`,
+   runs on every protected path after `requireSession` (`apps/api/src/app.ts`), so a request with no
+   session is still 401 first. For an anonymous user it is default deny: reads (`GET`, `HEAD`,
    `OPTIONS`) pass, and so do the writes in `ANONYMOUS_WRITE_ALLOW_LIST`: `POST /lessons`,
    `POST /lessons/:id/plan`, `POST /lessons/:id/generate` and `POST /jobs/:id/cancel`. Every other
    write is 403 `sign_in_required`, so a route added later stays closed to anonymous users until
    someone lists it. Ownership is still each route's `forWorkspace()` scoping. The quotas live in
    `apps/api/src/routes/lessons.ts`:
    - `POST /lessons`: two lessons per Workspace (`ANONYMOUS_LESSON_LIMIT`, ruling 111), then 403
-     `anonymous_limit`; then the daily cap (item 6), 403 `anonymous_capacity`. Anonymous creates
-     for one Workspace run one at a time (`createKeyedQueue`). The queue is per process; a second
-     api replica would need a row lock.
+     `anonymous_limit`; then the daily cap (item 6), 403 `anonymous_capacity`. Anonymous creates for
+     one Workspace run one at a time (`createKeyedQueue` in `anonymous-limits.ts`). The queue is per
+     process; a second api replica would need a row lock.
    - `POST /lessons/:id/plan`: three re-plans (`ANONYMOUS_REPLAN_LIMIT`, checked inside the row
      transaction), then 403 `sign_in_required`.
 5. **The quota is per device, not per IP.** Each Turnstile-gated anonymous session gets one
-   Workspace and so two lessons. IP cannot be the quota: a school puts its classrooms behind one
-   NAT address, and the first teacher would use up the whole school's lessons. The IP is only a
-   ceiling against bots. `anonymousSignInLimits` (`apps/api/src/auth/anonymous-limits.ts`) answers
-   429 `rate_limited` once an address has made `ANONYMOUS_SIGNINS_PER_IP_DAILY` anonymous sign-ins
-   that UTC day (default 20, `apps/api/src/env.ts`), counted in Postgres (`anonymous_signins`).
-   Only a sign-in that better-auth answered with 2xx counts, so tokenless posts that Turnstile
-   refuses cannot lock a school out.
+   Workspace and so two lessons. IP cannot be the quota: a school puts its classrooms behind one NAT
+   address, and the first teacher would use up the whole school's lessons. The IP is only a ceiling
+   against bots. `anonymousSignInLimits` (`apps/api/src/auth/anonymous-limits.ts`) answers 429
+   `rate_limited` once an address has made `ANONYMOUS_SIGNINS_PER_IP_DAILY` anonymous sign-ins that
+   UTC day (default 20, `apps/api/src/env.ts`), counted in Postgres (`anonymous_signins`,
+   `packages/db/src/schema/anonymous-signins.ts`). Only a sign-in that better-auth answered with 2xx
+   counts, so tokenless posts that Turnstile refuses cannot lock a school out.
    - **Where the address comes from** (`apps/api/src/auth/client-ip.ts`). With `AUTH_IP_HEADER`
      unset, the ceiling takes the rightmost `x-forwarded-for` entry, the one the nearest proxy
      appended, so a client cannot pick its own bucket by sending the header. better-auth keeps its
@@ -211,25 +213,27 @@ TEACH-246 amendment above and is not repeated here.
      of the api, `AUTH_IP_HEADER` names the header it sets (for example `cf-connecting-ip`); the
      ceiling and better-auth's limiter (`authIpAddress`) then both read it. A request with no
      address skips the ceiling, and the api logs that once.
-   - **Pending.** Production runs with `AUTH_IP_HEADER` unset and
-     `ANONYMOUS_SIGNINS_PER_IP_DAILY=1`. Both wait on the founder's decision once the Railway IP
+   - **Pending.** On 2 Oct 2026 production runs with `AUTH_IP_HEADER` unset and
+     `ANONYMOUS_SIGNINS_PER_IP_DAILY=1` (the api's boot line "anonymous lessons: client IP source
+     for the per-IP ceiling" logs both). Both wait on the founder's decision once the Railway IP
      source is verified (TEACH-300; `infra/README.md`, "Known gaps"). This amendment decides
      neither.
-6. **The daily cap is the kill switch.** `ANONYMOUS_LESSONS_DAILY_CAP` (default 200; production
-   runs 5) bounds the lessons anonymous users make per UTC day across every Workspace
-   (`countAnonymousLessonsToday`; a claimed Workspace drops out of the count). At the cap,
-   `POST /auth/sign-in/anonymous` answers 403 `anonymous_capacity` before better-auth runs
-   (`app.ts` mounts `anonymousSignInLimits` before `auth.handler`), and so does an anonymous
-   `POST /lessons` (`assertAnonymousMayCreate`). Both refuse when today's count is at or above the
-   cap, so `ANONYMOUS_LESSONS_DAILY_CAP=0` stops every new anonymous session and every new
-   anonymous lesson. It does not stop a re-plan or the generation of a lesson already made. There
-   is no other switch. Both counts are soft: concurrent requests can pass the check together.
+6. **The daily cap is the kill switch.** `ANONYMOUS_LESSONS_DAILY_CAP` (default 200; 5 in production
+   on 2 Oct 2026, from the same boot line) bounds the lessons anonymous users make per UTC day
+   across every Workspace (`countAnonymousLessonsToday` in `anonymous-limits.ts`; a claimed
+   Workspace drops out of the count). At the cap, `POST /auth/sign-in/anonymous` answers 403
+   `anonymous_capacity` before better-auth runs (`app.ts` mounts `anonymousSignInLimits` before
+   `auth.handler`), and so does an anonymous `POST /lessons` (`assertAnonymousMayCreate` in
+   `routes/lessons.ts`). Both refuse when today's count is at or above the cap, so
+   `ANONYMOUS_LESSONS_DAILY_CAP=0` stops every new anonymous session and every new anonymous lesson.
+   It does not stop a re-plan or the generation of a lesson already made. There is no other switch.
+   Both counts are soft: concurrent requests can pass the check together.
 7. **Cleanup.** The worker's `auth.anonymous-cleanup` job
-   (`apps/worker/src/jobs/anonymous-cleanup.ts`) runs daily at 03:17 UTC. It deletes anonymous
-   users created more than `ANONYMOUS_USER_TTL_DAYS` ago (default 14, `apps/worker/src/env.ts`), up
-   to 500 a run. The cascade removes the Workspace they still own and its rows, and the job then
-   deletes the stored objects under `<workspaceId>/`. A claimed Workspace has a new owner, so only
-   the anonymous user goes; a claim that commits between the job's select and its delete keeps its
+   (`apps/worker/src/jobs/anonymous-cleanup.ts`) runs daily at 03:17 UTC. It deletes anonymous users
+   created more than `ANONYMOUS_USER_TTL_DAYS` ago (default 14, `apps/worker/src/env.ts`), up to 500
+   a run. The cascade removes the Workspace they still own and its rows, and the job then deletes
+   the stored objects under `<workspaceId>/`. A claimed Workspace has a new owner, so only the
+   anonymous user goes; a claim that commits between the job's select and its delete keeps its
    objects. The job also drops `anonymous_signins` rows older than two days and expired `claim:`
    rows. A failed object delete is counted in the run's log line and not retried (TEACH-290).
 8. **Turnstile.** better-auth's `captcha` plugin with Cloudflare Turnstile gates
@@ -239,8 +243,8 @@ TEACH-246 amendment above and is not repeated here.
    `x-captcha-response`, which CORS allows (`app.ts`). The plugin answers before the endpoint runs:
    400 `MISSING_RESPONSE`, 403 `VERIFICATION_FAILED`, 500 when siteverify is unreachable. It does
    not check the token's hostname (`allowedHostnames` is unset). With `TURNSTILE_SECRET_KEY` unset
-   there is no plugin and nothing is gated (local development, most tests). The api refuses to
-   boot in production without it (`apps/api/src/env.ts`). A Railway PR environment always runs
+   there is no plugin and nothing is gated (local development, most tests). The api refuses to boot
+   in production without it (`apps/api/src/env.ts`). A Railway PR environment always runs
    Cloudflare's always-pass test secret, to match the preview web build
    (`withPrEnvironmentDefaults`).
    - **Order on `POST /auth/sign-in/anonymous`.** The daily cap and the per-IP ceiling (`app.ts`),
@@ -248,5 +252,5 @@ TEACH-246 amendment above and is not repeated here.
      protected paths, not `/auth/*`, and better-auth checks `Origin` only on a request that carries
      a cookie. A cookieless sign-in from a foreign origin is therefore stopped by Turnstile, not by
      its origin. `scripts/smoke-prod.ts` pins the app-origin and foreign-origin anonymous cases and
-     the magic-link case (400 each). The anonymous cases answer 403 or 429 instead on a day the
-     cap, or the runner's IP ceiling, has been reached.
+     the magic-link case (400 each). The anonymous cases answer 403 or 429 instead on a day the cap,
+     or the runner's IP ceiling, has been reached (TEACH-257).
