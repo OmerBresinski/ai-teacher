@@ -291,6 +291,17 @@ describe("proposeFor", () => {
     expect(proposals).toEqual([]);
   });
 
+  test("a target id that is not on the slide is skipped, never a reason to replace the slide", async () => {
+    const { lesson } = fixturePairWithRecipeVocab();
+    const ai = createFakeAi({ script: [json(FIXTURES.slides.vocabulary)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: "s-vocab", elementId: "not-on-the-slide" }],
+      { lesson, changedFactIds: ["v1"] },
+      recordingDeps(ai),
+    );
+    expect(proposals).toEqual([]);
+  });
+
   test("a slide-only target subsumes element targets on the same slide (one call)", async () => {
     const { lesson } = fixturePair();
     const ai = createFakeAi({ script: [json(mcSpec)], usage });

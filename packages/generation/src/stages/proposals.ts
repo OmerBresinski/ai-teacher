@@ -267,15 +267,30 @@ export async function proposeFor(
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
     const originals = flatten(slide.elements);
     const replacements = flatten(fresh.elements, originals.some(isFigure));
-    const matched = (elementId: string) => {
+    // The new slide's element in the same role: the same position in the recipe's depth-first
+    // order, of the same type and, where the recipe names it, the same name. `undefined` when the
+    // target is not on the slide.
+    const pairOf = (elementId: string) => {
       const at = originals.findIndex((e) => e.id === elementId);
-      return originals[at]?.type !== undefined && originals[at]?.type === replacements[at]?.type;
+      const original = originals[at];
+      if (!original) return undefined;
+      const replacement = replacements[at];
+      const same =
+        replacement !== undefined &&
+        replacement.type === original.type &&
+        (replacement.name ?? "") === (original.name ?? "");
+      return { original, replacement: same ? replacement : undefined };
     };
     // A slide laid out by an older recipe (a list where the recipe now draws cards) no longer
     // lines up with its re-derivation. Still all the AI's, it is replaced whole; a slide the
-    // teacher has touched keeps its elements and the unmatched ones are skipped below.
+    // teacher has touched keeps its elements and the unmatched targets are skipped below.
     const realigned =
-      job.elementIds !== null && !job.elementIds.every(matched) && isGeneratedSlide(slide);
+      job.elementIds !== null &&
+      job.elementIds.some((id) => {
+        const pair = pairOf(id);
+        return pair !== undefined && pair.replacement === undefined;
+      }) &&
+      isGeneratedSlide(slide);
     if (job.elementIds === null || realigned) {
       // The same `question`/`notes` on every element proposal: the editor applies them once the
       // whole slide's elements are in place (`ProposalSchema` doc). `notes` is always present so
@@ -292,16 +307,15 @@ export async function proposeFor(
         generatedFrom,
       }));
     }
-    // Per element: the replacement is the new slide's element in the same role (same position
-    // in the recipe's depth-first order), moved to the original's box so the layout the teacher
-    // sees does not jump. A figure group is one element, replaced whole (TEACH-89); a figure the
+    // Per element: the replacement is the new slide's element in the same role (`pairOf`), moved
+    // to the original's box so the layout the teacher sees does not jump. A figure group is one element, replaced whole (TEACH-89); a figure the
     // teacher ungrouped is matched child by child against the new drawing's children, as before.
     const out: Proposal[] = [];
     for (const elementId of job.elementIds ?? []) {
-      const index = originals.findIndex((e) => e.id === elementId);
-      const original = originals[index];
-      const replacement = replacements[index];
-      if (!original || !replacement || original.type !== replacement.type) {
+      const pair = pairOf(elementId);
+      const original = pair?.original;
+      const replacement = pair?.replacement;
+      if (!original || !replacement) {
         deps.logger.info(
           { stage, slideId: slide.id },
           "no matching element in the re-derived slide; skipped",
