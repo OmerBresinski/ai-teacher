@@ -49,7 +49,10 @@ import { WRITE_RULES } from "./write-slides";
 /* v21 (round S): the reasoned-step contract line gives a worded example beside the maths one. */
 export const STREAM_LESSON_VERSION = "stream-lesson.v21";
 
-export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
+export type StreamLessonInput = Omit<PlanLessonInput, "repair"> & {
+  /** TEACH-179 lab: the decision model's structure block (stream-structure.v1), appended to the user turn. */
+  structure?: string;
+};
 
 /** Replaces `from` in `text`, and fails loudly when a shared rule no longer holds it. */
 function swap(text: string, from: string, to: string): string {
@@ -98,5 +101,5 @@ export function streamLessonPrompt(input: StreamLessonInput): { system: string; 
     `Slide 1 is the title and slide 2 the objectives; write ${n - 2} rows, for slides 3 to ${n}.`,
     `Slide 1 is the title and slide 2 the objectives; write ${n - 2} plan rows, then those ${n - 2} slides, for slides 3 to ${n}.`,
   );
-  return { system: SYSTEM, user };
+  return { system: SYSTEM, user: input.structure ? `${user}\n${input.structure}` : user };
 }

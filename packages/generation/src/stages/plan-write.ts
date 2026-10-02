@@ -79,6 +79,14 @@ import {
   withoutClaim,
   wrongSums,
 } from "../plan-write/gates";
+import {
+  decideStructure,
+  gatewayEvaluator,
+  STREAM_STRUCTURE_VERSION,
+  type StructureRun,
+  structureBlock,
+  stubEvaluator,
+} from "../plan-write/lab-structure";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
@@ -631,6 +639,8 @@ export type PlanWriteReport = {
   streamSlidesMs?: Record<number, number>;
   failedBatches: number[][];
   firstSlideMs?: number;
+  /** TEACH-179 lab: the decision model's structure, its timing and cost, and whether the rows kept it. */
+  labStructure?: unknown;
   editableMs: number;
   verify: { corrections: number; refitted: number; rejected: number };
   photos: { requested: number; placed: number };
@@ -1833,8 +1843,40 @@ export async function planWriteSlides(
       figureBrief: null,
     };
 
+  let labStructure: StructureRun | undefined;
+  let labStructureAtMs: number | undefined;
+  let labStructureError: string | undefined;
   /** One call plans and writes the whole lesson; each slide lands as it closes. */
   const runStream = async () => {
+    // TEACH-179 lab: a decision model fixes the structure before the stream (LAB_STRUCTURE_MODEL).
+    const structureModel = process.env.LAB_STRUCTURE_MODEL;
+    if (structureModel) {
+      const evaluate =
+        structureModel === "stub"
+          ? stubEvaluator()
+          : gatewayEvaluator(structureModel, process.env.AI_GATEWAY_API_KEY ?? "");
+      try {
+        labStructure = await decideStructure(
+          {
+            topic: brief.topic,
+            subject: base.subject ?? "",
+            yearGroup: base.yearGroup ?? "",
+            rows: slideCount - FIXED_SLIDES,
+            forms: [...new Set(menu.map((m) => m.form))],
+          },
+          evaluate,
+          structureModel,
+        );
+        labStructureAtMs = Date.now() - startedAt;
+        deps.logger.info(
+          { stage: "generate", labStructure, atMs: labStructureAtMs },
+          "lab structure decided",
+        );
+      } catch (error) {
+        labStructureError = error instanceof Error ? error.message : String(error);
+        deps.logger.error({ stage: "generate", err: labStructureError }, "lab structure failed");
+      }
+    }
     const input: StreamLessonInput = {
       topic: brief.topic,
       audience,
@@ -1844,6 +1886,9 @@ export async function planWriteSlides(
         : {}),
       slideCount,
       menu,
+      ...(labStructure
+        ? { structure: structureBlock(labStructure.structure, base.yearGroup ?? "") }
+        : {}),
     };
     const routed = deps.ai.model(cls, callContext(deps, "generate", STREAM_LESSON_VERSION, "low"));
     const streamModel = typeof routed === "string" ? routed : routed.modelId;
@@ -1930,7 +1975,12 @@ export async function planWriteSlides(
         stage: "generate",
         cls,
         effort: "low",
-        prompt: asPrompt<StreamLessonInput>(STREAM_LESSON_VERSION, streamLessonPrompt(input)),
+        prompt: asPrompt<StreamLessonInput>(
+          labStructure
+            ? `${STREAM_LESSON_VERSION}+${STREAM_STRUCTURE_VERSION}`
+            : STREAM_LESSON_VERSION,
+          streamLessonPrompt(input),
+        ),
         input,
         schema: streamLessonSchema(menu) as unknown as z.ZodType<StreamLessonWire>,
         lenient: streamLessonLenient,
@@ -2835,6 +2885,25 @@ export async function planWriteSlides(
     failedBatches,
     ...(firstSlideMs !== undefined ? { firstSlideMs } : {}),
     editableMs,
+    ...(labStructure || labStructureError
+      ? {
+          labStructure: {
+            ...(labStructure ?? {}),
+            ...(labStructureAtMs !== undefined ? { atMs: labStructureAtMs } : {}),
+            ...(labStructureError ? { error: labStructureError } : {}),
+            followed: labStructure
+              ? labStructure.structure.slots.map((r) => {
+                  const row = table[r.slide - 1];
+                  return {
+                    slide: r.slide,
+                    want: `${r.role}/${r.form}`,
+                    got: row ? `${row.role}/${row.form}` : null,
+                  };
+                })
+              : [],
+          },
+        }
+      : {}),
     verify,
     photos: photoCounts,
     ...(mode === "stream"
