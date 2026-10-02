@@ -31,6 +31,9 @@ import { HOUSE_RULES } from "./shared";
  *     the system text names the line, not a number (gpt-6-luna reads a hedged range as its minimum).
  *   - Misconceptions are sent as belief and correction separately (v1 sent the belief only).
  *   - The block shapes and output sketch moved to the system text, so the user turn is the lesson.
+ * v3 (2 Oct 2026, ruling 147): multiple choice takes the class's option count (`fit.optionCount`:
+ *   3 for EYFS to Year 4, 4 from Year 5) from a user-turn line; the shape line names that line
+ *   instead of "exactly 4" (the shared `BLOCK_SHAPES` still says 4 for the other worksheet calls).
  */
 
 export type GenerateWorksheetLessonInput = {
@@ -48,12 +51,16 @@ export type GenerateWorksheetLessonInput = {
 const TASK_SHAPE =
   '{"cycle": 1, "title": "…", "instruction": "…", "supported": [block, …], "stretch": [block, …]}';
 
+/** Ruling 147: the option count is the class's (the user turn's Multiple choice line), not a fixed 4. */
+const MC_SHAPE =
+  '{ "type": "multiple-choice", "text", "options": [as many { "text", "correct" } as the Multiple choice line says, exactly one correct], "factRefs" }';
+
 /** How many exit questions to ask: one per objective, at most three (ruling 108). */
 export const exitQuestionCount = (objectives: number): number =>
   Math.min(MAX_EXIT_QUESTIONS, Math.max(1, objectives));
 
 export const generateWorksheetLessonPrompt = {
-  version: "generate-worksheet-lesson.v2",
+  version: "generate-worksheet-lesson.v3",
   system: [
     "You write the pupil worksheet for a lesson that has just been taught. The user turn gives the class, the lesson's objectives and misconceptions, and its learning cycles: each cycle's teaching slides, then the check and practise slides that followed, as their slide text.",
     "",
@@ -91,7 +98,7 @@ export const generateWorksheetLessonPrompt = {
     "Block shapes (exactly these keys):",
     ...Object.entries(BLOCK_SHAPES)
       .filter(([type]) => type !== "heading")
-      .map(([type, shape]) => `- ${type}: ${shape}`),
+      .map(([type, shape]) => `- ${type}: ${type === "multiple-choice" ? MC_SHAPE : shape}`),
     "",
     "Answer as JSON in this shape:",
     `{"tasks": [${TASK_SHAPE}, …], "exitTicket": [block, …] or null}`,
@@ -112,6 +119,7 @@ export const generateWorksheetLessonPrompt = {
       fit.examStyle
         ? "Exam-style marked items: allowed, where this subject is examined that way."
         : "Exam-style marked items: not used for this class; leave `marks` out.",
+      `Multiple choice: ${fit.optionCount} options per item.`,
       `Practice time: about ${input.practiceMinutes} minutes, so about ${perTask} minutes per task.`,
       "",
       "Objectives:",

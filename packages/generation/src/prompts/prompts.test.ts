@@ -111,7 +111,13 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
   },
   "generate-worksheet-lesson": {
     lessonTitle: "States of matter",
-    fit: { ageBand: "ks3", yearGroup: "Year 8", subject: "Science", examStyle: false },
+    fit: {
+      ageBand: "ks3",
+      yearGroup: "Year 8",
+      subject: "Science",
+      examStyle: false,
+      optionCount: 4,
+    },
     objectives: facts.objectives.map(({ id, text }) => ({ id, text })),
     misconceptions: facts.misconceptions.map(({ id, belief, correction }) => ({
       id,
@@ -275,9 +281,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "generate-worksheet-lesson": {
-    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder).
-    version: "generate-worksheet-lesson.v2",
-    hash: "bb1f5914ffb0f010a0343d8c475c61547d427929863eab05094354e49f5924f6",
+    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count.
+    version: "generate-worksheet-lesson.v3",
+    hash: "aeb56145090e554d08ad98676fae038b77ca0877c517fce4330288e916b45f9c",
   },
   "parse-brief": {
     version: "parse-brief.v2",
@@ -1165,6 +1171,14 @@ describe("generate-worksheet-lesson (TEACH-86)", () => {
       "Exit ticket: yes, 3 questions, one for each of the 3 objectives that matter most.",
     );
     expect(prompt.user({ ...base, exitTicket: false })).toContain("Exit ticket: no (answer null).");
+  });
+
+  test("multiple choice follows the class's option count (ruling 147)", () => {
+    expect(prompt.user({ ...base, fit: { ...base.fit, optionCount: 3 } })).toContain(
+      "Multiple choice: 3 options per item.",
+    );
+    expect(prompt.system).toContain("as the Multiple choice line says");
+    expect(prompt.system).not.toContain("exactly 4");
   });
 
   test("exam style and the misconception's correction", () => {
