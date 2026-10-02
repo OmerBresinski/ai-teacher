@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DEMO_LESSON_FACTS } from "@tj/slides";
-import { chooseRecipe } from "./lesson-worksheet";
+import { chooseRecipe, waitWhileLessonGenerates } from "./lesson-worksheet";
 
 /* TEACH-86 AC 7 at the job: the fallback and its log line, with no database. */
 
@@ -36,5 +36,45 @@ describe("chooseRecipe (lesson.worksheet)", () => {
     expect(auto.lines).toHaveLength(0);
     const exit = chooseRecipe("exit-ticket", facts, recorder().logger as never, ids);
     expect(exit.exitTicket).toBe(true);
+  });
+});
+
+describe("Follows the lesson waits for the slides (eval, 2 Oct)", () => {
+  const noSleep = async () => {};
+
+  test("waits while the lesson is generating, then goes on", async () => {
+    const states = [true, true, true, false];
+    const result = await waitWhileLessonGenerates(
+      async () => states.shift() ?? false,
+      new AbortController().signal,
+      { pollMs: 2000, sleep: noSleep },
+    );
+    expect(result).toEqual({ waitedMs: 6000, finished: true });
+  });
+
+  test("no wait when the slides are already written", async () => {
+    const result = await waitWhileLessonGenerates(async () => false, new AbortController().signal, {
+      sleep: noSleep,
+    });
+    expect(result).toEqual({ waitedMs: 0, finished: true });
+  });
+
+  test("gives up at the timeout, and on abort, so the outline is used", async () => {
+    const timedOut = await waitWhileLessonGenerates(
+      async () => true,
+      new AbortController().signal,
+      {
+        timeoutMs: 4000,
+        pollMs: 2000,
+        sleep: noSleep,
+      },
+    );
+    expect(timedOut).toEqual({ waitedMs: 4000, finished: false });
+    const abort = new AbortController();
+    abort.abort();
+    const aborted = await waitWhileLessonGenerates(async () => true, abort.signal, {
+      sleep: noSleep,
+    });
+    expect(aborted).toEqual({ waitedMs: 0, finished: false });
   });
 });

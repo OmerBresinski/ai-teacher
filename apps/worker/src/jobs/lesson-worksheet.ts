@@ -81,7 +81,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         return;
       }
       const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
-      const { lesson, facts } = await loadPlannedLesson(ws, lessonId, revision);
+      let { lesson, facts } = await loadPlannedLesson(ws, lessonId, revision);
       if (deps.ai.kind === "unconfigured") {
         throw new NonRetryableError(
           "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
@@ -98,6 +98,18 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         worksheetId,
       });
       const lessonSheet = recipe.id === "lesson";
+      if (lessonSheet) {
+        // The creation flow asks for the sheet as the slides start; "Follows the lesson" reads
+        // the finished slides, so it waits for the lesson's own job to let go (outline after that).
+        const waited = await waitWhileLessonGenerates(
+          async () => (await getDocument(ws, lessonId))?.generatingJobId != null,
+          signal,
+        );
+        if (waited.waitedMs > 0) {
+          logger.info({ lessonId, worksheetId, ...waited }, "worksheet waited for the slides");
+          ({ lesson, facts } = await loadPlannedLesson(ws, lessonId, revision));
+        }
+      }
       deleteOnFailure = lessonSheet && prior === undefined;
       const stage = "worksheet" as const;
       const pipelineDeps: FillDeps = {
@@ -313,4 +325,27 @@ async function loadPlannedLesson(
     throw new NonRetryableError("lesson is not planned");
   }
   return { lesson, facts };
+}
+
+/** How long "Follows the lesson" waits for the lesson's slides before it uses the outline. */
+export const SLIDES_WAIT = { timeoutMs: 240_000, pollMs: 2_000 };
+
+/**
+ * Polls `generating` until it is false, the signal aborts, or the timeout passes. Returns how long
+ * it waited and whether the slides finished (`false` means the sheet falls back to the outline).
+ */
+export async function waitWhileLessonGenerates(
+  generating: () => Promise<boolean>,
+  signal: AbortSignal,
+  options: { timeoutMs?: number; pollMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<{ waitedMs: number; finished: boolean }> {
+  const { timeoutMs = SLIDES_WAIT.timeoutMs, pollMs = SLIDES_WAIT.pollMs } = options;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  let waitedMs = 0;
+  while (await generating()) {
+    if (signal.aborted || waitedMs >= timeoutMs) return { waitedMs, finished: false };
+    await sleep(pollMs);
+    waitedMs += pollMs;
+  }
+  return { waitedMs, finished: true };
 }
