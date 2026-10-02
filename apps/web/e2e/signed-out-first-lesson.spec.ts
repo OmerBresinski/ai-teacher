@@ -5,7 +5,7 @@
  * Signed-out lessons are always on (no flag in the api or the web); the e2e stack runs the
  * fake AI (`playwright.config.ts`). TEACH-245 appends rows 3–4 (read-only lesson, sign-in sheet).
  */
-import { expect, test } from "./fixtures";
+import { expect, lastMagicLink, openMagicLink, test, uniqueEmail } from "./fixtures";
 
 test.use({ seed: false });
 
@@ -80,5 +80,40 @@ test.describe("signed-out first lesson", () => {
     await expect(page).toHaveURL(/\/lessons\/new\?lesson=/);
     await page.goto("/lessons");
     await expect(page).toHaveURL(/\/sign-in\?/);
+  });
+  test("the lesson is read-only, and the sign-in sheet returns to it editable (rows 3–4)", async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(120_000);
+    await page.goto("/lessons/new?topic=Volcanoes");
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByRole("heading", { name: "Learning objectives" })).toBeVisible({
+      timeout: 35_000,
+    });
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/l\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    const lessonPath = new URL(page.url()).pathname;
+
+    // Row 3: no Export or worksheet action, one sign-in action that opens the sheet over the lesson.
+    const signInAction = page.getByRole("button", { name: "Sign in to edit, export and save" });
+    await expect(signInAction).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Present" })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("button", { name: "Export", exact: true })).toHaveCount(0);
+    await signInAction.click();
+    const sheet = page.getByRole("dialog", { name: "Sign in to edit, export and save" });
+    await expect(sheet).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(lessonPath);
+
+    // Row 4: a new email's link lands on the same lesson, now the teacher's and editable.
+    const email = uniqueEmail("t245");
+    await sheet.getByRole("textbox", { name: "Email address" }).fill(email);
+    await sheet.getByRole("button", { name: "Email me a link" }).click();
+    await expect(sheet.getByText("Check your inbox")).toBeVisible({ timeout: 15_000 });
+    await openMagicLink(page, await lastMagicLink(request, email));
+    await expect(page).toHaveURL(new RegExp(`${lessonPath}$`), { timeout: 15_000 });
+    await expect(page.getByRole("button", { name: "Export", exact: true })).toBeVisible();
+    await expect(signInAction).toHaveCount(0);
   });
 });
