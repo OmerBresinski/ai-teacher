@@ -9,7 +9,7 @@ import {
   WorksheetBlockSchema,
 } from "@tj/domain/documents";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
-import { type FigureGroup, figureGroupOf, materialiseSlide } from "@tj/slides";
+import { type FigureGroup, figureGroupOf, materialiseSlide, ROW_CARD_NAME } from "@tj/slides";
 import { PROMPT_VERSIONS } from "../prompts";
 import { callLimitedBudget, FIXTURES, recordingDeps } from "../testing";
 import { impactSet, MAX_REDO_TARGETS, PROPOSE_CONCURRENCY, proposeFor } from "./proposals";
@@ -250,6 +250,45 @@ describe("proposeFor", () => {
     expect(ai.calls).toHaveLength(1);
     expect(proposals.length).toBeGreaterThan(1);
     expect(proposals.every((p) => p.target.elementId === undefined && p.question)).toBe(true);
+  });
+
+  test("a stored all-AI slide whose recipe now draws a different form is replaced whole", async () => {
+    // The fixture's objectives slide is a heading over plain lines; the objectives recipe now sets
+    // numbered cards, so `ob-2` has no element of its type at its position in the re-derivation.
+    const { lesson } = fixturePair();
+    const ai = createFakeAi({ script: [json(FIXTURES.slides.objectives)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: "s-objectives", elementId: "ob-2" }],
+      { lesson, changedFactIds: ["o2"] },
+      recordingDeps(ai),
+    );
+    expect(ai.calls).toHaveLength(1);
+    expect(proposals.length).toBeGreaterThan(1);
+    expect(proposals.every((p) => p.target.elementId === undefined && p.notes !== undefined)).toBe(
+      true,
+    );
+    expect(proposals.some((p) => p.element?.name === ROW_CARD_NAME)).toBe(true);
+  });
+
+  test("the same slide with a teacher's edit keeps its elements: the unmatched target is skipped", async () => {
+    const { lesson } = fixturePair();
+    lesson.slides = lesson.slides.map((s) =>
+      s.id === "s-objectives"
+        ? {
+            ...s,
+            elements: s.elements.map((e) =>
+              e.id === "ob-2" ? e : { ...e, authoredBy: "teacher" as const },
+            ),
+          }
+        : s,
+    );
+    const ai = createFakeAi({ script: [json(FIXTURES.slides.objectives)], usage });
+    const { proposals } = await proposeFor(
+      [{ slideId: "s-objectives", elementId: "ob-2" }],
+      { lesson, changedFactIds: ["o2"] },
+      recordingDeps(ai),
+    );
+    expect(proposals).toEqual([]);
   });
 
   test("a slide-only target subsumes element targets on the same slide (one call)", async () => {

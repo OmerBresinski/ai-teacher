@@ -14,6 +14,7 @@ import {
   type FigureRect,
   figureGroupOf,
   getTheme,
+  isGeneratedSlide,
   type MaterialiseMeta,
   materialiseBlock,
   materialiseSlide,
@@ -264,7 +265,18 @@ export async function proposeFor(
       deps.ids,
     );
     const generatedFrom = { factRefs: call.output.factRefs, ...meta(call.modelId) };
-    if (job.elementIds === null) {
+    const originals = flatten(slide.elements);
+    const replacements = flatten(fresh.elements, originals.some(isFigure));
+    const matched = (elementId: string) => {
+      const at = originals.findIndex((e) => e.id === elementId);
+      return originals[at]?.type !== undefined && originals[at]?.type === replacements[at]?.type;
+    };
+    // A slide laid out by an older recipe (a list where the recipe now draws cards) no longer
+    // lines up with its re-derivation. Still all the AI's, it is replaced whole; a slide the
+    // teacher has touched keeps its elements and the unmatched ones are skipped below.
+    const realigned =
+      job.elementIds !== null && !job.elementIds.every(matched) && isGeneratedSlide(slide);
+    if (job.elementIds === null || realigned) {
       // The same `question`/`notes` on every element proposal: the editor applies them once the
       // whole slide's elements are in place (`ProposalSchema` doc). `notes` is always present so
       // stale notes are cleared (`null`) when the new slide has none; `question` is present only
@@ -284,10 +296,8 @@ export async function proposeFor(
     // in the recipe's depth-first order), moved to the original's box so the layout the teacher
     // sees does not jump. A figure group is one element, replaced whole (TEACH-89); a figure the
     // teacher ungrouped is matched child by child against the new drawing's children, as before.
-    const originals = flatten(slide.elements);
-    const replacements = flatten(fresh.elements, originals.some(isFigure));
     const out: Proposal[] = [];
-    for (const elementId of job.elementIds) {
+    for (const elementId of job.elementIds ?? []) {
       const index = originals.findIndex((e) => e.id === elementId);
       const original = originals[index];
       const replacement = replacements[index];
