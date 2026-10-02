@@ -104,6 +104,15 @@ import {
   stubEvaluator,
   yearOf,
 } from "../plan-write/lab-structure";
+import {
+  BINDING_VERSION,
+  bindingBlockV6,
+  type ContextV3,
+  type Deviation,
+  decideV3 as decideV6,
+  deviationsV6,
+  type PlanV3,
+} from "../plan-write/lab-structure-v6";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
@@ -1871,11 +1880,34 @@ export async function planWriteSlides(
   let labStructure: StructureRun | undefined;
   let labStructureAtMs: number | undefined;
   let labStructureError: string | undefined;
+  /** TEACH-179 arm JJ6: the v6 plan (LAB_STRUCTURE_VERSION=v6, context file LAB_STRUCTURE_CONTEXT). */
+  let labPlanV6: PlanV3 | undefined;
+  let labContextV6: ContextV3 | undefined;
   /** One call plans and writes the whole lesson; each slide lands as it closes. */
   const runStream = async () => {
     // TEACH-179 lab: a decision model fixes the structure before the stream (LAB_STRUCTURE_MODEL).
     const structureModel = process.env.LAB_STRUCTURE_MODEL;
-    if (structureModel) {
+    if (structureModel && process.env.LAB_STRUCTURE_VERSION === "v6") {
+      try {
+        const { readFileSync } = await import("node:fs");
+        labContextV6 = JSON.parse(
+          readFileSync(process.env.LAB_STRUCTURE_CONTEXT ?? "", "utf8"),
+        ) as ContextV3;
+        labPlanV6 = await decideV6(
+          labContextV6,
+          gatewayEvaluator(structureModel, process.env.AI_GATEWAY_API_KEY ?? ""),
+          structureModel,
+        );
+        labStructureAtMs = Date.now() - startedAt;
+        deps.logger.info(
+          { stage: "generate", labPlanV6, atMs: labStructureAtMs },
+          "lab v6 plan decided",
+        );
+      } catch (error) {
+        labStructureError = error instanceof Error ? error.message : String(error);
+        deps.logger.error({ stage: "generate", err: labStructureError }, "lab v6 plan failed");
+      }
+    } else if (structureModel) {
       const evaluate =
         structureModel === "stub"
           ? stubEvaluator()
@@ -1913,7 +1945,9 @@ export async function planWriteSlides(
       menu,
       ...(labStructure
         ? { structure: structureBlock(labStructure.structure, base.yearGroup ?? "") }
-        : {}),
+        : labPlanV6 && labContextV6
+          ? { structure: bindingBlockV6(labContextV6, labPlanV6) }
+          : {}),
     };
     const routed = deps.ai.model(cls, callContext(deps, "generate", STREAM_LESSON_VERSION, "low"));
     const streamModel = typeof routed === "string" ? routed : routed.modelId;
@@ -2138,7 +2172,9 @@ export async function planWriteSlides(
           prompt: asPrompt<StreamLessonInput>(
             labStructure
               ? `${STREAM_LESSON_VERSION}+${STREAM_STRUCTURE_VERSION}`
-              : STREAM_LESSON_VERSION,
+              : labPlanV6
+                ? `${STREAM_LESSON_VERSION}+${BINDING_VERSION}+${labPlanV6.version}`
+                : STREAM_LESSON_VERSION,
             streamLessonPrompt(input),
           ),
           input,
@@ -3057,6 +3093,18 @@ export async function planWriteSlides(
               })),
               labChunks.spine,
             ),
+          },
+        }
+      : {}),
+    ...(labPlanV6
+      ? {
+          labPlanV6: {
+            plan: labPlanV6,
+            atMs: labStructureAtMs,
+            guards: labPlanV6.r1.guards,
+            deviations: deviationsV6(labPlanV6, table, (n) =>
+              JSON.stringify(lesson.slides[n - 1] ?? ""),
+            ) satisfies Deviation[],
           },
         }
       : {}),
