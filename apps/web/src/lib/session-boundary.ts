@@ -154,7 +154,11 @@ export class SessionBoundary {
     if (client !== this.state.client) return; // isolated component-test clients
     const prior = this.state.identity;
     if (prior === identity) return;
-    if (prior !== undefined && prior !== identity) this.reset(identity);
+    // A signed-out epoch (`null`, unlocked) holds no private data, so the anonymous sign-in on the
+    // brief (TEACH-244) adopts the new identity in place: the brief keeps its state and its request
+    // id instead of being remounted on a fresh router. Any other change starts a new epoch.
+    const upgrade = prior === null && identity !== null && !this.state.locked;
+    if (prior !== undefined && prior !== identity && !upgrade) this.reset(identity);
     else {
       this.state = { ...this.state, identity };
       this.notify();

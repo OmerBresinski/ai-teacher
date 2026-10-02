@@ -22,7 +22,9 @@ import {
 } from "@/components/lesson-creation/step-fields";
 import { useLibraryActions } from "@/components/library/use-library-actions";
 import { SourceDropZone } from "@/components/source-drop-zone/SourceDropZone";
+import { useTurnstileToken } from "@/components/turnstile";
 import { useJobEvents } from "@/hooks/use-job-events";
+import { AnonymousSignInError, ensureAnonymousSession } from "@/lib/anonymous-session";
 import { api } from "@/lib/api";
 import { readLastClass, writeLastClass } from "@/lib/brief-memory";
 import { startingTheme } from "@/lib/default-theme";
@@ -34,9 +36,9 @@ import {
 } from "@/lib/lesson-intake";
 import { rememberGenerationOrigin, rememberWorksheetIntent } from "@/lib/lesson-worksheets";
 import { libraryMutations, libraryQueries } from "@/lib/library";
-import { ApiError, apiErrorFromResponse } from "@/lib/query";
+import { ApiError, apiErrorFromResponse, meQueryOptions } from "@/lib/query";
 import { sessionRequest } from "@/lib/session-boundary";
-import { lessonBriefRoute } from "./lesson-brief.route";
+import { briefRedirect, lessonBriefRoute } from "./lesson-brief.route";
 
 const NewDocumentDialog = lazy(() =>
   import("@/components/new-document-dialog").then(({ NewDocumentDialog }) => ({
@@ -46,6 +48,13 @@ const NewDocumentDialog = lazy(() =>
 
 /** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
 const JOB_POLL_MS = 3000;
+/** API refusals that mean "no preview for you right now": today's sign-in flow (TEACH-244 FR5). */
+const FALLBACK_CODES = new Set(["anonymous_capacity", "rate_limited"]);
+/** API refusals that ask an anonymous visitor to sign in, with the plan kept on screen. */
+const PROMPT_CODES: Record<string, string> = {
+  anonymous_limit: "Sign in to make more lessons.",
+  sign_in_required: "Sign in to keep changing the plan.",
+};
 
 /** Shared production intake. The URL and stored plan own resume; local state owns unsaved edits. */
 export function LessonBriefPage() {
@@ -72,6 +81,12 @@ function LessonIntake({
   const client = useQueryClient();
   const navigate = useNavigate();
   const actions = useLibraryActions();
+  // `undefined` while loading, `null` signed out, `isAnonymous` after the first submit (TEACH-244).
+  const me = useQuery(meQueryOptions).data;
+  const signedOut = me === null;
+  const guest = signedOut || !!me?.user.isAnonymous;
+  const turnstile = useTurnstileToken();
+  const [signInPrompt, setSignInPrompt] = useState("");
   const [last] = useState(readLastClass);
   const [brief, setBrief] = useState<IntakeBrief>({
     topic: topic ?? "",
@@ -169,7 +184,23 @@ function LessonIntake({
     setStep("objectives");
   }
 
+  function signIn(source = false) {
+    const redirect = briefRedirect(brief.topic, source);
+    void navigate({
+      to: "/sign-in",
+      search: { redirect: lessonId && !source ? `/lessons/new?lesson=${lessonId}` : redirect },
+    });
+  }
   async function fail(cause: unknown) {
+    if (cause instanceof AnonymousSignInError && cause.kind === "fallback") return signIn();
+    if (cause instanceof ApiError && FALLBACK_CODES.has(cause.code)) return signIn();
+    if (cause instanceof ApiError && cause.code in PROMPT_CODES) {
+      setSignInPrompt(
+        cause.code === "sign_in_required" ? cause.message : (PROMPT_CODES[cause.code] ?? ""),
+      );
+      if (lessonId) await refresh().catch(() => undefined);
+      return;
+    }
     setError(
       cause instanceof Error ? cause.message : "Something went wrong. Your choices are still here.",
     );
@@ -187,6 +218,7 @@ function LessonIntake({
     if (busy || sourcesBusy || findNamePatterns(brief.topic).length > 0) return;
     setBusy(true);
     setError("");
+    setSignInPrompt("");
     try {
       const input = CreateLessonSchema.parse({
         brief: { topic: brief.topic.trim(), level: brief.level, slideCount: Number(slideCount) },
@@ -224,6 +256,9 @@ function LessonIntake({
       } else {
         // Keep the exact payload and request id on an uncertain response; never create a second paid job.
         request.current ??= { id: crypto.randomUUID(), input };
+        // Signed out: Turnstile, then an anonymous session, then the same create (FLOW.md §7.4).
+        // The request id lives in a ref, so a retry after any of the three steps reuses it.
+        await ensureAnonymousSession(client, turnstile.getToken);
         const ids = await create.mutateAsync({
           ...request.current.input,
           requestId: request.current.id,
@@ -243,6 +278,7 @@ function LessonIntake({
       if (cause instanceof ApiError && cause.status < 500) request.current = null;
       await fail(cause);
     } finally {
+      turnstile.reset();
       setBusy(false);
     }
   }
@@ -251,6 +287,7 @@ function LessonIntake({
     const origin = character.current?.capture() ?? null;
     setBusy(true);
     setError("");
+    setSignInPrompt("");
     try {
       const result = await confirmLesson(client, lesson.id, {
         expectedRevision: lesson.plan?.revision ?? 0,
@@ -312,6 +349,15 @@ function LessonIntake({
     >
       {findNamePatterns(brief.topic).length > 0 ? <p role="status">{GUARD_MESSAGE}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
+      {signInPrompt ? (
+        // TEACH-245 swaps this for the sign-in sheet; the plan below stays on screen either way.
+        <p role="alert">
+          {signInPrompt}{" "}
+          <Button variant="link" size="sm" onClick={() => signIn()}>
+            Sign in
+          </Button>
+        </p>
+      ) : null}
       {request.current && error && !lessonId ? (
         <p>
           Your last request will be checked again when you choose Next. Your edited brief will not
@@ -384,26 +430,35 @@ function LessonIntake({
                 onNext={() => void plan(false)}
                 onSkip={lessonId ? undefined : () => void plan(true)}
                 filePicker={
-                  <div className="creation-upload">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => setSourcesOpen(!sourcesOpen)}
-                      aria-expanded={sourcesOpen}
-                    >
-                      Add materials
-                    </Button>
-                    <SourceDropZone
-                      open={sourcesOpen}
-                      onOpenChange={setSourcesOpen}
-                      sources={sources}
-                      boundSourceIds={lesson?.sources?.map(({ id }) => id)}
-                      onChange={setSources}
-                      onBusyChange={setSourcesBusy}
-                      disabled={busy}
-                      focusChooseFiles={focusSources}
-                    />
-                  </div>
+                  guest ? (
+                    // Uploads are account-only (UX ruling 110): no drop zone before sign-in.
+                    <div className="creation-upload">
+                      <Button variant="link" size="sm" onClick={() => signIn(true)}>
+                        Add materials
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="creation-upload">
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => setSourcesOpen(!sourcesOpen)}
+                        aria-expanded={sourcesOpen}
+                      >
+                        Add materials
+                      </Button>
+                      <SourceDropZone
+                        open={sourcesOpen}
+                        onOpenChange={setSourcesOpen}
+                        sources={sources}
+                        boundSourceIds={lesson?.sources?.map(({ id }) => id)}
+                        onChange={setSources}
+                        onBusyChange={setSourcesBusy}
+                        disabled={busy}
+                        focusChooseFiles={focusSources}
+                      />
+                    </div>
+                  )
                 }
               />
             ) : step === "objectives" ? (
@@ -416,7 +471,8 @@ function LessonIntake({
                 duration=""
                 onDuration={() => {}}
                 onBack={() => setStep("brief")}
-                onGenerate={() => setStep("worksheet")}
+                // Worksheets are account-only (UX ruling 109): a guest goes straight to generating.
+                onGenerate={() => (guest ? void generate(false) : setStep("worksheet"))}
               />
             ) : (
               <WorksheetStep
@@ -434,7 +490,9 @@ function LessonIntake({
               <Spinner /> Saving your choices…
             </p>
           ) : null}
-          {step === "brief" && !lessonId ? (
+          {/* Turnstile's interactive challenge, when Cloudflare asks for one (signed out only). */}
+          {signedOut ? <div ref={turnstile.containerRef} /> : null}
+          {step === "brief" && !lessonId && !guest ? (
             <Button variant="link" size="sm" onClick={() => setBlank(true)}>
               Blank lesson
             </Button>

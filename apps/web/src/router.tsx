@@ -23,6 +23,7 @@ import {
   worksheetEditorRoute,
   worksheetPrintRoute,
 } from "@/routes/documents.route";
+import { guestLayoutRoute } from "@/routes/guest.route";
 import { kitRoute } from "@/routes/kit.route";
 import { lessonBriefRoute } from "@/routes/lesson-brief.route";
 import {
@@ -45,6 +46,13 @@ export const routeTree = rootRoute.addChildren([
   signInRoute,
   signInConfirmRoute,
   ...(devFirstExperienceRoute ? [devFirstExperienceRoute] : []),
+  // Reachable before an account exists (TEACH-244); always on, the api's daily cap is the switch.
+  guestLayoutRoute.addChildren([
+    lessonBriefRoute,
+    lessonEditorRoute,
+    lessonViewRoute,
+    lessonPresentRoute,
+  ]),
   authLayoutRoute.addChildren([
     libraryLayoutRoute.addChildren([
       indexRoute,
@@ -54,10 +62,6 @@ export const routeTree = rootRoute.addChildren([
       seriesIndexRoute,
       seriesDetailRoute,
     ]),
-    lessonBriefRoute,
-    lessonEditorRoute,
-    lessonViewRoute,
-    lessonPresentRoute,
     lessonPrintRoute,
     worksheetEditorRoute,
     worksheetPrintRoute,

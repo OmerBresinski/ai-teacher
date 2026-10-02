@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { Lesson } from "@tj/domain/documents";
+import { type Lesson, lessonFromBrief } from "@tj/domain/documents";
 import { generatedLesson, lessonFacts } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
@@ -21,6 +21,32 @@ mock.module("@tanstack/react-router", () => ({
   useSearch: () => search,
 }));
 mock.module("@/components/lesson-creation/character-host", () => ({ CharacterHost: () => null }));
+// Turnstile is TEACH-243's widget; here only its token matters (always-pass test key semantics).
+const turnstile = {
+  getToken: mock(async (): Promise<string | null> => "turnstile-token"),
+  reset: mock(),
+  error: null,
+  containerRef: () => {},
+};
+// sign-in.page.test.tsx mocks `@/lib/auth` for the whole run; the real better-auth client pointed
+// at the fake api keeps `signIn.anonymous` honest here whatever order the files run in.
+const { createAuthClient } = await import("@tj/api-client");
+mock.module("@/lib/auth", () => ({
+  authClient: createAuthClient(`${window.location.origin}/api`),
+}));
+// bun applies a module mock to the whole run, so keep every real export and hand back the stub
+// only while this file runs; afterwards the real hook answers (use-turnstile-token.test.tsx).
+// Copied before mocking: the mock rewrites the module's live exports in place.
+const realTurnstile = { ...(await import("@/components/turnstile")) };
+let stubTurnstile = true;
+mock.module("@/components/turnstile", () => ({
+  ...realTurnstile,
+  useTurnstileToken: (...args: Parameters<typeof realTurnstile.useTurnstileToken>) => {
+    // Always call the real hook (no site key in tests, so it stays off): same hooks every render.
+    const real = realTurnstile.useTurnstileToken(...args);
+    return stubTurnstile ? turnstile : real;
+  },
+}));
 const { LessonBriefPage } = await import("./lesson-brief.page");
 function show() {
   const client = new QueryClient({
@@ -70,8 +96,12 @@ describe("real lesson intake", () => {
     navigate.mockReset();
     localStorage.clear();
     search = {};
+    turnstile.getToken.mockReset();
+    turnstile.getToken.mockImplementation(async () => "turnstile-token");
+    turnstile.reset.mockReset();
   });
   afterAll(() => {
+    stubTurnstile = false;
     cleanup();
     restore();
     globalThis.EventSource = originalEventSource;
@@ -205,5 +235,199 @@ describe("real lesson intake", () => {
     // The brief opens on Year 4: Playground.
     expect(post().themeId).toBe("playground");
     expect(readLastClass()?.themeId).toBe("");
+  });
+  it("signed out: Turnstile, anonymous sign-in with the token, then one create with a requestId", async () => {
+    fakeApi.session = null;
+    search = { topic: "Volcanoes" };
+    show();
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("Volcanoes");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    const writes = fakeApi.requests.filter((r) => r.method === "POST");
+    expect(writes.map((r) => r.path)).toEqual(["/auth/sign-in/anonymous", "/lessons"]);
+    expect(writes[0]?.headers.get("x-captcha-response")).toBe("turnstile-token");
+    expect(post().requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(post().skipPlanning).toBe(false);
+    // SO-1: the objectives step comes next, as for a teacher.
+    expect(navigate.mock.calls[0]?.[0]).toMatchObject({
+      to: "/lessons/new",
+      search: { lesson: expect.any(String) },
+    });
+    expect(turnstile.reset).toHaveBeenCalled();
+  });
+
+  it("signed out: a dropped create response retries with the same request id and no second sign-in", async () => {
+    fakeApi.session = null;
+    search = { topic: "Rocks" };
+    const transport = globalThis.fetch;
+    const sent: unknown[] = [];
+    let first = true;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith("/lessons") && (init?.method ?? (input as Request).method) === "POST") {
+        sent.push(JSON.parse(String(init?.body)));
+        if (first) {
+          first = false;
+          throw new TypeError("Connection lost");
+        }
+      }
+      return transport(input, init);
+    }) as typeof fetch;
+    try {
+      show();
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      await screen.findByRole("alert");
+      await waitFor(() => expect(screen.getByRole("button", { name: "Next" })).toBeEnabled());
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      await waitFor(() => expect(navigate).toHaveBeenCalled());
+      expect(sent).toHaveLength(2);
+      expect(sent[0]).toEqual(sent[1]);
+      expect(fakeApi.requests.filter((r) => r.path === "/auth/sign-in/anonymous")).toHaveLength(1);
+      expect(fakeApi.live("lesson").filter((r) => r.body.title === "Rocks")).toHaveLength(1);
+    } finally {
+      globalThis.fetch = transport;
+    }
+  });
+
+  it("anonymous at the lesson limit is asked to sign in, and the brief stays", async () => {
+    fakeApi.session = "anonymous";
+    fakeApi.failNext(
+      (r) => r.method === "POST" && r.path === "/lessons",
+      () =>
+        Response.json(
+          { error: { code: "anonymous_limit", message: "x", requestId: "r", retryable: false } },
+          { status: 403 },
+        ),
+    );
+    search = { topic: "Volcanoes" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText(/Sign in to make more lessons/)).toBeTruthy();
+    expect(fakeApi.requests.some((r) => r.path === "/auth/sign-in/anonymous")).toBe(false);
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("Volcanoes");
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/sign-in",
+      search: { redirect: "/lessons/new?topic=Volcanoes" },
+    });
+  });
+
+  it("the daily cap (0 closes it) degrades to today's sign-in flow with the topic kept", async () => {
+    fakeApi.session = null;
+    fakeApi.anonymousCapacity = true;
+    search = { topic: "Volcanoes" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/sign-in",
+        search: { redirect: "/lessons/new?topic=Volcanoes" },
+      }),
+    );
+    expect(fakeApi.requests.some((r) => r.path === "/lessons")).toBe(false);
+  });
+
+  it("a failed Turnstile check shows an inline retry and signs nobody in", async () => {
+    fakeApi.session = null;
+    turnstile.getToken.mockImplementationOnce(async () => {
+      throw new Error("We couldn’t check this browser. Try again.");
+    });
+    search = { topic: "Volcanoes" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("check this browser");
+    expect(fakeApi.requests.some((r) => r.method === "POST")).toBe(false);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Next" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(fakeApi.requests.filter((r) => r.path === "/auth/sign-in/anonymous")).toHaveLength(1);
+  });
+
+  it("signed out: no drop zone or blank lesson; Add materials signs in first (ruling 110)", async () => {
+    fakeApi.session = null;
+    search = { topic: "Volcanoes" };
+    show();
+    const add = await screen.findByRole("button", { name: "Add materials" });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Blank lesson" })).toBeNull());
+    fireEvent.click(add);
+    expect(screen.queryByRole("dialog", { name: "Add your materials" })).toBeNull();
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/sign-in",
+      search: { redirect: "/lessons/new?topic=Volcanoes&source=1" },
+    });
+  });
+
+  it("a signed-in teacher never signs in anonymously and still sends a requestId", async () => {
+    search = { topic: "Rocks" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(fakeApi.requests.some((r) => r.path.startsWith("/auth"))).toBe(false);
+    expect(turnstile.getToken).not.toHaveBeenCalled();
+    expect(post().requestId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  describe("anonymous objectives step (SO-1)", () => {
+    function seedPlanned() {
+      const lesson = lessonFromBrief(
+        { brief: { topic: "Volcanoes", level: "standard" }, yearGroup: "Year 4" },
+        "planned-volcanoes",
+        new Date(),
+      ) as Lesson;
+      lesson.generation = { ...lesson.generation, stage: "planned" } as Lesson["generation"];
+      lesson.facts = {
+        objectives: [{ id: "o1", text: "Explain how a volcano erupts" }],
+      } as unknown as Lesson["facts"];
+      lesson.plan = { state: "proposed", revision: 1 } as Lesson["plan"];
+      fakeApi.rows.set(lesson.id, {
+        id: lesson.id,
+        kind: "lesson",
+        body: lesson,
+        createdAt: lesson.createdAt,
+        updatedAt: lesson.updatedAt,
+        deletedAt: null,
+        generatingJobId: null,
+      });
+      return lesson.id;
+    }
+
+    it("Continue generates straight away: no worksheet step", async () => {
+      fakeApi.session = "anonymous";
+      const id = seedPlanned();
+      search = { lesson: id };
+      show();
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+      await waitFor(() =>
+        expect(navigate).toHaveBeenCalledWith({ to: "/l/$lessonId", params: { lessonId: id } }),
+      );
+      expect(fakeApi.requests.some((r) => r.path === `/lessons/${id}/generate`)).toBe(true);
+      expect(screen.queryByText("Add a worksheet?")).toBeNull();
+    });
+
+    it("a refused re-plan or confirm asks to sign in and keeps the plan on screen", async () => {
+      fakeApi.session = "anonymous";
+      const id = seedPlanned();
+      fakeApi.failNext(
+        (r) => r.path === `/lessons/${id}/generate`,
+        () =>
+          Response.json(
+            {
+              error: {
+                code: "sign_in_required",
+                message: "Sign in to keep changing the plan.",
+                requestId: "r",
+                retryable: false,
+              },
+            },
+            { status: 403 },
+          ),
+      );
+      search = { lesson: id };
+      show();
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+      expect(await screen.findByText(/Sign in to keep changing the plan/)).toBeTruthy();
+      expect(screen.getByDisplayValue("Explain how a volcano erupts")).toBeTruthy();
+      expect(navigate).not.toHaveBeenCalled();
+    });
   });
 });
