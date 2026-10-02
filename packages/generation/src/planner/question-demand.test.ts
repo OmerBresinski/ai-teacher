@@ -162,10 +162,10 @@ describe("questionDemand", () => {
     });
     // What the real questions achieved: a set of three on objective 1 and one open-response slide
     // on objective 2. The exit ticket holds what fits one slide with its answers (ruling 108):
-    // one exit line per objective, the shortest that fit together; a third fits beside neither
-    // pair (it held five, 2 + 3, before TEACH-172).
+    // one exit line per objective, then the shortest that fit with them. At the teaching body
+    // size (ruling 140) a third line fits, which is the cap; it held five, 2 + 3, before TEACH-172.
     expect(placed).toEqual([
-      { slide: 3, exit: 1 },
+      { slide: 3, exit: 2 },
       { slide: 1, exit: 1 },
     ]);
     // The demand from the count-only sketch, before any question existed.

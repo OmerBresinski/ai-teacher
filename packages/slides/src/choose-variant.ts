@@ -84,8 +84,8 @@ function ranked(kind: SlideKind, ctx: VariantContext): VariantName[] {
     case "title":
       if (!ctx.hasImage) return ["stack"];
       return words <= SPLIT_MAX_WORDS
-        ? ["split", "photo-band", "stack"]
-        : ["photo-band", "split", "stack"];
+        ? ["split", "photo-band", "photo-band-long", "stack"]
+        : ["photo-band", "photo-band-long", "split", "stack"];
     case "content": {
       // A statement has no heading to anchor it, which the deck's first idea needs (and any
       // content slide directly after the objectives); and a body over twenty words runs past

@@ -38,7 +38,8 @@ const lowestOption = (slide: Slide) =>
 
 const ONE_LINE = "Water vapour is invisible.";
 /** Two lines in every theme: the demo lesson's own reason. */
-const TWO_LINES = "Clouds are tiny droplets of liquid water. Water vapour is invisible.";
+const TWO_LINES =
+  "Clouds are tiny droplets of liquid water that has cooled and condensed. Water vapour itself is an invisible gas.";
 const LONG =
   "Clouds are made of tiny droplets of liquid water, not of water vapour, because the vapour " +
   "has already cooled and condensed by the time you can see anything at all in the sky above you.";

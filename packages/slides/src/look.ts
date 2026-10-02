@@ -8,9 +8,9 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
-import { docFromText, uid } from "./factories";
+import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
-import { PLACEHOLDER_IMAGE } from "./layouts";
+import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
 import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
@@ -255,9 +255,17 @@ function cover(slide: Slide, t: Theme): Slide {
   const ink = t.colors.onAccent;
   const soft = readableSoft(ink, t.colors.accent);
   const elements = slide.elements.map((el): SlideElement => {
-    if (el.type === "shape") return el.name === "Accent rule" ? { ...el, fill: ink } : el;
+    if (el.type === "shape") {
+      if (el.name === "Accent rule") return { ...el, fill: ink };
+      // The `agenda` title's hairline between the title and the objectives.
+      return el.name === AGENDA_DIVIDER ? { ...el, fill: soft } : el;
+    }
     if (el.type !== "text") return el;
-    const quiet = el.style.preset === "caption" || el.style.preset === "subtitle";
+    const quiet =
+      el.style.preset === "caption" ||
+      el.style.preset === "subtitle" ||
+      el.name === AGENDA_STEM ||
+      el.name === "Subtitle";
     return { ...el, style: { ...el.style, color: quiet ? soft : ink } };
   });
   return { ...slide, background: { ...slide.background, color: t.colors.accent }, elements };
@@ -278,6 +286,8 @@ function leadAndCard(els: SlideElement[], t: Theme, ids: Ids): SlideElement[] {
   // A body with `points` (materialise `bodyWithPoints`) ends in a bullet list: the lead is taken
   // from the paragraphs before it, and the list goes under the lead with whatever follows it.
   const nodes = body.doc.content ?? [];
+  // A body in labelled chunks (`docFromChunks`) is already set out in parts: it keeps them.
+  if (isChunked(body.doc)) return els;
   const listAt = nodes.findIndex((n) => n.type === "bulletList");
   const list = listAt < 0 ? [] : nodes.slice(listAt);
   const words =

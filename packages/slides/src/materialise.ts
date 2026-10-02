@@ -16,16 +16,20 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj/domain/documents";
 import { applyCallout, detachCallout, isCalloutElement, placeCallout } from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
-import { docFromBullets, docFromText, uid } from "./factories";
+import { docFromBullets, docFromChunks, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import {
+  AGENDA_OBJECTIVES,
+  AGENDA_STEM,
   type ContentVariant,
   docFromNumbered,
+  IDEA_NAME,
   LIST_SLOTS,
   type ListVariant,
   layoutSlide,
+  seededOrder,
   type TitleVariant,
   variantName,
   vocabularyGrid,
@@ -60,6 +64,7 @@ import {
   structureSlide,
   withTerms,
 } from "./structure";
+import { measureHeadless } from "./text-measure";
 import { withThemeColours } from "./theme-colours";
 import { getTheme } from "./themes";
 
@@ -447,6 +452,7 @@ function markedTerms(els: TextElement[]): string[] {
  * diagram, whose Figure template picks it (`diagramVariantFor`, ADR 0034 decision 7).
  */
 function defaultVariant(spec: SlideSpec): number | string {
+  if (spec.kind === "title" && spec.objectives?.length) return "agenda";
   return spec.kind === "diagram" ? diagramVariantFor(spec.figure.template, spec.figure.values) : 0;
 }
 
@@ -579,10 +585,24 @@ function fillSlide(
 /* --- per-kind fillers --------------------------------------------- */
 
 function fillTitle(spec: SlideSpecOf<"title">, laid: Layout, variant: TitleVariant): Layout {
+  if (variant === "agenda") {
+    // The title at the heading stop and the class line in `small`, named (`layouts.ts`); the
+    // objectives under the stem, lower-cased as the objectives slide sets them.
+    setText(slot(laid, "Title"), spec.title);
+    setText(slot(laid, "Subtitle"), spec.subtitle);
+    setText(slot(laid, AGENDA_STEM), OBJECTIVES_SLIDE_HEADING);
+    setDoc(
+      slot(laid, AGENDA_OBJECTIVES),
+      docFromNumbered((spec.objectives ?? []).map(objectiveLine)),
+    );
+    return laid;
+  }
   setText(textOf(laid, "title"), spec.title);
-  // The photo-band variant sets the class line in `small`, named so it can be found.
+  // The photo-band variants set the class line in `small`, named so it can be found.
   setText(
-    variant === "photo-band" ? slot(laid, "Subtitle") : textOf(laid, "subtitle"),
+    variant === "photo-band" || variant === "photo-band-long"
+      ? slot(laid, "Subtitle")
+      : textOf(laid, "subtitle"),
     spec.subtitle,
   );
   return laid;
@@ -725,6 +745,21 @@ function fillContent(
     return withCallout(spec, themeId, laid, ids, variant);
   }
   setText(textOf(laid, "heading"), spec.heading);
+  if (variant === "callout-row") {
+    // One sentence, hugged by its box: the row under it takes every point the words leave.
+    const idea = slot(laid, IDEA_NAME);
+    setText(idea, spec.body);
+    const measured = measureHeadless(getTheme(themeId))({
+      doc: idea.doc,
+      width: idea.w,
+      style: idea.style,
+      preset: "body",
+      inset: 0,
+      chrome: 0,
+    });
+    idea.h = Math.ceil(measured);
+    return withCallout(spec, themeId, laid, ids, variant);
+  }
   if (variant === "two-column") {
     const [left, right] = splitAtFullStop(spec.body);
     setText(slot(laid, "Body left"), left);
@@ -775,8 +810,8 @@ function withCallout(
  * included, under it.
  */
 export function bodyWithPoints(body: string, points: string[] | undefined): RichDoc {
-  if (!points?.length) return docFromText(body);
-  const text = body.trim() ? (docFromText(body).content ?? []) : [];
+  if (!points?.length) return docFromChunks(body);
+  const text = body.trim() ? (docFromChunks(body).content ?? []) : [];
   return { type: "doc", content: [...text, ...(docFromBullets(points).content ?? [])] };
 }
 
@@ -881,10 +916,24 @@ function fillMatching(spec: SlideSpecOf<"matching">, laid: Layout): Layout {
   setText(textOf(laid, "heading"), spec.stem);
   const cards = textsOf(laid, "body");
   const half = cards.length / 2;
+  const n = spec.pairs.length;
+  // The right-hand side is shown shuffled (seeded by the pairs, so stable), never opposite its
+  // term; the answer key stays in `question.pairs`.
+  const order = seededOrder(n, spec.pairs.map((p) => `${p.left}|${p.right}`).join("\n"), true);
   spec.pairs.forEach((pair, i) => {
-    setText(cards[i], pair.left);
-    setText(cards[half + i], pair.right);
+    setDoc(cards[i], labelledDoc(String(i + 1), pair.left));
   });
+  order.forEach((pairIndex, slotIndex) => {
+    const pair = spec.pairs[pairIndex];
+    if (pair) setDoc(cards[half + slotIndex], labelledDoc(LETTER(slotIndex), pair.right));
+  });
+  const question = laid.question;
+  if (question?.type === "matching") {
+    question.pairs = question.pairs.map((p, i) => ({
+      ...p,
+      rightElementId: cards[half + order.indexOf(i)]?.id ?? p.rightElementId,
+    }));
+  }
   return laid;
 }
 
@@ -903,10 +952,32 @@ function fillGap(spec: SlideSpecOf<"fill-gap">, laid: Layout, ids: IdSupplier): 
 function fillSort(spec: SlideSpecOf<"sort">, laid: Layout): Layout {
   setText(textOf(laid, "heading"), spec.stem);
   const cards = optionsOf(laid);
-  spec.steps.forEach((step, i) => {
-    setDoc(cards[i], docFromText(step));
+  // Shown in a stable shuffled order under letters, never the answer order; `question.order`
+  // keeps the right order as card ids.
+  const order = seededOrder(spec.steps.length, spec.steps.join("\n"), false);
+  order.forEach((stepIndex, slotIndex) => {
+    setDoc(cards[slotIndex], docFromText(spec.steps[stepIndex] ?? ""));
   });
-  return { ...laid, question: { type: "sort", order: cards.map((card) => card.id) } };
+  const right = spec.steps.map((_, i) => cards[order.indexOf(i)]?.id ?? "");
+  return { ...laid, question: { type: "sort", order: right } };
+}
+
+const LETTER = (i: number) => String.fromCharCode(65 + i);
+
+/** "1  term" / "A  match": the label bold in the accent, as the option cards letter theirs. */
+function labelledDoc(label: string, content: string): RichDoc {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: label, marks: [{ type: "bold" }] },
+          { type: "text", text: `  ${content}` },
+        ],
+      },
+    ],
+  };
 }
 
 function fillOpenResponse(spec: SlideSpecOf<"open-response">, laid: Layout): Layout {
@@ -1019,7 +1090,7 @@ function optionsOf(laid: Layout): OptionElement[] {
 }
 
 function setText(element: TextElement | undefined, text: string): void {
-  setDoc(element, docFromText(text));
+  setDoc(element, docFromChunks(text));
 }
 
 function setDoc(element: TextElement | OptionElement | undefined, doc: RichDoc): void {

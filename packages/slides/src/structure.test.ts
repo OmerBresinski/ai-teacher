@@ -26,6 +26,7 @@ import {
   STEP_ARROW_NAME,
   STEP_NAME,
   stepsStrip,
+  workingAndReason,
 } from "./structure";
 import { getTheme } from "./themes";
 
@@ -97,7 +98,9 @@ describe("options grid", () => {
       expect(panel.type).toBe("shape");
       expect(panel.revealStep).toBe(1);
       // The multiple choice is answered in place; the true/false correction and the open answer are on the panel.
-      expect(text(panel.doc)).toBe("2 False. Sediment scrapes. 3 Pieces of rock carried by water");
+      expect(text(panel.doc).replace(/\s+/g, " ")).toBe(
+        "2 False. Sediment scrapes. 3 Pieces of rock carried by water",
+      );
       expect(inside(page)).toBe(true);
       expect(page.every((e) => !e.locked)).toBe(true);
     });
@@ -361,7 +364,7 @@ describe("key terms", () => {
 });
 
 describe("overflow fixes", () => {
-  test("an open question's answer space and label sit under a long stem, inside the slide", () => {
+  test("an open question is a framed prompt with no answer box on the board, inside the slide", () => {
     for (const t of THEMES) {
       const slide = materialiseSlide(
         {
@@ -372,14 +375,15 @@ describe("overflow fixes", () => {
         t.id,
         meta,
       );
-      const space = named(slide.elements, "Answer space")[0] as SlideElement;
-      expect(space.y + space.h).toBeLessThanOrEqual(SAFE_BOTTOM);
+      expect(named(slide.elements, "Answer space")).toHaveLength(0);
+      const card = named(slide.elements, "Prompt card")[0] as SlideElement;
+      expect(card.y + card.h).toBeLessThanOrEqual(SAFE_BOTTOM);
       expect(fitSlide(slide, t).overflow).toEqual([]);
     }
   });
   test("a paragraph too long even for the fit continues on the next slide, never below the floor", () => {
     const body = Array.from(
-      { length: 11 },
+      { length: 24 },
       (_, i) => `Sentence ${i} says something that takes up most of a line.`,
     ).join(" ");
     const slide: Slide = materialiseSlide(
@@ -393,5 +397,39 @@ describe("overflow fixes", () => {
     expect(text((named(pages[1]?.elements ?? [], "Heading")[0] as TextElement).doc)).toBe(
       "Long (continued)",
     );
+  });
+});
+
+describe("workingAndReason: a worked step as its working and its reason", () => {
+  test("a bracketed reason after the maths is the reason", () => {
+    expect(workingAndReason("£45 ÷ 5 = £9 (each part)")).toEqual(["£45 ÷ 5 = £9", "each part"]);
+  });
+
+  test("a reason before or after a separator: the side with the maths is the working", () => {
+    expect(workingAndReason("Add the parts: 2 + 5 = 7")).toEqual(["2 + 5 = 7", "Add the parts"]);
+    expect(workingAndReason("2 + 5 = 7 parts — add the parts")).toEqual([
+      "2 + 5 = 7 parts",
+      "add the parts",
+    ]);
+    expect(workingAndReason("35 ÷ 7 = 5, so one part is five sweets")).toEqual([
+      "35 ÷ 7 = 5",
+      "one part is five sweets",
+    ]);
+  });
+
+  test("a step with no reason, or with maths on both sides, is all working", () => {
+    expect(workingAndReason("10 + 25 = 35")).toEqual(["10 + 25 = 35", undefined]);
+    expect(workingAndReason("2 × 5 = 10; 5 × 5 = 25")).toEqual([
+      "2 × 5 = 10; 5 × 5 = 25",
+      undefined,
+    ]);
+    expect(workingAndReason("Subtract 2x: 2x + 6 = 18")).toEqual([
+      "Subtract 2x: 2x + 6 = 18",
+      undefined,
+    ]);
+    expect(workingAndReason("The ice melts because it gains energy")).toEqual([
+      "The ice melts because it gains energy",
+      undefined,
+    ]);
   });
 });

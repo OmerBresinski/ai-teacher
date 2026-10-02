@@ -53,7 +53,7 @@ const EXAMPLE = {
 };
 
 export const verifyFactsPrompt = {
-  version: "verify-facts.v7",
+  version: "verify-facts.v8",
   system: [
     "You are a subject specialist checking a lesson plan's facts before it is taught. You are given every fact with its id; return only the corrections that are needed.",
     "",

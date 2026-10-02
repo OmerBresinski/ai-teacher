@@ -377,6 +377,8 @@ export function specFieldsCover(slide: Slide): boolean {
         !covered.has(line) &&
         // A step card's number disc (`@tj/slides` structure.ts) is chrome, not a spec field.
         !/^\d{1,2}$/.test(line) &&
+        // …nor is a matching row's letter chip ("A", "B"), drawn once rows have room for it.
+        !/^[a-z]$/i.test(line) &&
         !/^(answer|answers|correct|model answer):/.test(line),
     )
     .every((line) => shown.has(line));

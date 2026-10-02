@@ -462,9 +462,14 @@ describe("TEACH-257: every editorial rule carries the tag and the soft build lea
       { kind: "worked-example", ...base, question: "Why?", steps: ["x".repeat(85)] },
     ],
     [
-      "a fifth worked-example step",
+      "a seventh worked-example step",
       "worked-example",
-      { kind: "worked-example", ...base, question: "Why?", steps: ["a", "b", "c", "d", "e"] },
+      {
+        kind: "worked-example",
+        ...base,
+        question: "Why?",
+        steps: ["a", "b", "c", "d", "e", "f", "g"],
+      },
     ],
     [
       "a house-rule phrase in pupil text",

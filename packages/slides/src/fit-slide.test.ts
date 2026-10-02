@@ -23,9 +23,9 @@ const META = { promptVersion: "test", model: "test", at: "2026-09-24T00:00:00.00
 const THEME = "chalk";
 const theme = getTheme(THEME);
 
-function make(spec: SlideSpec): Slide {
+function make(spec: SlideSpec, variant?: string): Slide {
   let n = 0;
-  return materialiseSlide(spec, THEME, META, () => `e${++n}`);
+  return materialiseSlide(spec, THEME, META, () => `e${++n}`, variant);
 }
 
 const texts = (slide: Slide) =>
@@ -222,19 +222,24 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
+  // Steps of two lines each at the teaching body size: too long for step cards or a strip, so the
+  // worked example keeps its working card (the fallback this pins).
   test("a one-line question hands its second line to the working, which stays on its card", () => {
-    const slide = make({
-      kind: "worked-example",
-      heading: "Explain why the Bolsheviks won the Civil War",
-      question: "Explain why the Bolsheviks won the Russian Civil War.",
-      steps: [
-        "They controlled central Russia and its railways.",
-        "This let them move troops and supplies between fronts.",
-        "The White forces were divided and had different aims.",
-        "Together, Red control and White disunity made victory more likely.",
-      ],
-      factRefs: ["x1"],
-    });
+    const slide = make(
+      {
+        kind: "worked-example",
+        heading: "Explain why the Bolsheviks won the Civil War",
+        question: "Explain why the Bolsheviks won the Russian Civil War.",
+        steps: [
+          "They controlled central Russia, its big industrial cities and the main railway lines",
+          "Railways let them move troops and supplies quickly between the different fronts of the war",
+          "The White armies were divided, far apart and wanted different things after the war was won",
+          "Red control of the centre and White disunity together made a Bolshevik victory far more likely",
+        ],
+        factRefs: ["x1"],
+      },
+      "working-card",
+    );
     const card = slide.elements.find((el) => el.type === "shape" && el.name === "Working card");
     const working = byPreset(slide, "body")[1];
     if (!card || !working) throw new Error("worked example");
@@ -243,20 +248,25 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
+  // Steps of two lines each at the teaching body size: too long for step cards or a strip, so the
+  // worked example keeps its working card (the fallback this pins).
   test("the showcase's two-line question leaves five working lines no card can hold: reported", () => {
-    const slide = make({
-      kind: "worked-example",
-      heading: "Explain why the Bolsheviks won the Civil War",
-      question:
-        "Explain why the Bolsheviks won the Russian Civil War. Choose the strongest two reasons from a source pack.",
-      steps: [
-        "They controlled central Russia and its railways.",
-        "This let them move troops and supplies between fronts.",
-        "The White forces were divided and had different aims.",
-        "Together, Red control and White disunity made victory more likely.",
-      ],
-      factRefs: ["x1"],
-    });
+    const slide = make(
+      {
+        kind: "worked-example",
+        heading: "Explain why the Bolsheviks won the Civil War",
+        question:
+          "Explain why the Bolsheviks won the Russian Civil War. Choose the strongest two reasons from a source pack.",
+        steps: [
+          "They controlled central Russia, its big industrial cities and the main railway lines, and why",
+          "Railways let them move troops and supplies quickly between the different fronts, and why",
+          "The White armies were divided, far apart and wanted different things after the war, and why",
+          "Red control of the centre and White disunity together made a Bolshevik victory likely, and why",
+        ],
+        factRefs: ["x1"],
+      },
+      "working-card",
+    );
     const card = slide.elements.find((el) => el.type === "shape" && el.name === "Working card");
     if (!card) throw new Error("card");
     // The card keeps its foot inside the safe area; the working that runs past it is the
@@ -277,11 +287,11 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       footnote: "Answer all three in your books. Use because, so and therefore.",
       factRefs: ["q4"],
     });
-    const [list] = byPreset(slide, "body");
+    const list = byPreset(slide, "body");
     const [foot] = byPreset(slide, "small");
-    if (!list || !foot) throw new Error("exit ticket");
+    if (list.length === 0 || !foot) throw new Error("exit ticket");
     expect(bottom(foot)).toBeLessThanOrEqual(SAFE_BOTTOM);
-    expect(foot.y).toBeGreaterThanOrEqual(bottom(list));
+    for (const q of list) expect(foot.y).toBeGreaterThanOrEqual(bottom(q));
   });
 
   test("a slide whose copy fits the recipe is returned as the recipe drew it", () => {

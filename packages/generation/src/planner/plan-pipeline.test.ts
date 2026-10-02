@@ -205,7 +205,10 @@ describe("the retrieval starter (lab r2)", () => {
       expect(text(at)).toContain(r.question);
       expect(text(at)).toContain(r.answer);
     }
-    expect(lesson.slides[at]?.elements.find((e) => e.name === "Answers")?.revealStep).toBe(1);
+    // Each answer is revealed inside its question's card (row cards), never shown up front.
+    const reveals = lesson.slides[at]?.elements.filter((e) => e.name === "Row reveal") ?? [];
+    expect(reveals).toHaveLength(RETRIEVAL.length);
+    for (const r of reveals) expect(r.revealStep).toBeGreaterThanOrEqual(1);
     // Nowhere else: not a check, not the exit quiz.
     lesson.slides.forEach((_, i) => {
       if (i === at) return;

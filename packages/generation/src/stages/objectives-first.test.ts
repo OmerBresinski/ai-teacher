@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { JOB_PROGRESS_STAGES } from "@tj/domain";
 import { type Lesson, plainTextOf } from "@tj/domain/documents";
-import { FIT_VERSION, THEMES } from "@tj/slides";
+import { FIT_VERSION, ROW_CARD_NAME, THEMES } from "@tj/slides";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { labAi, memoryLogger, recordingDeps, romansLesson, versionsOf } from "../testing";
@@ -270,6 +270,11 @@ describe("the generate job's run from the confirmed objectives (the stamp decide
     // Saved fitted and stamped, so the editor's first open adds no page.
     expect(final.lesson.fitVersion).toBe(FIT_VERSION);
     expect(summary.fit.pagesOnOpen).toBe(0);
+    // The card forms (`@tj/slides` structure.ts): the objectives are set as numbered cards.
+    const rowCards = final.lesson.slides.filter((s) =>
+      s.elements.some((e) => e.name === ROW_CARD_NAME),
+    );
+    expect(rowCards.map((s) => s.kind)).toContain("objectives");
     expect(leaves(summary.fit).every((v) => v === null || typeof v === "number")).toBe(true);
     const gates = lines.map((l) => JSON.parse(l)).filter((r) => r.msg === "save gate");
     expect(gates).toHaveLength(n);

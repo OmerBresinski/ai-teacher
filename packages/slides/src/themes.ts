@@ -14,8 +14,19 @@ import { FONT_STACKS } from "./fonts";
  */
 
 const S = 1.2;
+/**
+ * Teaching body (UX ruling 140): the `body` stop is the reading matter a slide
+ * teaches with (explain and photo bodies, list items, captions). It is set at 0.7 of the display
+ * ladder's body stop, about 30–33 px on a 1440 projector, so a teaching slide
+ * carries a paragraph rather than three lines. Each theme keeps its own ratio; titles, headings,
+ * question stems and option cards keep their stops.
+ */
+const TEACH = 0.7;
 type Stops = [number, number][]; // [size@800, lineHeight] in order title, subtitle, heading, body, small, caption
 const PRESETS: TextPreset[] = ["title", "subtitle", "heading", "body", "small", "caption"];
+
+/** Each theme's display body stop, before the teaching cut (keyed by the theme's `sizes` object). */
+const RAW_BODY = new WeakMap<Record<TextPreset, number>, number>();
 
 function type(stops: Stops) {
   const sizes = {} as Record<TextPreset, number>;
@@ -23,7 +34,8 @@ function type(stops: Stops) {
   stops.forEach(([size, lh], i) => {
     const preset = PRESETS[i];
     if (!preset) return;
-    sizes[preset] = Math.round(size * S);
+    sizes[preset] = Math.round(size * S * (preset === "body" ? TEACH : 1));
+    if (preset === "body") RAW_BODY.set(sizes, Math.round(size * S));
     lineHeights[preset] = lh;
   });
   return { sizes, lineHeights };
@@ -355,6 +367,17 @@ const BASE: Theme[] = [
 /** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
 export const THEMES: Theme[] = BASE;
 
+const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
+  BASE.map((t) => [t.id, RAW_BODY.get(t.sizes)]),
+);
+
+/**
+ * The theme's display body stop, which the teaching cut took off `sizes.body`. It stays a stop of
+ * the step-down ladder, so an option card or a question stem still steps one display stop under
+ * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`.
+ */
+export const displayBodyStop = (theme: Theme): number | undefined => DISPLAY_BODY[theme.id];
+
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
 /**
@@ -481,7 +504,7 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
   question: 38,
   option: 31,
   heading: 26,
-  body: 26,
+  body: 20,
   small: 24,
   caption: 14,
 };
@@ -506,8 +529,9 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
  *
  * 1 — the sizes the app shipped with.
  * 2 — wave 4, 4 Sept 2026: the per-role projector floors above (SPEC §7).
+ * 3 — UX ruling 140, 2 Oct 2026: the teaching body at 0.7 and its floor 26 → 20 (30 px at 1440).
  */
-export const FIT_VERSION = 2;
+export const FIT_VERSION = 3;
 
 /**
  * Preset to role. The preset names a stop on the theme's ladder; the role names

@@ -100,7 +100,7 @@ export const SPEC_LIMITS = {
   step: 56,
   /** A worked-example question: two body lines at the floor across the slide (TEACH-247). */
   question: 80,
-  body: 400,
+  body: 600,
   stem: 200,
   option: 80,
   term: 60,
@@ -308,6 +308,11 @@ function buildSpecs(soft: boolean) {
       ...specBase,
       title: line(SPEC_LIMITS.title),
       subtitle: line(SPEC_LIMITS.heading),
+      /**
+       * The lesson's objectives, set beside the title in the `agenda` variant: a deck that opens
+       * this way has no objectives slide.
+       */
+      objectives: items(1, 4).optional(),
     }),
     z.object({
       kind: z.literal("objectives"),
@@ -353,12 +358,12 @@ function buildSpecs(soft: boolean) {
        * A set of parallel things the body's lead introduces (factors, parts, types), set as bullets
        * under it (`materialise.ts` `fillContent`, `look.ts` `leadAndCard`). Left out otherwise.
        */
-      points: items(2, 4).optional(),
+      points: items(2, 8).optional(),
       /** Two things side by side (shape `compare`, `content-shapes.ts`): placed as compare cards. */
       compare: z
         .object({
-          left: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
-          right: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 3) }),
+          left: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 4) }),
+          right: z.object({ label: line(SPEC_LIMITS.term), points: items(2, 4) }),
         })
         .optional(),
       /** A process or method in order (shape `sequence`): placed as the steps strip. */
@@ -389,12 +394,12 @@ function buildSpecs(soft: boolean) {
       heading: line(SPEC_LIMITS.heading).optional(),
       question: line(SPEC_LIMITS.question),
       callout,
-      // The working is one numbered doc, so a fifth step overflows the card rather than crashing:
+      // The working is one numbered doc, so a seventh step overflows the card rather than crashing:
       // editorial (TEACH-245 asks the writer to merge, not drop).
       steps: rule(
         z.array(listLine(SPEC_LIMITS.step)).min(1),
-        (steps) => steps.length <= 4,
-        atMost(4, "steps; merge neighbouring steps"),
+        (steps) => steps.length <= 6,
+        atMost(6, "steps; merge neighbouring steps"),
       ),
     }),
     rule(

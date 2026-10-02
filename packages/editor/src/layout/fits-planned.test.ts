@@ -88,7 +88,7 @@ describe("fitsPlanned agrees with the editor's lint", () => {
       factRefs: ["k1"],
       heading: "Too much",
       body: Array.from(
-        { length: 12 },
+        { length: 30 },
         () => "Water moves up the stem to the leaves of the plant.",
       ).join(" "),
     } as SlideSpec;

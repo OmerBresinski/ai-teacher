@@ -347,20 +347,22 @@ describe("callout on an image-text slide", () => {
 
 describe("callout on a worked example", () => {
   for (const theme of THEMES) {
-    it(`${theme.id}: there is no room under the working card, so the slide goes without`, () => {
-      // Measured against the recipe: even a one-line card would leave the working under a body
-      // line, and the four steps the spec allows already fill it (TEACH-247).
-      expect(workedExampleCalloutRoom(theme)).toBeLessThan(0);
-      expect(workedExampleCalloutRoom(theme, 1)).toBeLessThan(boxH(theme, "body", 2));
+    it(`${theme.id}: a callout goes under the working card only when there is room`, () => {
+      // Measured against the recipe (TEACH-247). At the teaching body size (ruling 140) the
+      // working card leaves room on some themes; where it does not, the slide goes without.
       const withCallout = materialiseSlide(
         workedExample({ kind: "example", text: SHORT }),
         theme.id,
         meta,
         counter(),
       );
-      const without = materialiseSlide(workedExample(), theme.id, meta, counter());
-      expect(withCallout).toEqual(without);
-      expect(withCallout.elements.some(isCalloutElement)).toBe(false);
+      if (workedExampleCalloutRoom(theme) < 0) {
+        const without = materialiseSlide(workedExample(), theme.id, meta, counter());
+        expect(withCallout).toEqual(without);
+        expect(withCallout.elements.some(isCalloutElement)).toBe(false);
+      } else {
+        for (const e of withCallout.elements) expect(e.y + e.h).toBeLessThanOrEqual(540);
+      }
     });
   }
 });
@@ -724,4 +726,48 @@ describe("the words are the same with or without a callout", () => {
       }
     }
   }
+});
+
+describe("content callout-row: one idea over a common mistake", () => {
+  const meta = { promptVersion: "t", model: "t", at: "t" };
+  // A two-line assertion heading, one twenty-word sentence and a twenty-two-word misconception:
+  // the headed composition has no room for a card this size once the body passes about 125
+  // characters, so the callout-row composition is the one built for it.
+  const spec: SlideSpec = {
+    kind: "content",
+    factRefs: ["f1"],
+    heading: "Hyperinflation wiped out the savings of the middle classes",
+    body: "By November 1923 prices doubled every few days, so a lifetime of savings could not buy a loaf of bread.",
+    callout: {
+      kind: "watch-out",
+      text: "Hyperinflation did not hurt everyone: people with large debts, including many landowners and industrialists, paid them off with worthless marks and gained.",
+    },
+  };
+
+  it.each(THEMES.map((t) => [t.id]))(
+    "%s: the card is placed at small, the idea kept whole",
+    (id) => {
+      const t = getTheme(id);
+      const { slide, overflow } = fitSlide(
+        materialiseSlide(spec, id, meta, undefined, "callout-row"),
+        t,
+      );
+      expect(overflow).toEqual([]);
+      const card = slide.elements.find((e) => e.name === CALLOUT_NAMES.card) as ShapeElement;
+      const text = slide.elements.find((e) => e.name === CALLOUT_NAMES.text) as TextElement;
+      const idea = slide.elements.find((e) => e.name === "Idea") as TextElement;
+      expect(card).toBeDefined();
+      expect(text.style.fontSize).toBeUndefined();
+      expect(richDocToPlainText(idea.doc)).toBe(spec.body);
+      // Full width, under the idea with the gap kept, above the safe edge.
+      expect(card.x).toBe(SAFE.x);
+      expect(card.w).toBe(FULL);
+      expect(card.y).toBeGreaterThanOrEqual(idea.y + idea.h + SPACE[2]);
+      expect(card.y + card.h).toBeLessThanOrEqual(SAFE_BOTTOM);
+      // The look leaves the sentence alone: no lead-and-card split, no key card.
+      expect(
+        slide.elements.some((e) => e.name === "Explanation card" || e.name === "Key card"),
+      ).toBe(false);
+    },
+  );
 });

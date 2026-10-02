@@ -210,7 +210,9 @@ describe("runFitMigration", () => {
   });
 
   test("row 3: a worker-shaped worked-example is reflowed on first open but never continued", () => {
-    const step = "Gnawing scrapes the incisors down, so they never grow past the lip.";
+    // Long enough to wrap at the teaching body size (20 on chalk).
+    const step =
+      "Gnawing scrapes the incisors down, so they never grow past the lip and stop the mouse eating.";
     expect(step.length).toBeGreaterThanOrEqual(64);
     const make = () =>
       materialiseSlide(
@@ -218,7 +220,7 @@ describe("runFitMigration", () => {
           kind: "worked-example",
           heading: "Why does a mouse gnaw a hard seed?",
           question: "Explain why a mouse gnaws hard nuts even when it is not hungry.",
-          steps: [step, step, step, step],
+          steps: [step, step, step, step, step, step],
           factRefs: ["x1"],
         },
         "chalk",

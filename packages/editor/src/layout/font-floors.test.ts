@@ -18,7 +18,8 @@ describe("projector minimums", () => {
       question: 38,
       option: 31,
       heading: 26,
-      body: 26,
+      // Teaching body: 30 px at 1440 (UX ruling 140).
+      body: 20,
       small: 24,
       caption: 14,
     });
@@ -77,12 +78,14 @@ describe("the floor clamps every path to the same number", () => {
       expect(resolveFontSize(theme, preset, 12, role)).toBe(relaxed);
       expect(resolveFontSize(theme, preset, 200, role)).toBe(200);
     }
-    // Chalk: an option card 31 → 29, a question stem 38 → 36, body 26 → 24, small stays at 24.
+    // Chalk: an option card 31 → 29 (the display body stop the teaching cut keeps on the ladder),
+    // a question stem 38 → 36; the teaching body sits at its floor of 20 with no stop under it;
+    // small 24 → 20, the teaching body stop under it.
     const chalk = getTheme("chalk");
     expect(resolveFontSize(chalk, "small", 12, "option")).toBe(29);
     expect(resolveFontSize(chalk, "heading", 12, "question")).toBe(36);
-    expect(resolveFontSize(chalk, "body", 12)).toBe(24);
-    expect(resolveFontSize(chalk, "small", 12)).toBe(24);
+    expect(resolveFontSize(chalk, "body", 12)).toBe(20);
+    expect(resolveFontSize(chalk, "small", 12)).toBe(20);
   });
   test("reports the role on the resolved style, so the toolbar and the exporter agree", () => {
     expect(resolveTextStyle({ preset: "heading" }, theme).role).toBe("heading");
@@ -96,10 +99,10 @@ describe("the floor clamps every path to the same number", () => {
     for (const t of THEMES) {
       expect(stepDownSize(t, "heading", t.sizes.title)).toBeGreaterThanOrEqual(26);
       expect(stepDownSize(t, "heading", t.sizes.title, "question")).toBeGreaterThanOrEqual(38);
-      expect(stepDownSize(t, "body", t.sizes.body)).toBeGreaterThanOrEqual(26);
+      expect(stepDownSize(t, "body", t.sizes.body)).toBeGreaterThanOrEqual(20);
       expect(stepDownSize(t, "small", t.sizes.body)).toBeGreaterThanOrEqual(24);
       expect(stepDownSize(t, "small", 40, "option")).toBeGreaterThanOrEqual(31);
-      expect(stepDownSize(t, "body", 26)).toBe(26);
+      expect(stepDownSize(t, "body", 20)).toBe(20);
       expect(stepDownSize(t, "small", 31, "option")).toBe(31);
     }
   });

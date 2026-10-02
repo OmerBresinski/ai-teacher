@@ -13,6 +13,7 @@ import {
   ITEM_NAME,
   PANEL_DEFINITION_NAME,
   PANEL_NAME,
+  ROW_REVEAL_NAME,
   withoutDefinition,
 } from "./structure";
 import { getTheme } from "./themes";
@@ -167,7 +168,7 @@ describe("the answers never cover the questions", () => {
     });
   }
 
-  test("a short set keeps its panel as a reveal on the same slide", () => {
+  test("a short set keeps its answers as a reveal on the same slide", () => {
     const t = getTheme("chalk");
     const slide = materialiseSlide(
       {
@@ -182,7 +183,9 @@ describe("the answers never cover the questions", () => {
     );
     const pages = lookAndFitPages(slide, t);
     expect(pages).toHaveLength(1);
-    expect(named(pages[0]?.elements ?? [], ANSWERS_NAME)[0]?.revealStep).toBe(1);
+    // The answers are revealed inside their own cards.
+    const reveals = named(pages[0]?.elements ?? [], ROW_REVEAL_NAME);
+    expect(reveals.map((e) => e.revealStep)).toEqual([1, 1]);
   });
 });
 

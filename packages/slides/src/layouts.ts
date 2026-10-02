@@ -19,6 +19,7 @@ import { docFromBullets, docFromText, newText, uid } from "./factories";
 import { drawFigure } from "./figures";
 import { BASELINE, GUTTER, HALF, lastColLeft, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
+import { readingLeading } from "./text-style";
 import { fontFloor, getTheme, type TextRole } from "./themes";
 
 /** Local placeholder for new image blocks: no third-party requests (SPEC §0.6). */
@@ -143,11 +144,11 @@ function headed(t: Theme, heading: string): SlideElement[] {
 }
 
 /** A numbered body block under the hairline. */
-function numberedBody(t: Theme, items: string[]): TextElement {
+function numberedBody(t: Theme, items: string[], w: number = spanWidth(10)): TextElement {
   return text("body", docFromNumbered(items), {
     x: SAFE.x,
     y: BODY_Y,
-    w: spanWidth(10),
+    w,
     h: boxH(t, "body", items.length * 1.6),
   });
 }
@@ -348,7 +349,9 @@ function objectivesSlide(t: Theme): Layout {
 /** Do now — retrieval questions and a time cue. */
 function starterSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY.starter;
-  return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
+  return {
+    elements: [...headed(t, heading), numberedBody(t, [...items], FULL), footnote(t, foot)],
+  };
 }
 
 /**
@@ -435,6 +438,32 @@ function contentSlide(t: Theme): Layout {
         w: spanWidth(9),
         h: boxH(t, "body", 4),
       }),
+    ],
+  };
+}
+
+/** The name of the callout-row recipe's one sentence: named, so the look and the structure pass leave it whole. */
+export const IDEA_NAME = "Idea";
+
+/**
+ * Content, `callout-row`: one idea over a common mistake. The heading and hairline, the idea as one lead sentence across the full measure in the
+ * heading weight, and the callout as a full-width row at the foot of the slide at its own `small`
+ * size (`applyCallout`, then `placeCallout` after the look). The sentence is named (`IDEA_NAME`) so
+ * the look does not split it into a lead and a card and the structure pass does not turn it into
+ * a key card: either would take the height the row needs (beside a headed body, a callout finds room
+ * only under 80 to 125 characters of it). The box is sized for three lines; the row takes the rest.
+ */
+function contentCalloutRow(t: Theme): Layout {
+  return {
+    elements: [
+      ...headed(t, "Heading"),
+      text(
+        "body",
+        "One idea in a sentence, with the mistake pupils make about it in the row below.",
+        { x: SAFE.x, y: BODY_Y, w: FULL, h: boxH(t, "body", 3) },
+        { fontWeight: 600, lineHeight: readingLeading(t) },
+        { name: IDEA_NAME },
+      ),
     ],
   };
 }
@@ -600,15 +629,27 @@ function instructionsSlide(t: Theme): Layout {
   return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
 }
 
-/** Discussion — one big prompt and a named talk structure. */
+/** Discussion — one big prompt in a framed speech bubble, and a named talk structure. */
 function discussionSlide(t: Theme): Layout {
   const promptH = boxH(t, "subtitle", 3);
+  const pad = SPACE[4];
+  const top = centreY(promptH + pad * 2);
   return {
     elements: [
+      shape(
+        "speech",
+        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 + SPACE[5] },
+        {
+          fill: t.colors.surface,
+          stroke: t.colors.accent,
+          strokeWidth: 2.5,
+          name: "Speech bubble",
+        },
+      ),
       text("subtitle", "Ask the question you want pupils to talk about.", {
-        x: SAFE.x,
-        y: centreY(promptH),
-        w: spanWidth(10),
+        x: SAFE.x + pad,
+        y: top + pad,
+        w: FULL - pad * 2,
         h: promptH,
       }),
       footnote(t, "Talk to your partner"),
@@ -625,8 +666,9 @@ function trueFalseSlide(t: Theme): Layout {
     140,
     RESERVED_LINES["true-false"],
   );
-  const yes = option("True", "True", { x: SAFE.x, y, w: HALF_W, h });
-  const no = option("False", "False", { x: RIGHT_X, y, w: HALF_W, h });
+  // Big True and False buttons, a tick and a cross for their chips.
+  const yes = option("✓", "True", { x: SAFE.x, y, w: HALF_W, h });
+  const no = option("✗", "False", { x: RIGHT_X, y, w: HALF_W, h });
   return {
     elements: [prompt, yes, no],
     question: { type: "true-false", correct: true },
@@ -665,7 +707,37 @@ function multipleChoiceSlide(t: Theme): Layout {
   };
 }
 
-/** Matching — three terms left, three definitions right. */
+/**
+ * Multiple choice, stacked — the four options one under another, each the full width, for
+ * options that are ideas or outlines rather than single terms. A card here takes one line of
+ * about the width of the slide; the stem keeps one line so that four cards fit under it. The
+ * reason goes to the notes (no "Why?" panel), so the cards may run to the foot of the safe area.
+ */
+function multipleChoiceStackedSlide(t: Theme): Layout {
+  const stemBox = boxH(t, "heading", 1, "question");
+  const prompt = text("heading", "Which of these is right?", {
+    x: SAFE.x,
+    y: SAFE.y,
+    w: FULL,
+    h: stemBox,
+  });
+  const gap = SPACE[0];
+  const cardH = optionCardH(t);
+  const top = snapY(SAFE.y + stemBox + SPACE[1]);
+  const opts = ["A", "B", "C", "D"].map((label, i) =>
+    option(label, `Option ${label}`, { x: SAFE.x, y: top + i * (cardH + gap), w: FULL, h: cardH }),
+  );
+  return {
+    elements: [prompt, ...opts],
+    question: {
+      type: "multiple-choice",
+      options: opts.map((o, i) => ({ id: o.id, correct: i === 0 })),
+    },
+  };
+}
+
+/** Matching — three numbered terms left, three lettered matches right (shuffled on fill; the
+ * structure pass sets each as a card, `rowCards`). */
 function matchingSlide(t: Theme): Layout {
   const CARD_H = 72;
   const PITCH = 88;
@@ -683,7 +755,7 @@ function matchingSlide(t: Theme): Layout {
       "body",
       `Definition ${i + 1}`,
       { x: RIGHT_X, y: TOP + i * PITCH, w: HALF_W, h: CARD_H },
-      { valign: "middle", color: t.colors.muted },
+      { valign: "middle" },
     ),
   );
   return {
@@ -697,6 +769,34 @@ function matchingSlide(t: Theme): Layout {
       })),
     },
   };
+}
+
+/**
+ * A stable shuffle of 0..n-1 seeded by `seed` (the slide's own words), so the same slide always
+ * shows the same order. With `derange`, no index stays in place (a match never sits opposite its
+ * term); otherwise the order is only never the identity (a sort never shows its answer). Falls
+ * back to the cheap derangement when no seeded draw qualifies.
+ */
+export function seededOrder(n: number, seed: string, derangement: boolean): number[] {
+  if (n < 2) return Array.from({ length: n }, (_, i) => i);
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const next = () => {
+    h = (h + 0x6d2b79f5) | 0;
+    let r = Math.imul(h ^ (h >>> 15), 1 | h);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let tries = 0; tries < 64; tries++) {
+    const order = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(next() * (i + 1));
+      [order[i], order[j]] = [order[j] as number, order[i] as number];
+    }
+    const ok = derangement ? order.every((v, i) => v !== i) : order.some((v, i) => v !== i);
+    if (ok) return order;
+  }
+  return derange(n);
 }
 
 /**
@@ -790,56 +890,73 @@ function fillGapSlide(t: Theme): Layout {
   };
 }
 
+/** A sort card's padding: four full-width cards and a two-line stem inside the safe area. */
+const SORT_CARD_PAD = SPACE[2];
+
 /**
- * Sort — four cards two by two, held in the correct order (reading order: top row
- * left to right, then the bottom row).
- *
- * The column of four research/04 draws does not survive the option floor. A card's
- * text sits at 31pt (SPEC §7 per-role minimums), which with its own leading, padding
- * and border makes the card 93pt tall, and four of those plus their gaps run 60pt past
- * the foot of the slide: the first Tidy pushed the last card off the bottom. Two rows
- * of two, each card half the content width, fit under the stem in every theme with the
- * cushion the engine wants and room to spare. The height is derived from the floor and
- * the card's own chrome rather than typed, so a change to either moves the cards
- * instead of quietly overflowing them.
+ * Sort — four full-width cards in a column under the stem, held in the correct order (top to
+ * bottom). A stage of a process is a short phrase, which a half-width card cannot hold on the
+ * option floor. The cards take a compact padding (`SORT_CARD_PAD`) so all four sit inside the
+ * safe area under a two-line stem; at the option default's padding the fourth card runs under
+ * the bottom bar. The height is derived from the floor and the card's own chrome rather than
+ * typed, so a change to either moves the cards instead of quietly overflowing them.
  */
 function sortSlide(t: Theme): Layout {
-  const cardH = optionCardH(t);
-  const gap = SPACE[3];
-  const gridH = cardH * 2 + gap;
-  const bandTop = STEM_Y + stemH(t) + SPACE[4];
-  const top = snapY(bandTop + Math.max(0, (SAFE_BOTTOM - bandTop - gridH) / 2));
-  const cards = [0, 1, 2, 3].map((i) =>
-    option(String(i + 1), `Step ${i + 1}`, {
-      x: i % 2 === 0 ? SAFE.x : RIGHT_X,
-      y: top + Math.floor(i / 2) * (cardH + gap),
-      w: HALF_W,
+  const stemBox = boxH(t, "heading", 2, "question");
+  const gap = SPACE[1];
+  const pad = SORT_CARD_PAD;
+  const cardH = optionCardH(t) - (OPTION.pad - pad) * 2;
+  const top = snapY(SAFE.y + stemBox + SPACE[1]);
+  const cards = [0, 1, 2, 3].map((i) => ({
+    ...option(String.fromCharCode(65 + i), `Step ${i + 1}`, {
+      x: SAFE.x,
+      y: top + i * (cardH + gap),
+      w: FULL,
       h: cardH,
     }),
-  );
+    textStyle: { padding: pad },
+  }));
   return {
-    elements: [stem(t, "Put these in the right order."), ...cards],
+    elements: [
+      text("heading", "Put these in the right order.", {
+        x: SAFE.x,
+        y: SAFE.y,
+        w: FULL,
+        h: stemBox,
+      }),
+      ...cards,
+    ],
     question: { type: "sort", order: cards.map((c) => c.id) },
   };
 }
 
-/** Open response — a question and a big space to answer it in. */
+/**
+ * Open response — the question centred in a framed prompt card. Pupils write in their books, so the
+ * board shows no empty answer box (the box belongs on the handout).
+ */
 function openResponseSlide(t: Theme): Layout {
+  const promptH = boxH(t, "heading", 3, "question");
+  const pad = SPACE[4];
+  const top = centreY(promptH + pad * 2);
   return {
     elements: [
-      stem(t, "Ask an open question worth writing about."),
       shape(
         "rounded",
-        { x: SAFE.x, y: 200, w: FULL, h: 240 },
+        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 },
         {
           fill: t.colors.surface,
-          stroke: t.colors.line,
-          strokeWidth: 1,
+          stroke: t.colors.accent,
+          strokeWidth: 2.5,
           radius: t.radius,
-          name: "Answer space",
+          name: "Prompt card",
         },
       ),
-      footnote(t, "Write your answer"),
+      text(
+        "heading",
+        "Ask an open question worth writing about.",
+        { x: SAFE.x + pad, y: top + pad, w: FULL - pad * 2, h: promptH },
+        { align: "center", valign: "middle" },
+      ),
     ],
     // Without this the slide is not a question slide: the answer drawer, the model
     // answer field and "Show answers" on export all key off `slide.question`.
@@ -850,7 +967,9 @@ function openResponseSlide(t: Theme): Layout {
 /** Exit ticket — three quick questions. Never revealed (research §1, decision 5). */
 function exitTicketSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY["exit-ticket"];
-  return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };
+  return {
+    elements: [...headed(t, heading), numberedBody(t, [...items], FULL), footnote(t, foot)],
+  };
 }
 
 /** Timer — a task reminder and one big countdown. */
@@ -916,8 +1035,8 @@ function photo(rect: Rect): ImageElement {
  * and higher where it does not: a two-line title on the 48pt title floor plus the class line
  * will not fit under 340 inside the safe area on any theme.
  */
-function titlePhotoBand(t: Theme): Layout {
-  const titleH = boxH(t, "title", 2);
+function titlePhotoBand(t: Theme, lines = 2): Layout {
+  const titleH = boxH(t, "title", lines);
   const subH = boxH(t, "small");
   const stackH = titleH + SPACE[1] + subH;
   const bandY = Math.min(340, snapY(SAFE_BOTTOM - stackH - SPACE[3]));
@@ -947,6 +1066,13 @@ function titlePhotoBand(t: Theme): Layout {
   };
 }
 
+/**
+ * Title, `photo-band-long`: `photo-band` with a band tall enough for a three-line title, for a
+ * long title that neither `split` nor `photo-band` sets at the title floor (ruling 134: the title
+ * always has a picture).
+ */
+const titlePhotoBandLong = (t: Theme): Layout => titlePhotoBand(t, 3);
+
 /** Title, `split`: the stack on the left over three lines, a photograph filling the right half. */
 function titleSplit(t: Theme): Layout {
   const W = SLIDE_W / 2 - SAFE.x - GUTTER; // 403
@@ -954,6 +1080,79 @@ function titleSplit(t: Theme): Layout {
     elements: [
       photo({ x: SLIDE_W / 2, y: 0, w: SLIDE_W / 2, h: SLIDE_H }),
       ...titleStack(t, { caption: W, title: W, subtitle: W, lines: 3 }),
+    ],
+  };
+}
+
+/** The divider between the title and the objectives on the `agenda` title (x at its centre). */
+export const AGENDA_DIVIDER = "Divider";
+/** The "I can" stem over the objectives on the `agenda` title. */
+export const AGENDA_STEM = "Objectives stem";
+/** The objectives list on the `agenda` title. */
+export const AGENDA_OBJECTIVES = "Objectives";
+
+/**
+ * Title, `agenda`: the title spec's `objectives` set beside the title, for a deck with no
+ * objectives slide. Left, five columns: accent rule, "LESSON" eyebrow, the title at the heading stop
+ * over up to four lines and the class line in `small` (a generated title runs to seventy
+ * characters, which the 48pt title floor cannot set in a column beside three objectives). Right,
+ * seven columns: the "I can" stem and the numbered objectives. A hairline between; each column is
+ * optically centred on its own (`fit-slide.ts` restacks each).
+ */
+function titleAgenda(t: Theme): Layout {
+  const leftW = spanWidth(4);
+  const rightW = spanWidth(8);
+  const rightX = lastColLeft(8);
+  const { heading, items } = LIST_COPY.objectives;
+  const capH = boxH(t, "caption");
+  const titleH = boxH(t, "heading", 5);
+  const subH = boxH(t, "small");
+  const top = centreY(capH + SPACE[2] + titleH + SPACE[3] + subH);
+  const stemBoxH = boxH(t, "small");
+  const bodyH = boxH(t, "body", items.length * 1.6);
+  const listTop = centreY(stemBoxH + SPACE[2] + bodyH);
+  return {
+    elements: [
+      accentRule(t, top),
+      text(
+        "caption",
+        "LESSON",
+        { x: SAFE.x, y: top, w: leftW, h: capH },
+        { color: t.colors.muted },
+      ),
+      text(
+        "heading",
+        "Lesson title",
+        { x: SAFE.x, y: top + capH + SPACE[2], w: leftW, h: titleH },
+        {},
+        { name: "Title" },
+      ),
+      text(
+        "small",
+        "Year group and class",
+        { x: SAFE.x, y: top + capH + SPACE[2] + titleH + SPACE[3], w: leftW, h: subH },
+        { color: t.colors.muted },
+        { name: "Subtitle" },
+      ),
+      shape(
+        "rect",
+        { x: Math.round((SAFE.x + leftW + rightX) / 2), y: SAFE.y, w: 1, h: SAFE.h },
+        { fill: t.colors.line, name: AGENDA_DIVIDER },
+      ),
+      text(
+        "small",
+        heading,
+        { x: rightX, y: listTop, w: rightW, h: stemBoxH },
+        { color: t.colors.muted },
+        { name: AGENDA_STEM },
+      ),
+      text(
+        "body",
+        docFromNumbered([...items]),
+        { x: rightX, y: listTop + stemBoxH + SPACE[2], w: rightW, h: bodyH },
+        {},
+        { name: AGENDA_OBJECTIVES },
+      ),
     ],
   };
 }
@@ -1140,8 +1339,14 @@ function steppedList(t: Theme, kind: ListKind): Layout {
 /* ------------------------------------------------------------------ */
 
 /** The variant names, typed so a filler's comparison and a catalogue entry are both checked. */
-export const TITLE_VARIANT_NAMES = ["stack", "photo-band", "split"] as const;
-export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column"] as const;
+export const TITLE_VARIANT_NAMES = [
+  "stack",
+  "photo-band",
+  "split",
+  "agenda",
+  "photo-band-long",
+] as const;
+export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column", "callout-row"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
 /** The diagram's compositions: the default, and the wider figure a template may ask for. */
 export const DIAGRAM_VARIANT_NAMES = ["figure-left", "figure-wide"] as const;
@@ -1158,6 +1363,8 @@ const SINGLE_VARIANT_NAMES = [
   "gap-sentence",
   "answer-space",
   "countdown",
+  "stacked",
+  "card-column",
   "blank",
 ] as const;
 
@@ -1242,6 +1449,16 @@ export const LAYOUT_CATALOGUE: {
       composition: "split",
       description: "The title left, a photograph filling the right half",
     },
+    {
+      name: "agenda",
+      composition: "agenda",
+      description: "The title left, the lesson's objectives on the right",
+    },
+    {
+      name: "photo-band-long",
+      composition: "photo-band",
+      description: "A photograph filling the slide, a long title in a taller band across its foot",
+    },
   ],
   objectives: LIST_VARIANTS,
   starter: LIST_VARIANTS,
@@ -1262,6 +1479,11 @@ export const LAYOUT_CATALOGUE: {
       composition: "two-column",
       description: "A heading and the body in two columns",
     },
+    {
+      name: "callout-row",
+      composition: "callout-row",
+      description: "A heading, one idea and a common mistake in a row across the foot",
+    },
   ],
   "image-text": one("photo-left", "A picture down the left, the text beside it"),
   diagram: [
@@ -1280,11 +1502,22 @@ export const LAYOUT_CATALOGUE: {
   instructions: LIST_VARIANTS,
   discussion: one("prompt", "One big prompt"),
   "true-false": one("two-cards", "A statement and two cards"),
-  "multiple-choice": one("card-grid", "A stem and four cards two by two"),
+  "multiple-choice": [
+    {
+      name: "card-grid",
+      composition: "card-grid",
+      description: "A stem and four cards two by two",
+    },
+    {
+      name: "stacked",
+      composition: "stacked",
+      description: "A one-line stem and four full-width cards, one under another",
+    },
+  ],
   matching: one("columns", "Terms left, definitions right"),
   "image-match": one("picture-row", "Pictures in a row, a word under each"),
   "fill-gap": one("gap-sentence", "A sentence with blanks"),
-  sort: one("card-grid", "A stem and four cards two by two"),
+  sort: one("card-column", "A one-line stem and four full-width cards, one under another"),
   "open-response": one("answer-space", "A question and room to answer it"),
   "exit-ticket": LIST_VARIANTS,
   timer: one("countdown", "A task reminder and a countdown"),
@@ -1325,8 +1558,12 @@ function titleVariant(t: Theme, variant: number | string): Layout {
   switch (variantName("title", variant)) {
     case "photo-band":
       return titlePhotoBand(t);
+    case "photo-band-long":
+      return titlePhotoBandLong(t);
     case "split":
       return titleSplit(t);
+    case "agenda":
+      return titleAgenda(t);
     case "stack":
       return titleSlide(t);
   }
@@ -1338,6 +1575,8 @@ function contentVariant(t: Theme, variant: number | string): Layout {
       return contentStatement(t);
     case "two-column":
       return contentTwoColumn(t);
+    case "callout-row":
+      return contentCalloutRow(t);
     case "headed":
       return contentSlide(t);
   }
@@ -1400,7 +1639,9 @@ export function layoutSlide(
     case "true-false":
       return trueFalseSlide(t);
     case "multiple-choice":
-      return multipleChoiceSlide(t);
+      return variantName("multiple-choice", variant) === "stacked"
+        ? multipleChoiceStackedSlide(t)
+        : multipleChoiceSlide(t);
     case "matching":
       return matchingSlide(t);
     case "image-match":
