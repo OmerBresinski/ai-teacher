@@ -8,6 +8,8 @@ import {
   type LessonEditorHandle,
   ThemeCallout,
 } from "@tj/editor/lesson";
+import { Button, IconButton } from "@tj/ui";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -23,6 +25,8 @@ import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheet
 import "@/components/lesson-creation/creation.css";
 import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
+import { forgetPreviewLesson, rememberPreviewLesson } from "@/components/sign-in/preview-lesson";
+import { SIGN_IN_TO_EDIT } from "@/components/sign-in/sign-in-copy";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
@@ -32,6 +36,7 @@ import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
+import { meQueryOptions } from "@/lib/query";
 import { lessonEditorRoute } from "./documents.route";
 
 // Both are off the editor's first paint (and its chunk budget): the worksheets dialog pulls the
@@ -45,6 +50,15 @@ const GenerationCompanion = lazy(() =>
   import("@/components/lesson-creation/generation-companion").then((m) => ({
     default: m.GenerationCompanion,
   })),
+);
+
+// A signed-out visitor's read-only body and sign-in sheet (TEACH-245): off a teacher's editor
+// chunk, loaded only for an anonymous session (the sheet only once it is opened).
+const LessonViewer = lazy(() =>
+  import("@tj/editor/present").then((m) => ({ default: m.LessonViewer })),
+);
+const SignInSheet = lazy(() =>
+  import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
 );
 
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
@@ -67,6 +81,11 @@ const GeneratingLesson = lazy(() =>
  * worksheet id on a lesson route shows `WrongKindPage`. While a `lesson.plan` job holds the row's
  * generating lock (ADR 0024 §18) the page shows `GeneratingLesson` instead of the editor; a lesson
  * the job left without slides shows `EmptyLesson`, which adds the first one.
+ *
+ * A signed-out visitor's lesson (an anonymous session, TEACH-245, UX ruling 109) is read-only: the
+ * generating view as usual, then the viewer body (page through, Present). Export, the worksheet
+ * action, autosave, facts and regenerate are never mounted; one "Sign in to edit, export and save"
+ * action takes their place and opens `SignInSheet` over the lesson, which returns here.
  */
 export function LessonEditorPage() {
   const { lessonId } = useParams({ from: lessonEditorRoute.id });
@@ -80,6 +99,21 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const shellReturn = useShellReturn();
   const options = libraryQueries.document(lessonId, queryClient);
   const { data } = useQuery(options);
+  // The route guard has just fetched `me`; read that entry rather than asking again.
+  const { data: me } = useQuery({ ...meQueryOptions, staleTime: Number.POSITIVE_INFINITY });
+  const anonymous = me?.user.isAnonymous === true;
+  const [signInOpen, setSignInOpen] = useState(false);
+  const title = data?.title;
+  const openSignIn = useCallback(() => {
+    // Kept for the tab the link opens in: if the claim is declined this is the topic it offers.
+    rememberPreviewLesson(lessonId, title ?? "");
+    setSignInOpen(true);
+  }, [lessonId, title]);
+  // Signed in and the lesson opened: it is theirs now, so nothing is left to offer again.
+  const owned = me != null && !anonymous && data != null;
+  useEffect(() => {
+    if (owned) forgetPreviewLesson();
+  }, [owned]);
   // The body fetch writes the row state beside it, so this query only needs its own request when
   // the meta was invalidated later (a 409, the job's terminal event). Enabling it after the body
   // has arrived keeps the hover-preload path to one `GET /documents/:id`.
@@ -186,14 +220,28 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // Present opens on the slide the teacher is on (ruling 104); the editor has already asked for
   // fullscreen inside the click.
   const onPresent = useCallback(
-    (slide: number) =>
+    (slide?: number) =>
       void navigate({
         to: "/l/$lessonId/present",
         params: { lessonId },
+        // `edit`, also from the read-only body: exit comes back here, not to `/view`.
         search: { series: undefined, slide, from: "edit" },
       }),
     [navigate, lessonId],
   );
+  // The read-only body has nothing to edit: a double-click on the slide asks to sign in instead.
+  const readOnlyBody = anonymous && !!data && isFullDocument(data) && !meta?.generatingJobId;
+  useEffect(() => {
+    if (!readOnlyBody) return;
+    const onDoubleClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest("[data-lesson-viewer] main") || target.closest("button")) return;
+      window.getSelection()?.removeAllRanges();
+      openSignIn();
+    };
+    document.addEventListener("dblclick", onDoubleClick);
+    return () => document.removeEventListener("dblclick", onDoubleClick);
+  }, [readOnlyBody, openSignIn]);
 
   if (!data || !isFullDocument(data) || !meta) return <RoutePendingPage />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
@@ -202,7 +250,20 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // The export dialog reads the document from the same cache entry the editor writes (ADR 0023
   // amendment 2026-09-12), so it exports what is on screen — including a locked lesson's partial
   // body while `lesson.plan` runs; the app opens the print tab.
-  const exportSlot = (
+  const exportSlot = anonymous ? (
+    <Button
+      variant="default"
+      size="sm"
+      onClick={openSignIn}
+      aria-label={SIGN_IN_TO_EDIT}
+      data-sign-in-to-edit=""
+    >
+      <LockKeyhole aria-hidden size={16} strokeWidth={1.5} />
+      {/* A phone's bar has room for the verb only; the name stays the whole label. */}
+      <span className="hidden sm:inline">{SIGN_IN_TO_EDIT}</span>
+      <span className="sm:hidden">Sign in</span>
+    </Button>
+  ) : (
     <>
       {data.plan?.state === "confirmed" ? (
         <Suspense fallback={null}>
@@ -246,6 +307,20 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         exportSlot={exportSlot}
       />
     </Suspense>
+  ) : anonymous ? (
+    <Suspense fallback={<RoutePendingPage />}>
+      <LessonViewer
+        lesson={data}
+        companion={companionSlot}
+        leading={
+          <IconButton label="Back" onClick={onBack}>
+            <ArrowLeft aria-hidden size={16} strokeWidth={1.5} />
+          </IconButton>
+        }
+        exportSlot={exportSlot}
+        onPresent={onPresent}
+      />
+    </Suspense>
   ) : data.slides.length === 0 ? (
     <EmptyLesson lesson={data} onBack={onBack} />
   ) : (
@@ -275,6 +350,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   return (
     <div className="creation-editor-preview" data-story-finished={storyFinished}>
       {content}
+      {anonymous && signInOpen ? (
+        <Suspense fallback={null}>
+          <SignInSheet open onOpenChange={setSignInOpen} redirect={`/l/${lessonId}`} />
+        </Suspense>
+      ) : null}
       {showStory && destination ? (
         <Suspense fallback={null}>
           <GenerationCompanion

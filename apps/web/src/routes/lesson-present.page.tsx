@@ -11,6 +11,7 @@ import { Spinner } from "@tj/ui";
 import { useCallback, useMemo } from "react";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { isFullDocument, libraryMutations, libraryQueries } from "@/lib/library";
+import { meQueryOptions } from "@/lib/query";
 import { lessonPresentRoute } from "./documents.route";
 import "@tj/editor/styles/editor.css";
 
@@ -32,6 +33,10 @@ export function LessonPresentPage() {
     enabled: Boolean(seriesId),
   });
   const { mutate: save } = useMutation(libraryMutations.saveDocument(queryClient));
+  // A signed-out visitor presents a read-only lesson (TEACH-245, ruling 109): progress is not saved,
+  // so no `PUT /documents` is ever sent from an anonymous session.
+  const { data: me } = useQuery({ ...meQueryOptions, staleTime: Number.POSITIVE_INFINITY });
+  const readOnly = me?.user.isAnonymous === true;
 
   const next = useMemo<NextLesson | undefined>(() => {
     if (!seriesId || !series) return undefined;
@@ -70,14 +75,14 @@ export function LessonPresentPage() {
 
   const onProgress = useCallback(
     ({ reachedSlideId, exitedPastFirst }: PresentProgress) => {
-      if (!lesson) return;
+      if (!lesson || readOnly) return;
       save({
         ...lesson,
         reachedSlideId: (fitted && storedSlideId(fitted, lesson, reachedSlideId)) ?? reachedSlideId,
         ...(exitedPastFirst ? { taughtAt: new Date().toISOString() } : {}),
       });
     },
-    [lesson, fitted, save],
+    [lesson, fitted, readOnly, save],
   );
 
   if (!data || !isFullDocument(data)) return <Loading />;
