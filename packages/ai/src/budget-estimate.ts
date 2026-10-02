@@ -11,10 +11,13 @@ export const MAX_IMAGE_INPUT_TOKENS = 36_001;
 /**
  * Models whose image input the 32-px patch formula below bounds: the GPT-5.6 family on Bedrock and
  * OpenAI direct, and GPT-6 Luna direct (the default since 25–26 Sept 2026). Any other model's
- * image call is unestimable and refused before it is sent.
+ * image call is unestimable and refused before it is sent. The `openai/` prefix is optional: the
+ * direct provider (`OPENAI_API_KEY`) reports the bare id (`gpt-6-luna`) and the generation budget
+ * is keyed by the id the model reports, as in `prices.ts` and `isFastModelId`. Without it every
+ * image call on the default route was refused (photo-pick, TEACH-12).
  */
 const IMAGE_MODELS =
-  /^(?:(?:us|global|in)\.openai\.gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-6-luna)$/;
+  /^(?:(?:us|global|in)\.openai\.gpt-5\.6-(?:luna|terra|sol)|(?:openai\/)?(?:gpt-5\.6-(?:luna|terra|sol)|gpt-6-luna))$/;
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 const encoder = new TextEncoder();
 

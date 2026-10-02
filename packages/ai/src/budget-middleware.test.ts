@@ -162,4 +162,28 @@ describe("prepared request estimates", () => {
     );
     expect(estimatePreparedCall("unknown-model", params)).not.toBeNull();
   });
+
+  test("the bare id the direct OpenAI provider reports takes images like its `openai/` id", () => {
+    const png = new Uint8Array(24);
+    png.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
+    new DataView(png.buffer).setUint32(16, 64);
+    new DataView(png.buffer).setUint32(20, 64);
+    const withImage: PreparedCall = {
+      ...params,
+      prompt: [
+        {
+          role: "user",
+          content: [{ type: "file", mediaType: "image/png", data: { type: "data", data: png } }],
+        },
+      ],
+    };
+    for (const bare of ["gpt-6-luna", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
+      const estimate = estimatePreparedCall(bare, withImage);
+      expect(estimate).not.toBeNull();
+      expect(estimate).toEqual(estimatePreparedCall(`openai/${bare}`, withImage));
+    }
+    // Only the missing prefix is forgiven: other ids and other providers stay refused.
+    for (const refused of ["gpt-6-sol", "gpt-4o", "google/gpt-6-luna", "openai.gpt-6-luna"])
+      expect(estimatePreparedCall(refused, withImage)).toBeNull();
+  });
 });

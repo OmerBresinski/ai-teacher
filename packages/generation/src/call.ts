@@ -170,8 +170,12 @@ export const MAX_OUTPUT_TOKENS = {
   // Up to twenty findings, each with its evidence span (TEACH-216). 2 500 was reached twice in a
   // row on the np1 cells decks (no findings, so no repair); reasoning shares the cap.
   evaluate: 4000,
-  // Six ids (TEACH-227).
-  shortlist: 200,
+  // Six ids (TEACH-227), and the picture judge's `{ pick, visible (≤ 4), count, query }`
+  // (TEACH-220). Reasoning shares the cap: at 200, gpt-6-luna spent it all reasoning and answered
+  // nothing, so no photo was placed (seen by Greg on 30 Sept 2026 with the TEACH-12 budget fix
+  // applied; production never got that far, because the image call was refused).
+  shortlist: 1500,
+  pickPhoto: 1500,
   repair: 1500,
   // Four short fields (TEACH-16).
   parseBrief: 120,
