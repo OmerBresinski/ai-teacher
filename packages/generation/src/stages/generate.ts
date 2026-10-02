@@ -18,6 +18,7 @@ import {
   CODE_MODEL,
   codedSetSpec,
   withAnswersReveal,
+  withSetQuestion,
   withShuffledOptions,
 } from "../planner/coded-slides";
 import { laterQuestionsFor } from "../planner/later-questions";
@@ -219,9 +220,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       ? codedSetSpec(entry, builtFrom, `${lesson.id}:${i}`)
       : undefined;
     if (coded) {
-      const slide = withAnswersReveal(
-        materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
-        lesson.themeId,
+      const slide = withSetQuestion(
+        withAnswersReveal(
+          materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
+          lesson.themeId,
+        ),
+        coded.answers,
       );
       return { slide, spec: coded.spec, finish: withAnswersReveal, misses: [], builtFrom };
     }

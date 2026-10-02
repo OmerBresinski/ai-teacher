@@ -33,6 +33,7 @@ export {
 } from "./quality-checks";
 export * from "./rich-text";
 export * from "./series";
+export * from "./set-answers";
 export * from "./slide";
 export * from "./source-ref";
 export * from "./subjects";

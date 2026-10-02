@@ -1097,10 +1097,12 @@ function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): S
         : e,
     );
     const { question: _question, ...answersSlide } = next;
-    return [
-      { ...slide, elements: slide.elements.filter((e) => e !== panel) },
-      { ...answersSlide, elements: named },
-    ];
+    const asked = { ...slide, elements: slide.elements.filter((e) => e !== panel) };
+    // A set question whose answers box moves off the slide has nothing left to reveal (TEACH-101).
+    if (asked.question?.type === "set" && asked.question.answersId === panel.id) {
+      delete asked.question;
+    }
+    return [asked, { ...answersSlide, elements: named }];
   });
 }
 

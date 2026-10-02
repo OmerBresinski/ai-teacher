@@ -425,3 +425,67 @@ export const generatedWorksheet = (): Worksheet => ({
   yearGroup: "Year 4",
   lessonId: "gen-water-cycle",
 });
+
+/**
+ * A coded question set (TEACH-101): heading, the printed list, and its answers as a card on reveal
+ * step 1, one paragraph per answer with the number in a run of its own. `question: false` is the
+ * same slide as stored before the `set` question existed.
+ */
+export const codedSetSlide = (
+  answers: string[] = ["AD 43", "Boudica", "Hadrian"],
+  options: { question?: boolean; strip?: boolean } = {},
+): Slide => {
+  const doc: RichDoc = options.strip
+    ? text(`Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`)
+    : {
+        type: "doc",
+        content: answers.map((a, i) => ({
+          type: "paragraph",
+          content: [
+            { type: "text", text: `${i + 1} `, marks: [{ type: "bold" }] },
+            { type: "text", text: a },
+          ],
+        })),
+      };
+  const box = options.strip
+    ? textElement("set-answers", "", {
+        doc,
+        name: "Answers",
+        style: { preset: "small" },
+        revealStep: 1,
+      } as Partial<SlideElement>)
+    : ({
+        id: "set-answers",
+        type: "shape",
+        shape: "rect",
+        x: 58,
+        y: 380,
+        w: 844,
+        h: 120,
+        name: "Answers",
+        doc,
+        revealStep: 1,
+        reveal: "fade",
+      } as SlideElement);
+  return {
+    id: "set-slide",
+    kind: "starter",
+    elements: [
+      textElement("set-heading", "Do now", {
+        name: "Heading",
+        style: { preset: "heading" },
+      } as Partial<SlideElement>),
+      textElement("set-list", answers.map((_, i) => `Question ${i + 1}?`).join("\n")),
+      box,
+    ],
+    ...(options.question === false
+      ? {}
+      : {
+          question: {
+            type: "set",
+            answersId: "set-answers",
+            items: answers.map((answer, lineIndex) => ({ answer, lineIndex })),
+          },
+        }),
+  };
+};

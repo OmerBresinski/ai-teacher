@@ -7,7 +7,7 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { asksForUnlistedOptions } from "@tj/domain/documents";
+import { answersInBox, asksForUnlistedOptions } from "@tj/domain/documents";
 import {
   ANSWERS_NAME,
   fitSlide,
@@ -490,4 +490,25 @@ export function withAnswersReveal(slide: Slide, themeId?: string): Slide {
       return e;
     }),
   };
+}
+
+/**
+ * TEACH-101: the set's answers as its `question`, so the Answer drawer, Present's "Answer" step
+ * and the PPTX Answers slide read them like any other question. One item per answer the answers
+ * box (the strip or the card) lists, numbered by its line; a choice line marked on its own option
+ * is not in the box and has no item. `answers` are `codedSetSpec`'s, one per printed line. A slide
+ * with no answers box (every line marked in place) is returned as it is.
+ */
+export function withSetQuestion(slide: Slide, answers: readonly string[]): Slide {
+  const box = slide.elements.find(
+    (e) => e.name === ANSWERS_NAME && (e.type === "text" || e.type === "shape") && e.doc,
+  );
+  const doc = box && "doc" in box ? box.doc : undefined;
+  if (!box || !doc || !(box.revealStep ?? 0)) return slide;
+  const items = answersInBox(doc).map(({ lineIndex, answer }) => ({
+    lineIndex,
+    answer: answers[lineIndex] ?? answer,
+  }));
+  if (items.length === 0) return slide;
+  return { ...slide, question: { type: "set", answersId: box.id, items } };
 }

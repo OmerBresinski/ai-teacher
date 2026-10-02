@@ -1,12 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import type { LessonFacts, OutlineEntry, Slide, TextElement } from "@tj/domain/documents";
+import {
+  type LessonFacts,
+  type OutlineEntry,
+  type Slide,
+  SlideSchema,
+  slideStepCount,
+  type TextElement,
+} from "@tj/domain/documents";
 import { materialiseSlide, measureHeadless, SAFE_BOTTOM, THEMES, textPartsOf } from "@tj/slides";
+import { labAi, recordingDeps, romansLesson } from "../testing";
+import { runLessonPipeline } from "../workflow";
 import {
   codedSetSpec,
   EXIT_QUIZ_MAX,
   EXIT_QUIZ_MIN,
   exitLines,
   fitsExitTicket,
+  isCodeBuilt,
   LINE_MAX,
   type Line,
   MC_LINE_MAX,
@@ -15,6 +25,7 @@ import {
   sameQuestion,
   seededOrder,
   withAnswersReveal,
+  withSetQuestion,
   withShuffledOptions,
 } from "./coded-slides";
 
@@ -386,4 +397,61 @@ describe("the exit ticket: at most three, on one slide (TEACH-172, ruling 108)",
       expect(answers.revealStep).toBe(1);
     });
   }
+});
+
+describe("coded sets carry their answers as a set question (TEACH-101)", () => {
+  test("row 1: every coded Do now, Quick check and Exit ticket of a fake-AI objectives-first lesson has a set question, one item per line", async () => {
+    const final = await runLessonPipeline({ lesson: romansLesson() }, recordingDeps(labAi()), {
+      planner: "objectives-first",
+    });
+    const sets = final.lesson.slides.filter(isCodeBuilt);
+    expect(sets.map((s) => s.kind)).toEqual(
+      expect.arrayContaining(["starter", "instructions", "exit-ticket"]),
+    );
+    final.lesson.facts?.outline.forEach((entry, i) => {
+      const slide = final.lesson.slides[i] as Slide;
+      if (!isCodeBuilt(slide)) return;
+      const coded = codedSetSpec(
+        entry,
+        final.lesson.facts as LessonFacts,
+        `${final.lesson.id}:${i}`,
+      );
+      const q = slide.question;
+      if (q?.type !== "set") throw new Error(`slide ${i} (${slide.kind}) has no set question`);
+      expect(q.items.map((it) => it.answer)).toEqual(coded?.answers ?? []);
+      expect(q.items.map((it) => it.lineIndex)).toEqual(q.items.map((_, j) => j));
+      const box = slide.elements.find((e) => e.id === q.answersId);
+      expect(box?.revealStep).toBe(1);
+      // The reveal is the answers box's own step: no extra step for the question.
+      expect(slideStepCount(slide)).toBe(1);
+      expect(SlideSchema.safeParse(slide).success).toBe(true);
+    });
+  });
+
+  test("the strip names every answer by its line; a slide with no answers box is left as it is", () => {
+    const slide = withAnswersReveal(
+      materialiseSlide(
+        {
+          kind: "exit-ticket",
+          heading: "Exit ticket",
+          items: ["One?", "Two?"],
+          footnote: "Answers: 1 a  ·  2 b c",
+          factRefs: [],
+        },
+        "chalk",
+        { promptVersion: "fit", model: "fit", at: "1970-01-01T00:00:00.000Z" },
+      ),
+    );
+    const q = withSetQuestion(slide, ["a", "b c"]).question;
+    expect(q).toEqual({
+      type: "set",
+      answersId: expect.any(String),
+      items: [
+        { lineIndex: 0, answer: "a" },
+        { lineIndex: 1, answer: "b c" },
+      ],
+    });
+    const bare = { ...slide, elements: slide.elements.filter((e) => e.name !== "Answers") };
+    expect(withSetQuestion(bare, ["a"])).toBe(bare);
+  });
 });

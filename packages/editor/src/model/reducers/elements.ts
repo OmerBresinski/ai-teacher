@@ -231,6 +231,8 @@ export const deleteElements = (lesson: Lesson, slideId: Id, ids: Id[]): Lesson =
     if (next.length !== s.elements.length || next.some((el, i) => el !== s.elements[i])) {
       s.elements = next;
     }
+    // A coded set's answers box gone: its answers go with it (TEACH-101).
+    if (s.question?.type === "set" && gone.has(s.question.answersId)) delete s.question;
   });
 };
 
