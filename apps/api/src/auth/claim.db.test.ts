@@ -222,17 +222,20 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     });
     await insertedOnce;
     const claim = claimAnonymousWorkspace(db, { anonymousUserId: a.userId, userId: n.userId });
-    // Commit the insert only once the claim is blocked on it.
-    for (let i = 0; i < 200; i++) {
+    // Commit the insert only once the claim is blocked on it; a claim that never blocked would
+    // not exercise the lock at all, so that fails the test.
+    let waited = false;
+    for (let i = 0; i < 400 && !waited; i++) {
       const [waiting] = await db.sql<{ n: number }[]>`
         select count(*)::int as n from pg_stat_activity
         where datname = current_database() and wait_event_type = 'Lock'
           and wait_event = 'transactionid' and query like '%for update%'`;
-      if ((waiting?.n ?? 0) > 0) break;
-      await Bun.sleep(5);
+      waited = (waiting?.n ?? 0) > 0;
+      if (!waited) await Bun.sleep(5);
     }
     commitInsert();
     await insert;
+    expect(waited).toBe(true);
 
     expect(await claim).toBe("declined-existing");
     expect(await workspacesOf(n.userId)).toEqual([n.workspaceId]);

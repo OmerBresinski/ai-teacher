@@ -726,6 +726,55 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       expect(claimLog.lines.join("\n")).not.toContain("phone@example.test");
     });
 
+    describe("after a cross-device claim, browser 1 can start a new signed-out lesson", () => {
+      async function signInAgain(cookie: string) {
+        const res = await claimApp.request(`${BASE}/auth/sign-in/anonymous`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: WEB, cookie },
+          body: "{}",
+        });
+        expect(res.status).toBe(200);
+        return meBody(claimApp, cookieHeaderFromResponse(res));
+      }
+      async function claimedElsewhere() {
+        const a = await visitorWithLesson();
+        const link = await requestMagicLink("again@example.test", {
+          target: claimApp,
+          cookie: a.cookie,
+        });
+        await verify(link);
+        return a;
+      }
+
+      test("at once, while its signed session cache still names the deleted session", async () => {
+        const a = await claimedElsewhere();
+        expect(a.cookie).toContain("tj.session_data=");
+        const fresh = await signInAgain(a.cookie);
+        expect(fresh.user.isAnonymous).toBe(true);
+        expect(fresh.user.id).not.toBe(a.userId);
+      });
+
+      test("later, with only the dead session token left", async () => {
+        const a = await claimedElsewhere();
+        const tokenOnly = a.cookie
+          .split("; ")
+          .filter((pair) => pair.startsWith("tj.session_token="))
+          .join("; ");
+        const fresh = await signInAgain(tokenOnly);
+        expect(fresh.user.id).not.toBe(a.userId);
+      });
+
+      test("a live anonymous session is still refused a second one", async () => {
+        const { cookie } = await signInAnonymously(claimApp);
+        const res = await claimApp.request(`${BASE}/auth/sign-in/anonymous`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: WEB, cookie },
+          body: "{}",
+        });
+        expect(res.status).toBe(400);
+      });
+    });
+
     test("the pending row's identifier cannot be spent through the verify endpoint", async () => {
       const a = await visitorWithLesson();
       await requestMagicLink("spent@example.test", { target: claimApp, cookie: a.cookie });
@@ -778,6 +827,28 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
         other.workspaceId,
       ]);
       expect(await claimRows()).toEqual([]);
+    });
+
+    test("a link opened on a device whose anonymous session holds no lesson still claims", async () => {
+      const laptop = await visitorWithLesson();
+      const link = await requestMagicLink("empty-phone@example.test", {
+        target: claimApp,
+        cookie: laptop.cookie,
+      });
+      const { cookie: phone } = await signInAnonymously(claimApp);
+      const phoneUser = (await meBody(claimApp, phone)).user.id;
+
+      const n = await meBody(claimApp, await verify(link, phone));
+      expect(n.workspaceId).toBe(laptop.workspaceId);
+      expect(await claimRows()).toEqual([]);
+      expect(logged("anonymous workspace claim").map(({ claim, via }) => ({ claim, via }))).toEqual(
+        [
+          { claim: "claimed", via: "pending" },
+          { claim: "declined-existing", via: "link" },
+        ],
+      );
+      // The phone's empty anonymous Workspace stays with it for the cleanup job.
+      expect(await workspacesFor(phoneUser)).toHaveLength(1);
     });
 
     test("row 4: an existing account signing in from the visitor's browser declines", async () => {

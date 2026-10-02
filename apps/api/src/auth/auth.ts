@@ -20,6 +20,7 @@ import type { DbHandle } from "@tj/db";
 import { authSchema } from "@tj/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import { anonymous, magicLink } from "better-auth/plugins";
 import { microsoft } from "better-auth/social-providers";
 import type { Env } from "../env";
@@ -169,6 +170,40 @@ export function effectiveCookieDomain(
 export const ANONYMOUS_SIGN_IN_PATH = "/sign-in/anonymous";
 
 /**
+ * `hooks.before` on the anonymous sign-in. A claim (TEACH-224) deletes the anonymous user's
+ * sessions, so the browser whose lesson went to another device keeps a session cookie, and for up
+ * to `cookieCache.maxAge` a signed session cache, for a session that no longer exists. better-auth
+ * answers the cache with "already signed in anonymously" (400), and a dead token makes its own
+ * session lookups expire the new session's cookies in the same response. When the token names no
+ * live session, this request goes on without the session cookies, as a signed-out browser's
+ * would. One indexed lookup, only for an anonymous sign-in that carries a session cookie.
+ */
+export function anonymousSignInDropsDeadSession(db: Pick<DbHandle, "sql">) {
+  return createAuthMiddleware(async (ctx) => {
+    if (ctx.path !== ANONYMOUS_SIGN_IN_PATH) return;
+    const cookie = ctx.headers?.get("cookie");
+    if (!cookie) return;
+    const { sessionToken, sessionData, dontRememberToken } = ctx.context.authCookies;
+    const token = await ctx.getSignedCookie(sessionToken.name, ctx.context.secret);
+    if (token) {
+      const live = await db.sql`
+        select 1 from sessions where token = ${token} and expires_at > now()`;
+      if (live.length > 0) return;
+    }
+    const names = [sessionToken.name, sessionData.name, dontRememberToken.name];
+    const pairs = cookie.split(";").map((pair) => pair.trim());
+    // `<name>=…`, or `<name>.0=…`, `<name>.1=…` when better-auth chunks a large cache cookie.
+    const kept = pairs.filter(
+      (pair) => !names.some((name) => pair.startsWith(`${name}=`) || pair.startsWith(`${name}.`)),
+    );
+    if (kept.length === pairs.length) return;
+    const headers = new Headers(ctx.headers);
+    headers.set("cookie", kept.join("; "));
+    return { context: { headers } };
+  });
+}
+
+/**
  * Merged into every `accounts` write (`databaseHooks.account` `create.before` and
  * `update.before`): sign-in needs the provider's identity only, so its tokens are never stored
  * (ADR 0008 amendment item 3). better-auth writes `null` and skips only `undefined`.
@@ -224,6 +259,7 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
       ...captchaPlugins(env),
     ],
     socialProviders: socialProviders(env, logger),
+    hooks: { before: anonymousSignInDropsDeadSession(db) },
     session: {
       cookieCache: { enabled: true, maxAge: 300 },
     },

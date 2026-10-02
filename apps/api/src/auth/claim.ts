@@ -10,7 +10,7 @@
  * - `recordPendingClaim` at magic-link send time, then `claimPending` from
  *   `databaseHooks.session.create.after`, for a link opened on another device. The row is keyed
  *   by email, so the claim goes to whoever proves the inbox; no token rides in the callbackURL.
- *   The browser's own anonymous session wins over a pending row.
+ *   The browser's own anonymous lesson wins over a pending row.
  *
  * The anonymous `users` row stays (`disableDeleteAnonymousUser`) but is signed out everywhere;
  * `auth.anonymous-cleanup` in the worker removes it after its TTL, and finds no Workspace to
@@ -173,11 +173,13 @@ export async function recordPendingClaim(
 }
 
 /**
- * Whether the request finishing this sign-in carries a live anonymous session. The anonymous
- * plugin's `onLinkAccount` then claims that browser's own Workspace; it runs after the database
- * hooks, so a pending row (which anyone can point at an address) must not get there first.
+ * Whether the request finishing this sign-in carries a live anonymous session whose Workspace
+ * holds a lesson. The anonymous plugin's `onLinkAccount` then claims that browser's own lesson; it
+ * runs after the database hooks, so a pending row (which anyone can point at an address) must not
+ * get there first. An anonymous session with nothing in it does not outrank the row. (Anonymous
+ * users cannot upload sources, so documents are the whole test.)
  */
-async function browserHasAnonymousSession(
+async function browserHasAnonymousLesson(
   db: Sql,
   ctx: EndpointContext | null | undefined,
 ): Promise<boolean> {
@@ -188,8 +190,11 @@ async function browserHasAnonymousSession(
   );
   if (!token) return false;
   const rows = await db.sql`
-    select 1 from sessions s join users u on u.id = s.user_id
-    where s.token = ${token} and u.is_anonymous and s.expires_at > now()`;
+    select 1 from sessions s
+    join users u on u.id = s.user_id
+    join workspaces w on w.owner_user_id = u.id
+    where s.token = ${token} and u.is_anonymous and s.expires_at > now()
+      and exists (select 1 from documents d where d.workspace_id = w.id)`;
   return rows.length > 0;
 }
 
@@ -201,7 +206,7 @@ async function browserHasAnonymousSession(
  * Taking the row and claiming are one transaction, so a claim that fails leaves the row for the
  * next sign-in within its hour; deleting it consumes it, so two sessions cannot both claim, and
  * the newest live row wins should two sends have raced. When the browser has its own anonymous
- * session the row is dropped as `superseded` and `onLinkAccount` claims instead. Logs ids only and
+ * lesson the row is dropped as `superseded` and `onLinkAccount` claims instead. Logs ids only and
  * never throws.
  */
 export async function claimPending(
@@ -218,7 +223,7 @@ export async function claimPending(
     const waiting = await db.sql`select 1 from verifications where identifier = ${identifier}`;
     if (waiting.length === 0) return;
 
-    const sameBrowser = await browserHasAnonymousSession(db, ctx);
+    const sameBrowser = await browserHasAnonymousLesson(db, ctx);
     const claim = await db.sql.begin(async (tx) => {
       const [taken] = await tx<{ value: string }[]>`
         with taken as (
