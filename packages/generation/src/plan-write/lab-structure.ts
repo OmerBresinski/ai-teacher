@@ -18,7 +18,7 @@ import { z } from "zod";
  * The probabilities, not only the argmax, drive the code rules.
  */
 
-export const STRUCTURE_QUESTIONS_VERSION = "structure-questions.v1";
+export const STRUCTURE_QUESTIONS_VERSION = "structure-questions.v2";
 export const STREAM_STRUCTURE_VERSION = "stream-structure.v1";
 
 /* --------------------------------------------------------------- evaluate API */
@@ -142,6 +142,16 @@ const stateOf = (c: StructureContext) => ({
     ...(c.difficulty ? { difficulty: c.difficulty } : {}),
   },
 });
+
+/**
+ * structure-questions.v2: the state as plain sentences, not a nested object (v1's object state drew
+ * near-identical answers for every lesson from Laya). LAB_STRUCTURE_STATE=object keeps v1's.
+ */
+const textState = (c: StructureContext) => {
+  const year = yearOf(c.yearGroup);
+  return `A lesson in a UK school for ${c.yearGroup} pupils (${keyStageOf(year)}, aged ${year + 4} to ${year + 5}), in ${c.subject}, on the topic: ${c.topic}. ${c.difficulty ? `Difficulty: ${c.difficulty}. ` : ""}The lesson has ${c.rows} slides to plan after its title and objectives slides.`;
+};
+const useText = () => process.env.LAB_STRUCTURE_STATE !== "object";
 
 /* --------------------------------------------------------------- round 1 */
 
@@ -608,23 +618,25 @@ export async function decideStructure(
   model: string,
 ): Promise<StructureRun> {
   const t0 = Date.now();
-  const state = stateOf(ctx);
+  const state = useText() ? textState(ctx) : stateOf(ctx);
   const q1 = round1Questions();
   const c1 = await evaluate(state, q1);
   const r1 = readRound1(c1.answers, ctx);
   const slots = skeleton(ctx.rows, r1);
   const q2 = round2Questions(ctx, slots, r1);
-  const state2 = {
-    ...state,
-    decided: {
-      objectives: r1.objectives,
-      visuality: r1.visuality,
-      method: r1.method,
-      examStyle: r1.examStyle,
-      practice: r1.practice,
-    },
-    slides: describeSkeleton(slots, r1),
-  };
+  const state2 = useText()
+    ? `${textState(ctx)} Decided: ${r1.objectives} objective${r1.objectives > 1 ? "s" : ""}; ${r1.visuality} visuality; ${r1.method ? "a method or stepped explanation, so it needs worked examples" : "not a method topic"}; ${r1.examStyle ? "exam-style practice" : "no exam questions"}; practice as ${r1.practice}. The slides in order: ${describeSkeleton(slots, r1)}.`
+    : {
+        ...(state as object),
+        decided: {
+          objectives: r1.objectives,
+          visuality: r1.visuality,
+          method: r1.method,
+          examStyle: r1.examStyle,
+          practice: r1.practice,
+        },
+        slides: describeSkeleton(slots, r1),
+      };
   const c2 = await evaluate(state2, q2);
   const structure = assemble(ctx, slots, r1, c2.answers, model);
   return {
