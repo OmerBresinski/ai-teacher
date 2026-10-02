@@ -256,6 +256,34 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
               </div>
             ) : null}
 
+            {question.type === "set" ? (
+              <div className="flex flex-col gap-2">
+                {question.items.map((item, i) => (
+                  <div key={item.lineIndex} className="flex flex-col gap-1">
+                    <label
+                      htmlFor={`${rowId}-set-${item.lineIndex}`}
+                      className="text-ink-3 text-meta"
+                    >
+                      Question {item.lineIndex + 1}
+                    </label>
+                    <Textarea
+                      id={`${rowId}-set-${item.lineIndex}`}
+                      rows={2}
+                      value={item.answer}
+                      aria-label={`Answer to question ${item.lineIndex + 1}`}
+                      className="min-h-0 resize-none"
+                      onBlur={typing.end}
+                      onChange={(e) =>
+                        typing.run(() =>
+                          history.dispatch(reducers.setSetAnswer, slide.id, i, e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             {question.type === "sort" ? (
               <ol className="m-0 flex list-none flex-col gap-0.5 p-0 text-ink-2 text-meta">
                 {question.order.map((id, i) => (
@@ -286,31 +314,35 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
             ) : null}
           </PanelSection>
 
-          <PanelSection title={question.type === "open-response" ? "Model answer" : "Explanation"}>
-            {question.type === "open-response" ? (
-              <Textarea
-                rows={4}
-                value={question.modelAnswer ?? ""}
-                aria-label="Model answer"
-                placeholder="What a strong answer contains."
-                onBlur={typing.end}
-                onChange={(e) => type({ ...question, modelAnswer: e.target.value })}
-              />
-            ) : question.type === "true-false" || question.type === "multiple-choice" ? (
-              <Textarea
-                rows={3}
-                value={question.explanation ?? ""}
-                aria-label="Explanation"
-                placeholder="Shown when the answer is revealed."
-                onBlur={typing.end}
-                onChange={(e) => type({ ...question, explanation: e.target.value })}
-              />
-            ) : (
-              <p className="m-0 text-ink-3 text-meta">
-                This question type reveals its answers on the slide itself.
-              </p>
-            )}
-          </PanelSection>
+          {question.type === "set" ? null : (
+            <PanelSection
+              title={question.type === "open-response" ? "Model answer" : "Explanation"}
+            >
+              {question.type === "open-response" ? (
+                <Textarea
+                  rows={4}
+                  value={question.modelAnswer ?? ""}
+                  aria-label="Model answer"
+                  placeholder="What a strong answer contains."
+                  onBlur={typing.end}
+                  onChange={(e) => type({ ...question, modelAnswer: e.target.value })}
+                />
+              ) : question.type === "true-false" || question.type === "multiple-choice" ? (
+                <Textarea
+                  rows={3}
+                  value={question.explanation ?? ""}
+                  aria-label="Explanation"
+                  placeholder="Shown when the answer is revealed."
+                  onBlur={typing.end}
+                  onChange={(e) => type({ ...question, explanation: e.target.value })}
+                />
+              ) : (
+                <p className="m-0 text-ink-3 text-meta">
+                  This question type reveals its answers on the slide itself.
+                </p>
+              )}
+            </PanelSection>
+          )}
         </div>
       </PopoverContent>
     </Popover>
