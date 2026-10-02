@@ -2,16 +2,18 @@
  * `auth.anonymous-cleanup` (TEACH-222): once a day, delete anonymous users older than
  * `ANONYMOUS_USER_TTL_DAYS` together with whatever Workspace they still own. The FK cascade
  * (`workspaces.owner_user_id` → `documents`, `sources`, `job_events`) removes the rows; the stored
- * objects under `<workspaceId>/` are deleted here. The claim is not built yet: TEACH-224 will hand
- * the Workspace to the new account by changing `owner_user_id`, so a claimed Workspace drops out of
- * the select below. Until it lands, a visitor who signs in gets a new, empty Workspace, and the
- * anonymous one is deleted here after the TTL like any other.
+ * objects under `<workspaceId>/` are deleted here. The claim (TEACH-224,
+ * `apps/api/src/auth/claim.ts`) hands the Workspace to the new account by changing
+ * `owner_user_id`, so a claimed Workspace drops out of the select below and the anonymous user is
+ * deleted alone. A claim that commits between the select and the delete moves the Workspace out
+ * from under the cascade; the re-check before the object sweep keeps its pictures.
  *
  * A system job, not a `JobName`: it has no Workspace, emits no job events and nothing enqueues it
  * but the worker's own pg-boss cron. It follows the `ping.ts` shape (one handler, logger, signal)
  * and is registered beside the typed registry in `jobs/index.ts`.
  *
- * Old rows of the per-IP sign-in counter (`anonymous_signins`) go too.
+ * Old rows of the per-IP sign-in counter (`anonymous_signins`) go too, and so do expired pending
+ * claims (`verifications` rows named `claim:…`, TEACH-224), which nothing else removes.
  */
 import type { Sql } from "@tj/db";
 import type { StorageAdapter } from "@tj/domain";
@@ -67,6 +69,11 @@ export async function runAnonymousCleanup({
     if (deleted.length === 0) continue;
     result.users += 1;
     if (workspaceId === null) continue;
+    // The cascade only removes a Workspace the user still owned at the delete. One claimed since
+    // the select belongs to a teacher now: its objects stay. (The claim locks the Workspace row,
+    // so the cascade waited for it and then skipped it; this read sees the committed owner.)
+    const kept = await sql`select 1 from workspaces where id = ${workspaceId}`;
+    if (kept.length > 0) continue;
     result.workspaces += 1;
     // Collect first, then delete: deleting while paging a bucket listing can skip keys.
     const keys: string[] = [];
@@ -89,6 +96,7 @@ export async function runAnonymousCleanup({
     delete from anonymous_signins
     where day < (now() at time zone 'utc')::date - ${SIGNIN_COUNTER_KEEP_DAYS}::int
   `;
+  await sql`delete from verifications where identifier like 'claim:%' and expires_at < now()`;
   logger.info({ ttlDays, ...result }, "anonymous cleanup done");
   return result;
 }
