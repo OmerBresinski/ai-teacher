@@ -164,3 +164,47 @@ describe("answerKey", () => {
     expect([...letters].sort()).toEqual(["A", "B", "C", "D"]);
   });
 });
+
+describe("keep with next (TEACH-86)", () => {
+  test("a heading and its instruction line at the foot of a page move over with their task", () => {
+    const block = (id: string, type: "heading" | "instructions" | "paragraph") =>
+      ({
+        key: id,
+        kind: "block" as const,
+        block: {
+          id,
+          type,
+          doc: { type: "doc" as const, content: [] },
+          ...(type === "heading" ? { level: 2 as const } : {}),
+        },
+      }) as FlowItem;
+    const items = [
+      block("a", "paragraph"),
+      block("h", "heading"),
+      block("i", "instructions"),
+      block("q", "paragraph"),
+    ];
+    const { pages } = paginate(items, { a: 500, h: 40, i: 30, q: 200 }, 0, 600);
+    expect(pages.map((p) => p.items.map((it) => it.key))).toEqual([["a"], ["h", "i", "q"]]);
+  });
+
+  test("a page holding only lead-ins keeps its first item", () => {
+    const h = {
+      key: "h",
+      kind: "block" as const,
+      block: {
+        id: "h",
+        type: "heading" as const,
+        doc: { type: "doc" as const, content: [] },
+        level: 2 as const,
+      },
+    } as FlowItem;
+    const q = {
+      key: "q",
+      kind: "block" as const,
+      block: { id: "q", type: "paragraph" as const, doc: { type: "doc" as const, content: [] } },
+    } as FlowItem;
+    const { pages } = paginate([h, q], { h: 40, q: 590 }, 0, 600);
+    expect(pages.map((p) => p.items.map((it) => it.key))).toEqual([["h"], ["q"]]);
+  });
+});

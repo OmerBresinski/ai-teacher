@@ -26,7 +26,7 @@ const docText = (block: WorksheetBlock): string | undefined =>
 export function emptyBlockReason(block: WorksheetBlock): string | undefined {
   if (isPlaceholder(block)) return undefined;
   const text = docText(block);
-  if (text !== undefined && text.includes(PLACEHOLDER_QUESTION)) {
+  if (text?.includes(PLACEHOLDER_QUESTION)) {
     return `It still says "${PLACEHOLDER_QUESTION}".`;
   }
   switch (block.type) {

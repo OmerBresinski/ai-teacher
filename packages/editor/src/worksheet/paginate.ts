@@ -51,6 +51,10 @@ export function buildFlow(worksheet: Worksheet, includeAnswerKey: boolean): Flow
 
 const isPageBreak = (item: FlowItem) => item.kind === "block" && item.block.type === "page-break";
 
+/** A task's heading and its instruction line stay with the block they introduce (TEACH-86). */
+const leadsIn = (item: FlowItem) =>
+  item.kind === "block" && (item.block.type === "heading" || item.block.type === "instructions");
+
 /** The answer key always starts a fresh page (research/02 decision 17). */
 const startsPage = (item: FlowItem) => item.kind === "key-title";
 
@@ -94,7 +98,21 @@ export function paginate(
     // prints as a baffling blank first page; instead the block stays put and is reported as
     // oversize, which blocks Print with the existing "won't fit" warning.
     if (used + height > room && current.length > 0) {
+      // Keep with next: a heading or instruction line at the foot of the page moves over with
+      // the block it introduces, unless it is all the page holds.
+      let carried = 0;
+      while (
+        carried < current.length - 1 &&
+        leadsIn(current[current.length - 1 - carried] as FlowItem)
+      ) {
+        carried++;
+      }
+      const moving = carried > 0 ? current.splice(current.length - carried, carried) : [];
       flush();
+      for (const lead of moving) {
+        current.push(lead);
+        used += heights[lead.key] ?? 0;
+      }
       room = available();
     }
     if (height > room) oversize.push(item.key);
