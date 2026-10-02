@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deck checklist, one deck",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["deck", "statements", "workings", "questions"],
+  "properties": {
+    "deck": { "type": "string", "description": "The deck title as written." },
+    "statements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checked", "faults"],
+      "properties": {
+        "checked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of statements in the deck."
+        },
+        "faults": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slide", "quote", "fault", "checked", "why"],
+            "properties": {
+              "slide": { "$ref": "#/$defs/slide" },
+              "quote": { "$ref": "#/$defs/quote" },
+              "fault": { "type": "string", "enum": ["false", "misleading"] },
+              "checked": { "type": "string", "enum": ["web", "memory"] },
+              "why": { "$ref": "#/$defs/why" }
+            }
+          }
+        }
+      }
+    },
+    "workings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checked", "faults"],
+      "properties": {
+        "checked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of worked examples and calculations in the deck."
+        },
+        "faults": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slide", "quote", "why"],
+            "properties": {
+              "slide": { "$ref": "#/$defs/slide" },
+              "quote": { "$ref": "#/$defs/quote" },
+              "why": { "$ref": "#/$defs/why" }
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "description": "Every question in the deck, in slide order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["slide", "n", "quote", "keyWrong", "anotherCorrect", "notTaught"],
+        "properties": {
+          "slide": { "$ref": "#/$defs/slide" },
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based position of the question on its slide."
+          },
+          "quote": {
+            "type": ["string", "null"],
+            "maxLength": 150,
+            "description": "Words copied from the question or its answer that show the fault, at most 15 words; null when every check is false."
+          },
+          "keyWrong": { "type": "boolean" },
+          "anotherCorrect": { "type": "boolean" },
+          "notTaught": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "slide": { "type": "integer", "minimum": 1 },
+    "quote": {
+      "type": "string",
+      "maxLength": 150,
+      "description": "Words copied from the deck that show the fault, at most 15 words."
+    },
+    "why": {
+      "type": "string",
+      "maxLength": 150,
+      "description": "The correct fact, or the wrong belief a pupil would take away, at most 20 words."
+    }
+  }
+}
