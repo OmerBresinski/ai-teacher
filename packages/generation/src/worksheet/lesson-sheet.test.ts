@@ -14,6 +14,7 @@ import {
   recipeForFacts,
   resolveRecipe,
 } from "@tj/slides";
+import { z } from "zod";
 import y1 from "../fixtures/lessons/y1-animals.lesson.json";
 import y5 from "../fixtures/lessons/y5-fractions.lesson.json";
 import y11 from "../fixtures/lessons/y11-rates.lesson.json";
@@ -28,7 +29,13 @@ import { fillFrame } from "./fill";
 import { ASKS_FOR_EXAM, optionCountFor, worksheetFit } from "./fit";
 import { buildFrame } from "./frame";
 import { answerText, lessonSheetOutputTokens } from "./lesson-sheet";
-import { answerPoints, COMMAND_WORDS, lessonSheetSchemaFor } from "./lesson-specs";
+import {
+  answerPoints,
+  COMMAND_WORDS,
+  lessonSheetSchemaFor,
+  nearDuplicate,
+  stripListMarker,
+} from "./lesson-specs";
 
 /*
  * TEACH-86 acceptance rows 1–7 on the fake AI: "Follows the lesson" built from the finished
@@ -567,5 +574,79 @@ describe("answer label written by the model (eval, 2 Oct)", () => {
         answer: open.answer.replace("You might have suggested:", "- Rate rises."),
       }),
     ).toHaveLength(1);
+  });
+});
+
+describe("copied list markers and repeated items (eval, 2 Oct)", () => {
+  const schema = lessonSheetSchemaFor({
+    cycles: 1,
+    examStyle: false,
+    exitTicket: false,
+    slideStems: [],
+    optionCount: 4,
+  });
+  const q = (text: string, answer = "A catalyst") => ({
+    type: "question" as const,
+    text,
+    answerLines: 1,
+    answer,
+    factRefs: ["o1"],
+  });
+  const open = {
+    type: "question" as const,
+    text: "Explain why a catalyst speeds up a reaction.",
+    answerLines: 6,
+    factRefs: ["o1"],
+    answer: "- Lower activation energy.\n- More successful collisions.",
+  };
+  const sheet = (supported: unknown[], stretch: unknown[] = [open]) => ({
+    tasks: [{ cycle: 1, title: "Catalysts", instruction: "Answer.", supported, stretch }],
+    exitTicket: [],
+  });
+  const messages = (r: ReturnType<typeof schema.safeParse>) =>
+    r.success ? [] : r.error.issues.map((i) => i.message);
+
+  test("a marker copied from the slide is stripped before the rules read the item", () => {
+    for (const marked of [
+      "1: What lowers it?",
+      "2) What lowers it?",
+      "3. What lowers it?",
+      "• What lowers it?",
+      "- What lowers it?",
+    ]) {
+      expect(stripListMarker(marked)).toBe("What lowers it?");
+    }
+    expect(stripListMarker("1.5 g of marble reacts. What is the rate?")).toBe(
+      "1.5 g of marble reacts. What is the rate?",
+    );
+    const r = schema.safeParse(sheet([q("1: What lowers activation energy?")]));
+    expect(r.success).toBe(true);
+    if (r.success)
+      expect((r.data.tasks[0]?.supported[0] as { text?: string } | undefined)?.text).toBe(
+        "What lowers activation energy?",
+      );
+  });
+
+  test("a repeated item is an editorial miss; different numbers are not", () => {
+    expect(nearDuplicate("What is 3/5 of 35 cakes?", "1: What is 3/5 of 35 cakes?")).toBe(true);
+    expect(nearDuplicate("What is 3/5 of 35 cakes?", "What is 3/5 of 40 cakes?")).toBe(false);
+    const dup = schema.safeParse(
+      sheet([
+        q("What lowers activation energy in a reaction?"),
+        q("What lowers the activation energy in a reaction?"),
+      ]),
+    );
+    expect(messages(dup).filter((m) => m.includes("repeats an earlier one"))).toHaveLength(1);
+    const fine = schema.safeParse(
+      sheet([
+        q("What lowers activation energy?"),
+        q("What is used up in a reaction?", "Reactants"),
+      ]),
+    );
+    expect(messages(fine).filter((m) => m.includes("repeats an earlier one"))).toEqual([]);
+  });
+
+  test("the schema still converts to JSON Schema for the model", () => {
+    expect(() => z.toJSONSchema(schema, { io: "input" })).not.toThrow();
   });
 });

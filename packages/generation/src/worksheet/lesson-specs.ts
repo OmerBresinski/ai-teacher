@@ -72,6 +72,58 @@ const SUPPORTED_TYPES: ReadonlySet<string> = new Set([
   "matching",
 ]);
 
+/**
+ * A list marker the model copied from a slide ("1:", "2)", "3.", "•", "-"). The renderer draws the
+ * one marker an item gets (one marker per item), so the item's own text starts after it.
+ */
+const LIST_MARKER = /^\s*(?:\d{1,2}\s*[:.)]|[•\-–*])\s+/;
+
+export const stripListMarker = (text: string): string => {
+  const stripped = text.replace(LIST_MARKER, "");
+  return stripped.trim().length > 0 ? stripped : text;
+};
+
+/** Every item's text without a copied marker, before any rule reads it. */
+function withoutListMarkers(sheet: LessonSheetOutput): LessonSheetOutput {
+  const clean = <B>(block: B): B =>
+    block && typeof block === "object" && typeof (block as { text?: unknown }).text === "string"
+      ? { ...block, text: stripListMarker((block as unknown as { text: string }).text) }
+      : block;
+  return {
+    ...sheet,
+    tasks: sheet.tasks.map((t) => ({
+      ...t,
+      supported: t.supported.map(clean),
+      stretch: t.stretch.map(clean),
+    })),
+    exitTicket: sheet.exitTicket === null ? null : sheet.exitTicket.map(clean),
+  };
+}
+
+const words = (text: string): string[] =>
+  stripListMarker(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9/]+/g, " ")
+    .split(" ")
+    .filter(Boolean);
+
+/**
+ * True when two items ask the same thing: the same words, or (for items of 4 words or more) at
+ * least 80% of their distinct words shared (Jaccard). Numbers count as words, so "3/5 of 35" and
+ * "3/5 of 40" differ.
+ */
+export function nearDuplicate(a: string, b: string): boolean {
+  const x = words(a);
+  const y = words(b);
+  if (x.length === 0 || y.length === 0) return false;
+  if (x.join(" ") === y.join(" ")) return true;
+  if (Math.min(x.length, y.length) < 4) return false;
+  const sx = new Set(x);
+  const sy = new Set(y);
+  const shared = [...sx].filter((w) => sy.has(w)).length;
+  return shared / (sx.size + sy.size - shared) >= 0.8;
+}
+
 function shape(soft: boolean) {
   const text = z.string().trim().min(1);
   return z.strictObject({
@@ -151,161 +203,187 @@ export function lessonSheetSchemaFor(
   const soft = options.soft === true;
   const slideStems = new Set(context.slideStems);
   const optionCount = context.optionCount ?? 4;
-  return shape(soft).superRefine((sheet, ctx) => {
-    let last = 0;
-    const covered = new Set<number>();
-    const each = (block: BlockSpec, path: (string | number)[]) => {
-      if (block.type === "multiple-choice" && block.options.length !== optionCount) {
-        ctx.addIssue(
-          editorialIssue(
-            `A multiple-choice item for this class has ${optionCount} options, not ${block.options.length}.`,
-            [...path, "options"],
-          ),
-        );
-      }
-      if (block.type === "question") {
-        if (block.marks !== undefined && !context.examStyle) {
+  return shape(soft)
+    .overwrite(withoutListMarkers)
+    .superRefine((sheet, ctx) => {
+      let last = 0;
+      const covered = new Set<number>();
+      const each = (block: BlockSpec, path: (string | number)[]) => {
+        if (block.type === "multiple-choice" && block.options.length !== optionCount) {
           ctx.addIssue(
             editorialIssue(
-              "Marks belong to exam-style items, which this year group does not get; leave `marks` out.",
-              [...path, "marks"],
+              `A multiple-choice item for this class has ${optionCount} options, not ${block.options.length}.`,
+              [...path, "options"],
             ),
           );
         }
-        if (block.marks !== undefined && context.examStyle && !opensWithCommandWord(block.text)) {
+        if (block.type === "question") {
+          if (block.marks !== undefined && !context.examStyle) {
+            ctx.addIssue(
+              editorialIssue(
+                "Marks belong to exam-style items, which this year group does not get; leave `marks` out.",
+                [...path, "marks"],
+              ),
+            );
+          }
+          if (block.marks !== undefined && context.examStyle && !opensWithCommandWord(block.text)) {
+            ctx.addIssue(
+              editorialIssue(
+                `A marked item opens with an exam command word (${COMMAND_WORDS.slice(0, 6).join(", ")} …).`,
+                [...path, "text"],
+              ),
+            );
+          }
+          if (block.answerLines >= OPEN_ANSWER_LINES) {
+            const [low, high] = pointsRange(block);
+            const n = answerPoints(block.answer).length;
+            if (n < low || n > high) {
+              ctx.addIssue(
+                editorialIssue(
+                  `An open question's answer is ${low} to ${high} model points, one per line; this one has ${n}.`,
+                  [...path, "answer"],
+                ),
+              );
+            }
+          }
+        }
+        noPictureReference(block, {
+          addIssue: (issue: { path?: PropertyKey[] }) =>
+            ctx.addIssue({ ...issue, path: [...path, ...(issue.path ?? [])] } as never),
+        } as unknown as z.RefinementCtx);
+      };
+      sheet.tasks.forEach((task, i) => {
+        if (task.cycle > context.cycles) {
           ctx.addIssue(
-            editorialIssue(
-              `A marked item opens with an exam command word (${COMMAND_WORDS.slice(0, 6).join(", ")} …).`,
-              [...path, "text"],
+            shapeIssue(
+              `There is no cycle ${task.cycle}; the lesson has ${context.cycles}.`,
+              ["tasks", i, "cycle"],
+              "unknown cycle",
+            ),
+          );
+        } else if (task.cycle <= last) {
+          ctx.addIssue(
+            shapeIssue(
+              `Task ${i + 1} follows cycle ${task.cycle} after cycle ${last}; one task per cycle, in lesson order.`,
+              ["tasks", i, "cycle"],
+              "cycle order",
             ),
           );
         }
-        if (block.answerLines >= OPEN_ANSWER_LINES) {
-          const [low, high] = pointsRange(block);
-          const n = answerPoints(block.answer).length;
-          if (n < low || n > high) {
-            ctx.addIssue(
-              editorialIssue(
-                `An open question's answer is ${low} to ${high} model points, one per line; this one has ${n}.`,
-                [...path, "answer"],
-              ),
-            );
-          }
+        last = Math.max(last, task.cycle);
+        covered.add(task.cycle);
+        if (soft) return;
+        if (!task.supported.some(isSupportedForm)) {
+          ctx.addIssue(
+            editorialIssue(
+              "The supported part needs a closed or short form (fill-gap, word bank, multiple choice, matching, or a short-answer question).",
+              ["tasks", i, "supported"],
+            ),
+          );
         }
-      }
-      noPictureReference(block, {
-        addIssue: (issue: { path?: PropertyKey[] }) =>
-          ctx.addIssue({ ...issue, path: [...path, ...(issue.path ?? [])] } as never),
-      } as unknown as z.RefinementCtx);
-    };
-    sheet.tasks.forEach((task, i) => {
-      if (task.cycle > context.cycles) {
-        ctx.addIssue(
-          shapeIssue(
-            `There is no cycle ${task.cycle}; the lesson has ${context.cycles}.`,
-            ["tasks", i, "cycle"],
-            "unknown cycle",
-          ),
-        );
-      } else if (task.cycle <= last) {
-        ctx.addIssue(
-          shapeIssue(
-            `Task ${i + 1} follows cycle ${task.cycle} after cycle ${last}; one task per cycle, in lesson order.`,
-            ["tasks", i, "cycle"],
-            "cycle order",
-          ),
-        );
-      }
-      last = Math.max(last, task.cycle);
-      covered.add(task.cycle);
-      if (soft) return;
-      if (!task.supported.some(isSupportedForm)) {
-        ctx.addIssue(
-          editorialIssue(
-            "The supported part needs a closed or short form (fill-gap, word bank, multiple choice, matching, or a short-answer question).",
-            ["tasks", i, "supported"],
-          ),
-        );
-      }
-      if (!task.stretch.some((b) => b.type === "question")) {
-        ctx.addIssue(
-          editorialIssue("The stretch needs an open question (explain, apply, a problem).", [
-            "tasks",
-            i,
-            "stretch",
-          ]),
-        );
-      }
-      task.supported.forEach((b, j) => {
-        each(b, ["tasks", i, "supported", j]);
-      });
-      task.stretch.forEach((b, j) => {
-        each(b, ["tasks", i, "stretch", j]);
-      });
-    });
-    if (context.exitTicket) {
-      const exit = sheet.exitTicket;
-      if (exit === null || exit.length === 0 || exit.length > MAX_EXIT_QUESTIONS) {
-        ctx.addIssue(
-          shapeIssue(
-            `The exit ticket holds 1 to ${MAX_EXIT_QUESTIONS} questions.`,
-            ["exitTicket"],
-            "exit ticket count",
-          ),
-        );
-      } else {
-        exit.forEach((block, j) => {
-          if (!(EXIT_TICKET_TYPES as readonly string[]).includes(block.type)) {
-            ctx.addIssue(
-              shapeIssue(
-                `An exit-ticket item is a question or multiple choice, not "${block.type}".`,
-                ["exitTicket", j, "type"],
-                "exit ticket type",
-              ),
-            );
-            return;
-          }
-          if (soft) return;
-          const stem = "text" in block ? normaliseStem(block.text) : "";
-          if (slideStems.has(stem)) {
-            ctx.addIssue(
-              editorialIssue(
-                "This exit question repeats a slide question word for word; ask it a new way.",
-                ["exitTicket", j, "text"],
-              ),
-            );
-          }
-          each(block, ["exitTicket", j]);
+        if (!task.stretch.some((b) => b.type === "question")) {
+          ctx.addIssue(
+            editorialIssue("The stretch needs an open question (explain, apply, a problem).", [
+              "tasks",
+              i,
+              "stretch",
+            ]),
+          );
+        }
+        task.supported.forEach((b, j) => {
+          each(b, ["tasks", i, "supported", j]);
         });
-      }
-    } else if (sheet.exitTicket !== null && sheet.exitTicket.length > 0) {
-      ctx.addIssue(
-        shapeIssue(
-          "No exit ticket was asked for; answer null.",
-          ["exitTicket"],
-          "exit ticket unasked",
-        ),
-      );
-    }
-    if (soft) return;
-    if (context.examStyle) {
-      const blocks = [
-        ...sheet.tasks.flatMap((t) => [...t.supported, ...t.stretch]),
-        ...(sheet.exitTicket ?? []),
-      ];
-      if (!blocks.some(isExamItem)) {
+        task.stretch.forEach((b, j) => {
+          each(b, ["tasks", i, "stretch", j]);
+        });
+      });
+      if (context.exitTicket) {
+        const exit = sheet.exitTicket;
+        if (exit === null || exit.length === 0 || exit.length > MAX_EXIT_QUESTIONS) {
+          ctx.addIssue(
+            shapeIssue(
+              `The exit ticket holds 1 to ${MAX_EXIT_QUESTIONS} questions.`,
+              ["exitTicket"],
+              "exit ticket count",
+            ),
+          );
+        } else {
+          exit.forEach((block, j) => {
+            if (!(EXIT_TICKET_TYPES as readonly string[]).includes(block.type)) {
+              ctx.addIssue(
+                shapeIssue(
+                  `An exit-ticket item is a question or multiple choice, not "${block.type}".`,
+                  ["exitTicket", j, "type"],
+                  "exit ticket type",
+                ),
+              );
+              return;
+            }
+            if (soft) return;
+            const stem = "text" in block ? normaliseStem(block.text) : "";
+            if (slideStems.has(stem)) {
+              ctx.addIssue(
+                editorialIssue(
+                  "This exit question repeats a slide question word for word; ask it a new way.",
+                  ["exitTicket", j, "text"],
+                ),
+              );
+            }
+            each(block, ["exitTicket", j]);
+          });
+        }
+      } else if (sheet.exitTicket !== null && sheet.exitTicket.length > 0) {
         ctx.addIssue(
-          editorialIssue(
-            "This class sits exams: at least one task needs a marked question that opens with a command word, with its mark scheme as the answer.",
-            ["tasks"],
+          shapeIssue(
+            "No exit ticket was asked for; answer null.",
+            ["exitTicket"],
+            "exit ticket unasked",
           ),
         );
       }
-    }
-    for (let c = 1; c <= context.cycles; c++) {
-      if (!covered.has(c)) {
-        ctx.addIssue(editorialIssue(`Cycle ${c} has no task.`, ["tasks"]));
+      if (soft) return;
+      const items: { text: string; path: (string | number)[] }[] = [];
+      sheet.tasks.forEach((task, i) => {
+        for (const part of ["supported", "stretch"] as const) {
+          task[part].forEach((b, j) => {
+            if ("text" in b && typeof b.text === "string")
+              items.push({ text: b.text, path: ["tasks", i, part, j, "text"] });
+          });
+        }
+      });
+      (sheet.exitTicket ?? []).forEach((b, j) => {
+        if ("text" in b && typeof b.text === "string")
+          items.push({ text: b.text, path: ["exitTicket", j, "text"] });
+      });
+      items.forEach((item, k) => {
+        const earlier = items.slice(0, k).find((e) => nearDuplicate(e.text, item.text));
+        if (earlier) {
+          ctx.addIssue(
+            editorialIssue(
+              `This item repeats an earlier one ("${earlier.text.slice(0, 60)}"); ask something new.`,
+              item.path,
+            ),
+          );
+        }
+      });
+      if (context.examStyle) {
+        const blocks = [
+          ...sheet.tasks.flatMap((t) => [...t.supported, ...t.stretch]),
+          ...(sheet.exitTicket ?? []),
+        ];
+        if (!blocks.some(isExamItem)) {
+          ctx.addIssue(
+            editorialIssue(
+              "This class sits exams: at least one task needs a marked question that opens with a command word, with its mark scheme as the answer.",
+              ["tasks"],
+            ),
+          );
+        }
       }
-    }
-  });
+      for (let c = 1; c <= context.cycles; c++) {
+        if (!covered.has(c)) {
+          ctx.addIssue(editorialIssue(`Cycle ${c} has no task.`, ["tasks"]));
+        }
+      }
+    });
 }
