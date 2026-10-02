@@ -49,6 +49,10 @@ function emWidth(word: string, advances: readonly number[] | undefined, tracking
 /** The resolved type a line count depends on. */
 type LineType = Pick<ResolvedText, "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing">;
 
+/** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
+const isSpace = (code: number, ch: string): boolean =>
+  code === 32 || (code >= 9 && code <= 13) || (code > 127 && /\s/.test(ch));
+
 /** A run of text and whether it is set bold (a chunk's label). */
 type Run = { text: string; bold?: boolean };
 
@@ -63,7 +67,10 @@ function linesIn(text: string, type: LineType, room: number): number {
  */
 function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
   const regular = advancesFor(type.fontFamily, type.fontWeight);
-  const bold = advancesFor(type.fontFamily, Math.max(700, type.fontWeight));
+  // The bold table only when a run is bold: most text has none.
+  const bold = runs.some((r) => r.bold)
+    ? advancesFor(type.fontFamily, Math.max(700, type.fontWeight))
+    : regular;
   const tracking = type.letterSpacing.endsWith("em") ? Number.parseFloat(type.letterSpacing) : 0;
   const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
   let lines = 1;
@@ -87,15 +94,20 @@ function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number
   };
   for (const run of runs) {
     const advances = run.bold ? bold : regular;
+    const spaceWidth = emWidth(" ", advances, tracking);
     for (const ch of run.text) {
-      if (ch === "\n") {
+      const code = ch.codePointAt(0) ?? 0;
+      if (code === 10) {
         place();
         lines += 1;
         used = 0;
-      } else if (/\s/.test(ch)) {
+      } else if (isSpace(code, ch)) {
         place();
-        space = emWidth(" ", advances, tracking);
-      } else word += emWidth(ch, advances, tracking);
+        space = spaceWidth;
+      } else {
+        const adv = advances && code >= 32 && code <= 126 ? advances[code - 32] : undefined;
+        word += (adv === undefined ? FALLBACK_EM * 1000 : adv) / 1000 + tracking;
+      }
     }
   }
   place();

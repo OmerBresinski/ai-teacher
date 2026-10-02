@@ -26,6 +26,7 @@ import {
   STEP_ARROW_NAME,
   STEP_NAME,
   stepsStrip,
+  workingAndReason,
 } from "./structure";
 import { getTheme } from "./themes";
 
@@ -396,5 +397,39 @@ describe("overflow fixes", () => {
     expect(text((named(pages[1]?.elements ?? [], "Heading")[0] as TextElement).doc)).toBe(
       "Long (continued)",
     );
+  });
+});
+
+describe("workingAndReason: a worked step as its working and its reason", () => {
+  test("a bracketed reason after the maths is the reason", () => {
+    expect(workingAndReason("£45 ÷ 5 = £9 (each part)")).toEqual(["£45 ÷ 5 = £9", "each part"]);
+  });
+
+  test("a reason before or after a separator: the side with the maths is the working", () => {
+    expect(workingAndReason("Add the parts: 2 + 5 = 7")).toEqual(["2 + 5 = 7", "Add the parts"]);
+    expect(workingAndReason("2 + 5 = 7 parts — add the parts")).toEqual([
+      "2 + 5 = 7 parts",
+      "add the parts",
+    ]);
+    expect(workingAndReason("35 ÷ 7 = 5, so one part is five sweets")).toEqual([
+      "35 ÷ 7 = 5",
+      "one part is five sweets",
+    ]);
+  });
+
+  test("a step with no reason, or with maths on both sides, is all working", () => {
+    expect(workingAndReason("10 + 25 = 35")).toEqual(["10 + 25 = 35", undefined]);
+    expect(workingAndReason("2 × 5 = 10; 5 × 5 = 25")).toEqual([
+      "2 × 5 = 10; 5 × 5 = 25",
+      undefined,
+    ]);
+    expect(workingAndReason("Subtract 2x: 2x + 6 = 18")).toEqual([
+      "Subtract 2x: 2x + 6 = 18",
+      undefined,
+    ]);
+    expect(workingAndReason("The ice melts because it gains energy")).toEqual([
+      "The ice melts because it gains energy",
+      undefined,
+    ]);
   });
 });

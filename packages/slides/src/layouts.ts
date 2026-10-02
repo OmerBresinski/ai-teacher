@@ -890,27 +890,18 @@ function fillGapSlide(t: Theme): Layout {
   };
 }
 
-/**
- * Sort — four cards in a column, held in the correct order (top to bottom).
- * left to right, then the bottom row).
- *
- * The column of four research/04 draws does not survive the option floor. A card's
- * text sits at 31pt (SPEC §7 per-role minimums), which with its own leading, padding
- * and border makes the card 93pt tall, and four of those plus their gaps run 60pt past
- * the foot of the slide: the first Tidy pushed the last card off the bottom. Two rows
- * of two, each card half the content width, fit under the stem in every theme with the
- * cushion the engine wants and room to spare. The height is derived from the floor and
- * the card's own chrome rather than typed, so a change to either moves the cards
- * instead of quietly overflowing them.
- */
 /** A sort card's padding: four full-width cards and a two-line stem inside the safe area. */
-export const SORT_CARD_PAD = SPACE[2];
+const SORT_CARD_PAD = SPACE[2];
 
+/**
+ * Sort — four full-width cards in a column under the stem, held in the correct order (top to
+ * bottom). A stage of a process is a short phrase, which a half-width card cannot hold on the
+ * option floor. The cards take a compact padding (`SORT_CARD_PAD`) so all four sit inside the
+ * safe area under a two-line stem; at the option default's padding the fourth card runs under
+ * the bottom bar. The height is derived from the floor and the card's own chrome rather than
+ * typed, so a change to either moves the cards instead of quietly overflowing them.
+ */
 function sortSlide(t: Theme): Layout {
-  // A column of four full-width cards under a one-line stem: a stage of a process is a short
-  // phrase, which a half-width card cannot hold on the option floor.
-  // The cards take a compact padding so all four sit inside the safe area under a two-line stem
-  // (at the option default's 24pt pad the fourth card runs under the bottom bar).
   const stemBox = boxH(t, "heading", 2, "question");
   const gap = SPACE[1];
   const pad = SORT_CARD_PAD;

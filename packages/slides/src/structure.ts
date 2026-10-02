@@ -1414,8 +1414,8 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
   }
   // The look's fit set the question beside the working card this pass replaces, so the card's
   // lines could step the body preset down for the question too. With the strip in the card's
-  // place, the question goes back to its own size when it and the strip still fit (left stepped,
-  // the question sat one stop down on four themes whatever it said, and the save gate failed it).
+  // place, the question goes back to its own size when it and the strip still fit: the question
+  // is sized by its own words, never by a card that is no longer on the slide.
   const own = resolveFontSize(t, "body");
   if ((question.style.fontSize ?? own) < own) {
     const { fontSize: _stepped, ...style } = question.style;
@@ -2796,7 +2796,7 @@ export type Row = {
   step?: number;
 };
 
-export type RowOptions = {
+type RowOptions = {
   /** Candidate sizes, largest first; the default steps up from the body size for few rows. */
   sizes?: number[];
   /** `side` as its own card in the right half (matching). */
@@ -2816,7 +2816,7 @@ export type RowOptions = {
 };
 
 /** The sizes a set of `n` rows tries: larger type for fewer rows, never below the body floor. */
-export function rowSizes(t: Theme, n: number): number[] {
+function rowSizes(t: Theme, n: number): number[] {
   const body = resolveFontSize(t, "body");
   const floor = floorBelow(t, "body");
   const up = n <= 2 ? [1.3, 1.15] : n === 3 ? [1.15] : [];
@@ -3048,8 +3048,9 @@ export function rowCards(
 }
 
 /**
- * A worked step as its working and its reason: "2x + 6 = 18 (subtract 2x)" or "Subtract 2x: 2x + 6
- * = 18". The side with the maths is the working; a step with no reason is all working.
+ * A worked step as its working and its reason: "£45 ÷ 5 = £9 (each part)" or "Add the parts: 2 + 5
+ * = 7". The side with the maths is the working; a step with no reason, or with maths on both sides
+ * of every separator ("Subtract 2x: 2x + 6 = 18"), is all working.
  */
 export function workingAndReason(step: string): [string, string | undefined] {
   const maths = (x: string) => /[=×÷+\-−/^%²³]|\d/.test(x);

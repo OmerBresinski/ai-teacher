@@ -33,6 +33,9 @@ const ALL_THEMES = [
 const OUT = process.env.TEACH_226_OUT ?? "/tmp/teach-226";
 const META = { promptVersion: "e2e", model: "fixture", at: "2026-10-02T12:00:00.000Z" };
 
+/** Master's fit version before this port: the stored lesson must sit under it to be migrated. */
+const MASTER_FIT_VERSION = 2;
+
 const repoFile = (path: string) =>
   JSON.parse(readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8")) as unknown;
 
@@ -75,11 +78,7 @@ type Shot = { name: string; slide: Slide };
 function shots(themeId: string): Shot[] {
   const out: Shot[] = [];
   const add = (name: string, spec: unknown, variant?: string) => {
-    try {
-      out.push({ name, slide: materialiseSlide(spec as never, themeId, META, undefined, variant) });
-    } catch {
-      // A variant this build does not have (callout-row before the port): no shot.
-    }
+    out.push({ name, slide: materialiseSlide(spec as never, themeId, META, undefined, variant) });
   };
   for (const [kind, spec] of Object.entries(SPECS)) add(kind, spec);
   for (const extra of EXTRA) add(extra.name, extra.spec, extra.variant);
@@ -99,7 +98,7 @@ function storedLesson(): Lesson {
     ...newLesson("TEACH-226 stored on master", stored.themeId),
     id: "t226-stored",
     slides: stored.slides,
-    fitVersion: 2,
+    fitVersion: MASTER_FIT_VERSION,
   };
 }
 
