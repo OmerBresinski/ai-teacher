@@ -653,3 +653,82 @@
     height: 0;
   }
 }
+
+/* The planning stage: Plan reads centre stage. The scene keeps its own aspect at every width, and
+ * the heading sits under Plan's feet. */
+.creation-shell[data-layout="plan"] .creation-layout {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 4px;
+  max-width: 760px;
+  transform: none;
+  margin-top: clamp(8px, 3vh, 40px);
+}
+.creation-shell[data-layout="plan"] .creation-character {
+  position: relative;
+  top: auto;
+  width: min(640px, 100%);
+  height: auto;
+  aspect-ratio: 480 / 280;
+  margin: 0;
+}
+.creation-shell[data-layout="plan"] .handover-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.creation-shell[data-layout="plan"] .creation-step {
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+.creation-shell[data-layout="plan"] .creation-form {
+  align-items: center;
+  gap: 12px;
+}
+/* The stage hands back to the column: Plan (same aspect in both layouts) shrinks to its side slot. */
+html[data-plan-exit] .creation-shell .handover-stage {
+  view-transition-name: plan-actor;
+}
+::view-transition-group(plan-actor) {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+}
+
+/* Plan's existing entrance (motion/entrances/): drawn by its own engine over the rig's rest drawing,
+ * in the artwork's own stroke, then handed over to the rig. */
+.cast-entrance .actor {
+  position: absolute;
+  inset: 0;
+  color: #293b32;
+}
+.cast-entrance .actor svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cast-entrance .happy-mouth {
+  display: none;
+}
+.cast-entrance .arrival-shadow {
+  position: absolute;
+  left: 22%;
+  top: calc(94% - 6px);
+  width: 56%;
+  height: 12px;
+  border-radius: 50%;
+  background: #293b3215;
+  filter: blur(3px);
+  transform-origin: 50% 50%;
+}

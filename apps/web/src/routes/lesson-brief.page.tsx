@@ -11,6 +11,7 @@ import { Button, Spinner } from "@tj/ui";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { CharacterCapture } from "@/components/lesson-creation/character-origin";
 import { CreationShell } from "@/components/lesson-creation/creation-shell";
+import { leaveStage } from "@/components/lesson-creation/planning-stage";
 import {
   BriefStep,
   type IntakeBrief,
@@ -107,6 +108,11 @@ function LessonIntake({
     client,
   );
   const create = useMutation(libraryMutations.createLesson(client));
+  // The planning stage: whether this tab watched the job run (then Plan finishes reading before the
+  // page moves on), and the objectives it is waiting to hand over.
+  const watched = useRef(false);
+  if (jobId) watched.current = true;
+  const [reveal, setReveal] = useState<string[] | null>(null);
   const refresh = async () => {
     await document.refetch();
     await meta.refetch();
@@ -130,6 +136,7 @@ function LessonIntake({
     const timer = setInterval(recheck, JOB_POLL_MS);
     return () => clearInterval(timer);
   }, [running, stream.status, lessonId, client]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: land only writes state setters.
   useEffect(() => {
     if (!lesson) return;
     if (lesson.plan?.state === "confirmed") {
@@ -138,7 +145,18 @@ function LessonIntake({
     }
     if (initialized.current || jobId || !meta.isSuccess || lesson.generation?.stage !== "planned")
       return;
+    const ready = (lesson.facts?.objectives ?? []).map(({ text }) => text);
     initialized.current = true;
+    if (watched.current) {
+      // Plan lowers the brief with a nod before the page moves on (onDone below).
+      if (ready.length) setReveal(ready);
+      else leaveStage(() => land(lesson));
+      return;
+    }
+    land(lesson);
+  }, [lesson, jobId, meta.isSuccess, navigate]);
+
+  function land(lesson: Lesson) {
     setBrief({
       topic: lesson.brief?.topic ?? lesson.title,
       yearGroup: lesson.yearGroup ?? "Year 4",
@@ -149,7 +167,7 @@ function LessonIntake({
     setObjectives((lesson.facts?.objectives ?? []).map(({ id, text }) => ({ id, text })));
     setSlideCount(String(lesson.brief?.slideCount ?? 8));
     setStep("objectives");
-  }, [lesson, jobId, meta.isSuccess, navigate]);
+  }
 
   async function fail(cause: unknown) {
     setError(
@@ -262,7 +280,7 @@ function LessonIntake({
       setBusy(false);
     }
   }
-  const planning = !!lessonId && (!!jobId || !initialized.current);
+  const planning = (!!lessonId && (!!jobId || !initialized.current)) || !!reveal;
   const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
   const loadingError = document.isError || meta.isError;
   const title = planning
@@ -278,6 +296,19 @@ function LessonIntake({
       characterRef={character}
       title={title}
       working={planning && !failed}
+      layout={planning ? "plan" : "column"}
+      planning={
+        planning && !failed
+          ? {
+              objectives: reveal,
+              onDone: () =>
+                leaveStage(() => {
+                  setReveal(null);
+                  if (lesson) land(lesson);
+                }),
+            }
+          : undefined
+      }
     >
       {findNamePatterns(brief.topic).length > 0 ? <p role="status">{GUARD_MESSAGE}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
@@ -296,7 +327,9 @@ function LessonIntake({
                 ? "Planning stopped. You can try again with the same brief."
                 : loadingError
                   ? "We couldn’t load your plan."
-                  : "Finding the key ideas and checking the facts."}
+                  : reveal
+                    ? `Your ${reveal.length} learning objectives are ready.`
+                    : "Finding the key ideas and checking the facts."}
           </p>
           {failed || loadingError || (!jobId && document.isSuccess && !lesson?.facts) ? (
             <Button
@@ -317,9 +350,7 @@ function LessonIntake({
               {" "}
               {lesson ? "Review the brief" : "Try again"}{" "}
             </Button>
-          ) : (
-            <Spinner />
-          )}
+          ) : null}
           {jobId && !failed ? (
             <Button
               variant="link"

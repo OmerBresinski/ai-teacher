@@ -308,6 +308,81 @@ export function buildBeat(context, n, gsap) {
     k.call(() => context.accentAt("ground", 320, 300, 1.2), 470);
     tl.to({}, { duration: 0.2 }, end / 1000);
   }
+  if (n === 13) {
+    // After Slides' shipped entrance (entrances/, drawn by its own engine) hands over on the mark,
+    // the deck it will work from rides in as it did in the original solo entrance.
+    const a = actors[SLIDES];
+    snap(a, { x: 320, alpha: 1 }, 0);
+    // One drawing across the hand-over: the deck is the artwork's own card, face and line
+    // weight, so the rig's first frame is the entrance's last. Only the limbs start in the
+    // artwork's pose (its wide straight-legged stance and arm curves) and ease to the deck's
+    // working pose over 360 ms, feet planted. (The starting pose is set in the rig's canonical
+    // state for beat 13, so it is on screen before the timeline's first tick.)
+    // Slides' tempo: quick and bouncy (back.out), with a squash as it catches the deck.
+    to(a.b, { stance: 0 }, 0, 300, "power2.out");
+    to(a.b, { artArms: 0 }, 0, 300, "back.out(1.4)");
+    snap(p, { x: 540, hold: 0 }, 0);
+    to(p, { x: 320 }, 40, 420, "back.out(1.2)");
+    // The hands meet the deck as it arrives (the grip follows it in), then hold it.
+    to(p, { hold: 1 }, 220, 440, "power2.out");
+    to(a.b, { sy: 0.95, sx: 1.04 }, 400, 470, "power2.out");
+    to(a.b, { sy: 1, sx: 1 }, 470, 620, "back.out(2)");
+    tl.to({}, { duration: 0.1 }, 0.62);
+  }
+  if (n >= 14 && n <= 18) {
+    // Planning: Plan reads the teacher's brief. Calm and decelerating (its persona): sine eases, no
+    // overshoot, a soft plie when it bends and when it lowers the sheet.
+    const b = actors[PLAN].b;
+    const hoverMs = context.clipMs?.("plan.hover") ?? 1200;
+    if (n === 14) {
+      // Picks the brief up from its feet: a soft bend, hands down to the sheet, and up to reading
+      // height as the sheet tips up off the floor; the eyes follow it.
+      to(p, { gazeY: 2.4, look: 1.6 }, 0, 300, "sine.inOut");
+      to(b, { sy: 0.9, sx: 1.05, lean: 4 }, 100, 520, "sine.inOut");
+      to(p, { hold: 1 }, 200, 560, "sine.inOut");
+      to(p, { x: 320, y: 262, lie: 0.6, r: 6 }, 560, 900, "sine.in");
+      to(p, { y: 238, lie: 0, r: 0 }, 900, 1300, "sine.out");
+      to(b, { sy: 1, sx: 1, lean: 0 }, 620, 1150, "sine.out");
+      to(p, { look: -2.2, gazeY: 1.4 }, 900, 1300, "sine.inOut");
+      tl.to({}, { duration: 0.1 }, 1.3);
+    }
+    if (n === 15) {
+      // One line: the eyes track along it left to right, then drop to the next line's start.
+      const row = context.loops % 3;
+      snap(p, { look: -2.2, gazeY: 1.4 + row * 0.5 }, 0);
+      to(p, { look: 2.2 }, 0, 1150, "sine.inOut");
+      to(b, { lean: 0.8 }, 0, 600, "sine.inOut");
+      to(b, { lean: 0 }, 600, 1150, "sine.inOut");
+      to(p, { look: -2.2, gazeY: 1.4 + ((row + 1) % 3) * 0.5 }, 1150, 1380, "sine.inOut");
+      tl.to({}, { duration: 0.02 }, 1.38);
+    }
+    if (n === 16) {
+      // The next page: its check-through on the sheet it holds (lifted and tipped toward its eyes,
+      // the fold riffles, a content nod), from its cast module.
+      k.call(() => context.cast(PLAN, "plan.hover", { hands: 0 }), 0);
+      to(p, { gazeY: 1.4, look: 0 }, 0, 300, "sine.inOut");
+      to(p, { look: -2.2 }, hoverMs, hoverMs + 200, "sine.inOut");
+      tl.to({}, { duration: 0.02 }, (hoverMs + 200) / 1000);
+    }
+    if (n === 17) {
+      // A thoughtful look up from the sheet, a held beat, a small nod, back to the page.
+      to(p, { gazeY: -1.2, look: 0.4, y: 241 }, 0, 420, "sine.out");
+      to(b, { lean: -1.2 }, 0, 420, "sine.out");
+      to(b, { lean: 2.4, shut: 1 }, 900, 1080, "sine.inOut");
+      to(b, { lean: 0, shut: 0 }, 1080, 1320, "sine.inOut");
+      to(p, { gazeY: 1.4, look: -2.2, y: 238 }, 1200, 1600, "sine.inOut");
+      tl.to({}, { duration: 0.02 }, 1.6);
+    }
+    if (n === 18) {
+      // Done: lowers the sheet with a nod (a soft plie as it comes down), then looks up, ready.
+      to(p, { y: 251, look: 0, gazeY: 0.6 }, 0, 520, "sine.inOut");
+      to(b, { lean: 2.6, shut: 1 }, 200, 400, "sine.inOut");
+      to(b, { sy: 0.95, sx: 1.02 }, 380, 520, "sine.in");
+      to(b, { lean: 0, shut: 0, sy: 1, sx: 1 }, 520, 820, "sine.out");
+      to(p, { gazeY: 0 }, 600, 820, "sine.inOut");
+      tl.to({}, { duration: 0.1 }, 0.82);
+    }
+  }
   if (n === 3) {
     p.pending = 1;
     p.stackGap = 0;

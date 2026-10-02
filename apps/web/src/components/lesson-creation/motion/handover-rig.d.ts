@@ -15,6 +15,14 @@ export interface HandoverRig {
       onComplete?: () => void;
     },
   ): void;
+  restBox(actor: number): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    shadow: { left: number; top: number; width: number; height: number };
+  } | null;
+  present(actor: number, shown: boolean): void;
   snapshot(actor: number): RigPose;
   restore(pose: RigPose): void;
   settle(beat: number): void;

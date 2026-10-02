@@ -8,7 +8,7 @@ const pile = (x, y, fill) =>
 let serial = 0;
 function svg(i) {
   const id = `slot-${serial++}`;
-  return `<svg class="scene" viewBox="0 0 420 300" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="326" height="300"/></clipPath></defs><path d="M34 252H389" stroke="#bec9b9"/><ellipse cx="205" cy="251" rx="76" ry="5" fill="#293b32" opacity=".07" stroke="none"/>${i === 2 ? `<g class="receiver"><path d="M319 182 343 173 392 182v61l-24 8-49-8Z" fill="#cbdcb5"/><path d="m319 182 49 9 24-9M368 191v60"/><path d="M319 194v33" stroke-width="5"/><g class="display"><path d="M339 197 359 201v24l-20-4Z" fill="#faf4df"/><path d="m342 215 5-8 5 7 4-3" stroke-width="1.5"/></g><circle class="indicator" cx="351" cy="236" r="2" fill="#81976a"/></g>` : ""}${i === 2 ? pile(76, 238, "#faf4df") : ""}<path class="legs"/><g class="body"><path class="side" d="M-65-70-53-78 65-67 54-59v128l-119-9Z" fill="#dfab43"/><path d="M-64-66 55-56V70L-64 60Z" fill="#faf4df"/><path d="M-59-70 64-58V66L-59 54Z" fill="#f5c054"/><path class="detail" d="M-41-47 44-39"/><path d="M-38 30-17 9-1 23 19 1 48 37Z" fill="#e88f52"/><circle cx="38" cy="-22" r="9" fill="#fff3cb"/><g class="face"><g class="eyes"><path class="eye-left" fill="#293b32" stroke="none" d="M-25 -13C-25 -17 -19 -17 -19 -13C-19 -9 -25 -9 -25 -13Z"/><path class="eye-right" fill="#293b32" stroke="none" d="M-1 -11C-1 -15 5 -15 5 -11C5 -7 -1 -7 -1 -11Z"/></g><path class="mouth" d="M-15-1q7 9 16 1"/></g></g><path class="arm left"/><path class="arm right"/><g ${i === 2 ? `clip-path="url(#${id})"` : ""}><g class="held"><g class="fan-a">${card()}</g><g class="fan-b">${card("#e4edcf")}</g><g class="fan-c">${card("#faf4df")}</g></g></g><path class="fingers left"/><path class="fingers right"/></svg>`;
+  return `<svg class="scene" viewBox="0 0 420 300" stroke-width="1.833" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="326" height="300"/></clipPath></defs><path d="M34 252H389" stroke="#bec9b9"/><ellipse cx="205" cy="251" rx="76" ry="5" fill="#293b32" opacity=".07" stroke="none"/>${i === 2 ? `<g class="receiver"><path d="M319 182 343 173 392 182v61l-24 8-49-8Z" fill="#cbdcb5"/><path d="m319 182 49 9 24-9M368 191v60"/><path d="M319 194v33" stroke-width="5"/><g class="display"><path d="M339 197 359 201v24l-20-4Z" fill="#faf4df"/><path d="m342 215 5-8 5 7 4-3" stroke-width="1.5"/></g><circle class="indicator" cx="351" cy="236" r="2" fill="#81976a"/></g>` : ""}${i === 2 ? pile(76, 238, "#faf4df") : ""}<path class="legs"/><g class="body"><path d="M-76.27-60.61 70.4-67.21 76.26 53.06-70.4 58.19Z" fill="#faf5df"/><path data-front d="M-70.4-65.01 77-70.87 82.13 49.39-64.54 54.53Z" fill="#f5c054"/><path data-front d="M-66.74-63.54 79.2-68.67 82.86 48.66-63.07 54.53Z"/><path data-front class="detail" d="M-47.67-45.94 60.13-50.34"/><path data-front d="M-43.27 25.93-23.47 7.59-5.87 18.59 16.13-4.87 55.73 23.73Z" fill="#e88f52"/><circle data-front cx="43.26" cy="-27.61" r="10.27" fill="#fff3cb"/><g class="face"><g class="eyes"><path class="eye-left" fill="#293b32" stroke="none" d="M-24.39 -17.34C-24.39 -21.5 -18.15 -21.5 -18.15 -17.34C-18.15 -13.18 -24.39 -13.18 -24.39 -17.34Z"/><path class="eye-right" fill="#293b32" stroke="none" d="M2.01 -18.81C2.01 -22.97 8.25 -22.97 8.25 -18.81C8.25 -14.65 2.01 -14.65 2.01 -18.81Z"/></g><path class="mouth" d="M-17.6 -8.54q11 13.2 21.26 -2.2"/></g></g><path class="arm left"/><path class="arm right"/><g ${i === 2 ? `clip-path="url(#${id})"` : ""}><g class="held"><g class="fan-a">${card()}</g><g class="fan-b">${card("#e4edcf")}</g><g class="fan-c">${card("#faf4df")}</g></g></g><path class="fingers left"/><path class="fingers right"/></svg>`;
 }
 // Scene coordinates are explicit so a carried slide and its gripping hands cannot drift apart.
 function setup(el, i, gsap) {
@@ -32,44 +32,61 @@ function setup(el, i, gsap) {
   };
   const state = { el, visible: false, t: null, b: restBody(), life: undefined };
   const drawn = drawnBody(b, "slides");
-  const sidePath = el.querySelector(".side");
-  let lastEdge = null;
 
   function paint() {
-    // The deck's three-quarter look is a drawn turn and lean, not a skew of the drawing.
-    const edge = 5 + Math.abs(p.turn) * 2;
-    if (edge !== lastEdge) {
-      lastEdge = edge;
-      drawn.source(
-        sidePath,
-        `M-59-70l${-edge} -5V${54 - edge * 0.25}L-59 54ZM-59-70l${-edge} -5L${64 - edge} -63 64-58Z`,
-      );
-    }
-    const pose = { ...state.b, lean: state.b.lean + p.lean, th: state.b.th + p.turn * 0.05 };
+    // The deck's three-quarter look (a drawn turn and lean) comes in as the limbs leave the
+    // artwork's pose: straight after the entrance it is the artwork, face on.
+    const faceOn = 1 - (state.b.artArms || 0);
+    const pose = {
+      ...state.b,
+      lean: state.b.lean + p.lean * faceOn,
+      th: state.b.th + p.turn * 0.05 * faceOn,
+    };
     drawn.paint(pose, state.life);
-    const shift = `translate(${p.x} ${p.y})`;
+    const B = state.b,
+      tilt = B.tilt || 0;
+    const shift = `translate(${p.x} ${p.y})${tilt ? ` rotate(${tilt.toFixed(2)} 0 -4)` : ""}`;
     if (b.getAttribute("transform") !== shift) b.setAttribute("transform", shift);
+    const tc = Math.cos((tilt * Math.PI) / 180),
+      ts = Math.sin((tilt * Math.PI) / 180);
     const joint = (x, y) => {
       const [jx, jy] = drawn.map(x, y);
-      return { x: p.x + jx, y: p.y + jy };
+      // The joints ride the tilt (about the card's centre, y -4), so limbs stay attached.
+      const dy = jy + 4;
+      return { x: p.x + jx * tc - dy * ts, y: p.y - 4 + jx * ts + dy * tc };
     };
-    const hipL = joint(-35, 57),
-      hipR = joint(35, 64);
-    // Feet stay planted unless the deck hops; a stride and a tuck are drawn into them.
-    const B = state.b,
-      lift = B.ty - B.tuck * 20;
+    // Hips: the deck's walking hips, or the artwork's own (artArms 1, as the entrance draws them).
+    const art = B.artArms || 0,
+      mix = (u, v) => u + (v - u) * art;
+    const hipL = joint(mix(-35, -64.54), mix(53, 51.6)),
+      hipR = joint(mix(35, 55), mix(51, 48.66));
+    // Feet stay planted unless the deck hops; a stride and a tuck are drawn into them, and a
+    // stance sets them apart (the artwork's wide stance at 1).
+    const lift = B.ty - B.tuck * 20,
+      stance = B.stance || 0;
     const foot = (side) => {
       const s = B.stride * side;
-      return [s * 16, lift - Math.max(0, s) * 9];
+      return [
+        s * 16 + stance * (side < 0 ? -35.14 : 36.46),
+        lift - Math.max(0, s) * 9 + stance * (side < 0 ? 0.47 : -3.94),
+      ];
     };
     const [flx, fly] = foot(-1),
       [frx, fry] = foot(1);
+    // The artwork's stance also has straight legs: the knee control moves onto the hip-foot line.
+    const knee = (hip, cx, cy, fx, fy) => [
+      cx + ((hip.x + fx) / 2 - cx) * stance,
+      cy + ((hip.y + fy) / 2 - cy) * stance,
+    ];
+    const [kLx, kLy] = knee(hipL, p.x - 43 + flx / 2, 239 + fly / 2, 164 + flx, 249 + fly),
+      [kRx, kRy] = knee(hipR, p.x + 38 + frx / 2, 241 + fry / 2, 231 + frx, 249 + fry);
     legs.setAttribute(
       "d",
-      `M${hipL.x} ${hipL.y}Q${p.x - 43 + flx / 2} ${239 + fly / 2} ${164 + flx} ${249 + fly}l-12 2M${hipR.x} ${hipR.y}Q${p.x + 38 + frx / 2} ${241 + fry / 2} ${231 + frx} ${249 + fry}l14 1`,
+      `M${hipL.x} ${hipL.y}Q${kLx} ${kLy} ${164 + flx} ${249 + fly}l${-12 - 1.93 * stance} ${2 + 0.19 * stance}M${hipR.x} ${hipR.y}Q${kRx} ${kRy} ${231 + frx} ${249 + fry}l${14 + 0.67 * stance} ${1 - stance}`,
     );
-    const shL = joint(-59, 0),
-      shR = joint(64, 5);
+    // Shoulders: the deck's at mid-card; the artwork's high on the card (artArms 1).
+    const shL = joint(mix(-67, -68.21), mix(0, -33.47)),
+      shR = joint(mix(80, 70.4), mix(5, -24.67));
     const rad = (p.cr * Math.PI) / 180,
       cs = Math.cos(rad),
       sn = Math.sin(rad);
@@ -81,8 +98,8 @@ function setup(el, i, gsap) {
       ry = 23 + 28 * Math.sin(rightAngle) - 18 * Math.cos(rightAngle);
     const a = { x: p.cx + lx * cs - ly * sn, y: p.cy + lx * sn + ly * cs },
       z = { x: p.cx + rx * cs - ry * sn, y: p.cy + rx * sn + ry * cs };
-    const restL = { x: p.x - 75, y: p.y + 55 },
-      restR = { x: p.x + 76, y: p.y + 53 };
+    const restL = { x: p.x - 83, y: p.y + 55 },
+      restR = { x: p.x + 92, y: p.y + 53 };
     const handL = {
         x: restL.x + (a.x - restL.x) * p.grip,
         y: restL.y + (a.y - restL.y) * p.grip,
@@ -186,7 +203,7 @@ function setup(el, i, gsap) {
   // Each eye and the mouth keeps its own continuous path rather than swapping faces.
   const mouth = el.querySelector(".mouth"),
     eyes = el.querySelector(".eyes");
-  gsap.set(eyes, { svgOrigin: "-10 -12" });
+  gsap.set(eyes, { svgOrigin: "-8.07 -18.08" });
   const face = gsap.timeline({
     paused: true,
     repeat: -1,
@@ -196,16 +213,16 @@ function setup(el, i, gsap) {
   state.face = face;
   // Keep the original dot eyes. Expression comes from the same continuous mouth line.
   // Changes in width, depth and asymmetry are visible without opening the mouth.
-  face.to(mouth, { attr: { d: "M-14 0q8 6 17 -2" }, duration: 1 }, 0.25);
+  face.to(mouth, { attr: { d: "M-14.4 -6.07q8 6 17 -2" }, duration: 1 }, 0.25);
   face.to(eyes, { scaleY: 0.12, duration: 0.12 }, 1.8).to(eyes, { scaleY: 1, duration: 0.2 }, 1.92);
-  face.to(mouth, { attr: { d: "M-10 1q4 2 8 0" }, duration: 1.05 }, 1.75);
-  face.to(mouth, { attr: { d: "M-15 -1q9 12 19 0" }, duration: 1.2 }, 3.15);
-  face.to(mouth, { attr: { d: "M-12 1q7 7 15 -3" }, duration: 1.05 }, 4.85);
+  face.to(mouth, { attr: { d: "M-10.4 -5.07q4 2 8 0" }, duration: 1.05 }, 1.75);
+  face.to(mouth, { attr: { d: "M-15.4 -7.07q9 12 19 0" }, duration: 1.2 }, 3.15);
+  face.to(mouth, { attr: { d: "M-12.4 -5.07q7 7 15 -3" }, duration: 1.05 }, 4.85);
   face
     .to(eyes, { scaleY: 0.12, duration: 0.11 }, 5.6)
     .to(eyes, { scaleY: 1, duration: 0.19 }, 5.71);
-  face.to(mouth, { attr: { d: "M-11 1q5 3 10 -.5" }, duration: 1 }, 6.25);
-  face.to(mouth, { attr: { d: "M-15 -1q7 9 16 1" }, duration: 1.1 }, 7.6);
+  face.to(mouth, { attr: { d: "M-11.4 -5.07q5 3 10 -.5" }, duration: 1 }, 6.25);
+  face.to(mouth, { attr: { d: "M-17.6 -8.54q11 13.2 21.26 -2.2" }, duration: 1.1 }, 7.6);
   face.to({}, { duration: 0.4 });
   face.time(i === 2 ? 3 : 0);
   state.pose = p;
