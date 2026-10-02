@@ -29,10 +29,17 @@ import type { MailSender } from "../mail";
 import { captchaPlugins } from "./captcha";
 import { claimOnLink, claimPending, recordPendingClaim } from "./claim";
 import { authIpAddress } from "./client-ip";
+import { admitMagicLinkSend, magicLinkBounds } from "./magic-link-bounds";
 import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
 import { createPersonalWorkspace } from "./workspace-hook";
 
 export const AUTH_BASE_PATH = "/auth";
+
+/**
+ * The start of better-auth's one-per-process warning when its limiter resolves no client IP and
+ * falls back to a shared bucket (`rate-limiter/index.mjs`). It holds no request data.
+ */
+export const RATE_LIMIT_NO_IP_MESSAGE = "Rate limiting could not determine a client IP";
 
 export type AuthEnv = Pick<
   Env,
@@ -48,7 +55,15 @@ export type AuthEnv = Pick<
   | "MICROSOFT_CLIENT_ID"
   | "MICROSOFT_CLIENT_SECRET"
 > &
-  Partial<Pick<Env, "TURNSTILE_SECRET_KEY">>;
+  Partial<
+    Pick<
+      Env,
+      | "TURNSTILE_SECRET_KEY"
+      | "AUTH_IP_HEADER"
+      | "MAGIC_LINK_SENDS_PER_RECIPIENT_HOURLY"
+      | "MAGIC_LINK_SENDS_DAILY_CAP"
+    >
+  >;
 
 export interface CreateAuthOptions {
   env: AuthEnv;
@@ -236,7 +251,26 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
         expiresIn: MAGIC_LINK_EXPIRES_IN_SECONDS,
         // The email links to the web's confirm page, not to the verify endpoint: a mail scanner's
         // GET must not spend the single-use token (TEACH-246).
+        // Over a send bound (TEACH-300) nothing is sent and better-auth still answers
+        // `{ status: true }`, so the answer never says the address was bounded.
         sendMagicLink: async ({ email, url }, ctx) => {
+          const bounds = magicLinkBounds(env);
+          const admission = await admitMagicLinkSend(db, {
+            secret: env.BETTER_AUTH_SECRET,
+            email,
+            ...bounds,
+          });
+          if (!admission.admitted) {
+            logger.warn(
+              {
+                recipientCount: admission.recipientCount,
+                dailyCount: admission.dailyCount,
+                ...bounds,
+              },
+              "magic link not sent: send bound reached",
+            );
+            return;
+          }
           if (ctx) {
             await recordPendingClaim(db, logger, { secret: env.BETTER_AUTH_SECRET, ctx, email });
           }
@@ -312,10 +346,15 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     // redirect to the web's /sign-in instead of better-auth's page on this host (item 6).
     onAPIError: { throw: true, errorURL: new URL("/sign-in", env.WEB_ORIGIN[0]).toString() },
     // Library messages/args may include tokens, SQL parameters or provider response bodies.
+    // One static message is let through by code (TEACH-300): the limiter's shared-bucket fallback.
     logger: {
       disableColors: true,
-      log: (level) => {
-        logger[level]({ better_auth: true }, "authentication event");
+      log: (level, message) => {
+        const rateLimitNoIp = message.startsWith(RATE_LIMIT_NO_IP_MESSAGE);
+        logger[level](
+          { better_auth: true, ...(rateLimitNoIp && { rateLimitNoIp }) },
+          "authentication event",
+        );
       },
     },
   });

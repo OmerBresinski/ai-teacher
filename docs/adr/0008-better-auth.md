@@ -254,3 +254,42 @@ TEACH-246 amendment above and is not repeated here.
      its origin. `scripts/smoke-prod.ts` pins the app-origin and foreign-origin anonymous cases and
      the magic-link case (400 each). The anonymous cases answer 403 or 429 instead on a day the cap,
      or the runner's IP ceiling, has been reached (TEACH-257).
+
+## Amendment (2026-10-02, TEACH-300): one client address for both limiters, and magic-link send bounds
+
+This replaces the "Where the address comes from" bullet of item 5 in the TEACH-249 amendment above.
+The evidence is in `docs/security/auth-edge.md`.
+
+1. **The address is `x-real-ip` on Railway.** Measured on a Railway PR environment: Railway's edge
+   replaces a client's `x-forwarded-for` with two entries (the client, then a hop) and overwrites
+   `x-real-ip` with the client address. The rightmost `x-forwarded-for` entry, which the per-IP
+   ceiling used until now, is the hop. Railway therefore runs with `AUTH_IP_HEADER=x-real-ip`, and
+   both limiters read it. No trusted-proxy list is configured, because no hop address is ever
+   chosen. A CDN in front of the api changes `AUTH_IP_HEADER` to its client-IP header, and the
+   probe is repeated first.
+2. **One rule for both limiters.** `clientIp` (`apps/api/src/auth/client-ip.ts`) calls better-auth's
+   own `getIPFromHeader` (`@better-auth/core/utils/ip`, pinned 1.7.2 like `better-auth`) on the
+   header better-auth reads (`authIpAddress`). They resolve the same address from the same headers:
+   a single valid address, with IPv6 grouped by /64 and IPv4-mapped IPv6 read as IPv4. With
+   `AUTH_IP_HEADER` unset, `x-forwarded-for` counts only when it holds exactly one address.
+3. **No address, one bucket.** A request whose address does not resolve is counted by the per-IP
+   ceiling under `no-trusted-ip`, the key better-auth's limiter falls back to. It is bounded, not
+   skipped. The api logs the first one per process, and better-auth's own one-time fallback warning
+   reaches the log as an "authentication event" line with `rateLimitNoIp: true`. Every other
+   library message is still dropped.
+4. **Probe.** `POST /auth/sign-in/anonymous` with `x-tj-ip-probe: <own address>` logs, for each
+   proxy header entry, booleans only: whether it equals the probe value, and which reserved range it
+   is in. It stays on in production, because a forged probe learns nothing and the log line never
+   carries an address.
+5. **Magic-link send bounds.** `sendMagicLink` (`apps/api/src/auth/magic-link-bounds.ts`) allows at
+   most `MAGIC_LINK_SENDS_PER_RECIPIENT_HOURLY` (default 5) sends to one address per rolling hour,
+   and `MAGIC_LINK_SENDS_DAILY_CAP` (default 300) per UTC day in total. Each send is a row in
+   `magic_link_sends` (migration `0011_magic_link_sends.sql`), keyed by an HMAC of the lower-cased
+   address under `BETTER_AUTH_SECRET`. Over a bound, nothing is sent, no pending claim is written,
+   the api logs counts only, and better-auth answers `{ status: true }` as for a send, so the
+   response does not enumerate addresses. A send counts when it is admitted, before the provider
+   call. The count is soft: concurrent requests can pass together. The worker's
+   `auth.anonymous-cleanup` job drops rows older than two days.
+6. **Production values** are the founder's: `AUTH_IP_HEADER`, `ANONYMOUS_SIGNINS_PER_IP_DAILY` and
+   the two mail bounds are Railway variables the founder sets. `infra/README.md` "Known gaps" records what is
+   live.

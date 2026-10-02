@@ -4,9 +4,9 @@ import { authIpAddress, clientIp, ipHeaderName, ipProbeReport } from "./client-i
 const h = (init: Record<string, string>) => new Headers(init);
 
 describe("client IP (TEACH-222)", () => {
-  test("default: the rightmost x-forwarded-for entry (the one the edge appended)", () => {
+  test("default: x-forwarded-for, trusted only with exactly one address (TEACH-300)", () => {
     expect(clientIp(h({ "x-forwarded-for": "203.0.113.9" }), {})).toBe("203.0.113.9");
-    expect(clientIp(h({ "x-forwarded-for": "1.1.1.1, 203.0.113.9" }), {})).toBe("203.0.113.9");
+    expect(clientIp(h({ "x-forwarded-for": "1.1.1.1, 203.0.113.9" }), {})).toBeNull();
   });
 
   test("absent or empty header → null", () => {

@@ -479,7 +479,33 @@ const CONTRACT = [
     format: "string",
     files: ["api"],
     description:
-      "Request header that carries the client IP for the anonymous per-IP ceiling and better-auth's limiter (TEACH-222), e.g. `cf-connecting-ip` behind Cloudflare. Unset → `x-forwarded-for` (single address only). The api logs the source at boot; verify it on Railway after deploy.",
+      "Request header that carries the client IP for the anonymous per-IP ceiling and better-auth's limiter (TEACH-222, TEACH-300). `x-real-ip` on Railway, whose edge overwrites it with the client address (docs/security/auth-edge.md); a CDN's client-IP header (e.g. `cf-connecting-ip`) once one fronts the api. Unset → `x-forwarded-for`, trusted only with exactly one address, which Railway never sends, so every request shares one bucket. The api logs the source at boot.",
+  },
+  {
+    name: "MAGIC_LINK_SENDS_PER_RECIPIENT_HOURLY",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["api"],
+    description:
+      "Magic-link emails one address may receive per rolling hour (TEACH-300), counted in Postgres under an HMAC of the address. Over it the api skips the send and still answers like a normal send, so nothing reveals the bound. Default 5.",
+  },
+  {
+    name: "MAGIC_LINK_SENDS_DAILY_CAP",
+    services: ["api"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["api"],
+    description:
+      "Magic-link emails the api sends per UTC day across every address (TEACH-300). At the cap the api skips the send and still answers like a normal send. Default 300.",
   },
   {
     name: "ANONYMOUS_USER_TTL_DAYS",

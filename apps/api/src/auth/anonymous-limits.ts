@@ -17,7 +17,7 @@ import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../context";
 import type { Env } from "../env";
 import { errorResponse } from "../errors";
-import { clientIp, ipProbeReport } from "./client-ip";
+import { clientIp, ipProbeReport, NO_TRUSTED_IP_KEY } from "./client-ip";
 
 type Sql = Pick<DbHandle, "sql">;
 
@@ -83,8 +83,8 @@ export async function bumpAnonymousSignins(db: Sql, ip: string): Promise<number>
 
 /**
  * Global cap, then per-IP ceiling, on the anonymous sign-in endpoint. Only `POST` is counted; a
- * request with no resolvable IP skips the ceiling (and says so once) rather than sharing one
- * bucket with every other such request.
+ * request with no resolvable IP is counted in one shared bucket, the same key better-auth's
+ * limiter falls back to (TEACH-300), and the first one says so in a warning.
  *
  * The ceiling counts sign-ins, not attempts: the counter goes up only after better-auth answers
  * 2xx, so a request Turnstile refuses (400 or 403) costs the address nothing. Otherwise one device
@@ -102,13 +102,13 @@ export function anonymousSignInLimits(db: Sql, env: AnonymousLimitsEnv): Middlew
       c.get("logger")?.warn({ cap }, "anonymous sign-in refused: daily lesson cap reached");
       return errorResponse(c, 403, "anonymous_capacity", ANONYMOUS_CAPACITY_MESSAGE);
     }
-    const ip = clientIp(c.req.raw.headers, env);
+    const resolved = clientIp(c.req.raw.headers, env);
     if (!reportedSource) {
       reportedSource = true;
       const xff = c.req.header("x-forwarded-for");
       c.get("logger")?.info(
         {
-          ipResolved: ip !== null,
+          ipResolved: resolved !== null,
           xffEntries: xff === undefined ? 0 : xff.split(",").length,
           cfConnectingIp: c.req.header("cf-connecting-ip") !== undefined,
           xRealIp: c.req.header("x-real-ip") !== undefined,
@@ -121,17 +121,17 @@ export function anonymousSignInLimits(db: Sql, env: AnonymousLimitsEnv): Middlew
     const probe = ipProbeReport(c.req.raw.headers);
     if (probe) {
       c.get("logger")?.info(
-        { ...probe, ipResolved: ip !== null },
+        { ...probe, ipResolved: resolved !== null },
         "anonymous sign-in: IP probe (booleans only)",
       );
     }
-    if (ip === null) {
-      if (!warnedNoIp) {
-        warnedNoIp = true;
-        c.get("logger")?.warn("anonymous sign-in: no client IP header; per-IP ceiling skipped");
-      }
-      return next();
+    if (resolved === null && !warnedNoIp) {
+      warnedNoIp = true;
+      c.get("logger")?.warn(
+        "anonymous sign-in: no client IP resolved; counted in the shared bucket",
+      );
     }
+    const ip = resolved ?? NO_TRUSTED_IP_KEY;
     if ((await anonymousSigninsToday(db, ip)) >= perIp) {
       c.get("logger")?.warn({ perIp }, "anonymous sign-in refused: per-IP daily ceiling");
       return errorResponse(c, 429, "rate_limited", ANONYMOUS_RATE_LIMITED_MESSAGE);

@@ -19,10 +19,11 @@ describe("schema classification", () => {
     expect(tenant.size + nonTenant.size).toBe(Object.keys(ALL_TABLES).length);
   });
 
-  test("non-tenant tables are the tenant root, the better-auth identity tables (ADR 0008) and the anonymous sign-in counter", () => {
+  test("non-tenant tables are the tenant root, the better-auth identity tables (ADR 0008), the anonymous sign-in counter and the magic-link send log", () => {
     expect(NON_TENANT_TABLES.map(name).sort()).toEqual([
       "accounts",
       "anonymous_signins",
+      "magic_link_sends",
       "sessions",
       "users",
       "verifications",

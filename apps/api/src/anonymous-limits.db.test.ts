@@ -238,12 +238,22 @@ describeDb("anonymous guard and limits (TEACH-222)", () => {
     const app = appWith({ ANONYMOUS_SIGNINS_PER_IP_DAILY: 2 });
     const ip = "203.0.113.7";
     expect((await signIn(app, ip)).res.status).toBe(200);
-    expect((await signIn(app, `10.0.0.1, ${ip}`)).res.status).toBe(200);
+    expect((await signIn(app, ip)).res.status).toBe(200);
     const third = await signIn(app, ip);
     expect(third.res.status).toBe(429);
     expect(await code(third.res)).toBe("rate_limited");
     expect(third.cookie).not.toContain("tj.session_token=");
     expect((await signIn(app, "203.0.113.8")).res.status).toBe(200);
+  });
+
+  test("row 7b: a forwarded chain resolves no address; its shared bucket cannot be escaped by forging (TEACH-300)", async () => {
+    const app = appWith({ ANONYMOUS_SIGNINS_PER_IP_DAILY: 2 });
+    expect((await signIn(app, "10.0.0.1, 203.0.113.7")).res.status).toBe(200);
+    expect((await signIn(app, "10.0.0.2, 203.0.113.7")).res.status).toBe(200);
+    const third = await signIn(app, "10.0.0.3, 203.0.113.9");
+    expect(third.res.status).toBe(429);
+    expect(await code(third.res)).toBe("rate_limited");
+    expect((await signIn(app, "203.0.113.7")).res.status).toBe(200);
   });
 
   test("row 8: at the daily cap, anonymous POST /lessons and sign-in are 403 anonymous_capacity", async () => {
