@@ -347,20 +347,22 @@ describe("callout on an image-text slide", () => {
 
 describe("callout on a worked example", () => {
   for (const theme of THEMES) {
-    it(`${theme.id}: there is no room under the working card, so the slide goes without`, () => {
-      // Measured against the recipe: even a one-line card would leave the working under a body
-      // line, and the four steps the spec allows already fill it (TEACH-247).
-      expect(workedExampleCalloutRoom(theme)).toBeLessThan(0);
-      expect(workedExampleCalloutRoom(theme, 1)).toBeLessThan(boxH(theme, "body", 2));
+    it(`${theme.id}: a callout goes under the working card only when there is room`, () => {
+      // Measured against the recipe (TEACH-247). At the teaching body size (spike/teach-type) the
+      // working card leaves room on some themes; where it does not, the slide goes without.
       const withCallout = materialiseSlide(
         workedExample({ kind: "example", text: SHORT }),
         theme.id,
         meta,
         counter(),
       );
-      const without = materialiseSlide(workedExample(), theme.id, meta, counter());
-      expect(withCallout).toEqual(without);
-      expect(withCallout.elements.some(isCalloutElement)).toBe(false);
+      if (workedExampleCalloutRoom(theme) < 0) {
+        const without = materialiseSlide(workedExample(), theme.id, meta, counter());
+        expect(withCallout).toEqual(without);
+        expect(withCallout.elements.some(isCalloutElement)).toBe(false);
+      } else {
+        for (const e of withCallout.elements) expect(e.y + e.h).toBeLessThanOrEqual(540);
+      }
     });
   }
 });

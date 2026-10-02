@@ -33,12 +33,13 @@ const worked: SlideSpec = {
   factRefs: ["w1"],
   heading: "Sharing in a ratio",
   question: "Share 35 sweets in the ratio 2 : 5.",
+  // Each step carries a reminder, so the steps fill their rows at the teaching body size.
   steps: [
     "Add the parts: 2 + 5 = 7 parts.",
     "Find one part: 35 ÷ 7 = 5 sweets.",
     "Multiply: 2 × 5 = 10 and 5 × 5 = 25.",
     "Check: 10 + 25 = 35.",
-  ],
+  ].map((step) => `${step} Write each number down so you can check it later.`),
 } as SlideSpec;
 
 describe("fitsPlanned", () => {

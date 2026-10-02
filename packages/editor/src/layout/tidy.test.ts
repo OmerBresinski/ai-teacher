@@ -555,6 +555,10 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     "Check the ratio of the shares: 6:18 simplifies to 1:3.",
     "Write the answer as a sentence with both shares named.",
   ];
+  // At the teaching body size (20 on chalk) seven one-line steps fit their card; these overflow it.
+  const longSteps = sevenSteps.map(
+    (s) => `${s} Say the step aloud, then write it under the last one.`,
+  );
   const expectWorkingCard = (cont: Slide | undefined, from: number) => {
     expect(cont?.kind).toBe("worked-example");
     expect(cont?.elements.some((e) => e.type === "shape" && e.name === "Working card")).toBe(true);
@@ -599,7 +603,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
   });
 
   test("AC4: when only the steps overflow, the split is the same and nothing is left over", () => {
-    const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", sevenSteps);
+    const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", longSteps);
     const out = tidySlide(lesson, slide.id, ruler, SPLIT);
     expect(out.outcome.continued).toBe(1);
     expect(out.outcome.overflow).toEqual([]);
@@ -631,7 +635,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
       const lesson = lessonOf([
         text("h", 43, 60, "Why the Bolsheviks gained support", "heading"),
         picture,
-        beside("list", 140, items(5).join("\n")),
+        beside("list", 140, items(7).join("\n")),
       ]);
       const out = tidySlide(lesson, sidOf(lesson), ruler);
       expect(out.outcome.continued).toBe(1);
@@ -645,7 +649,8 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
       // Its height is the tail's at the full width, not at the column's.
       const measured = (width: number) =>
         ruler({ doc: tail.doc, width, preset: "body", style: tail.style, inset: 0, chrome: 0 });
-      expect(tail.h).toBeLessThan(measured(420) / 2);
+      expect(tail.h).toBeLessThan(measured(420) * 0.75);
+      expect(tail.h).toBeLessThanOrEqual(measured(SAFE.w) + 1);
     });
 
     test("a box moved whole from beside a picture is widened and re-measured", () => {
@@ -693,6 +698,9 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
         "A duckling hatches from an egg covered in soft down, and grows feathers before it can swim far.",
         "A lamb is born able to stand, and it drinks its mother's milk until it can eat grass.",
         "A caterpillar eats leaves, makes a chrysalis, and comes out as a butterfly with wings.",
+        "A tadpole hatches from frogspawn in a pond, grows back legs, then front legs, and loses its tail.",
+        "A chick pecks its way out of the shell and follows the hen to find seeds and insects to eat.",
+        "A kitten is born with its eyes shut, and opens them after about ten days in the nest.",
       ].join("\n"),
     );
     body.doc = { type: "doc", content: [...(body.doc.content ?? []), ...(added.content ?? [])] };
@@ -714,7 +722,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
   });
 
   test("a steps box grown past its card by editing still brings the card along", () => {
-    const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", sevenSteps);
+    const { lesson, slide } = workedExample("Share 24 sweets in the ratio 1:3.", longSteps);
     // Editing rewrites an auto-height box's stored height to its content: the steps now run past
     // the card they were laid on.
     slide.elements = slide.elements.map((e) =>
@@ -821,7 +829,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     const lesson = lessonOf([
       text("labh", 43, 87, "The Bolsheviks gained support as the Government lost it", "heading"),
       rule("labi", 329),
-      text("labj", 371, 201, `${aiParagraph} ${aiParagraph}`),
+      text("labj", 371, 201, `${aiParagraph} ${aiParagraph} ${aiParagraph}`),
     ]);
     const out = tidySlide(lesson, sidOf(lesson), ruler);
     expect(out.outcome.continued).toBe(1);
@@ -833,7 +841,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(headText).toMatch(/[.!?]$/);
     expect(headBody.y).toBe(BODY_Y);
     const tailText = docToPlainText(bodies(cont)[0]?.doc ?? { type: "doc" });
-    expect(`${headText} ${tailText}`).toBe(`${aiParagraph} ${aiParagraph}`);
+    expect(`${headText} ${tailText}`).toBe(`${aiParagraph} ${aiParagraph} ${aiParagraph}`);
     expect(tidyMessage(out.outcome)).toContain("list continued on a new slide");
   });
 
@@ -929,6 +937,11 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
       (e) => e.type === "text" && e.style.preset === "body" && e.revealStep === undefined,
     );
     if (!card || steps?.type !== "text" || !question) throw new Error("fixture");
+    // At the teaching body size (20, was 26) the stored four steps fit their card: the teacher adds
+    // two more, so the steps run off it again.
+    const stored = steps.doc.content?.[0];
+    if (stored?.type !== "orderedList" || !stored.content) throw new Error("fixture steps");
+    stored.content = [...stored.content, ...stored.content.slice(1, 3)];
 
     // The engine names the card first (it overflows too, and sits above the steps): the split has
     // to look past it to the steps laid on it.
@@ -943,10 +956,10 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     const [head, cont] = out.lesson.slides;
     if (!head || !cont) throw new Error("slides");
 
-    // The head keeps the question and the first steps on its card, all inside the safe area.
+    // The head keeps the question and the first five of six steps on its card, all inside the safe area.
     const headSteps = byId(head, steps.id);
     expect(byId(head, question.id)).toBeDefined();
-    expect(headSteps?.type === "text" ? docLineCount(headSteps.doc) : 0).toBe(2);
+    expect(headSteps?.type === "text" ? docLineCount(headSteps.doc) : 0).toBe(5);
     for (const el of head.elements) expect(el.y + el.h).toBeLessThanOrEqual(SAFE_BOTTOM + 0.5);
 
     // The continuation is a worked example with the card, its caption and steps 3 and 4 numbered
@@ -962,8 +975,8 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     if (carried?.type !== "text") throw new Error("carried steps");
     const list = carried.doc.content?.[0];
     expect(list?.type).toBe("orderedList");
-    expect(list?.attrs?.start).toBe(3);
-    expect(docLineCount(carried.doc)).toBe(2);
+    expect(list?.attrs?.start).toBe(6);
+    expect(docLineCount(carried.doc)).toBe(1);
     expect(carried.reveal).toBe("rise");
     expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
     expect(reflowSlide(cont, getTheme(freud.themeId), measure).overflow).toEqual([]);

@@ -1,5 +1,5 @@
 import type { TextPreset, TextStyle, Theme } from "@tj/domain/documents";
-import { fontFloor, type TextRole, textRole } from "./themes";
+import { displayBodyStop, fontFloor, type TextRole, textRole } from "./themes";
 
 /*
  * Resolving a text style against a theme (ADR 0025 §9). Moved verbatim from the editor's
@@ -32,9 +32,12 @@ export type ResolvedText = {
 /** The theme's own type ladder, largest first: the stops a step-down walks (`reflow.ts`). */
 export const LADDER: readonly TextPreset[] = ["title", "subtitle", "heading", "body", "small"];
 
-/** The distinct sizes of the theme's ladder, largest first. */
+/** The distinct sizes of the theme's ladder, largest first, with the display body stop kept in it. */
 export function ladderStops(theme: Theme): number[] {
-  return Array.from(new Set(LADDER.map((p) => theme.sizes[p]))).sort((a, b) => b - a);
+  const sizes = LADDER.map((p) => theme.sizes[p]);
+  const display = displayBodyStop(theme);
+  if (display !== undefined) sizes.push(display);
+  return Array.from(new Set(sizes)).sort((a, b) => b - a);
 }
 
 /** The presets a step-down touches; `title`, `subtitle` and `caption` never step, so their floor holds. */

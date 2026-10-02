@@ -84,13 +84,13 @@ export const COMPOSITION_BUDGETS: Record<
     // Beside a photograph at `PHOTO_TEXT_SHARE` (look/image-slot, 27 Sept 2026; 0.55 since Greg's
     // P19 review: 13 → 11 a point): "Label: sentence" points, not fragments (6 words at the half
     // split lost E49).
-    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 11, count: [2, 3] } },
+    panel: { heading: { max: 4 }, lead: { max: 12 }, points: { max: 12, count: [2, 3] } },
     full: { heading: { max: 4 }, lead: { max: 18 }, points: { max: 16, count: [2, 3] } },
   },
   compare: {
     full: {
       heading: { max: 4 },
-      lead: { max: 12 },
+      lead: { max: 13 },
       side: { max: 5 },
       sidePoints: { max: 9, count: [2, 2] },
     },

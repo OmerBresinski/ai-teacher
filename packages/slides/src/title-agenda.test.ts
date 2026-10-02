@@ -47,9 +47,10 @@ const WEIMAR = {
   title: "Weimar Germany: the hyperinflation crisis of 1923",
   subtitle: "Year 9 · History",
   objectives: [
-    "Explain how the Ruhr occupation and passive resistance led to money-printing and rising prices",
+    "Explain how the French and Belgian occupation of the Ruhr and the German policy of passive resistance led the government to print money, which made prices rise out of control",
     "Explain how hyperinflation affected workers, savers and people with fixed incomes",
     "Explain how the Rentenmark and ending passive resistance helped stabilise the currency",
+    "Evaluate how far the Stresemann government's recovery by 1924 rested on American loans, the Dawes Plan and a new currency backed by land and industry",
   ],
 };
 
