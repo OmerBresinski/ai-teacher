@@ -218,6 +218,8 @@ TEACH-246 amendment above and is not repeated here.
      for the per-IP ceiling" logs both). Both wait on the founder's decision once the Railway IP
      source is verified (TEACH-300; `infra/README.md`, "Known gaps"). This amendment decides
      neither.
+   - **Superseded** by the TEACH-300 amendment below: items 1 to 3 replace "Where the address
+     comes from", and item 6 records the values live since 2 Oct 2026.
 6. **The daily cap is the kill switch.** `ANONYMOUS_LESSONS_DAILY_CAP` (default 200; 5 in production
    on 2 Oct 2026, from the same boot line) bounds the lessons anonymous users make per UTC day
    across every Workspace (`countAnonymousLessonsToday` in `anonymous-limits.ts`; a claimed
