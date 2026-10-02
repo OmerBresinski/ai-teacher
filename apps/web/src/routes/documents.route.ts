@@ -44,6 +44,12 @@ export const worksheetPrintSearchSchema = z.object({
     .transform((): "1" => "1")
     .optional()
     .catch(undefined),
+  /** `answers=1`: add the answer key after the sheet. Without it the print is the pupil copy. */
+  answers: z
+    .union([z.literal("1"), z.literal(1)])
+    .transform((): "1" => "1")
+    .optional()
+    .catch(undefined),
 });
 /**
  * `/l/$lessonId/print` (ADR 0023 §2; TeachDeck `lib/export/pdf.ts` writes exactly these):

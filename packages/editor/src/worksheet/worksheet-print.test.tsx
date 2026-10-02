@@ -67,3 +67,21 @@ describe("WorksheetPrint", () => {
     }
   });
 });
+
+describe("WorksheetPrint answer key (TEACH-86)", () => {
+  const keyOf = (container: HTMLElement) => container.querySelector(".ws-print-root .ws-key-title");
+
+  test("the pupil copy never prints the key, even when the sheet's own setting is on", async () => {
+    const worksheet = { ...starterWorksheet("Pupil copy"), includeAnswerKey: true };
+    const { container } = render(<WorksheetPrint worksheet={worksheet} />);
+    await settle();
+    expect(keyOf(container)).toBeNull();
+  });
+
+  test("answers=1 prints the key after the sheet, even when the sheet's own setting is off", async () => {
+    const worksheet = { ...starterWorksheet("Teacher copy"), includeAnswerKey: false };
+    const { container } = render(<WorksheetPrint worksheet={worksheet} includeAnswerKey />);
+    await settle();
+    expect(keyOf(container)?.textContent).toBe("Answer key");
+  });
+});

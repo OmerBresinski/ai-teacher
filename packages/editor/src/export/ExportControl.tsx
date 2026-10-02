@@ -288,7 +288,7 @@ export function ExportControl({
                   layout,
                   slides,
                 })
-              : worksheetPrintHref(document.id),
+              : worksheetPrintHref(document.id, { answers }),
           );
           finish("Opened the print view");
           return;
@@ -402,10 +402,14 @@ export function ExportControl({
                 )}
               </>
             ) : (
-              <Note>
-                The sheet prints at its saved page size. The answer key follows the worksheet's own
-                setting.
-              </Note>
+              <>
+                <SwitchRow label="Include answers" checked={answers} onChange={setAnswers} />
+                <Note>
+                  {answers
+                    ? "The answer key prints after the sheet, for you. Turn it off for the pupils' copies."
+                    : "The pupils' copy, with no answers. The sheet prints at its saved page size."}
+                </Note>
+              </>
             )}
           </TabsContent>
           {lesson ? (

@@ -15,16 +15,26 @@ export type WorksheetPrintProps = {
   worksheet: Worksheet;
   /** `?auto=1`: call `window.print()` once, when the sheet is ready. */
   auto?: boolean;
+  /**
+   * `?answers=1`: the answer key follows the sheet. Off by default, so the pupil copy never
+   * prints it; the sheet's own `includeAnswerKey` (an editor view setting) does not decide this.
+   */
+  includeAnswerKey?: boolean;
   /** The "Go back" link in the won't-fit hint; the app supplies its router's `Link`. */
   backSlot?: ReactNode;
 };
 
-export function WorksheetPrint({ worksheet, auto = false, backSlot }: WorksheetPrintProps) {
+export function WorksheetPrint({
+  worksheet,
+  auto = false,
+  includeAnswerKey = false,
+  backSlot,
+}: WorksheetPrintProps) {
   const theme = getTheme(worksheet.themeId);
   const { pages, ready, oversize, measureNode } = useSheetPagination(
     worksheet,
     theme,
-    worksheet.includeAnswerKey,
+    includeAnswerKey,
   );
   const printed = useRef(false);
   const canPrint = ready && oversize.length === 0;

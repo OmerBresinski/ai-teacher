@@ -166,6 +166,18 @@ describe("ExportControl (TEACH-110)", () => {
     await user.click(screen.getByRole("button", { name: "Export PDF" }));
     expect(onOpenPrint.mock.calls[0]?.[0]).toBe(`/w/${sheet.id}/print?auto=1`);
   });
+
+  it("TEACH-86: a worksheet PDF is the pupils' copy unless Include answers is on", async () => {
+    const user = userEvent.setup();
+    const sheet = { ...demoWorksheet(), includeAnswerKey: true };
+    const { onOpenPrint } = renderControl(sheet);
+    await openDialog(user);
+    const toggle = screen.getByRole("switch", { name: "Include answers" });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: "Export PDF" }));
+    expect(onOpenPrint.mock.calls[0]?.[0]).toBe(`/w/${sheet.id}/print?auto=1&answers=1`);
+  });
 });
 
 /*

@@ -31,4 +31,10 @@ describe("worksheetPrintHref", () => {
     expect(worksheetPrintHref("w1")).toBe("/w/w1/print?auto=1");
     expect(worksheetPrintHref("w1", { auto: false })).toBe("/w/w1/print");
   });
+
+  it("asks for the answer key only when answers are on (TEACH-86)", () => {
+    expect(worksheetPrintHref("w1", { answers: false })).toBe("/w/w1/print?auto=1");
+    expect(worksheetPrintHref("w1", { answers: true })).toBe("/w/w1/print?auto=1&answers=1");
+    expect(worksheetPrintHref("w1", { auto: false, answers: true })).toBe("/w/w1/print?answers=1");
+  });
 });

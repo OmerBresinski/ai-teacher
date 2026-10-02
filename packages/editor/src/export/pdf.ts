@@ -41,10 +41,17 @@ export function printViewHref(lessonId: string, options: PrintViewOptions = {}):
 
 /**
  * The worksheet's print route, which is also its PDF: the sheet is laid out at exact A4 or Letter
- * and the browser's own "Save as PDF" writes the file. The page size and the answer key come off the
- * saved worksheet, so this URL says nothing about them and cannot disagree with the sheet on screen.
+ * and the browser's own "Save as PDF" writes the file. The page size comes off the saved worksheet.
+ * The answer key prints only with `answers=1` (the export's "Include answers"): a pupil copy never
+ * carries it, whatever the sheet's own setting.
  */
-export function worksheetPrintHref(worksheetId: string, options: { auto?: boolean } = {}): string {
-  const query = options.auto === false ? "" : "?auto=1";
-  return `/w/${encodeURIComponent(worksheetId)}/print${query}`;
+export function worksheetPrintHref(
+  worksheetId: string,
+  options: { auto?: boolean; answers?: boolean } = {},
+): string {
+  const params = [
+    ...(options.auto === false ? [] : ["auto=1"]),
+    ...(options.answers ? ["answers=1"] : []),
+  ];
+  return `/w/${encodeURIComponent(worksheetId)}/print${params.length ? `?${params.join("&")}` : ""}`;
 }
