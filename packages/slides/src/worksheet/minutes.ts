@@ -20,6 +20,13 @@ export const MINUTE_WEIGHTS = {
   /** One per gap in a fill-gap block. */
   perGap: 1,
   multipleChoice: 1,
+  /**
+   * An unmarked question (TEACH-86): a minute when short, three when open (its writing space is
+   * `openAnswerLines` lines or more). Before this the header counted it as nothing.
+   */
+  shortQuestion: 1,
+  openQuestion: 3,
+  openAnswerLines: 3,
   /** A paragraph is read at eighty words a minute. */
   wordsPerMinute: 80,
 } as const;
@@ -40,7 +47,7 @@ const wordCount = (doc: RichDoc): number => {
 
 /**
  * How long a sheet takes a pupil, in whole minutes (TEACH-183). Marks at a minute and a half each,
- * a word search 8, a matching block 4, a paragraph a minute per 80 words, a gap a minute, a
+ * an unmarked question 1 (3 when open), a word search 8, a matching block 4, a paragraph a minute per 80 words, a gap a minute, a
  * multiple choice item a minute; the sum to the nearest five, and never under five. A rough guide
  * for the header and the recipe cards, not a timer.
  */
@@ -67,6 +74,15 @@ export function minutesUnrounded(blocks: readonly WorksheetBlock[]): number {
         break;
       case "multiple-choice":
         minutes += MINUTE_WEIGHTS.multipleChoice;
+        break;
+      case "question":
+        // A marked question is counted by its marks above.
+        if (block.marks === undefined) {
+          minutes +=
+            (block.answerLines ?? 0) >= MINUTE_WEIGHTS.openAnswerLines
+              ? MINUTE_WEIGHTS.openQuestion
+              : MINUTE_WEIGHTS.shortQuestion;
+        }
         break;
       default:
         break;

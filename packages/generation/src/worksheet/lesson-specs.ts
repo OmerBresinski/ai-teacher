@@ -28,7 +28,7 @@ export const EXIT_TICKET_TYPES = ["question", "multiple-choice"] as const;
 /** Ruling 108: an exit ticket holds at most three questions. */
 export const MAX_EXIT_QUESTIONS = 3;
 /** A question with this many answer lines or more is open: its answer is model points. */
-export const OPEN_ANSWER_LINES = 3;
+export const OPEN_ANSWER_LINES = MINUTE_WEIGHTS.openAnswerLines;
 
 /** Exam command words (AQA, Edexcel, OCR glossaries), as a marked item opens with them. */
 export const COMMAND_WORDS = [
@@ -161,16 +161,18 @@ export type LessonSheetContext = {
 /**
  * Minutes a pupil spends on one task block, for sizing the tasks against the practice time
  * (TEACH-86 v6 eval: a 20-minute Year 5 sheet held about 5). The marked, gap, multiple-choice and
- * matching rates are `MINUTE_WEIGHTS`, as the sheet header counts them; an unmarked question,
- * which the header does not count, is a minute when short and three when open. The prompt's
+ * matching rates are `MINUTE_WEIGHTS`, as the sheet header counts them, and so is an unmarked
+ * question: a minute when short and three when open. The prompt's
  * Practice time line states these same rates (`practiceTimeLine`).
  */
-export const OPEN_QUESTION_MINUTES = 3;
+export const OPEN_QUESTION_MINUTES = MINUTE_WEIGHTS.openQuestion;
 export function specMinutes(block: BlockSpec): number {
   switch (block.type) {
     case "question":
       if (block.marks !== undefined) return block.marks * MINUTE_WEIGHTS.perMark;
-      return block.answerLines >= OPEN_ANSWER_LINES ? OPEN_QUESTION_MINUTES : 1;
+      return block.answerLines >= OPEN_ANSWER_LINES
+        ? OPEN_QUESTION_MINUTES
+        : MINUTE_WEIGHTS.shortQuestion;
     case "multiple-choice":
       return MINUTE_WEIGHTS.multipleChoice;
     case "fill-gap":
