@@ -2,6 +2,7 @@ import type { BlockSpec } from "@tj/slides";
 import {
   editorialIssue,
   lessonSheetBlockUnion,
+  MINUTE_WEIGHTS,
   noPictureReference,
   type SpecSchemaOptions,
   shapeIssue,
@@ -153,7 +154,35 @@ export type LessonSheetContext = {
   slideStems: readonly string[];
   /** Options on a multiple-choice item (ruling 147, `optionCountFor`); 4 when unset. */
   optionCount?: 3 | 4;
+  /** The sheet's practice time; when set, tasks well short of it are an editorial miss. */
+  practiceMinutes?: number;
 };
+
+/**
+ * Minutes a pupil spends on one task block, for sizing the tasks against the practice time
+ * (TEACH-86 v6 eval: a 20-minute Year 5 sheet held about 5). The marked, gap, multiple-choice and
+ * matching rates are `MINUTE_WEIGHTS`, as the sheet header counts them; an unmarked question,
+ * which the header does not count, is a minute when short and three when open. The prompt's
+ * Practice time line states these same rates (`practiceTimeLine`).
+ */
+export const OPEN_QUESTION_MINUTES = 3;
+export function specMinutes(block: BlockSpec): number {
+  switch (block.type) {
+    case "question":
+      if (block.marks !== undefined) return block.marks * MINUTE_WEIGHTS.perMark;
+      return block.answerLines >= OPEN_ANSWER_LINES ? OPEN_QUESTION_MINUTES : 1;
+    case "multiple-choice":
+      return MINUTE_WEIGHTS.multipleChoice;
+    case "fill-gap":
+      return block.answers.length * MINUTE_WEIGHTS.perGap;
+    case "matching":
+      return MINUTE_WEIGHTS.matching;
+    default:
+      return 0;
+  }
+}
+/** Tasks under this share of the practice time are a miss (the job's practice-time tolerance is 30 %). */
+export const TASK_MINUTES_FLOOR_PERCENT = 70;
 
 /** The model points of an open answer: one per non-empty line. */
 /** A label line the model sometimes writes itself; code adds the label, so it is not a point. */
@@ -342,6 +371,23 @@ export function lessonSheetSchemaFor(
         );
       }
       if (soft) return;
+      if (context.practiceMinutes !== undefined) {
+        const minutes = Math.round(
+          sheet.tasks.reduce(
+            (sum, t) =>
+              sum + [...t.supported, ...t.stretch].reduce((m, b) => m + specMinutes(b), 0),
+            0,
+          ),
+        );
+        if (minutes * 100 < context.practiceMinutes * TASK_MINUTES_FLOOR_PERCENT) {
+          ctx.addIssue(
+            editorialIssue(
+              `The tasks hold about ${minutes} minutes of work for a ${context.practiceMinutes}-minute sheet; add closed items (calculate, fill the gap, match, choose) to the supported parts until they fill it.`,
+              ["tasks"],
+            ),
+          );
+        }
+      }
       const items: { text: string; path: (string | number)[] }[] = [];
       sheet.tasks.forEach((task, i) => {
         for (const part of ["supported", "stretch"] as const) {

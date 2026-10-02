@@ -1,7 +1,8 @@
 import type { FactId } from "@tj/domain/documents";
+import { MINUTE_WEIGHTS } from "@tj/slides";
 import type { LessonCycle } from "../worksheet/cycles";
 import type { WorksheetFit } from "../worksheet/fit";
-import { MAX_EXIT_QUESTIONS } from "../worksheet/lesson-specs";
+import { MAX_EXIT_QUESTIONS, OPEN_QUESTION_MINUTES } from "../worksheet/lesson-specs";
 import { BLOCK_SHAPES } from "./generate-worksheet";
 import { HOUSE_RULES } from "./shared";
 
@@ -49,6 +50,11 @@ import { HOUSE_RULES } from "./shared";
  *   practise-slide items stay unmarked (a verbatim slide item cannot open with a command word, the
  *   Y11 miss); a Years 1 to 4 slide item asking several things becomes one item per thing; marks
  *   go only in `marks` (Y13 wrote "(3 marks)" in the text).
+ * v6 (2 Oct 2026, regenerated app sheets): a 20-minute Year 5 maths sheet held about 5 minutes of
+ *   open questions and no closed forms. The Practice time line now gives the minute rates per form
+ *   (the same numbers `specMinutes` checks against, editorial below 70 %), the system says the
+ *   tasks fill that time, and maths and science open each supported part with several closed
+ *   fluency or retrieval items.
  */
 
 export type GenerateWorksheetLessonInput = {
@@ -74,7 +80,7 @@ const MC_SHAPE =
 export const exitQuestionCount = (): number => MAX_EXIT_QUESTIONS;
 
 export const generateWorksheetLessonPrompt = {
-  version: "generate-worksheet-lesson.v5",
+  version: "generate-worksheet-lesson.v6",
   system: [
     "You write the pupil worksheet for a lesson that has just been taught. The user turn gives the class, the lesson's objectives and misconceptions, and its learning cycles: each cycle's teaching slides, then the check and practise slides that followed, as their slide text.",
     "",
@@ -88,11 +94,11 @@ export const generateWorksheetLessonPrompt = {
     "- A multiple-choice item's wrong options are plausible to this class: a misconception, a near-miss term or a slip in the method.",
     "",
     "Fit the class:",
-    "- Choose the forms, scaffolds, number of items and reading load for the year group, subject, reading level and class level given. Each task holds what a pupil at this age finishes in the minutes per task the user turn gives.",
+    "- Choose the forms, scaffolds, number of items and reading load for the year group, subject, reading level and class level given. The tasks together fill the practice time, counted at the rates the Practice time line gives.",
     '- Years 1 to 4: items of one short sentence with one idea each; scaffolds are a word bank with gap-fills, matching and multiple choice; the stretch is one short "why" or "what would happen if" question.',
     "- Years 5 to 9: scaffolds are sentence stems, cloze with a word bank, and worked steps to complete; then data written into the item to read, and one extended answer.",
     "- Years 10 to 13: scaffolds are sentence starters, a partly worked step or calculation, or a structure to complete; then multi-step problems, data or source analysis, and extended answers.",
-    "- Maths and calculation: fluency items, then a reasoning item, then a word problem. English and humanities: sentence starters, then one extended answer.",
+    "- Maths and science: each `supported` opens with several closed fluency or retrieval items (calculate, fill the gap, match, choose the answer) before any open item; maths then moves to a reasoning item and a word problem. English and humanities: sentence starters, then one extended answer.",
     "",
     "Exam-style items (when the user turn allows them):",
     "- Decide whether this subject is examined at this level with marked written questions. If it is, make the stretch of at least one task a marked question, and others where the exam would ask that way; if it is not, use none.",
@@ -135,7 +141,7 @@ export const generateWorksheetLessonPrompt = {
         ? "Exam-style marked items: allowed, where this subject is examined that way."
         : "Exam-style marked items: not used for this class; leave `marks` out.",
       `Multiple choice: ${fit.optionCount} options per item.`,
-      `Practice time: about ${input.practiceMinutes} minutes, so about ${perTask} minutes per task.`,
+      `Practice time: about ${input.practiceMinutes} minutes for the tasks, about ${perTask} per task, counting about a minute per short question, multiple-choice item or gap, ${OPEN_QUESTION_MINUTES} per open question, ${MINUTE_WEIGHTS.matching} per matching block and ${MINUTE_WEIGHTS.perMark} per mark.`,
       "",
       "Objectives:",
       ...input.objectives.map((o) => `  ${o.id}: ${o.text}`),

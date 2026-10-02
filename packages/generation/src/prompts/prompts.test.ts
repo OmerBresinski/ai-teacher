@@ -281,9 +281,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "generate-worksheet-lesson": {
-    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count; v4 and v5 answer the evals.
-    version: "generate-worksheet-lesson.v5",
-    hash: "5e66a0bad304b54917fdc3d83761895ba912e4dbc66d7f6748abde001b1952f8",
+    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count; v4 to v6 answer the evals.
+    version: "generate-worksheet-lesson.v6",
+    hash: "3844af9ad00e0747b8c63d59d319ff01788fe3efa6757d824a5dcdac265305fd",
   },
   "parse-brief": {
     version: "parse-brief.v2",
@@ -1156,8 +1156,10 @@ describe("generate-worksheet-lesson (TEACH-86)", () => {
       practiceMinutes: 20,
       cycles: [...base.cycles, ...base.cycles],
     });
-    expect(text).toContain("about 20 minutes, so about 10 minutes per task.");
-    expect(prompt.system).toContain("minutes per task the user turn gives");
+    expect(text).toContain(
+      "about 20 minutes for the tasks, about 10 per task, counting about a minute per short question",
+    );
+    expect(prompt.system).toContain("at the rates the Practice time line gives");
     expect(prompt.system).toContain("As many items as the exit-ticket line says");
   });
 

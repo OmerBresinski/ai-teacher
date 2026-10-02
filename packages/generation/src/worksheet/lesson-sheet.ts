@@ -151,6 +151,7 @@ export async function fillLessonSheet(
     exitTicket,
     slideStems,
     optionCount: fit.optionCount,
+    practiceMinutes,
   };
   const call = await callStructured({
     deps,
