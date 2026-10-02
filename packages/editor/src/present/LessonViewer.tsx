@@ -182,8 +182,9 @@ export function LessonViewer({
           </span>
         </AppBarGroup>
 
-        {/* One primary in the bar and everything else as text. */}
-        <AppBarGroup className="ml-auto gap-2">
+        {/* One primary in the bar and everything else as text. The actions keep their size on a
+            phone; the title truncates instead. */}
+        <AppBarGroup className="ml-auto shrink-0 gap-2">
           {onDuplicate ? (
             <Button variant="ghost" size="sm" disabled={copying} onClick={makeCopy}>
               {copying ? "Copying…" : "Make a copy"}
