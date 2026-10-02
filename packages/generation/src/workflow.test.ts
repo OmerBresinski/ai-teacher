@@ -599,6 +599,8 @@ describe("runLessonPipeline", () => {
       findings: { error: 0, warning: 0 },
     });
     expect(summary.generation.durationMs).toEqual(expect.any(Number));
+    // The fit block rides on the same line; the content check below covers it too.
+    expect(summary.generation.fit.slides.stored).toBeGreaterThan(0);
     expect(lines.join("\n")).not.toContain("particle");
   });
 });

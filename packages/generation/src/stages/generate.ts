@@ -1,8 +1,10 @@
+import { safeError } from "@tj/domain";
 import type { Finding, Lesson, LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
 import {
   type DiagramTextSpec,
   diagramSpecSchemaFor,
   diagramTextSpecSchemaFor,
+  fitsPlanned,
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
@@ -203,7 +205,12 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     i: number,
     entry: OutlineEntry,
     photo: SlidePhoto | "none" | undefined,
-  ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
+  ): Promise<{
+    slide: Slide;
+    spec: SlideSpec;
+    misses: EditorialMiss[];
+    builtFrom: LessonFacts;
+  }> => {
     const builtFrom = facts;
     // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
     // facts in code, answers revealed on the slide; no model call, so no item is invented.
@@ -215,7 +222,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
         lesson.themeId,
       );
-      return { slide, misses: [], builtFrom };
+      return { slide, spec: coded.spec, misses: [], builtFrom };
     }
     // A diagram whose fact carries the figure (TEACH-253) is written as text around that figure;
     // without one (a lesson planned before, or a facts call that missed it) the call writes the
@@ -272,8 +279,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
     const answer = withFactFigure(call.output, factFigure);
     const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
+    const captioned = withImageCaption(spec, entry);
     const slide = materialiseSlide(
-      withImageCaption(spec, entry),
+      captioned,
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
@@ -281,7 +289,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       {},
       (note) => deps.logger.warn({ stage: "generate", call: "slide", index: i }, note),
     );
-    return { slide, misses: call.editorialMisses, builtFrom };
+    return { slide, spec: captioned, misses: call.editorialMisses, builtFrom };
   };
 
   const slideWork = async (i: number) => {
@@ -313,6 +321,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         written = await writeSlide(i, entry, photo);
       }
       slide = written.slide;
+      saveGate(written.spec, i, deps);
       for (const miss of written.misses) {
         findings.push(specRuleFinding(miss, { slideId: slide.id }));
       }
@@ -390,6 +399,43 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
   const { pendingVerify: _settled, ...rest } = state;
   return { ...rest, lesson };
+}
+
+/**
+ * The save gate: each generated slide's spec is checked with `fitsPlanned` at one step down (UX
+ * ruling 91's one smaller size, once) on every theme, because a teacher can change the look after
+ * the lesson is written. The result is logged, one line per slide and a warning when it does not
+ * fit, as counts per theme and never slide text. Nothing is rewritten, and a fault in the check
+ * never costs the slide.
+ */
+export function saveGate(spec: SlideSpec, index: number, deps: PipelineDeps): boolean | undefined {
+  try {
+    const { ok, failing } = fitsPlanned(spec, { stepDown: 1 });
+    const fields = {
+      stage: "generate",
+      index,
+      kind: spec.kind,
+      fits: ok,
+      ...(ok
+        ? {}
+        : {
+            failing: failing.map((f) => ({
+              theme: f.theme,
+              overflow: f.overflow.length,
+              overlaps: f.overlaps,
+              lane: f.lane.length,
+              steps: f.steps,
+              answers: f.answers.length,
+            })),
+          }),
+    };
+    if (ok) deps.logger.info(fields, "save gate");
+    else deps.logger.warn(fields, "save gate");
+    return ok;
+  } catch (error) {
+    deps.logger.warn({ stage: "generate", index, err: safeError(error) }, "save gate failed");
+    return undefined;
+  }
 }
 
 /** Whether Generate has already applied (or recorded the outcome of) Verify for this lesson. */
