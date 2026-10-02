@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Visual render stack: api + web from a pv-visual worktree (detached at spike/plan-write) on its own
 # Postgres (compose project tj-wt-pv-visual, port 5641). Ports: api 3641, web 4641. Never Greg's 5433/5174/3001.
-# Photos: STORAGE_ROOT is lab/visual/stack/storage; gen.ts stores placed Pexels photos there, so the
+# Photos: STORAGE_ROOT is lab/visual/stack/storage; fit-drive.ts --images (via gen-images-stream.sh) stores placed Pexels photos there, so the
 # presenter serves them through /files/<key> exactly as production does.
 S=${SCRATCH:?set SCRATCH to the folder holding the pv-visual worktree}
 R="${0:a:h}/../stack"

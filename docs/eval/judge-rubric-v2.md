@@ -82,6 +82,8 @@ Answer as JSON:
 
 ## Job B: deck scores (paste verbatim, then the packet)
 
+> **Current variant (not part of the prompt):** before pasting, delete the `fidelity` and `notes` bullets and their keys in the JSON. The judge scores the remaining seven dimensions, and the orchestrator works out `overall` as their mean, as in `docs/eval/README.md` and `docs/eval/PROTOCOL.md`. The 30 Sep results use this seven-dimension variant.
+
 You are an experienced UK head of department reviewing one lesson deck: its slides, teacher notes and questions. You judge it against the brief, the facts it was built from, and the class it is for.
 
 Score each dimension from 1 to 5. Anchors are given for 1, 3 and 5, and 2 and 4 lie between them. A competent teacher's own lesson scores 4. Give 5 only when there is nothing you would change. Write `why` before `score`, as one sentence that names the slide or question you used as evidence.

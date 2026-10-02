@@ -16,6 +16,8 @@ Omer, welcome back. The short version of the last three days:
 
 ## Needs Omer
 
+> **Update, 2 Oct 2026 (Omer):** items 1 to 4 are done. #352 and #378 are merged, `brace-expansion` is pinned (TEACH-16), and #377's secrets finding was fixed by squashing the branch, so the lab script now generates its secret on each run. Omer decided to merge #377 whole.
+
 1. Add `VITE_TURNSTILE_SITE_KEY` on Vercel, then review and approve the signed-out lessons PR (#352).
 2. Review and merge the photo fix (#378). Production needs it.
 3. The eval docs PR (#377) fails the secrets check on a throwaway test password in a lab script. Your call: ignore that fingerprint or squash the branch.
@@ -25,6 +27,6 @@ Omer, welcome back. The short version of the last three days:
 
 ## Links
 
-- [Full handoff](https://github.com/OmerBresinski/ai-teacher/blob/gregwallacegb/teach-263-check-the-lesson-quality-judging-rubric-and-recent-results/docs/eval/HANDOFF-2026-10-01.md)
+- [Full handoff](HANDOFF-2026-10-01.md)
 - [Round J results against Chalkie and Opus](https://claude.ai/artifact/3xg7BoX8MeiivnERvmKejF) (private to me until I share it)
 - [Candidate branch](https://github.com/OmerBresinski/ai-teacher/tree/spike/s-candidate)

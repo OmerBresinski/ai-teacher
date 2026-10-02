@@ -119,7 +119,7 @@ to head (it counts for a little less) or facts checked without web search.
 
 ## Results index
 
-Handoff to Omer: [`docs/eval/HANDOFF-2026-09-30.md`](HANDOFF-2026-09-30.md). Lab harness: [`docs/eval/lab/`](lab/README.md).
+Handoffs to Omer: [`docs/eval/HANDOFF-2026-09-30.md`](HANDOFF-2026-09-30.md), [`docs/eval/HANDOFF-2026-10-01.md`](HANDOFF-2026-10-01.md) and its short version [`docs/eval/HEADLINES-2026-10-01.md`](HEADLINES-2026-10-01.md). Lab harness: [`docs/eval/lab/`](lab/README.md).
 
 Reports from 30 Sep 2026, in `docs/eval/results/2026-09-30/`:
 

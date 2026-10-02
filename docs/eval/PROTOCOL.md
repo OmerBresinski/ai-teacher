@@ -99,7 +99,8 @@ is:
 - multiple-choice options as `( ) <text>`, with `[correct]` on the keyed one;
 - text revealed on click prefixed `[revealed on click]`;
 - the hidden answer panel as `-- Answer panel (hidden until revealed) --` with `Answer:` and `Why:`
-  lines (multiple choice, true/false, open response, sort and fill-gap);
+  lines (multiple choice, true/false, open response, sort, fill-gap, matching and image match;
+  an unknown question type stops the export);
 - the teacher notes under `-- Notes --`.
 
 Decoration is left out (accent bars, the kind tag, step-number badges, cards with no text), because

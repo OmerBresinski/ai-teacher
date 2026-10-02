@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a blind visual judge packet for one brief: two decks as X and Y image sequences.
 
-Usage: python3 harness/build-packet.py <packetId> <oursDir> <chalkieDir> [--seed N]
+Usage: python3 harness/build-packet.py <packetId> <oursDir> <chalkieDir> [--seed=N]
   oursDir    render.ts output for one lesson (slide-NN.png)
   chalkieDir chalkie-convert.py output (slide-NN.png; answer pages already dropped)
 Writes packets/<packetId>/{X,Y}/slide-NN.png, X-sheet.png, Y-sheet.png, pass-1.md (Deck 1 = X,
@@ -126,51 +126,6 @@ def strip_chalkie(im):
             inkish = p[1] - p[0] > 35 and p[2] - p[0] > 35 and abs(p[1] - p[2]) < 40  # teal and its blends
             if not (X <= cr and Y <= cb) or inkish or not other(p):
                 px[X, Y] = ground
-        painted += 1
-    return im, 1, (name, round(rec, 2), round(prec, 2), ox, oy, painted)
-    # Part of the mark hides behind a photo or card: the card is the region of non-ground, non-mark
-    # pixels connected to the rectangle's left or top edge. Everything else in the rectangle (the
-    # visible glyph, its outline and ground) takes the ground colour found just below the rectangle.
-    under = [px[X, min(Y, H - 1)] for X in range(rx0, rx1 + 1) for Y in (ry1 + 2, ry1 + 4)]
-    ground = Counter(under).most_common(1)[0][0]
-    def other(p):
-        return dist(p, ground) > 40 and not teal(p) and min(p) <= 200
-    card, stack = set(), [(X, ry0) for X in range(rx0, rx1 + 1)] + [(rx0, Y) for Y in range(ry0, ry1 + 1)]
-    while stack:
-        X, Y = stack.pop()
-        if (X, Y) in card or not (rx0 <= X <= rx1 and ry0 <= Y <= ry1) or not other(px[X, Y]):
-            continue
-        card.add((X, Y))
-        stack += [(X + 1, Y), (X - 1, Y), (X, Y + 1), (X, Y - 1)]
-    for Y in range(ry0, ry1 + 1):
-        for X in range(rx0, rx1 + 1):
-            if (X, Y) not in card:
-                px[X, Y] = ground
-        painted += 1
-    return im, 1, (name, round(rec, 2), round(prec, 2), ox, oy, painted)
-    # Part of the mark hides behind a photo or card: repaint only the pixels that are mark, outline or
-    # ground (on the blends between ground, the mark's own ink and white) near the visible glyph;
-    # card and photo pixels are left exactly as they are.
-    inks = sorted(px[X, Y] for Y in range(ry0, ry1 + 1) for X in range(rx0, rx1 + 1) if fn(px[X, Y]))
-    ink = inks[len(inks) // 2]
-    segs = ((ground, ink), (ground, (255, 255, 255)), (ink, (255, 255, 255)), (ground, (0, 0, 0)))
-    def markish(p):
-        best_d = 1e9
-        for c0, c1 in segs:
-            v = [c1[i] - c0[i] for i in range(3)]; vv = sum(x * x for x in v) or 1
-            t = max(0, min(1, sum((p[i] - c0[i]) * v[i] for i in range(3)) / vv))
-            best_d = min(best_d, sum(abs(p[i] - c0[i] - t * v[i]) for i in range(3)))
-        return best_d < 35
-    vis = [(X, Y) for Y in range(ry0, ry1 + 1) for X in range(rx0, rx1 + 1) if fn(px[X, Y])]
-    for Y in range(ry0, ry1 + 1):
-        xs = [X for X, Yg in vis if abs(Yg - Y) <= D]
-        if not xs:
-            continue
-        R = px[rx1 + 1, Y]
-        fill = R if dist(R, ground) < 40 else ground
-        for X in range(max(rx0, min(xs) - D), min(rx1, max(xs) + D) + 1):
-            if markish(px[X, Y]):
-                px[X, Y] = fill
         painted += 1
     return im, 1, (name, round(rec, 2), round(prec, 2), ox, oy, painted)
 

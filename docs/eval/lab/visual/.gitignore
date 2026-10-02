@@ -1,0 +1,8 @@
+# Lab outputs: generated decks, blind packets and their keys, judge files, spend ledgers, converted
+# Chalkie slides (third-party content) and the render stack's storage. Never commit them.
+/runs/
+/packets/
+/judgments/
+/spend/
+/chalkie/
+/stack/

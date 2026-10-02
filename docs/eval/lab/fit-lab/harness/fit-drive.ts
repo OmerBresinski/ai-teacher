@@ -1,4 +1,4 @@
-// fit-lab driver (untracked). Runs the real lesson pipeline in process against ANY worktree, no DB,
+// fit-lab driver (lab tool, docs/eval/lab). Runs the real lesson pipeline in process against ANY worktree, no DB,
 // no worker, no queue (after quality-prd/look/pr2-smoke/pr2-drive.ts): plan (objectives-first,
 // stopAfter planned) -> confirm (plan.state confirmed, objectives unchanged, as the API does) ->
 // generate (resume, withPlanSlides as lesson.generate does). gpt-6-luna on every class, effort
@@ -67,7 +67,7 @@ const pino = (await import(`${wt}/apps/worker/node_modules/pino/pino.js`)).defau
 // --images <photoDir> (lab/visual, 30 Sep): illustrate ON. Pexels search + store as the worker's
 // imagePlacer does, with the bytes written under <photoDir>/<key> (a local disk put) so
 // lab/visual/harness/render.ts can serve them to the presenter. Needs PEXELS_API_KEY in the
-// environment (lab/visual/harness/gen-images.sh takes it from Railway without printing it).
+// environment (lab/visual/harness/gen-images-stream.sh passes it through from the environment).
 // Without the flag nothing changes: images off, as before.
 const photoDir = opt("--images");
 let photoPlacer: unknown;

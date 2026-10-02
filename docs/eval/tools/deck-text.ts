@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 type Node = { type: string; text?: string; content?: Node[]; attrs?: Record<string, unknown> };
 type El = {
+  id?: string;
   type: string;
   name?: string;
   x: number;
@@ -15,22 +16,23 @@ type El = {
   doc?: Node;
   label?: string;
   alt?: string;
-  correct?: boolean;
   [k: string]: unknown;
+};
+type Question = {
+  type?: string;
+  options?: { id: string; correct: boolean }[];
+  correct?: boolean;
+  explanation?: string;
+  modelAnswer?: string;
+  order?: string[];
+  gaps?: { answer: string }[];
+  pairs?: { leftElementId?: string; rightElementId?: string; imageId?: string; labelId?: string }[];
 };
 type Slide = {
   kind: string;
   elements: El[];
   notes?: string;
-  question?: {
-    type?: string;
-    options?: { id: string; correct: boolean }[];
-    correct?: boolean;
-    explanation?: string;
-    modelAnswer?: string;
-    order?: string[];
-    gaps?: { answer: string }[];
-  };
+  question?: Question;
 };
 
 const BLOCK = new Set(["paragraph", "heading", "listItem", "blockquote", "codeBlock", "tableRow"]);
@@ -44,6 +46,34 @@ function textOf(n: Node | undefined, depth = 0): string {
   if (n.type === "listItem") return `- ${inner.trim()}\n`;
   if (n.type === "tableCell" || n.type === "tableHeader") return inner.trim();
   return BLOCK.has(n.type) ? `${inner.trimEnd()}\n` : inner;
+}
+
+// The keyed answer for every QuestionData type in @tj/domain/documents. A type this does not know
+// fails the export, so a judge never reads a deck whose answers were silently dropped.
+function answerOf(q: Question, byId: (id?: string) => string, slideNo: number): string {
+  switch (q.type) {
+    case "multiple-choice":
+      return (q.options ?? [])
+        .filter((o) => o.correct)
+        .map((o) => byId(o.id))
+        .join("; ");
+    case "true-false":
+      return q.correct === undefined ? "" : q.correct ? "True" : "False";
+    case "open-response":
+      return q.modelAnswer ?? "";
+    case "sort":
+      return (q.order ?? []).map((id) => byId(id)).join(" -> ");
+    case "fill-gap":
+      return (q.gaps ?? []).map((g) => g.answer).join(", ");
+    case "matching":
+      return (q.pairs ?? [])
+        .map((p) => `${byId(p.leftElementId)} -> ${byId(p.rightElementId)}`)
+        .join("; ");
+    case "image-match":
+      return (q.pairs ?? []).map((p) => `${byId(p.labelId)} -> ${byId(p.imageId)}`).join("; ");
+    default:
+      throw new Error(`deck-text: slide ${slideNo} has an unknown question type "${q.type}"`);
+  }
 }
 
 const [inPath, outPath] = process.argv.slice(2);
@@ -81,7 +111,11 @@ lesson.slides.forEach((s, i) => {
     }
     const t = (e.doc ? textOf(e.doc) : "").trim();
     if (e.type === "option") {
-      out.push(`( ) ${t || e.label || ""}${e.correct === true ? "  [correct]" : ""}`);
+      // The key lives on the slide's question, not on the option element.
+      const keyed =
+        s.question?.type === "multiple-choice" &&
+        s.question.options?.some((o) => o.id === e.id && o.correct);
+      out.push(`( ) ${t || e.label || ""}${keyed ? "  [correct]" : ""}`);
       continue;
     }
     if (!t) continue;
@@ -92,26 +126,12 @@ lesson.slides.forEach((s, i) => {
   }
   const q = s.question;
   if (q) {
-    const byId = (id: string) => {
-      const el = s.elements.find((x) => (x as { id?: string }).id === id);
+    const byId = (id?: string) => {
+      const el = s.elements.find((x) => x.id === id);
+      if (el?.type === "image") return `[${el.name ?? "image"}: ${el.alt ?? ""}]`;
       return el?.doc ? textOf(el.doc).trim() : "";
     };
-    const answer =
-      q.type === "multiple-choice"
-        ? byId(q.options?.find((o) => o.correct)?.id ?? "")
-        : q.type === "true-false"
-          ? q.correct === undefined
-            ? ""
-            : q.correct
-              ? "True"
-              : "False"
-          : q.type === "open-response"
-            ? (q.modelAnswer ?? "")
-            : q.type === "sort"
-              ? (q.order ?? []).map(byId).join(" -> ")
-              : q.type === "fill-gap"
-                ? (q.gaps ?? []).map((g) => g.answer).join(", ")
-                : "";
+    const answer = answerOf(q, byId, i + 1);
     const lines = [answer && `Answer: ${answer}`, q.explanation && `Why: ${q.explanation}`].filter(
       Boolean,
     );

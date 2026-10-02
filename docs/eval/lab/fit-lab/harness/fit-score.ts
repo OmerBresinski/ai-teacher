@@ -1,4 +1,4 @@
-// fit-lab scorer (untracked). Free: no model calls. For each deck, runs the editor's own first-open
+// fit-lab scorer (lab tool, docs/eval/lab). Free: no model calls. For each deck, runs the editor's own first-open
 // fit (`fitLessonToTheme` = lint every slide with the measurer, Tidy the flagged ones, the same path
 // use-fit-migration takes on a fitVersion-0 lesson) on the lesson's own theme, and the editor's
 // re-theme (`rethemeLesson`: setTheme, recolour, then the same fit) for every other theme, with the

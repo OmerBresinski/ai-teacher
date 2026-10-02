@@ -6,7 +6,8 @@
 // Output: <outDir>/<name>/slide-01.png ...
 import { mkdirSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
-import { chromium } from "@playwright/test";
+// @playwright/test is a dependency of apps/web only, so it does not resolve from docs/eval.
+import { chromium } from "../../../../../apps/web/node_modules/@playwright/test/index.mjs";
 
 const API = process.env.VISUAL_API ?? "http://localhost:3641";
 const WEB = process.env.VISUAL_WEB ?? "http://localhost:4641";
