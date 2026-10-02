@@ -17,7 +17,7 @@ import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../context";
 import type { Env } from "../env";
 import { errorResponse } from "../errors";
-import { clientIp } from "./client-ip";
+import { clientIp, ipProbeReport } from "./client-ip";
 
 type Sql = Pick<DbHandle, "sql">;
 
@@ -114,6 +114,15 @@ export function anonymousSignInLimits(db: Sql, env: AnonymousLimitsEnv): Middlew
           xRealIp: c.req.header("x-real-ip") !== undefined,
         },
         "anonymous sign-in: first request's IP headers (names and counts only)",
+      );
+    }
+    // TEACH-300: a request that names its own address in `x-tj-ip-probe` gets a report of where
+    // that address sits in the proxy headers. Booleans only, so the header needs no secret.
+    const probe = ipProbeReport(c.req.raw.headers);
+    if (probe) {
+      c.get("logger")?.info(
+        { ...probe, ipResolved: ip !== null },
+        "anonymous sign-in: IP probe (booleans only)",
       );
     }
     if (ip === null) {
