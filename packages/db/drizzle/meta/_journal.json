@@ -78,6 +78,13 @@
       "when": 1790614418866,
       "tag": "0010_anonymous_signins",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790950583862,
+      "tag": "0011_magic_link_sends",
+      "breakpoints": true
     }
   ]
 }

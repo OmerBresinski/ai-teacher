@@ -12,8 +12,9 @@
  * but the worker's own pg-boss cron. It follows the `ping.ts` shape (one handler, logger, signal)
  * and is registered beside the typed registry in `jobs/index.ts`.
  *
- * Old rows of the per-IP sign-in counter (`anonymous_signins`) go too, and so do expired pending
- * claims (`verifications` rows named `claim:…`, TEACH-224), which nothing else removes.
+ * Old rows of the per-IP sign-in counter (`anonymous_signins`) and of the magic-link send log
+ * (`magic_link_sends`, TEACH-300) go too, and so do expired pending claims (`verifications` rows
+ * named `claim:…`, TEACH-224), which nothing else removes.
  */
 import type { Sql } from "@tj/db";
 import type { StorageAdapter } from "@tj/domain";
@@ -26,6 +27,8 @@ export const ANONYMOUS_CLEANUP_CRON = "17 3 * * *";
 export const ANONYMOUS_CLEANUP_BATCH = 500;
 /** Per-IP counter rows are kept this many days (only today's is ever read). */
 const SIGNIN_COUNTER_KEEP_DAYS = 2;
+/** Magic-link send rows are kept this many days (only the last hour and today are ever read). */
+const MAGIC_LINK_SENDS_KEEP_DAYS = 2;
 
 export interface AnonymousCleanupDeps {
   sql: Sql;
@@ -95,6 +98,10 @@ export async function runAnonymousCleanup({
   await sql`
     delete from anonymous_signins
     where day < (now() at time zone 'utc')::date - ${SIGNIN_COUNTER_KEEP_DAYS}::int
+  `;
+  await sql`
+    delete from magic_link_sends
+    where sent_at < now() - make_interval(days => ${MAGIC_LINK_SENDS_KEEP_DAYS})
   `;
   await sql`delete from verifications where identifier like 'claim:%' and expires_at < now()`;
   logger.info({ ttlDays, ...result }, "anonymous cleanup done");

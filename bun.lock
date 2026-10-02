@@ -24,6 +24,7 @@
       "name": "@tj/api",
       "version": "0.0.0",
       "dependencies": {
+        "@better-auth/core": "1.7.2",
         "@hono/zod-validator": "0.9.1",
         "@tj/ai": "workspace:*",
         "@tj/db": "workspace:*",

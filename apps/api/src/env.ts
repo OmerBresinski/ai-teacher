@@ -157,8 +157,12 @@ export const EnvSchema = z
     ANONYMOUS_SIGNINS_PER_IP_DAILY: z.coerce.number().int().min(1).default(20),
     /** TEACH-222: anonymous lessons created per UTC day across every Workspace. */
     ANONYMOUS_LESSONS_DAILY_CAP: z.coerce.number().int().min(0).default(200),
-    /** TEACH-222: the request header holding the client IP (e.g. `cf-connecting-ip`); unset → better-auth's `x-forwarded-for`. */
+    /** TEACH-222/300: the request header holding the client IP (`x-real-ip` on Railway); unset → `x-forwarded-for`, one address only. */
     AUTH_IP_HEADER: optionalString,
+    /** TEACH-300: magic-link emails one address may receive per rolling hour; over it the send is skipped. */
+    MAGIC_LINK_SENDS_PER_RECIPIENT_HOURLY: z.coerce.number().int().min(1).default(5),
+    /** TEACH-300: magic-link emails the api sends per UTC day across every address. */
+    MAGIC_LINK_SENDS_DAILY_CAP: z.coerce.number().int().min(1).default(300),
     /**
      * Cloudflare Turnstile secret (TEACH-243). Set: anonymous and magic-link sign-in require a
      * token (`auth/captcha.ts`). Required in production; unset elsewhere turns the check off.

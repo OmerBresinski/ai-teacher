@@ -69,6 +69,9 @@ describeDb("auth.anonymous-cleanup", () => {
       insert into anonymous_signins (ip, day, count)
       values ('203.0.113.1', (now() at time zone 'utc')::date - 5, 3),
              ('203.0.113.2', (now() at time zone 'utc')::date, 1)`;
+    await db.sql`
+      insert into magic_link_sends (recipient, sent_at)
+      values ('old-key', now() - interval '3 days'), ('recent-key', now() - interval '1 hour')`;
 
     const result = await runAnonymousCleanup({ sql: db.sql, storage, ttlDays: 14, logger });
 
@@ -90,6 +93,8 @@ describeDb("auth.anonymous-cleanup", () => {
 
     const counters = await db.sql<{ ip: string }[]>`select ip from anonymous_signins`;
     expect(counters.map((r) => r.ip)).toEqual(["203.0.113.2"]);
+    const sends = await db.sql<{ recipient: string }[]>`select recipient from magic_link_sends`;
+    expect(sends.map((r) => r.recipient)).toEqual(["recent-key"]);
   });
 
   test("a claim that lands between the select and the delete keeps the Workspace and its objects", async () => {
