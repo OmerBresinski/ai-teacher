@@ -104,11 +104,15 @@ export type LessonSheetContext = {
 };
 
 /** The model points of an open answer: one per non-empty line. */
+/** A label line the model sometimes writes itself; code adds the label, so it is not a point. */
+const ANSWER_LABEL =
+  /^(?:you might have suggested|mark scheme|model answer|possible answers?)\s*:?$/i;
+
 export const answerPoints = (answer: string): string[] =>
   answer
     .split("\n")
     .map((line) => line.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim())
-    .filter(Boolean);
+    .filter((line) => line && !ANSWER_LABEL.test(line));
 
 const opensWithCommandWord = (text: string): boolean => {
   const lower = text.trim().toLowerCase();

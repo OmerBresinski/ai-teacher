@@ -27,8 +27,8 @@ import { lessonCycles, normaliseStem, slideQuestionStems } from "./cycles";
 import { fillFrame } from "./fill";
 import { ASKS_FOR_EXAM, optionCountFor, worksheetFit } from "./fit";
 import { buildFrame } from "./frame";
-import { lessonSheetOutputTokens } from "./lesson-sheet";
-import { COMMAND_WORDS, lessonSheetSchemaFor } from "./lesson-specs";
+import { answerText, lessonSheetOutputTokens } from "./lesson-sheet";
+import { answerPoints, COMMAND_WORDS, lessonSheetSchemaFor } from "./lesson-specs";
 
 /*
  * TEACH-86 acceptance rows 1–7 on the fake AI: "Follows the lesson" built from the finished
@@ -499,5 +499,73 @@ describe("TEACH-86 review fixes", () => {
   test("#3: the output cap grows with the cycles", () => {
     expect(lessonSheetOutputTokens(2, false)).toBeLessThan(lessonSheetOutputTokens(5, true));
     expect(lessonSheetOutputTokens(40, true)).toBe(16000);
+  });
+});
+
+describe("answer label written by the model (eval, 2 Oct)", () => {
+  const open = {
+    type: "question" as const,
+    text: "Explain why a catalyst speeds up a reaction.",
+    answerLines: 6,
+    factRefs: ["o1"],
+    answer:
+      "You might have suggested:\n- It gives a route with lower activation energy.\n- More collisions have enough energy.\n- It is not used up.",
+  };
+
+  test("a label line is not counted as a model point", () => {
+    expect(answerPoints(open.answer)).toEqual([
+      "It gives a route with lower activation energy.",
+      "More collisions have enough energy.",
+      "It is not used up.",
+    ]);
+    expect(answerPoints("Mark scheme:\n- one\n- two")).toEqual(["one", "two"]);
+  });
+
+  test("the answer key prints the label once", () => {
+    const key = answerText(open);
+    expect(key.match(/You might have suggested:/g)).toHaveLength(1);
+    expect(key.split("\n")).toHaveLength(4);
+  });
+
+  test("a model-written label passes the 2–3 points check; a real fourth point does not", () => {
+    const schema = lessonSheetSchemaFor({
+      cycles: 1,
+      examStyle: false,
+      exitTicket: false,
+      slideStems: [],
+      optionCount: 4,
+    });
+    const pointIssues = (stretch: typeof open) => {
+      const parsed = schema.safeParse({
+        tasks: [
+          {
+            cycle: 1,
+            title: "Catalysts",
+            instruction: "Answer each question.",
+            supported: [
+              {
+                type: "question",
+                text: "What lowers activation energy?",
+                answerLines: 1,
+                answer: "A catalyst",
+                factRefs: ["o1"],
+              },
+            ],
+            stretch: [stretch],
+          },
+        ],
+        exitTicket: [],
+      });
+      return parsed.success
+        ? []
+        : parsed.error.issues.map((i) => i.message).filter((m) => m.includes("model points"));
+    };
+    expect(pointIssues(open)).toEqual([]);
+    expect(
+      pointIssues({
+        ...open,
+        answer: open.answer.replace("You might have suggested:", "- Rate rises."),
+      }),
+    ).toHaveLength(1);
   });
 });
