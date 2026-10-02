@@ -26,7 +26,7 @@ import {
   scriptedPipelineAiWithInserted,
 } from "./testing";
 import { STAGE_ORDER, StageFailure } from "./types";
-import { resumeFrom, runLessonPipeline } from "./workflow";
+import { fitOf, resumeFrom, runLessonPipeline } from "./workflow";
 
 const TOTAL_SLIDES = FIXTURES.planSkeleton.outline.length; // 10
 const GENERATED_SLIDES = TOTAL_SLIDES - 2; // 8
@@ -563,6 +563,8 @@ describe("runLessonPipeline", () => {
     expect(summary.generation.calls).toBeGreaterThanOrEqual(CHECK_INPUT_CALLS + PLAN_CALLS + 2);
     expect(summary.generation.calls).toBe(ai.calls.length);
     expect(ai.calls.some((c) => c.context?.stage === "evaluate")).toBe(false);
+    // The last checkpoint is still the plan, so there is no fit block over its two slides.
+    expect(summary.generation.fit).toBeUndefined();
   });
 
   test("a failed run's summary counts the findings of the last persisted checkpoint", async () => {
@@ -599,7 +601,20 @@ describe("runLessonPipeline", () => {
       findings: { error: 0, warning: 0 },
     });
     expect(summary.generation.durationMs).toEqual(expect.any(Number));
+    // The fit block rides on the same line; the content check below covers it too.
+    expect(summary.generation.fit.slides.stored).toBeGreaterThan(0);
     expect(lines.join("\n")).not.toContain("particle");
+  });
+
+  test("a fault measuring the fit block logs one warning and leaves the block off", () => {
+    const { lines, logger } = memoryLogger();
+    const broken = {
+      ...sampleBriefLesson(),
+      slides: [{ id: "s1", kind: "content", elements: null }],
+    } as unknown as Lesson;
+    expect(fitOf(broken, { logger })).toBeUndefined();
+    const logged = lines.map((l) => JSON.parse(l));
+    expect(logged.map((r) => [r.msg, r.level])).toEqual([["fit report failed", 40]]);
   });
 });
 
@@ -657,6 +672,8 @@ describe("stopAfter: planned (ADR 0029 items 1–2)", () => {
       stages: ["check-input", "plan"],
       calls: CHECK_INPUT_CALLS + PLAN_CALLS,
     });
+    // No slides were generated, so there is no fit block to report.
+    expect(summary.generation.fit).toBeUndefined();
     expect(lines.some((l) => l.includes("verify awaited"))).toBe(true);
     expect(lines.join("\n")).not.toContain("particle");
   });

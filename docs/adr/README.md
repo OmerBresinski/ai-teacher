@@ -30,7 +30,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0022 | @tj/editor: package boundary, kit rule, state model and fonts | Accepted (amended 2026-09-13) |
 | 0023 | Export pipeline: client-side exporters, SPA print routes, JSON import | Accepted (amended 2026-09-12) |
 | 0024 | Document persistence and the lesson brief: `documents` table, document API, `POST /lessons` | Accepted (amended 2026-09-06, 2026-09-12, 2026-09-16) |
-| 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12, 2026-09-16) |
+| 0025 | Lesson generation: LessonFacts, the `lesson.plan` pipeline, Evaluate and Repair | Accepted (amended 2026-09-12, 2026-09-16, 2026-10-02) |
 | 0026 | Railway Bucket (S3-compatible) for object storage  | Accepted (amended 2026-09-12) |
 | 0027 | Upload as input: `POST /sources`, `@tj/extract`, `sources` table, `SourceLoader` | Accepted (amended 2026-09-16) |
 | 0028 | GSAP for the character scenes, click-loaded                        | Accepted |
@@ -84,3 +84,4 @@ Template: `0000-template.md`.
 - 2026-09-27 — ADR 0008: Google sign-in is switched on and Microsoft stays off; the same verified email links to the same user; Google tokens are not stored; the name and photo URL are stored (copied once on link); production and local dev only, no PR environments; the Google console steps are manual (no API). See the amendment in `0008-better-auth.md`.
 - 2026-09-28 — ADR 0008: Microsoft sign-in is switched on for any Microsoft account (work, school or personal); only an email Microsoft vouches for (personal tenant or `xms_edov`) signs in or links; identity scopes only; `/sign-in` shows the button when `GET /auth-providers` says it is on. See the amendment in `0008-better-auth.md`.
 - 2026-09-27 — ADR 0016 item 6: the Google profile photo URL in `users.image` goes beyond F15-D3; F15-R01's data-flow statement must name Google as an identity provider and list the photo URL; revisit with F15. See the amendment in `0016-prd-deviations.md`.
+- 2026-10-02 — ADR 0025 §9, §16: the layout linter moves from `@tj/editor` to `@tj/slides` with `fitsPlanned` and `fitReport`; the `generation summary` line gains a `fit` block once the checkpoint holds generated slides, and Generate logs one `save gate` line per written slide, counts only (TEACH-13). See the amendment in `0025-lesson-generation-pipeline.md`.

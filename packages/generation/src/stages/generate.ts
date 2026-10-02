@@ -44,6 +44,7 @@ import {
   withPhoto,
 } from "./illustrate";
 import { stemPlan } from "./question-pool";
+import { saveGate } from "./save-gate";
 import {
   audienceOf,
   BUDGET_FINDING,
@@ -203,7 +204,14 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     i: number,
     entry: OutlineEntry,
     photo: SlidePhoto | "none" | undefined,
-  ): Promise<{ slide: Slide; misses: EditorialMiss[]; builtFrom: LessonFacts }> => {
+  ): Promise<{
+    slide: Slide;
+    spec: SlideSpec;
+    /** What was done to the materialised slide before it is saved, for the save gate. */
+    finish?: (slide: Slide, themeId: string) => Slide;
+    misses: EditorialMiss[];
+    builtFrom: LessonFacts;
+  }> => {
     const builtFrom = facts;
     // Lab only (r1 structure): a question set — starter, check or exit quiz — is printed from the
     // facts in code, answers revealed on the slide; no model call, so no item is invented.
@@ -215,7 +223,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
         lesson.themeId,
       );
-      return { slide, misses: [], builtFrom };
+      return { slide, spec: coded.spec, finish: withAnswersReveal, misses: [], builtFrom };
     }
     // A diagram whose fact carries the figure (TEACH-253) is written as text around that figure;
     // without one (a lesson planned before, or a facts call that missed it) the call writes the
@@ -272,8 +280,9 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
     const answer = withFactFigure(call.output, factFigure);
     const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
+    const captioned = withImageCaption(spec, entry);
     const slide = materialiseSlide(
-      withImageCaption(spec, entry),
+      captioned,
       lesson.themeId,
       meta(call.modelId),
       deps.ids,
@@ -281,7 +290,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       {},
       (note) => deps.logger.warn({ stage: "generate", call: "slide", index: i }, note),
     );
-    return { slide, misses: call.editorialMisses, builtFrom };
+    return { slide, spec: captioned, misses: call.editorialMisses, builtFrom };
   };
 
   const slideWork = async (i: number) => {
@@ -313,6 +322,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         written = await writeSlide(i, entry, photo);
       }
       slide = written.slide;
+      saveGate(written.spec, i, deps, written.finish);
       for (const miss of written.misses) {
         findings.push(specRuleFinding(miss, { slideId: slide.id }));
       }

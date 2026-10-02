@@ -9,54 +9,13 @@
  */
 
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
-import { isTextLike } from "../model/reducers";
 import { FIT_VERSION } from "../model/themes";
-import { type MeasureInput, type Measurer, textPartsOf } from "./reflow";
 
 /**
- * The auto-height text boxes on a slide, with the ruler input each one needs. Option cards count:
- * the engine treats them as auto-height (`textPartsOf`) and grows them at render time like a text
- * box, so a deck whose only stale slide is a question with overlong answers must be flagged too.
+ * `renderedHeights` and `measureInputsOf` moved to `@tj/slides` (`lint.ts`) with the linter, so
+ * the headless fit check (`fitsPlanned`) and the editor draw the same slide; re-exported here.
  */
-const growable = (slide: Slide) =>
-  slide.elements.flatMap((el) => {
-    if (!isTextLike(el)) return [];
-    const parts = textPartsOf(el, slide);
-    if (!parts?.autoHeight) return [];
-    return [
-      {
-        el,
-        input: {
-          doc: parts.doc,
-          width: el.w,
-          style: parts.style,
-          preset: parts.preset,
-          role: parts.role,
-          inset: parts.inset,
-          chrome: parts.chrome,
-        } satisfies MeasureInput,
-      },
-    ];
-  });
-
-/** Every measurement `renderedHeights` will ask for on this slide, for one warm-up batch. */
-export const measureInputsOf = (slide: Slide): MeasureInput[] =>
-  growable(slide).map((g) => g.input);
-
-/**
- * The slide as the renderer will draw it: every auto-height text box at the height its own content
- * needs, and nothing moved. Only *growth* is modelled — a floor is a minimum, so a floor change can
- * only make stored text bigger.
- */
-export function renderedHeights(slide: Slide, measure: Measurer): Slide {
-  const grown = new Map(growable(slide).map((g) => [g.el.id, measure(g.input)]));
-  if (grown.size === 0) return slide;
-  const elements = slide.elements.map((el) => {
-    const h = grown.get(el.id);
-    return h !== undefined && h > el.h ? { ...el, h } : el;
-  });
-  return { ...slide, elements };
-}
+export { measureInputsOf, renderedHeights } from "@tj/slides";
 
 export type FitPlan = {
   /** True when there is anything at all to do, a version stamp included. */

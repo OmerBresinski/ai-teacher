@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { JOB_PROGRESS_STAGES } from "@tj/domain";
-import type { Lesson } from "@tj/domain/documents";
+import { type Lesson, plainTextOf } from "@tj/domain/documents";
+import { THEMES } from "@tj/slides";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { labAi, memoryLogger, recordingDeps, romansLesson, versionsOf } from "../testing";
@@ -44,6 +45,10 @@ function confirmed(lesson: Lesson, patch: Partial<Lesson> = {}): Lesson {
 
 const summaryOf = (lines: string[]) =>
   lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary")?.generation;
+
+/** Every value at the leaves of a log field, for "counts only". */
+const leaves = (v: unknown): unknown[] =>
+  v !== null && typeof v === "object" ? Object.values(v).flatMap(leaves) : [v];
 
 describe("which planner and where a lesson resumes", () => {
   const at = (stage: string | undefined, planned: string | undefined, outline = 0): Lesson =>
@@ -255,6 +260,24 @@ describe("the generate job's run from the confirmed objectives (the stamp decide
     expect(typeof summary.readableMs).toBe("number");
     expect(typeof summary.checkedMs).toBe("number");
     expect(summary.readableMs).toBeLessThanOrEqual(summary.checkedMs);
+    // The fit block (`fitReport`) and one save gate line per written slide: counts, never text.
+    expect(summary.fit.slides).toEqual({
+      requested: final.lesson.brief?.slideCount ?? null,
+      delivered: final.lesson.slides.length,
+      stored: final.lesson.slides.length,
+    });
+    expect(Object.keys(summary.fit.overflowing)).toEqual(THEMES.map((t) => t.id));
+    expect(leaves(summary.fit).every((v) => v === null || typeof v === "number")).toBe(true);
+    const gates = lines.map((l) => JSON.parse(l)).filter((r) => r.msg === "save gate");
+    expect(gates).toHaveLength(n);
+    expect(gates.every((g) => g.stage === "generate" && typeof g.fits === "boolean")).toBe(true);
+    const shown = final.lesson.slides
+      .flatMap((s) => s.elements)
+      .flatMap((e) => plainTextOf(e) ?? [])
+      .filter((text) => text.length > 12);
+    expect(shown.length).toBeGreaterThan(0);
+    const logged = [summary.fit, ...gates].map((r) => JSON.stringify(r)).join("\n");
+    for (const text of shown) expect(logged).not.toContain(text);
   });
 
   test("a finished lesson above AI_LESSON_COST_WARN_USD logs one warn line; the run completes", async () => {

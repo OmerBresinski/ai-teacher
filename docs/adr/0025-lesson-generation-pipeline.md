@@ -1151,3 +1151,21 @@ the reasoning.
 - §22 (ADR 0029, ADR 0030): `lesson-plan.integration.test.ts` asserts "stops at planned; generate
   completes the slides" instead of the worksheet row; `lesson-generate` and `lesson-worksheet`
   integration tests are added beside it.
+
+## Amendment (2026-10-02, TEACH-13 — one ruler: the fit block and the save gate line)
+
+§16 gains two log shapes, both counts and ids only:
+
+- The `generation summary` line carries a `fit` block once the job's last checkpoint holds
+  generated slides (stage `generated` or later): `fitReport` in `@tj/slides` over those slides
+  (slides requested, delivered and stored; per theme, slides that still overflow or clash once
+  fitted; callouts planned and placed; the pages the editor's first open would add). A plan-only
+  job, or one that failed inside Generate, has none, and a fault measuring it is one
+  `fit report failed` warning and no block.
+- Generate logs one `save gate` line per written slide: `fitsPlanned` at one step down on every
+  theme, `fits` and the slide's `index` and `kind`, info when it fits and a warning with counts
+  per failing theme when it does not. It rewrites nothing.
+
+§9: the layout linter (`lintSlide`, `lintAsDrawn`, `renderedHeights`) moves from `@tj/editor`
+to `@tj/slides` with `fitsPlanned` and `fitReport`, so generation and the editor measure a slide
+with one ruler; the editor re-exports them from `layout/lint.ts` and `layout/fit-plan.ts`.

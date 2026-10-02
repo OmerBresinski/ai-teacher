@@ -2,6 +2,7 @@ import { RequestContext } from "@mastra/core/request-context";
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { safeError } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
+import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
 import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
@@ -239,6 +240,30 @@ export interface PipelineOptions {
   planner?: Planner;
 }
 
+/** The checkpoint is past the plan: Generate saved the slides (`generated` or a later stage). */
+const hasGeneratedSlides = (lesson: Lesson) => {
+  const stage = lesson.generation?.stage;
+  return stage !== undefined && stage !== "planned";
+};
+
+/**
+ * The summary's `fit` block (`fitReport` in `@tj/slides`): slides asked for and delivered, slides
+ * that overflow per theme, callouts planned and placed, and the pages the editor's first open
+ * would add. Written once the job's last checkpoint holds generated slides (stage `generated` or
+ * later), over those slides: a plan-only job, or one that failed inside Generate, has no block,
+ * because its checkpoint is still the plan. A measuring fault never costs the summary line: it is
+ * logged and the block is left off.
+ */
+export function fitOf(lesson: Lesson, deps: Pick<PipelineDeps, "logger">): FitReport | undefined {
+  if (lesson.slides.length === 0) return undefined;
+  try {
+    return fitReport(lesson);
+  } catch (error) {
+    deps.logger.warn({ err: safeError(error) }, "fit report failed");
+    return undefined;
+  }
+}
+
 /**
  * Run the workflow for one job. Resolves with the final state; rejects with the stage's own
  * error (`StageFailure`, `AbortError`, …). Writes the one `generation summary` line (§16).
@@ -308,6 +333,12 @@ export async function runLessonPipeline(
     const findings = { error: 0, warning: 0 };
     for (const f of checkpoint?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
     const totals = deps.budget.totals();
+    const durationMs = Date.now() - startedAt;
+    const stages = (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [];
+    const fit =
+      checkpoint && hasGeneratedSlides(checkpoint.lesson)
+        ? fitOf(checkpoint.lesson, deps)
+        : undefined;
     deps.logger.info(
       {
         generation: {
@@ -315,13 +346,14 @@ export async function runLessonPipeline(
           jobId: deps.context.jobId,
           outcome,
           planner,
-          stages: (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [],
+          stages,
           ...totals,
           findings,
           images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
-          durationMs: Date.now() - startedAt,
+          durationMs,
           ...(readableMs !== undefined ? { readableMs } : {}),
           ...(checkedMs !== undefined ? { checkedMs } : {}),
+          ...(fit ? { fit } : {}),
         },
       },
       "generation summary",

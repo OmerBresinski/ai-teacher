@@ -195,6 +195,24 @@ export const HEADING_NAME = "Heading";
  */
 export const ANSWERS_NAME = "Answers";
 
+/**
+ * Question slides are never split (ruling 91): an option grid that does not fit takes a roomier
+ * layout at generation, and a continuation would leave the question on one slide and its answers
+ * on the next. The editor's Tidy and the headless page estimate (`estimatePagesOnOpen`) both ask.
+ */
+const QUESTION_KINDS: ReadonlySet<Slide["kind"]> = new Set([
+  "multiple-choice",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "image-match",
+  "open-response",
+  "exit-ticket",
+]);
+export const isQuestionSlide = (slide: Pick<Slide, "kind" | "question">): boolean =>
+  slide.question !== undefined || QUESTION_KINDS.has(slide.kind);
+
 /** Never repositioned by the engine (SPEC: images and locked elements stay put). */
 export function isFrozen(el: SlideElement): boolean {
   return (
