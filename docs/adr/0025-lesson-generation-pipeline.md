@@ -1156,11 +1156,12 @@ the reasoning.
 
 §16 gains two log shapes, both counts and ids only:
 
-- The `generation summary` line carries a `fit` block for a job that ran Generate: `fitReport`
-  in `@tj/slides` over the last checkpoint's slides (slides requested, delivered and stored;
-  per theme, slides that still overflow or clash once fitted; callouts planned and placed; the
-  pages the editor's first open would add). A plan-only job has none, and a fault measuring it is
-  one `fit report failed` warning and no block.
+- The `generation summary` line carries a `fit` block once the job's last checkpoint holds
+  generated slides (stage `generated` or later): `fitReport` in `@tj/slides` over those slides
+  (slides requested, delivered and stored; per theme, slides that still overflow or clash once
+  fitted; callouts planned and placed; the pages the editor's first open would add). A plan-only
+  job, or one that failed inside Generate, has none, and a fault measuring it is one
+  `fit report failed` warning and no block.
 - Generate logs one `save gate` line per written slide: `fitsPlanned` at one step down on every
   theme, `fits` and the slide's `index` and `kind`, info when it fits and a warning with counts
   per failing theme when it does not. It rewrites nothing.

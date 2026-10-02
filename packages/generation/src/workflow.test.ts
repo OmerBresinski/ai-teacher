@@ -563,6 +563,8 @@ describe("runLessonPipeline", () => {
     expect(summary.generation.calls).toBeGreaterThanOrEqual(CHECK_INPUT_CALLS + PLAN_CALLS + 2);
     expect(summary.generation.calls).toBe(ai.calls.length);
     expect(ai.calls.some((c) => c.context?.stage === "evaluate")).toBe(false);
+    // The last checkpoint is still the plan, so there is no fit block over its two slides.
+    expect(summary.generation.fit).toBeUndefined();
   });
 
   test("a failed run's summary counts the findings of the last persisted checkpoint", async () => {

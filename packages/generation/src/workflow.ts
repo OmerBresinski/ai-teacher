@@ -240,12 +240,19 @@ export interface PipelineOptions {
   planner?: Planner;
 }
 
+/** The checkpoint is past the plan: Generate saved the slides (`generated` or a later stage). */
+const hasGeneratedSlides = (lesson: Lesson) => {
+  const stage = lesson.generation?.stage;
+  return stage !== undefined && stage !== "planned";
+};
+
 /**
  * The summary's `fit` block (`fitReport` in `@tj/slides`): slides asked for and delivered, slides
  * that overflow per theme, callouts planned and placed, and the pages the editor's first open
- * would add. Written for a job that ran Generate, over the slides its last checkpoint holds; a
- * plan-only job, or one that resumed past Generate, has no block. A measuring fault never costs
- * the summary line: it is logged and the block is left off.
+ * would add. Written once the job's last checkpoint holds generated slides (stage `generated` or
+ * later), over those slides: a plan-only job, or one that failed inside Generate, has no block,
+ * because its checkpoint is still the plan. A measuring fault never costs the summary line: it is
+ * logged and the block is left off.
  */
 export function fitOf(lesson: Lesson, deps: Pick<PipelineDeps, "logger">): FitReport | undefined {
   if (lesson.slides.length === 0) return undefined;
@@ -329,7 +336,9 @@ export async function runLessonPipeline(
     const durationMs = Date.now() - startedAt;
     const stages = (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [];
     const fit =
-      checkpoint && stages.includes("generate") ? fitOf(checkpoint.lesson, deps) : undefined;
+      checkpoint && hasGeneratedSlides(checkpoint.lesson)
+        ? fitOf(checkpoint.lesson, deps)
+        : undefined;
     deps.logger.info(
       {
         generation: {

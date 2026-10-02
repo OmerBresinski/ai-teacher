@@ -10,8 +10,9 @@ and the headless fit check (`fit-check.ts`: `fitsPlanned`, `slideFits`; `fit-rep
 root [`AGENTS.md`](../../AGENTS.md) first.
 
 - **No React, no Tiptap, no CSS.** Dependencies are `@tj/domain`, `nanoid` and `zod` only;
-  `src/bundle.test.ts` builds the entry for Bun and fails on any of them. Anything that needs a
-  `Measurer` or the DOM stays in `@tj/editor`.
+  `src/bundle.test.ts` builds the entry for Bun and fails on any of them. Anything that needs the
+  DOM, the editor's DOM `Measurer` included, stays in `@tj/editor`; the headless ruler
+  (`measureHeadless`) is here.
 - **The recipes are the single source of geometry.** `@tj/editor` re-exports every module here from
   `src/model/*`; `@tj/generation` imports it directly. Never change a recipe number here without
   running the moved `layouts.test.ts` and the editor suite.
