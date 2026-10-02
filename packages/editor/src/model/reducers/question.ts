@@ -1,6 +1,13 @@
 /** Question reducers: the question block on a slide and its written explanation / model answer. */
 
-import { type Id, type Lesson, type QuestionData, withSetAnswers } from "@tj/domain/documents";
+import {
+  answersInBox,
+  type Id,
+  type Lesson,
+  type QuestionData,
+  setItemsFromBox,
+  withSetAnswer,
+} from "@tj/domain/documents";
 import { current, isDraft } from "immer";
 import { editSlide, findElement } from "./core";
 
@@ -30,20 +37,32 @@ export const setExplanation = (lesson: Lesson, slideId: Id, text: string): Lesso
   });
 
 /**
- * One answer of a coded question set (TEACH-101), written to the question and to the answers box
- * it reveals in the same edit, so the two never drift and one Undo restores both. A set whose box
- * is gone keeps the answer on the question only.
+ * One answer of a coded question set (TEACH-101), by its position in the answers box. The box is
+ * the source of truth: only that answer's characters change in it, and the question's copy of the
+ * answers is re-read from the box in the same edit, so one Undo restores both. A set whose box is
+ * gone keeps the answer on the question only.
  */
-export const setSetAnswer = (lesson: Lesson, slideId: Id, index: number, answer: string): Lesson =>
+export const setSetAnswer = (
+  lesson: Lesson,
+  slideId: Id,
+  position: number,
+  answer: string,
+): Lesson =>
   editSlide(lesson, slideId, (s) => {
     const q = s.question;
-    const item = q?.type === "set" ? q.items[index] : undefined;
-    if (q?.type !== "set" || !item || item.answer === answer) return;
-    item.answer = answer;
+    if (q?.type !== "set") return;
     const box = findElement(s, q.answersId);
     if (box && (box.type === "text" || box.type === "shape") && box.doc) {
       const doc = isDraft(box.doc) ? current(box.doc) : box.doc;
-      const items = q.items.map(({ answer, lineIndex }) => ({ answer, lineIndex }));
-      box.doc = withSetAnswers(doc, items);
+      // The box holds the answer trimmed (the drawer's field keeps a space being typed), so a
+      // space alone changes nothing yet.
+      const text = answer.trim();
+      if (answersInBox(doc)[position]?.answer === text) return;
+      const next = withSetAnswer(doc, position, text);
+      box.doc = next;
+      q.items = setItemsFromBox(next);
+      return;
     }
+    const item = q.items[position];
+    if (item && item.answer !== answer) item.answer = answer;
   });

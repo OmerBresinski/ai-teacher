@@ -48,7 +48,7 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { SLIDE_H, SLIDE_W, setAnswersOf } from "@tj/domain/documents";
 import { type PathSegment, pathSegments, presentedSlide, slideBackground } from "@tj/slides";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -470,7 +470,8 @@ export function answerText(slide: Slide): string | null {
     case "set":
       // A coded question set (TEACH-101): each answer numbered by the line it answers.
       return (
-        q.items
+        // The answers box is the source of truth: a teacher's edit on the canvas counts.
+        setAnswersOf(slide)
           .filter((a) => a.answer.trim())
           .map((a) => `${a.lineIndex + 1}. ${a.answer.trim()}`)
           .join("   ") || null

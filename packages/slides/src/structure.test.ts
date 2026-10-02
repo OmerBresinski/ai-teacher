@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import type { RichDoc, Slide, SlideElement, TextElement } from "@tj/domain/documents";
+import {
+  type RichDoc,
+  type Slide,
+  type SlideElement,
+  SlideSchema,
+  type TextElement,
+} from "@tj/domain/documents";
+import { codedSetSlide } from "@tj/domain/documents/fixtures";
 import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import { docFromNumbered } from "./layouts";
@@ -26,6 +33,7 @@ import {
   STEP_ARROW_NAME,
   STEP_NAME,
   stepsStrip,
+  structureSlide,
 } from "./structure";
 import { getTheme } from "./themes";
 
@@ -393,5 +401,38 @@ describe("overflow fixes", () => {
     expect(text((named(pages[1]?.elements ?? [], "Heading")[0] as TextElement).doc)).toBe(
       "Long (continued)",
     );
+  });
+});
+
+describe("a coded set's question follows its answers (TEACH-101)", () => {
+  test("re-laid: the strip becomes the answers card, and the question points at it, read from it", () => {
+    const [page, ...rest] = structureSlide(codedSetSlide(undefined, { strip: true }), chalk);
+    expect(rest).toHaveLength(0);
+    const q = page?.question;
+    if (q?.type !== "set") throw new Error("expected set");
+    const box = page?.elements.find((e) => e.id === q.answersId);
+    expect(box?.name).toBe(ANSWERS_NAME);
+    expect(q.items.map((a) => a.answer)).toEqual(["AD 43", "Boudica", "Hadrian"]);
+    expect(SlideSchema.safeParse(page).success).toBe(true);
+  });
+
+  test("answers moved to a slide of their own: neither slide keeps the set question", () => {
+    const long = Array.from(
+      { length: 6 },
+      (_, i) => `Answer ${i + 1} ${"is a long answer ".repeat(3)}`,
+    );
+    const slide = codedSetSlide(long, { strip: true });
+    const list = slide.elements.find((e) => e.id === "set-list") as TextElement;
+    list.doc = docFromNumbered(
+      long.map(
+        (_, i) => `Question ${i + 1} ${"asks something rather long about Rome ".repeat(3)}?`,
+      ),
+    );
+    const pages = structureSlide(slide, chalk);
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) {
+      expect(page.question).toBeUndefined();
+      expect(SlideSchema.safeParse(page).success).toBe(true);
+    }
   });
 });

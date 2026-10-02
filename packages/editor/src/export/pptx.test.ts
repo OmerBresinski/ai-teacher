@@ -3,11 +3,12 @@ import type {
   GapTextElement,
   Lesson,
   OptionElement,
+  ShapeElement,
   Slide,
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { SLIDE_H, SLIDE_W, withSetAnswer } from "@tj/domain/documents";
 import { codedSetSlide, creditedLesson } from "@tj/domain/documents/fixtures";
 import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
 import JSZip from "jszip";
@@ -1053,6 +1054,15 @@ describe("a coded question set (TEACH-101)", () => {
     expect(answers).toContain("<a:t>Answers</a:t>");
     expect(answers).toContain("1. AD 43   2. Boudica   3. Hadrian");
   }, 30_000);
+
+  it("reads the answers box as it stands: a canvas edit the question's copy has not seen counts", () => {
+    const set = codedSetSlide();
+    const box = set.elements.find((e) => e.id === "set-answers") as ShapeElement & {
+      doc: NonNullable<ShapeElement["doc"]>;
+    };
+    box.doc = withSetAnswer(box.doc, 1, "Queen Boudica");
+    expect(answerText(set)).toBe("1. AD 43   2. Queen Boudica   3. Hadrian");
+  });
 
   it("row 5: stored without the question, no Answers entry and no error", async () => {
     const set = codedSetSlide(undefined, { question: false });

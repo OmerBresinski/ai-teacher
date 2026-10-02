@@ -7,7 +7,7 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { answersInBox, asksForUnlistedOptions } from "@tj/domain/documents";
+import { asksForUnlistedOptions, setItemsFromBox } from "@tj/domain/documents";
 import {
   ANSWERS_NAME,
   fitSlide,
@@ -505,7 +505,7 @@ export function withSetQuestion(slide: Slide, answers: readonly string[]): Slide
   );
   const doc = box && "doc" in box ? box.doc : undefined;
   if (!box || !doc || !(box.revealStep ?? 0)) return slide;
-  const items = answersInBox(doc).map(({ lineIndex, answer }) => ({
+  const items = setItemsFromBox(doc).map(({ lineIndex, answer }) => ({
     lineIndex,
     answer: answers[lineIndex] ?? answer,
   }));

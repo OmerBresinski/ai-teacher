@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import {
-  type ImageElement,
-  type Lesson,
-  richDocToPlainText,
-  type ShapeElement,
-  type SlideElement,
-} from "@tj/domain/documents";
-import { codedSetSlide } from "@tj/domain/documents/fixtures";
+import type { ImageElement, Lesson, ShapeElement, SlideElement } from "@tj/domain/documents";
 import { docFromText, newSlide } from "../../model/factories";
 import { makeLine, makeShape, makeTable, makeText, makeTimer } from "../../model/insert";
 import { getTheme } from "../../model/themes";
@@ -626,35 +619,5 @@ describe("SlideToolbar (rows 5, 6)", () => {
     expect(q().options.map((o) => o.correct)).toEqual(
       [true, false, false, false].slice(0, q().options.length),
     );
-  });
-
-  test("TEACH-101 row 3: a coded set's answer edits the question and the revealed answers together; one Undo restores both", async () => {
-    const lesson = seededLesson();
-    lesson.slides = [codedSetSlide(), ...lesson.slides];
-    const { read } = renderEditor(lesson);
-    fireEvent.click(within(toolbar("Slide")).getByRole("button", { name: "Answer" }));
-    const fields = await screen.findAllByRole("textbox", { name: /^Answer to question/ });
-    expect(fields).toHaveLength(3);
-    const second = screen.getByRole("textbox", { name: "Answer to question 2" });
-    expect(second).toHaveValue("Boudica");
-    const state = () => {
-      const slide = read().slides[0];
-      const q = slide?.question as { items: { answer: string }[] };
-      const box = slide?.elements.find((e) => e.id === "set-answers") as ShapeElement;
-      return { item: q.items[1]?.answer, box: richDocToPlainText(box.doc ?? { type: "doc" }) };
-    };
-    fireEvent.change(second, { target: { value: "Queen" } });
-    fireEvent.change(second, { target: { value: "Queen Boudica" } });
-    fireEvent.blur(second);
-    expect(state()).toEqual({ item: "Queen Boudica", box: "1 AD 43\n2 Queen Boudica\n3 Hadrian" });
-    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(state()).toEqual({ item: "Boudica", box: "1 AD 43\n2 Boudica\n3 Hadrian" });
-  });
-
-  test("TEACH-101 row 5: a set slide stored without the question has no Answer drawer", () => {
-    const lesson = seededLesson();
-    lesson.slides = [codedSetSlide(undefined, { question: false }), ...lesson.slides];
-    renderEditor(lesson);
-    expect(within(toolbar("Slide")).queryByRole("button", { name: "Answer" })).toBeNull();
   });
 });

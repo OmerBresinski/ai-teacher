@@ -11,6 +11,7 @@ import type {
   TextStyle,
   Theme,
 } from "@tj/domain/documents";
+import { setItemsFromBox, withoutOrphanSet } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE, snapY } from "./grid";
@@ -959,6 +960,33 @@ export function structureSlide(
   ids: Ids = uid,
   options: { pages?: boolean } = { pages: true },
 ): Slide[] {
+  return structurePages(slide, t, hints, ids, options).map(withSetBox);
+}
+
+/**
+ * TEACH-101: a set question follows its answers when the pass re-lays them. A slide whose box was
+ * rebuilt points at the new box (its answers read from it); one whose answers moved to a slide of
+ * their own, or are now marked on the options, carries no set question.
+ */
+function withSetBox(slide: Slide): Slide {
+  const q = slide.question;
+  if (q?.type !== "set" || slide.elements.some((e) => e.id === q.answersId)) return slide;
+  const box = slide.elements.find(
+    (e) => e.name === ANSWERS_NAME && (e.revealStep ?? 0) > 0 && "doc" in e && e.doc,
+  );
+  const doc = box && "doc" in box ? box.doc : undefined;
+  if (box && doc)
+    return { ...slide, question: { ...q, answersId: box.id, items: setItemsFromBox(doc) } };
+  return withoutOrphanSet(slide);
+}
+
+function structurePages(
+  slide: Slide,
+  t: Theme,
+  hints: SlideStructure,
+  ids: Ids,
+  options: { pages?: boolean },
+): Slide[] {
   if (
     slide.elements.some((e) =>
       [OPTION_CHIP_NAME, COMPARE_NAME, STEP_NAME, KEY_CARD_NAME, PANEL_NAME].includes(e.name ?? ""),
@@ -1097,12 +1125,10 @@ function answersClear(slides: Slide[], t: Theme, ids: Ids, paginate: boolean): S
         : e,
     );
     const { question: _question, ...answersSlide } = next;
-    const asked = { ...slide, elements: slide.elements.filter((e) => e !== panel) };
-    // A set question whose answers box moves off the slide has nothing left to reveal (TEACH-101).
-    if (asked.question?.type === "set" && asked.question.answersId === panel.id) {
-      delete asked.question;
-    }
-    return [asked, { ...answersSlide, elements: named }];
+    return [
+      { ...slide, elements: slide.elements.filter((e) => e !== panel) },
+      { ...answersSlide, elements: named },
+    ];
   });
 }
 

@@ -1069,6 +1069,8 @@ function reid(laid: Layout, ids: IdSupplier): Layout {
     };
   } else if (question?.type === "sort") {
     question = { ...question, order: question.order.map(m) };
+  } else if (question?.type === "set") {
+    question = { ...question, answersId: m(question.answersId) };
   }
   return question ? { elements, question } : { elements };
 }

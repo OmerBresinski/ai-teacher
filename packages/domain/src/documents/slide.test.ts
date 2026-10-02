@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { codedSetSlide } from "./fixtures.test-helpers";
-import { answersInBox, withSetAnswers } from "./set-answers";
+import { answersInBox, setAnswersOf, withoutOrphanSet, withSetAnswer } from "./set-answers";
 import {
   answerRevealSteps,
   hasRevealableAnswer,
+  SET_LINES_MAX,
   type Slide,
   SlideSchema,
   setAnswersElement,
@@ -35,14 +36,38 @@ describe("the set question", () => {
     expect(SlideSchema.safeParse(line).success).toBe(false);
   });
 
-  test("a negative lineIndex is rejected", () => {
-    const slide = codedSetSlide();
-    slide.question = {
-      type: "set",
-      answersId: "set-answers",
-      items: [{ answer: "x", lineIndex: -1 }],
+  test("a lineIndex out of range, repeated or out of order is rejected", () => {
+    const withItems = (lineIndexes: number[]) => {
+      const slide = codedSetSlide();
+      slide.question = {
+        type: "set",
+        answersId: "set-answers",
+        items: lineIndexes.map((lineIndex) => ({ answer: "x", lineIndex })),
+      };
+      return SlideSchema.safeParse(slide).success;
     };
-    expect(SlideSchema.safeParse(slide).success).toBe(false);
+    expect(withItems([0, 2, 3])).toBe(true);
+    expect(withItems([-1])).toBe(false);
+    expect(withItems([SET_LINES_MAX])).toBe(false);
+    expect(withItems([0, 0])).toBe(false);
+    expect(withItems([1, 0])).toBe(false);
+  });
+
+  test("the Answer step is the box's own step, and only when it is the slide's last", () => {
+    const slide = codedSetSlide();
+    const later = {
+      ...slide,
+      elements: [...slide.elements, { ...slide.elements[1], id: "later", revealStep: 2 }],
+    } as Slide;
+    expect(slideStepCount(later)).toBe(2);
+    expect(answerRevealSteps(later)).toBe(0);
+    expect(hasRevealableAnswer(later)).toBe(false);
+    const both = {
+      ...slide,
+      elements: slide.elements.map((e) => (e.id === "set-answers" ? { ...e, revealStep: 2 } : e)),
+    };
+    expect(slideStepCount(both)).toBe(2);
+    expect(answerRevealSteps(both)).toBe(1);
   });
 
   test("one answer step, already counted by the box's reveal step: the step count is unchanged", () => {
@@ -85,26 +110,66 @@ describe("the answers box", () => {
     expect(answersInBox(box(codedSetSlide(undefined, { strip: true })))).toEqual(items);
   });
 
-  test("withSetAnswers rewrites one answer, keeping the card's number run and its marks", () => {
+  test("withSetAnswer changes one answer's characters only: the number run, its marks and the other lines stay", () => {
     const doc = box(codedSetSlide());
-    const next = withSetAnswers(doc, [
-      { lineIndex: 0, answer: "AD 43" },
-      { lineIndex: 1, answer: "Queen Boudica" },
-      { lineIndex: 2, answer: "Hadrian" },
-    ]);
+    const next = withSetAnswer(doc, 1, "Queen Boudica");
     expect(next.content?.[1]?.content?.[0]).toEqual(doc.content?.[1]?.content?.[0]);
     expect(next.content?.[1]?.content?.[1]?.text).toBe("Queen Boudica");
-    expect(next.content?.[0]).toEqual(doc.content?.[0]);
+    expect(next.content?.[0]).toBe(doc.content?.[0]);
+    expect(next.content?.[2]).toBe(doc.content?.[2]);
   });
 
-  test("withSetAnswers rewrites the strip; an emptied answer leaves no empty text node", () => {
-    const doc = box(codedSetSlide(["a", "b"], { strip: true }));
-    const next = withSetAnswers(doc, [
-      { lineIndex: 0, answer: "a" },
-      { lineIndex: 1, answer: "c" },
+  test("a teacher's extra paragraph and formatting survive a drawer edit; the box is read as it stands", () => {
+    const doc = box(codedSetSlide());
+    const edited = {
+      ...doc,
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Check spelling!" }] },
+        ...(doc.content ?? []).slice(0, 2),
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "3 ", marks: [{ type: "bold" }] },
+            { type: "text", text: "Hadrian", marks: [{ type: "italic" }] },
+            { type: "text", text: " (AD 122)" },
+          ],
+        },
+      ],
+    };
+    // The teacher's note has no number: it takes its position, and the rest keep theirs.
+    expect(answersInBox(edited).map((a) => [a.lineIndex, a.answer])).toEqual([
+      [0, "Check spelling!"],
+      [0, "AD 43"],
+      [1, "Boudica"],
+      [2, "Hadrian (AD 122)"],
     ]);
-    expect(answersInBox(next).map((a) => a.answer)).toEqual(["a", "c"]);
-    const card = withSetAnswers(box(codedSetSlide(["a"])), [{ lineIndex: 0, answer: "" }]);
+    const next = withSetAnswer(edited, 3, "Emperor Hadrian");
+    expect(next.content?.[0]).toBe(edited.content[0]);
+    expect(next.content?.[3]?.content).toEqual([
+      { type: "text", text: "3 ", marks: [{ type: "bold" }] },
+      { type: "text", text: "Emperor Hadrian", marks: [{ type: "italic" }] },
+    ]);
+  });
+
+  test("the strip: one entry rewritten, the rest of its text as it was; an emptied card answer leaves no empty run", () => {
+    const doc = box(codedSetSlide(["a", "b", "c"], { strip: true }));
+    const next = withSetAnswer(doc, 1, "bee");
+    expect(answersInBox(next).map((a) => a.answer)).toEqual(["a", "bee", "c"]);
+    expect(next.content?.[0]?.content?.[0]?.text).toBe("Answers: 1 a  ·  2 bee  ·  3 c");
+    const card = withSetAnswer(box(codedSetSlide(["a"])), 0, "");
     expect(card.content?.[0]?.content).toHaveLength(1);
+    expect(withSetAnswer(doc, 9, "x")).toBe(doc);
+  });
+
+  test("setAnswersOf reads the box, or the question's copy when the box is gone", () => {
+    const slide = codedSetSlide();
+    const target = slide.elements.find((e) => e.id === "set-answers") as { doc: typeof doc };
+    const doc = box(slide);
+    target.doc = withSetAnswer(doc, 0, "AD 44");
+    expect(setAnswersOf(slide)[0]?.answer).toBe("AD 44");
+    const gone = { ...slide, elements: slide.elements.filter((e) => e.id !== "set-answers") };
+    expect(setAnswersOf(gone)[0]?.answer).toBe("AD 43");
+    expect(withoutOrphanSet(gone).question).toBeUndefined();
+    expect(withoutOrphanSet(slide)).toBe(slide);
   });
 });

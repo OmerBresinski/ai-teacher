@@ -6,11 +6,14 @@ import {
   type Provenance,
   parseLesson,
   type ShapeElement,
+  type Slide,
   type SlideElement,
+  SlideSchema,
+  setAnswersOf,
   type TableElement,
   type TextElement,
 } from "@tj/domain/documents";
-import { generatedFrom } from "@tj/domain/documents/fixtures";
+import { codedSetSlide, generatedFrom } from "@tj/domain/documents/fixtures";
 import { docFromText, newLesson, newSlide, newText, uid } from "../factories";
 import { unionRect } from "../geometry";
 import * as r from "./index";
@@ -783,5 +786,37 @@ describe("first teacher edit (TEACH-74)", () => {
     expect(ca?.generatedFrom?.originalText).toBe("Alpha");
     expect(cb?.authoredBy).toBe("ai");
     expect(cb?.generatedFrom?.originalText).toBeUndefined();
+  });
+});
+
+describe("a coded set's answers (TEACH-101)", () => {
+  const withSet = (strip = false) => {
+    const lesson = newLesson();
+    lesson.slides = [codedSetSlide(undefined, { strip })];
+    return lesson;
+  };
+  const q = (l: Lesson) => l.slides[0]?.question;
+
+  test("deleting the answers box drops the set question; the slide stays valid", () => {
+    const next = r.deleteElements(withSet(), "set-slide", ["set-answers"]);
+    expect(q(next)).toBeUndefined();
+    expect(SlideSchema.safeParse(next.slides[0]).success).toBe(true);
+    const other = r.deleteElements(withSet(), "set-slide", ["set-heading"]);
+    expect(q(other)?.type).toBe("set");
+  });
+
+  test("setSetAnswer edits the box in place and re-reads the question's copy from it", () => {
+    for (const strip of [false, true]) {
+      const next = r.setSetAnswer(withSet(strip), "set-slide", 2, "Emperor Hadrian ");
+      expect(setAnswersOf(next.slides[0] as Slide).map((a) => a.answer)).toEqual([
+        "AD 43",
+        "Boudica",
+        "Emperor Hadrian",
+      ]);
+      expect((q(next) as { items: { answer: string }[] }).items[2]?.answer).toBe("Emperor Hadrian");
+      expect(SlideSchema.safeParse(next.slides[0]).success).toBe(true);
+    }
+    const same = withSet();
+    expect(r.setSetAnswer(same, "set-slide", 1, "Boudica ")).toBe(same);
   });
 });

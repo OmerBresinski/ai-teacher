@@ -110,6 +110,9 @@ export type QuestionData =
 
 export type SetAnswer = { answer: string; lineIndex: number };
 
+/** No set prints more lines than this on one slide; a `lineIndex` past it is corrupt. */
+export const SET_LINES_MAX = 20;
+
 /* ------------------------------------------------------------------ */
 /* Elements                                                            */
 /* ------------------------------------------------------------------ */
@@ -645,7 +648,16 @@ export const QuestionDataSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("set"),
     answersId: z.string(),
-    items: z.array(z.object({ answer: z.string(), lineIndex: z.number().int().min(0) })),
+    items: z.array(
+      z.object({
+        answer: z.string(),
+        lineIndex: z
+          .number()
+          .int()
+          .min(0)
+          .max(SET_LINES_MAX - 1),
+      }),
+    ),
   }),
 ]);
 
@@ -773,6 +785,17 @@ export const SlideSchema = z
     if (q.type === "set") {
       // The answers box carries rich text: the strip is a text element, the card a shape.
       mustBe(q.answersId, ["text", "shape"], ["question", "answersId"]);
+      // One answer per line, in the lines' order.
+      q.items.forEach((item, i) => {
+        const before = q.items[i - 1];
+        if (before && item.lineIndex <= before.lineIndex) {
+          ctx.addIssue({
+            code: "custom",
+            message: `set answers must follow their lines in order, once each (line ${item.lineIndex + 1})`,
+            path: ["question", "items", i, "lineIndex"],
+          });
+        }
+      });
     }
     if (q.type === "fill-gap") {
       const text = JSON.stringify(slide.elements);
@@ -801,7 +824,7 @@ export function slideStepCount(slide: Slide): number {
     }
   };
   walk(slide.elements);
-  // A set's answers are an element on a reveal step of its own, already counted above.
+  // A set's answers are an element with a reveal step of its own, already counted above.
   if (slide.question?.type === "set") return max;
   // Question slides get extra steps for "reveal answer" — but only when there is an answer
   // to reveal (TEACH-185: a choice question dims one wrong option per step first).
@@ -820,6 +843,24 @@ export function answerRevealSteps(slide: Slide): number {
   if (q?.type === "multiple-choice") return q.options.filter((o) => !o.correct).length + 1;
   if (q?.type === "true-false") return Math.max(1, countOptions(slide.elements));
   return 1;
+}
+
+/**
+ * The step a set's answers box appears on, when that is the slide's last step (so the step reads
+ * "Answer"); 0 when the box is gone, shown from the start, or followed by later steps.
+ */
+function setAnswerStep(slide: Slide): number {
+  const step = setAnswersElement(slide)?.revealStep ?? 0;
+  if (step <= 0) return 0;
+  let max = 0;
+  const walk = (els: SlideElement[]) => {
+    for (const el of els) {
+      if (el.revealStep && el.revealStep > max) max = el.revealStep;
+      if (el.type === "group") walk(el.children);
+    }
+  };
+  walk(slide.elements);
+  return step === max ? step : 0;
 }
 
 /** The answers box a set question reveals, when it is still on the slide. */
@@ -872,8 +913,8 @@ export function hasRevealableAnswer(slide: Slide): boolean {
   const q = slide.question;
   if (!q) return false;
   if (q.type === "open-response") return !!q.modelAnswer?.trim();
-  // A set reveals its answers box; one the teacher deleted or put on the first step reveals
-  // nothing, and the slide presents as it would without the question.
-  if (q.type === "set") return (setAnswersElement(slide)?.revealStep ?? 0) > 0;
+  // A set reveals its answers box on the slide's last step; a box the teacher deleted, showed from
+  // the start or put before other steps is no answer step, and the slide presents as without it.
+  if (q.type === "set") return setAnswerStep(slide) > 0;
   return true;
 }

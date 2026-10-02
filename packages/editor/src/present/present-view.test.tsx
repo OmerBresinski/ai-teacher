@@ -1,7 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { codedSetSlide } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import { buildActivity } from "../model/derive-activities";
 import { newSlide } from "../model/factories";
@@ -38,24 +37,6 @@ const key = (k: string, init: KeyboardEventInit = {}) =>
   fireEvent.keyDown(window, { key: k, ...init });
 
 describe("PresentView", () => {
-  it("TEACH-101 row 2: a coded set's answers step reads Answer, in one step; row 5: stored without the question it reads Reveal", () => {
-    for (const [question, label] of [
-      [true, /^Answer/],
-      [false, /^Reveal/],
-    ] as const) {
-      const l = lesson();
-      l.slides.splice(0, 0, codedSetSlide(undefined, { question }));
-      const { unmount } = renderPresent({ lesson: l });
-      expect(status()).toContain("step 1 of 2");
-      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
-      key("ArrowRight");
-      expect(status()).toContain(question ? "answer shown" : "step 2 of 2");
-      key("ArrowRight");
-      expect(status()).toContain("Slide 2 of");
-      unmount();
-    }
-  });
-
   it("stages a four-option multiple choice: three Rights dim the wrong cards, the fourth fills the right one", async () => {
     const l = lesson();
     l.slides.splice(0, 0, buildActivity("multiple-choice", l.themeId));

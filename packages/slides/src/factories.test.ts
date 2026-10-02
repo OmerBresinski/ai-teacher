@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { parseLesson } from "@tj/domain/documents";
+import { parseLesson, SlideSchema } from "@tj/domain/documents";
+import { codedSetSlide } from "@tj/domain/documents/fixtures";
 import {
   cloneSlide,
   docFromBullets,
@@ -50,5 +51,22 @@ describe("factories", () => {
     if (copy.question?.type !== "multiple-choice") throw new Error("expected multiple-choice");
     const newIds = new Set(copy.elements.map((e) => e.id));
     for (const o of copy.question.options) expect(newIds.has(o.id)).toBe(true);
+  });
+
+  test("TEACH-101: cloneSlide re-points a set question at the copied answers box; without the box it drops it", () => {
+    const slide = codedSetSlide();
+    const copy = cloneSlide(slide);
+    if (copy.question?.type !== "set") throw new Error("expected set");
+    const box = copy.elements.find((e) => e.name === "Answers");
+    expect(box?.id).not.toBe("set-answers");
+    expect(copy.question.answersId).toBe(box?.id as string);
+    expect(copy.question).toEqual({
+      ...copy.question,
+      items: slide.question?.type === "set" ? slide.question.items : [],
+    });
+    expect(SlideSchema.safeParse(copy).success).toBe(true);
+    const part = cloneSlide({ ...slide, elements: slide.elements.slice(0, 2) });
+    expect(part.question).toBeUndefined();
+    expect(SlideSchema.safeParse(part).success).toBe(true);
   });
 });

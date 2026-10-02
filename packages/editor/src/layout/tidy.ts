@@ -7,6 +7,7 @@ import {
   type Slide,
   type SlideElement,
   type Theme,
+  withoutOrphanSet,
 } from "@tj/domain/documents";
 import { BODY_Y, HEADING_GAP, KIND_TAG_NAME, SAFE, SPACE, snapY } from "@tj/slides";
 import { cloneSlide, docFromText, uid } from "../model/factories";
@@ -694,7 +695,7 @@ function fitAndSplit(
     if (result.splitAt !== undefined && round < MAX_CONTINUATIONS) {
       const plan = planSplit(current, result.elements, result.overflow, theme, measure);
       if (plan) {
-        current = { ...current, elements: plan.head };
+        current = withoutOrphanSet({ ...current, elements: plan.head });
         // Settle the shortened slide before recording it.
         result = reflowSlide(current, theme, measure, reflowOptions(current, theme, measure));
         next = plan.continuation;

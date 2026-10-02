@@ -1,4 +1,4 @@
-import type { QuestionData, Slide } from "@tj/domain/documents";
+import { type QuestionData, type Slide, setAnswersOf } from "@tj/domain/documents";
 import {
   Checkbox,
   IconButton,
@@ -15,7 +15,7 @@ import {
   Textarea,
 } from "@tj/ui";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { PanelRow } from "../../kit/Panel";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
@@ -71,6 +71,8 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
   const history = useHistory();
   const typing = useEditSession(history);
   const rowId = useId();
+  /** The set answer being typed, as typed (TEACH-101). */
+  const [draft, setDraft] = useState<{ at: number; value: string } | null>(null);
   const set = (next: QuestionData) => history.dispatch(reducers.setQuestion, slide.id, next);
   const type = (next: QuestionData) => typing.run(() => set(next));
 
@@ -258,26 +260,32 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
 
             {question.type === "set" ? (
               <div className="flex flex-col gap-2">
-                {question.items.map((item, i) => (
-                  <div key={item.lineIndex} className="flex flex-col gap-1">
-                    <label
-                      htmlFor={`${rowId}-set-${item.lineIndex}`}
-                      className="text-ink-3 text-meta"
-                    >
+                {setAnswersOf(slide).map((item, i) => (
+                  // Keyed by position: the box is the teacher's to edit, so its numbers may repeat.
+                  // biome-ignore lint/suspicious/noArrayIndexKey: the position is the answer's identity
+                  <div key={i} className="flex flex-col gap-1">
+                    <label htmlFor={`${rowId}-set-${i}`} className="text-ink-3 text-meta">
                       Question {item.lineIndex + 1}
                     </label>
                     <Textarea
-                      id={`${rowId}-set-${item.lineIndex}`}
+                      id={`${rowId}-set-${i}`}
                       rows={2}
-                      value={item.answer}
+                      // The box trims what it reads back; the field keeps what is being typed
+                      // (a trailing space) until it loses focus.
+                      value={draft?.at === i ? draft.value : item.answer}
                       aria-label={`Answer to question ${item.lineIndex + 1}`}
                       className="min-h-0 resize-none"
-                      onBlur={typing.end}
-                      onChange={(e) =>
+                      onBlur={() => {
+                        setDraft(null);
+                        typing.end();
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setDraft({ at: i, value });
                         typing.run(() =>
-                          history.dispatch(reducers.setSetAnswer, slide.id, i, e.target.value),
-                        )
-                      }
+                          history.dispatch(reducers.setSetAnswer, slide.id, i, value),
+                        );
+                      }}
                     />
                   </div>
                 ))}

@@ -8,6 +8,7 @@ import type {
   TextElement,
   TextPreset,
 } from "@tj/domain/documents";
+import { withoutOrphanSet } from "@tj/domain/documents";
 import { nanoid } from "nanoid";
 import { layoutSlide } from "./layouts";
 import { FIT_VERSION } from "./themes";
@@ -118,6 +119,8 @@ export function cloneSlide(slide: Slide): Slide {
     if (q.type === "image-match")
       q.pairs = q.pairs.map((p) => ({ ...p, imageId: m(p.imageId), labelId: m(p.labelId) }));
     if (q.type === "sort") q.order = q.order.map(m);
+    if (q.type === "set") q.answersId = m(q.answersId);
   }
-  return copy;
+  // A set whose answers box did not come along (a continuation of part of the slide) has none.
+  return withoutOrphanSet(copy);
 }

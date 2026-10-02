@@ -475,7 +475,15 @@ export const codedSetSlide = (
         name: "Heading",
         style: { preset: "heading" },
       } as Partial<SlideElement>),
-      textElement("set-list", answers.map((_, i) => `Question ${i + 1}?`).join("\n")),
+      textElement("set-list", "", {
+        doc: {
+          type: "doc",
+          content: answers.map((_, i) => ({
+            type: "paragraph",
+            content: [{ type: "text", text: `Question ${i + 1}?` }],
+          })),
+        },
+      } as Partial<SlideElement>),
       box,
     ],
     ...(options.question === false
