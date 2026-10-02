@@ -44,6 +44,11 @@ import { HOUSE_RULES } from "./shared";
  *   - Years 1 to 4: one sentence per item, and a practise item holding several ideas is split
  *     (a 20-word Y1 item copied from the slide).
  *   - A marked item that sets a scenario still opens with its command word (Y11 "A pupil says…").
+ * v5 (2 Oct 2026, v4 re-check, same file): the opening scaffold comes from the class's year-band
+ *   line (v4's generic list, word bank first, put word banks on the Y13 sheet, against E3);
+ *   practise-slide items stay unmarked (a verbatim slide item cannot open with a command word, the
+ *   Y11 miss); a Years 1 to 4 slide item asking several things becomes one item per thing; marks
+ *   go only in `marks` (Y13 wrote "(3 marks)" in the text).
  */
 
 export type GenerateWorksheetLessonInput = {
@@ -69,29 +74,29 @@ const MC_SHAPE =
 export const exitQuestionCount = (): number => MAX_EXIT_QUESTIONS;
 
 export const generateWorksheetLessonPrompt = {
-  version: "generate-worksheet-lesson.v4",
+  version: "generate-worksheet-lesson.v5",
   system: [
     "You write the pupil worksheet for a lesson that has just been taught. The user turn gives the class, the lesson's objectives and misconceptions, and its learning cycles: each cycle's teaching slides, then the check and practise slides that followed, as their slide text.",
     "",
     "Tasks:",
     '- One task per cycle, in cycle order; `cycle` is the cycle\'s number. `title` names what the task practises (code adds "Task A:"). `instruction` is one line telling pupils what to do.',
-    "- `supported` comes first in every task. It opens with a scaffold suited to the subject and age (a word bank with gap-fills, matching, multiple choice, sentence starters, or a partly worked step to finish) built on the cycle's worked example, check or first practise item; short-answer questions (`answerLines` 1 or 2) may follow.",
+    "- `supported` comes first in every task. It opens with a scaffold from the class's year-band line below, built on the cycle's worked example, check or first practise item; short-answer questions (`answerLines` 1 or 2) may follow.",
     "- `stretch` comes last: at least one open `question` (`answerLines` 3 or more) asking pupils to explain, apply the idea to a new case, or solve a problem.",
-    "- Where a cycle has a practise slide, its items go on the sheet in the slide's words, after that opening scaffold and in the part they suit, so the teacher can run the sheet from the board. A cycle with only a practise slide still gets its scaffold first. Everything else uses the slides' terms, methods and examples, and asks only what the slides taught.",
+    "- Where a cycle has a practise slide, its items go on the sheet in the slide's words, unmarked, after that opening scaffold and in the part they suit (for Years 1 to 4, a slide item asking several things becomes one item per thing), so the teacher can run the sheet from the board. A cycle with only a practise slide still gets its scaffold first. Everything else uses the slides' terms, methods and examples, and asks only what the slides taught.",
     "- Each item on the sheet uses its own numbers, case or example, so no two items ask the same thing.",
     '- Confront the main misconception in at least one task: the belief to judge true or false and justify, "who is right?" between two claims, or a worked answer containing the error to spot and correct. The item states the belief alone; the correction belongs in the answer.',
     "- A multiple-choice item's wrong options are plausible to this class: a misconception, a near-miss term or a slip in the method.",
     "",
     "Fit the class:",
     "- Choose the forms, scaffolds, number of items and reading load for the year group, subject, reading level and class level given. Each task holds what a pupil at this age finishes in the minutes per task the user turn gives.",
-    '- Years 1 to 4: items of one short sentence with one idea each (split a practise item that holds several), a word bank, gap-fills and matching; the stretch is one short "why" or "what would happen if" question.',
-    "- Years 5 to 9: stems, cloze, worked steps to complete, data written into the item to read, and one extended answer.",
-    "- Years 10 to 13: lighter scaffolds, multi-step problems, data or source analysis, and extended answers.",
+    '- Years 1 to 4: items of one short sentence with one idea each; scaffolds are a word bank with gap-fills, matching and multiple choice; the stretch is one short "why" or "what would happen if" question.',
+    "- Years 5 to 9: scaffolds are sentence stems, cloze with a word bank, and worked steps to complete; then data written into the item to read, and one extended answer.",
+    "- Years 10 to 13: scaffolds are sentence starters, a partly worked step or calculation, or a structure to complete; then multi-step problems, data or source analysis, and extended answers.",
     "- Maths and calculation: fluency items, then a reasoning item, then a word problem. English and humanities: sentence starters, then one extended answer.",
     "",
     "Exam-style items (when the user turn allows them):",
     "- Decide whether this subject is examined at this level with marked written questions. If it is, make the stretch of at least one task a marked question, and others where the exam would ask that way; if it is not, use none.",
-    "- A marked question opens with the exam's command word (State, Describe, Explain, Calculate, Compare, Evaluate, Suggest, To what extent …), with any scenario or claim after it (Explain why a pupil who says … is wrong), has 1 to 6 `marks`, and its answer is the mark scheme: one creditworthy point per mark, one per line.",
+    "- A marked question opens with the exam's command word (State, Describe, Explain, Calculate, Compare, Evaluate, Suggest, To what extent …), with any scenario or claim after it (Explain why a pupil who says … is wrong), has 1 to 6 `marks`, and its answer is the mark scheme: one creditworthy point per mark, one per line. The marks go only in `marks`.",
     "",
     "Answers:",
     "- Every item has its full answer for the answer key. An unmarked open question's answer is 2 or 3 model points, one per line, each agreeing with the slides; the answer is the points alone, as code writes the label above them.",

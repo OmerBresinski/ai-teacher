@@ -281,9 +281,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "dcfcd48eb742584bab6a4bab5d25ce9a40fc7aa76de4cea828f2175e11a074b8",
   },
   "generate-worksheet-lesson": {
-    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count; v4 answers the v3 eval.
-    version: "generate-worksheet-lesson.v4",
-    hash: "8c99f7a62298ef0f5f43f6eb5f70e2377addf37c85775fda9617318af35e4fad",
+    // TEACH-86: v2 is the prompt-engineer's text (v1 was a draft placeholder); v3 adds ruling 147's option count; v4 and v5 answer the evals.
+    version: "generate-worksheet-lesson.v5",
+    hash: "5e66a0bad304b54917fdc3d83761895ba912e4dbc66d7f6748abde001b1952f8",
   },
   "parse-brief": {
     version: "parse-brief.v2",
