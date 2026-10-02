@@ -10,7 +10,7 @@ import {
 } from "@tj/domain/documents";
 import { uid } from "./factories";
 import type { Rect } from "./geometry";
-import { BASELINE, SAFE, SPACE } from "./grid";
+import { BASELINE, SAFE, SPACE, snapY } from "./grid";
 import {
   BODY_Y,
   boxH,
@@ -18,6 +18,7 @@ import {
   type ContentVariant,
   centreY,
   FULL,
+  IDEA_NAME,
   IMAGE_TEXT_COLUMN,
   type Layout,
   shape,
@@ -207,9 +208,10 @@ export type CalloutHost = "content" | "image-text" | "worked-example";
 /**
  * Lay the callout into a filled recipe: append the four and shrink the box that gives up the room.
  *
- * - Content `headed` and `two-column`: the card across `FULL`, bottom-anchored like the working
- *   card, sized to its text; a body box (both columns) that reaches within `SPACE[2]` of the card
- *   is cut to end there, a shorter one is left as the recipe laid it.
+ * - Content `headed`, `two-column` and `callout-row`: the card across `FULL`, bottom-anchored like
+ *   the working card, sized to its text; a body box (both columns) that reaches within `SPACE[2]`
+ *   of the card is cut to end there, a shorter one is left as the recipe laid it. `callout-row` is
+ *   the composition built for it: one sentence hugged by its box, so the row has the rest.
  * - Image-text: the card in the text column under the body, sized to its text; the column's stack
  *   is re-centred with the card counted, and the body keeps what is left above the cards' common
  *   bottom edge.
@@ -415,8 +417,13 @@ export function placeCallout(
   const room = CARD_BOTTOM - (foot + SPACE[2]);
   const fit = fitCallout(t, callout.spec.text, w, room);
   if (!fit) return undefined;
-  const y = Math.max(bottomAnchoredY(fit.height), CARD_BOTTOM - room);
-  const fresh = calloutElements(t, callout.spec, { x, y, w, h: CARD_BOTTOM - y }, fit.size);
+  const anchored = Math.max(bottomAnchoredY(fit.height), CARD_BOTTOM - room);
+  // The callout-row composition reads as one unit: its row sits a heading gap under the idea
+  // rather than at the foot, so a short sentence does not leave a hole between them.
+  const row = inColumn.some((el) => el.name === IDEA_NAME);
+  const y = row ? Math.min(anchored, snapY(foot + SPACE[4])) : anchored;
+  const h = row ? fit.height : CARD_BOTTOM - y;
+  const fresh = calloutElements(t, callout.spec, { x, y, w, h }, fit.size);
   const placed = fresh.map((el): SlideElement => {
     const old = callout.kept.find((k) => k.name === el.name);
     return old ? ({ ...old, ...el, id: old.id } as SlideElement) : { ...el, id: ids() };

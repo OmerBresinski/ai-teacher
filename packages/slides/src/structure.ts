@@ -13,7 +13,7 @@ import type {
 } from "@tj/domain/documents";
 import { docFromBullets, docFromText, uid } from "./factories";
 import { fitSlide } from "./fit-slide";
-import { SAFE, SPACE, snapY } from "./grid";
+import { GUTTER, SAFE, SPACE, snapY } from "./grid";
 import {
   ACCENT_BAR_NAME,
   accentTint,
@@ -26,7 +26,7 @@ import {
   panelFill,
 } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
-import { ANSWERS_NAME, HEADING_NAME, isBackdrop } from "./reflow";
+import { ANSWERS_NAME, HEADING_NAME, isBackdrop, textPartsOf } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { floorBelow, readingLeading, readingSize, resolveFontSize } from "./text-style";
@@ -467,7 +467,7 @@ export function answersPanel(
 ): ShapeElement | undefined {
   if (answers.length === 0) return undefined;
   const measure = measureHeadless(t);
-  const doc: RichDoc = {
+  let doc: RichDoc = {
     type: "doc",
     content: answers.map((a) => ({
       type: "paragraph",
@@ -483,6 +483,30 @@ export function answersPanel(
   };
   const pad = SPACE[2];
   let size = resolveFontSize(t, "small");
+  // Short answers share one line ("1 Water   2 40 ml   3 120 ml"), so the panel leaves the
+  // questions the room it does not need; longer ones take a line each.
+  const oneLine: RichDoc = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: (doc.content ?? []).flatMap((p, i) => [
+          ...(i > 0 ? [{ type: "text", text: "     " }] : []),
+          ...((p as { content: RichDoc["content"] }).content ?? []),
+        ]),
+      },
+    ],
+  } as RichDoc;
+  const lineH = heightOf(
+    measure,
+    { type: "doc", content: (doc.content ?? []).slice(0, 1) } as RichDoc,
+    SAFE.w,
+    "small",
+    size,
+    pad,
+  );
+  if (answers.length > 1 && heightOf(measure, oneLine, SAFE.w, "small", size, pad) <= lineH)
+    doc = oneLine;
   let h = heightOf(measure, doc, SAFE.w, "small", size, pad);
   const most = Math.round(SAFE.h * 0.62);
   if (h > most) {
@@ -649,8 +673,9 @@ function wordsFit(
   t: Theme,
 ): boolean {
   const line = size * t.lineHeights[preset];
+  // A hyphen is a break point on screen ("2-methylpropan-/2-ol"), so each hyphenated part is a word.
   return text
-    .split(/\s+/)
+    .split(/\s+|(?<=-)(?=\S)/)
     .filter(Boolean)
     .every((word) => heightOf(measure, docFromText(word), width, preset, size) <= line * 1.5);
 }
@@ -961,7 +986,14 @@ export function structureSlide(
 ): Slide[] {
   if (
     slide.elements.some((e) =>
-      [OPTION_CHIP_NAME, COMPARE_NAME, STEP_NAME, KEY_CARD_NAME, PANEL_NAME].includes(e.name ?? ""),
+      [
+        OPTION_CHIP_NAME,
+        COMPARE_NAME,
+        STEP_NAME,
+        KEY_CARD_NAME,
+        PANEL_NAME,
+        ROW_CARD_NAME,
+      ].includes(e.name ?? ""),
     )
   ) {
     // Already structured (a stored slide): only its answers are moved off the questions.
@@ -969,22 +1001,147 @@ export function structureSlide(
   }
   switch (slide.kind) {
     case "exit-ticket":
-      // One list, each question with its options inline, and the answers as a line under it that
-      // the generator turns into a reveal: up to three questions fit one slide with their answers
-      // (UX ruling 108, TEACH-172). No option cards and no pages.
-      return [slide];
     case "starter":
     case "instructions":
       return structureSet(slide, t, hints, ids, options.pages !== false);
+    case "objectives":
+      return [structureObjectives(slide, t, ids)];
+    case "vocabulary":
+      return [structureVocabulary(slide, t, ids)];
     case "worked-example":
       return structureWorked(slide, t, ids, options.pages !== false);
     case "content":
       return structureContent(slide, t, hints, ids, options.pages !== false);
     case "open-response":
       return [structureOpen(slide, t)];
+    case "matching":
+      return [structureMatching(slide, t, ids)];
     default:
       return [slide];
   }
+}
+
+/**
+ * The objectives slide (UX ruling 134, slide 2): each objective on its own numbered full-width
+ * card under the "I can" stem, larger type for fewer objectives. A list that does not fit as
+ * cards stays the numbered list.
+ */
+function structureObjectives(slide: Slide, t: Theme, ids: Ids): Slide {
+  const list = slide.elements.find(
+    (e): e is TextElement => isText(e) && e.style.preset === "body" && !e.name,
+  );
+  if (!list) return slide;
+  const items = docLines(list.doc);
+  if (items.length === 0) return slide;
+  const rest = slide.elements.filter((e) => e !== list);
+  const placed = rowCards(
+    items.map((main, i) => ({ badge: String(i + 1), main })),
+    snapY(list.y + SPACE[1]),
+    SAFE_BOTTOM,
+    t,
+    ids,
+    {
+      textName: (i) => `Objective ${i + 1}`,
+    },
+  );
+  return placed ? { ...slide, elements: [...rest, ...placed.elements] } : slide;
+}
+
+export const WORD_CARD_NAME = "Word card";
+export const WORD_TERM_NAME = "Term";
+export const WORD_DEFINITION_NAME = "Definition";
+
+/**
+ * Vocabulary as word cards (layout audit round 2): each term and its definition on its own card,
+ * two cards a row (one full-width card for a single word), the term bold in the accent over its
+ * definition. Every card of a row takes the row's tallest height. The definitions try the body
+ * size, then `small`; a set whose cards do not fit keeps the recipe's grid.
+ */
+function structureVocabulary(slide: Slide, t: Theme, ids: Ids): Slide {
+  const texts = slide.elements.filter(isText).filter((e) => e.name !== "Heading" && !e.name);
+  const entries: { term: TextElement; def: TextElement }[] = [];
+  texts.forEach((e, i) => {
+    const next = texts[i + 1];
+    if (e.style.preset === "body" && next?.style.preset === "small")
+      entries.push({ term: e, def: next });
+  });
+  if (entries.length === 0) return slide;
+  const used = new Set<SlideElement>(entries.flatMap((e) => [e.term, e.def]));
+  const rest = slide.elements.filter((e) => !used.has(e) && e.name !== "Rule");
+  const first = entries[0] as (typeof entries)[number];
+  const top = first.term.y;
+  const measure = measureHeadless(t);
+  const cols = entries.length === 1 ? 1 : 2;
+  const cardW = cols === 1 ? SAFE.w : Math.floor((SAFE.w - GUTTER) / 2);
+  const pad = SPACE[3];
+  const inner = cardW - pad * 2;
+  const termSize = resolveFontSize(t, "body");
+  const leading = readingLeading(t);
+  for (const [defPreset, defSize] of [
+    ["body", resolveFontSize(t, "body")],
+    ["small", resolveFontSize(t, "small")],
+  ] as const) {
+    const cards = entries.map(({ term, def }) => {
+      const th = heightOf(measure, term.doc, inner, "body", termSize, 0, { lineHeight: leading });
+      const dh = heightOf(measure, def.doc, inner, defPreset, defSize, 0, { lineHeight: leading });
+      return { term, def, th, dh, h: th + SPACE[1] + dh + pad * 2 };
+    });
+    const rows: (typeof cards)[] = [];
+    for (let i = 0; i < cards.length; i += cols) rows.push(cards.slice(i, i + cols));
+    const heights = rows.map((r) => Math.max(...r.map((c) => c.h)));
+    const room = SAFE_BOTTOM - top;
+    const minGap = SPACE[3];
+    const need = heights.reduce((a, b) => a + b, 0) + minGap * (rows.length - 1);
+    if (withSafety(need) > room) continue;
+    const gap =
+      rows.length > 1
+        ? Math.min(SPACE[5], minGap + Math.floor((room - withSafety(need)) / rows.length))
+        : 0;
+    const used2 = heights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+    let y = snapY(top + Math.max(0, Math.floor((room - withSafety(used2)) / 3)));
+    const els: SlideElement[] = [];
+    rows.forEach((row, r) => {
+      const h = heights[r] as number;
+      row.forEach((c, k) => {
+        const x = SAFE.x + k * (cardW + GUTTER);
+        els.push(card(ids, t, { x, y, w: cardW, h }, WORD_CARD_NAME));
+        els.push(
+          text(
+            ids,
+            { x: x + pad, y: y + pad, w: inner, h: c.th },
+            c.term.doc,
+            {
+              ...c.term.style,
+              preset: "body",
+              fontSize: termSize,
+              lineHeight: leading,
+              fontWeight: 700,
+              color: t.colors.accent,
+            },
+            { name: WORD_TERM_NAME },
+          ),
+        );
+        els.push(
+          text(
+            ids,
+            { x: x + pad, y: y + pad + c.th + SPACE[1], w: inner, h: c.dh },
+            c.def.doc,
+            {
+              ...c.def.style,
+              preset: defPreset,
+              fontSize: defSize,
+              lineHeight: leading,
+              color: t.colors.ink,
+            },
+            { name: WORD_DEFINITION_NAME },
+          ),
+        );
+      });
+      y += h + gap;
+    });
+    return { ...slide, elements: [...rest, ...els] };
+  }
+  return slide;
 }
 
 function headingOf(slide: Slide): TextElement | undefined {
@@ -1013,6 +1170,32 @@ function structureSet(
   const lines = hints.quiz ?? docLines(list.doc).map((line, i) => parseQuizLine(line, answers[i]));
   const rest = slide.elements.filter((e) => e !== list && e !== old);
   const choice = lines.some((l) => (l.options?.length ?? 0) > 0);
+  // Open questions: one full-width numbered card each, the answer revealed inside its card and
+  // measured with it (layout audit #2). A set whose cards do not fit keeps the list below.
+  if (!choice) {
+    // A footnote that is not the answers (an instruction) stays under the cards.
+    const foot = rest.find(
+      (e): e is TextElement => isText(e) && e.style.preset === "small" && e.y >= list.y,
+    );
+    const footH = foot ? textNeed(foot, slide, t) : 0;
+    const placed = rowCards(
+      lines.map((l, i) => {
+        const answer = l.answer ?? answers[i];
+        return { badge: String(i + 1), main: l.stem, ...(answer ? { reveal: answer } : {}) };
+      }),
+      list.y,
+      foot ? SAFE_BOTTOM - footH - SPACE[3] : SAFE_BOTTOM,
+      t,
+      ids,
+    );
+    if (placed) {
+      const moved = rest.map((e) =>
+        e === foot ? { ...foot, y: snapY(placed.bottom + SPACE[3]), h: footH } : e,
+      );
+      return [{ ...slide, elements: [...moved, ...placed.elements] }];
+    }
+  }
+  if (slide.kind === "exit-ticket") return [slide];
   // Open questions only stay one list (one box to edit) while the list fits; a list too long for
   // the slide is laid out line by line like a set with choices, so each page answers its own.
   const listFits = fitSlide({ ...slide, elements: rest.concat(list) }, t).overflow.length === 0;
@@ -1025,7 +1208,14 @@ function structureSet(
       t,
       ids,
     );
-    const kept = slide.elements.filter((e) => e !== old);
+    // The list's box is the recipe's, drawn down towards the foot for the footnote that stood
+    // under it; the panel is a layer over that foot, so the box is trimmed to its words (never
+    // grown) and the panel is judged against the questions, not the empty room below them. Left
+    // at the recipe's height, a set whose short answers kept the footnote to one line kept the
+    // taller box, and the panel "covered" it: shorter answers failed where longer ones passed.
+    const need = textNeed(list, slide, t);
+    const trimmed = need < list.h ? { ...list, h: need } : list;
+    const kept = slide.elements.filter((e) => e !== old).map((e) => (e === list ? trimmed : e));
     return answersClear(
       [{ ...slide, elements: panel ? [...kept, panel] : kept }],
       t,
@@ -1040,6 +1230,23 @@ function structureSet(
     t,
     ids,
     paginate,
+  );
+}
+
+/** The height a text box's words need at its width, by the headless ruler. */
+function textNeed(el: TextElement, slide: Slide, t: Theme): number {
+  const parts = textPartsOf(el, slide);
+  if (!parts) return el.h;
+  return Math.ceil(
+    measureHeadless(t)({
+      doc: parts.doc,
+      width: el.w,
+      preset: parts.preset,
+      inset: parts.inset,
+      chrome: parts.chrome,
+      ...(parts.style ? { style: parts.style } : {}),
+      ...(parts.role ? { role: parts.role } : {}),
+    }),
   );
 }
 
@@ -1172,8 +1379,55 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
     (e): e is TextElement => isText(e) && e.style.preset === "body" && e !== working,
   );
   if (!cardEl || !working || !question) return [slide];
-  const top = snapY(question.y + question.h + SPACE[3]);
   const steps = docLines(working.doc);
+  // One full-width row per step, the working on one line at the left and its reason at the right;
+  // step 1 is shown with the question and each later step is one reveal (layout audit #4).
+  {
+    const own = resolveFontSize(t, "body");
+    const { fontSize: _q, ...qStyle } = question.style;
+    const qh = heightOf(measureHeadless(t), question.doc, question.w, "body", own, 0, qStyle);
+    const q: TextElement = { ...question, h: qh, style: { ...qStyle, fontSize: own } };
+    const keep = slide.elements
+      .filter((e) => e !== cardEl && e !== working && e !== label)
+      .map((e) => (e === question ? q : e));
+    const rows = steps.map((step, i) => {
+      const [main, side] = workingAndReason(step);
+      return {
+        badge: String(i + 1),
+        main,
+        ...(side ? { side } : {}),
+        ...(i > 0 ? { step: i } : {}),
+      };
+    });
+    const top = snapY(q.y + qh + SPACE[3]);
+    const placed = rowCards(rows, top, SAFE_BOTTOM, t, ids, {
+      mainOneLine: true,
+      minGap: SPACE[1],
+      maxGap: SPACE[3],
+      sizes: [resolveFontSize(t, "body")],
+      cardName: STEP_NAME,
+      textName: (i) => `Step ${i + 1}`,
+      mainShare: 0.58,
+    });
+    if (placed) return [{ ...slide, elements: [...keep, ...placed.elements] }];
+  }
+  // The look's fit set the question beside the working card this pass replaces, so the card's
+  // lines could step the body preset down for the question too. With the strip in the card's
+  // place, the question goes back to its own size when it and the strip still fit (r6 smoke: the
+  // question sat one stop down on four themes whatever it said, and the save gate failed it).
+  const own = resolveFontSize(t, "body");
+  if ((question.style.fontSize ?? own) < own) {
+    const { fontSize: _stepped, ...style } = question.style;
+    const h = heightOf(measureHeadless(t), question.doc, question.w, "body", own, 0, style);
+    const restored: TextElement = { ...question, h, style: { ...style, fontSize: own } };
+    const top = snapY(restored.y + h + SPACE[3]);
+    const keep = slide.elements
+      .filter((e) => e !== cardEl && e !== working && e !== label)
+      .map((e) => (e === question ? restored : e));
+    const strip = stepsStrip(steps, top, SAFE_BOTTOM, t, ids, { reveal: true });
+    if (strip) return [{ ...slide, elements: [...keep, ...strip.elements] }];
+  }
+  const top = snapY(question.y + question.h + SPACE[3]);
   const keep = slide.elements.filter((e) => e !== cardEl && e !== working && e !== label);
   const strip = stepsStrip(steps, top, SAFE_BOTTOM, t, ids, { reveal: true });
   if (strip) return [{ ...slide, elements: [...keep, ...strip.elements] }];
@@ -1340,7 +1594,21 @@ function structureContent(
       placed = keyCard(s.keyCard.label, s.keyCard.text, y, SAFE_BOTTOM, t, ids, compact);
     } else if (s.sequence) {
       if (restWords) para(restWords);
-      placed = stepsStrip(s.sequence, y, SAFE_BOTTOM, t, ids);
+      // A sequence is always numbered steps: full-width rows, else the strip (layout audit #10).
+      placed =
+        rowCards(
+          s.sequence.map((step, i) => ({ badge: String(i + 1), main: step })),
+          y,
+          SAFE_BOTTOM,
+          t,
+          ids,
+          {
+            sizes: [readingSize(t)],
+            maxGap: SPACE[3],
+            cardName: STEP_NAME,
+            textName: (i) => `Step ${i + 1}`,
+          },
+        ) ?? stepsStrip(s.sequence, y, SAFE_BOTTOM, t, ids);
     }
     if (!placed || !fits(placed.bottom)) continue;
     els.push(...placed.elements);
@@ -2488,4 +2756,346 @@ function sidePanel(
     ];
   }
   return undefined;
+}
+
+/* ---------------------------------------------------------------- row cards */
+
+/*
+ * Row cards (layout audit, 30 Sep 2026): one full-width card per item, a number or letter badge at
+ * its left, stacked down the slide and spread to fill it. A question set's questions, a worked
+ * example's steps (working left, reason right), a sequence's steps, matching's two columns. Every
+ * row is measured at the size chosen for the whole set before it is placed, with its reveal line
+ * in the measured height, so a reveal can never overflow; fewer rows take a larger size.
+ */
+
+export const ROW_CARD_NAME = "Row card";
+/** Measured width held back from a one-line text, so the browser's own wrap never breaks it. */
+const ONE_LINE_SLACK = 12;
+export const ROW_BADGE_NAME = "Row badge";
+export const ROW_TEXT_NAME = "Row text";
+export const ROW_SIDE_NAME = "Row side";
+export const ROW_REVEAL_NAME = "Row reveal";
+
+export type Row = {
+  badge: string;
+  main: string;
+  /** A second column on the right (a worked step's reason), or with `split` its own card. */
+  side?: string;
+  sideBadge?: string;
+  /** Shown inside the card on reveal step `revealStep ?? 1` (a question's answer). */
+  reveal?: string;
+  /** The whole row appears on this step (a worked example's later steps). */
+  step?: number;
+};
+
+export type RowOptions = {
+  /** Candidate sizes, largest first; the default steps up from the body size for few rows. */
+  sizes?: number[];
+  /** `side` as its own card in the right half (matching). */
+  split?: boolean;
+  /** The main column's share of the inner width when a row has a side column. */
+  mainShare?: number;
+  /** The main text must sit on one line (an equation never wraps). */
+  mainOneLine?: boolean;
+  /** The smallest gap between cards (a worked example's rows sit closer than a set's). */
+  minGap?: number;
+  /** The largest gap between cards when spreading. */
+  maxGap?: number;
+  /** The cards' name (a sequence's and a worked example's are step cards). */
+  cardName?: string;
+  /** Row i's main text's name ("Step 1"); `ROW_TEXT_NAME` when absent. */
+  textName?: (i: number) => string;
+};
+
+/** The sizes a set of `n` rows tries: larger type for fewer rows, never below the body floor. */
+export function rowSizes(t: Theme, n: number): number[] {
+  const body = resolveFontSize(t, "body");
+  const floor = floorBelow(t, "body");
+  const up = n <= 2 ? [1.3, 1.15] : n === 3 ? [1.15] : [];
+  const all = [...up.map((k) => Math.round(body * k)), body, floor];
+  return [...new Set(all)].filter((s) => s > 0);
+}
+
+export function rowCards(
+  rows: Row[],
+  top: number,
+  bottom: number,
+  t: Theme,
+  ids: Ids = uid,
+  options: RowOptions = {},
+): Placed | undefined {
+  if (rows.length === 0) return undefined;
+  const measure = measureHeadless(t);
+  const minGap = options.minGap ?? SPACE[3];
+  const maxGap = options.maxGap ?? SPACE[5];
+  const colGap = GUTTER;
+  const tries = (options.sizes ?? rowSizes(t, rows.length)).flatMap((size) =>
+    [CARD_PAD, SPACE[1]].map((pad) => ({ size, pad })),
+  );
+  for (const { size, pad } of tries) {
+    const badge = Math.max(30, Math.round(size * 1.35));
+    const cardW = options.split ? Math.floor((SAFE.w - colGap) / 2) : SAFE.w;
+    const inner = cardW - pad * 3 - badge;
+    const hasSide = !options.split && rows.some((r) => r.side);
+    const leading = readingLeading(t);
+    const style = (extra: Partial<TextStyle> = {}): Partial<TextStyle> => ({
+      lineHeight: leading,
+      ...extra,
+    });
+    const h1 = heightOf(measure, docFromText("X"), inner, "body", size, 0, style());
+    // One-line mains take only the width the widest of them needs (within the share), so the
+    // reasons get the rest and stay on one line where they can.
+    const share = Math.floor(inner * (options.mainShare ?? 0.55));
+    const natural = (words: string) => {
+      for (let w = Math.floor(inner * 0.3); w <= share; w += 16) {
+        if (heightOf(measure, docFromText(words), w, "body", size, 0, style()) <= h1) return w;
+      }
+      return undefined;
+    };
+    const widest =
+      options.mainOneLine && hasSide
+        ? Math.max(0, ...rows.filter((r) => r.side).map((r) => natural(r.main) ?? 0))
+        : 0;
+    const mainW = hasSide ? (widest > 0 ? Math.min(share, widest + ONE_LINE_SLACK) : share) : inner;
+    const sideW = inner - mainW - SPACE[3];
+    let ok = true;
+    const sideSize = options.split ? size : resolveFontSize(t, "small");
+    const sidePreset: TextPreset = options.split ? "body" : "small";
+    const wOf = (r: Row) => (hasSide && r.side ? mainW : inner);
+    // A short answer is revealed at the card's right, beside its question; a long one under it.
+    const revealW = Math.floor(inner * 0.34);
+    const beside = (r: Row) =>
+      !!r.reveal &&
+      !hasSide &&
+      heightOf(measure, docFromText(r.reveal), revealW, "body", size, 0, style()) <= h1;
+    // A one-line main that is too long for its column beside the side text takes the full inner
+    // width, with the side text stacked under it in the same card (a long equation's reason).
+    const oneLine = (words: string, w: number) =>
+      words
+        .split("\n")
+        .every(
+          (line) =>
+            heightOf(measure, docFromText(line), w - ONE_LINE_SLACK, "body", size, 0, style()) <=
+            h1,
+        );
+    // Working too long for one line even at full width breaks at its arrow, never mid-equation.
+    const rs = rows.map((r) =>
+      options.mainOneLine && r.main.includes(" → ") && !oneLine(r.main, inner)
+        ? { ...r, main: r.main.split(" → ").join("\n→ ") }
+        : r,
+    );
+    const measured = rs.map((r) => {
+      const at = beside(r);
+      const stacked =
+        !!options.mainOneLine &&
+        hasSide &&
+        !!r.side &&
+        !oneLine(r.main, mainW) &&
+        oneLine(r.main, inner);
+      const mw = at ? inner - revealW - SPACE[3] : stacked ? inner : wOf(r);
+      const main = heightOf(measure, docFromText(r.main), mw, "body", size, 0, style());
+      if (options.mainOneLine && !oneLine(r.main, mw)) ok = false;
+      const side = r.side
+        ? heightOf(
+            measure,
+            docFromText(r.side),
+            options.split || stacked ? inner : sideW,
+            sidePreset,
+            sideSize,
+            0,
+            style(),
+          )
+        : 0;
+      const reveal = r.reveal
+        ? heightOf(
+            measure,
+            docFromText(r.reveal),
+            at ? revealW : wOf(r),
+            "body",
+            size,
+            0,
+            style(),
+          ) + (at ? 0 : SPACE[0])
+        : 0;
+      const content = options.split
+        ? Math.max(main, side)
+        : at
+          ? Math.max(main, reveal)
+          : stacked
+            ? main + SPACE[0] + side + reveal
+            : Math.max(main + reveal, side);
+      return { main, side, reveal, at, mw, stacked, h: Math.max(badge, content) + pad * 2 };
+    });
+    const total = measured.reduce((n, m) => n + m.h, 0);
+    const room = bottom - top;
+    if (!ok) continue;
+    const n = rows.length;
+    if (withSafety(total + minGap * (n - 1)) > room) continue;
+    const spare = room - withSafety(total) - minGap * (n - 1);
+    const gap = n > 1 ? Math.min(maxGap, minGap + Math.floor(spare / n)) : 0;
+    const used = total + gap * (n - 1);
+    // What is left after the widest gap sits above the group, a third of it (optical centre).
+    let y = snapY(
+      top + Math.max(0, Math.floor((withSafety(used) > room ? 0 : room - withSafety(used)) / 3)),
+    );
+    const els: SlideElement[] = [];
+    rs.forEach((r, i) => {
+      const m = measured[i] as (typeof measured)[number];
+      const when = r.step ? { revealStep: r.step, reveal: "fade" as const } : {};
+      const place = (
+        x: number,
+        label: string,
+        words: string,
+        h: number,
+        w: number,
+        name: string,
+      ) => {
+        els.push(card(ids, t, { x, y, w: cardW, h: m.h }, options.cardName ?? ROW_CARD_NAME, when));
+        els.push({
+          ...card(ids, t, { x: x + pad, y: y + pad, w: badge, h: badge }, ROW_BADGE_NAME, {
+            shape: "ellipse",
+            fill: t.colors.accent,
+            stroke: t.colors.accent,
+            doc: docFromText(label),
+            textStyle: {
+              preset: "caption",
+              fontSize: Math.max(resolveFontSize(t, "caption"), Math.round(badge * 0.55)),
+              color: t.colors.onAccent,
+              align: "center",
+              valign: "middle",
+              fontWeight: 700,
+            },
+          }),
+          ...when,
+        });
+        const tx = x + pad * 2 + badge;
+        els.push(
+          text(
+            ids,
+            { x: tx, y: y + pad, w, h },
+            docFromText(words),
+            {
+              preset: "body",
+              fontSize: size,
+              lineHeight: leading,
+              color: t.colors.ink,
+            },
+            { name, ...when },
+          ),
+        );
+        return tx;
+      };
+      const tx = place(
+        SAFE.x,
+        r.badge,
+        r.main,
+        m.main,
+        m.mw,
+        options.textName?.(i) ?? ROW_TEXT_NAME,
+      );
+      if (options.split && r.side !== undefined) {
+        place(SAFE.x + cardW + colGap, r.sideBadge ?? "", r.side, m.side, inner, ROW_SIDE_NAME);
+      } else if (r.side) {
+        els.push(
+          text(
+            ids,
+            m.stacked
+              ? { x: tx, y: y + pad + m.main + SPACE[0], w: inner, h: m.side }
+              : { x: tx + mainW + SPACE[3], y: y + pad, w: sideW, h: m.side },
+            docFromText(r.side),
+            {
+              preset: sidePreset,
+              fontSize: sideSize,
+              lineHeight: leading,
+              color: t.colors.muted,
+            },
+            { name: ROW_SIDE_NAME, ...when },
+          ),
+        );
+      }
+      if (r.reveal) {
+        els.push(
+          text(
+            ids,
+            m.at
+              ? { x: tx + m.mw + SPACE[3], y: y + pad, w: revealW, h: m.reveal }
+              : { x: tx, y: y + pad + m.main + SPACE[0], w: wOf(r), h: m.reveal - SPACE[0] },
+            docFromText(r.reveal),
+            {
+              preset: "body",
+              fontSize: size,
+              lineHeight: leading,
+              color: t.colors.accent,
+              fontWeight: 700,
+            },
+            { name: ROW_REVEAL_NAME, revealStep: r.step ? r.step + 1 : 1, reveal: "fade" },
+          ),
+        );
+      }
+      y += m.h + gap;
+    });
+    return { elements: els, bottom: y - gap };
+  }
+  return undefined;
+}
+
+/**
+ * A worked step as its working and its reason: "2x + 6 = 18 (subtract 2x)" or "Subtract 2x: 2x + 6
+ * = 18". The side with the maths is the working; a step with no reason is all working.
+ */
+export function workingAndReason(step: string): [string, string | undefined] {
+  const maths = (x: string) => /[=×÷+\-−/^%²³]|\d/.test(x);
+  const bracket = /^(.*\S)\s*\(([^()]+)\)\s*$/.exec(step);
+  if (bracket && maths(bracket[1] as string)) return [bracket[1] as string, bracket[2] as string];
+  for (const sep of [" — ", " – ", " because ", ": ", "; ", ", so "]) {
+    const at = step.indexOf(sep);
+    if (at <= 0) continue;
+    const a = step.slice(0, at).trim();
+    const b = step.slice(at + sep.length).trim();
+    if (!a || !b) continue;
+    if (maths(b) && !maths(a)) return [b, a];
+    if (maths(a) && !maths(b)) return [a, b];
+  }
+  return [step, undefined];
+}
+
+/** Matching as cards: numbered terms left, lettered matches right, each pair of rows one height. */
+function structureMatching(slide: Slide, t: Theme, ids: Ids): Slide {
+  const texts = slide.elements.filter(
+    (e): e is TextElement => isText(e) && e.style.preset === "body",
+  );
+  const mid = SAFE.x + SAFE.w / 2;
+  const left = texts.filter((e) => e.x < mid).sort((a, b) => a.y - b.y);
+  const right = texts.filter((e) => e.x >= mid).sort((a, b) => a.y - b.y);
+  const stemEl = slide.elements.find(
+    (e): e is TextElement => isText(e) && e.style.preset === "heading",
+  );
+  if (!stemEl || left.length === 0 || left.length !== right.length) return slide;
+  const split = (e: TextElement): [string, string] => {
+    const m = /^(\S{1,2})\s{2}(.*)$/s.exec(docText(e.doc));
+    return m ? [m[1] as string, m[2] as string] : ["", docText(e.doc)];
+  };
+  const rows = left.map((l, i) => {
+    const [badge, main] = split(l);
+    const [sideBadge, side] = split(right[i] as TextElement);
+    return { badge: badge || String(i + 1), main, side, sideBadge: sideBadge || LETTERS[i] };
+  });
+  const top = snapY(stemEl.y + stemEl.h + SPACE[4]);
+  const placed = rowCards(rows as Row[], top, SAFE_BOTTOM, t, ids, {
+    split: true,
+    sizes: [readingSize(t)],
+  });
+  if (!placed) return slide;
+  // The answer key names the text boxes: the new boxes keep the old ids, row for row.
+  const mains = placed.elements.filter((e) => e.name === ROW_TEXT_NAME);
+  const sides = placed.elements.filter((e) => e.name === ROW_SIDE_NAME);
+  const renamed = placed.elements.map((e) => {
+    const li = mains.indexOf(e);
+    if (li >= 0) return { ...e, id: (left[li] as TextElement).id };
+    const ri = sides.indexOf(e);
+    if (ri >= 0) return { ...e, id: (right[ri] as TextElement).id };
+    return e;
+  });
+  const drop = new Set<SlideElement>([...left, ...right]);
+  return { ...slide, elements: [...slide.elements.filter((e) => !drop.has(e)), ...renamed] };
 }

@@ -10,7 +10,7 @@ import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
 import { docFromText, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
-import { PLACEHOLDER_IMAGE } from "./layouts";
+import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
 import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
@@ -255,9 +255,17 @@ function cover(slide: Slide, t: Theme): Slide {
   const ink = t.colors.onAccent;
   const soft = readableSoft(ink, t.colors.accent);
   const elements = slide.elements.map((el): SlideElement => {
-    if (el.type === "shape") return el.name === "Accent rule" ? { ...el, fill: ink } : el;
+    if (el.type === "shape") {
+      if (el.name === "Accent rule") return { ...el, fill: ink };
+      // The `agenda` title's hairline between the title and the objectives.
+      return el.name === AGENDA_DIVIDER ? { ...el, fill: soft } : el;
+    }
     if (el.type !== "text") return el;
-    const quiet = el.style.preset === "caption" || el.style.preset === "subtitle";
+    const quiet =
+      el.style.preset === "caption" ||
+      el.style.preset === "subtitle" ||
+      el.name === AGENDA_STEM ||
+      el.name === "Subtitle";
     return { ...el, style: { ...el.style, color: quiet ? soft : ink } };
   });
   return { ...slide, background: { ...slide.background, color: t.colors.accent }, elements };

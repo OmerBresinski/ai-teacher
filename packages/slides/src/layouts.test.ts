@@ -168,7 +168,7 @@ describe("layoutSlide", () => {
   it("creates the option elements each question kind promises", () => {
     const tf = layoutSlide("true-false", "chalk");
     const options = tf.elements.filter((e) => e.type === "option");
-    expect(options.map((o) => (o.type === "option" ? o.label : null))).toEqual(["True", "False"]);
+    expect(options.map((o) => (o.type === "option" ? o.label : null))).toEqual(["✓", "✗"]);
     expect(tf.question).toEqual({ type: "true-false", correct: true });
 
     const mcq = layoutSlide("multiple-choice", "chalk");
@@ -271,8 +271,14 @@ describe("layoutSlide", () => {
       expect(variantName(kind, "photo-band-x"), `${kind} unknown name`).toBe(first);
       for (const v of LAYOUT_CATALOGUE[kind]) expect(v.description.length).toBeGreaterThan(0);
     }
-    expect(variantsFor("title")).toEqual(["stack", "photo-band", "split"]);
-    expect(variantsFor("content")).toEqual(["headed", "statement", "two-column"]);
+    expect(variantsFor("title")).toEqual([
+      "stack",
+      "photo-band",
+      "split",
+      "agenda",
+      "photo-band-long",
+    ]);
+    expect(variantsFor("content")).toEqual(["headed", "statement", "two-column", "callout-row"]);
     for (const kind of ["objectives", "starter", "instructions", "exit-ticket", "plenary"] as const)
       expect(variantsFor(kind), kind).toEqual(["numbered", "cards", "stepped"]);
     expect(compositionOf("content", "headed")).toBe(compositionOf("starter", "numbered"));

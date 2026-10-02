@@ -216,6 +216,9 @@ function checkVocabularyInFacts(lesson: Lesson): Finding[] {
     if (slide.kind !== "vocabulary") continue;
     walkElements(slide.elements, (element) => {
       if (element.type !== "text" || element.style.preset !== "body") return;
+      // A word card's definition sets in `body` too once it fits there (the teaching body size,
+      // spike/teach-type); `@tj/slides` names it "Definition" (structure.ts WORD_DEFINITION_NAME).
+      if (element.name === "Definition") return;
       const term = firstParagraph(richDocToPlainText(element.doc));
       if (isBlank(term) || known.has(normaliseTerm(term))) return;
       findings.push({
