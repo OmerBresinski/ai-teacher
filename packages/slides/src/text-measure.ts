@@ -49,31 +49,57 @@ function emWidth(word: string, advances: readonly number[] | undefined, tracking
 /** The resolved type a line count depends on. */
 type LineType = Pick<ResolvedText, "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing">;
 
+/** A run of text and whether it is set bold (a chunk's label, round E1). */
+type Run = { text: string; bold?: boolean };
+
 /** How many lines `text` takes in a column `room` points wide, set in `type`. */
 function linesIn(text: string, type: LineType, room: number): number {
-  const advances = advancesFor(type.fontFamily, type.fontWeight);
+  return linesOfRuns([{ text }], type, room);
+}
+
+/**
+ * How many lines a paragraph's runs take in a column `room` points wide. A bold run is measured at
+ * 700, as the renderer sets it (round E1: a chunk's bold label is wider than the same words at 400,
+ * and was measured at 400). A hard break ("\n") starts a new line.
+ */
+function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
+  const regular = advancesFor(type.fontFamily, type.fontWeight);
+  const bold = advancesFor(type.fontFamily, Math.max(700, type.fontWeight));
   const tracking = type.letterSpacing.endsWith("em") ? Number.parseFloat(type.letterSpacing) : 0;
   const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
-  const space = emWidth(" ", advances, tracking);
-  let lines = 0;
-  for (const paragraph of text.split("\n")) {
-    lines += 1;
-    let used = 0;
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      const w = emWidth(word, advances, tracking);
-      if (used === 0) used = w;
-      else if (used + space + w <= ems) used += space + w;
-      else {
+  let lines = 1;
+  let used = 0;
+  let word = 0;
+  let space = 0;
+  const place = () => {
+    if (word === 0) return;
+    if (used === 0) used = word;
+    else if (used + space + word <= ems) used += space + word;
+    else {
+      lines += 1;
+      used = word;
+    }
+    // A word wider than the column breaks inside itself.
+    while (used > ems) {
+      lines += 1;
+      used -= ems;
+    }
+    word = 0;
+  };
+  for (const run of runs) {
+    const advances = run.bold ? bold : regular;
+    for (const ch of run.text) {
+      if (ch === "\n") {
+        place();
         lines += 1;
-        used = w;
-      }
-      // A word wider than the column breaks inside itself.
-      while (used > ems) {
-        lines += 1;
-        used -= ems;
-      }
+        used = 0;
+      } else if (/\s/.test(ch)) {
+        place();
+        space = emWidth(" ", advances, tracking);
+      } else word += emWidth(ch, advances, tracking);
     }
   }
+  place();
   return Math.max(1, lines);
 }
 
@@ -127,10 +153,12 @@ const BLOCK_GAP_EM = 0.35;
 const LIST_INDENT_EM = 1.2;
 const ORDERED_INDENT_EM = 1.45;
 
-function plainText(node: RichNode): string {
-  if (node.type === "text") return node.text ?? "";
-  if (node.type === "hardBreak") return "\n";
-  return (node.content ?? []).map(plainText).join("");
+/** A block's text as runs, each bold or not, a hard break as "\n". */
+function runsOf(node: RichNode, bold = false): Run[] {
+  const b = bold || !!node.marks?.some((m) => m.type === "bold");
+  if (node.type === "text") return [{ text: node.text ?? "", bold: b }];
+  if (node.type === "hardBreak") return [{ text: "\n" }];
+  return (node.content ?? []).flatMap((n) => runsOf(n, b));
 }
 
 /** Line boxes and inter-block gaps of a doc's top-level blocks, in a column `room` wide. */
@@ -155,7 +183,7 @@ function blocksOf(
       });
       return;
     }
-    lines += linesIn(plainText(node), type, room);
+    lines += linesOfRuns(runsOf(node), type, room);
   });
   return { lines, gaps };
 }
