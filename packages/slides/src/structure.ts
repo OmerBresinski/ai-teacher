@@ -1381,37 +1381,8 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
   );
   if (!cardEl || !working || !question) return [slide];
   const steps = docLines(working.doc);
-  // One full-width row per step, the working on one line at the left and its reason at the right;
-  // step 1 is shown with the question and each later step is one reveal.
-  {
-    const own = resolveFontSize(t, "body");
-    const { fontSize: _q, ...qStyle } = question.style;
-    const qh = heightOf(measureHeadless(t), question.doc, question.w, "body", own, 0, qStyle);
-    const q: TextElement = { ...question, h: qh, style: { ...qStyle, fontSize: own } };
-    const keep = slide.elements
-      .filter((e) => e !== cardEl && e !== working && e !== label)
-      .map((e) => (e === question ? q : e));
-    const rows = steps.map((step, i) => {
-      const [main, side] = workingAndReason(step);
-      return {
-        badge: String(i + 1),
-        main,
-        ...(side ? { side } : {}),
-        ...(i > 0 ? { step: i } : {}),
-      };
-    });
-    const top = snapY(q.y + qh + SPACE[3]);
-    const placed = rowCards(rows, top, SAFE_BOTTOM, t, ids, {
-      mainOneLine: true,
-      minGap: SPACE[1],
-      maxGap: SPACE[3],
-      sizes: [resolveFontSize(t, "body")],
-      cardName: STEP_NAME,
-      textName: (i) => `Step ${i + 1}`,
-      mainShare: 0.58,
-    });
-    if (placed) return [{ ...slide, elements: [...keep, ...placed.elements] }];
-  }
+  const asRows = workedAsRows(slide, t, ids, question, [cardEl, working, label], steps);
+  if (asRows) return [asRows];
   // The look's fit set the question beside the working card this pass replaces, so the card's
   // lines could step the body preset down for the question too. With the strip in the card's
   // place, the question goes back to its own size when it and the strip still fit: the question
@@ -3045,6 +3016,48 @@ export function rowCards(
     return { elements: els, bottom: y - gap };
   }
   return undefined;
+}
+
+/**
+ * A worked example as one full-width row per step, the working on one line at the left and its
+ * reason at the right; step 1 is shown with the question and each later step is one reveal. The
+ * question is set at its own size above the rows. Undefined when the rows do not fit.
+ */
+function workedAsRows(
+  slide: Slide,
+  t: Theme,
+  ids: Ids,
+  question: TextElement,
+  replaced: readonly (SlideElement | undefined)[],
+  steps: string[],
+): Slide | undefined {
+  const own = resolveFontSize(t, "body");
+  const { fontSize: _q, ...qStyle } = question.style;
+  const qh = heightOf(measureHeadless(t), question.doc, question.w, "body", own, 0, qStyle);
+  const q: TextElement = { ...question, h: qh, style: { ...qStyle, fontSize: own } };
+  const keep = slide.elements
+    .filter((e) => !replaced.includes(e))
+    .map((e) => (e === question ? q : e));
+  const rows = steps.map((step, i) => {
+    const [main, side] = workingAndReason(step);
+    return {
+      badge: String(i + 1),
+      main,
+      ...(side ? { side } : {}),
+      ...(i > 0 ? { step: i } : {}),
+    };
+  });
+  const top = snapY(q.y + qh + SPACE[3]);
+  const placed = rowCards(rows, top, SAFE_BOTTOM, t, ids, {
+    mainOneLine: true,
+    minGap: SPACE[1],
+    maxGap: SPACE[3],
+    sizes: [resolveFontSize(t, "body")],
+    cardName: STEP_NAME,
+    textName: (i) => `Step ${i + 1}`,
+    mainShare: 0.58,
+  });
+  return placed && { ...slide, elements: [...keep, ...placed.elements] };
 }
 
 /**
