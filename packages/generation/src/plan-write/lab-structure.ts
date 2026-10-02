@@ -610,18 +610,23 @@ export type StructureRun = {
   }[];
   costUsd: number;
   round1: Round1;
+  /** Round 2's raw answers (top-2 probabilities for the plan loop). */
+  answers2?: Record<string, Answer>;
 };
 
 export async function decideStructure(
   ctx: StructureContext,
   evaluate: Evaluator,
   model: string,
+  /** Lab (plan loop): plan for this many objectives instead of round 1's answer. */
+  opts: { objectives?: 1 | 2 | 3 } = {},
 ): Promise<StructureRun> {
   const t0 = Date.now();
   const state = useText() ? textState(ctx) : stateOf(ctx);
   const q1 = round1Questions();
   const c1 = await evaluate(state, q1);
   const r1 = readRound1(c1.answers, ctx);
+  if (opts.objectives) r1.objectives = opts.objectives;
   const slots = skeleton(ctx.rows, r1);
   const q2 = round2Questions(ctx, slots, r1);
   const state2 = useText()
@@ -660,6 +665,7 @@ export async function decideStructure(
     ],
     costUsd: (c1.costUsd ?? 0) + (c2.costUsd ?? 0),
     round1: r1,
+    answers2: c2.answers,
   };
 }
 
