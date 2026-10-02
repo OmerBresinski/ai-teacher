@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { GUARD_MESSAGE, type Lesson, lessonFromBrief } from "@tj/domain/documents";
 import { generatedLesson, lessonFacts } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
@@ -345,14 +345,16 @@ describe("real lesson intake", () => {
     search = { topic: "Volcanoes" };
     show();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(await screen.findByText(/Sign in to make more lessons/)).toBeTruthy();
+    // The sign-in sheet (TEACH-245) opens over the brief; the brief stays behind it.
+    const sheet = await screen.findByRole("dialog", { name: "Sign in to make more lessons" });
+    expect(within(sheet).getByRole("button", { name: "Continue with Google" })).toBeTruthy();
+    expect(within(sheet).getByLabelText("Email address")).toBeTruthy();
     expect(fakeApi.requests.some((r) => r.path === "/auth/sign-in/anonymous")).toBe(false);
+    expect(screen.getByRole("textbox", { name: "Topic", hidden: true })).toHaveValue("Volcanoes");
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.keyDown(sheet, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("Volcanoes");
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/sign-in",
-      search: { redirect: "/lessons/new?topic=Volcanoes" },
-    });
   });
 
   it("the daily cap (0 closes it) degrades to today's sign-in flow with the topic kept", async () => {
@@ -468,7 +470,9 @@ describe("real lesson intake", () => {
       search = { lesson: id };
       show();
       fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
-      expect(await screen.findByText(/Sign in to keep changing the plan/)).toBeTruthy();
+      expect(
+        await screen.findByRole("dialog", { name: "Sign in to keep changing the plan" }),
+      ).toBeTruthy();
       expect(screen.getByDisplayValue("Explain how a volcano erupts")).toBeTruthy();
       expect(navigate).not.toHaveBeenCalled();
     });
