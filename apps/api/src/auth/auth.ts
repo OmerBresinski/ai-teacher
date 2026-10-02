@@ -202,7 +202,9 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
         // The email links to the web's confirm page, not to the verify endpoint: a mail scanner's
         // GET must not spend the single-use token (TEACH-246).
         sendMagicLink: async ({ email, url }, ctx) => {
-          if (ctx) await recordPendingClaim(db, logger, ctx, email);
+          if (ctx) {
+            await recordPendingClaim(db, logger, { secret: env.BETTER_AUTH_SECRET, ctx, email });
+          }
           const link = confirmPageUrl(url, env.WEB_ORIGIN[0] as string, (origin) =>
             Boolean(ctx?.context.isTrustedOrigin(origin)),
           );
@@ -249,12 +251,16 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
           },
         },
       },
-      // Every sign-in on every device, so `claimPending` is one query when there is no claim and
-      // never throws into the sign-in.
+      // Every sign-in on every device: `claimPending` is cheap when there is no claim and never
+      // throws into the sign-in.
       session: {
         create: {
-          after: async (session) => {
-            await claimPending(db, logger, session.userId);
+          after: async (session, ctx) => {
+            await claimPending(db, logger, {
+              secret: env.BETTER_AUTH_SECRET,
+              userId: session.userId,
+              ctx,
+            });
           },
         },
       },

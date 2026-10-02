@@ -1,8 +1,9 @@
 /**
  * TEACH-224 at function level against the real test database: `claimAnonymousWorkspace` hands the
- * anonymous Workspace over or declines (ruling 112), rolls back whole on a fault, and serialises
- * two claims for one visitor; the pending claim is replaced, consumed once and ignored when
- * expired. The sign-in flows that reach these are in `auth.db.test.ts`.
+ * anonymous Workspace over (signing the anonymous user out) or declines (ruling 112), sees a lesson
+ * that lands while it waits for its lock, rolls back whole on a fault, and serialises two claims
+ * for one visitor; the pending claim is replaced, consumed once, kept when its claim fails and
+ * ignored when expired. The sign-in flows that reach these are in `auth.db.test.ts`.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { createDocument, createSource, forWorkspace } from "@tj/db";
@@ -21,6 +22,8 @@ import {
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
 if (!t.ok) console.warn(`skipping claim db tests: ${t.reason}`);
+
+const SECRET = "test-secret-test-secret-test-secret-0123456789";
 
 describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
   if (!t.ok) return;
@@ -63,10 +66,29 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     return db.sql<{ identifier: string; value: string }[]>`
       select identifier, value from verifications where identifier like 'claim:%'`;
   }
+  /** A live session row for `userId`, as better-auth stores one. */
+  async function sessionFor(userId: string) {
+    await db.sql`
+      insert into sessions (id, token, user_id, expires_at, created_at, updated_at)
+      values (${newId()}, ${newId()}, ${userId}, now() + interval '7 days', now(), now())`;
+  }
+  async function sessionCount(userId: string) {
+    const rows = await db.sql<{ n: number }[]>`
+      select count(*)::int as n from sessions where user_id = ${userId}`;
+    return rows[0]?.n ?? 0;
+  }
+  const pending = (userId: string) =>
+    claimPending(db, captureLogger().logger, {
+      secret: SECRET,
+      userId,
+      ctx: null,
+    });
 
   test("row 1: a new account takes the anonymous Workspace; its empty one is deleted", async () => {
     const a = await visitor();
     const n = await newAccount();
+    await sessionFor(a.userId);
+    await sessionFor(n.userId);
 
     const ids = { anonymousUserId: a.userId, userId: n.userId };
     expect(await claimAnonymousWorkspace(db, ids)).toBe("claimed");
@@ -75,8 +97,11 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     expect(await workspacesOf(n.userId)).toEqual([a.workspaceId]);
     expect(await ownerOf(n.workspaceId)).toBeUndefined();
     expect(await workspacesOf(a.userId)).toEqual([]);
-    // The anonymous user stays for the cleanup job (disableDeleteAnonymousUser).
+    // The anonymous user stays for the cleanup job (disableDeleteAnonymousUser), signed out
+    // everywhere; the new account's own session is untouched.
     expect(await isAnonymous(a.userId)).toBe(true);
+    expect(await sessionCount(a.userId)).toBe(0);
+    expect(await sessionCount(n.userId)).toBe(1);
     const lesson = await db.sql`select id from documents where id = ${a.lessonId}
       and workspace_id = ${a.workspaceId}`;
     expect(lesson).toHaveLength(1);
@@ -97,10 +122,12 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
   describe("row 4: an existing account declines (ruling 112)", () => {
     async function expectDeclined(e: { userId: string; workspaceId: string }) {
       const a = await visitor();
+      await sessionFor(a.userId);
       const ids = { anonymousUserId: a.userId, userId: e.userId };
       expect(await claimAnonymousWorkspace(db, ids)).toBe("declined-existing");
       expect(await workspacesOf(e.userId)).toEqual([e.workspaceId]);
       expect(await workspacesOf(a.userId)).toEqual([a.workspaceId]);
+      expect(await sessionCount(a.userId)).toBe(1);
     }
 
     test("created more than 10 minutes ago, even with an empty Workspace", async () => {
@@ -167,6 +194,50 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     expect(await workspacesOf(teacher.userId)).toEqual([teacher.workspaceId]);
     expect(await workspacesOf(a.userId)).toEqual([a.workspaceId]);
     expect(await workspacesOf(anonTarget.userId)).toEqual([anonTarget.workspaceId]);
+  });
+
+  test("a lesson that lands while the claim waits for its lock is seen: declined, not deleted", async () => {
+    const a = await visitor();
+    const n = await newAccount();
+    const sourceId = newId();
+    let commitInsert = () => {};
+    const held = new Promise<void>((resolve) => {
+      commitInsert = resolve;
+    });
+    let inserted = () => {};
+    const insertedOnce = new Promise<void>((resolve) => {
+      inserted = resolve;
+    });
+    // The new account's first upload, mid-transaction: its foreign key holds a key-share lock on
+    // the Workspace row, so the claim's `for update` waits for it to commit.
+    const insert = db.sql.begin(async (tx) => {
+      await tx`
+        insert into sources (id, workspace_id, kind, name, mime, byte_size, storage_key, pages,
+                             low_text, created_at, updated_at)
+        values (${sourceId}, ${n.workspaceId}, 'file', 'held.pdf', 'application/pdf', 1,
+                ${storageKey(n.workspaceId, "sources", sourceId, "original.pdf")}, 1, false,
+                now(), now())`;
+      inserted();
+      await held;
+    });
+    await insertedOnce;
+    const claim = claimAnonymousWorkspace(db, { anonymousUserId: a.userId, userId: n.userId });
+    // Commit the insert only once the claim is blocked on it.
+    for (let i = 0; i < 200; i++) {
+      const [waiting] = await db.sql<{ n: number }[]>`
+        select count(*)::int as n from pg_stat_activity
+        where datname = current_database() and wait_event_type = 'Lock'
+          and wait_event = 'transactionid' and query like '%for update%'`;
+      if ((waiting?.n ?? 0) > 0) break;
+      await Bun.sleep(5);
+    }
+    commitInsert();
+    await insert;
+
+    expect(await claim).toBe("declined-existing");
+    expect(await workspacesOf(n.userId)).toEqual([n.workspaceId]);
+    const kept = await db.sql`select id from sources where id = ${sourceId}`;
+    expect(kept).toHaveLength(1);
   });
 
   test("two claims for one visitor at once: exactly one wins", async () => {
@@ -237,16 +308,27 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
   });
 
   describe("pending claim", () => {
+    const write = (email: string, anonymousUserId: string) =>
+      writePendingClaim(db, { secret: SECRET, email, anonymousUserId });
+
+    test("the identifier is a keyed hash: no address in the table, and not guessable", () => {
+      const id = pendingClaimIdentifier(SECRET, "Teacher@Example.test");
+      expect(id).toBe(pendingClaimIdentifier(SECRET, "teacher@example.test"));
+      expect(id.startsWith("claim:")).toBe(true);
+      expect(id.toLowerCase()).not.toContain("teacher");
+      expect(id).not.toBe(pendingClaimIdentifier(`${SECRET}-other`, "teacher@example.test"));
+    });
+
     test("a newer request for the same address replaces the older row", async () => {
       const first = await visitor();
       const second = await visitor();
-      await writePendingClaim(db, { email: "Teacher@Example.test", anonymousUserId: first.userId });
-      await writePendingClaim(db, {
-        email: "teacher@example.test",
-        anonymousUserId: second.userId,
-      });
+      await write("Teacher@Example.test", first.userId);
+      await write("teacher@example.test", second.userId);
       expect([...(await claimRows())]).toEqual([
-        { identifier: pendingClaimIdentifier("teacher@example.test"), value: second.userId },
+        {
+          identifier: pendingClaimIdentifier(SECRET, "teacher@example.test"),
+          value: second.userId,
+        },
       ]);
       const ttl = await db.sql<{ minutes: number }[]>`
         select round(extract(epoch from expires_at - now()) / 60)::int as minutes
@@ -257,26 +339,57 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
     test("claimPending consumes the row and claims; a second session finds nothing", async () => {
       const a = await visitor();
       const n = await newAccount("Pending@Example.test");
-      await writePendingClaim(db, { email: "pending@example.test", anonymousUserId: a.userId });
+      await write("pending@example.test", a.userId);
       const { logger, lines } = captureLogger();
+      const run = () => claimPending(db, logger, { secret: SECRET, userId: n.userId, ctx: null });
 
-      await claimPending(db, logger, n.userId);
+      await run();
       expect(await workspacesOf(n.userId)).toEqual([a.workspaceId]);
       expect(await claimRows()).toHaveLength(0);
-      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({ claim: "claimed", via: "pending" });
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        level: 30,
+        msg: "anonymous workspace claim",
+        claim: "claimed",
+        via: "pending",
+        anonymousUserId: a.userId,
+        userId: n.userId,
+      });
 
-      await claimPending(db, logger, n.userId);
+      await run();
       expect(lines).toHaveLength(1);
+    });
+
+    test("a claim that fails keeps the row for the next sign-in within the hour", async () => {
+      const a = await visitor();
+      const n = await newAccount("retry@example.test");
+      await write("retry@example.test", a.userId);
+      const { logger, lines } = captureLogger();
+      const run = () => claimPending(db, logger, { secret: SECRET, userId: n.userId, ctx: null });
+
+      await withFailingWorkspaceHandover(db, run);
+      expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+        level: 50,
+        msg: "anonymous workspace claim failed",
+        via: "pending",
+        anonymousUserId: a.userId,
+        userId: n.userId,
+      });
+      expect(await claimRows()).toHaveLength(1);
+      expect(await workspacesOf(n.userId)).toEqual([n.workspaceId]);
+
+      await run();
+      expect(await workspacesOf(n.userId)).toEqual([a.workspaceId]);
+      expect(await claimRows()).toHaveLength(0);
     });
 
     test("an expired row is removed and ignored", async () => {
       const a = await visitor();
       const n = await newAccount("late@example.test");
-      await writePendingClaim(db, { email: "late@example.test", anonymousUserId: a.userId });
+      await write("late@example.test", a.userId);
       await db.sql`update verifications set expires_at = now() - interval '1 second'
-        where identifier = ${pendingClaimIdentifier("late@example.test")}`;
+        where identifier like 'claim:%'`;
       const { logger, lines } = captureLogger();
-      await claimPending(db, logger, n.userId);
+      await claimPending(db, logger, { secret: SECRET, userId: n.userId, ctx: null });
       expect(lines).toEqual([]);
       expect(await claimRows()).toHaveLength(0);
       expect(await workspacesOf(n.userId)).toEqual([n.workspaceId]);
@@ -287,13 +400,13 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
       const older = await visitor();
       const newer = await visitor();
       const n = await newAccount("race@example.test");
-      const identifier = pendingClaimIdentifier("race@example.test");
+      const identifier = pendingClaimIdentifier(SECRET, "race@example.test");
       await db.sql`
         insert into verifications (id, identifier, value, expires_at, created_at, updated_at)
         values (${newId()}, ${identifier}, ${older.userId}, now() + interval '1 hour',
                 now() - interval '1 minute', now()),
                (${newId()}, ${identifier}, ${newer.userId}, now() + interval '1 hour', now(), now())`;
-      await claimPending(db, captureLogger().logger, n.userId);
+      await pending(n.userId);
       expect(await workspacesOf(n.userId)).toEqual([newer.workspaceId as WorkspaceId]);
       expect(await workspacesOf(older.userId)).toEqual([older.workspaceId]);
       expect(await claimRows()).toHaveLength(0);
@@ -304,10 +417,10 @@ describeDb("claimAnonymousWorkspace and the pending claim (TEACH-224)", () => {
         sql: (() => Promise.reject(new Error("connection refused"))) as unknown as typeof db.sql,
       };
       const { logger, lines } = captureLogger();
-      await claimPending(broken, logger, "user-1");
+      await claimPending(broken, logger, { secret: SECRET, userId: "user-1", ctx: null });
       expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
         level: 50,
-        msg: "pending claim lookup failed",
+        msg: "anonymous workspace claim failed",
         userId: "user-1",
       });
     });

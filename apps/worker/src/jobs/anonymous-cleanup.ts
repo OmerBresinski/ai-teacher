@@ -13,7 +13,7 @@
  * and is registered beside the typed registry in `jobs/index.ts`.
  *
  * Old rows of the per-IP sign-in counter (`anonymous_signins`) go too, and so do expired pending
- * claims (`verifications` rows named `claim:<email>`, TEACH-224), which hold an email address.
+ * claims (`verifications` rows named `claim:…`, TEACH-224), which nothing else removes.
  */
 import type { Sql } from "@tj/db";
 import type { StorageAdapter } from "@tj/domain";
