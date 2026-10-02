@@ -176,8 +176,11 @@ export async function recordPendingClaim(
  * Whether the request finishing this sign-in carries a live anonymous session whose Workspace
  * holds a lesson. The anonymous plugin's `onLinkAccount` then claims that browser's own lesson; it
  * runs after the database hooks, so a pending row (which anyone can point at an address) must not
- * get there first. An anonymous session with nothing in it does not outrank the row. (Anonymous
- * users cannot upload sources, so documents are the whole test.)
+ * get there first. An anonymous session with nothing in it does not outrank the row, so a phone
+ * that never made a lesson still receives the laptop's. The cost, accepted with the address-keyed
+ * row (ADR 0008 amendment, TEACH-249): a newer row someone else pointed at the address also beats
+ * an empty session, and that visitor gets the other browser's lesson; nothing is read or taken.
+ * (Anonymous users cannot upload sources, so documents are the whole test.)
  */
 async function browserHasAnonymousLesson(
   db: Sql,
