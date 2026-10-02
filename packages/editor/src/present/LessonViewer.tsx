@@ -10,6 +10,7 @@ import {
 import { AppBar, AppBarGroup, AppBarTitle, Button, cn, IconButton, Skeleton, Switch } from "@tj/ui";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useMobileEditor } from "../lesson/use-mobile-editor";
 import { renderTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideStatic } from "../slide/SlideStatic";
@@ -38,8 +39,11 @@ export type LessonViewerProps = {
   lesson: Lesson;
   /** Open present mode at the slide being viewed (1-based `slide`). */
   onPresent: (slide: number) => void;
-  /** Duplicate the lesson; resolves when the app has navigated (drives the button's busy state). */
-  onDuplicate: () => Promise<void>;
+  /**
+   * Duplicate the lesson; resolves when the app has navigated (drives the button's busy state).
+   * Without it there is no "Make a copy" button.
+   */
+  onDuplicate?: () => Promise<void>;
   /** Leading control in the app bar, e.g. the back button. */
   leading?: ReactNode;
   /** Where the export control sits once it exists (E1). */
@@ -50,6 +54,8 @@ export type LessonViewerProps = {
    * Absent for a finished lesson: nothing in the rail animates.
    */
   pending?: readonly PendingSlide[];
+  /** Optional side panel beside the slide, e.g. the app's generation companion finishing. */
+  companion?: ReactNode;
 };
 
 export function LessonViewer({
@@ -59,6 +65,7 @@ export function LessonViewer({
   leading,
   exportSlot,
   pending,
+  companion,
 }: LessonViewerProps) {
   const theme = renderTheme(lesson);
   const [index, setIndex] = useState(0);
@@ -66,6 +73,8 @@ export function LessonViewer({
   const [showAnswer, setShowAnswer] = useState(false);
   const [copying, setCopying] = useState(false);
   const railRef = useRef<HTMLElement>(null);
+  // A phone puts the companion above the slide, as the editor does; beside it there is no room.
+  const mobile = useMobileEditor();
   const arrivals = useArrivals(lesson.slides.length, pending !== undefined);
 
   const slide = lesson.slides[index];
@@ -150,6 +159,7 @@ export function LessonViewer({
   };
 
   const makeCopy = async () => {
+    if (!onDuplicate) return;
     setCopying(true);
     try {
       await onDuplicate();
@@ -165,7 +175,7 @@ export function LessonViewer({
         <AppBarGroup>
           {leading}
           <AppBarTitle>{lesson.title}</AppBarTitle>
-          <span className="shrink-0 text-meta text-ink-3">
+          <span className="hidden shrink-0 text-meta text-ink-3 sm:inline">
             {pending && pending.length > 0
               ? `${lesson.slides.length} of ${lesson.slides.length + pending.length} slides`
               : `${lesson.slides.length} slides`}
@@ -174,9 +184,11 @@ export function LessonViewer({
 
         {/* One primary in the bar and everything else as text. */}
         <AppBarGroup className="ml-auto gap-2">
-          <Button variant="ghost" size="sm" disabled={copying} onClick={makeCopy}>
-            {copying ? "Copying…" : "Make a copy"}
-          </Button>
+          {onDuplicate ? (
+            <Button variant="ghost" size="sm" disabled={copying} onClick={makeCopy}>
+              {copying ? "Copying…" : "Make a copy"}
+            </Button>
+          ) : null}
           {exportSlot}
           <Button
             variant="primary"
@@ -197,7 +209,7 @@ export function LessonViewer({
         <nav
           ref={railRef}
           aria-label="Slides"
-          className="shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3"
+          className="hidden shrink-0 overflow-y-auto border-border border-r bg-background px-1.5 py-3 md:block"
           style={{ width: RAIL_WIDTH }}
         >
           <ul className="flex flex-col gap-2">
@@ -225,9 +237,10 @@ export function LessonViewer({
         </nav>
 
         <main className="flex min-w-0 flex-1 flex-col bg-canvas">
+          {mobile && companion ? <aside data-editor-companion="mobile">{companion}</aside> : null}
           {/* The swipe surface: pointer handlers only, so a keyboard user is not affected. */}
           <div
-            className="min-h-0 flex-1 p-10"
+            className="min-h-0 flex-1 p-4 md:p-10"
             onPointerDown={onPointerDown}
             onPointerUp={onPointerUp}
           >
@@ -294,6 +307,7 @@ export function LessonViewer({
             ) : null}
           </div>
         </main>
+        {!mobile && companion ? <aside data-editor-companion="desktop">{companion}</aside> : null}
       </div>
 
       {/* Where the deck is, for anyone who cannot see the slide. */}
