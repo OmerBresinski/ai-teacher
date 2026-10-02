@@ -766,7 +766,11 @@ export async function planWriteSlides(
    */
   const closing = mode === "stream" && closingSlideFits(requested);
   /** The slides the model plans and writes: the count asked for, less the closing slide. */
-  const planned = closing ? requested - 1 : requested;
+  // TEACH-179 JF4: B (the candidate) always delivers one slide over the request, its code warm-up;
+  // the bound plan carries its own opening instead, so it plans that slide itself to match B's count.
+  const planned =
+    (closing ? requested - 1 : requested) +
+    (mode === "stream" && process.env.LAB_STRUCTURE_VERSION === "f4" ? 1 : 0);
   /** The slides to write: those planned, plus any check code adds (`checksToInsert`). */
   let slideCount = planned;
   /** The stream's slide i (0-based, after the objectives) is this slide number. */
