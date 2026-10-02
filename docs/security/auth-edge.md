@@ -44,8 +44,21 @@ Read-only, 2 Oct 2026: `api.dayback.app` is a CNAME to a `*.up.railway.app` name
 `api-production-903f.up.railway.app` answer with `server: railway-hikari` and `x-railway-edge`.
 Neither response carries a CDN cache header (`x-cache`, `cf-cache-status`, `via`, `age`).
 
-The probes against both production hosts run after the merge of PR #387. Their results replace
-this paragraph.
+Probes after the merge of PR #387 (2 Oct 2026, IPv4 client, `AUTH_IP_HEADER=x-real-ip` live),
+three per host, 12 s apart, after `smoke:prod --target dayback` had finished:
+
+| Host | Probe | `x-forwarded-for` entries | Entry 1 | Entry 2 | Forged value survives | `x-real-ip` = client | Address resolved |
+| ---- | ----- | ------------------------- | ------- | ------- | --------------------- | -------------------- | ---------------- |
+| `api.dayback.app` | (a) plain | 2 | client | public hop | n/a | yes | yes |
+| `api.dayback.app` | (b) forged `X-Forwarded-For` | 2 | client | public hop | no | yes | yes |
+| `api.dayback.app` | (c) forged `X-Real-IP` | 2 | client | public hop | no | yes | yes |
+| `api-production-903f.up.railway.app` | (a) plain | 2 | client | public hop | n/a | yes | yes |
+| `api-production-903f.up.railway.app` | (b) forged `X-Forwarded-For` | 2 | client | public hop | no | yes | yes |
+| `api-production-903f.up.railway.app` | (c) forged `X-Real-IP` | 2 | client | public hop | no | yes | yes |
+
+The custom domain and the Railway domain behave the same, and no request carried
+`cf-connecting-ip`. The api's boot line after the deploy read `ipHeader: x-real-ip`,
+`configured: true`, `perIpDaily: 20`.
 
 ## What it means
 
@@ -56,8 +69,8 @@ this paragraph.
 - The rightmost `x-forwarded-for` entry, which the ceiling used before TEACH-300, is the hop, not
   the client. better-auth trusts `x-forwarded-for` only when it holds exactly one address, so with
   two entries it resolved nothing and put every request in one shared bucket per path.
-- Railway staff answers on Central Station disagree with each other about this. This measurement is
-  what the settings follow.
+- Railway staff answers on Central Station disagree with each other about this. These measurements,
+  on a PR environment and on both production hosts, are what the settings follow.
 
 ## Settings
 
