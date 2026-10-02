@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { JOB_PROGRESS_STAGES } from "@tj/domain";
 import { type Lesson, plainTextOf } from "@tj/domain/documents";
-import { THEMES } from "@tj/slides";
+import { FIT_VERSION, THEMES } from "@tj/slides";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { planObjectivesPrompt } from "../prompts/plan-objectives";
 import { labAi, memoryLogger, recordingDeps, romansLesson, versionsOf } from "../testing";
@@ -267,6 +267,9 @@ describe("the generate job's run from the confirmed objectives (the stamp decide
       stored: final.lesson.slides.length,
     });
     expect(Object.keys(summary.fit.overflowing)).toEqual(THEMES.map((t) => t.id));
+    // Saved fitted and stamped, so the editor's first open adds no page.
+    expect(final.lesson.fitVersion).toBe(FIT_VERSION);
+    expect(summary.fit.pagesOnOpen).toBe(0);
     expect(leaves(summary.fit).every((v) => v === null || typeof v === "number")).toBe(true);
     const gates = lines.map((l) => JSON.parse(l)).filter((r) => r.msg === "save gate");
     expect(gates).toHaveLength(n);

@@ -7,7 +7,7 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
-import { explanationReserve, hasExplanationPanel, RESERVED_LINES } from "./explanation-metrics";
+import { explanationReserve, owesExplanationLane, RESERVED_LINES } from "./explanation-metrics";
 import { contains } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
 import { ACCENT_ABOVE, OPTICAL_BIAS } from "./layouts";
@@ -52,7 +52,7 @@ export type FitResult = {
 
 export function fitSlide(slide: Slide, theme: Theme): FitResult {
   const measure = measureHeadless(theme);
-  const panel = slide.question && hasExplanationPanel(slide.question) ? slide.question : undefined;
+  const panel = slide.question && owesExplanationLane(slide) ? slide.question : undefined;
   const lane =
     panel?.type === "true-false" || panel?.type === "multiple-choice"
       ? { fitBottom: SAFE_BOTTOM - explanationReserve(theme, RESERVED_LINES[panel.type]) }

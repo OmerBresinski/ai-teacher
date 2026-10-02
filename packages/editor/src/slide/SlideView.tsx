@@ -5,7 +5,7 @@ import {
   slideArtVariant,
   slideBackground,
   withoutDiagramSlot,
-  withSlotsShown,
+  withThemeColours,
 } from "@tj/slides";
 import {
   type CSSProperties,
@@ -34,7 +34,6 @@ import {
 } from "./elements/kit";
 import { OverflowGlyph } from "./elements/TextView";
 import { applySlideClip } from "./slide-clip";
-import { slotPlaceholdersOn } from "./slot-placeholders";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
 
@@ -97,20 +96,19 @@ export function SlideView({
    * A diagram instruction with no drawing is a note the editor alone draws: everywhere else the
    * words are laid out as if the slide had no slot, so the right half is never left empty
    * (`@tj/slides` `withoutDiagramSlot`). The editor keeps the placeholder.
+   *
+   * A picture or diagram brief is a note to the teacher and is never drawn for the class: present,
+   * the viewer, thumbnails and capture all lay the words out without the slot. The demo switch
+   * (`slot-placeholders.ts`) no longer draws briefs outside the editor.
    */
-  /**
-   * The demo switch (`slot-placeholders.ts`, set by the web app's VITE_SHOW_SLOT_PLACEHOLDERS) draws every
-   * slot instead, with what the model asked for; capture (export, print) never does.
-   */
-  const demo = mode !== "edit" && mode !== "capture" && slotPlaceholdersOn();
   const slide = useMemo(
+    // Look colours are theme tokens, drawn in the slide's own theme whatever theme wrote them. The
+    // editor keeps each text's stored doc: its Tiptap editors save the doc they were given.
     () =>
       mode === "edit"
-        ? given
-        : demo
-          ? withSlotsShown(given, theme)
-          : withoutDiagramSlot(given, theme),
-    [given, theme, mode, demo],
+        ? withThemeColours(given, theme, { docs: false })
+        : withThemeColours(withoutDiagramSlot(given, theme), theme),
+    [given, theme, mode],
   );
   /**
    * `step` unset means "show the finished slide" — what a thumbnail, an export and the
@@ -208,7 +206,7 @@ export function SlideView({
         {slide.elements.map((el, i) =>
           // A diagram placeholder is a note to the teacher: drawn in the editor, never in present,
           // export, print or a thumbnail (`@tj/slides` `withDiagramSlot`).
-          isDiagramMark(el) && mode !== "edit" && !demo ? null : (
+          isDiagramMark(el) && mode !== "edit" ? null : (
             <ElementFrame
               key={el.id}
               element={el}

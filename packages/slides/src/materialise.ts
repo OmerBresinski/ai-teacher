@@ -60,6 +60,7 @@ import {
   structureSlide,
   withTerms,
 } from "./structure";
+import { withThemeColours } from "./theme-colours";
 import { getTheme } from "./themes";
 
 /*
@@ -423,7 +424,7 @@ function says(laid: readonly SlideElement[], words: readonly SlideElement[]): bo
 export function presentedSlide(slide: Slide, theme: Theme): Slide {
   const shown = withoutDiagramSlot(slide, theme);
   const elements = shown.elements.filter((e) => !isDiagramMark(e) && !isOpenPhotoSlot(e));
-  return { ...shown, elements };
+  return withThemeColours({ ...shown, elements }, theme);
 }
 
 /** The key terms a slide's running text picks out (bold), so the relaid words mark them again. */

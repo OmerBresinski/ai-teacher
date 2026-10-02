@@ -422,6 +422,28 @@ describe("review fixes (look/slides-layout)", () => {
     expect(out.elements.some(isOpenPhotoSlot)).toBe(false);
   });
 
+  test("a library cover's emptied slot is still open, so the thumbnail lays it away", () => {
+    const stored = materialiseSlides(why, "chalk", meta, undefined, 0, { photo })[0] as Slide;
+    // `coverOf` strips every data URL, the placeholder's included, to "".
+    const cover: Slide = {
+      ...stored,
+      elements: stored.elements.map((e) =>
+        e.type === "image" && e.src.startsWith("data:") ? { ...e, src: "" } : e,
+      ),
+    };
+    const slot = cover.elements.find((e) => e.name === PHOTO_NAME);
+    expect(slot && isOpenPhotoSlot(slot)).toBe(true);
+    const shown = withoutDiagramSlot(cover, t);
+    expect(shown.elements.some((e) => e.name === PHOTO_NAME)).toBe(false);
+    // Relaid as present draws it: every sentence still said, in whatever order the layout reads.
+    const said = words([shown]);
+    for (const sentence of words([cover]).split(/(?<=\.) /)) expect(said).toContain(sentence);
+    // The export draws no box for it either.
+    expect(presentedSlide(cover, t).elements.some((e) => e.name === PHOTO_NAME)).toBe(false);
+    // A filled slot is a photograph, not a brief.
+    expect(isOpenPhotoSlot({ ...(slot as ImageElement), src: "/files/a.jpg" })).toBe(false);
+  });
+
   test("a lead and one long point beside an open slot keep every word in present", () => {
     // As the Romans lesson stored it (look branch 3f39835b): the other point had continued.
     const laid = materialiseSlides(reasons, "chalk", meta, undefined, 0, { photo })[0] as Slide;

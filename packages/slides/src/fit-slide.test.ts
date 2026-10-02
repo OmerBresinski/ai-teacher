@@ -384,3 +384,24 @@ describe("fitSlide on an image-text slide (TEACH-140)", () => {
     expect(out.splitAt).toBeUndefined();
   });
 });
+
+describe("fill-gap: a gap is measured as its answer, not its token", () => {
+  const spec = {
+    kind: "fill-gap" as const,
+    factRefs: [],
+    stem: "Complete the sentence with the correct words.",
+    sentence:
+      "In electrolysis, positive ions move to the ___, where they gain electrons and are ___.",
+    answers: ["cathode", "discharged"],
+  };
+  const meta = { promptVersion: "t", model: "t", at: "t" };
+  test.each(THEMES.map((t) => [t.id]))("%s: the fit does not depend on the gap ids", (id) => {
+    const heights = ["a", "bbbbbbbbbbbbbbbbbbbbbbbb"].map((prefix) => {
+      let n = 0;
+      const slide = materialiseSlide(spec, id, meta, () => `${prefix}${n++}`);
+      const gap = fitSlide(slide, getTheme(id)).slide.elements.find((e) => e.type === "gap-text");
+      return gap?.h;
+    });
+    expect(heights[0]).toBe(heights[1]);
+  });
+});

@@ -27,7 +27,7 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { explanationReserve, hasExplanationPanel, RESERVED_LINES } from "./explanation-metrics";
+import { explanationReserve, owesExplanationLane, RESERVED_LINES } from "./explanation-metrics";
 import { contains, intersects, rectOf } from "./geometry";
 import { SAFE, TRIM } from "./grid";
 import { SAFE_BOTTOM } from "./metrics";
@@ -185,7 +185,7 @@ export function findOverflow(slide: Slide, measure?: Measurer): Id[] {
  * report on any other slide, or without a theme to size the lane with.
  */
 export function findLaneOverflow(slide: Slide, theme?: Theme): Id[] {
-  if (!theme || !hasExplanationPanel(slide.question)) return [];
+  if (!theme || !owesExplanationLane(slide)) return [];
   const type = slide.question?.type as keyof typeof RESERVED_LINES;
   const lane = SAFE_BOTTOM - explanationReserve(theme, RESERVED_LINES[type]);
   const right = SAFE.x + SAFE.w;

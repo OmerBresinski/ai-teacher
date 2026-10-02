@@ -1,4 +1,5 @@
-import type { QuestionData, Theme } from "@tj/domain/documents";
+import type { QuestionData, Slide, Theme } from "@tj/domain/documents";
+import { isGeneratedSlide } from "./reflow";
 import { resolveFontSize } from "./text-style";
 
 /*
@@ -29,6 +30,19 @@ export const EXPLANATION_PLACEHOLDER = "Say why this is the answer.";
 /** Question types that carry a "Why?" panel. */
 export function hasExplanationPanel(question: QuestionData | undefined): boolean {
   return question?.type === "true-false" || question?.type === "multiple-choice";
+}
+
+/**
+ * A "Why?" panel the slide owes a lane at its foot. A generated slide (`isGeneratedSlide`) whose
+ * question has no reason written owes none, because outside the editor an unwritten reason is not
+ * shown, so the options get the room. A slide the teacher has touched keeps its lane, empty or
+ * not, since the editor draws the panel there to type in.
+ */
+export function owesExplanationLane(slide: Pick<Slide, "question" | "elements">): boolean {
+  const q = slide.question;
+  if (q?.type !== "true-false" && q?.type !== "multiple-choice") return false;
+  if (q.explanation?.trim()) return true;
+  return !isGeneratedSlide(slide);
 }
 
 export type PanelType = {

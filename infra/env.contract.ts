@@ -1123,7 +1123,7 @@ const CONTRACT = [
     values: ["0", "1"],
     files: ["web"],
     description:
-      "`1` draws every slide's photo and diagram slots in present as placeholders naming what the model asked for, for testing and screenshots (look/image-slot). On by default while the image system is being built, production included; `0` turns them off.",
+      "Sets the `@tj/editor` slot-placeholder switch (look/image-slot). Since TEACH-14 no renderer reads it: the editor always draws photo and diagram slots as placeholders naming what the model asked for, and present, the viewer, thumbnails and exports never draw a brief.",
   },
   {
     name: "VITE_DEV_API_TARGET",

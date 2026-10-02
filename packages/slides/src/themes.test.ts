@@ -8,6 +8,7 @@ import {
 } from "@tj/domain/documents";
 import { artOf as themeArtOf } from "./art";
 import { newLesson, newSlide } from "./factories";
+import { withThemeColours } from "./theme-colours";
 import {
   CALLOUT_TONES,
   calloutTone,
@@ -220,5 +221,77 @@ describe("callout tones", () => {
         `${kind} line on ground`,
       ).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+/*
+ * Card and chrome colours come from the theme at render time (`withThemeColours`): every text the
+ * look sets on a card or the ground reads at WCAG AA in every theme. Card text (ink) and the
+ * reason column (muted, small) need 4.5:1; the badge numerals (onAccent on accent) and the
+ * revealed answer (accent, bold, at least 29 px: large text) need 3:1.
+ */
+describe("look colours reach WCAG AA on every theme", () => {
+  for (const theme of THEMES) {
+    test(`${theme.id}: card and chrome pairs`, () => {
+      const c = theme.colors;
+      const card = c.surface;
+      expect(contrast(c.ink, card), "ink on card").toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.ink, c.background), "ink on ground").toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.muted, card), "muted on card").toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.onAccent, c.accent), "badge").toBeGreaterThanOrEqual(3);
+      expect(contrast(c.accent, card), "answer on card").toBeGreaterThanOrEqual(3);
+    });
+  }
+  test("a chalk slide shown in Night Lab takes Night Lab's card, bar and ink", () => {
+    const chalk = getTheme("chalk");
+    const night = getTheme("night-lab");
+    const slide = {
+      id: "s",
+      kind: "content" as const,
+      elements: [
+        {
+          id: "c",
+          type: "shape" as const,
+          shape: "rounded" as const,
+          x: 0,
+          y: 0,
+          w: 9,
+          h: 9,
+          fill: chalk.colors.surface,
+          stroke: chalk.colors.line,
+          name: "Compare card",
+        },
+        {
+          id: "b",
+          type: "shape" as const,
+          shape: "rect" as const,
+          x: 0,
+          y: 531,
+          w: 960,
+          h: 9,
+          fill: chalk.colors.accent,
+          name: "Accent bar",
+        },
+        {
+          id: "o",
+          type: "shape" as const,
+          shape: "rect" as const,
+          x: 0,
+          y: 0,
+          w: 9,
+          h: 9,
+          fill: "#123456",
+        },
+      ],
+    };
+    const [card, bar, own] = withThemeColours(slide, night).elements as {
+      fill?: string;
+      stroke?: string;
+    }[];
+    expect(card?.fill).toBe(night.colors.surface);
+    expect(card?.stroke).toBe(night.colors.line);
+    expect(bar?.fill).toBe(night.colors.accent);
+    expect(own?.fill).toBe("#123456");
+    expect(contrast(night.colors.ink, card?.fill ?? "")).toBeGreaterThanOrEqual(4.5);
   });
 });

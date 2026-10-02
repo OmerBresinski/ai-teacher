@@ -1,15 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
 import { docFromText } from "./factories";
-import {
-  answersOverQuestions,
-  fitsPlanned,
-  isGeneratedSlide,
-  slideFits,
-  stepsTaken,
-} from "./fit-check";
+import { answersOverQuestions, fitsPlanned, slideFits, stepsTaken } from "./fit-check";
 import { materialiseSlide } from "./materialise";
-import { ANSWERS_NAME } from "./reflow";
+import { ANSWERS_NAME, isGeneratedSlide } from "./reflow";
 import type { SlideSpec } from "./specs";
 import { ladderStops, resolveFontSize } from "./text-style";
 import { getTheme, THEMES } from "./themes";
@@ -208,6 +202,7 @@ describe("isGeneratedSlide", () => {
   });
 
   test("an empty slide is nobody's", () => {
-    expect(isGeneratedSlide({ id: "s", kind: "content", elements: [] })).toBe(false);
+    const empty: Slide = { id: "s", kind: "content", elements: [] };
+    expect(isGeneratedSlide(empty)).toBe(false);
   });
 });

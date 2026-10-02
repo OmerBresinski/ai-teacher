@@ -74,9 +74,14 @@ export type PhotoBrief = { subject: string; mustShow?: readonly string[] | undef
 /** The brief as one line, the placeholder's words: "Roman legionaries — shields, armour". */
 export const photoLabel = (brief: PhotoBrief): string =>
   brief.mustShow?.length ? `${brief.subject} — ${brief.mustShow.join(", ")}` : brief.subject;
-/** A photo slot no photograph has filled yet. */
+/**
+ * A photo slot no photograph has filled yet. A library cover (`@tj/domain` `coverOf`) strips
+ * every data URL to `""`, the placeholder's included, so an emptied slot is still open: the
+ * thumbnail lays it away as present does instead of drawing a broken picture captioned with the
+ * brief.
+ */
 export const isOpenPhotoSlot = (el: SlideElement): boolean =>
-  el.type === "image" && el.name === PHOTO_NAME && el.src === PLACEHOLDER_IMAGE;
+  el.type === "image" && el.name === PHOTO_NAME && (el.src === PLACEHOLDER_IMAGE || el.src === "");
 
 /**
  * What the slide is for, in the words a class sees on the tag. Only an activity, or a slide with a

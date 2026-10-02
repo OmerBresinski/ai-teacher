@@ -3,6 +3,7 @@ import {
   type DiagramTextSpec,
   diagramSpecSchemaFor,
   diagramTextSpecSchemaFor,
+  FIT_VERSION,
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
@@ -104,7 +105,10 @@ const PROGRESS_GENERATED = PROGRESS_SLIDES_FROM + PROGRESS_SLIDES_SPAN;
 export { BUDGET_FINDING };
 
 export async function generate(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
-  let lesson = state.lesson;
+  // Saved fitted: every slide below is fitted by `materialiseSlide` with the headless ruler and
+  // checked by the save gate, so the lesson carries the current `fitVersion` and the editor's first
+  // open has nothing to do (ADR 0022 amendment, TEACH-14).
+  let lesson: Lesson = { ...state.lesson, fitVersion: FIT_VERSION };
   if (!lesson.facts) throw new Error("generate: the lesson has no facts; Plan has not run");
   let facts: LessonFacts = lesson.facts;
   const generation = generationOf(lesson);

@@ -19,9 +19,9 @@ export const EnvSchema = z.object({
     .optional()
     .transform((v) => (v === undefined || v.trim() === "" ? undefined : v.trim())),
   /**
-   * "1" draws every slide's photo and diagram slots in present as placeholders saying what the
-   * model asked for, for testing and screenshots (look/image-slot). On by default while the
-   * image system is being built; set "0" to lay slides out as if the slots were empty.
+   * The `@tj/editor` slot-placeholder switch (look/image-slot). Since TEACH-14 no renderer reads
+   * it: the editor always draws photo and diagram slots as placeholders, and present, the viewer
+   * and thumbnails never draw a brief.
    */
   VITE_SHOW_SLOT_PLACEHOLDERS: z.enum(["0", "1"]).default("1"),
 });
