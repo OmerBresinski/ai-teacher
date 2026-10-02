@@ -1,14 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { SlideSpec } from "@tj/slides";
 import { memoryLogger } from "../testing";
-import type { PipelineDeps } from "../types";
-import { saveGate } from "./generate";
+import { saveGate } from "./save-gate";
 
 /* The save gate: every generated slide is checked and logged, never rewritten. */
 
 const depsWith = () => {
   const { lines, logger } = memoryLogger();
-  return { lines, deps: { logger } as unknown as PipelineDeps };
+  return { lines, deps: { logger } };
 };
 const logged = (lines: string[]) => lines.map((l) => JSON.parse(l));
 
@@ -21,8 +20,9 @@ describe("saveGate", () => {
       heading: "Roots",
       body: "Roots take in water.",
     };
-    expect(saveGate(spec as SlideSpec, 3, deps)).toBe(true);
-    const [line] = logged(lines);
+    saveGate(spec as SlideSpec, 3, deps);
+    const [line, ...rest] = logged(lines);
+    expect(rest).toEqual([]);
     expect(line).toMatchObject({
       msg: "save gate",
       level: 30,
@@ -40,7 +40,7 @@ describe("saveGate", () => {
       " ",
     );
     const spec = { kind: "content", factRefs: ["k1"], heading: "Too much", body };
-    expect(saveGate(spec as SlideSpec, 0, deps)).toBe(false);
+    saveGate(spec as SlideSpec, 0, deps);
     const [line] = logged(lines);
     expect(line).toMatchObject({ msg: "save gate", level: 40, fits: false });
     expect(line.failing.length).toBeGreaterThan(0);
@@ -54,5 +54,19 @@ describe("saveGate", () => {
     ]);
     // Never content in a log line.
     expect(JSON.stringify(line)).not.toContain("Water moves");
+  });
+
+  test("a fault in the check logs one warning and costs nothing else", () => {
+    const { lines, deps } = depsWith();
+    const spec = { kind: "content", factRefs: ["k1"], heading: "Roots", body: "Roots." };
+    expect(() =>
+      saveGate(spec as SlideSpec, 2, deps, () => {
+        throw new Error("ruler broke");
+      }),
+    ).not.toThrow();
+    const [line, ...rest] = logged(lines);
+    expect(rest).toEqual([]);
+    expect(line).toMatchObject({ msg: "save gate failed", level: 40, stage: "generate", index: 2 });
+    expect(line.fits).toBeUndefined();
   });
 });

@@ -1,10 +1,8 @@
-import { safeError } from "@tj/domain";
 import type { Finding, Lesson, LessonFacts, OutlineEntry, Slide } from "@tj/domain/documents";
 import {
   type DiagramTextSpec,
   diagramSpecSchemaFor,
   diagramTextSpecSchemaFor,
-  fitsPlanned,
   type ImageTextPhoto,
   imageTextSpecSchemaFor,
   type MaterialiseMeta,
@@ -46,6 +44,7 @@ import {
   withPhoto,
 } from "./illustrate";
 import { stemPlan } from "./question-pool";
+import { saveGate } from "./save-gate";
 import {
   audienceOf,
   BUDGET_FINDING,
@@ -208,6 +207,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   ): Promise<{
     slide: Slide;
     spec: SlideSpec;
+    /** What was done to the materialised slide before it is saved, for the save gate. */
+    finish?: (slide: Slide, themeId: string) => Slide;
     misses: EditorialMiss[];
     builtFrom: LessonFacts;
   }> => {
@@ -222,7 +223,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         materialiseSlide(coded.spec, lesson.themeId, meta(CODE_MODEL), deps.ids),
         lesson.themeId,
       );
-      return { slide, spec: coded.spec, misses: [], builtFrom };
+      return { slide, spec: coded.spec, finish: withAnswersReveal, misses: [], builtFrom };
     }
     // A diagram whose fact carries the figure (TEACH-253) is written as text around that figure;
     // without one (a lesson planned before, or a facts call that missed it) the call writes the
@@ -321,7 +322,7 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
         written = await writeSlide(i, entry, photo);
       }
       slide = written.slide;
-      saveGate(written.spec, i, deps);
+      saveGate(written.spec, i, deps, written.finish);
       for (const miss of written.misses) {
         findings.push(specRuleFinding(miss, { slideId: slide.id }));
       }
@@ -399,43 +400,6 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
   await deps.onProgress(PROGRESS_GENERATED, "Slides ready", "generate", updatedAt);
   const { pendingVerify: _settled, ...rest } = state;
   return { ...rest, lesson };
-}
-
-/**
- * The save gate: each generated slide's spec is checked with `fitsPlanned` at one step down (UX
- * ruling 91's one smaller size, once) on every theme, because a teacher can change the look after
- * the lesson is written. The result is logged, one line per slide and a warning when it does not
- * fit, as counts per theme and never slide text. Nothing is rewritten, and a fault in the check
- * never costs the slide.
- */
-export function saveGate(spec: SlideSpec, index: number, deps: PipelineDeps): boolean | undefined {
-  try {
-    const { ok, failing } = fitsPlanned(spec, { stepDown: 1 });
-    const fields = {
-      stage: "generate",
-      index,
-      kind: spec.kind,
-      fits: ok,
-      ...(ok
-        ? {}
-        : {
-            failing: failing.map((f) => ({
-              theme: f.theme,
-              overflow: f.overflow.length,
-              overlaps: f.overlaps,
-              lane: f.lane.length,
-              steps: f.steps,
-              answers: f.answers.length,
-            })),
-          }),
-    };
-    if (ok) deps.logger.info(fields, "save gate");
-    else deps.logger.warn(fields, "save gate");
-    return ok;
-  } catch (error) {
-    deps.logger.warn({ stage: "generate", index, err: safeError(error) }, "save gate failed");
-    return undefined;
-  }
 }
 
 /** Whether Generate has already applied (or recorded the outcome of) Verify for this lesson. */

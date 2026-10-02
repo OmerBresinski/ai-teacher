@@ -69,8 +69,32 @@ describe("fitsPlanned", () => {
     const plan = fitsPlanned(worked, { stepDown: 0 });
     const save = fitsPlanned(worked, { stepDown: 1 });
     expect(save.ok).toBe(true);
-    if (!plan.ok)
-      expect(plan.failing.every((f) => f.steps === 1 && f.overflow.length === 0)).toBe(true);
+    expect(plan.ok).toBe(false);
+    expect(plan.failing.every((f) => f.steps === 1 && f.overflow.length === 0)).toBe(true);
+  });
+
+  test("the slide judged is the slide the caller saves: `finish` runs before the check", () => {
+    // An answers reveal laid over the heading, as a caller might add after materialising.
+    const finish = (slide: Slide): Slide => {
+      const heading = slide.elements.find((e) => e.type === "text");
+      if (!heading) throw new Error("no heading");
+      const cover = {
+        id: "answers",
+        type: "shape",
+        shape: "rect",
+        name: ANSWERS_NAME,
+        x: heading.x,
+        y: heading.y,
+        w: heading.w,
+        h: heading.h,
+        revealStep: 1,
+        reveal: "fade",
+      } as Slide["elements"][number];
+      return { ...slide, elements: [...slide.elements, cover] };
+    };
+    const result = fitsPlanned(short, { stepDown: 1, finish });
+    expect(result.failing).toHaveLength(THEMES.length);
+    expect(result.failing.every((f) => f.answers.length > 0)).toBe(true);
   });
 
   test("themes can be narrowed", () => {

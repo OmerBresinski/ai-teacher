@@ -221,7 +221,6 @@ export function lintSlide(slide: Slide, measure?: Measurer, theme?: Theme): Slid
  */
 const growable = (slide: Slide) =>
   slide.elements.flatMap((el) => {
-    if (el.type !== "text" && el.type !== "gap-text" && el.type !== "option") return [];
     const parts = textPartsOf(el, slide);
     if (!parts?.autoHeight) return [];
     return [

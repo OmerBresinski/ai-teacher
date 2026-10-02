@@ -83,7 +83,8 @@ src/
   slide/      SlideView (the one renderer), SlideScaler, SlideStatic, elements/*
   kit/        Panel, Segmented, NumberInput, ZoomControl, Color, Rail, SaveIndicator (the live
               region over the autosave store), InlineTitle (the h1 that renames) — no @tj/ui twin
-  layout/     text fitting engine: reflow/lint/fit-plan (pure), measure (DOM ruler), tidy
+  layout/     text fitting engine: reflow, lint and fit-plan re-export `@tj/slides` (the one
+              ruler generation shares), measure (DOM ruler), tidy
               (pure over the lesson; `tidySlideReducer` for dispatch), use-slide-lint (navigator
               badge), use-fit-migration (once per lesson on open); `test-ruler.ts` is the fake
               Measurer the tests use — happy-dom cannot lay out text
@@ -177,7 +178,8 @@ import `@tj/editor/styles/editor.css` themselves rather than relying on the libr
 `bun test` in this directory. Behaviour tests only; TeachDeck's vitest files are a catalogue of
 cases, not ported (ADR 0022 §9) — the TEACH-113 gap analysis (checklist comment on that issue) maps
 every catalogue file to the test here that covers it. The pure engines have their own files next to
-the source (`layout/reflow`, `layout/explanation`, `layout/lint`, `layout/tidy`, `layout/fit-plan`,
+the source (`layout/reflow`, `layout/explanation`, `layout/lint` and `layout/fits-planned` over
+the `@tj/slides` linter, `layout/tidy`, `layout/fit-plan`,
 `present/ink`, `present/present-reducer`, `present/timer`, `lesson/canvas/place-slide-actions`,
 `lesson/slide-commands`, `model/snapping`, `lesson/transform/{hit-test,resize}`); happy-dom cannot
 lay out text, so anything that measures runs against `layout/test-ruler.ts`. What needs a real

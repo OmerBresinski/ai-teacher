@@ -20,6 +20,7 @@ import {
   isFrozen,
   isHairline,
   isLayerBelow,
+  isQuestionSlide,
   type MeasureInput,
   type Measurer,
   type ReflowResult,
@@ -254,24 +255,6 @@ function headerBand(authored: SlideElement[]): Set<Id> {
       .map((el) => el.id),
   );
 }
-
-/**
- * Question slides are never split (ruling 91): an option grid that does not fit takes a roomier
- * layout at generation, and a continuation would leave the question on one slide and its answers
- * on the next.
- */
-const QUESTION_KINDS: ReadonlySet<Slide["kind"]> = new Set([
-  "multiple-choice",
-  "true-false",
-  "matching",
-  "fill-gap",
-  "sort",
-  "image-match",
-  "open-response",
-  "exit-ticket",
-]);
-const isQuestionSlide = (slide: Slide): boolean =>
-  slide.question !== undefined || QUESTION_KINDS.has(slide.kind);
 
 /** The small "CONTINUED" label a continuation carries above its heading (TEACH-248). */
 export const CONTINUED_LABEL = "Continued label";

@@ -241,13 +241,13 @@ export interface PipelineOptions {
 }
 
 /**
- * The summary's `fit` block: slides asked for and delivered, slides that overflow per theme,
- * callouts planned and placed, and the pages the editor's first open would add. It is `fitReport`
- * in `@tj/slides`, the function the offline fit scorer
- * (`docs/eval/lab/fit-lab/harness/fit-score.ts`) prints too, so the two never disagree. A
- * measuring fault never costs the summary line: it is logged and the block is left off.
+ * The summary's `fit` block (`fitReport` in `@tj/slides`): slides asked for and delivered, slides
+ * that overflow per theme, callouts planned and placed, and the pages the editor's first open
+ * would add. Written for a job that ran Generate, over the slides its last checkpoint holds; a
+ * plan-only job, or one that resumed past Generate, has no block. A measuring fault never costs
+ * the summary line: it is logged and the block is left off.
  */
-function fitOf(lesson: Lesson, deps: PipelineDeps): FitReport | undefined {
+export function fitOf(lesson: Lesson, deps: Pick<PipelineDeps, "logger">): FitReport | undefined {
   if (lesson.slides.length === 0) return undefined;
   try {
     return fitReport(lesson);
@@ -326,7 +326,10 @@ export async function runLessonPipeline(
     const findings = { error: 0, warning: 0 };
     for (const f of checkpoint?.lesson.generation?.findings ?? []) findings[f.severity] += 1;
     const totals = deps.budget.totals();
-    const fit = checkpoint ? fitOf(checkpoint.lesson, deps) : undefined;
+    const durationMs = Date.now() - startedAt;
+    const stages = (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [];
+    const fit =
+      checkpoint && stages.includes("generate") ? fitOf(checkpoint.lesson, deps) : undefined;
     deps.logger.info(
       {
         generation: {
@@ -334,11 +337,11 @@ export async function runLessonPipeline(
           jobId: deps.context.jobId,
           outcome,
           planner,
-          stages: (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [],
+          stages,
           ...totals,
           findings,
           images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
-          durationMs: Date.now() - startedAt,
+          durationMs,
           ...(readableMs !== undefined ? { readableMs } : {}),
           ...(checkedMs !== undefined ? { checkedMs } : {}),
           ...(fit ? { fit } : {}),

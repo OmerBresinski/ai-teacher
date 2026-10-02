@@ -2,14 +2,8 @@ import type { Id, Lesson, Theme } from "@tj/domain/documents";
 import { useEffect, useRef } from "react";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
-import {
-  fitMigrationMessage,
-  fitVersionOf,
-  measureInputsOf,
-  planFitMigration,
-  renderedHeights,
-} from "./fit-plan";
-import { lintSlide } from "./lint";
+import { fitMigrationMessage, fitVersionOf, measureInputsOf, planFitMigration } from "./fit-plan";
+import { lintAsDrawn } from "./lint";
 import { createMeasurer, warmMeasurer, whenFontsReady } from "./measure";
 import type { MeasureInput, Measurer } from "./reflow";
 import { tidySlideReducer } from "./tidy";
@@ -88,7 +82,7 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
   const plan = planFitMigration(
     lesson,
     // Linted as the renderer draws it, not as it is stored.
-    (slide) => !lintSlide(renderedHeights(slide, measure), measure, theme).ok,
+    (slide) => !lintAsDrawn(slide, measure, theme).ok,
   );
   // Stamped first, and outside the undo history: written before the transaction it is inside the
   // snapshot the transaction restores, so undo gives the teacher their layout back while the app

@@ -5,6 +5,7 @@ import { fitSlide } from "./fit-slide";
 import { BODY_Y } from "./layouts";
 import { lintAsDrawn } from "./lint";
 import { SAFE_BOTTOM } from "./metrics";
+import { isQuestionSlide } from "./reflow";
 import { measureHeadless } from "./text-measure";
 import { FIT_VERSION, getTheme, THEMES } from "./themes";
 
@@ -55,24 +56,12 @@ const TEACHING = new Set<Slide["kind"]>(["content", "image-text"]);
 const hasCallout = (slide: Slide) =>
   slide.elements.some((e) => e.name === CALLOUT_NAMES.card || e.name === CALLOUT_NAMES.text);
 
-/** Question slides are never split (ruling 91); the editor's Tidy leaves them to overflow. */
-const QUESTION_KINDS = new Set<Slide["kind"]>([
-  "multiple-choice",
-  "true-false",
-  "matching",
-  "fill-gap",
-  "sort",
-  "image-match",
-  "open-response",
-  "exit-ticket",
-]);
-const splittable = (slide: Slide) => !slide.question && !QUESTION_KINDS.has(slide.kind);
-
 /**
  * Pages the first open adds, headless: none for a lesson stamped with the current `fitVersion`
  * (the migration reads one number and stops). Otherwise, for each slide the migration flags on the
- * lesson's own theme, that Tidy is allowed to split, and that still overflows once fitted: the
- * overrun past the safe area in continuation bodies (heading band to foot), at least one.
+ * lesson's own theme, that Tidy is allowed to split (not `isQuestionSlide`), and that still
+ * overflows once fitted: the overrun past the safe area in continuation bodies (heading band to
+ * foot), at least one.
  */
 export function estimatePagesOnOpen(lesson: Lesson): number {
   if ((lesson.fitVersion ?? 0) >= FIT_VERSION) return 0;
@@ -81,7 +70,7 @@ export function estimatePagesOnOpen(lesson: Lesson): number {
   const page = SAFE_BOTTOM - BODY_Y;
   let pages = 0;
   for (const slide of lesson.slides) {
-    if (!splittable(slide) || lintAsDrawn(slide, measure, theme).ok) continue;
+    if (isQuestionSlide(slide) || lintAsDrawn(slide, measure, theme).ok) continue;
     const fitted = fitSlide(slide, theme);
     if (fitted.overflow.length === 0) continue;
     const over = new Set(fitted.overflow);

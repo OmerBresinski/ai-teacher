@@ -101,7 +101,7 @@ describe("fitsPlanned agrees with the editor's lint", () => {
       measureHeadless(theme),
     );
     const planned = fitsPlanned(spec, { stepDown: 1, themes: [theme] });
-    if (flagged.length > 0) expect(planned.ok).toBe(false);
+    expect(flagged).toEqual([slide.id]);
     expect(planned.ok).toBe(false);
   });
 });

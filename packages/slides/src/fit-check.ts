@@ -1,20 +1,21 @@
-import type { Id, Slide, Theme } from "@tj/domain/documents";
+import type { Id, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { fitSlide } from "./fit-slide";
 import { intersects, rectOf } from "./geometry";
-import { isDecorative, lintAsDrawn, renderedHeights } from "./lint";
+import { isDecorative, lintSlide, renderedHeights, type SlideLint } from "./lint";
 import { type MaterialiseMeta, materialiseSlide } from "./materialise";
 import { ANSWERS_NAME, isBackdrop, isFrozen, isLayerBelow, textPartsOf } from "./reflow";
 import type { SlideSpec } from "./specs";
 import type { SlideStructure } from "./structure";
 import { measureHeadless } from "./text-measure";
 import { ladderStops, resolveFontSize } from "./text-style";
-import { getTheme, THEMES } from "./themes";
+import { THEMES } from "./themes";
 
 /*
  * One ruler for planning, generation's save gate and the editor's Tidy, so the three never
- * disagree about a slide. A slide is judged the way the editor's first open judges it — `fitSlide` with the headless ruler, then the
- * editor's own linter on the slide as drawn (`lintAsDrawn`) — on every theme, because a teacher
- * can change the look after the lesson is written. `fitsExitTicket` (generation's
+ * disagree about a slide. A slide is judged the way the editor's first open judges it —
+ * `fitSlide` with the headless ruler, then the editor's own linter on the slide as drawn
+ * (`lintAsDrawn`) — on every theme, because a teacher can change the look after the lesson is
+ * written. `fitsExitTicket` (generation's
  * `planner/coded-slides.ts`) is the pattern: materialise the spec in each theme and measure it.
  *
  * `stepDown` is the headroom rule. Planning asks for 0: the slide fits with every text at its own
@@ -51,10 +52,15 @@ export type FitsPlannedOptions = {
   /** Defaults to every theme in the catalogue. */
   themes?: readonly Theme[];
   meta?: MaterialiseMeta;
-  /** The recipe variant the slide is laid out in (a palette form's `renderer.variant`). */
+  /** The recipe variant to lay the slide out in, as `materialiseSlide` takes it. */
   variant?: number | string;
-  /** The structure hints it is materialised with (a palette photo slot). */
+  /** The structure hints to materialise it with, as `materialiseSlide` takes them. */
   structure?: SlideStructure;
+  /**
+   * What the caller does to the materialised slide before it stores it (a coded question set's
+   * answers reveal), so the slide judged is the slide saved.
+   */
+  finish?: (slide: Slide, themeId: string) => Slide;
 };
 
 const CHECK_META: MaterialiseMeta = {
@@ -101,11 +107,19 @@ export function stepsTaken(slide: Slide, theme: Theme): number {
  * answers keep clear, or the slide has none. Ids in draw order.
  */
 export function answersOverQuestions(slide: Slide, theme: Theme): Id[] {
-  const drawn = renderedHeights(slide, measureHeadless(theme));
+  if (!slide.elements.some(isAnswersReveal)) return [];
+  return answersOverDrawn(renderedHeights(slide, measureHeadless(theme)));
+}
+
+/** The reveal panel a question set's answers sit in, shown on a later step than the questions. */
+const isAnswersReveal = (el: SlideElement) => el.name === ANSWERS_NAME && (el.revealStep ?? 0) > 0;
+
+/** `answersOverQuestions` on a slide already drawn (`renderedHeights`). */
+function answersOverDrawn(drawn: Slide): Id[] {
   const out = new Set<Id>();
   for (const panel of drawn.elements) {
+    if (!isAnswersReveal(panel)) continue;
     const step = panel.revealStep ?? 0;
-    if (panel.name !== ANSWERS_NAME || step <= 0) continue;
     const box = rectOf(panel);
     const inset = {
       x: box.x + 0.5,
@@ -133,16 +147,25 @@ export function answersOverQuestions(slide: Slide, theme: Theme): Id[] {
 }
 
 /**
+ * The slide as the editor draws it (`renderedHeights`), measured once and judged twice: the
+ * linter's findings (`lintAsDrawn`) and what its answers reveal covers.
+ */
+function judgedAsDrawn(slide: Slide, theme: Theme): { lint: SlideLint; answers: Id[] } {
+  const measure = measureHeadless(theme);
+  const drawn = renderedHeights(slide, measure);
+  return { lint: lintSlide(drawn, measure, theme), answers: answersOverDrawn(drawn) };
+}
+
+/**
  * A materialised slide judged in one theme: fitted with the headless ruler, then linted as the
  * editor draws it. The slide is taken as it stands (positions from whichever theme laid it out),
  * as the editor takes a lesson after a theme change.
  */
 export function slideFits(slide: Slide, theme: Theme, stepDown: StepDown): ThemeFit {
   const fitted = fitSlide(slide, theme);
-  const lint = lintAsDrawn(fitted.slide, measureHeadless(theme), theme);
+  const { lint, answers } = judgedAsDrawn(fitted.slide, theme);
   const overflow = [...new Set([...fitted.overflow, ...lint.overflow])];
   const steps = stepsTaken(fitted.slide, theme);
-  const answers = answersOverQuestions(fitted.slide, theme);
   return {
     theme: theme.id,
     ok: overflow.length === 0 && lint.ok && steps <= stepDown && answers.length === 0,
@@ -166,20 +189,19 @@ export function fitsPlanned(spec: SlideSpec, opts: FitsPlannedOptions): FitsPlan
   let n = 0;
   const ids = () => `fit${++n}`;
   const failing = themes.flatMap((theme) => {
-    const slide = materialiseSlide(spec, theme.id, meta, ids, opts.variant, opts.structure ?? {});
-    const t = getTheme(theme.id);
-    const fit = slideFits(slide, t, opts.stepDown);
-    const stored = lintAsDrawn(slide, measureHeadless(t), t);
-    const storedAnswers = answersOverQuestions(slide, t);
-    if (fit.ok && stored.ok && storedAnswers.length === 0) return [];
+    const made = materialiseSlide(spec, theme.id, meta, ids, opts.variant, opts.structure ?? {});
+    const slide = opts.finish ? opts.finish(made, theme.id) : made;
+    const fit = slideFits(slide, theme, opts.stepDown);
+    const stored = judgedAsDrawn(slide, theme);
+    if (fit.ok && stored.lint.ok && stored.answers.length === 0) return [];
     return [
       {
         ...fit,
         ok: false,
-        overflow: [...new Set([...fit.overflow, ...stored.overflow])],
-        overlaps: Math.max(fit.overlaps, stored.overlaps.length),
-        lane: [...new Set([...fit.lane, ...stored.laneOverflow])],
-        answers: [...new Set([...fit.answers, ...storedAnswers])],
+        overflow: [...new Set([...fit.overflow, ...stored.lint.overflow])],
+        overlaps: Math.max(fit.overlaps, stored.lint.overlaps.length),
+        lane: [...new Set([...fit.lane, ...stored.lint.laneOverflow])],
+        answers: [...new Set([...fit.answers, ...stored.answers])],
       },
     ];
   });

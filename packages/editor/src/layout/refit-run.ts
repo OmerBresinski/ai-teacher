@@ -1,7 +1,7 @@
 import type { Lesson, Theme } from "@tj/domain/documents";
 import { getTheme } from "../model/themes";
-import { isFitStale, measureInputsOf, planFitMigration, renderedHeights } from "./fit-plan";
-import { lintSlide } from "./lint";
+import { isFitStale, measureInputsOf, planFitMigration } from "./fit-plan";
+import { lintAsDrawn } from "./lint";
 import { createMeasurer, warmMeasurer } from "./measure";
 import type { MeasureInput, Measurer } from "./reflow";
 import { tidySlide } from "./tidy";
@@ -32,10 +32,7 @@ export function refitStaleLesson(lesson: Lesson, deps: RefitDeps = {}): Lesson {
     lesson.slides.flatMap((slide) => measureInputsOf(slide)),
     theme,
   );
-  const plan = planFitMigration(
-    lesson,
-    (slide) => !lintSlide(renderedHeights(slide, measure), measure, theme).ok,
-  );
+  const plan = planFitMigration(lesson, (slide) => !lintAsDrawn(slide, measure, theme).ok);
   let out = lesson;
   for (const id of plan.slideIds) out = tidySlide(out, id, measure).lesson;
   return out === lesson ? lesson : { ...out, fitVersion: plan.version };

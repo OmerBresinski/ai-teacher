@@ -1,8 +1,8 @@
 import type { Id, Lesson, Slide, Theme } from "@tj/domain/documents";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
-import { measureInputsOf, renderedHeights } from "./fit-plan";
-import { lintSlide } from "./lint";
+import { measureInputsOf } from "./fit-plan";
+import { lintAsDrawn } from "./lint";
 import type { Measurer } from "./reflow";
 import { tidySlide } from "./tidy";
 
@@ -29,7 +29,7 @@ export type RethemeOutcome = {
 /** Every slide that does not lint clean under `theme`, measured as the renderer draws it. */
 export function slidesNeedingFit(lesson: Lesson, theme: Theme, measure: Measurer): Id[] {
   return lesson.slides
-    .filter((slide) => !lintSlide(renderedHeights(slide, measure), measure, theme).ok)
+    .filter((slide) => !lintAsDrawn(slide, measure, theme).ok)
     .map((slide) => slide.id);
 }
 

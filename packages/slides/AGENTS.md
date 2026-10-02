@@ -4,7 +4,10 @@ The pure slide recipes (ADR 0025 §9): theme catalogue and projector floors (`th
 `FIT_VERSION`), the 960×540 grid, `layoutSlide` and its placeholder copy, the rich-doc builders
 (`docFromText`, `docFromBullets`, `docFromNumbered`), text-style resolution, the "Why?" panel
 metrics, and `materialiseSlide` / `materialiseBlock`, which fill a recipe from a model-produced
-spec (ADR 0025 §8). Read the root [`AGENTS.md`](../../AGENTS.md) first.
+spec (ADR 0025 §8). The layout linter (`lint.ts`: `lintSlide`, `lintAsDrawn`, `renderedHeights`)
+and the headless fit check (`fit-check.ts`: `fitsPlanned`, `slideFits`; `fit-report.ts`:
+`fitReport`) live here too, so generation and the editor measure a slide with one ruler. Read the
+root [`AGENTS.md`](../../AGENTS.md) first.
 
 - **No React, no Tiptap, no CSS.** Dependencies are `@tj/domain`, `nanoid` and `zod` only;
   `src/bundle.test.ts` builds the entry for Bun and fails on any of them. Anything that needs a
