@@ -291,5 +291,6 @@ The evidence is in `docs/security/auth-edge.md`.
    call. The count is soft: concurrent requests can pass together. The worker's
    `auth.anonymous-cleanup` job drops rows older than two days.
 6. **Production values** are the founder's: `AUTH_IP_HEADER`, `ANONYMOUS_SIGNINS_PER_IP_DAILY` and
-   the two mail bounds are Railway variables the founder sets. `infra/README.md` "Known gaps" records what is
-   live.
+   the two mail bounds are Railway variables. Live on 2 Oct 2026: `AUTH_IP_HEADER=x-real-ip` and
+   `ANONYMOUS_SIGNINS_PER_IP_DAILY=20`; the mail bounds are unset, so the defaults (5 and 300)
+   apply. The probes on both production hosts are in `docs/security/auth-edge.md`.
