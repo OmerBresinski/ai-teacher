@@ -91,6 +91,24 @@ export function smokeCases(webOrigin: string): SmokeCase[] {
       headers: { ...browser, "Content-Type": "application/json" },
       expect: 400,
     },
+    {
+      // TEACH-249: the same request from a foreign page. The CSRF guard covers the protected
+      // paths, not `/auth/*`, and better-auth checks Origin only when a cookie is sent, so Turnstile
+      // is what refuses it (ADR 0008 amendment of 2026-10-02, item 8). A 200 means any site can
+      // mint anonymous users. Both anonymous cases answer 403 anonymous_capacity once today's cap is
+      // reached, and 429 once this machine's address has made a real anonymous sign-in today: the
+      // limits in `app.ts` run before Turnstile. Spends a second of better-auth's three
+      // `/sign-in/anonymous` requests per 10 s.
+      name: "foreign origin anonymous sign-in is refused by Turnstile (400), not by origin",
+      method: "POST",
+      path: "/auth/sign-in/anonymous",
+      headers: {
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+        "Content-Type": "application/json",
+      },
+      expect: 400,
+    },
     // TEACH-222
     {
       // The anonymous guard runs after the session guard: without a session a save is 401. A 403

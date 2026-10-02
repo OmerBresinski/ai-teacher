@@ -13,7 +13,7 @@ Product decisions are the founder's and are not recorded here. ADRs cover engine
 | 0005 | Hono on Bun with Hono RPC as the API contract      | Accepted |
 | 0006 | Postgres + Drizzle; pg-boss for jobs               | Accepted |
 | 0007 | Workspace tenancy via workspace_id and scoped DB   | Accepted |
-| 0008 | better-auth for identity                           | Accepted (amended 2026-09-27) |
+| 0008 | better-auth for identity                           | Accepted (amended 2026-09-27, 2026-09-28, 2026-10-02) |
 | 0009 | Tailwind + shadcn/ui as the design-system base     | Accepted (amended 2026-09-05) |
 | 0010 | Hosting: Vercel (web) + Railway (api, worker, PG)  | Accepted |
 | 0011 | Vercel Blob for object storage                     | Superseded by 0026 (2026-09-07) |
@@ -85,3 +85,4 @@ Template: `0000-template.md`.
 - 2026-09-28 — ADR 0008: Microsoft sign-in is switched on for any Microsoft account (work, school or personal); only an email Microsoft vouches for (personal tenant or `xms_edov`) signs in or links; identity scopes only; `/sign-in` shows the button when `GET /auth-providers` says it is on. See the amendment in `0008-better-auth.md`.
 - 2026-09-27 — ADR 0016 item 6: the Google profile photo URL in `users.image` goes beyond F15-D3; F15-R01's data-flow statement must name Google as an identity provider and list the photo URL; revisit with F15. See the amendment in `0016-prd-deviations.md`.
 - 2026-10-02 — ADR 0025 §9, §16: the layout linter moves from `@tj/editor` to `@tj/slides` with `fitsPlanned` and `fitReport`; the `generation summary` line gains a `fit` block once the checkpoint holds generated slides, and Generate logs one `save gate` line per written slide, counts only (TEACH-13). See the amendment in `0025-lesson-generation-pipeline.md`.
+- 2026-10-02 — ADR 0008: anonymous sessions for the first signed-out lesson. The anonymous user is never deleted on link (the Workspace cascades from it); the claim hands the Workspace to a new account by `owner_user_id` (same browser through `onLinkAccount`, another device through a pending row keyed by an HMAC of the address; existing accounts decline); default-deny guard with two lessons per Workspace and three re-plans; a per-device quota with a per-IP ceiling as the bot backstop (production IP settings pending); `ANONYMOUS_LESSONS_DAILY_CAP=0` is the kill switch; cleanup after 14 days; Turnstile on anonymous and magic-link sign-in. See the amendment in `0008-better-auth.md`.
