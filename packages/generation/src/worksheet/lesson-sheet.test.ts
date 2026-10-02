@@ -25,7 +25,9 @@ import { recordingDeps, scriptedWorksheetAi } from "../testing";
 import { checkWorksheet, emptyBlockFindings } from "./check";
 import { lessonCycles, normaliseStem, slideQuestionStems } from "./cycles";
 import { fillFrame } from "./fill";
+import { ASKS_FOR_EXAM, optionCountFor, worksheetFit } from "./fit";
 import { buildFrame } from "./frame";
+import { lessonSheetOutputTokens } from "./lesson-sheet";
 import { COMMAND_WORDS, lessonSheetSchemaFor } from "./lesson-specs";
 
 /*
@@ -378,5 +380,124 @@ describe("empty-block check (FR 6)", () => {
     );
     expect(checked.findings.filter((f) => f.check === "empty-block")).toEqual([]);
     expect(checked.worksheet.blocks.length).toBe(sheet.blocks.length);
+  });
+});
+
+describe("TEACH-86 review fixes", () => {
+  const task = (stretch: unknown[], supported: unknown[] = []) => ({
+    cycle: 1,
+    title: "Rates",
+    instruction: "Fill the gaps, then answer.",
+    supported: [
+      { type: "word-bank", words: ["rate", "time", "volume"], factRefs: [] },
+      ...supported,
+    ],
+    stretch,
+  });
+  const openQ = {
+    type: "question",
+    text: "Why does rate fall?",
+    answer: "Fewer particles\nFewer collisions",
+    answerLines: 4,
+    factRefs: [],
+  };
+  const issues = (schema: ReturnType<typeof lessonSheetSchemaFor>, value: unknown) =>
+    JSON.stringify(schema.safeParse(value).error?.issues ?? []);
+
+  test("#1: 'examples' in a Year 5 brief does not turn on exam style; 'GCSE exam practice' does", () => {
+    const lesson = lessonOf(y5);
+    const brief = { topic: "Fractions of amounts with worked examples", durationMin: 60 };
+    expect(worksheetFit({ ...lesson, brief }).examStyle).toBe(false);
+    expect(
+      worksheetFit({ ...lesson, brief: { ...brief, classContext: { notes: "examine each step" } } })
+        .examStyle,
+    ).toBe(false);
+    expect(
+      worksheetFit({ ...lesson, brief: { ...brief, answers: { q1: "GCSE exam practice please" } } })
+        .examStyle,
+    ).toBe(true);
+    expect(ASKS_FOR_EXAM.test("past papers")).toBe(true);
+    expect(ASKS_FOR_EXAM.test("examples")).toBe(false);
+  });
+
+  test("#2: a KS4 sheet with no marked item is an editorial miss; one marked item clears it", () => {
+    const schema = lessonSheetSchemaFor({
+      cycles: 1,
+      examStyle: true,
+      exitTicket: false,
+      slideStems: [],
+    });
+    expect(issues(schema, { tasks: [task([openQ])], exitTicket: null })).toContain("sits exams");
+    const marked = { ...openQ, text: "Explain why the rate falls.", marks: 2 };
+    expect(schema.safeParse({ tasks: [task([marked])], exitTicket: null }).success).toBe(true);
+  });
+
+  test("#2: a 1-mark item's mark scheme may be one point", () => {
+    const schema = lessonSheetSchemaFor({
+      cycles: 1,
+      examStyle: true,
+      exitTicket: false,
+      slideStems: [],
+    });
+    const oneMark = { ...openQ, text: "State the unit of rate.", answer: "cm³/s", marks: 1 };
+    expect(schema.safeParse({ tasks: [task([oneMark])], exitTicket: null }).success).toBe(true);
+  });
+
+  test("#6: Years 1–4 take three options, Year 5 up four (ruling 147)", () => {
+    expect(optionCountFor("ks1", "Year 1")).toBe(3);
+    expect(optionCountFor("ks2", "Year 4")).toBe(3);
+    expect(optionCountFor("ks2", "Year 5")).toBe(4);
+    expect(optionCountFor("ks4", "Year 11")).toBe(4);
+    expect(worksheetFit(lessonOf(y1)).optionCount).toBe(3);
+    const mc = (n: number) => ({
+      type: "multiple-choice",
+      text: "Which is the young of a hen?",
+      options: ["chick", "calf", "lamb", "foal"]
+        .slice(0, n)
+        .map((text, i) => ({ text, correct: i === 0 })),
+      factRefs: [],
+    });
+    const young = lessonSheetSchemaFor({
+      cycles: 1,
+      examStyle: false,
+      exitTicket: false,
+      slideStems: [],
+      optionCount: 3,
+    });
+    expect(young.safeParse({ tasks: [task([openQ], [mc(3)])], exitTicket: null }).success).toBe(
+      true,
+    );
+    expect(issues(young, { tasks: [task([openQ], [mc(4)])], exitTicket: null })).toContain(
+      "has 3 options",
+    );
+    const older = lessonSheetSchemaFor({
+      cycles: 1,
+      examStyle: false,
+      exitTicket: false,
+      slideStems: [],
+    });
+    expect(issues(older, { tasks: [task([openQ], [mc(3)])], exitTicket: null })).toContain(
+      "has 4 options",
+    );
+  });
+
+  test("#5: the teacher's exit-ticket choice wins; no choice keeps the slides' default", async () => {
+    const planned = await planFromObjectives({ lesson: romansLesson() }, recordingDeps(labAi()), {
+      verify: false,
+    });
+    const headings = (s: Worksheet) => tasksOf(s).map((t) => t.title);
+    expect(headings((await sheetFor(planned.lesson)).sheet)).toContain("Exit ticket");
+    expect(headings((await sheetFor(planned.lesson, { exitTicket: false })).sheet)).not.toContain(
+      "Exit ticket",
+    );
+    expect(headings((await sheetFor(lessonOf(y5))).sheet)).not.toContain("Exit ticket");
+    expect(headings((await sheetFor(lessonOf(y5), { exitTicket: true })).sheet)).toContain(
+      "Exit ticket",
+    );
+  });
+
+  test("#3: the output cap grows with the cycles", () => {
+    expect(lessonSheetOutputTokens(2, false)).toBeLessThan(lessonSheetOutputTokens(5, true));
+    expect(lessonSheetOutputTokens(40, true)).toBe(16000);
   });
 });

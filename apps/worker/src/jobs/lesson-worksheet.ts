@@ -2,6 +2,7 @@ import { createBudget, isAiError } from "@tj/ai";
 import {
   clearGenerating,
   type DocumentRow,
+  deleteDocument,
   forWorkspace,
   getDocument,
   putDocumentAsJob,
@@ -27,7 +28,15 @@ import {
   StageFailure,
 } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
-import { RECIPE_PROMPT_VERSION, recipeForFacts, resolveRecipe, uid } from "@tj/slides";
+import {
+  RECIPE_PROMPT_VERSION,
+  type RecipeId,
+  recipeForFacts,
+  resolveRecipe,
+  uid,
+  type WorksheetRecipe,
+} from "@tj/slides";
+import type { Logger } from "pino";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
 
@@ -61,6 +70,11 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
     const { lessonId, worksheetId, revision, recipeId, practiceMinutes } = payload;
     const ws = forWorkspace(deps.db, workspaceId);
     let keepLockForRetry = false;
+    // "Follows the lesson" saves nothing until its sheet is written (TEACH-86): its frame is only
+    // an instruction to the model, so a failed or over-budget fill must not leave it as a sheet.
+    // A row the API created for this job (no earlier generation) is deleted on failure instead.
+    let deleteOnFailure = false;
+    let succeeded = false;
     try {
       if (signal.aborted) {
         keepLockForRetry = signal.reason === "shutdown";
@@ -79,24 +93,12 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         { capUsd: deps.worksheetCapUsd, capTokens: deps.caps.capTokens },
         { spent: prior?.usage },
       );
-      // TEACH-86 FR 6: a recipe whose frame would print an empty block from these facts (no
-      // vocabulary, too few questions) is swapped for "Follows the lesson", and the log says why.
-      const requested = resolveRecipe(recipeId, facts);
-      const { recipe, fellBackFrom } = recipeForFacts(requested, facts);
-      if (fellBackFrom) {
-        logger.info(
-          {
-            lessonId,
-            worksheetId,
-            requested: fellBackFrom.recipeId,
-            reasons: fellBackFrom.reasons,
-          },
-          "worksheet recipe fell back to lesson: the facts would leave a block empty",
-        );
-      }
-      // Rulings 141 and 108: the teacher asked for the exit ticket; under "Follows the lesson" it
-      // becomes the sheet's last task (the slides pointing to one ask for it too, `fillLessonSheet`).
-      const exitTicket = requested.id === "exit-ticket";
+      const { recipe, exitTicket } = chooseRecipe(recipeId, facts, logger, {
+        lessonId,
+        worksheetId,
+      });
+      const lessonSheet = recipe.id === "lesson";
+      deleteOnFailure = lessonSheet && prior === undefined;
       const stage = "worksheet" as const;
       const pipelineDeps: FillDeps = {
         ai: deps.ai,
@@ -139,7 +141,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       };
       // A reused row keeps the date it was made; everything else is the new frame's.
       const framed: Worksheet = { ...frame.worksheet, createdAt: stored.createdAt, generation };
-      const framedAt = await persist(framed);
+      const framedAt = lessonSheet ? row.updatedAt.toISOString() : await persist(framed);
       logger.info(
         {
           lessonId,
@@ -177,6 +179,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         generation: filledGeneration,
       };
       const filledAt = await persist(filledSheet);
+      deleteOnFailure = false;
 
       await ctx.progress(80, "Checking", { stage, documentUpdatedAt: filledAt });
       const checked = await checkWorksheet(
@@ -201,6 +204,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
       };
       const checkedAt = await persist(checkedSheet);
       await ctx.progress(100, "Worksheet ready", { stage, documentUpdatedAt: checkedAt });
+      succeeded = true;
       logger.info(
         {
           lessonId,
@@ -237,6 +241,12 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
     } finally {
       if (keepLockForRetry) {
         logger.info({ worksheetId }, "worksheet generating lock kept for the retry");
+      } else if (!succeeded && deleteOnFailure) {
+        await deleteDocument(ws, worksheetId);
+        logger.info(
+          { worksheetId },
+          "worksheet removed: the lesson sheet was not written, so no half-made sheet is kept",
+        );
       } else {
         await clearGenerating(ws, worksheetId, jobId);
         logger.debug({ worksheetId }, "worksheet generating lock released");
@@ -244,6 +254,31 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
     }
   },
 );
+
+/**
+ * The recipe this run builds (TEACH-86). FR 6: a recipe whose frame would print an empty block
+ * from these facts (no vocabulary, too few questions, too few claims) is swapped for "Follows the
+ * lesson", and the job log says which and why. Rulings 141 and 108: asking for the Exit ticket
+ * recipe is the teacher's yes to an exit ticket; otherwise no choice is recorded yet (`undefined`)
+ * and `fillLessonSheet` keeps today's default. TEACH-22, the remembered per-teacher preference,
+ * supplies `true` or `false` here when it lands.
+ */
+export function chooseRecipe(
+  recipeId: RecipeId | "auto",
+  facts: LessonFacts,
+  logger: Pick<Logger, "info">,
+  ids: { lessonId: string; worksheetId: string },
+): { recipe: WorksheetRecipe; exitTicket: boolean | undefined } {
+  const requested = resolveRecipe(recipeId, facts);
+  const { recipe, fellBackFrom } = recipeForFacts(requested, facts);
+  if (fellBackFrom) {
+    logger.info(
+      { ...ids, requested: fellBackFrom.recipeId, reasons: fellBackFrom.reasons },
+      "worksheet recipe fell back to lesson: the facts would leave a block empty",
+    );
+  }
+  return { recipe, exitTicket: requested.id === "exit-ticket" ? true : undefined };
+}
 
 /**
  * The worksheet row this job owns, or a `NonRetryableError`: `worksheet missing` when the API's

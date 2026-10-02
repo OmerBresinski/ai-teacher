@@ -432,3 +432,27 @@ describe("TEACH-86: Follows the lesson and the empty-block fallback", () => {
     }
   });
 });
+
+describe("TEACH-86 review: thin facts behind a complete-looking frame", () => {
+  const thin = { ...facts, vocabulary: [], questions: [], workedExamples: [] };
+  test("exit ticket, exam style, misconception check and worked example fall back on thin facts", () => {
+    for (const id of [
+      "exit-ticket",
+      "exam-style",
+      "misconception-check",
+      "worked-example",
+    ] as const) {
+      const choice = recipeForFacts(resolveRecipe(id), {
+        ...thin,
+        misconceptions: facts.misconceptions.slice(0, 1),
+      });
+      expect(choice.recipe.id).toBe("lesson");
+      expect(choice.fellBackFrom?.recipeId).toBe(id);
+    }
+  });
+  test("a misconception check with enough claims keeps itself", () => {
+    expect(recipeForFacts(resolveRecipe("misconception-check"), facts).recipe.id).toBe(
+      "misconception-check",
+    );
+  });
+});

@@ -7,7 +7,7 @@ import {
   materialiseBlock,
   numberQuestions,
 } from "@tj/slides";
-import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
+import { callStructured, specRuleFinding } from "../call";
 import { generateWorksheetLessonPrompt } from "../prompts";
 import { lessonCycles, lessonPointsToExitTicket, slideQuestionStems } from "./cycles";
 import type { FillDeps, FillResult } from "./fill";
@@ -35,8 +35,24 @@ export interface LessonSheetInput {
   worksheet: Worksheet;
   lesson: Lesson;
   practiceMinutes: number;
-  /** The teacher chose the exit ticket; the slides pointing to one (ruling 141) also asks for it. */
+  /**
+   * The teacher's exit-ticket choice (ruling 141): `true` or `false` when they made one, which
+   * always wins. `undefined` means no choice yet, and the sheet keeps today's default: an exit
+   * ticket when the slides point the class to one. TEACH-22 (the remembered per-teacher
+   * preference) supplies this value once it lands; nothing here infers it.
+   */
   exitTicket?: boolean;
+}
+
+/**
+ * The output cap grows with the sheet: a low-effort reasoning preamble, then one task (its blocks
+ * and their answers) per cycle, plus the exit ticket. Never the reason a long lesson's sheet fails.
+ */
+export const LESSON_SHEET_TOKENS = { base: 2500, perCycle: 1500, exitTicket: 1000, max: 16000 };
+
+export function lessonSheetOutputTokens(cycles: number, exitTicket: boolean): number {
+  const { base, perCycle, exitTicket: exit, max } = LESSON_SHEET_TOKENS;
+  return Math.min(max, base + perCycle * Math.max(1, cycles) + (exitTicket ? exit : 0));
 }
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -127,9 +143,15 @@ export async function fillLessonSheet(
   const facts = lesson.facts;
   const cycles = lessonCycles(lesson);
   const fit = worksheetFit(lesson);
-  const exitTicket = input.exitTicket === true || lessonPointsToExitTicket(lesson);
+  const exitTicket = input.exitTicket ?? lessonPointsToExitTicket(lesson);
   const slideStems = exitTicket ? slideQuestionStems(lesson, cycles) : [];
-  const context = { cycles: cycles.length, examStyle: fit.examStyle, exitTicket, slideStems };
+  const context = {
+    cycles: cycles.length,
+    examStyle: fit.examStyle,
+    exitTicket,
+    slideStems,
+    optionCount: fit.optionCount,
+  };
   const call = await callStructured({
     deps,
     stage: "worksheet",
@@ -152,7 +174,7 @@ export async function fillLessonSheet(
     },
     schema: lessonSheetSchemaFor(context),
     soft: lessonSheetSchemaFor(context, { soft: true }),
-    maxOutputTokens: MAX_OUTPUT_TOKENS.worksheetLesson,
+    maxOutputTokens: lessonSheetOutputTokens(cycles.length, exitTicket),
   });
   const meta: MaterialiseMeta = {
     promptVersion: generateWorksheetLessonPrompt.version,

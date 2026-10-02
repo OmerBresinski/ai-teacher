@@ -36,7 +36,7 @@ export interface FillInput {
   lesson: Lesson;
   facts: LessonFacts;
   practiceMinutes: number;
-  /** "Follows the lesson" only: end the sheet with the exit ticket (rulings 141, 108). */
+  /** "Follows the lesson" only: the teacher's exit-ticket choice, unset when none (`LessonSheetInput`). */
   exitTicket?: boolean;
 }
 
@@ -61,7 +61,12 @@ export async function fillFrame(input: FillInput, deps: FillDeps): Promise<FillR
   // TEACH-86: "Follows the lesson" has no slots to fill; one call writes the sheet from the slides.
   if (recipe.id === LESSON_RECIPE.id) {
     return fillLessonSheet(
-      { worksheet, lesson, practiceMinutes, exitTicket: input.exitTicket ?? false },
+      {
+        worksheet,
+        lesson,
+        practiceMinutes,
+        ...(input.exitTicket !== undefined ? { exitTicket: input.exitTicket } : {}),
+      },
       deps,
     );
   }

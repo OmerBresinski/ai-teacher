@@ -1,7 +1,7 @@
 import type { BlockSpec } from "@tj/slides";
 import {
-  blockSpecUnion,
   editorialIssue,
+  lessonSheetBlockUnion,
   noPictureReference,
   type SpecSchemaOptions,
   shapeIssue,
@@ -81,12 +81,12 @@ function shape(soft: boolean) {
           cycle: z.number().int().min(1),
           title: text,
           instruction: text,
-          supported: z.array(blockSpecUnion({ soft })).min(1),
-          stretch: z.array(blockSpecUnion({ soft })).min(1),
+          supported: z.array(lessonSheetBlockUnion({ soft })).min(1),
+          stretch: z.array(lessonSheetBlockUnion({ soft })).min(1),
         }),
       )
       .min(1),
-    exitTicket: z.array(blockSpecUnion({ soft })).nullable(),
+    exitTicket: z.array(lessonSheetBlockUnion({ soft })).nullable(),
   });
 }
 export type LessonSheetOutput = z.infer<ReturnType<typeof shape>>;
@@ -99,6 +99,8 @@ export type LessonSheetContext = {
   exitTicket: boolean;
   /** Normalised stems the slides already asked (`slideQuestionStems`). */
   slideStems: readonly string[];
+  /** Options on a multiple-choice item (ruling 147, `optionCountFor`); 4 when unset. */
+  optionCount?: 3 | 4;
 };
 
 /** The model points of an open answer: one per non-empty line. */
@@ -119,9 +121,23 @@ export function isSupportedForm(block: BlockSpec): boolean {
   return block.type === "question" && block.answerLines < OPEN_ANSWER_LINES;
 }
 
-/** How many points an open answer needs: 2–3, or up to its marks for a longer marked item. */
+/**
+ * How many points an open answer needs: 2–3 model points; a marked item's mark scheme is one
+ * point per mark, so a 1-mark item may have one.
+ */
 export function pointsRange(block: BlockSpec & { type: "question" }): [number, number] {
-  return [2, Math.max(3, block.marks ?? 0)];
+  if (block.marks === undefined) return [2, 3];
+  return [Math.min(2, block.marks), Math.max(3, block.marks)];
+}
+
+/** FR 3: a marked item that opens with a command word and carries a mark scheme. */
+export function isExamItem(block: BlockSpec): boolean {
+  return (
+    block.type === "question" &&
+    block.marks !== undefined &&
+    opensWithCommandWord(block.text) &&
+    answerPoints(block.answer).length >= 1
+  );
 }
 
 export function lessonSheetSchemaFor(
@@ -130,10 +146,19 @@ export function lessonSheetSchemaFor(
 ): z.ZodType<LessonSheetOutput> {
   const soft = options.soft === true;
   const slideStems = new Set(context.slideStems);
+  const optionCount = context.optionCount ?? 4;
   return shape(soft).superRefine((sheet, ctx) => {
     let last = 0;
     const covered = new Set<number>();
     const each = (block: BlockSpec, path: (string | number)[]) => {
+      if (block.type === "multiple-choice" && block.options.length !== optionCount) {
+        ctx.addIssue(
+          editorialIssue(
+            `A multiple-choice item for this class has ${optionCount} options, not ${block.options.length}.`,
+            [...path, "options"],
+          ),
+        );
+      }
       if (block.type === "question") {
         if (block.marks !== undefined && !context.examStyle) {
           ctx.addIssue(
@@ -259,6 +284,20 @@ export function lessonSheetSchemaFor(
       );
     }
     if (soft) return;
+    if (context.examStyle) {
+      const blocks = [
+        ...sheet.tasks.flatMap((t) => [...t.supported, ...t.stretch]),
+        ...(sheet.exitTicket ?? []),
+      ];
+      if (!blocks.some(isExamItem)) {
+        ctx.addIssue(
+          editorialIssue(
+            "This class sits exams: at least one task needs a marked question that opens with a command word, with its mark scheme as the answer.",
+            ["tasks"],
+          ),
+        );
+      }
+    }
     for (let c = 1; c <= context.cycles; c++) {
       if (!covered.has(c)) {
         ctx.addIssue(editorialIssue(`Cycle ${c} has no task.`, ["tasks"]));

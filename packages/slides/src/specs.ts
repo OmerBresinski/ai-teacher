@@ -190,7 +190,12 @@ const atMost = (n: number, what: string) => editorialIssue(`Too many ${what}: at
 /* The two builds                                                      */
 /* ------------------------------------------------------------------ */
 
-function buildSpecs(soft: boolean) {
+/**
+ * `blockOptions`: how many options a worksheet multiple-choice block may have, low to high. Four
+ * everywhere except the "Follows the lesson" sheet, which also accepts three (ruling 147: Years 1
+ * to 4 get three options; `@tj/generation` checks the count against the class).
+ */
+function buildSpecs(soft: boolean, blockOptions: [number, number] = [4, 4]) {
   /** One editorial `.refine`: in the strict build only. */
   const rule = <S extends z.ZodType>(
     schema: S,
@@ -560,7 +565,8 @@ function buildSpecs(soft: boolean) {
           text: line(SPEC_LIMITS.body),
           options: z
             .array(z.object({ text: listLine(SPEC_LIMITS.option), correct: z.boolean() }))
-            .length(4),
+            .min(blockOptions[0])
+            .max(blockOptions[1]),
         }),
         (spec) => exactlyOneCorrect(spec.options),
         ONE_CORRECT,
@@ -629,6 +635,17 @@ export type BlockSpec = z.infer<typeof BlockSpecSchema>;
 /** The block union in either build — what a worksheet schema nests (`@tj/generation`). */
 export function blockSpecUnion(options: SpecSchemaOptions = {}): typeof BlockSpecSchema {
   return options.soft ? SOFT.block : STRICT.block;
+}
+
+const LESSON_SHEET = { strict: buildSpecs(false, [3, 4]), soft: buildSpecs(true, [3, 4]) };
+/**
+ * The block union the "Follows the lesson" sheet is written in (TEACH-86): the same blocks, with
+ * three or four multiple-choice options (ruling 147). Same type as `BlockSpecSchema`'s output.
+ */
+export function lessonSheetBlockUnion(options: SpecSchemaOptions = {}): typeof BlockSpecSchema {
+  return (options.soft
+    ? LESSON_SHEET.soft.block
+    : LESSON_SHEET.strict.block) as unknown as typeof BlockSpecSchema;
 }
 export type BlockSpecOf<T extends BlockSpec["type"]> = Extract<BlockSpec, { type: T }>;
 

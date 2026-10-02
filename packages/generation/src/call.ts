@@ -167,8 +167,6 @@ export const MAX_OUTPUT_TOKENS = {
   verify: 4000,
   slide: 1500,
   worksheet: 4000,
-  // TEACH-86: every task of the sheet and its answers in one answer; reasoning shares the cap.
-  worksheetLesson: 8000,
   // Up to twenty findings, each with its evidence span (TEACH-216). 2 500 was reached twice in a
   // row on the np1 cells decks (no findings, so no repair); reasoning shares the cap.
   evaluate: 4000,
