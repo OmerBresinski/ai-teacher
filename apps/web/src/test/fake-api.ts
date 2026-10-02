@@ -17,6 +17,7 @@ import {
   type Worksheet,
 } from "@tj/domain/documents";
 import { demoWorkspace } from "@tj/editor/starter";
+import type { Me } from "@/lib/query";
 
 type Body = Lesson | Worksheet | Series;
 
@@ -30,7 +31,28 @@ export type FakeRow = {
   generatingJobId: string | null;
 };
 
-export type FakeRequest = { method: string; path: string; query: URLSearchParams; body: unknown };
+export type FakeRequest = {
+  method: string;
+  path: string;
+  query: URLSearchParams;
+  body: unknown;
+  headers: Headers;
+};
+
+/** Who `GET /me` says is signed in (TEACH-244). */
+export type FakeSession = "teacher" | "anonymous" | null;
+
+/** A signed-out visitor after `POST /auth/sign-in/anonymous`; `/me` never shows its email/name. */
+export const anonymousMe = {
+  user: { id: "anon-user", email: "temp@anon-user.com", name: "Anonymous", isAnonymous: true },
+  workspaceId: "anon-workspace",
+} as Me;
+export const teacherMe = {
+  user: { id: "teacher", email: "teacher@example.test", name: "Teacher", isAnonymous: false },
+  workspaceId: "workspace",
+} as Me;
+/** The api's anonymous quota (ruling 111; TEACH-222 enforces it for real). */
+const ANONYMOUS_LESSONS = 2;
 
 const API_PREFIX = "/api";
 const PAGE_DEFAULT = 100;
@@ -72,6 +94,13 @@ export class FakeApi {
   readonly requests: FakeRequest[] = [];
   /** When set, the next matching request fails with this response instead. */
   private failures: { match: (request: FakeRequest) => boolean; response: () => Response }[] = [];
+  /** `GET /me`; tests set it. `POST /auth/sign-in/anonymous` moves `null` to `anonymous`. */
+  session: FakeSession = "teacher";
+  /** `POST /auth/sign-in/anonymous` answers 403 `anonymous_capacity` (daily cap reached; a cap of 0 closes it). */
+  anonymousCapacity = false;
+  /** `POST /lessons` by `requestId`, as the api's `(workspace_id, request_id)` dedupe. */
+  private readonly created = new Map<string, { lessonId: string; jobId: string }>();
+  private anonymousCreated = 0;
 
   constructor() {
     this.reset();
@@ -84,6 +113,10 @@ export class FakeApi {
     this.requests.length = 0;
     this.failures = [];
     this.nextProposalJobId = null;
+    this.session = "teacher";
+    this.anonymousCapacity = false;
+    this.created.clear();
+    this.anonymousCreated = 0;
     for (const item of demoWorkspace(new Date())) {
       this.rows.set(item.key, {
         id: item.key,
@@ -269,7 +302,13 @@ export class FakeApi {
         : multipart
           ? await request.formData().catch(() => undefined)
           : await request.json().catch(() => undefined);
-    const record: FakeRequest = { method: request.method, path, query: url.searchParams, body };
+    const record: FakeRequest = {
+      method: request.method,
+      path,
+      query: url.searchParams,
+      body,
+      headers: request.headers,
+    };
     this.requests.push(record);
     const failure = this.failures.findIndex((entry) => entry.match(record));
     if (failure !== -1) {
@@ -281,6 +320,16 @@ export class FakeApi {
 
   private route({ method, path, query, body }: FakeRequest): Response {
     const segments = path.split("/").filter(Boolean);
+    if (path === "/me" && method === "GET") {
+      if (this.session === null) return error(401, "unauthorized", "Sign in to continue.");
+      return json(200, this.session === "anonymous" ? anonymousMe : teacherMe);
+    }
+    if (path === "/auth/sign-in/anonymous" && method === "POST") {
+      if (this.anonymousCapacity)
+        return error(403, "anonymous_capacity", "Sign in to make a lesson.");
+      this.session = "anonymous";
+      return json(200, { token: "anon-token", user: anonymousMe.user });
+    }
     if (segments[0] === "documents") {
       if (segments.length === 1 && method === "GET") return this.list(query);
       if (segments.length === 1 && method === "POST") return this.create(body);
@@ -296,6 +345,13 @@ export class FakeApi {
     }
     if (segments[0] === "lessons" && segments[2] === "generate" && method === "POST") {
       return this.confirmLesson(segments[1] ?? "", body);
+    }
+    if (segments[0] === "lessons" && segments[2] === "plan" && method === "POST") {
+      const row = this.rows.get(segments[1] ?? "");
+      if (!row) return error(404, "not_found", "That document does not exist.");
+      const jobId = newId();
+      row.generatingJobId = jobId;
+      return json(202, { jobId, revision: ((row.body as Lesson).plan?.revision ?? 0) + 1 });
     }
     if (segments[0] === "sources" && segments.length === 1 && method === "POST") {
       return this.uploadSource(body);
@@ -482,6 +538,14 @@ export class FakeApi {
   }
 
   private createLesson(input: unknown): Response {
+    const requestId = (input as { requestId?: string } | undefined)?.requestId;
+    const repeat = requestId ? this.created.get(requestId) : undefined;
+    if (repeat) return json(202, repeat);
+    if (this.session === "anonymous") {
+      if (this.anonymousCreated >= ANONYMOUS_LESSONS)
+        return error(403, "anonymous_limit", "Sign in to make more lessons.");
+      this.anonymousCreated += 1;
+    }
     const jobId = newId();
     const lesson = lessonFromBrief(
       input as Parameters<typeof lessonFromBrief>[0],
@@ -489,6 +553,7 @@ export class FakeApi {
       new Date(),
     );
     const row = this.insert("lesson", lesson, jobId);
+    if (requestId) this.created.set(requestId, { lessonId: row.id, jobId });
     return json(202, { lessonId: row.id, jobId });
   }
 }

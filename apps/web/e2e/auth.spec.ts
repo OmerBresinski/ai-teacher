@@ -27,11 +27,12 @@ test.describe("auth", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Welcome to DayBack" })).toBeVisible();
 
     // A target with its own query string round-trips whole, not just the path (TEACH-309): the
-    // marketing homepage's ?topic= must survive an unsigned visitor's trip through /sign-in.
-    await page.goto("/lessons/new?topic=The+cycle");
+    // marketing homepage's ?topic= must survive an unsigned visitor's trip through /sign-in. The
+    // brief itself is open to guests (TEACH-244); its upload link (`source=1`) still signs in.
+    await page.goto("/lessons/new?topic=The+cycle&source=1");
     await expect(page).toHaveURL(/\/sign-in\?/);
     const searchWithQuery = new URL(page.url()).searchParams;
-    expect(searchWithQuery.get("redirect")).toBe("/lessons/new?topic=The+cycle");
+    expect(searchWithQuery.get("redirect")).toBe("/lessons/new?topic=The+cycle&source=1");
   });
 
   test("magic link from the form signs in and lands on the redirect target", async ({

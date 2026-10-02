@@ -4,6 +4,7 @@ import { z } from "zod";
 import { libraryCache, libraryQueries } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
 import { authLayoutRoute } from "./auth.route";
+import { guestLayoutRoute } from "./guest.route";
 
 /**
  * The document routes (`/l/*`, `/w/*`). Each loader resolves the one document the route is about —
@@ -73,7 +74,7 @@ const titleFrom = ({ loaderData }: { loaderData?: { title: string } }) =>
 
 /** The lesson editor (TEACH-103). */
 export const lessonEditorRoute = createRoute({
-  getParentRoute: () => authLayoutRoute,
+  getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   head: titleFrom,
@@ -82,7 +83,7 @@ export const lessonEditorRoute = createRoute({
 
 /** The read-only viewer (TEACH-100), moved here when the editor took `/l/$lessonId`. */
 export const lessonViewRoute = createRoute({
-  getParentRoute: () => authLayoutRoute,
+  getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId/view",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   head: titleFrom,
@@ -90,7 +91,7 @@ export const lessonViewRoute = createRoute({
 });
 
 export const lessonPresentRoute = createRoute({
-  getParentRoute: () => authLayoutRoute,
+  getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId/present",
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   validateSearch: (search) => presentSearchSchema.parse(search),

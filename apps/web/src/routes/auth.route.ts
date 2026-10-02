@@ -5,7 +5,8 @@ import { assertCurrentSession } from "@/lib/session-boundary";
 import { rootRoute } from "./root.route";
 
 /**
- * Pathless layout: every child requires a session. `beforeLoad` resolves `/me` through the Query
+ * Pathless layout: every child requires an account. An anonymous session (TEACH-223) is not one:
+ * the library, worksheets, print and kit send it to `/sign-in` too (TEACH-244). `beforeLoad` resolves `/me` through the Query
  * client (revalidated on navigation) and redirects to `/sign-in` with the original URL when there is none.
  * better-auth's `?error=…` params are stripped from that URL so they never round-trip (TEACH-68).
  */
@@ -15,7 +16,7 @@ export const authLayoutRoute = createRoute({
   beforeLoad: async ({ context, location }) => {
     const me = await context.queryClient.fetchQuery({ ...meQueryOptions, staleTime: 0 });
     assertCurrentSession(context.queryClient);
-    if (!me) {
+    if (!me || me.user.isAnonymous) {
       throw redirect({ to: "/sign-in", search: { redirect: sanitiseRedirectPath(location.href) } });
     }
     return { me };

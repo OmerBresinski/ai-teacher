@@ -64,6 +64,29 @@ describe("session boundary", () => {
     expect(announcements).toEqual([{ identity: "user-a:workspace-a" }]);
   });
 
+  test("a signed-out epoch adopts the anonymous sign-in in place; a locked one does not", () => {
+    const boundary = new SessionBoundary();
+    const announcements: unknown[] = [];
+    boundary.announce = (value) => announcements.push(value);
+    const guest = boundary.getSnapshot().client;
+    boundary.confirm(guest, null);
+    const epoch = boundary.getSnapshot().epoch;
+    boundary.confirm(guest, "anon:workspace-anon");
+    expect(boundary.getSnapshot().client).toBe(guest);
+    expect(boundary.getSnapshot().epoch).toBe(epoch);
+    expect(boundary.getSnapshot().identity).toBe("anon:workspace-anon");
+    expect(announcements.at(-1)).toEqual({ identity: "anon:workspace-anon" });
+    // Anonymous → another identity is still a new epoch.
+    expect(() => boundary.confirm(guest, "teacher:workspace-t")).toThrow(SessionChangedError);
+    expect(boundary.getSnapshot().client).not.toBe(guest);
+    // After sign-out the locked null epoch never upgrades in place.
+    const locked = new SessionBoundary();
+    locked.reset(null, true);
+    const client = locked.getSnapshot().client;
+    expect(() => locked.confirm(client, "anon:workspace-anon")).toThrow(SessionChangedError);
+    expect(locked.getSnapshot().client).not.toBe(client);
+  });
+
   test("a forged identity notification cannot establish an authenticated identity", () => {
     const boundary = new SessionBoundary();
     boundary.confirm(boundary.getSnapshot().client, "real-user:real-workspace");
