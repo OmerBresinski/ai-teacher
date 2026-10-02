@@ -390,8 +390,9 @@ test.describe("first teacher edit keeps the original AI text (TEACH-74)", () => 
 /*
  * TEACH-74, with Tidy: a split shortens a box's words, and that is the engine's doing. Two slides
  * each carry an AI list too long for the slide; the teacher types into one and tidies both. The
- * typed list is the teacher's and keeps the AI's full words (the split does not overwrite them);
- * the list only tidied stays the AI's, with nothing recorded.
+ * typed list is the teacher's and keeps the AI's full words (the split does not overwrite them).
+ * The list only tidied is on an untouched generated slide, which Tidy never continues (TEACH-14):
+ * no page is added and it stays the AI's, with nothing recorded.
  */
 test.describe("tidy after the first teacher edit (TEACH-74)", () => {
   test.use({ seed: false });
@@ -427,8 +428,7 @@ test.describe("tidy after the first teacher edit (TEACH-74)", () => {
     if (!title) throw new Error("fixture");
     const body: Lesson = {
       ...base,
-      // Slide 2 is typed into, slide 3 only tidied; slide 3 is tidied first so its continuation
-      // slide lands after it and slide 2 keeps its place.
+      // Slide 2 is typed into, slide 3 only tidied (first, so slide 2 keeps its place either way).
       slides: [
         title,
         listSlide("s-typed", "Typed", "typed"),
@@ -455,13 +455,16 @@ test.describe("tidy after the first teacher edit (TEACH-74)", () => {
     });
     const toast = page.getByText(/^Tidied: /);
 
-    // Tidy alone, on slide 3: the list splits onto a continuation slide.
+    // Tidy alone, on slide 3: a generated slide nobody touched is fitted, never continued, and
+    // the toast says what still does not fit.
     await expect(rows).toHaveCount(body.slides.length);
     await rows.nth(2).click();
     await tidy.click();
-    await expect(toast).toBeVisible();
-    await expect(toast).toContainText("continued on");
-    await expect.poll(() => rows.count()).toBeGreaterThan(body.slides.length);
+    const said = page.getByText(/^(Tidied: |Nothing left to tidy: )/);
+    await expect(said).toBeVisible();
+    await expect(said).not.toContainText("continued on");
+    await expect(said).toContainText("will not fit");
+    await expect(rows).toHaveCount(body.slides.length);
     const afterFirst = await rows.count();
 
     // Slide 2: type at the start of the list, leave the editor, then Tidy.
@@ -518,18 +521,16 @@ test.describe("tidy after the first teacher edit (TEACH-74)", () => {
     expect(typed.generatedFrom?.originalText).toBe(original("typed"));
     expect(typed.generatedFrom?.factRefs).toEqual(["o1"]);
 
-    // Tidied only: shorter words, but nobody typed — still the AI's, nothing recorded.
+    // Tidied only: nobody typed, so no continuation; every word stays in the one box, the AI's,
+    // with nothing recorded.
     const tidied = find("tidied");
-    expect((plainTextOf(tidied) ?? "").length).toBeLessThan((original("tidied") ?? "").length);
+    expect(plainTextOf(tidied)).toBe(original("tidied"));
     expect(tidied.authoredBy).toBe("ai");
     expect(tidied.generatedFrom).toBeDefined();
     expect(tidied.generatedFrom?.originalText).toBeUndefined();
-    // Its tail on the continuation slide is the AI's words too.
-    const tail = lesson.slides
+    const holders = lesson.slides
       .flatMap((s) => s.elements)
-      .find((e) => plainTextOf(e)?.includes("Tidied item 12"));
-    expect(tail?.id).not.toBe("tidied");
-    expect(tail?.authoredBy).toBe("ai");
-    expect(tail?.generatedFrom?.originalText).toBeUndefined();
+      .filter((e) => plainTextOf(e)?.includes("Tidied item 12"));
+    expect(holders.map((e) => e.id)).toEqual(["tidied"]);
   });
 });
