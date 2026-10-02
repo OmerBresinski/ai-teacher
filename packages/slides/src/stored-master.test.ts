@@ -39,20 +39,21 @@ describe("a lesson stored before the look renders as stored", () => {
 });
 
 /*
- * Three lessons generated and stored on master (e49 B: fractions, rates, ratio), fitted by master's
- * engine (aa628bf8) and recorded as a digest per slide. The look's changes to the fit engine
- * (`reflow.ts`: the foot band, the frozen answers card, the heading kept at its size) touch only
- * elements the look names, so every stored slide, the quiz and exit slides among them, fits
- * exactly as it did before.
+ * Three lessons generated and stored on master (e49 B: fractions, rates, ratio), recorded as a
+ * digest of each slide's fit. The slides are as stored; the digests are re-pinned at fit version 3
+ * (ruling 140), where the teaching body sets at 0.7 of the display stop and the floor is 20: the
+ * starters, worked examples, a content and an instructions slide and the exit tickets fit
+ * differently, every other slide as it did on master. A digest that moves without a deliberate fit
+ * change is a regression.
  */
-describe("stored master lessons fit as they did on master", () => {
+describe("stored master lessons fit as pinned at fit version 3", () => {
   type Stored = { name: string; themeId: string; slides: Slide[]; masterFit: string[] };
   const { lessons } = storedLessons as unknown as { lessons: Stored[] };
   const digest = (value: unknown) =>
     new Bun.CryptoHasher("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 
   for (const lesson of lessons) {
-    test(`${lesson.name}: every slide's fit is master's, and present draws it as stored`, () => {
+    test(`${lesson.name}: every slide's fit is the pinned one, and present draws it as stored`, () => {
       const t = getTheme(lesson.themeId);
       expect(lesson.slides.map((s) => s.kind)).toContain("exit-ticket");
       lesson.slides.forEach((slide, index) => {
