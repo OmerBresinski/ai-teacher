@@ -49,7 +49,7 @@ function emWidth(word: string, advances: readonly number[] | undefined, tracking
 /** The resolved type a line count depends on. */
 type LineType = Pick<ResolvedText, "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing">;
 
-/** A run of text and whether it is set bold (a chunk's label, round E1). */
+/** A run of text and whether it is set bold (a chunk's label). */
 type Run = { text: string; bold?: boolean };
 
 /** How many lines `text` takes in a column `room` points wide, set in `type`. */
@@ -59,8 +59,7 @@ function linesIn(text: string, type: LineType, room: number): number {
 
 /**
  * How many lines a paragraph's runs take in a column `room` points wide. A bold run is measured at
- * 700, as the renderer sets it (round E1: a chunk's bold label is wider than the same words at 400,
- * and was measured at 400). A hard break ("\n") starts a new line.
+ * 700, as the renderer sets it: a chunk's bold label is wider than the same words at 400. A hard break ("\n") starts a new line.
  */
 function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
   const regular = advancesFor(type.fontFamily, type.fontWeight);

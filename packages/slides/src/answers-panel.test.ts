@@ -10,7 +10,7 @@ import { THEMES } from "./themes";
 
 /*
  * A set of open questions as one numbered card per question, each answer revealed inside its own
- * card (layout audit, 30 Sep 2026). The card is measured with its answer in it, so the reveal can
+ * card. The card is measured with its answer in it, so the reveal can
  * never cover a question or run off the slide.
  */
 const QUESTIONS = [
@@ -30,7 +30,7 @@ function starter(answers: string[]): SlideSpec {
   };
 }
 
-describe("a set's answers are revealed inside their own cards (layout audit #2)", () => {
+describe("a set's answers are revealed inside their own cards", () => {
   for (const [label, answers] of [
     ["one-word answers", ["12", "Paris", "Light"]],
     ["phrase answers", ["Twelve, three fours", "Paris, on the Seine", "Light, water and air"]],

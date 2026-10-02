@@ -5,7 +5,7 @@ import { THEMES } from "./themes";
 
 const meta = { promptVersion: "test", model: "test", at: "2026-09-30T00:00:00.000Z" };
 
-describe("safe area (layout audit round 2)", () => {
+describe("safe area", () => {
   test("every sort card sits inside the safe area, above the bottom bar, on every theme", () => {
     const spec = {
       kind: "sort" as const,

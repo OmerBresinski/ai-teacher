@@ -309,8 +309,8 @@ function buildSpecs(soft: boolean) {
       title: line(SPEC_LIMITS.title),
       subtitle: line(SPEC_LIMITS.heading),
       /**
-       * The lesson's objectives, set beside the title in the `agenda` variant (designer r4,
-       * `DESIGNER_OBJECTIVES_ON_TITLE`): a deck that opens this way has no objectives slide.
+       * The lesson's objectives, set beside the title in the `agenda` variant: a deck that opens
+       * this way has no objectives slide.
        */
       objectives: items(1, 4).optional(),
     }),

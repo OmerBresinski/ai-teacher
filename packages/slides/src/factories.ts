@@ -34,7 +34,7 @@ const CHUNK_LABEL = /^([^:\n.!?]{1,40}?):\s+(\S.*)$/;
 
 /**
  * Text → rich doc, one paragraph a line, as `docFromText`; when there are two or more lines and
- * every one is a labelled chunk ("Gas: the particles…"), each label is set bold (round D1).
+ * every one is a labelled chunk ("Gas: the particles…"), each label is set bold.
  */
 export function docFromChunks(text: string): RichDoc {
   const lines = text.split("\n");

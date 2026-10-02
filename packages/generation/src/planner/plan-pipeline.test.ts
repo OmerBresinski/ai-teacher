@@ -205,7 +205,7 @@ describe("the retrieval starter (lab r2)", () => {
       expect(text(at)).toContain(r.question);
       expect(text(at)).toContain(r.answer);
     }
-    // Each answer is revealed inside its question's card (layout audit row cards), never shown up front.
+    // Each answer is revealed inside its question's card (row cards), never shown up front.
     const reveals = lesson.slides[at]?.elements.filter((e) => e.name === "Row reveal") ?? [];
     expect(reveals).toHaveLength(RETRIEVAL.length);
     for (const r of reveals) expect(r.revealStep).toBeGreaterThanOrEqual(1);

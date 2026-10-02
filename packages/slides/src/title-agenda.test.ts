@@ -6,7 +6,7 @@ import { materialiseSlide } from "./materialise";
 import type { SlideSpec } from "./specs";
 import { getTheme, THEMES } from "./themes";
 
-/** Real titles and objectives from the designer's round-3 decks (the longest of each shape). */
+/** Real generated titles and objectives (the longest of each shape). */
 const DECKS: { title: string; subtitle: string; objectives: string[] }[] = [
   {
     title: "Electrolysis of aqueous solutions: predicting the products at each electrode",
@@ -76,7 +76,7 @@ describe("title, agenda (objectives on the title slide)", () => {
     expect(slide.elements.some((e) => e.name === AGENDA_STEM)).toBe(false);
   });
 
-  test("real round-3 titles and objectives fit on every theme (one step down, as the designer asks)", () => {
+  test("real titles and objectives fit on every theme, one step down", () => {
     expect(THEMES.length).toBe(10);
     for (const d of DECKS) {
       const { failing } = fitsPlanned(spec(d), { stepDown: 1 });
@@ -85,7 +85,7 @@ describe("title, agenda (objectives on the title slide)", () => {
         failing: [],
       });
     }
-    // Too much for the column: the check says so, and the designer keeps the objectives slide.
+    // Too much for the column: the check says so, and the deck keeps its objectives slide.
     expect(fitsPlanned(spec(WEIMAR), { stepDown: 1 }).ok).toBe(false);
   });
 

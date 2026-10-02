@@ -500,7 +500,7 @@ describe("materialiseSlide", () => {
       meta,
       counter(),
     );
-    // Word cards (layout audit round 2): each term over its definition on its own card.
+    // Word cards: each term over its definition on its own card.
     const terms = slide.elements.filter((element) => element.name === "Term");
     const defs = slide.elements.filter((element) => element.name === "Definition");
     expect(terms.map(plain)).toEqual(["Evaporation", "Condensation"]);
@@ -591,7 +591,7 @@ describe("materialiseSlide", () => {
       meta,
       counter(),
     );
-    // Each objective on its own numbered card (layout audit round 2), stored as verb phrases and
+    // Each objective on its own numbered card, stored as verb phrases and
     // set lower-case under the stem (TEACH-198).
     const cards = objectives.elements.filter((e) => /^Objective \d$/.test(e.name ?? ""));
     expect(cards.map((e) => plain(e))).toEqual(["describe the stages", "explain melting"]);

@@ -348,7 +348,7 @@ describe("callout on an image-text slide", () => {
 describe("callout on a worked example", () => {
   for (const theme of THEMES) {
     it(`${theme.id}: a callout goes under the working card only when there is room`, () => {
-      // Measured against the recipe (TEACH-247). At the teaching body size (spike/teach-type) the
+      // Measured against the recipe (TEACH-247). At the teaching body size (ruling 140) the
       // working card leaves room on some themes; where it does not, the slide goes without.
       const withCallout = materialiseSlide(
         workedExample({ kind: "example", text: SHORT }),
@@ -731,8 +731,8 @@ describe("the words are the same with or without a callout", () => {
 describe("content callout-row: one idea over a common mistake", () => {
   const meta = { promptVersion: "t", model: "t", at: "t" };
   // A two-line assertion heading, one twenty-word sentence and a twenty-two-word misconception:
-  // the fit-lab's headed slide dropped a card this size on every theme once the body passed
-  // about 125 characters.
+  // the headed composition has no room for a card this size once the body passes about 125
+  // characters, so the callout-row composition is the one built for it.
   const spec: SlideSpec = {
     kind: "content",
     factRefs: ["f1"],

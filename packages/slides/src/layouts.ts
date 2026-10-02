@@ -446,13 +446,12 @@ function contentSlide(t: Theme): Layout {
 export const IDEA_NAME = "Idea";
 
 /**
- * Content, `callout-row`: one idea over a common mistake (the lesson designer's "explain + callout
- * row"). The heading and hairline, the idea as one lead sentence across the full measure in the
+ * Content, `callout-row`: one idea over a common mistake. The heading and hairline, the idea as one lead sentence across the full measure in the
  * heading weight, and the callout as a full-width row at the foot of the slide at its own `small`
  * size (`applyCallout`, then `placeCallout` after the look). The sentence is named (`IDEA_NAME`) so
  * the look does not split it into a lead and a card and the structure pass does not turn it into
- * a key card: either would take the height the row needs (fit-lab: a callout found room beside
- * only 80 to 125 characters of body). The box is sized for three lines; the row takes the rest.
+ * a key card: either would take the height the row needs (beside a headed body, a callout finds room
+ * only under 80 to 125 characters of it). The box is sized for three lines; the row takes the rest.
  */
 function contentCalloutRow(t: Theme): Layout {
   return {
@@ -667,7 +666,7 @@ function trueFalseSlide(t: Theme): Layout {
     140,
     RESERVED_LINES["true-false"],
   );
-  // Big True and False buttons, a tick and a cross for their chips (layout audit #9).
+  // Big True and False buttons, a tick and a cross for their chips.
   const yes = option("✓", "True", { x: SAFE.x, y, w: HALF_W, h });
   const no = option("✗", "False", { x: RIGHT_X, y, w: HALF_W, h });
   return {
@@ -911,7 +910,7 @@ function sortSlide(t: Theme): Layout {
   // A column of four full-width cards under a one-line stem: a stage of a process is a short
   // phrase, which a half-width card cannot hold on the option floor.
   // The cards take a compact padding so all four sit inside the safe area under a two-line stem
-  // (layout audit: the fourth card ran under the bottom bar at the option default's 24pt pad).
+  // (at the option default's 24pt pad the fourth card runs under the bottom bar).
   const stemBox = boxH(t, "heading", 2, "question");
   const gap = SPACE[1];
   const pad = SORT_CARD_PAD;
@@ -942,7 +941,7 @@ function sortSlide(t: Theme): Layout {
 
 /**
  * Open response — the question centred in a framed prompt card. Pupils write in their books, so the
- * board shows no empty answer box (the box belongs on the handout; layout audit #8).
+ * board shows no empty answer box (the box belongs on the handout).
  */
 function openResponseSlide(t: Theme): Layout {
   const promptH = boxH(t, "heading", 3, "question");
@@ -1102,9 +1101,9 @@ export const AGENDA_STEM = "Objectives stem";
 export const AGENDA_OBJECTIVES = "Objectives";
 
 /**
- * Title, `agenda` (designer r4, `DESIGNER_OBJECTIVES_ON_TITLE`): a deck with no objectives slide
- * opens on this. Left, five columns: accent rule, "LESSON" eyebrow, the title at the heading stop
- * over up to four lines and the class line in `small` (a designer title runs to seventy
+ * Title, `agenda`: the title spec's `objectives` set beside the title, for a deck with no
+ * objectives slide. Left, five columns: accent rule, "LESSON" eyebrow, the title at the heading stop
+ * over up to four lines and the class line in `small` (a generated title runs to seventy
  * characters, which the 48pt title floor cannot set in a column beside three objectives). Right,
  * seven columns: the "I can" stem and the numbered objectives. A hairline between; each column is
  * optically centred on its own (`fit-slide.ts` restacks each).

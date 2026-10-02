@@ -918,7 +918,7 @@ function fillMatching(spec: SlideSpecOf<"matching">, laid: Layout): Layout {
   const half = cards.length / 2;
   const n = spec.pairs.length;
   // The right-hand side is shown shuffled (seeded by the pairs, so stable), never opposite its
-  // term; the answer key stays in `question.pairs` (layout audit #3).
+  // term; the answer key stays in `question.pairs`.
   const order = seededOrder(n, spec.pairs.map((p) => `${p.left}|${p.right}`).join("\n"), true);
   spec.pairs.forEach((pair, i) => {
     setDoc(cards[i], labelledDoc(String(i + 1), pair.left));
@@ -953,7 +953,7 @@ function fillSort(spec: SlideSpecOf<"sort">, laid: Layout): Layout {
   setText(textOf(laid, "heading"), spec.stem);
   const cards = optionsOf(laid);
   // Shown in a stable shuffled order under letters, never the answer order; `question.order`
-  // keeps the right order as card ids (layout audit #3).
+  // keeps the right order as card ids.
   const order = seededOrder(spec.steps.length, spec.steps.join("\n"), false);
   order.forEach((stepIndex, slotIndex) => {
     setDoc(cards[slotIndex], docFromText(spec.steps[stepIndex] ?? ""));

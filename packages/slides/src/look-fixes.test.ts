@@ -183,7 +183,7 @@ describe("the answers never cover the questions", () => {
     );
     const pages = lookAndFitPages(slide, t);
     expect(pages).toHaveLength(1);
-    // The answers are revealed inside their own cards (layout audit #2).
+    // The answers are revealed inside their own cards.
     const reveals = named(pages[0]?.elements ?? [], ROW_REVEAL_NAME);
     expect(reveals.map((e) => e.revealStep)).toEqual([1, 1]);
   });

@@ -15,9 +15,9 @@ import { FONT_STACKS } from "./fonts";
 
 const S = 1.2;
 /**
- * Teaching body (spike/teach-type, 30 Sep 2026): the `body` stop is the reading matter a slide
+ * Teaching body (UX ruling 140): the `body` stop is the reading matter a slide
  * teaches with (explain and photo bodies, list items, captions). It is set at 0.7 of the display
- * ladder's body stop, about 30–33 px on a 1440 projector (Chalkie sets 20–24), so a teaching slide
+ * ladder's body stop, about 30–33 px on a 1440 projector, so a teaching slide
  * carries a paragraph rather than three lines. Each theme keeps its own ratio; titles, headings,
  * question stems and option cards keep their stops.
  */
@@ -529,7 +529,7 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
  *
  * 1 — the sizes the app shipped with.
  * 2 — wave 4, 4 Sept 2026: the per-role projector floors above (SPEC §7).
- * 3 — spike/teach-type, 30 Sep 2026: the teaching body floor 26 → 20 (30 px at 1440).
+ * 3 — UX ruling 140, 2 Oct 2026: the teaching body at 0.7 and its floor 26 → 20 (30 px at 1440).
  */
 export const FIT_VERSION = 3;
 

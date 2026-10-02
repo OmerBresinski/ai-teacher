@@ -215,7 +215,7 @@ describe("the retrieval starter (r2)", () => {
         at: "2026-09-24T00:00:00.000Z",
       }),
     );
-    // Each answer is revealed inside its question's card (layout audit row cards).
+    // Each answer is revealed inside its question's card (row cards).
     const reveals = slide.elements.filter((e) => e.name === "Row reveal");
     expect(reveals).toHaveLength(retrieval.length);
     for (const r of reveals) expect(r.revealStep).toBeGreaterThanOrEqual(1);

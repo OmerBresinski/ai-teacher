@@ -1053,7 +1053,7 @@ export const WORD_TERM_NAME = "Term";
 export const WORD_DEFINITION_NAME = "Definition";
 
 /**
- * Vocabulary as word cards (layout audit round 2): each term and its definition on its own card,
+ * Vocabulary as word cards: each term and its definition on its own card,
  * two cards a row (one full-width card for a single word), the term bold in the accent over its
  * definition. Every card of a row takes the row's tallest height. The definitions try the body
  * size, then `small`; a set whose cards do not fit keeps the recipe's grid.
@@ -1172,7 +1172,7 @@ function structureSet(
   const rest = slide.elements.filter((e) => e !== list && e !== old);
   const choice = lines.some((l) => (l.options?.length ?? 0) > 0);
   // Open questions: one full-width numbered card each, the answer revealed inside its card and
-  // measured with it (layout audit #2). A set whose cards do not fit keeps the list below.
+  // measured with it. A set whose cards do not fit keeps the list below.
   if (!choice) {
     // A footnote that is not the answers (an instruction) stays under the cards.
     const foot = rest.find(
@@ -1382,7 +1382,7 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
   if (!cardEl || !working || !question) return [slide];
   const steps = docLines(working.doc);
   // One full-width row per step, the working on one line at the left and its reason at the right;
-  // step 1 is shown with the question and each later step is one reveal (layout audit #4).
+  // step 1 is shown with the question and each later step is one reveal.
   {
     const own = resolveFontSize(t, "body");
     const { fontSize: _q, ...qStyle } = question.style;
@@ -1414,8 +1414,8 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
   }
   // The look's fit set the question beside the working card this pass replaces, so the card's
   // lines could step the body preset down for the question too. With the strip in the card's
-  // place, the question goes back to its own size when it and the strip still fit (r6 smoke: the
-  // question sat one stop down on four themes whatever it said, and the save gate failed it).
+  // place, the question goes back to its own size when it and the strip still fit (left stepped,
+  // the question sat one stop down on four themes whatever it said, and the save gate failed it).
   const own = resolveFontSize(t, "body");
   if ((question.style.fontSize ?? own) < own) {
     const { fontSize: _stepped, ...style } = question.style;
@@ -1464,7 +1464,7 @@ function structureContent(
       isText(e) && e.style.preset === "body" && (!e.name || e.name === LEAD_CARD),
   );
   if (bodies.length === 0) return plain;
-  // A body in labelled chunks (round D1, `docFromChunks`) is already set out in parts: it stays.
+  // A body in labelled chunks (`docFromChunks`) is already set out in parts: it stays.
   if (bodies.length === 1 && isChunked((bodies[0] as TextElement).doc)) return plain;
   const top = Math.min(...bodies.map((b) => b.y));
   // A content spec's `points` arrive as a bullet list at the end of its body (`bodyWithPoints`):
@@ -1597,7 +1597,7 @@ function structureContent(
       placed = keyCard(s.keyCard.label, s.keyCard.text, y, SAFE_BOTTOM, t, ids, compact);
     } else if (s.sequence) {
       if (restWords) para(restWords);
-      // A sequence is always numbered steps: full-width rows, else the strip (layout audit #10).
+      // A sequence is always numbered steps: full-width rows, else the strip.
       placed =
         rowCards(
           s.sequence.map((step, i) => ({ badge: String(i + 1), main: step })),
@@ -2012,7 +2012,7 @@ function composeBesideSlot(
   if (!first) return [withTerms(slide, t, hints.terms)];
   // The slot is the right panel of the two-column composition, the words the left column.
   const prose = joinSentences(bodies.map((b) => docText(proseOf(b.doc))));
-  // A body in labelled chunks (round D1) keeps its chunks beside the slot: no panel, no points.
+  // A body in labelled chunks keeps its chunks beside the slot: no panel, no points.
   const chunked = bodies.length === 1 && isChunked(first.doc);
   const asPanel =
     !chunked &&
@@ -2769,7 +2769,7 @@ function sidePanel(
 /* ---------------------------------------------------------------- row cards */
 
 /*
- * Row cards (layout audit, 30 Sep 2026): one full-width card per item, a number or letter badge at
+ * Row cards: one full-width card per item, a number or letter badge at
  * its left, stacked down the slide and spread to fill it. A question set's questions, a worked
  * example's steps (working left, reason right), a sequence's steps, matching's two columns. Every
  * row is measured at the size chosen for the whole set before it is placed, with its reveal line

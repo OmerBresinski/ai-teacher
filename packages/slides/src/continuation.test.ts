@@ -17,7 +17,7 @@ const theme = getTheme("chalk");
 let n = 0;
 const ids = () => `c${++n}`;
 
-/** 11 sentences: more than one slide holds at the teaching body size (spike/teach-type). */
+/** 11 sentences: more than one slide holds at the teaching body size (ruling 140). */
 const BASE = [
   "Roman towns brought new buildings and new ways of life to many parts of Britain.",
   "People could visit public bath houses and busy markets, and some lived in homes built in Roman styles.",
