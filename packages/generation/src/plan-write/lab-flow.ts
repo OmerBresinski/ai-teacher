@@ -1167,3 +1167,94 @@ export async function planF4(c: ContextV3, llm: Llm, b: Budget): Promise<Omit<Fl
     log,
   };
 }
+
+/* ------------------------------------------------------------------ JF4: F4 plan bound on the stream */
+
+export const FLOW_BINDING_VERSION = "stream-structure.f4.v1";
+
+/**
+ * Forms whose `when` promises pictures or a diagram the palette form does not draw: mapped to the
+ * drawable form that does the same job in text, before the plan reaches the writer.
+ */
+export const UNDRAWABLE: Record<string, { role: Role; to: string }> = {
+  "match-pictures": { role: "check", to: "match-terms" },
+  "label-diagram": { role: "check", to: "fill-gap" },
+  "label-or-sort": { role: "practise", to: "items" },
+};
+
+export function drawable(slots: FlowSlot[]): { slots: FlowSlot[]; mapped: string[] } {
+  const mapped: string[] = [];
+  return {
+    slots: slots.map((s) => {
+      const m = UNDRAWABLE[s.intent];
+      if (!m) return s;
+      mapped.push(`slide ${s.slide}: ${s.intent} -> ${m.to}`);
+      return { ...s, intent: m.to };
+    }),
+    mapped,
+  };
+}
+
+const intentDef = (s: FlowSlot): Intent | undefined =>
+  (s.role === "teach"
+    ? TEACH_INTENTS
+    : s.role === "check"
+      ? CHECK_INTENTS
+      : s.role === "practise"
+        ? PRACTICE_INTENTS
+        : OPENING_INTENTS)[s.intent];
+
+/** The palette form the stream writes for a slot. */
+export const paletteForm = (s: FlowSlot): string => intentDef(s)?.form ?? "explain";
+
+/**
+ * stream-structure.f4.v1: the F4 plan as a binding block on the stream's user turn, as v6's block:
+ * it says the plan has made the shape rules' open choices, gives the objectives verbatim and one line
+ * per row with the beat, so the writer keeps the flow the planner meant.
+ */
+export function bindingBlockFlow(c: ContextV3, slots: FlowSlot[]): string {
+  const lines = [
+    "",
+    "Plan, decided before you write. It is binding: write exactly these rows, in this order, each with the role, objective and form given, and no others. Where the shape rules above leave a choice (whether a retrieve slide or a hook opens the lesson, how many slides each idea takes, where the checks fall), this plan has made it; every other rule holds.",
+    "Objectives, exactly these, as written:",
+    ...c.objectives.map((o, i) => `${i + 1}. ${o.text}`),
+    "Rows (slide: role, objective, form; its place in the lesson's flow; its idea):",
+    ...slots.map(
+      (s) =>
+        `${s.slide}: ${s.role}, ${s.objective ?? "-"}, ${paletteForm(s)}; ${intentDef(s)?.when ?? s.intent}. Flow: ${s.beat ?? "-"}. Idea: ${s.idea}`,
+    ),
+    "Each row's layout, parts, aim, teaches and tests are yours, within its idea.",
+  ];
+  if (yearOf(c.yearGroup) >= 10 && slots.some((s) => s.intent === "exam-questions"))
+    lines.push(
+      'Exam-style: every practise item is an exam question in the exam\'s command words and ends with its marks in brackets, such as "[4 marks]"; its notes give the mark scheme.',
+    );
+  if (yearOf(c.yearGroup) <= 4) lines.push("Every multiple-choice question has 3 options.");
+  return lines.join("\n");
+}
+
+/** Lesson-time F4: the shared modelling score (Jev), the fixed budget, one Luna plan, drawable forms. */
+export async function planJF4(
+  c: ContextV3,
+  slideCount: number,
+  evaluate: Evaluator,
+  llm: Llm,
+): Promise<FlowPlan & { mapped: string[]; budget: Budget; needs: number[] }> {
+  const t0 = Date.now();
+  const cc = { ...c, rows: rowsFor(slideCount) };
+  const need = await evaluate(stateV3(cc), needQuestions(cc));
+  const needs = readNeeds(cc, need.answers);
+  const b = budgets(cc.rows, needs);
+  const p = await planF4(cc, llm, b);
+  const d = drawable(p.slots);
+  return {
+    ...p,
+    slots: d.slots,
+    mapped: d.mapped,
+    budget: b,
+    needs,
+    costUsd: p.costUsd + (need.costUsd ?? 0),
+    calls: p.calls + 1,
+    ms: Date.now() - t0,
+  };
+}

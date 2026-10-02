@@ -96,6 +96,14 @@ import {
   spineSchema,
 } from "../plan-write/lab-chunks";
 import {
+  bindingBlockFlow,
+  FLOW_BINDING_VERSION,
+  type FlowSlot,
+  openaiLlm,
+  PLAN_LUNA_VERSION,
+  planJF4,
+} from "../plan-write/lab-flow";
+import {
   decideStructure,
   gatewayEvaluator,
   STREAM_STRUCTURE_VERSION,
@@ -1785,10 +1793,12 @@ export async function planWriteSlides(
     ];
     // The checks code guarantees: one after each objective's teaching where the plan has none,
     // each its own slide straight after that teaching (the stream's own slides keep their order).
-    const inserts = checksToInsert(c.plan.slides);
+    // TEACH-179 JF4: the bound plan already holds its checks and opening on a fixed count; no inserts.
+    const boundPlan = process.env.LAB_STRUCTURE_VERSION === "f4";
+    const inserts = boundPlan ? [] : checksToInsert(c.plan.slides);
     const at = new Map(inserts.map((x) => [x.after, x.row]));
     // Round H: a retrieval warm-up first after the objectives, written by code if the plan has none.
-    const warm = warmUpToInsert(c.plan.slides);
+    const warm = boundPlan ? undefined : warmUpToInsert(c.plan.slides);
     const rows: PlanSlide[] = [];
     c.plan.slides.forEach((row, i) => {
       if (warm && i === FIXED_SLIDES) {
@@ -1883,11 +1893,34 @@ export async function planWriteSlides(
   /** TEACH-179 arm JJ6: the v6 plan (LAB_STRUCTURE_VERSION=v6, context file LAB_STRUCTURE_CONTEXT). */
   let labPlanV6: PlanV3 | undefined;
   let labContextV6: ContextV3 | undefined;
+  /** TEACH-179 arm JF4: the F4 Luna whole-lesson plan (LAB_STRUCTURE_VERSION=f4). */
+  let labPlanF4: Awaited<ReturnType<typeof planJF4>> | undefined;
   /** One call plans and writes the whole lesson; each slide lands as it closes. */
   const runStream = async () => {
     // TEACH-179 lab: a decision model fixes the structure before the stream (LAB_STRUCTURE_MODEL).
     const structureModel = process.env.LAB_STRUCTURE_MODEL;
-    if (structureModel && process.env.LAB_STRUCTURE_VERSION === "v6") {
+    if (structureModel && process.env.LAB_STRUCTURE_VERSION === "f4") {
+      try {
+        const { readFileSync } = await import("node:fs");
+        labContextV6 = JSON.parse(
+          readFileSync(process.env.LAB_STRUCTURE_CONTEXT ?? "", "utf8"),
+        ) as ContextV3;
+        labPlanF4 = await planJF4(
+          labContextV6,
+          slideCount,
+          gatewayEvaluator(structureModel, process.env.AI_GATEWAY_API_KEY ?? ""),
+          openaiLlm(process.env.LAB_PLAN_MODEL ?? "gpt-6-luna", process.env.OPENAI_API_KEY ?? ""),
+        );
+        labStructureAtMs = Date.now() - startedAt;
+        deps.logger.info(
+          { stage: "generate", labPlanF4, atMs: labStructureAtMs },
+          "lab F4 plan decided",
+        );
+      } catch (error) {
+        labStructureError = error instanceof Error ? error.message : String(error);
+        deps.logger.error({ stage: "generate", err: labStructureError }, "lab F4 plan failed");
+      }
+    } else if (structureModel && process.env.LAB_STRUCTURE_VERSION === "v6") {
       try {
         const { readFileSync } = await import("node:fs");
         labContextV6 = JSON.parse(
@@ -1947,7 +1980,9 @@ export async function planWriteSlides(
         ? { structure: structureBlock(labStructure.structure, base.yearGroup ?? "") }
         : labPlanV6 && labContextV6
           ? { structure: bindingBlockV6(labContextV6, labPlanV6) }
-          : {}),
+          : labPlanF4 && labContextV6
+            ? { structure: bindingBlockFlow(labContextV6, labPlanF4.slots) }
+            : {}),
     };
     const routed = deps.ai.model(cls, callContext(deps, "generate", STREAM_LESSON_VERSION, "low"));
     const streamModel = typeof routed === "string" ? routed : routed.modelId;
@@ -2172,9 +2207,11 @@ export async function planWriteSlides(
           prompt: asPrompt<StreamLessonInput>(
             labStructure
               ? `${STREAM_LESSON_VERSION}+${STREAM_STRUCTURE_VERSION}`
-              : labPlanV6
-                ? `${STREAM_LESSON_VERSION}+${BINDING_VERSION}+${labPlanV6.version}`
-                : STREAM_LESSON_VERSION,
+              : labPlanF4
+                ? `${STREAM_LESSON_VERSION}+${FLOW_BINDING_VERSION}+${PLAN_LUNA_VERSION}`
+                : labPlanV6
+                  ? `${STREAM_LESSON_VERSION}+${BINDING_VERSION}+${labPlanV6.version}`
+                  : STREAM_LESSON_VERSION,
             streamLessonPrompt(input),
           ),
           input,
@@ -3093,6 +3130,27 @@ export async function planWriteSlides(
               })),
               labChunks.spine,
             ),
+          },
+        }
+      : {}),
+    ...(labPlanF4
+      ? {
+          labPlanF4: {
+            plan: labPlanF4,
+            atMs: labStructureAtMs,
+            planMs: labPlanF4.ms,
+            mapped: labPlanF4.mapped,
+            written: table.slice(2).map((r) => ({
+              role: r.role,
+              form: r.form,
+              objective: r.objectives?.[0] ?? null,
+            })),
+            planned: labPlanF4.slots.map((x: FlowSlot) => ({
+              slide: x.slide,
+              role: x.role,
+              intent: x.intent,
+              objective: x.objective,
+            })),
           },
         }
       : {}),
