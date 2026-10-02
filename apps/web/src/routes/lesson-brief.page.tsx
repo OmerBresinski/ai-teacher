@@ -21,6 +21,7 @@ import {
   WorksheetStep,
 } from "@/components/lesson-creation/step-fields";
 import { useLibraryActions } from "@/components/library/use-library-actions";
+import { SIGN_IN_SHEET_BACK_HERE } from "@/components/sign-in/sign-in-copy";
 import { SourceDropZone } from "@/components/source-drop-zone/SourceDropZone";
 import { useTurnstileToken } from "@/components/turnstile";
 import { useJobEvents } from "@/hooks/use-job-events";
@@ -48,6 +49,10 @@ const NewDocumentDialog = lazy(() =>
 
 /** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
 const JOB_POLL_MS = 3000;
+// The sign-in sheet (TEACH-245) loads only when a signed-out visitor hits a limit.
+const SignInSheet = lazy(() =>
+  import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
+);
 /** API refusals that mean "no preview for you right now": today's sign-in flow (TEACH-244 FR5). */
 const FALLBACK_CODES = new Set(["anonymous_capacity", "rate_limited"]);
 /** API refusals that ask an anonymous visitor to sign in, with the plan kept on screen. */
@@ -184,12 +189,14 @@ function LessonIntake({
     setStep("objectives");
   }
 
+  /** Where sign-in returns to: this plan once there is a lesson, else the brief with its topic. */
+  function signInRedirect(source = false) {
+    return lessonId && !source
+      ? `/lessons/new?lesson=${lessonId}`
+      : briefRedirect(brief.topic, source);
+  }
   function signIn(source = false) {
-    const redirect = briefRedirect(brief.topic, source);
-    void navigate({
-      to: "/sign-in",
-      search: { redirect: lessonId && !source ? `/lessons/new?lesson=${lessonId}` : redirect },
-    });
+    void navigate({ to: "/sign-in", search: { redirect: signInRedirect(source) } });
   }
   async function fail(cause: unknown) {
     if (cause instanceof AnonymousSignInError && cause.kind === "fallback") return signIn();
@@ -350,13 +357,17 @@ function LessonIntake({
       {findNamePatterns(brief.topic).length > 0 ? <p role="status">{GUARD_MESSAGE}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       {signInPrompt ? (
-        // TEACH-245 swaps this for the sign-in sheet; the plan below stays on screen either way.
-        <p role="alert">
-          {signInPrompt}{" "}
-          <Button variant="link" size="sm" onClick={() => signIn()}>
-            Sign in
-          </Button>
-        </p>
+        // A limit (anonymous_limit, the re-plan cap) opens the sign-in sheet over the brief; the
+        // plan below stays on screen, and closing the sheet leaves it as it was (TEACH-245).
+        <Suspense fallback={null}>
+          <SignInSheet
+            open
+            onOpenChange={(open) => (open ? undefined : setSignInPrompt(""))}
+            redirect={signInRedirect()}
+            title={signInPrompt.replace(/\.$/, "")}
+            description={SIGN_IN_SHEET_BACK_HERE}
+          />
+        </Suspense>
       ) : null}
       {request.current && error && !lessonId ? (
         <p>
