@@ -847,7 +847,11 @@ function openResponseSlide(t: Theme): Layout {
   };
 }
 
-/** Exit ticket — three quick questions. Never revealed (research §1, decision 5). */
+/**
+ * Exit ticket — at most three quick questions (UX ruling 108). This blank recipe reveals nothing;
+ * a generated exit ticket reveals its answers on step 1 and carries them as a `set` question
+ * (TEACH-101).
+ */
 function exitTicketSlide(t: Theme): Layout {
   const { heading, items, footnote: foot } = LIST_COPY["exit-ticket"];
   return { elements: [...headed(t, heading), numberedBody(t, [...items]), footnote(t, foot)] };

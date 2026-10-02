@@ -8,7 +8,7 @@ import type {
   TextElement,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { creditedLesson } from "@tj/domain/documents/fixtures";
+import { codedSetSlide, creditedLesson } from "@tj/domain/documents/fixtures";
 import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
@@ -1029,4 +1029,37 @@ describe("a slide exported as the class sees it", () => {
     expect(xml).toContain("Magma rises through cracks in the crust");
     expect(xml).toContain("The crust gives way and lava pours out");
   });
+});
+
+describe("a coded question set (TEACH-101)", () => {
+  const slidesXml = async (blob: Blob): Promise<string[]> => {
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const names = Object.keys(zip.files)
+      .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+      .sort((a, b) => Number(/(\d+)/.exec(a)?.[1]) - Number(/(\d+)/.exec(b)?.[1]));
+    return Promise.all(names.map((name) => zip.file(name)?.async("string") ?? ""));
+  };
+  const deck = (set: Lesson["slides"][number]): Lesson =>
+    ({ id: "l1", title: "Romans", themeId: "chalk", slides: [set] }) as Lesson;
+  const theme = getTheme("chalk");
+
+  it("row 4: answerText numbers each answer by its line; the Answers slide lists them", async () => {
+    const set = codedSetSlide();
+    expect(answerText(set)).toBe("1. AD 43   2. Boudica   3. Hadrian");
+    const xml = await slidesXml(await exportLessonPptx(deck(set), theme, { includeAnswers: true }));
+    // The set and its reveal, then the Answers slide.
+    expect(xml).toHaveLength(3);
+    const answers = xml.at(-1);
+    expect(answers).toContain("<a:t>Answers</a:t>");
+    expect(answers).toContain("1. AD 43   2. Boudica   3. Hadrian");
+  }, 30_000);
+
+  it("row 5: stored without the question, no Answers entry and no error", async () => {
+    const set = codedSetSlide(undefined, { question: false });
+    expect(lessonAnswers(deck(set))).toEqual([]);
+    const xml = await slidesXml(await exportLessonPptx(deck(set), theme, { includeAnswers: true }));
+    // The set and its reveal, as today; no Answers slide.
+    expect(xml).toHaveLength(2);
+    expect(xml.join("")).not.toContain("<a:t>Answers</a:t>");
+  }, 30_000);
 });

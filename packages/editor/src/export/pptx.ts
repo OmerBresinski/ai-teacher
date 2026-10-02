@@ -467,6 +467,14 @@ export function answerText(slide: Slide): string | null {
       );
     case "open-response":
       return q.modelAnswer?.trim() || null;
+    case "set":
+      // A coded question set (TEACH-101): each answer numbered by the line it answers.
+      return (
+        q.items
+          .filter((a) => a.answer.trim())
+          .map((a) => `${a.lineIndex + 1}. ${a.answer.trim()}`)
+          .join("   ") || null
+      );
     default:
       return null;
   }
