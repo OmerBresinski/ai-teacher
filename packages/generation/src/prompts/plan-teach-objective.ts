@@ -1,3 +1,4 @@
+import { FIGURE_TEMPLATE_NAMES, type FigureTemplateName } from "@tj/domain/documents";
 import { editorialIssue, SPEC_LIMITS, type SpecSchemaOptions } from "@tj/slides";
 import { z } from "zod";
 import {
@@ -50,6 +51,16 @@ import { audienceBlock, houseRules, type Retrieval, retrievalBlock } from "./sha
  * carry out; otherwise none", which keeps none as the default for prose objectives (the filler the
  * bare "none" line was added against, CORE 2026-09-22). The worked-example rule gains "taken to its
  * finished form", so a method is not stopped part way. Not yet measured.
+ *
+ * v5 (TEACH-163, 3 Oct 2026; ruling 147a): each key idea may say what would picture it, in an
+ * optional `picture`: a photo (`subject`, what pupils should `notice`), a diagram (a shipped
+ * Figure `template`, what it `shows`), or `none`. The outline had only the key idea's prose to
+ * guess from and placed 1 picture in 3 lessons. The slot is in the sketch (Luna fills a sketched
+ * optional slot, openai.md 2026-09-23); "none" names the failure to exclude, decoration, rather
+ * than a genre (openai.md 2026-09-26, the diagram swing). Code reads it in `outline-pictures.ts`:
+ * photo maps to `ImageBrief` (`subject`, `mustShow` = `notice`), diagram to `FigureBrief`
+ * (`template`, `purpose` = `shows`). A malformed picture parses as absent (`.catch`), so the slot
+ * never costs the fan-out's slowest call a retry; saved v4 runs parse unchanged.
  */
 
 export type PlanTeachObjectiveInput = PlanFactsObjectiveInput & {
@@ -89,12 +100,44 @@ const objectiveOrdinalSchema = (count?: number) =>
             .max(Math.max(count - 1, 0)),
   });
 
+/**
+ * What each shipped Figure template draws, in the words the system line shows the model (v5).
+ * Keyed by `FigureTemplateName`, so a new template does not compile until it is described here.
+ */
+const FIGURE_TEMPLATE_GLOSS: Record<FigureTemplateName, string> = {
+  "right-triangle": "Pythagoras or trigonometry",
+  triangle: "a triangle's angles or area",
+  "energy-profile": "a reaction's energy change",
+};
+
+/**
+ * v5: what would picture a key idea. No character caps here: an over-long subject would drop the
+ * whole picture under `.catch`. The prose asks for `ImageBriefSchema`'s subject cap (60) in the
+ * limits line, and the outline clips to the domain caps (subject 60, `mustShow` 120 each,
+ * `FigureBrief.purpose` 160) when it maps the value. First smoke: a 1-of-3 subject ran to 87.
+ */
+const pictureSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("photo"),
+    subject: z.string().trim().min(1),
+    notice: z.array(z.string().trim().min(1)).min(1).max(4),
+  }),
+  z.object({
+    kind: z.literal("diagram"),
+    template: z.enum(FIGURE_TEMPLATE_NAMES),
+    shows: z.string().trim().min(1),
+  }),
+  z.object({ kind: z.literal("none") }),
+]);
+export type KeyIdeaPicture = z.output<typeof pictureSchema>;
+
 const keyIdeaSchema = (line: Line) =>
   z.object({
     statement: line(SPEC_LIMITS.item),
     explanation: line(SPEC_LIMITS.body),
     example: line(SPEC_LIMITS.body),
     analogy: line(SPEC_LIMITS.item).optional(),
+    picture: pictureSchema.optional().catch(undefined),
   });
 
 const misconceptionSchema = (line: Line) =>
@@ -178,14 +221,17 @@ export function workedExampleLine(position: PlanFactsObjectivePosition): string 
 const TEACH_HOUSE_RULES = houseRules("british", "names");
 
 /** v14's limits line, the question fields removed. */
-const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}. A quotation is one line, cut with an ellipsis.`;
+const LENGTH_LIMITS = `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}; subject 60. A quotation is one line, cut with an ellipsis.`;
 
 /** v14's sketch without the `questions` list; `misconceptionRef` left out on purpose (v7). */
 export const TEACH_SHAPE_SKETCH =
-  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…"}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
+  '{"keyIdeas":[{"statement":"…","explanation":"…","example":"…","picture":{"kind":"photo","subject":"…","notice":["…"]}}],"misconceptions":[{"belief":"…","correction":"…"}],"vocabulary":[{"term":"…","definition":"…"}],"workedExamples":[{"problem":"…","steps":["…"],"answer":"…","objectiveRefs":[{"type":"objective","index":0}]}]}';
+
+/** v5: the picture rule, its template list rendered from `FIGURE_TEMPLATE_GLOSS`. */
+const PICTURE_RULE = `A key idea's "picture" is what would show it to the class: a photo of something real pupils can look at, with its "subject" and what pupils should "notice"; a diagram where one of these templates draws the idea, preferred to a photo then, with its "template" and what it "shows": ${FIGURE_TEMPLATE_NAMES.map((t) => `${t} (${FIGURE_TEMPLATE_GLOSS[t]})`).join(", ")}; otherwise {"kind":"none"}, when nothing pupils could see explains the idea or a picture would only decorate it.`;
 
 export const planTeachObjectivePrompt = {
-  version: "plan-teach-objective.v4",
+  version: "plan-teach-objective.v5",
   system: [
     "You are an experienced UK teacher writing what one lesson teaches, one objective at a time.",
     "Other calls write the questions and the other objectives: do not write them here.",
@@ -199,6 +245,7 @@ export const planTeachObjectivePrompt = {
     "Every quantity carries its unit, in each step and answer as well as the problem: 35 ÷ 7 = 5 stickers, not 5.",
     "Vocabulary is the terms this objective introduces and the class will not know, or none. A definition uses none of the term's own words, only words the class already has.",
     'Where the worked example heads off the misconception, say so in "misconceptionRef".',
+    PICTURE_RULE,
     'Follow the brief\'s worked-example line. A worked example is the method on one problem, taken to its finished form; without a calculation, its steps annotate a model answer. Its "objectiveRefs" list every objective it serves, by index, this one included.',
     'Where the brief gives "Prior knowledge", treat it as met and build nothing outside it.',
     LENGTH_LIMITS,

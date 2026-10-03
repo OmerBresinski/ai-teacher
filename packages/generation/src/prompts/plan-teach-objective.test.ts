@@ -42,8 +42,9 @@ describe("plan-teach-objective", () => {
   test("the system text is v14's teach rules and nothing about questions", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
-    // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    // v14 is 487 words; the questions took their rules with them. v5 adds the picture rule
+    // (TEACH-163, about 70 words). The alarm follows the count.
+    expect(system.trim().split(/\s+/).length).toBeLessThan(410);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");
@@ -98,7 +99,7 @@ describe("plan-teach-objective", () => {
       expect(system.toLowerCase()).not.toContain(gone);
     }
     expect(system).toContain(
-      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}.`,
+      `Length limits (characters): statement, belief and step ${SPEC_LIMITS.item}; explanation, example, problem and correction ${SPEC_LIMITS.body}; term ${SPEC_LIMITS.term}; definition ${SPEC_LIMITS.definition}; answer ${SPEC_LIMITS.answer}; subject 60.`,
     );
     // The sketch is v14's without its `questions` list; `misconceptionRef` stays out of it (v7).
     expect(TEACH_SHAPE_SKETCH).not.toContain("questions");
@@ -223,5 +224,49 @@ describe("plan-teach-objective", () => {
     ]);
     expect(merged.workedExamples[0]?.misconceptionRef).toEqual({ type: "misconception", index: 0 });
     expect(merged.questions).toEqual([]);
+  });
+});
+
+describe("plan-teach-objective v5: a key idea's picture (TEACH-163)", () => {
+  const withPicture = (picture: unknown) =>
+    PlanTeachObjectiveOutputSchema.parse({
+      keyIdeas: [{ ...KEY_IDEA, picture }],
+      misconceptions: [MISCONCEPTION],
+      vocabulary: [],
+      workedExamples: [],
+    }).keyIdeas[0]?.picture;
+
+  test("the sketch shows the slot and the system names every shipped template", () => {
+    expect(TEACH_SHAPE_SKETCH).toContain('"picture":{"kind":"photo","subject":"…","notice":["…"]}');
+    for (const t of ["right-triangle", "triangle", "energy-profile"])
+      expect(planTeachObjectivePrompt.system).toContain(`${t} (`);
+    expect(planTeachObjectivePrompt.system).toContain('{"kind":"none"}');
+  });
+
+  test("photo, diagram and none parse; a missing picture stays absent", () => {
+    expect(
+      withPicture({ kind: "photo", subject: "A Roman road", notice: ["the paving stones"] }),
+    ).toEqual({
+      kind: "photo",
+      subject: "A Roman road",
+      notice: ["the paving stones"],
+    });
+    expect(
+      withPicture({ kind: "diagram", template: "energy-profile", shows: "an exothermic profile" }),
+    ).toEqual({
+      kind: "diagram",
+      template: "energy-profile",
+      shows: "an exothermic profile",
+    });
+    expect(withPicture({ kind: "none" })).toEqual({ kind: "none" });
+    expect(withPicture(undefined)).toBeUndefined();
+  });
+
+  test("a malformed picture is dropped, never a retry", () => {
+    expect(
+      withPicture({ kind: "diagram", template: "cycle", shows: "the water cycle" }),
+    ).toBeUndefined();
+    expect(withPicture({ kind: "photo", subject: "A road", notice: [] })).toBeUndefined();
+    expect(withPicture("Photo: a road")).toBeUndefined();
   });
 });
