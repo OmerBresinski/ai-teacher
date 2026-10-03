@@ -121,6 +121,12 @@ import {
   deviationsV6,
   type PlanV3,
 } from "../plan-write/lab-structure-v6";
+import {
+  STREAM_VISUALITY_VERSION,
+  type Visuality,
+  visuality,
+  visualitySetting,
+} from "../plan-write/lab-visuality";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
@@ -1894,6 +1900,8 @@ export async function planWriteSlides(
   let labStructure: StructureRun | undefined;
   let labStructureAtMs: number | undefined;
   let labStructureError: string | undefined;
+  /** Lab ruling 147a (VIS147A): the soft picture target, when LAB_VISUALITY is set. */
+  let labVisuality: Visuality | undefined;
   /** TEACH-179 arm JJ6: the v6 plan (LAB_STRUCTURE_VERSION=v6, context file LAB_STRUCTURE_CONTEXT). */
   let labPlanV6: PlanV3 | undefined;
   let labContextV6: ContextV3 | undefined;
@@ -1971,7 +1979,12 @@ export async function planWriteSlides(
         deps.logger.error({ stage: "generate", err: labStructureError }, "lab structure failed");
       }
     }
+    const visSetting = visualitySetting();
+    labVisuality = visSetting
+      ? visuality(visSetting, base.yearGroup ?? "", slideCount - FIXED_SLIDES)
+      : undefined;
     const input: StreamLessonInput = {
+      ...(labVisuality ? { visuality: labVisuality.line } : {}),
       topic: brief.topic,
       audience,
       ...(brief.answers ? { answers: brief.answers } : {}),
@@ -2215,7 +2228,9 @@ export async function planWriteSlides(
                 ? `${STREAM_LESSON_VERSION}+${FLOW_BINDING_VERSION}+${PLAN_LUNA_VERSION}`
                 : labPlanV6
                   ? `${STREAM_LESSON_VERSION}+${BINDING_VERSION}+${labPlanV6.version}`
-                  : STREAM_LESSON_VERSION,
+                  : labVisuality
+                    ? `${STREAM_LESSON_VERSION}+${STREAM_VISUALITY_VERSION}:${labVisuality.setting}`
+                    : STREAM_LESSON_VERSION,
             streamLessonPrompt(input),
           ),
           input,
@@ -2520,6 +2535,9 @@ export async function planWriteSlides(
             ...generation.promptVersions,
             planned: joinVersions(stamp, verifyFactsPrompt.version),
             generated: WRITE_SLIDES_VERSION,
+            ...(labVisuality
+              ? { visuality: `${STREAM_VISUALITY_VERSION}:${labVisuality.setting}` }
+              : {}),
           },
           findings: [...findings],
         },
@@ -3137,6 +3155,7 @@ export async function planWriteSlides(
           },
         }
       : {}),
+    ...(labVisuality ? { labVisuality } : {}),
     ...(labPlanF4
       ? {
           labPlanF4: {

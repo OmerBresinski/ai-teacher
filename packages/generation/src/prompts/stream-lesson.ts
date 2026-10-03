@@ -1,3 +1,4 @@
+import { VISUALITY_SWAP } from "../plan-write/lab-visuality";
 import { HOUSE_RULES, PLAN_RULES, type PlanLessonInput, planLessonPrompt } from "./plan-lesson";
 import { WRITE_RULES } from "./write-slides";
 
@@ -52,6 +53,8 @@ export const STREAM_LESSON_VERSION = "stream-lesson.v21";
 export type StreamLessonInput = Omit<PlanLessonInput, "repair"> & {
   /** TEACH-179 lab: the decision model's structure block (stream-structure.v1), appended to the user turn. */
   structure?: string;
+  /** Lab (ruling 147a, stream-visuality.v1): the soft picture line, appended to the user turn. */
+  visuality?: string;
 };
 
 /** Replaces `from` in `text`, and fails loudly when a shared rule no longer holds it. */
@@ -94,6 +97,9 @@ ${HOUSE_RULES}
 
 ${RULES}`;
 
+/** With a picture line, the palette's picture default yields to it (no contradiction in the prompt). */
+const SYSTEM_VISUALITY = swap(SYSTEM, VISUALITY_SWAP[0], VISUALITY_SWAP[1]);
+
 export function streamLessonPrompt(input: StreamLessonInput): { system: string; user: string } {
   const n = input.slideCount;
   const user = swap(
@@ -101,5 +107,9 @@ export function streamLessonPrompt(input: StreamLessonInput): { system: string; 
     `Slide 1 is the title and slide 2 the objectives; write ${n - 2} rows, for slides 3 to ${n}.`,
     `Slide 1 is the title and slide 2 the objectives; write ${n - 2} plan rows, then those ${n - 2} slides, for slides 3 to ${n}.`,
   );
-  return { system: SYSTEM, user: input.structure ? `${user}\n${input.structure}` : user };
+  const tail = [input.structure, input.visuality].filter(Boolean).join("\n");
+  return {
+    system: input.visuality ? SYSTEM_VISUALITY : SYSTEM,
+    user: tail ? `${user}\n${tail}` : user,
+  };
 }
