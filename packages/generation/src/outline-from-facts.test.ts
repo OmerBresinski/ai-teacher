@@ -1402,7 +1402,8 @@ describe("outlineFromFacts: picture slides by visuality (TEACH-163)", () => {
     const before = run(base);
     const low = run({ ...base, pictureShare: 0.01 });
     const r = run({ ...base, pictureShare: 1 });
-    expect(pictures(r).length).toBe(eligible(before).length);
+    // Every eligible content slide, and the opener (objective 1's puppy) last.
+    expect(pictures(r).length).toBe(eligible(before).length + 1);
     expect(pictures(r).length).toBeGreaterThan(pictures(low).length);
     expect(r.result.skeleton.outline).toHaveLength(before.result.skeleton.outline.length);
     kinds(r).forEach((kind, i) => {
@@ -1413,12 +1414,11 @@ describe("outlineFromFacts: picture slides by visuality (TEACH-163)", () => {
     for (const { i } of pictures(r)) expect(objectiveOf(r, i)).not.toBe(2);
   });
 
-  test("the explain opener stays the content slide that defines the topic", () => {
-    const r = run({ ...base, pictureShare: 1 });
-    const opener = r.result.skeleton.outline.find(
-      (e) => e.phase === "explain" && e.kind !== "vocabulary",
-    );
-    expect(opener?.kind).toBe("content");
+  test("the explain opener is pictured last, only with a photograph", () => {
+    const opener = (r: ReturnType<typeof run>) =>
+      r.result.skeleton.outline.find((e) => e.phase === "explain" && e.kind !== "vocabulary");
+    expect(opener(run({ ...base, pictureShare: 0.01 }))?.kind).toBe("content");
+    expect(opener(run({ ...base, pictureShare: 1 }))?.kind).toBe("image-text");
   });
 
   test("a structure a shipped template draws becomes a diagram with a figure brief", () => {

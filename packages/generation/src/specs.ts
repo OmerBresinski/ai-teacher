@@ -515,7 +515,11 @@ function refineShape(
   // slide that is not vocabulary.
   const firstExplain = outline.findIndex((e) => e.phase === "explain" && e.kind !== "vocabulary");
   const opener = outline[firstExplain];
-  if (shape.firstExplainKind !== null && opener && opener.kind !== shape.firstExplainKind) {
+  // An image-text slide is a content slide with a photograph (TEACH-237), so it may open (TEACH-163).
+  const opensAsContent =
+    opener?.kind === shape.firstExplainKind ||
+    (shape.firstExplainKind === "content" && opener?.kind === "image-text");
+  if (shape.firstExplainKind !== null && opener && !opensAsContent) {
     issue(
       `Outline position ${firstExplain} is the first explain-phase slide (after any vocabulary) and is a ${opener.kind}; for this lesson it is a content slide that defines the topic and names two or three examples. Put that content slide at position ${firstExplain} and move this one after it.`,
       ["outline", firstExplain, "kind"],

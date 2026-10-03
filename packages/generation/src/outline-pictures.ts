@@ -24,7 +24,11 @@ const ABSTRACT = new Set(
     "property properties energy force forces reaction reactions result results fact facts opinion " +
     "opinions claim claims statement statements evidence source sources line lines poem poems story " +
     "stories character characters theme themes structure list lists pattern patterns term terms " +
-    "name names group groups thing things"
+    "name names group groups thing things " +
+    // Too small or invisible for a camera: a stock photograph of these is never the thing.
+    "atom atoms electron electrons ion ions molecule molecules proton protons neutron neutrons " +
+    "particle particles nucleus charge charges current electricity gene genes compound compounds " +
+    "element elements substance substances product products heat temperature supply"
   ).split(" "),
 );
 
@@ -79,14 +83,21 @@ function mustShowOf(idea: IdeaText, subject: string): string[] {
       );
     if (items.length > 0) return items.slice(0, 3);
   }
-  return [`whole ${subject}`];
+  return [];
 }
 
-/** A photograph brief for a key idea that names a concrete thing; `undefined` otherwise. */
+/**
+ * A photograph brief for a key idea that names a concrete thing and the features a pupil can see
+ * on it; `undefined` otherwise. Both are required: a thing the facts describe by its visible parts
+ * is one a stock library photographs, and a brief without them landed empty in the TEACH-163 runs
+ * ("power supply", "electron").
+ */
 export function photoBriefFor(idea: IdeaText): ImageBrief | undefined {
   const subject = subjectOf(idea);
   if (!subject) return undefined;
-  return { subject, mustShow: mustShowOf(idea, subject), purpose: "observe" };
+  const mustShow = mustShowOf(idea, subject);
+  if (mustShow.length === 0) return undefined;
+  return { subject, mustShow, purpose: "observe" };
 }
 
 /** Which shipped Figure template draws what a key idea is about. */

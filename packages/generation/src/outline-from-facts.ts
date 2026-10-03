@@ -1430,8 +1430,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // Picture slides (TEACH-163, stopgap until plan-write): the visuality's share of the teaching
   // slides become photograph or figure slides, in place, so the slide count and running order do
   // not change. Ruling 131 first: every objective with a picturable key idea gets one before any
-  // gets a second. The explain opener stays content when the shape opens with the definition, and
-  // a figure never takes the content minimum's slides (an image-text slide counts as content).
+  // gets a second. The explain opener is pictured last, and only with a photograph (it still
+  // defines the topic, beside the picture); a figure never takes the content minimum's slides (an
+  // image-text slide counts as content).
   const share = input.visuality?.pictureShare ?? 0;
   if (share > 0) {
     const opener = slots.find((s) => s.phase === "explain" && s.kind !== "vocabulary");
@@ -1441,14 +1442,20 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const target = Math.round(share * teaching);
     type Pick = { slot: Slot; image?: ImageBrief; figure?: FigureBrief };
     const candidates: Pick[] = [];
+    let openerPick: Pick | undefined;
     for (const slot of slots) {
       if (slot.kind !== "content" || slot.phase !== "explain") continue;
-      if (slot === opener && shape.firstExplainKind !== null) continue;
       const ideas = (slot.keyIdeas ?? []).flatMap((k) => facts.keyIdeas[k] ?? []);
+      const image = () => ideas.map(photoBriefFor).find((b) => b !== undefined);
+      if (slot === opener && shape.firstExplainKind !== null) {
+        const brief = image();
+        if (brief) openerPick = { slot, image: brief };
+        continue;
+      }
       const figure = ideas.map(figureBriefFor).find((b) => b !== undefined);
-      const image = figure ? undefined : ideas.map(photoBriefFor).find((b) => b !== undefined);
+      const photo = figure ? undefined : image();
       if (figure) candidates.push({ slot, figure });
-      else if (image) candidates.push({ slot, image });
+      else if (photo) candidates.push({ slot, image: photo });
     }
     const firstPerObjective = candidates.filter(
       (c, i) => candidates.findIndex((d) => d.slot.primary === c.slot.primary) === i,
@@ -1456,8 +1463,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     const ordered = [
       ...firstPerObjective,
       ...candidates.filter((c) => !firstPerObjective.includes(c)),
+      ...(openerPick ? [openerPick] : []),
     ];
-    const want = Math.min(candidates.length, Math.max(target, firstPerObjective.length));
+    const want = Math.min(ordered.length, Math.max(target, firstPerObjective.length));
     let contentLeft = slots.filter((s) => s.kind === "content").length;
     let placed = 0;
     for (const c of ordered) {

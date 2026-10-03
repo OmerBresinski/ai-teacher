@@ -16,10 +16,17 @@ describe("photoBriefFor (TEACH-163)", () => {
     ).toEqual({ subject: "puppy", mustShow: ["fur", "four legs", "tail"], purpose: "observe" });
   });
 
-  test("no feature list: the whole subject is what must show", () => {
-    expect(photoBriefFor(idea("The river flows downhill to the sea."))?.mustShow).toEqual([
-      "whole river",
-    ]);
+  test("no visible features named: no photograph", () => {
+    expect(photoBriefFor(idea("The river flows downhill to the sea."))).toBeUndefined();
+  });
+
+  test("things too small or invisible for a camera get no photograph", () => {
+    expect(
+      photoBriefFor(idea("An electron has a negative charge and a tiny mass.")),
+    ).toBeUndefined();
+    expect(
+      photoBriefFor(idea("The power supply has a positive and a negative terminal.")),
+    ).toBeUndefined();
   });
 
   test("abstract subjects get no photograph", () => {
