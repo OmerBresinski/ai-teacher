@@ -3,6 +3,7 @@ import {
   type Finding,
   type Lesson,
   type LessonFacts,
+  visualityFor,
 } from "@tj/domain/documents";
 import { mergeObjectiveFacts } from "../merge-objective-facts";
 import { type OutlineFromFactsResult, outlineFromFacts } from "../outline-from-facts";
@@ -131,6 +132,15 @@ export async function runFactsStep(
 
   // Merge, outline in code, ids: the same `LessonFacts` the legacy Plan's two calls produce.
   const { duplicates, ...merged } = mergeObjectiveFacts(outputs);
+  // Ruling 147: how many teaching slides carry a picture, from the lesson's context (TEACH-163).
+  const visuality = visualityFor({
+    ageBand: lesson.ageBand,
+    yearGroup: lesson.yearGroup,
+    readingLevel: lesson.readingLevel,
+    subject: lesson.subject,
+    topic,
+    level: brief.level,
+  });
   const outline = outlineFromFacts({
     topic,
     objectives,
@@ -139,6 +149,7 @@ export async function runFactsStep(
     slideCount,
     priorKnowledge: brief.classContext?.priorKnowledge,
     retrieval,
+    visuality,
   });
   const planFacts: PlanFactsLike = { ...merged, outlineFactRefs: outline.outlineFactRefs };
   const assigned = withPinnedIds(
@@ -162,6 +173,11 @@ export async function runFactsStep(
       call: "outline",
       slides: facts.outline.length,
       gaps: outline.gaps.length,
+      visuality: { level: visuality.level, pictureShare: visuality.pictureShare },
+      pictures: {
+        photos: facts.outline.filter((e) => e.kind === "image-text").length,
+        diagrams: facts.outline.filter((e) => e.kind === "diagram").length,
+      },
       duplicates: { ...duplicates, conflicts: duplicates.conflicts.length },
       unplaced: {
         keyIdeas: outline.unplaced.keyIdeas.length,

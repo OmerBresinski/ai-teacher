@@ -157,6 +157,7 @@ function run(over: {
   options?: Options;
   priorKnowledge?: string;
   retrieval?: { question: string; answer: string }[];
+  pictureShare?: number;
 }) {
   const n = over.n ?? 2;
   const facts = over.facts ?? factsFor(n, over.options);
@@ -170,6 +171,7 @@ function run(over: {
     slideCount,
     ...(over.priorKnowledge === undefined ? {} : { priorKnowledge: over.priorKnowledge }),
     ...(over.retrieval === undefined ? {} : { retrieval: over.retrieval }),
+    ...(over.pictureShare === undefined ? {} : { visuality: { pictureShare: over.pictureShare } }),
   });
   return { result, facts, shape, slideCount };
 }
@@ -1339,4 +1341,115 @@ describe("a declared judgement on an early objective (l6j, DIAG-ratio-checks gap
     const asked = refsAt(r, judged).flatMap((f) => (f.type === "question" ? [f.index] : []));
     expect(asked.map((i) => r.facts.questions[i]?.objectiveRefs?.[0]?.index)).toEqual([2]);
   });
+});
+
+describe("outlineFromFacts: picture slides by visuality (TEACH-163)", () => {
+  // Objectives 1 and 2 name concrete things; objective 3 is abstract grammar.
+  const statement = (o: number, k: number) =>
+    o === 0
+      ? k === 0
+        ? "A puppy has fur, four legs and a tail."
+        : "A kitten has whiskers, fur and a tail."
+      : o === 1
+        ? k === 0
+          ? "A duckling has feathers, a beak and webbed feet."
+          : "A chick has feathers and a beak."
+        : `A sentence needs a verb, idea ${k + 1}.`;
+  const base = {
+    n: 3,
+    slideCount: 12 as SlideCount,
+    options: { statement, keyIdeasPer: 3, workedExamples: false },
+  };
+  const pictures = (r: ReturnType<typeof run>) =>
+    r.result.skeleton.outline.flatMap((e, i) =>
+      e.kind === "image-text" || e.kind === "diagram" ? [{ i, e }] : [],
+    );
+  const objectiveOf = (r: ReturnType<typeof run>, i: number) =>
+    r.result.skeleton.outline[i]?.factRefs[0]?.index;
+
+  test("without visuality the outline is exactly as before", () => {
+    const before = run(base);
+    const zero = run({ ...base, pictureShare: 0 });
+    expect(zero.result).toEqual(before.result);
+    expect(pictures(before)).toEqual([]);
+  });
+
+  /** Content slides of the picturable objectives that may become pictures (not the explain opener). */
+  const eligible = (r: ReturnType<typeof run>) => {
+    const outline = r.result.skeleton.outline;
+    const opener = outline.findIndex((e) => e.phase === "explain" && e.kind !== "vocabulary");
+    return outline.flatMap((e, i) =>
+      e.kind === "content" && i !== opener && objectiveOf(r, i) !== 2 ? [i] : [],
+    );
+  };
+
+  test("a low share still pictures every picturable objective once (ruling 131), never the abstract one", () => {
+    const before = run(base);
+    const objectivesWithRoom = new Set(eligible(before).map((i) => objectiveOf(before, i)));
+    expect(objectivesWithRoom.size).toBeGreaterThan(0);
+    const r = run({ ...base, pictureShare: 0.01 });
+    const got = pictures(r);
+    expect(got).toHaveLength(objectivesWithRoom.size);
+    expect(new Set(got.map(({ i }) => objectiveOf(r, i)))).toEqual(objectivesWithRoom);
+    for (const { e } of got) {
+      expect(e.kind).toBe("image-text");
+      expect(e.imageBrief?.subject).toMatch(/^(puppy|kitten|duckling|chick)$/);
+      expect(e.imageBrief?.mustShow.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("a high share pictures more slides; the slide count and the kinds' positions do not change", () => {
+    const before = run(base);
+    const low = run({ ...base, pictureShare: 0.01 });
+    const r = run({ ...base, pictureShare: 1 });
+    expect(pictures(r).length).toBe(eligible(before).length);
+    expect(pictures(r).length).toBeGreaterThan(pictures(low).length);
+    expect(r.result.skeleton.outline).toHaveLength(before.result.skeleton.outline.length);
+    kinds(r).forEach((kind, i) => {
+      const was = kinds(before)[i];
+      if (kind === "image-text" || kind === "diagram") expect(was).toBe("content");
+      else expect(kind).toBe(was as typeof kind);
+    });
+    for (const { i } of pictures(r)) expect(objectiveOf(r, i)).not.toBe(2);
+  });
+
+  test("the explain opener stays the content slide that defines the topic", () => {
+    const r = run({ ...base, pictureShare: 1 });
+    const opener = r.result.skeleton.outline.find(
+      (e) => e.phase === "explain" && e.kind !== "vocabulary",
+    );
+    expect(opener?.kind).toBe("content");
+  });
+
+  test("a structure a shipped template draws becomes a diagram with a figure brief", () => {
+    const pythagoras = (o: number, k: number) =>
+      k === 0
+        ? `Pythagoras' theorem finds the hypotenuse, idea ${o + 1}.`
+        : `The longest side is the hypotenuse, idea ${o + 1}.`;
+    const r = run({ n: 2, slideCount: 12, pictureShare: 0.5, options: { statement: pythagoras } });
+    const diagrams = r.result.skeleton.outline.filter((e) => e.kind === "diagram");
+    expect(diagrams.length).toBeGreaterThan(0);
+    for (const d of diagrams) expect(d.figureBrief?.template).toBe("right-triangle");
+  });
+
+  for (const share of [0.15, 0.35, 0.6]) {
+    test(`at share ${share} the outline passes planSkeletonSchemaFor and assignFactIds`, () => {
+      const r = run({ ...base, pictureShare: share });
+      const parsed = planSkeletonSchemaFor({
+        shape: r.shape,
+        slideCount: r.slideCount,
+        learningCycles: true,
+      }).safeParse(r.result.skeleton);
+      expect(parsed.success ? [] : unexplained(parsed.error.issues, r.result.gaps)).toEqual([]);
+      const merged = assignFactIds(
+        r.result.skeleton,
+        { ...r.facts, outlineFactRefs: r.result.outlineFactRefs, pitch: PITCH },
+        60,
+      );
+      expect(merged.outline).toHaveLength(r.slideCount);
+      expect(merged.outline.filter((e) => e.kind === "image-text").every((e) => e.imageBrief)).toBe(
+        true,
+      );
+    });
+  }
 });

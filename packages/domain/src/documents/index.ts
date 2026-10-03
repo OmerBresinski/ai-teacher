@@ -41,5 +41,6 @@ export * from "./text";
 export * from "./text-guards";
 export * from "./text-metrics";
 export * from "./theme";
+export * from "./visuality";
 export * from "./worksheet";
 export * from "./worksheet-guides";

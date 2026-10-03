@@ -1,11 +1,15 @@
 import type {
   CalloutKind,
+  FigureBrief,
   GeneratableSlideKind,
+  ImageBrief,
   LessonPhase,
   SlideCount,
+  Visuality,
 } from "@tj/domain/documents";
 import { asksForUnlistedOptions, QUESTION_TIERS } from "@tj/domain/documents";
 import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
+import { figureBriefFor, photoBriefFor } from "./outline-pictures";
 import {
   EXIT_QUIZ_MAX,
   EXIT_QUIZ_MIN,
@@ -125,13 +129,19 @@ export type OutlineFromFactsInput = {
    * runs, replays): the round-1 starter.
    */
   retrieval?: readonly { question: string; answer: string }[] | undefined;
+  /**
+   * The lesson's visuality (ruling 147, `visualityFor`): its `pictureShare` of the teaching slides
+   * become photograph or diagram slides (TEACH-163). Absent (replays, older callers): no picture
+   * slides, the outline exactly as before.
+   */
+  visuality?: Pick<Visuality, "pictureShare"> | undefined;
 };
 
 /** Outline positions, per objective. */
 export type ObjectiveCoverage = { taught: number[]; practised: number[]; checked: number[] };
 
 export type OutlineFromFactsResult = {
-  /** `learningObjectives` copied from the input; `outline` with objective refs, brief and phase; no minutes (ruling 82). No `photographable`. */
+  /** `learningObjectives` copied from the input; `outline` with objective refs, brief and phase; no minutes (ruling 82). No `photographable`: picture slides follow `visuality`. */
   skeleton: PlanSkeleton;
   /** Fact refs per outline position from 2 onwards, in the shape `assignFactIds` merges. */
   outlineFactRefs: PlanFactsLike["outlineFactRefs"];
@@ -193,6 +203,10 @@ type Slot = {
   terms?: number[];
   /** A judgement the facts declared on the last objective: it closes the practise slides, after every cycle. */
   closing?: boolean;
+  /** A content slide turned into a photograph slide (`image-text`, TEACH-163). */
+  imageBrief?: ImageBrief;
+  /** A content slide turned into a figure slide (`diagram`, TEACH-163). */
+  figureBrief?: FigureBrief;
   /** Lexicographic running-order key: phase, objective, then the fact order. */
   rank: number[];
 };
@@ -1413,6 +1427,54 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   const cycleSlots = orderInCycles();
   const exitPosition = slots.length + 2;
 
+  // Picture slides (TEACH-163, stopgap until plan-write): the visuality's share of the teaching
+  // slides become photograph or figure slides, in place, so the slide count and running order do
+  // not change. Ruling 131 first: every objective with a picturable key idea gets one before any
+  // gets a second. The explain opener stays content when the shape opens with the definition, and
+  // a figure never takes the content minimum's slides (an image-text slide counts as content).
+  const share = input.visuality?.pictureShare ?? 0;
+  if (share > 0) {
+    const opener = slots.find((s) => s.phase === "explain" && s.kind !== "vocabulary");
+    const teaching = slots.filter(
+      (s) => s.phase === "explain" && (s.kind === "content" || s.kind === "worked-example"),
+    ).length;
+    const target = Math.round(share * teaching);
+    type Pick = { slot: Slot; image?: ImageBrief; figure?: FigureBrief };
+    const candidates: Pick[] = [];
+    for (const slot of slots) {
+      if (slot.kind !== "content" || slot.phase !== "explain") continue;
+      if (slot === opener && shape.firstExplainKind !== null) continue;
+      const ideas = (slot.keyIdeas ?? []).flatMap((k) => facts.keyIdeas[k] ?? []);
+      const figure = ideas.map(figureBriefFor).find((b) => b !== undefined);
+      const image = figure ? undefined : ideas.map(photoBriefFor).find((b) => b !== undefined);
+      if (figure) candidates.push({ slot, figure });
+      else if (image) candidates.push({ slot, image });
+    }
+    const firstPerObjective = candidates.filter(
+      (c, i) => candidates.findIndex((d) => d.slot.primary === c.slot.primary) === i,
+    );
+    const ordered = [
+      ...firstPerObjective,
+      ...candidates.filter((c) => !firstPerObjective.includes(c)),
+    ];
+    const want = Math.min(candidates.length, Math.max(target, firstPerObjective.length));
+    let contentLeft = slots.filter((s) => s.kind === "content").length;
+    let placed = 0;
+    for (const c of ordered) {
+      if (placed >= want) break;
+      if (c.figure) {
+        if (contentLeft - 1 < shape.minContent) continue;
+        c.slot.kind = "diagram";
+        c.slot.figureBrief = c.figure;
+        contentLeft -= 1;
+      } else if (c.image) {
+        c.slot.kind = "image-text";
+        c.slot.imageBrief = c.image;
+      }
+      placed += 1;
+    }
+  }
+
   const shownTerms = new Set(slots.find((s) => s.kind === "vocabulary")?.terms ?? []);
   const handedTerms = new Set<number>();
   const usedMisconceptions = new Set<number>();
@@ -1462,7 +1524,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         adds = `Defines the key words: ${terms.map((t) => facts.vocabulary[t]?.term ?? "").join(", ")}.`;
         break;
       }
-      case "content": {
+      case "content":
+      case "image-text":
+      case "diagram": {
         const ks = slot.keyIdeas ?? [];
         const k = ks[0] ?? 0;
         const idea = facts.keyIdeas[k];
@@ -1481,6 +1545,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         if (previous?.kind === "content" && previous.primary === slot.primary) {
           avoids = `Do not repeat: ${(previous.keyIdeas ?? []).map((j) => facts.keyIdeas[j]?.statement ?? "").join(" ")}`;
         }
+        // A photograph or figure fills the slide's second zone: no callout beside it.
+        if (slot.kind !== "content") break;
         const watch = misconceptionsOf(slot.primary).find((m) => !usedMisconceptions.has(m));
         if (watch !== undefined) {
           usedMisconceptions.add(watch);
@@ -1564,6 +1630,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       factRefs: objectiveRefs(slot.objectives),
       phase: slot.phase,
       brief: brief(adds, avoids),
+      ...(slot.imageBrief ? { imageBrief: slot.imageBrief } : {}),
+      ...(slot.figureBrief ? { figureBrief: slot.figureBrief } : {}),
     });
     const callout = callouts[position];
     outlineFactRefs.push({
@@ -1623,7 +1691,10 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
 
   const coverage: ObjectiveCoverage[] = all.map((o) => ({
     taught: slots.flatMap((s, i) =>
-      (s.kind === "content" || s.kind === "worked-example") &&
+      (s.kind === "content" ||
+        s.kind === "worked-example" ||
+        s.kind === "image-text" ||
+        s.kind === "diagram") &&
       s.phase === "explain" &&
       s.objectives.includes(o)
         ? [i + 2]
