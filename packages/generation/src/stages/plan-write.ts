@@ -2533,11 +2533,14 @@ export async function planWriteSlides(
           stage: "generated",
           promptVersions: {
             ...generation.promptVersions,
-            planned: joinVersions(stamp, verifyFactsPrompt.version),
+            // Lab 147a: the stamp rides in `planned`; the lesson schema rejects unknown keys.
+            planned: labVisuality
+              ? joinVersions(
+                  joinVersions(stamp, verifyFactsPrompt.version),
+                  `${STREAM_VISUALITY_VERSION}:${labVisuality.setting}`,
+                )
+              : joinVersions(stamp, verifyFactsPrompt.version),
             generated: WRITE_SLIDES_VERSION,
-            ...(labVisuality
-              ? { visuality: `${STREAM_VISUALITY_VERSION}:${labVisuality.setting}` }
-              : {}),
           },
           findings: [...findings],
         },
