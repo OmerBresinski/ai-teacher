@@ -7,7 +7,9 @@
  * the lesson, not a plan: Sol still chooses each row's form as it plans (binding plans lost pictures,
  * 9/9 in round JEV). Unset: no line, no swap; the stream is the candidate's.
  */
-export const STREAM_VISUALITY_VERSION = "stream-visuality.v1";
+/* v2: v1's smoke (y9 mid) traded two check rows for teach rows (code then inserted two checks, 13
+ * slides) and still drew 3 pictures; the line now says where pictures go and that the checks stay. */
+export const STREAM_VISUALITY_VERSION = "stream-visuality.v2";
 
 export type VisualitySetting = "low" | "mid" | "high";
 
@@ -55,7 +57,7 @@ export function visuality(setting: VisualitySetting, yearGroup: string, rows: nu
   let hi = clamp(Math.floor(band[1] * teaching + 1e-9));
   if (hi < lo) lo = hi = clamp(Math.round(((band[0] + band[1]) / 2) * teaching));
   const count = lo === hi ? `about ${lo}` : `about ${lo} to ${hi}`;
-  const line = `Pictures: aim for ${count} of your ${rows} plan rows to carry a picture that teaches, a diagram or a photo that the slide's text uses; a check that asks about its picture counts. Where an idea has a structure or a process, its picture is a diagram.`;
+  const line = `Pictures: aim for ${count} of your ${rows} plan rows to carry a picture that teaches: a diagram, or a photo that the slide's text uses. Pictures go on teach slides, and on a check only when it asks about its picture; the lesson keeps its checks. Where an idea has a structure or a process, its picture is a diagram.`;
   return { version: STREAM_VISUALITY_VERSION, setting, stage, band, rows, lo, hi, line };
 }
 
