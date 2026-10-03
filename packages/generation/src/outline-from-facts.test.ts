@@ -1383,19 +1383,49 @@ describe("outlineFromFacts: picture slides by visuality (TEACH-163)", () => {
     );
   };
 
-  test("a low share still pictures every picturable objective once (ruling 131), never the abstract one", () => {
-    const before = run(base);
-    const objectivesWithRoom = new Set(eligible(before).map((i) => objectiveOf(before, i)));
-    expect(objectivesWithRoom.size).toBeGreaterThan(0);
+  test("the band caps the pictures: a share too small for one slide places none", () => {
     const r = run({ ...base, pictureShare: 0.01 });
-    const got = pictures(r);
-    expect(got).toHaveLength(objectivesWithRoom.size);
-    expect(new Set(got.map(({ i }) => objectiveOf(r, i)))).toEqual(objectivesWithRoom);
-    for (const { e } of got) {
-      expect(e.kind).toBe("image-text");
+    expect(pictures(r)).toEqual([]);
+    expect(r.result.pictures).toEqual({ target: 0, placed: 0 });
+  });
+
+  test("text heuristics (facts before v5): concrete subjects only, never the abstract objective", () => {
+    const r = run({ ...base, pictureShare: 0.5 });
+    expect(pictures(r).length).toBeGreaterThan(0);
+    for (const { i, e } of pictures(r)) {
+      expect(objectiveOf(r, i)).not.toBe(2);
       expect(e.imageBrief?.subject).toMatch(/^(puppy|kitten|duckling|chick)$/);
       expect(e.imageBrief?.mustShow.length).toBeGreaterThan(0);
     }
+  });
+
+  test("declared pictures (v5): none is final, a misfit template is none, fewer than the band is a gap", () => {
+    const facts = factsFor(3, { keyIdeasPer: 3, workedExamples: false });
+    facts.keyIdeas.forEach((k, i) => {
+      const o = Math.floor(i / 3);
+      Object.assign(k, {
+        picture:
+          o === 0
+            ? { kind: "photo", subject: "Hadrian's Wall", notice: ["stone wall", "hills"] }
+            : o === 1
+              ? { kind: "diagram", template: "energy-profile", shows: "an energy profile" }
+              : { kind: "none" },
+      });
+    });
+    const r = run({ n: 3, slideCount: 12, facts, pictureShare: 1 });
+    const got = pictures(r);
+    expect(got.length).toBeGreaterThan(0);
+    for (const { i, e } of got) {
+      expect(objectiveOf(r, i)).toBe(0);
+      expect(e.imageBrief).toEqual({
+        subject: "Hadrian's Wall",
+        mustShow: ["stone wall", "hills"],
+        purpose: "observe",
+      });
+    }
+    expect(r.result.pictures.placed).toBe(got.length);
+    expect(r.result.pictures.placed).toBeLessThan(r.result.pictures.target);
+    expect(r.result.gaps.some((g) => g.startsWith("Visuality asks for"))).toBe(true);
   });
 
   test("a high share pictures more slides; the slide count and the kinds' positions do not change", () => {

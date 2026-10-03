@@ -9,7 +9,7 @@ import type {
 } from "@tj/domain/documents";
 import { asksForUnlistedOptions, QUESTION_TIERS } from "@tj/domain/documents";
 import type { QuestionDemand, QuestionForm } from "./merge-objective-facts";
-import { figureBriefFor, photoBriefFor } from "./outline-pictures";
+import { declaredPicture, figureBriefFor, photoBriefFor } from "./outline-pictures";
 import {
   EXIT_QUIZ_MAX,
   EXIT_QUIZ_MIN,
@@ -135,6 +135,8 @@ export type OutlineFromFactsInput = {
    * slides, the outline exactly as before.
    */
   visuality?: Pick<Visuality, "pictureShare"> | undefined;
+  /** The lesson's subject, when it names one: a figure template must fit it (TEACH-163). */
+  subject?: string | undefined;
 };
 
 /** Outline positions, per objective. */
@@ -154,6 +156,8 @@ export type OutlineFromFactsResult = {
   gaps: string[];
   /** The learning cycles in running order: outline positions of the teaching slides, then of the checks after them. */
   cycles: { teach: number[]; check: number[] }[];
+  /** Picture slides (TEACH-163): what the visuality band asked for and what the key ideas allowed. */
+  pictures: { target: number; placed: number };
 };
 
 /** The brief's `adds` / `avoids` cap (`SPEC_LIMITS.item`), restated so this module has no `@tj/slides` import. */
@@ -1434,6 +1438,8 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
   // defines the topic, beside the picture); a figure never takes the content minimum's slides (an
   // image-text slide counts as content).
   const share = input.visuality?.pictureShare ?? 0;
+  let pictureTarget = 0;
+  let picturesPlaced = 0;
   if (share > 0) {
     const opener = slots.find((s) => s.phase === "explain" && s.kind !== "vocabulary");
     const teaching = slots.filter(
@@ -1441,21 +1447,40 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     ).length;
     const target = Math.round(share * teaching);
     type Pick = { slot: Slot; image?: ImageBrief; figure?: FigureBrief };
+    // Key ideas written by plan-teach-objective v5 say what would picture them; "none" is final
+    // and a template that does not fit the lesson is none (`declaredPicture`). Facts from before
+    // v5 declare nothing and fall back to the text heuristics.
+    const declares = facts.keyIdeas.some((k) => (k as { picture?: unknown }).picture !== undefined);
+    const pictureOf = (ideas: OutlineFacts["keyIdeas"]) => {
+      for (const idea of ideas) {
+        if (declares) {
+          const p = declaredPicture(idea, input.subject);
+          if (p?.kind === "diagram") return { figure: p.brief };
+          if (p?.kind === "photo") return { image: p.brief };
+          continue;
+        }
+        const figure = figureBriefFor(idea);
+        if (figure) return { figure };
+        const image = photoBriefFor(idea);
+        if (image) return { image };
+      }
+      return undefined;
+    };
     const candidates: Pick[] = [];
     let openerPick: Pick | undefined;
     for (const slot of slots) {
       if (slot.kind !== "content" || slot.phase !== "explain") continue;
       const ideas = (slot.keyIdeas ?? []).flatMap((k) => facts.keyIdeas[k] ?? []);
-      const image = () => ideas.map(photoBriefFor).find((b) => b !== undefined);
+      const found = pictureOf(ideas);
+      if (!found) continue;
       if (slot === opener && shape.firstExplainKind !== null) {
-        const brief = image();
-        if (brief) openerPick = { slot, image: brief };
+        // The opener still defines the topic: only beside a photograph, never a figure.
+        const image =
+          found.image ?? (declares ? undefined : ideas.map(photoBriefFor).find((b) => b));
+        if (image) openerPick = { slot, image };
         continue;
       }
-      const figure = ideas.map(figureBriefFor).find((b) => b !== undefined);
-      const photo = figure ? undefined : image();
-      if (figure) candidates.push({ slot, figure });
-      else if (photo) candidates.push({ slot, image: photo });
+      candidates.push({ slot, ...found });
     }
     const firstPerObjective = candidates.filter(
       (c, i) => candidates.findIndex((d) => d.slot.primary === c.slot.primary) === i,
@@ -1465,7 +1490,9 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
       ...candidates.filter((c) => !firstPerObjective.includes(c)),
       ...(openerPick ? [openerPick] : []),
     ];
-    const want = Math.min(ordered.length, Math.max(target, firstPerObjective.length));
+    // Up to the band, never filler: fewer qualifying ideas place fewer pictures, and a gap says so.
+    const want = Math.min(ordered.length, target);
+    pictureTarget = target;
     let contentLeft = slots.filter((s) => s.kind === "content").length;
     let placed = 0;
     for (const c of ordered) {
@@ -1480,6 +1507,12 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
         c.slot.imageBrief = c.image;
       }
       placed += 1;
+    }
+    picturesPlaced = placed;
+    if (placed < target) {
+      gap(
+        `Visuality asks for ${target} picture slide${target === 1 ? "" : "s"}; the key ideas allow ${placed}.`,
+      );
     }
   }
 
@@ -1736,6 +1769,7 @@ export function outlineFromFacts(input: OutlineFromFactsInput): OutlineFromFacts
     unplaced,
     gaps,
     cycles,
+    pictures: { target: pictureTarget, placed: picturesPlaced },
   };
 }
 

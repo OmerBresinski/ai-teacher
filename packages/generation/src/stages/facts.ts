@@ -150,6 +150,7 @@ export async function runFactsStep(
     priorKnowledge: brief.classContext?.priorKnowledge,
     retrieval,
     visuality,
+    subject: lesson.subject,
   });
   const planFacts: PlanFactsLike = { ...merged, outlineFactRefs: outline.outlineFactRefs };
   const assigned = withPinnedIds(
@@ -175,6 +176,8 @@ export async function runFactsStep(
       gaps: outline.gaps.length,
       visuality: { level: visuality.level, pictureShare: visuality.pictureShare },
       pictures: {
+        target: outline.pictures.target,
+        placed: outline.pictures.placed,
         photos: facts.outline.filter((e) => e.kind === "image-text").length,
         diagrams: facts.outline.filter((e) => e.kind === "diagram").length,
       },

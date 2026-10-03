@@ -1,4 +1,5 @@
 import type { FigureBrief, FigureTemplateName, ImageBrief } from "@tj/domain/documents";
+import type { KeyIdeaPicture } from "./prompts/plan-teach-objective";
 
 /*
  * Picture slides for the objectives-first outline (TEACH-163, stopgap until plan-write is the
@@ -108,11 +109,11 @@ const FIGURE_MATCHERS: { template: FigureTemplateName; test: RegExp }[] = [
   },
   {
     template: "energy-profile",
-    test: /activation energy|reaction profile|energy profile|exothermic|endothermic/i,
+    test: /activation energy|reaction profile|energy profile|energy level|exothermic|endothermic|energy change/i,
   },
   {
     template: "triangle",
-    test: /angles? in a triangle|interior angles? of a triangle|isosceles|equilateral|scalene|area of a triangle/i,
+    test: /\btriangles?\b|isosceles|equilateral|scalene/i,
   },
 ];
 
@@ -123,4 +124,78 @@ export function figureBriefFor(idea: IdeaText): FigureBrief | undefined {
   if (!match) return undefined;
   const purpose = idea.statement.replace(/\s+/g, " ").trim().slice(0, 160);
   return purpose ? { template: match.template, purpose } : undefined;
+}
+
+/** Subjects a template's drawing belongs to; a lesson with another named subject never gets it. */
+const TEMPLATE_SUBJECTS: Record<FigureTemplateName, RegExp> = {
+  "right-triangle": /math/i,
+  triangle: /math/i,
+  "energy-profile": /science|chemistry|physics/i,
+};
+
+function clipTo(text: string, max: number): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  return t.length <= max ? t : `${t.slice(0, max - 1).replace(/[\s,;:.]+$/, "")}…`;
+}
+
+/**
+ * The declared subject as a stock-photo query (TEACH-163 round 3: "Photograph of Philipp
+ * Scheidemann proclaiming the republic…" and "A duckling beside an adult duck" found nothing):
+ * no leading article or "photo of", and only the head before a scene clause or a dash.
+ */
+export function searchSubject(subject: string): string {
+  let s = subject.replace(/\s+/g, " ").trim();
+  s = s.replace(/^(?:an?|the)\s+/i, "");
+  s = s.replace(
+    /^(?:(?:a|an|the)\s+)?(?:photo(?:graph)?s?|pictures?|images?)\s+(?:of|showing)\s+/i,
+    "",
+  );
+  s = s.replace(/^(?:an?|the)\s+/i, "");
+  const cut = s.search(
+    /\s(?:beside|next to|during|while|with|showing|in front of|proclaiming|holding|at the|on a|in a)\s|\s[–—-]\s|[,;:(…]/i,
+  );
+  const head = (cut > 0 ? s.slice(0, cut) : s).trim();
+  return head.length > 0 ? head : subject.trim();
+}
+
+export type IdeaPicture =
+  | { kind: "photo"; brief: ImageBrief }
+  | { kind: "diagram"; brief: FigureBrief }
+  | { kind: "none" };
+
+/**
+ * The picture a key idea declared (`plan-teach-objective` v5), checked in code: a diagram's
+ * template must fit the lesson (its subject, when the lesson names one, and the idea's own words,
+ * the same matchers the text path uses), otherwise the idea gets none; "none" is never overridden.
+ * `undefined` when the idea declared nothing (facts written before v5): the caller falls back to
+ * the text heuristics above.
+ */
+export function declaredPicture(
+  idea: IdeaText & { picture?: KeyIdeaPicture | undefined },
+  subject?: string,
+): IdeaPicture | undefined {
+  const picture = idea.picture;
+  if (!picture) return undefined;
+  if (picture.kind === "photo") {
+    const mustShow = picture.notice.map((n) => clipTo(n, 120)).slice(0, 4);
+    return {
+      kind: "photo",
+      brief: { subject: clipTo(searchSubject(picture.subject), 60), mustShow, purpose: "observe" },
+    };
+  }
+  if (picture.kind === "diagram") {
+    const named = subject?.trim() ?? "";
+    const subjectFits = named === "" || TEMPLATE_SUBJECTS[picture.template].test(named);
+    // The idea's own words, not `shows`: the model wrote both, and only the first is the content.
+    const text = `${idea.statement} ${idea.explanation} ${idea.example}`;
+    const textFits = FIGURE_MATCHERS.some(
+      (m) => m.template === picture.template && m.test.test(text),
+    );
+    if (!subjectFits || !textFits) return { kind: "none" };
+    return {
+      kind: "diagram",
+      brief: { template: picture.template, purpose: clipTo(picture.shows, 160) },
+    };
+  }
+  return { kind: "none" };
 }
