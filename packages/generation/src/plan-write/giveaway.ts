@@ -51,13 +51,19 @@ function answerStems(answer: string, exempt: readonly string[]): string[] {
  * left out) are in it, or every number the answer has is in it. Returns the words found.
  */
 export function holdsAnswer(text: string, answer: string, exempt: readonly string[]): string[] {
-  const want = answerStems(answer, exempt);
+  // A unit after a number ("6 counters") is the question's own noun, not the answer (CAND-FIX run).
+  const units = [...answer.toLowerCase().matchAll(/\d\s*([a-z]{4,})/g)].map((m) =>
+    stem(m[1] ?? ""),
+  );
+  const want = answerStems(answer, exempt).filter((w) => !units.includes(w));
   const have = wordsOf(text).map(stem);
   const found = want.filter((w) => have.some((h) => meet(h, w)));
   if (want.length > 0 && found.length > 0 && found.length * 2 >= want.length) return found;
   const nums = numbersOf(answer);
   const shown = numbersOf(text);
-  if (want.length === 0 && nums.length > 0 && nums.every((n) => shown.includes(n))) return nums;
+  // Only a lone number: a calculation ("18 ÷ 3 × 2") is built from the question's numbers by design.
+  const lone = /^\D*\d+(?:\.\d+)?\D*$/.test(answer) && !/[+×÷*/=−-]\s*\d/.test(answer);
+  if (want.length === 0 && lone && nums.every((n) => shown.includes(n))) return nums;
   return [];
 }
 
