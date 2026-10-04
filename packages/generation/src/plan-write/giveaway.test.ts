@@ -51,6 +51,23 @@ describe("answer in the stem (audit problem 1)", () => {
       [],
     );
   });
+  test("a choice question naming its options is not a giveaway", () => {
+    const flags = giveaways(
+      [
+        s(
+          3,
+          { role: "retrieve", form: "starter-set" },
+          {
+            questions: [
+              { question: "Which has a shell, a tortoise or a rabbit?", answer: "A tortoise" },
+            ],
+          },
+        ),
+      ],
+      "Animals and their young",
+    );
+    expect(flags).toEqual([]);
+  });
   test("a quick check re-using a worked example's numbers is a shown case", () => {
     const flags = giveaways(
       [

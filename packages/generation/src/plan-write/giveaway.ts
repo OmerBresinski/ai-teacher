@@ -146,7 +146,9 @@ export function giveaways(slides: readonly PassSlide[], topic: string): Giveaway
   for (const s of ordered) {
     if (s.number <= FIXED_SLIDES) continue;
     for (const q of keyedQuestions(s.row.form, s.out)) {
-      const found = holdsAnswer(q.stem, q.answer, exempt);
+      // A choice question ("a tortoise or a rabbit?") names its answer among the others by design.
+      const choice = /\bor\b/i.test(q.stem);
+      const found = choice ? [] : holdsAnswer(q.stem, q.answer, exempt);
       if (found.length > 0) {
         out.push({
           number: s.number,
