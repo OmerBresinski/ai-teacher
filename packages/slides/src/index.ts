@@ -39,3 +39,4 @@ export * from "./text-style";
 export { themedColour, withThemeColours } from "./theme-colours";
 export * from "./themes";
 export * from "./worksheet";
+export * from "./text-overlap";

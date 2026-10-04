@@ -16,6 +16,7 @@ import {
   verifyOutputSchemaFor,
   WorksheetSpecSchema,
   withAssignedCallout,
+  keyCardDrift,
   withComposedMisconception,
   worksheetSpecSchemaFor,
 } from "./specs";
@@ -1673,23 +1674,8 @@ describe("assignFactIds keeps a question's declared key ideas (lab round 1, test
   });
 });
 
-describe("withComposedMisconception (TEACH-87): the COMMON MISTAKE card is composed, never written", () => {
-  const m = (id: string, belief: string, correction: string) => ({
-    id,
-    belief,
-    correction,
-    objectiveRefs: ["o1"],
-  });
-  const facts = (misconceptions: ReturnType<typeof m>[], statements: string[] = []) => ({
-    misconceptions,
-    keyIdeas: statements.map((statement, i) => ({
-      id: `k${i + 1}`,
-      statement,
-      explanation: "E.",
-      example: "X.",
-      objectiveRefs: ["o1"],
-    })),
-  });
+describe("withComposedMisconception (TEACH-87, ruling 149): a quoted belief and its correction, composed", () => {
+  const m = (id: string, belief: string, correction: string) => ({ id, belief, correction, objectiveRefs: ["o1"] });
   const spec = (callout?: { kind: "watch-out" | "example"; text: string }): SlideSpec => ({
     kind: "content",
     heading: "Heading",
@@ -1702,113 +1688,60 @@ describe("withComposedMisconception (TEACH-87): the COMMON MISTAKE card is compo
   const text = (s: SlideSpec) => ("callout" in s ? s.callout?.text : undefined);
 
   test.each([
-    [
-      "glucose",
-      "plants store their extra glucose as glucose",
-      "They change it into starch first.",
-      "Thinking that plants store their extra glucose as glucose. In fact, they change it into starch first.",
-    ],
-    [
-      "chlorophyll",
-      "chlorophyll is food that plants eat",
-      "Chlorophyll only captures light energy.",
-      "Thinking that chlorophyll is food that plants eat. In fact, chlorophyll only captures light energy.",
-    ],
-    [
-      "weimar",
-      "printing money made Germany richer",
-      "Each mark bought less, so prices soared.",
-      "Thinking that printing money made Germany richer. In fact, each mark bought less, so prices soared.",
-    ],
-    [
-      "particles",
-      "particles expand when heated",
-      "Particles stay the same size and spread apart.",
-      "Thinking that particles expand when heated. In fact, particles stay the same size and spread apart.",
-    ],
-  ])("%s: composed from the facts, whatever the writer sent", (_, belief, correction, want) => {
-    const out = withComposedMisconception(spec(), watch, facts([m("m1", belief, correction)]), [
-      "k1",
-    ]);
+    ["weimar", "Printing more money makes everyone richer.", "There are no more goods to buy, so prices just rise.", '"Printing more money makes everyone richer." In fact, there are no more goods to buy, so prices just rise.'],
+    ["glucose", "Plants store their extra glucose as glucose.", "They change it into starch first.", '"Plants store their extra glucose as glucose." In fact, they change it into starch first.'],
+    ["chlorophyll", "Plants get their food from the soil.", "Chlorophyll traps light to make glucose.", '"Plants get their food from the soil." In fact, chlorophyll traps light to make glucose.'],
+    ["particles", "Particles expand when they are heated.", "Particles stay the same size and spread apart.", '"Particles expand when they are heated." In fact, particles stay the same size and spread apart.'],
+  ])("%s: composed from the facts; the notes keep it too", (_, belief, correction, want) => {
+    const out = withComposedMisconception(spec({ kind: "watch-out", text: "Writer text." }), watch, { misconceptions: [m("m1", belief, correction)] });
     expect(text(out)).toBe(want);
-    expect(out.notes).toBe(`Ask first. Correct idea: ${correction}`);
-  });
-
-  test("a writer's free text is replaced", () => {
-    const out = withComposedMisconception(
-      spec({ kind: "watch-out", text: "Plants usually change extra glucose into starch." }),
-      watch,
-      facts([m("m1", "plants store glucose as glucose", "They make starch.")]),
-      [],
-    );
-    expect(text(out)).toBe(
-      "Thinking that plants store glucose as glucose. In fact, they make starch.",
-    );
+    expect(out.notes).toBe(`Ask first. Common mistake: ${want}`);
   });
 
   test("older facts are normalised", () => {
-    const out = withComposedMisconception(
-      spec(),
-      watch,
-      facts([m("m1", "That Particles expand when heated.", "They do not.")]),
-      [],
-    );
-    expect(text(out)).toBe("Thinking that particles expand when heated. In fact, they do not.");
+    const out = withComposedMisconception(spec(), watch, { misconceptions: [m("m1", "that particles expand when heated", "They do not.")] });
+    expect(text(out)).toBe('"Particles expand when heated." In fact, they do not.');
   });
 
-  test("a missing belief drops the card", () => {
-    const out = withComposedMisconception(
-      spec({ kind: "watch-out", text: "Free text." }),
-      watch,
-      facts([m("m1", "", "True.")]),
-      [],
-    );
-    expect("callout" in out && out.callout).toBeFalsy();
-    const none = withComposedMisconception(
-      spec({ kind: "watch-out", text: "Free text." }),
-      watch,
-      facts([]),
-      [],
-    );
+  test("no belief, or no correction: no card", () => {
+    for (const x of [m("m1", "", "True."), m("m1", "Particles expand.", "")]) {
+      const out = withComposedMisconception(spec({ kind: "watch-out", text: "Free text." }), watch, { misconceptions: [x] });
+      expect("callout" in out && out.callout).toBeFalsy();
+    }
+    const none = withComposedMisconception(spec({ kind: "watch-out", text: "Free text." }), watch, { misconceptions: [] });
     expect("callout" in none && none.callout).toBeFalsy();
   });
 
-  test("past the card's fit, the belief alone; the correction goes to the notes", () => {
-    const long =
-      "Particles stay exactly the same size and shape; when heated they gain energy, move faster and spread further apart.";
-    const out = withComposedMisconception(
-      spec(),
-      watch,
-      facts([m("m1", "particles expand when heated", long)]),
-      [],
-    );
-    expect(text(out)).toBe("Thinking that particles expand when heated.");
-    expect(out.notes).toBe(`Ask first. Correct idea: ${long}`);
-  });
-
-  test("de-dupe: the slide's key idea already says the correction", () => {
-    const out = withComposedMisconception(
-      spec(),
-      watch,
-      facts(
-        [
-          m(
-            "m1",
-            "plants store their extra glucose as glucose",
-            "Plants change extra glucose into starch before storing it.",
-          ),
-        ],
-        ["Plants use glucose for energy or change it into starch for storing"],
-      ),
-      ["k1"],
-    );
-    expect(text(out)).toBe("Thinking that plants store their extra glucose as glucose.");
+  test("too long for the card: no card, and the misconception goes to the notes whole", () => {
+    const long = "Particles stay exactly the same size and shape; when heated they gain energy, move faster and spread further apart.";
+    const out = withComposedMisconception(spec(), watch, { misconceptions: [m("m1", "Particles expand when heated.", long)] });
+    expect("callout" in out && out.callout).toBeFalsy();
+    expect(out.notes).toBe(`Ask first. Common mistake: "Particles expand when heated." In fact, ${long.charAt(0).toLowerCase()}${long.slice(1)}`);
   });
 
   test("other kinds pass through", () => {
     const ex = spec({ kind: "example", text: "Potatoes store starch." });
-    expect(
-      withComposedMisconception(ex, { kind: "example", factRefs: ["k1"] }, facts([]), []),
-    ).toBe(ex);
+    expect(withComposedMisconception(ex, { kind: "example", factRefs: ["k1"] }, { misconceptions: [] })).toBe(ex);
+  });
+});
+
+describe("keyCardDrift (TEACH-87): the KEY IDEA card holds the slide's takeaway", () => {
+  const content = (heading: string, body: string): SlideSpec => ({ kind: "content", heading, body, factRefs: ["k1"] });
+  test("a side fact on the card is flagged", () => {
+    const spec = content(
+      "Printing money to fund spending pushed prices up",
+      "In 1923, during the Ruhr occupation, the government printed marks to pay workers taking part in passive resistance. More money chased the same goods, so prices rose.",
+    );
+    expect(keyCardDrift(spec, ["Printing money caused hyperinflation"])).toBe(true);
+  });
+  test("a takeaway on the card is not", () => {
+    const spec = content(
+      "Printing money to fund spending pushed prices up",
+      "Printing more money made each mark worth less, so prices soared. In 1923 the government printed marks to pay striking workers.",
+    );
+    expect(keyCardDrift(spec, ["Printing money caused hyperinflation"])).toBe(false);
+  });
+  test("a one-sentence body or another kind is not checked", () => {
+    expect(keyCardDrift(content("Prices", "In 1923 the Ruhr was occupied."), [])).toBe(false);
   });
 });

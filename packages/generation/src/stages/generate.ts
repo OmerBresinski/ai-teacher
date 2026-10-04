@@ -32,6 +32,7 @@ import {
   isOutlineFromFacts,
   retrievalIndexOf,
   verifiableArrayOf,
+  keyCardDrift,
   withAssignedCallout,
   withComposedMisconception,
 } from "../specs";
@@ -288,7 +289,16 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
     const figured = withFactFigure(call.output, factFigure);
     // TEACH-87: the COMMON MISTAKE card is composed from the misconception, or dropped.
-    const answer = withComposedMisconception(figured, entry.callout, builtFrom, entry.factRefs);
+    const answer = withComposedMisconception(figured, entry.callout, builtFrom);
+    const keyIdeas = (builtFrom.keyIdeas ?? [])
+      .filter((k) => entry.factRefs.includes(k.id))
+      .map((k) => k.statement);
+    if (keyCardDrift(answer, keyIdeas)) {
+      deps.logger.warn(
+        { stage: "generate", call: "slide", index: i, reason: "key-card-drift" },
+        "key idea card opens on a sentence that shares almost nothing with the heading or key idea",
+      );
+    }
     const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
     const captioned = withImageCaption(spec, entry);
     const slide = materialiseSlide(

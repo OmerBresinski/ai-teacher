@@ -1,35 +1,19 @@
 import { SPEC_LIMITS } from "./specs";
 
 /*
- * The COMMON MISTAKE card's text (TEACH-87, UX ruling 149): composed in code from a misconception's
- * structured fields, never written free by a slide writer, so it cannot read as a fact:
+ * The COMMON MISTAKE card's text (TEACH-87, UX ruling 149, revised 4 Oct): composed in code from a
+ * misconception's structured fields, never written free by a slide writer. The belief is quoted in
+ * the pupil's voice and the correction always follows it:
  *
- *   Thinking that {belief}. In fact, {correction}.
+ *   "Printing more money makes everyone richer." In fact, there are no more goods to buy, so prices just rise.
  *
- * Both planners feed it: the belief is the wrong idea as a clause that follows "Thinking that", the
- * correction the true statement in one short sentence. Older facts (a capital, a leading "that", a
- * full stop) are normalised here. The text is never shortened or summarised: past the card's limit,
- * or when the slide's key idea already says the correction, the card holds the belief alone and the
- * caller keeps the correction in the notes.
+ * A quoted belief is never shown without its correction: with no correction, or a text past the
+ * card's limit, there is no card and the caller keeps the misconception in the notes. The text is
+ * never shortened or summarised. Older facts (a clause after "believes", a leading "that", no
+ * capital or full stop) are normalised here.
  */
 
-export const MISCONCEPTION_LEAD = "Thinking that";
 const IN_FACT = "In fact,";
-
-/** Words, crudely stemmed, for the key-idea overlap below. */
-const STOP = new Set(
-  "the a an and or but of to in on at by for with from as is are was were be been it its that this they their them than then into not do does did no".split(
-    " ",
-  ),
-);
-function contentWords(text: string): Set<string> {
-  const words = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-  return new Set(
-    words
-      .filter((w) => w.length > 2 && !STOP.has(w))
-      .map((w) => w.replace(/(ing|ed|es|s)$/, "").replace(/e$/, "")),
-  );
-}
 
 /**
  * Lower-cases the first letter unless the first word is a name: "I", an acronym, or a word the
@@ -43,44 +27,31 @@ function lowerFirst(text: string, context: string): string {
   return named ? text : text.charAt(0).toLowerCase() + text.slice(1);
 }
 
-/** A belief as a clause after "Thinking that": no leading "that", no capital, no closing stop. */
-export function normaliseBelief(belief: string, context = ""): string {
-  const clause = belief
+/** A belief as the pupil would say it: one sentence, a capital, closing punctuation, no quotes. */
+export function normaliseBelief(belief: string): string {
+  const said = belief
     .trim()
+    .replace(/^["'“‘]+|["'”’]+$/g, "")
     .replace(/^(thinking|believing)\s+that\s+/i, "")
     .replace(/^that\s+/i, "")
-    .replace(/[\s.!;:,]+$/, "");
-  return lowerFirst(clause, context);
+    .replace(/[\s,;:]+$/, "")
+    .trim();
+  if (!/[a-z0-9]/i.test(said)) return "";
+  const capped = said.charAt(0).toUpperCase() + said.slice(1);
+  return /[.!?]$/.test(capped) ? capped : `${capped}.`;
 }
 
-/** The card's text, or undefined when there is no belief to show (the caller drops the card). */
+/** The card's text, or undefined when it cannot be shown whole (the caller drops the card). */
 export function composeMisconception(
   belief: string | undefined,
   correction: string | undefined,
-  options: { limit?: number; keyIdeas?: readonly string[] } = {},
-): { text: string; correctionShown: boolean } | undefined {
+  options: { limit?: number } = {},
+): string | undefined {
   const limit = options.limit ?? SPEC_LIMITS.callout;
-  const keys = options.keyIdeas ?? [];
-  const clause = normaliseBelief(belief ?? "", [correction ?? "", ...keys].join(". "));
-  if (!/[a-z0-9]/i.test(clause)) return undefined;
-  const short = `${MISCONCEPTION_LEAD} ${clause}.`;
-  if (short.length > limit) return undefined;
+  const said = normaliseBelief(belief ?? "");
   const fact = (correction ?? "").trim().replace(/\s+/g, " ");
-  if (!/[a-z0-9]/i.test(fact)) return { text: short, correctionShown: false };
-  const words = contentWords(fact);
-  const said = (options.keyIdeas ?? []).some((k) => {
-    const key = contentWords(k);
-    return words.size > 0 && [...words].filter((w) => key.has(w)).length / words.size >= 0.6;
-  });
+  if (!said || !/[a-z0-9]/i.test(fact)) return undefined;
   const closed = /[.!?]$/.test(fact) ? fact : `${fact}.`;
-  const full = `${short} ${IN_FACT} ${lowerFirst(closed, [belief ?? "", ...keys].join(". "))}`;
-  if (said || full.length > limit) return { text: short, correctionShown: false };
-  return { text: full, correctionShown: true };
-}
-
-/** The belief-alone form of a composed card, for a renderer whose room cannot hold the whole. */
-export function shortMisconception(text: string): string | undefined {
-  if (!text.startsWith(`${MISCONCEPTION_LEAD} `)) return undefined;
-  const at = text.indexOf(`. ${IN_FACT} `);
-  return at < 0 ? undefined : text.slice(0, at + 1);
+  const text = `"${said}" ${IN_FACT} ${lowerFirst(closed, belief ?? "")}`;
+  return text.length <= limit ? text : undefined;
 }

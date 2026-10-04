@@ -32,6 +32,7 @@ import {
   SPEC_LIMITS,
   type SpecSchemaOptions,
   shapeIssue,
+  wordShare,
 } from "@tj/slides";
 import { z } from "zod";
 import {
@@ -1471,35 +1472,42 @@ export function withAssignedCallout(
 }
 
 /**
- * TEACH-87 (UX ruling 149): a "watch-out" box is labelled COMMON MISTAKE, so its text is composed
- * from the misconception's fields by `composeMisconception` ("Thinking that {belief}. In fact,
- * {correction}."), never kept from the writer. No belief: the box is dropped. The correction is
- * also added to the notes, so it survives wherever the card holds the belief alone (past its fit,
- * the key idea already saying it, or no room at render). Other kinds pass through untouched.
+ * TEACH-87 (UX ruling 149, revised): a "watch-out" box is labelled COMMON MISTAKE, so its text is
+ * composed from the misconception's fields by `composeMisconception` (the belief quoted in the
+ * pupil's words, then "In fact, {correction}"), never kept from the writer. The composed text also
+ * goes to the notes, so it survives when the card cannot be shown: no belief or correction, a text
+ * past the card's limit, or (at render) no room. Other kinds pass through untouched.
  */
 export function withComposedMisconception<S extends SlideSpec>(
   spec: S,
   callout: OutlineCallout | undefined,
-  facts: Pick<LessonFacts, "misconceptions" | "keyIdeas">,
-  factRefs: readonly string[],
+  facts: Pick<LessonFacts, "misconceptions">,
 ): S {
   if (callout?.kind !== "watch-out") return spec;
   const m = facts.misconceptions.find((x) => callout.factRefs.includes(x.id));
-  const keyIdeas = (facts.keyIdeas ?? [])
-    .filter((k) => factRefs.includes(k.id))
-    .map((k) => k.statement);
-  const composed = m && composeMisconception(m.belief, m.correction, { keyIdeas });
   const { callout: _writer, ...rest } = spec as S & { callout?: unknown };
-  if (!m || !composed) return rest as S;
-  const correction = m.correction.trim();
-  const noted = `${spec.notes ? `${spec.notes} ` : ""}Correct idea: ${correction}`;
+  if (!m) return rest as S;
+  const text = composeMisconception(m.belief, m.correction);
+  const whole = text ?? composeMisconception(m.belief, m.correction, { limit: Infinity });
+  const noted = whole && `${spec.notes ? `${spec.notes} ` : ""}Common mistake: ${whole}`;
   return {
     ...rest,
-    callout: { kind: "watch-out", text: composed.text },
-    // Always, not only when the card drops it here: the renderer may still fall back to the belief
-    // alone when the slide has no room for the whole card (`placeCallout`).
-    ...(correction && noted.length <= SPEC_LIMITS.notes ? { notes: noted } : {}),
+    ...(text ? { callout: { kind: "watch-out", text } } : {}),
+    ...(noted && noted.length <= SPEC_LIMITS.notes ? { notes: noted } : {}),
   } as S;
+}
+
+/**
+ * TEACH-87: a content slide's KEY IDEA card shows the body's first sentence (`@tj/slides`
+ * structure), so that sentence must be the slide's takeaway. True when a body of two or more
+ * sentences opens with one sharing almost nothing with the heading and the slide's key ideas:
+ * logged, not blocked.
+ */
+export function keyCardDrift(spec: SlideSpec, keyIdeas: readonly string[]): boolean {
+  if (spec.kind !== "content") return false;
+  const all = spec.body.split(/(?<=[.!?])\s+/).filter((x) => /[a-z]/i.test(x));
+  if (all.length < 2) return false;
+  return wordShare(all[0] as string, [spec.heading, ...keyIdeas].join(" ")) < 0.2;
 }
 
 /** Repair asks for the same spec the target was generated from, one target at a time. */
