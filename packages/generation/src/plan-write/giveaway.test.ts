@@ -41,6 +41,14 @@ describe("answer in the stem (audit problem 1)", () => {
     ).not.toEqual([]);
     expect(holdsAnswer("What charge does a positive ion have?", "Positive", [])).not.toEqual([]);
     expect(holdsAnswer("Which metal names the Iron Age?", "Iron", [])).not.toEqual([]);
+    // round 2: a tautology (answer restates the stem) is the same giveaway
+    expect(
+      holdsAnswer(
+        "Which electrode in an electrolysis cell is negative?",
+        "The negative electrode",
+        ["electrolysis"],
+      ),
+    ).not.toEqual([]);
   });
   test("a real check passes, and the topic word is exempt", () => {
     expect(

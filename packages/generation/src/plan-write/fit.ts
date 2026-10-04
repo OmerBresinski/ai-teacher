@@ -387,8 +387,16 @@ export async function fitWithRewrite(
   // A second re-write, told what the slide shows now: a heading that still wraps, or the field the
   // first re-write uncovered (the body under a heading now on one line). Any other field keeps its
   // one re-write (a hinge then goes to its re-check, UX ruling 136).
-  if (!keptFit.ok && (keptFit.field === "heading" || keptFit.field !== field)) {
-    const patch2 = await rewrite(keptFit.field, keptFit.failure).catch(() => undefined);
+  // lab/cand-fix round 2: a teach body still over after its re-write gets one more, told so (round 1:
+  // Freud s4 and rivers-new s6 kept a body that ran into the footer after one failed re-write).
+  const bodyAgain = keptFit.field === field && field === "body";
+  if (!keptFit.ok && (keptFit.field === "heading" || keptFit.field !== field || bodyAgain)) {
+    const patch2 = await rewrite(
+      keptFit.field,
+      bodyAgain
+        ? `${keptFit.failure}; it was written again once and still runs over, so say the same idea in fewer words, keeping its case, its key terms and its point`
+        : keptFit.failure,
+    ).catch(() => undefined);
     if (patch2 && keptFit.field in patch2) {
       const third = { ...kept, [keptFit.field]: patch2[keptFit.field] };
       const fit3 = fitWritten(form, layout, third);

@@ -86,7 +86,9 @@ import {
   firstUses,
   giveaways,
   hasTerm,
+  keyedQuestions,
   onScreen,
+  pictureFits,
   termsOffSlide,
   visualHolds,
 } from "../plan-write/giveaway";
@@ -1205,6 +1207,7 @@ export async function planWriteSlides(
   };
   /** lab/cand-fix: the stream's key terms, and every new gate's flags with what they found. */
   let keyTerms: string[] = [];
+  let namedCases: string[] = [];
   const gateFlags: { gate: GateName; slide: number; detail: string; outcome?: string }[] = [];
   const gateHit = (g: GateName, n: number) => {
     gates[g].hit += 1;
@@ -1764,6 +1767,7 @@ export async function planWriteSlides(
     });
     const c = checkPlan(plan, { slideCount, menu });
     keyTerms = cleanTerms(w.keyTerms ?? []);
+    namedCases = cleanTerms(w.namedCases ?? []);
     const problems = [
       ...unreadable.map((n) => ({
         rule: "form" as const,
@@ -2552,41 +2556,106 @@ export async function planWriteSlides(
     }
   };
 
+  /** The fields a keyed question lives in, re-asked as one unit (stem, options or answers, notes). */
+  const ITEM_FIELDS: Record<string, string[]> = {
+    "check-set": ["questions", "notes"],
+    "starter-set": ["questions", "notes"],
+    hinge: ["stem", "options", "explanation", "notes"],
+    "fill-gap": ["stem", "sentence", "answers", "notes"],
+  };
+
   /**
-   * lab/cand-fix, audit problem 1: a keyed question whose stem holds its answer's words, or that
-   * re-uses the numbers an earlier slide worked with. One targeted re-write of that field, re-gated;
-   * then the item comes out when the set keeps two; otherwise a finding.
+   * Round 2: several fields of one slide written again together (a question with its options, key
+   * and notes), so a re-asked stem can never sit over the old options. Undefined on any failure.
+   */
+  const unitRewrite = async (n: number, fields: string[], failure: string, current: Written) => {
+    const s = table[n - 1] as PlanSlide;
+    const shape = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape;
+    const have = fields.filter((f) => shape[f]);
+    if (have.length === 0) return undefined;
+    try {
+      const { output } = await callWriter(
+        {
+          ...writerInput([target(n)]),
+          rewrite: { slide: target(n), field: have.join(", "), failure, current, reason: "check" },
+        },
+        z.object(Object.fromEntries(have.map((f) => [f, shape[f]]))) as z.ZodType<Written>,
+        MAX_OUTPUT_TOKENS_REWRITE,
+      );
+      deps.logger.info(
+        { stage: "generate", call: "unit-rewrite", slide: n, fields: have },
+        "plan-write unit re-write",
+      );
+      return have.every((f) => f in output) ? (output as Written) : undefined;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return undefined;
+    }
+  };
+
+  /**
+   * A re-asked question's key re-checked in code: its calculations hold, and when its stem's numbers
+   * changed its answer changed with them (round 1 y5 s9: a new stem over the old options and key).
+   */
+  const keyHolds = (form: string, before: Written, after: Written): boolean => {
+    if (arithmeticFaults(after).length > 0) return false;
+    const old = keyedQuestions(form, before);
+    const now = keyedQuestions(form, after);
+    const nums = (t: string) => (t.match(/\d+(?:\.\d+)?/g) ?? []).sort().join(",");
+    return now.every((q, i) => {
+      const o = old[i];
+      if (!o || nums(o.stem) === nums(q.stem)) return true;
+      return !(nums(q.answer) !== "" && nums(q.answer) === nums(o.answer));
+    });
+  };
+
+  /**
+   * lab/cand-fix, audit problem 1: a keyed question whose stem holds its answer's words (a tautology
+   * included: "Which electrode is negative?" → "The negative electrode"), or that re-uses the numbers
+   * an earlier slide worked with. Round 2: the whole item (stem, options or answers, notes) is
+   * re-asked as one unit, re-gated, and its key re-checked; else the item comes out of a set; else a
+   * finding.
    */
   const giveawayGate = async () => {
     const flags = giveaways(passSlides(), brief.topic);
-    const bySlide = new Map<string, typeof flags>();
-    for (const f of flags) {
-      const k = `${f.number}:${f.field}`;
-      bySlide.set(k, [...(bySlide.get(k) ?? []), f]);
-    }
+    const bySlide = new Map<number, typeof flags>();
+    for (const f of flags) bySlide.set(f.number, [...(bySlide.get(f.number) ?? []), f]);
     await Promise.all(
-      [...bySlide.values()].map(async (list) => {
-        const first = list[0] as (typeof flags)[number];
-        const { number: n, field } = first;
+      [...bySlide.entries()].map(async ([n, list]) => {
         gateHit("giveaway", n);
+        const p = placed.find((x) => x.index === n - 1);
+        if (!p) return;
+        const form = p.plan.form;
         const still = (o: Written) =>
           giveaways(
             passSlides().map((x) => (x.number === n ? { ...x, out: o } : x)),
             brief.topic,
-          ).some((f) => f.number === n && f.field === field);
+          ).some((f) => f.number === n);
         const what = list
-          .map((f) =>
-            f.kind === "answer-in-stem"
-              ? `${f.item !== undefined ? `question ${f.item + 1}: ` : ""}${f.detail}, so reading it answers it`
-              : `${f.item !== undefined ? `question ${f.item + 1}: ` : ""}${f.detail}, so pupils copy rather than recall`,
+          .map(
+            (f) =>
+              `${f.item !== undefined ? `question ${f.item + 1}: ` : ""}${f.detail}, so ${f.kind === "answer-in-stem" ? "reading it answers it" : "pupils copy rather than recall"}`,
           )
           .join("; ");
-        const ok = await gateFix(
+        const before = p.out;
+        const patch = await unitRewrite(
           n,
-          field,
-          `${what}. Ask each such question on a new case or new numbers, with no word of its answer in it, so pupils must recall or apply the idea; keep the other items as they are`,
-          still,
-        ).catch(() => false);
+          ITEM_FIELDS[form] ?? [list[0]?.field ?? "stem"],
+          `${what}. Write each such question again as a whole, its question, options or answer and notes together: on a new case, with no word of its answer in it, so pupils must recall or apply the idea, and its key right for the new question. Keep the other items as they are`,
+          before,
+        ).catch(() => undefined);
+        let ok = false;
+        if (patch) {
+          const out = { ...before, ...patch };
+          if (!still(out) && keyHolds(form, before, out)) {
+            const fitted = await fitWithRewrite(form, p.plan.layout, out, async () => undefined);
+            if (fitted.fit.ok) {
+              p.out = fitted.out;
+              await redraw(n - 1, { promptVersion: WRITE_SLIDES_VERSION, model: "gate", at: at() });
+              ok = true;
+            }
+          }
+        }
         if (ok) {
           gates.giveaway.fixed += 1;
           for (const f of list)
@@ -2594,15 +2663,14 @@ export async function planWriteSlides(
               gate: "giveaway",
               slide: n,
               detail: `${f.kind}: ${f.detail}`,
-              outcome: "fixed",
+              outcome: "item re-asked whole",
             });
           return;
         }
         gates.giveaway.fallback += 1;
-        const p = placed.find((x) => x.index === n - 1);
         const bad = new Set(list.map((f) => f.item).filter((i): i is number => i !== undefined));
         const cut =
-          p && field === "questions" && Array.isArray(p.out.questions) && bad.size > 0
+          Array.isArray(p.out.questions) && bad.size > 0
             ? (() => {
                 const kept = (p.out.questions as unknown[]).filter((_, i) => !bad.has(i));
                 return kept.length >= 1 && kept.length < (p.out.questions as unknown[]).length
@@ -2624,22 +2692,28 @@ export async function planWriteSlides(
   };
 
   /**
-   * lab/cand-fix, audit problems 3 and 4: a key term first on screen on a question slide, or only in
-   * notes. One re-write of the target teach slide's body defining the term; else reported (the
-   * untaught gate after this then re-asks the question itself).
+   * lab/cand-fix, audit problems 3 and 4 (round 2: the header's named cases too): a key term or
+   * named case first on screen on a question slide, or only in notes. One re-write of the target
+   * teach slide's body, explaining it in the sentence that uses it; a retrieve slide that shows one
+   * has its questions re-asked on earlier learning (and re-gated for giveaways).
    */
   const termGate = async () => {
-    const flags = termsOffSlide(passSlides(), keyTerms);
+    const isName = new Set(namedCases.map((c) => c.toLowerCase()));
+    const flags = termsOffSlide(passSlides(), [...keyTerms, ...namedCases]);
     const byTarget = new Map<number, typeof flags>();
-    // A retrieve slide that shows this lesson's term: its questions re-asked on earlier learning.
     for (const f of flags.filter((x) => x.kind === "recalled-first")) {
       const n = f.target as number;
       gateHit("termOffSlide", n);
       const ok = await gateFix(
         n,
         "questions",
-        `it uses "${f.term}", a term this lesson teaches on a later slide. Ask each question about what earlier lessons taught, without this lesson's terms; keep the other items as they are`,
-        (o) => hasTerm(onScreen(o), f.term),
+        `it uses "${f.term}", which this lesson teaches on a later slide. Ask each question about what earlier lessons taught, without this lesson's terms, each with its own answer that is not in its words; keep the other items as they are`,
+        (o) =>
+          hasTerm(onScreen(o), f.term) ||
+          giveaways(
+            passSlides().map((x) => (x.number === n ? { ...x, out: o } : x)),
+            brief.topic,
+          ).some((g) => g.number === n),
       ).catch(() => false);
       if (ok) gates.termOffSlide.fixed += 1;
       else gates.termOffSlide.fallback += 1;
@@ -2666,15 +2740,18 @@ export async function planWriteSlides(
     }
     await Promise.all(
       [...byTarget.entries()].map(async ([n, list]) => {
-        const terms = list.map((f) => `"${f.term}"`).join(", ");
-        const asked = list
-          .filter((f) => f.askedOn)
-          .map((f) => `slide ${f.askedOn} asks about "${f.term}"`);
+        const what = list
+          .map((f) =>
+            isName.has(f.term.toLowerCase())
+              ? `the named case "${f.term}" is set out on no slide${f.askedOn ? ` (slide ${f.askedOn} asks about it)` : ""}`
+              : `the key term "${f.term}" is explained on no slide${f.askedOn ? ` (slide ${f.askedOn} asks about it)` : ""}`,
+          )
+          .join("; ");
         const still = (o: Written) => list.some((f) => !hasTerm(onScreen(o), f.term));
         const ok = await gateFix(
           n,
           "body",
-          `the lesson's key term${list.length > 1 ? "s" : ""} ${terms} ${list.length > 1 ? "are" : "is"} defined on no slide${asked.length ? ` (${asked.join("; ")})` : ""}, and this slide is where the lesson teaches it. Define each on this slide, in the body, where the slide's idea uses it; keep the other parts of the body`,
+          `${what}, and this slide is where the lesson teaches it. Work each into the sentence of the body that explains it, the way a teacher would say it, keeping every other part of the body and its point`,
           still,
         ).catch(() => false);
         if (ok) gates.termOffSlide.fixed += 1;
@@ -2684,7 +2761,7 @@ export async function planWriteSlides(
             gate: "termOffSlide",
             slide: n,
             detail: `${f.kind}: "${f.term}"${f.askedOn ? ` asked on slide ${f.askedOn}` : ""}`,
-            outcome: ok ? "defined on slide" : "not fixed",
+            outcome: ok ? "put on slide" : "not fixed",
           });
       }),
     );
@@ -2755,15 +2832,15 @@ export async function planWriteSlides(
     }
     await Promise.all(work);
     work.length = 0;
-    await giveawayGate();
     await termGate();
-    for (const u of untaughtTerms(passSlides(), keyTerms)) {
+    await giveawayGate();
+    for (const u of untaughtTerms(passSlides(), [...keyTerms, ...namedCases])) {
       gateHit("untaught", u.number);
       const q = u.terms.map((t) => `"${t}"`).join(", ");
       const still = (o: Written) =>
         untaughtTerms(
           passSlides().map((x) => (x.number === u.number ? { ...x, out: o } : x)),
-          keyTerms,
+          [...keyTerms, ...namedCases],
         ).some((x) => x.number === u.number && x.field === u.field);
       work.push(
         (async () => {
@@ -2794,7 +2871,7 @@ export async function planWriteSlides(
     await writing;
     // Round S: once every re-write has landed (checks, master check, the gates above), the whole
     // lesson again, the exit items included; what still asks about an untaught term is reported.
-    for (const u of untaughtTerms(passSlides(), keyTerms)) {
+    for (const u of untaughtTerms(passSlides(), [...keyTerms, ...namedCases])) {
       const message = `Slide ${u.number} asks about ${u.terms.map((t) => `"${t}"`).join(", ")}, which no earlier slide teaches.`;
       if (!findings.some((f) => f.message === message)) gateFinding(u.number, message);
     }
@@ -2864,6 +2941,18 @@ export async function planWriteSlides(
       }
       const spec = diagrams[String(source.index + 1)];
       const photo = photoOf.get(source.index);
+      // Round 2: a picture about something else stays where it taught; the slide keeps its space.
+      const pictureText = spec ? flat(spec) : `${photo?.about ?? ""} ${photo?.alt ?? ""}`;
+      if (!pictureFits(pictureText, shownText(p.out), brief.topic)) {
+        gates.checkPicture.fallback += 1;
+        gateFlags.push({
+          gate: "reusedVisual",
+          slide: n,
+          detail: `slide ${source.index + 1}'s picture is about something else`,
+          outcome: "not moved",
+        });
+        continue;
+      }
       let k = 0;
       const ids = () => `${slide.id}~g${++k}`;
       const picture = (b: { x: number; y: number; w: number; h: number }) => {

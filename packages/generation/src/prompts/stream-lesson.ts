@@ -52,7 +52,10 @@ import { WRITE_RULES } from "./write-slides";
  * field, written before the slides: code finds each term's first on-screen use, marks it for the
  * renderer and gates it (a term asked before any slide shows it). The chunk contract lines lose
  * their "at most N lines each" (plan-write/menu.ts): fit is measured on the drawn slide. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v22";
+/* v23 (lab/cand-fix round 2): write-slides.v27; a namedCases header field beside keyTerms (code gates
+ * that each is set out on a slide before a question uses it); a key term is explained where it is
+ * used; in Years 1 and 2 a teach slide about things pupils can see is pictured. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v23";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -67,7 +70,7 @@ function swap(text: string, from: string, to: string): string {
 export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
   [
     "- runningExample:",
-    '- keyTerms: the subject terms pupils learn in this lesson and use by its end, each written as the slides write it ("hyperinflation", "activation energy"). Each is defined on the slide where it first appears.\n- runningExample:',
+    '- keyTerms: the subject terms the slides teach and pupils use by the end, each written as the slides write it ("hyperinflation", "activation energy"). Each is explained on the slide where it first appears.\n- namedCases: the named people, places, events and sources the lesson teaches through, each just its name as the slides write it ("Boudica", "Boscastle"). Each is set out on a slide before any question uses it.\n- runningExample:',
   ],
   ["- slides: one row for each slide", "- plan: one row for each slide"],
   ["the writer adds the detail", "the slide adds the detail"],
@@ -77,7 +80,7 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
   ],
   [
     "A slide whose idea cannot be pictured, or that no photograph could show as taught, has none.",
-    "A slide whose idea cannot be pictured, or that no photograph could show as taught, has none. A picture sits beside a teach slide's explanation; it never takes the place of a starter, a check or a practise slide.",
+    "A slide whose idea cannot be pictured, or that no photograph could show as taught, has none. A picture sits beside a teach slide's explanation; it never takes the place of a starter, a check or a practise slide. In Years 1 and 2, a teach slide about animals, objects or places pupils can see is a photo or diagram slot that shows them.",
   ],
   [
     "Each check question has exactly one defensible answer.",

@@ -329,3 +329,17 @@ export function boldTerm(doc: RichDoc, term: string): { doc: RichDoc; done: bool
   const content = (doc.content ?? []).map((n) => walk(n as Node));
   return { doc: { ...doc, content } as RichDoc, done };
 }
+
+/**
+ * Round 2: whether a teach picture is about what a question slide asks: they share a content word
+ * beyond the topic's own (round 1: a Ruhr timeline under a counterfactual, a stages table under a
+ * defence-mechanism question).
+ */
+export function pictureFits(visualText: string, questionText: string, topic: string): boolean {
+  const exempt = exemptStems(topic);
+  const want = wordsOf(questionText)
+    .map(stem)
+    .filter((w) => !exempt.some((e) => meet(e, w)));
+  const have = wordsOf(visualText).map(stem);
+  return want.some((w) => have.some((h) => meet(h, w)));
+}
