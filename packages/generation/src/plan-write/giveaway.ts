@@ -235,7 +235,7 @@ export type TermFlag = {
   askedOn?: number;
   /** The teach slide to put the term on: the one whose notes carry it, else the last teach slide before. */
   target?: number;
-  kind: "asked-first" | "notes-only" | "nowhere";
+  kind: "asked-first" | "recalled-first" | "notes-only" | "nowhere";
 };
 
 /**
@@ -258,6 +258,11 @@ export function termsOffSlide(slides: readonly PassSlide[], terms: readonly stri
         kind: inNotes ? "notes-only" : "nowhere",
         ...(inNotes ? { target: inNotes.number } : {}),
       });
+      continue;
+    }
+    // A retrieve slide is for earlier learning: one that shows this lesson's term is re-asked.
+    if (first.row.role === "retrieve" || first.row.form === "starter-set") {
+      out.push({ term, askedOn: first.number, kind: "recalled-first", target: first.number });
       continue;
     }
     if (!asks(first)) continue;

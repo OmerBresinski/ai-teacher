@@ -2631,7 +2631,26 @@ export async function planWriteSlides(
   const termGate = async () => {
     const flags = termsOffSlide(passSlides(), keyTerms);
     const byTarget = new Map<number, typeof flags>();
-    for (const f of flags) {
+    // A retrieve slide that shows this lesson's term: its questions re-asked on earlier learning.
+    for (const f of flags.filter((x) => x.kind === "recalled-first")) {
+      const n = f.target as number;
+      gateHit("termOffSlide", n);
+      const ok = await gateFix(
+        n,
+        "questions",
+        `it uses "${f.term}", a term this lesson teaches on a later slide. Ask each question about what earlier lessons taught, without this lesson's terms; keep the other items as they are`,
+        (o) => hasTerm(onScreen(o), f.term),
+      ).catch(() => false);
+      if (ok) gates.termOffSlide.fixed += 1;
+      else gates.termOffSlide.fallback += 1;
+      gateFlags.push({
+        gate: "termOffSlide",
+        slide: n,
+        detail: `recalled-first: "${f.term}"`,
+        outcome: ok ? "starter re-asked" : "not fixed",
+      });
+    }
+    for (const f of flags.filter((x) => x.kind !== "recalled-first")) {
       gateHit("termOffSlide", f.askedOn ?? f.target ?? 0);
       if (f.target === undefined) {
         gates.termOffSlide.fallback += 1;
