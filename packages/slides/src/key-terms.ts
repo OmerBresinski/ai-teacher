@@ -4,6 +4,7 @@ import {
   type Slide,
   type SlideElement,
 } from "@tj/domain/documents";
+import { KIND_TAG_NAME } from "./look";
 import { withTerms } from "./structure";
 import { getTheme } from "./themes";
 
@@ -43,11 +44,31 @@ export function lessonKeyTerms(lesson: {
   return [...out.values()];
 }
 
-/** Every teaching slide with its key terms bold at their first use; every other slide as it is. */
-export function withKeyTerms(slides: readonly Slide[], themeId: string, terms: string[]): Slide[] {
-  if (terms.length === 0) return [...slides];
+/**
+ * Whether a slide teaches: a content or image-text slide, unless it carries a kind tag (a
+ * PRACTICE or CHECK set drawn on the content recipe asks questions, and a question never shows
+ * its key term in bold).
+ */
+export function isTeachingSlide(slide: Slide): boolean {
+  return TEACHING.has(slide.kind) && !slide.elements.some((e) => e.name === KIND_TAG_NAME);
+}
+
+/**
+ * Every teaching slide with its key terms bold at their first use; every other slide as it is.
+ * `terms` is one list for the lesson, or a list per slide (index for index, e.g. a writer's
+ * per-slide `keyTerms`); a slide with no list is left as it is.
+ */
+export function withKeyTerms(
+  slides: readonly Slide[],
+  themeId: string,
+  terms: readonly string[] | readonly (readonly string[] | undefined)[],
+): Slide[] {
   const theme = getTheme(themeId);
-  return slides.map((slide) => (TEACHING.has(slide.kind) ? withTerms(slide, theme, terms) : slide));
+  const perSlide = terms.some((x) => Array.isArray(x));
+  return slides.map((slide, i) => {
+    const list = (perSlide ? terms[i] : terms) as readonly string[] | undefined;
+    return list?.length && isTeachingSlide(slide) ? withTerms(slide, theme, [...list]) : slide;
+  });
 }
 
 function flat(elements: readonly SlideElement[]): SlideElement[] {

@@ -179,6 +179,27 @@ describe("key terms (ruling 150)", () => {
     expect(withKeyTerms([tf], THEME, ["hyperinflation"])[0]).toBe(tf);
   });
 
+  test("a tagged practice set on the content recipe is a question: never marked", () => {
+    const slide = make(content(LONG), ["hyperinflation"]);
+    const tagged: Slide = {
+      ...slide,
+      elements: [
+        ...slide.elements,
+        { ...(slide.elements[0] as SlideElement), id: "tag", name: "Kind tag" },
+      ],
+    };
+    const plain: Slide = { ...tagged, elements: tagged.elements.map((e) => e) };
+    expect(withKeyTerms([plain], THEME, ["hyperinflation"])[0]).toBe(plain);
+  });
+
+  test("per-slide term lists: each slide marks only its own terms", () => {
+    const a = make(content(LONG));
+    const b = make(content(LONG));
+    const [ma, mb] = withKeyTerms([a, b], THEME, [["hyperinflation"], undefined]);
+    expect(bold(ma as Slide)).toEqual(["hyperinflation"]);
+    expect(mb).toBe(b);
+  });
+
   test("lessonKeyTerms: the facts' vocabulary, then terms only a vocabulary slide prints", () => {
     const vocab = make({
       kind: "vocabulary",
