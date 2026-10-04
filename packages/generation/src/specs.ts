@@ -1471,7 +1471,7 @@ export function withAssignedCallout(
 }
 
 /**
- * TEACH-87 (UX ruling 151): a "watch-out" box is labelled COMMON MISTAKE, so its text is composed
+ * TEACH-87 (UX ruling 149): a "watch-out" box is labelled COMMON MISTAKE, so its text is composed
  * from the misconception's fields by `composeMisconception` ("Thinking that {belief}. In fact,
  * {correction}."), never kept from the writer. No belief: the box is dropped. The correction is
  * also added to the notes, so it survives wherever the card holds the belief alone (past its fit,

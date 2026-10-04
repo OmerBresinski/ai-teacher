@@ -1,7 +1,7 @@
 import { SPEC_LIMITS } from "./specs";
 
 /*
- * The COMMON MISTAKE card's text (TEACH-87, UX ruling 151): composed in code from a misconception's
+ * The COMMON MISTAKE card's text (TEACH-87, UX ruling 149): composed in code from a misconception's
  * structured fields, never written free by a slide writer, so it cannot read as a fact:
  *
  *   Thinking that {belief}. In fact, {correction}.
