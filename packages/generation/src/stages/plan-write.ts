@@ -89,10 +89,12 @@ import {
   giveaways,
   hasTerm,
   keyedQuestions,
+  notesOutOfStep,
   onScreen,
   pictureFits,
   termsOffSlide,
   visualHolds,
+  withoutPlanning,
 } from "../plan-write/giveaway";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
@@ -707,7 +709,9 @@ export type GateName =
   | "untaught"
   | "giveaway"
   | "termOffSlide"
-  | "reusedVisual";
+  | "reusedVisual"
+  | "notesStep"
+  | "planning";
 export type GateCount = { hit: number; fixed: number; fallback: number; slides: number[] };
 
 export async function planWriteSlides(
@@ -1206,6 +1210,8 @@ export async function planWriteSlides(
     giveaway: { hit: 0, fixed: 0, fallback: 0, slides: [] },
     termOffSlide: { hit: 0, fixed: 0, fallback: 0, slides: [] },
     reusedVisual: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    notesStep: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    planning: { hit: 0, fixed: 0, fallback: 0, slides: [] },
   };
   /** lab/cand-fix: the stream's key terms, and every new gate's flags with what they found. */
   let keyTerms: string[] = [];
@@ -2744,17 +2750,24 @@ export async function planWriteSlides(
     for (const f of flags.filter((x) => x.kind === "recalled-first")) {
       const n = f.target as number;
       gateHit("termOffSlide", n);
-      const ok = await gateFix(
-        n,
-        "questions",
-        `it uses "${f.term}", which this lesson teaches on a later slide. Ask each question about what earlier lessons taught, without this lesson's terms, each with its own answer that is not in its words; keep the other items as they are`,
-        (o) =>
-          hasTerm(onScreen(o), f.term) ||
-          giveaways(
-            passSlides().map((x) => (x.number === n ? { ...x, out: o } : x)),
-            brief.topic,
-          ).some((g) => g.number === n),
-      ).catch(() => false);
+      const p = placed.find((x) => x.index === n - 1);
+      // Round 3: the questions and their notes together, so the numbered answers stay in step.
+      const patch = p
+        ? await unitRewrite(
+            n,
+            ["questions", "notes"],
+            `it uses "${f.term}", which this lesson teaches on a later slide. Ask each question about what earlier lessons taught, without this lesson's terms, each with its own answer that is not in its words, and give the notes' answers for the questions as now written; keep the other items as they are`,
+            p.out,
+          ).catch(() => undefined)
+        : undefined;
+      const next = p && patch ? { ...p.out, ...patch } : undefined;
+      const bad = (o: Written) =>
+        hasTerm(onScreen(o), f.term) ||
+        giveaways(
+          passSlides().map((x) => (x.number === n ? { ...x, out: o } : x)),
+          brief.topic,
+        ).some((g) => g.number === n);
+      const ok = next && !bad(next) ? await gateSet(n, next) : false;
       if (ok) gates.termOffSlide.fixed += 1;
       else gates.termOffSlide.fallback += 1;
       gateFlags.push({
@@ -2915,6 +2928,31 @@ export async function planWriteSlides(
       const message = `Slide ${u.number} asks about ${u.terms.map((t) => `"${t}"`).join(", ")}, which no earlier slide teaches.`;
       if (!findings.some((f) => f.message === message)) gateFinding(u.number, message);
     }
+    // Round 3: numbered answers in the notes in step with the slide's numbered items.
+    await Promise.all(
+      placed.map(async (p) => {
+        const n = p.index + 1;
+        if (n <= FIXED_SLIDES) return;
+        const step = notesOutOfStep(p.plan.form, p.plan.role, p.out);
+        if (!step) return;
+        gateHit("notesStep", n);
+        const ok = await gateFix(
+          n,
+          "notes",
+          `the notes number ${step.answers} answers but the slide has ${step.items} numbered items. Give exactly one numbered answer for each item on the slide, in the slide's order, and keep the rest of the notes`,
+          (o) => notesOutOfStep(p.plan.form, p.plan.role, o) !== undefined,
+        ).catch(() => false);
+        if (ok) gates.notesStep.fixed += 1;
+        else gates.notesStep.fallback += 1;
+        gateFlags.push({
+          gate: "notesStep",
+          slide: n,
+          detail: `${step.answers} numbered answers for ${step.items} items`,
+          outcome: ok ? "notes renumbered" : "not fixed",
+        });
+      }),
+    );
+    await writing;
     const exitAt = closing && brief.exitTicketOnSlides === true ? lesson.slides.length : undefined;
     if (exitAt !== undefined && exitQuestions.length > 0)
       for (const u of untaughtOnExit(
@@ -3024,7 +3062,7 @@ export async function planWriteSlides(
     }
     deps.logger.info({ stage: "generate", call: "gates", gates, diagramRungs }, "quality gates");
     deps.logger.info(
-      { stage: "generate", call: "gate-flags", keyTerms, flags: gateFlags },
+      { stage: "generate", call: "gate-flags", keyTerms, namedCases, flags: gateFlags },
       "cand-fix gate flags",
     );
   };
@@ -3136,6 +3174,40 @@ export async function planWriteSlides(
       }
     }
   }
+  if (mode === "stream") {
+    // Round 3: the deck's own planning (slide counts, plan rows) never reaches the notes.
+    for (const p of placed) {
+      if (typeof p.out.notes !== "string") continue;
+      const { notes, cut } = withoutPlanning(p.out.notes);
+      if (cut.length === 0) continue;
+      gateHit("planning", p.index + 1);
+      gates.planning.fixed += 1;
+      gateFlags.push({
+        gate: "planning",
+        slide: p.index + 1,
+        detail: cut.join(" ").slice(0, 200),
+        outcome: "cut from notes",
+      });
+      p.out = { ...p.out, notes };
+      lesson = {
+        ...lesson,
+        slides: lesson.slides.map((sl, i) =>
+          i === p.index && typeof sl.notes === "string"
+            ? { ...sl, notes: withoutPlanning(sl.notes).notes }
+            : sl,
+        ),
+      };
+    }
+  }
+  if (mode === "stream" && gates.planning.hit > 0)
+    deps.logger.info(
+      {
+        stage: "generate",
+        call: "gate-flags-final",
+        flags: gateFlags.filter((f) => f.gate === "planning"),
+      },
+      "cand-fix planning cut",
+    );
   if (mode === "stream" && keyTerms.length > 0) {
     // lab/cand-fix, audit problem 4. The terms reach the renderer two ways: the lesson's
     // `facts.vocabulary` (what TEACH-150's `lessonKeyTerms` reads; the definition is the first

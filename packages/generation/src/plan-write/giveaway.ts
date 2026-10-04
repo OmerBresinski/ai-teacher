@@ -351,3 +351,50 @@ export function pictureFits(visualText: string, questionText: string, topic: str
   const have = wordsOf(visualText).map(stem);
   return want.some((w) => have.some((h) => meet(h, w)));
 }
+
+/* ------------------------------------------------------------------ notes hygiene (round 3) */
+
+const COUNT_WORD =
+  "(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen)";
+/** A sentence about the deck's own plan: slide counts, teach-slide counts, plan rows (round 2 rivers-new s4). */
+const PLANNING = new RegExp(
+  `\\b${COUNT_WORD}\\s+(?:more\\s+|remaining\\s+|teaching\\s+|teach\\s+)?slides?\\b|\\bslides? in total\\b|\\b(?:remaining|other) slides\\b|\\bteach slides?\\b|\\bplan rows?\\b|\\bthe plan\\b`,
+  "i",
+);
+
+/** The notes without any sentence that talks about the deck's own plan; the rest word for word. */
+export function withoutPlanning(notes: string): { notes: string; cut: string[] } {
+  const parts = notes.split(/(?<=[.!?])\s+/);
+  const cut = parts.filter((p) => PLANNING.test(p));
+  return cut.length === 0
+    ? { notes, cut }
+    : { notes: parts.filter((p) => !PLANNING.test(p)).join(" "), cut };
+}
+
+/** The items a question slide numbers on screen (set questions, practise points). */
+function numberedItems(form: string, role: string, out: Written): number {
+  if (Array.isArray(out.questions)) return out.questions.length;
+  if (role === "practise" && Array.isArray(out.points)) return out.points.length;
+  return 0;
+}
+
+/**
+ * Round 3: notes whose numbered answers do not match the slide's numbered items (a re-asked or
+ * dropped item left "4." answers for 3 questions). Undefined when they agree or the notes number
+ * nothing. Counts the highest answer number ("1.", "2)", "Q3", "Question 4").
+ */
+export function notesOutOfStep(
+  form: string,
+  role: string,
+  out: Written,
+): { items: number; answers: number } | undefined {
+  const items = numberedItems(form, role, out);
+  if (items === 0) return undefined;
+  const notes = textOf(out.notes);
+  const nums = [
+    ...notes.matchAll(/(?:^|[\s(])(?:Q(?:uestion)?\s*)?([1-9])(?:[.):]|\s*[-–:])\s/gi),
+  ].map((m) => Number(m[1]));
+  if (nums.length === 0) return undefined;
+  const answers = Math.max(...nums);
+  return answers === items ? undefined : { items, answers };
+}

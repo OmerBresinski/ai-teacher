@@ -6,8 +6,10 @@ import {
   firstUses,
   giveaways,
   holdsAnswer,
+  notesOutOfStep,
   termsOffSlide,
   visualHolds,
+  withoutPlanning,
 } from "./giveaway";
 import type { PassSlide } from "./slide-check";
 
@@ -191,5 +193,32 @@ describe("code-added checks (audit problem 1)", () => {
       row({ objectives: [2], teaches: ["collision theory"] }),
     ];
     expect(checksToInsert(rows).map((c) => c.after)).toEqual([5]);
+  });
+});
+
+describe("notes hygiene (round 3)", () => {
+  test("planning sentences leave the notes; teaching stays word for word", () => {
+    const { notes, cut } = withoutPlanning(
+      "There are 10 slides in total, including the title and objectives, with 8 slides after them. Five slides teach new ideas. Trace the surface route on the diagram. On the next slide we use it.",
+    );
+    expect(cut.length).toBe(2);
+    expect(notes).toBe("Trace the surface route on the diagram. On the next slide we use it.");
+  });
+  test("numbered answers out of step with the questions are caught", () => {
+    const out = {
+      questions: [
+        { question: "a", answer: "x" },
+        { question: "b", answer: "y" },
+        { question: "c", answer: "z" },
+      ],
+      notes: "1. Ice. 2. Steam. 3. The puddle dries. 4. Diffusion.",
+    };
+    expect(notesOutOfStep("check-set", "check", out)).toEqual({ items: 3, answers: 4 });
+    expect(
+      notesOutOfStep("check-set", "check", { ...out, notes: "1. Ice. 2. Steam. 3. Diffusion." }),
+    ).toBeUndefined();
+    expect(
+      notesOutOfStep("check-set", "check", { ...out, notes: "Ask the class first." }),
+    ).toBeUndefined();
   });
 });
