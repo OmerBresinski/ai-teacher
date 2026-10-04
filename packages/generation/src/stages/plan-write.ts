@@ -2216,11 +2216,24 @@ export async function planWriteSlides(
       const onSlide = onSlides
         ? drawn(EXIT_FORM, closingLayoutOf(onSlides), onSlides, codeMeta())
         : undefined;
+      // Round 3 (lab/cand-fix): no closing slide is saved overflowing. The pointer line first, else
+      // the pointer moved to the notes word for word, else the reference slide (every item on the
+      // worksheet). Round 2 j-y9 s11 ran past the footer on its own theme.
+      const ownTheme = getTheme(themeId);
+      const fits = (sl: Slide | undefined) => !!sl && slideFits(sl, ownTheme, 1).ok;
+      const withPointer = onSlide && pointer ? withClosingLine(onSlide, pointer) : onSlide;
+      const pointerInNotes =
+        onSlide && pointer
+          ? { ...onSlide, notes: [onSlide.notes, pointer].filter(Boolean).join("\n") }
+          : undefined;
+      const fitted = fits(withPointer)
+        ? withPointer
+        : fits(pointerInNotes)
+          ? pointerInNotes
+          : undefined;
       const slide = closing
-        ? onSlide
-          ? pointer
-            ? withClosingLine(onSlide, pointer)
-            : onSlide
+        ? fitted
+          ? fitted
           : materialiseSlide(
               closingSpec(
                 questions,
@@ -2236,7 +2249,7 @@ export async function planWriteSlides(
       return {
         slide,
         questions,
-        onSlides: onSlides ? (onSlides.questions as unknown[]).length : 0,
+        onSlides: onSlides && fitted ? (onSlides.questions as unknown[]).length : 0,
       };
     };
     const logClose = (c: ReturnType<typeof closeFor>, patched: boolean) =>
