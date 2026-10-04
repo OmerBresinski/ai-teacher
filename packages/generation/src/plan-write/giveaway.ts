@@ -251,7 +251,12 @@ export type TermFlag = {
  * or only ever in notes. The target is the earliest teach slide whose notes use the term, else the
  * last teach slide before the question that serves the same objective.
  */
-export function termsOffSlide(slides: readonly PassSlide[], terms: readonly string[]): TermFlag[] {
+export function termsOffSlide(
+  slides: readonly PassSlide[],
+  terms: readonly string[],
+  /** Round 2b: text on screen that no written slide holds (the title slide), and drawn labels. */
+  alsoShown = "",
+): TermFlag[] {
   const ordered = [...slides].sort((a, b) => a.number - b.number);
   const teach = ordered.filter(
     (s) => s.number > FIXED_SLIDES && s.row.role === "teach" && Array.isArray(s.out.body),
@@ -261,6 +266,9 @@ export function termsOffSlide(slides: readonly PassSlide[], terms: readonly stri
     const first = ordered.find((x) => x.number > FIXED_SLIDES && hasTerm(onScreen(x.out), term));
     const inNotes = teach.find((s) => hasTerm(textOf(s.out.notes), term));
     if (!first) {
+      // On the title slide or in a drawing's labels: on screen, so not "nowhere" (round 2 false flags).
+      const drawn = ordered.map((x) => textOf(x.out.diagram)).join(" ");
+      if (hasTerm(`${alsoShown} ${drawn}`, term) && !inNotes) continue;
       out.push({
         term,
         kind: inNotes ? "notes-only" : "nowhere",

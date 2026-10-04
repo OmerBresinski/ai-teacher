@@ -24,6 +24,7 @@ import {
   materialiseSlide,
   PLACEHOLDER_IMAGE,
   SAFE,
+  slideFits,
   withDiagramDrawn,
   withoutPicture,
   withPictureInSpace,
@@ -62,6 +63,7 @@ import {
 import { diagramDisagreements } from "../plan-write/diagram-agree";
 import { DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
+  fitLadder,
   fitWithRewrite,
   fitWritten,
   renderWritten,
@@ -1605,11 +1607,42 @@ export async function planWriteSlides(
       const out2 = noPictureOf(fitted.out);
       fitted = { out: out2, fit: fitWritten(NO_PICTURE_ROW.form, NO_PICTURE_ROW.layout, out2) };
     }
+    // Round 2b: no slide is saved overflowing. After the re-writes, the fit-first ladder: another
+    // layout, the no-picture sibling, then whole units moved to the notes word for word.
+    let ladder: ReturnType<typeof fitLadder> | undefined;
+    if (!fitted.fit.ok) {
+      ladder = fitLadder(
+        s.form,
+        s.layout,
+        fitted.out,
+        PICTURE_FORMS.has(s.form) ? { ...NO_PICTURE_ROW, of: noPictureOf } : undefined,
+      );
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "fit-ladder",
+          slide: n,
+          rung: ladder.rung,
+          moved: ladder.moved,
+          from: [s.form, s.layout],
+          to: [ladder.form, ladder.layout],
+        },
+        "fit ladder",
+      );
+      if (ladder.rung !== "unfit") {
+        if (ladder.rung === "sibling" || (ladder.form !== s.form && PICTURE_FORMS.has(s.form)))
+          noPicture.push(n);
+        s = { ...s, form: ladder.form, layout: ladder.layout };
+        table[index] = s;
+        fitted = { ...fitted, out: ladder.out, fit: fitWritten(s.form, s.layout, ladder.out) };
+      }
+    }
     report.push({
       slide: n,
       form: s.form,
       layout: s.layout,
       fits: fitted.fit.ok,
+      ...(ladder ? { ladder: ladder.rung } : {}),
       ...(fitted.rewritten ? { rewritten: fitted.rewritten } : {}),
       ...(rechecked ? { rechecked } : {}),
     });
@@ -2699,7 +2732,14 @@ export async function planWriteSlides(
    */
   const termGate = async () => {
     const isName = new Set(namedCases.map((c) => c.toLowerCase()));
-    const flags = termsOffSlide(passSlides(), [...keyTerms, ...namedCases]);
+    const titleText = lesson.slides[0]
+      ? lesson.slides[0].elements.map((e) => (e.type === "text" ? flat(e.doc) : "")).join(" ")
+      : "";
+    const flags = termsOffSlide(
+      passSlides(),
+      [...keyTerms, ...namedCases],
+      `${base.title} ${titleText}`,
+    );
     const byTarget = new Map<number, typeof flags>();
     for (const f of flags.filter((x) => x.kind === "recalled-first")) {
       const n = f.target as number;
@@ -3152,6 +3192,18 @@ export async function planWriteSlides(
             elements = elements.map((e, j) => (j === k ? { ...el, doc: b.doc } : e));
             break;
           }
+        }
+        // Round 2b: bold type is wider; a slide the bold would push over keeps its plain text.
+        const ownTheme = getTheme(themeId);
+        if (
+          slideFits(slide, ownTheme, 1).ok &&
+          !slideFits({ ...slide, elements }, ownTheme, 1).ok
+        ) {
+          deps.logger.info(
+            { stage: "generate", call: "key-terms", slide: i + 1 },
+            "bold would overflow; kept plain",
+          );
+          return { ...slide, keyTerms: terms } as typeof slide;
         }
         return { ...slide, elements, keyTerms: terms } as typeof slide;
       }),

@@ -3,6 +3,7 @@ import {
   contractFits,
   docFromText,
   KIND_TAG_NAME,
+  layoutsOf,
   type MaterialiseMeta,
   materialiseSlide,
   type PaletteFormId,
@@ -389,12 +390,12 @@ export async function fitWithRewrite(
   // one re-write (a hinge then goes to its re-check, UX ruling 136).
   // lab/cand-fix round 2: a teach body still over after its re-write gets one more, told so (round 1:
   // Freud s4 and rivers-new s6 kept a body that ran into the footer after one failed re-write).
-  const bodyAgain = keptFit.field === field && field === "body";
+  const bodyAgain = keptFit.field === field && (field === "body" || field === "steps");
   if (!keptFit.ok && (keptFit.field === "heading" || keptFit.field !== field || bodyAgain)) {
     const patch2 = await rewrite(
       keptFit.field,
       bodyAgain
-        ? `${keptFit.failure}; it was written again once and still runs over, so say the same idea in fewer words, keeping its case, its key terms and its point`
+        ? `${keptFit.failure}; it was written again once and still runs over, so say the same in fewer words, keeping its case, its key terms, every step and its point`
         : keptFit.failure,
     ).catch(() => undefined);
     if (patch2 && keptFit.field in patch2) {
@@ -456,4 +457,83 @@ export function answerKeyFaults(form: string, out: Written): string[] {
   if (new Set(rights).size !== rights.length) faults.push("a right card is used twice");
   if (lefts.some((l) => rights.includes(l))) faults.push("a card is on both sides");
   return faults;
+}
+
+/** The fields whose units (chunks, steps, points) may move to the notes whole, in order of preference. */
+const MOVABLE = ["body", "steps", "points"];
+
+export type Laddered = {
+  form: string;
+  layout: string;
+  out: Written;
+  /** Which rung made it fit: none needed, another layout of the form, the no-picture sibling, units moved. */
+  rung: "none" | "layout" | "sibling" | "moved" | "unfit";
+  /** Units moved to the notes, word for word. */
+  moved: string[];
+};
+
+/**
+ * lab/cand-fix round 2b: the fit-first fallback after the re-writes, so no slide is saved
+ * overflowing. In order: another layout of the same form; the picture form's no-picture sibling (the
+ * same heading and body, full width); then whole units of the failing field moved to the notes word
+ * for word, from the end (a worked example keeps its last, answer, line), never below the slot's
+ * minimum. Nothing is summarised or split. "unfit" when no rung fits (the caller reports it).
+ */
+export function fitLadder(
+  form: string,
+  layout: string,
+  out: Written,
+  sibling?: { form: string; layout: string; of: (o: Written) => Written },
+): Laddered {
+  const first = fitWritten(form, layout, out);
+  if (first.ok) return { form, layout, out, rung: "none", moved: [] };
+  if (!isSetForm(form)) {
+    for (const c of layoutsOf(form as PaletteFormId)) {
+      if (c.layout === layout) continue;
+      try {
+        if (fitWritten(form, c.layout, out).ok)
+          return { form, layout: c.layout, out, rung: "layout", moved: [] };
+      } catch {}
+    }
+  }
+  if (sibling) {
+    const o2 = sibling.of(out);
+    if (fitWritten(sibling.form, sibling.layout, o2).ok)
+      return { form: sibling.form, layout: sibling.layout, out: o2, rung: "sibling", moved: [] };
+  }
+  const tryMove = (f0: string, l0: string, o0: Written): Laddered | undefined => {
+    let cur = o0;
+    const moved: string[] = [];
+    let fit = fitWritten(f0, l0, cur);
+    for (let guard = 0; !fit.ok && guard < 8; guard++) {
+      const field = MOVABLE.includes(fit.field)
+        ? fit.field
+        : MOVABLE.find((m) => Array.isArray(cur[m]));
+      const list = field ? cur[field] : undefined;
+      if (!field || !Array.isArray(list)) return undefined;
+      const min = Math.max(
+        1,
+        isSetForm(f0)
+          ? 1
+          : (slotContract(f0 as PaletteFormId, l0).slots.find((s) => s.field === field)?.min ?? 1),
+      );
+      if (list.length <= min) return undefined;
+      const at = field === "steps" ? list.length - 2 : list.length - 1;
+      const unit = list[at];
+      const text = typeof unit === "string" ? unit : JSON.stringify(unit);
+      moved.unshift(text);
+      const notes =
+        typeof cur.notes === "string" && cur.notes.trim() ? `${cur.notes.trim()}\n` : "";
+      cur = { ...cur, [field]: list.filter((_, i) => i !== at), notes: `${notes}${text}` };
+      fit = fitWritten(f0, l0, cur);
+    }
+    return fit.ok ? { form: f0, layout: l0, out: cur, rung: "moved", moved } : undefined;
+  };
+  const movedHere = tryMove(form, layout, out);
+  if (movedHere) return movedHere;
+  if (sibling) {
+    const m2 = tryMove(sibling.form, sibling.layout, sibling.of(out));
+    if (m2) return m2;
+  }
+  return { form, layout, out, rung: "unfit", moved: [] };
 }

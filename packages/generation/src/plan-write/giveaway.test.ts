@@ -145,6 +145,12 @@ describe("key terms on the slide (audit problems 3 and 4)", () => {
       { term: "hyperinflation", askedOn: 5, kind: "asked-first", target: 4 },
     ]);
   });
+  test("a name only on the title slide is on screen, not nowhere", () => {
+    expect(termsOffSlide(deck, ["Sigmund Freud"], "Freud's theories, Sigmund Freud")).toEqual([]);
+    expect(termsOffSlide(deck, ["Sigmund Freud"])).toEqual([
+      { term: "Sigmund Freud", kind: "nowhere" },
+    ]);
+  });
   test("first use found on screen, notes ignored", () => {
     expect(firstUses(deck, ["hyperinflation"]).get("hyperinflation")).toBe(5);
   });
