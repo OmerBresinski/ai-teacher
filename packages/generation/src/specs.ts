@@ -1473,9 +1473,9 @@ export function withAssignedCallout(
 /**
  * TEACH-87 (UX ruling 151): a "watch-out" box is labelled COMMON MISTAKE, so its text is composed
  * from the misconception's fields by `composeMisconception` ("Thinking that {belief}. In fact,
- * {correction}."), never kept from the writer. No belief: the box is dropped. When the card holds
- * the belief alone (past its fit, or the slide's key idea already says the correction), the
- * correction goes to the notes. Other kinds pass through untouched.
+ * {correction}."), never kept from the writer. No belief: the box is dropped. The correction is
+ * also added to the notes, so it survives wherever the card holds the belief alone (past its fit,
+ * the key idea already saying it, or no room at render). Other kinds pass through untouched.
  */
 export function withComposedMisconception<S extends SlideSpec>(
   spec: S,
@@ -1492,13 +1492,13 @@ export function withComposedMisconception<S extends SlideSpec>(
   const { callout: _writer, ...rest } = spec as S & { callout?: unknown };
   if (!m || !composed) return rest as S;
   const correction = m.correction.trim();
-  const noted = `${spec.notes ? `${spec.notes} ` : ""}In fact, ${correction}`;
+  const noted = `${spec.notes ? `${spec.notes} ` : ""}Correct idea: ${correction}`;
   return {
     ...rest,
     callout: { kind: "watch-out", text: composed.text },
-    ...(!composed.correctionShown && correction && noted.length <= SPEC_LIMITS.notes
-      ? { notes: noted }
-      : {}),
+    // Always, not only when the card drops it here: the renderer may still fall back to the belief
+    // alone when the slide has no room for the whole card (`placeCallout`).
+    ...(correction && noted.length <= SPEC_LIMITS.notes ? { notes: noted } : {}),
   } as S;
 }
 

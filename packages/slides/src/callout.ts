@@ -431,7 +431,12 @@ export function placeCallout(
   const inColumn = flow.filter((el) => !beside.includes(el) && el.x < right && el.x + el.w > x);
   const foot = Math.max(SAFE.y, ...inColumn.map((el) => el.y + el.h));
   const room = CARD_BOTTOM - (foot + SPACE[2]);
-  const fit = fitCallout(t, callout.spec.text, w, room);
+  // TEACH-87: a composed COMMON MISTAKE card with no room whole tries the belief alone.
+  const short =
+    callout.spec.kind === "watch-out" ? shortMisconception(callout.spec.text) : undefined;
+  const whole = fitCallout(t, callout.spec.text, w, room);
+  const spec = !whole && short ? { ...callout.spec, text: short } : callout.spec;
+  const fit = whole ?? (short ? fitCallout(t, short, w, room) : undefined);
   if (!fit) return undefined;
   const anchored = Math.max(bottomAnchoredY(fit.height), CARD_BOTTOM - room);
   // The callout-row composition reads as one unit: its row sits a heading gap under the idea
@@ -439,7 +444,7 @@ export function placeCallout(
   const row = inColumn.some((el) => el.name === IDEA_NAME);
   const y = row ? Math.min(anchored, snapY(foot + SPACE[4])) : anchored;
   const h = row ? fit.height : CARD_BOTTOM - y;
-  const fresh = calloutElements(t, callout.spec, { x, y, w, h }, fit.size);
+  const fresh = calloutElements(t, spec, { x, y, w, h }, fit.size);
   const placed = fresh.map((el): SlideElement => {
     const old = callout.kept.find((k) => k.name === el.name);
     return old ? ({ ...old, ...el, id: old.id } as SlideElement) : { ...el, id: ids() };

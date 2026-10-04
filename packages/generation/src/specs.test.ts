@@ -1731,7 +1731,7 @@ describe("withComposedMisconception (TEACH-87): the COMMON MISTAKE card is compo
       "k1",
     ]);
     expect(text(out)).toBe(want);
-    expect(out.notes).toBe("Ask first.");
+    expect(out.notes).toBe(`Ask first. Correct idea: ${correction}`);
   });
 
   test("a writer's free text is replaced", () => {
@@ -1783,7 +1783,7 @@ describe("withComposedMisconception (TEACH-87): the COMMON MISTAKE card is compo
       [],
     );
     expect(text(out)).toBe("Thinking that particles expand when heated.");
-    expect(out.notes).toBe(`Ask first. In fact, ${long}`);
+    expect(out.notes).toBe(`Ask first. Correct idea: ${long}`);
   });
 
   test("de-dupe: the slide's key idea already says the correction", () => {
