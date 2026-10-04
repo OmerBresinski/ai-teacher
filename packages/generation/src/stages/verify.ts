@@ -218,6 +218,9 @@ export function applyVerifyPatch(
       applied.push(c);
       continue;
     }
+    // TEACH-87: a misconception's belief is false on purpose (the COMMON MISTAKE card shows it),
+    // so a "correction" that makes it true is dropped here; only its correction is checked.
+    if (c.field === "belief") continue;
     const array = verifiableArrayOf(c.factId);
     if (!array) continue;
     const list = next[array] as { id: string }[] | undefined;

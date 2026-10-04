@@ -5,7 +5,7 @@ import type {
   LessonPhase,
   OutlineEntry,
 } from "@tj/domain/documents";
-import { SPEC_LIMITS } from "@tj/slides";
+import { CALLOUT_LABELS, SPEC_LIMITS } from "@tj/slides";
 import { figureBlock, figureShownBlock } from "./figures";
 import {
   type Audience,
@@ -224,7 +224,9 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  version: "generate-slide.v31",
+  // v36 (TEACH-87): the watch-out line names the card's label and asks for the belief, negated.
+  // v32–v35 were used on lab branches only, so production goes v31 → v36 to keep evals unambiguous.
+  version: "generate-slide.v36",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -311,6 +313,13 @@ export const generateSlidePrompt = {
       parts.push(
         `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
       );
+      // TEACH-87: unframed, the writer copied the correction under COMMON MISTAKE. "Negated with
+      // 'not'" is the measured form (KB openai.md 2026-09-27, 11 of 11); a plain belief reads as true.
+      if (kind === "watch-out") {
+        parts.push(
+          `The card is labelled ${CALLOUT_LABELS[kind]}: its text is the belief pupils hold, negated with "not" so it cannot be copied down as true (for example "The Moon does not make its own light.").`,
+        );
+      }
     }
     const misconceptions = ownMisconceptions(input);
     if (misconceptions.length > 0) {

@@ -18,6 +18,28 @@ const c = (over: Partial<VerifyCorrection>): VerifyCorrection => ({
 });
 
 describe("applyVerifyPatch", () => {
+  test("TEACH-87: a misconception's belief is wrong on purpose, so a belief correction is skipped", () => {
+    const before = facts();
+    const m = before.misconceptions[0];
+    const { facts: after, applied } = applyVerifyPatch(before, [
+      c({
+        factId: m?.id ?? "m1",
+        field: "belief",
+        value: "A true statement.",
+        reason: "false-statement",
+      }),
+      c({
+        factId: m?.id ?? "m1",
+        field: "correction",
+        value: "The fixed correction.",
+        reason: "false-statement",
+      }),
+    ]);
+    expect(after.misconceptions[0]?.belief).toBe(m?.belief as string);
+    expect(after.misconceptions[0]?.correction).toBe("The fixed correction.");
+    expect(applied.map((x) => x.field)).toEqual(["correction"]);
+  });
+
   test("row 1: a term correction replaces that field only; the input is untouched", () => {
     const before = facts();
     const { facts: after, applied } = applyVerifyPatch(before, [c({})]);

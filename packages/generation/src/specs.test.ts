@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { LessonFactsSchema } from "@tj/domain/documents";
-import { isEditorialIssue, slideSpecSchemaFor } from "@tj/slides";
+import { LessonFactsSchema, type OutlineCallout } from "@tj/domain/documents";
+import { isEditorialIssue, type SlideSpec, slideSpecSchemaFor } from "@tj/slides";
 import { z } from "zod";
 import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   askableAsStem,
   assignFactIds,
+  checkedCallout,
   distractorsEchoingAnswer,
   EMPTY_PLAN_FACTS,
   EvaluateOutputSchema,
@@ -1669,5 +1670,63 @@ describe("assignFactIds keeps a question's declared key ideas (lab round 1, test
     expect(facts.questions[0]?.keyIdeaRefs).toEqual(["k1"]);
     expect(facts.questions[0]).not.toHaveProperty("forms");
     expect(facts.questions[1]).not.toHaveProperty("keyIdeaRefs");
+  });
+});
+
+describe("checkedCallout (TEACH-87): a COMMON MISTAKE card never states the correct fact", () => {
+  const glucose = {
+    id: "m1",
+    belief: "plants store the extra glucose they make as glucose",
+    correction: "Plants usually change extra glucose into starch before storing it.",
+    objectiveRefs: ["o3"],
+  };
+  const spec = (kind: "watch-out" | "example", text: string): SlideSpec => ({
+    kind: "content",
+    heading: "H",
+    body: "B",
+    factRefs: ["k1"],
+    callout: { kind, text },
+  });
+  const watch: OutlineCallout = { kind: "watch-out", factRefs: ["m1"] };
+
+  test("a card that restates the correction falls back to the belief from the facts", () => {
+    const out = checkedCallout(
+      spec("watch-out", "Plants usually change extra glucose into starch before storing it."),
+      watch,
+      [glucose],
+    );
+    expect(out.fellBack).toBe(true);
+    expect("callout" in out.spec && out.spec.callout?.text).toBe(
+      "Plants store the extra glucose they make as glucose.",
+    );
+  });
+
+  test("a card that names the belief negated is kept as written", () => {
+    const text = "Plants do not store the extra glucose as glucose.";
+    const out = checkedCallout(spec("watch-out", text), watch, [glucose]);
+    expect(out.fellBack).toBe(false);
+    expect("callout" in out.spec && out.spec.callout?.text).toBe(text);
+  });
+
+  test("a card that names the belief and adds the correction is kept", () => {
+    const text = "Plants do not store glucose as glucose; they change it into starch.";
+    expect(checkedCallout(spec("watch-out", text), watch, [glucose]).fellBack).toBe(false);
+  });
+
+  test("a bare belief, as pupils hold it, is kept", () => {
+    const text = "Plants store the extra glucose they make as glucose.";
+    expect(checkedCallout(spec("watch-out", text), watch, [glucose]).fellBack).toBe(false);
+  });
+
+  test("other kinds, and a watch-out with no matching misconception, are untouched", () => {
+    const ex = spec("example", "Plants usually change extra glucose into starch.");
+    expect(checkedCallout(ex, { kind: "example", factRefs: ["k1"] }, [glucose]).fellBack).toBe(
+      false,
+    );
+    const w = spec("watch-out", "Plants usually change extra glucose into starch.");
+    expect(checkedCallout(w, { kind: "watch-out", factRefs: ["m9"] }, [glucose]).fellBack).toBe(
+      false,
+    );
+    expect(checkedCallout(w, undefined, [glucose]).fellBack).toBe(false);
   });
 });

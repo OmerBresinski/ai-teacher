@@ -29,6 +29,7 @@ import {
   verifyFactsPrompt,
 } from "../prompts";
 import {
+  checkedCallout,
   isOutlineFromFacts,
   retrievalIndexOf,
   verifiableArrayOf,
@@ -282,7 +283,16 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       maxOutputTokens: MAX_OUTPUT_TOKENS.slide,
     });
     // Lab only: the model lists the answer first, so the options go out in a seeded order.
-    const answer = withFactFigure(call.output, factFigure);
+    const figured = withFactFigure(call.output, factFigure);
+    // TEACH-87: a COMMON MISTAKE card that restates the correction falls back to the belief.
+    const checked = checkedCallout(figured, entry.callout, builtFrom.misconceptions);
+    if (checked.fellBack) {
+      deps.logger.warn(
+        { stage: "generate", call: "slide", index: i, reason: "callout-correction" },
+        "watch-out callout restated the correction; showing the belief instead",
+      );
+    }
+    const answer = checked.spec;
     const spec = calloutsAssigned ? withShuffledOptions(answer, `${lesson.id}:${i}`) : answer;
     const captioned = withImageCaption(spec, entry);
     const slide = materialiseSlide(

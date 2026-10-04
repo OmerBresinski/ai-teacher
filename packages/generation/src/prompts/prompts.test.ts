@@ -234,8 +234,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // v23 changed only a user-turn block the sample (no `laterQuestions`) does not render, and so
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
-    // (the "shows" block for a diagram whose fact carries the figure, TEACH-253).
-    version: "generate-slide.v31",
+    // (the "shows" block for a diagram whose fact carries the figure, TEACH-253), and v36 (the
+    // COMMON MISTAKE line on a watch-out callout, TEACH-87; pinned by the G3 test below).
+    version: "generate-slide.v36",
     hash: "6e19bf04d42c8b2e00edbd90941a3e5da1382ca556b63771755e5b3f2d7fa8bd",
   },
   "generate-worksheet": {
@@ -851,6 +852,14 @@ describe("prompt versions", () => {
     expect(withBox).toContain(
       'This slide carries a "watch-out" callout: set `callout` to kind "watch-out" with `text` one line for pupils, from m1 only.',
     );
+    // TEACH-87: the writer is told the card's label and that the text is the belief, negated.
+    expect(withBox).toContain("labelled COMMON MISTAKE");
+    expect(withBox).toContain('negated with "not"');
+    const example = PROMPTS["generate-slide"].user({
+      ...base,
+      entry: { kind: "content", factRefs: ["k1"], callout: { kind: "example", factRefs: ["k1"] } },
+    } as never);
+    expect(example).not.toContain("COMMON MISTAKE");
     const without = PROMPTS["generate-slide"].user({
       ...base,
       entry: { kind: "content", factRefs: ["k1"] },
