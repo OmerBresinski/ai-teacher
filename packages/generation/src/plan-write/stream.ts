@@ -52,6 +52,7 @@ export function streamLessonSchema(menu: readonly PlanMenuEntry[]) {
   return z.object({
     misconception: planLessonSchema.shape.misconception,
     objectives: planLessonSchema.shape.objectives,
+    keyTerms: z.array(z.string()).describe("the lesson's key terms, each as the slides write it"),
     runningExample: planLessonSchema.shape.runningExample,
     titlePicture: planLessonSchema.shape.titlePicture,
     plan: planLessonSchema.shape.slides,
@@ -63,6 +64,7 @@ export function streamLessonSchema(menu: readonly PlanMenuEntry[]) {
 export const streamLessonLenient = z.object({
   misconception: z.string(),
   objectives: z.array(z.string()).min(1),
+  keyTerms: z.array(z.string()).catch([]).default([]),
   runningExample: z.string(),
   titlePicture: z
     .object({

@@ -236,12 +236,14 @@ const TESTING = new Set([
  */
 export function untaughtTerms(
   slides: readonly PassSlide[],
+  /** lab/cand-fix: the lesson's key terms (stream header), keys as much as the plan's. */
+  keyTerms: readonly string[] = [],
 ): { number: number; field: string; terms: string[] }[] {
   const ordered = [...slides].sort((a, b) => a.number - b.number);
   const keys = new Set(
-    ordered
-      .flatMap((s) => [...s.row.teaches, ...s.row.tests])
-      .flatMap((k) => wordsOf(k.replace(/-/g, " "))),
+    [...ordered.flatMap((s) => [...s.row.teaches, ...s.row.tests]), ...keyTerms].flatMap((k) =>
+      wordsOf(k.replace(/-/g, " ")),
+    ),
   );
   const keyStems = new Map([...keys].map((k) => [stem(k), k]));
   const shown = new Set<string>();

@@ -100,9 +100,17 @@ const OFF_MENU = new Set(["hinge/stacked"]);
  */
 const OFF_MENU_FORMS = new Set<string>(["figure", "exit-ticket"]);
 
+/**
+ * A teach body's chunks carry no line count (lab/cand-fix, stream-lesson.v22): the count pushed
+ * definitions and the running case into the notes. Fit is measured on the drawn slide, and a slide
+ * that overruns gets the fit re-write.
+ */
+const CHUNK_LINES = /, (?:at most \d+ lines|one line) each(?= \(each its own part)/;
+export const withoutChunkLines = (text: string): string => text.replace(CHUNK_LINES, "");
+
 /** A layout's contract text; a diagram slot's diagram is written as a diagram spec. */
 function contractLines(form: PaletteFormId, layout: string): string {
-  const text = contractText(form, layout);
+  const text = withoutChunkLines(contractText(form, layout));
   if (form !== "diagram-slot") return text;
   return text
     .split("\n")
@@ -149,7 +157,13 @@ export function contractFor(form: string, layout: string): string {
 export function slideWriterSchema(form: string, layout: string) {
   const written = isSetForm(form) ? setSchema(form) : writerSchema(form as PaletteFormId, layout);
   // A diagram slot's diagram is the drawing's spec (the diagram renderer draws it), not a brief.
-  const base = form === "diagram-slot" ? written.extend({ diagram: DiagramSpecSchema }) : written;
+  const drawnBase =
+    form === "diagram-slot" ? written.extend({ diagram: DiagramSpecSchema }) : written;
+  const body = (drawnBase.shape as Record<string, z.ZodType | undefined>).body;
+  const base =
+    body?.description && CHUNK_LINES.test(body.description)
+      ? drawnBase.extend({ body: body.describe(withoutChunkLines(body.description)) })
+      : drawnBase;
   // Notes first: said aloud, answer first on a question slide (write-slides.v1).
   return z
     .object({ notes: z.string().describe("what the teacher says and does with this slide") })

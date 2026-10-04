@@ -37,8 +37,9 @@ describe("F1 checks in code (checksToInsert)", () => {
       }),
     ];
     const got = checksToInsert(plan);
-    expect(got.map((g) => g.after)).toEqual([3, 4]);
-    expect(got.map((g) => g.row.objectives)).toEqual([[1], [2]]);
+    // lab/cand-fix: objective 2 ends on a worked example, which is checked as it is taught.
+    expect(got.map((g) => g.after)).toEqual([3]);
+    expect(got.map((g) => g.row.objectives)).toEqual([[1]]);
     expect(got[0]?.row).toMatchObject({ role: "check", form: "check-set", tests: ["states"] });
   });
 

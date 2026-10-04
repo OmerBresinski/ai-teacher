@@ -47,7 +47,12 @@ import { WRITE_RULES } from "./write-slides";
  * the templates first. No swap changed. */
 /* v20 (spike/fmt): write-slides.v25 (no em dashes; practise items unnumbered, the slide numbers them). */
 /* v21 (round S): the reasoned-step contract line gives a worded example beside the maths one. */
-export const STREAM_LESSON_VERSION = "stream-lesson.v21";
+/* v22 (lab/cand-fix, audit problems 1, 3, 4): write-slides.v26 (checks apply the idea to a new case;
+ * no answer word in a question; key terms and the running example on the slide). A keyTerms header
+ * field, written before the slides: code finds each term's first on-screen use, marks it for the
+ * renderer and gates it (a term asked before any slide shows it). The chunk contract lines lose
+ * their "at most N lines each" (plan-write/menu.ts): fit is measured on the drawn slide. */
+export const STREAM_LESSON_VERSION = "stream-lesson.v22";
 
 export type StreamLessonInput = Omit<PlanLessonInput, "repair">;
 
@@ -60,6 +65,10 @@ function swap(text: string, from: string, to: string): string {
 
 /** The swaps on the shared rules, in order: [from, to]. Exported for the tests. */
 export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
+  [
+    "- runningExample:",
+    '- keyTerms: the subject terms pupils learn in this lesson and use by its end, each written as the slides write it ("hyperinflation", "activation energy"). Each is defined on the slide where it first appears.\n- runningExample:',
+  ],
   ["- slides: one row for each slide", "- plan: one row for each slide"],
   ["the writer adds the detail", "the slide adds the detail"],
   [
@@ -75,8 +84,8 @@ export const STREAM_SWAPS: readonly (readonly [string, string])[] = [
     "Each check question has exactly one defensible answer; work it out before you write it, and the slide's answer and the notes give the same one.",
   ],
   [
-    "A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it. A retrieve or hook slide asks about what the class already knows.",
-    "A check, hinge or practise slide asks about what its tests name, as the earlier slides that teach them state it; every term a pupil must know to answer it is on an earlier slide. A retrieve slide asks about what earlier lessons taught and this lesson builds on, never a term or fact this lesson teaches; a hook asks about what the class already knows.",
+    "A retrieve or hook slide asks about what the class already knows.",
+    "Every term a pupil needs to answer it is on an earlier slide. A retrieve slide asks about what earlier lessons taught and this lesson builds on, never a term or fact this lesson teaches; a hook asks about what the class already knows.",
   ],
 ];
 

@@ -216,8 +216,10 @@ export function checksToInsert(slides: readonly PlanSlide[]): InsertedCheck[] {
   for (const [o, rows] of [...teachOf.entries()].sort((a, b) => a[0] - b[0])) {
     const last = Math.max(...rows);
     const taught = new Set(rows.flatMap((i) => slides[i]?.teaches ?? []));
-    let checked = false;
-    for (let j = last + 1; j < slides.length; j++) {
+    // lab/cand-fix: a worked example is checked as it is taught (its notes ask the class for each
+    // line), so a quick check straight after it would only repeat its numbers (audit problem 1).
+    let checked = ["worked-example", "hinge"].includes(slides[last]?.form ?? "");
+    for (let j = last + 1; !checked && j < slides.length; j++) {
       const s = slides[j] as PlanSlide;
       if (s.role === "teach") break;
       if (
@@ -252,7 +254,7 @@ export function checksToInsert(slides: readonly PlanSlide[]): InsertedCheck[] {
           objectives: objs,
           tests,
           teaches: [],
-          purpose: `quick check on objective ${objs.join(" and ")} as just taught`,
+          purpose: `quick check on objective ${objs.join(" and ")}: the ideas just taught, applied to a new case or new numbers`,
           parts: 3,
           form: "check-set",
           layout: "default",

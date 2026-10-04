@@ -15,7 +15,11 @@ import { type Audience, audienceBlock, example } from "./shared";
 /* v4 (round R): two kinds a slide check misses, from round Q's judged faults: an answer key that
  * rejects other answers a teacher would accept, and a claim stated as always true that is only
  * generally true. */
-export const MASTER_CHECK_VERSION = "master-check.v4";
+/* v5 (lab/cand-fix, audit problems 1 and 3): two kinds code only partly sees: a question answered by
+ * reading (its answer's words in it, the answer beside it, or a case an earlier slide worked through),
+ * and teaching a later slide relies on that only a slide's notes give. A fix that adds teaching to a
+ * slide may lengthen its field (the fit re-write still runs). */
+export const MASTER_CHECK_VERSION = "master-check.v5";
 
 export const MASTER_CHECK_KINDS = [
   "join",
@@ -25,6 +29,8 @@ export const MASTER_CHECK_KINDS = [
   "duplicate",
   "key",
   "overgeneralised",
+  "giveaway",
+  "notes-only",
 ] as const;
 
 export type MasterCheckSlide = {
@@ -65,9 +71,11 @@ const SYSTEM = [
   "- contradiction: two slides, or a slide and its notes, disagree (a practise slide's notes answer a numbered item the slide does not have, or skip one it has; their challenge for early finishers belongs there);",
   "- duplicate: a slide repeats what another slide already says;",
   "- key: for every question with an answer (starter items included), list to yourself the other answers a teacher would accept for the question as asked; when any is right, widen the answer to accept them or rewrite the question so it has one defensible answer;",
-  "- overgeneralised: a claim stated as true of all or always that is only generally true at this level; qualify it or name the exception.",
+  "- overgeneralised: a claim stated as true of all or always that is only generally true at this level; qualify it or name the exception;",
+  "- giveaway: a question pupils can answer by reading instead of recalling or applying: its answer's words are in the question, its slide shows the answer, or it repeats a case or numbers an earlier slide worked through; ask it on a new case or new numbers;",
+  "- notes-only: a question or a later slide relies on a term, case or quotation that only a slide's notes give; write it into the text of the slide whose notes give it.",
   "",
-  "For each problem, name the slide and the one field to write again, and say in the problem what is wrong and what the field should do, quoting the other slide where it helps. The fixed slides are never changed. A fix keeps the field's length and keeps the teaching on the slide. Return an empty list when none of these problems is there.",
+  "For each problem, name the slide and the one field to write again, and say in the problem what is wrong and what the field should do, quoting the other slide where it helps. The fixed slides are never changed. A fix keeps the field's length, unless it adds teaching to a slide, and keeps the teaching on the slide. Return an empty list when none of these problems is there.",
   "",
   "Answer as JSON in exactly this shape:",
   example(EXAMPLE),

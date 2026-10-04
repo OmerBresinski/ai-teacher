@@ -79,6 +79,17 @@ import {
   withoutClaim,
   wrongSums,
 } from "../plan-write/gates";
+import {
+  answersOf,
+  boldTerm,
+  cleanTerms,
+  firstUses,
+  giveaways,
+  hasTerm,
+  onScreen,
+  termsOffSlide,
+  visualHolds,
+} from "../plan-write/giveaway";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
@@ -684,7 +695,15 @@ export type PlanWriteReport = {
   diagramRungs?: Record<string, "settled" | "simpler" | "commons" | "photo" | "fullWidth">;
 };
 
-export type GateName = "caption" | "diagram" | "checkPicture" | "arithmetic" | "untaught";
+export type GateName =
+  | "caption"
+  | "diagram"
+  | "checkPicture"
+  | "arithmetic"
+  | "untaught"
+  | "giveaway"
+  | "termOffSlide"
+  | "reusedVisual";
 export type GateCount = { hit: number; fixed: number; fallback: number; slides: number[] };
 
 export async function planWriteSlides(
@@ -1180,7 +1199,13 @@ export async function planWriteSlides(
     checkPicture: { hit: 0, fixed: 0, fallback: 0, slides: [] },
     arithmetic: { hit: 0, fixed: 0, fallback: 0, slides: [] },
     untaught: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    giveaway: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    termOffSlide: { hit: 0, fixed: 0, fallback: 0, slides: [] },
+    reusedVisual: { hit: 0, fixed: 0, fallback: 0, slides: [] },
   };
+  /** lab/cand-fix: the stream's key terms, and every new gate's flags with what they found. */
+  let keyTerms: string[] = [];
+  const gateFlags: { gate: GateName; slide: number; detail: string; outcome?: string }[] = [];
   const gateHit = (g: GateName, n: number) => {
     gates[g].hit += 1;
     gates[g].slides.push(n);
@@ -1738,6 +1763,7 @@ export async function planWriteSlides(
       slides: (w.plan ?? []).filter((r): r is string => typeof r === "string"),
     });
     const c = checkPlan(plan, { slideCount, menu });
+    keyTerms = cleanTerms(w.keyTerms ?? []);
     const problems = [
       ...unreadable.map((n) => ({
         rule: "form" as const,
@@ -2526,6 +2552,125 @@ export async function planWriteSlides(
     }
   };
 
+  /**
+   * lab/cand-fix, audit problem 1: a keyed question whose stem holds its answer's words, or that
+   * re-uses the numbers an earlier slide worked with. One targeted re-write of that field, re-gated;
+   * then the item comes out when the set keeps two; otherwise a finding.
+   */
+  const giveawayGate = async () => {
+    const flags = giveaways(passSlides(), brief.topic);
+    const bySlide = new Map<string, typeof flags>();
+    for (const f of flags) {
+      const k = `${f.number}:${f.field}`;
+      bySlide.set(k, [...(bySlide.get(k) ?? []), f]);
+    }
+    await Promise.all(
+      [...bySlide.values()].map(async (list) => {
+        const first = list[0] as (typeof flags)[number];
+        const { number: n, field } = first;
+        gateHit("giveaway", n);
+        const still = (o: Written) =>
+          giveaways(
+            passSlides().map((x) => (x.number === n ? { ...x, out: o } : x)),
+            brief.topic,
+          ).some((f) => f.number === n && f.field === field);
+        const what = list
+          .map((f) =>
+            f.kind === "answer-in-stem"
+              ? `${f.item !== undefined ? `question ${f.item + 1}: ` : ""}${f.detail}, so reading it answers it`
+              : `${f.item !== undefined ? `question ${f.item + 1}: ` : ""}${f.detail}, so pupils copy rather than recall`,
+          )
+          .join("; ");
+        const ok = await gateFix(
+          n,
+          field,
+          `${what}. Ask each such question on a new case or new numbers, with no word of its answer in it, so pupils must recall or apply the idea; keep the other items as they are`,
+          still,
+        ).catch(() => false);
+        if (ok) {
+          gates.giveaway.fixed += 1;
+          for (const f of list)
+            gateFlags.push({
+              gate: "giveaway",
+              slide: n,
+              detail: `${f.kind}: ${f.detail}`,
+              outcome: "fixed",
+            });
+          return;
+        }
+        gates.giveaway.fallback += 1;
+        const p = placed.find((x) => x.index === n - 1);
+        const bad = new Set(list.map((f) => f.item).filter((i): i is number => i !== undefined));
+        const cut =
+          p && field === "questions" && Array.isArray(p.out.questions) && bad.size > 0
+            ? (() => {
+                const kept = (p.out.questions as unknown[]).filter((_, i) => !bad.has(i));
+                return kept.length >= 1 && kept.length < (p.out.questions as unknown[]).length
+                  ? { ...p.out, questions: kept }
+                  : undefined;
+              })()
+            : undefined;
+        const set = cut ? await gateSet(n, cut) : false;
+        for (const f of list)
+          gateFlags.push({
+            gate: "giveaway",
+            slide: n,
+            detail: `${f.kind}: ${f.detail}`,
+            outcome: set ? "item removed" : "kept, reported",
+          });
+        if (!set) gateFinding(n, `Slide ${n}: ${what}.`);
+      }),
+    );
+  };
+
+  /**
+   * lab/cand-fix, audit problems 3 and 4: a key term first on screen on a question slide, or only in
+   * notes. One re-write of the target teach slide's body defining the term; else reported (the
+   * untaught gate after this then re-asks the question itself).
+   */
+  const termGate = async () => {
+    const flags = termsOffSlide(passSlides(), keyTerms);
+    const byTarget = new Map<number, typeof flags>();
+    for (const f of flags) {
+      gateHit("termOffSlide", f.askedOn ?? f.target ?? 0);
+      if (f.target === undefined) {
+        gates.termOffSlide.fallback += 1;
+        gateFlags.push({
+          gate: "termOffSlide",
+          slide: f.askedOn ?? 0,
+          detail: `${f.kind}: "${f.term}"`,
+          outcome: "no teach slide to put it on",
+        });
+        continue;
+      }
+      byTarget.set(f.target, [...(byTarget.get(f.target) ?? []), f]);
+    }
+    await Promise.all(
+      [...byTarget.entries()].map(async ([n, list]) => {
+        const terms = list.map((f) => `"${f.term}"`).join(", ");
+        const asked = list
+          .filter((f) => f.askedOn)
+          .map((f) => `slide ${f.askedOn} asks about "${f.term}"`);
+        const still = (o: Written) => list.some((f) => !hasTerm(onScreen(o), f.term));
+        const ok = await gateFix(
+          n,
+          "body",
+          `the lesson's key term${list.length > 1 ? "s" : ""} ${terms} ${list.length > 1 ? "are" : "is"} defined on no slide${asked.length ? ` (${asked.join("; ")})` : ""}, and this slide is where the lesson teaches it. Define each on this slide, in the body, where the slide's idea uses it; keep the other parts of the body`,
+          still,
+        ).catch(() => false);
+        if (ok) gates.termOffSlide.fixed += 1;
+        else gates.termOffSlide.fallback += 1;
+        for (const f of list)
+          gateFlags.push({
+            gate: "termOffSlide",
+            slide: n,
+            detail: `${f.kind}: "${f.term}"${f.askedOn ? ` asked on slide ${f.askedOn}` : ""}`,
+            outcome: ok ? "defined on slide" : "not fixed",
+          });
+      }),
+    );
+  };
+
   const runGates = async () => {
     const exempt = `${brief.topic} ${base.title}`;
     const named = (o: Written) =>
@@ -2591,13 +2736,16 @@ export async function planWriteSlides(
     }
     await Promise.all(work);
     work.length = 0;
-    for (const u of untaughtTerms(passSlides())) {
+    await giveawayGate();
+    await termGate();
+    for (const u of untaughtTerms(passSlides(), keyTerms)) {
       gateHit("untaught", u.number);
       const q = u.terms.map((t) => `"${t}"`).join(", ");
       const still = (o: Written) =>
-        untaughtTerms(passSlides().map((x) => (x.number === u.number ? { ...x, out: o } : x))).some(
-          (x) => x.number === u.number && x.field === u.field,
-        );
+        untaughtTerms(
+          passSlides().map((x) => (x.number === u.number ? { ...x, out: o } : x)),
+          keyTerms,
+        ).some((x) => x.number === u.number && x.field === u.field);
       work.push(
         (async () => {
           const ok = await gateFix(
@@ -2627,7 +2775,7 @@ export async function planWriteSlides(
     await writing;
     // Round S: once every re-write has landed (checks, master check, the gates above), the whole
     // lesson again, the exit items included; what still asks about an untaught term is reported.
-    for (const u of untaughtTerms(passSlides())) {
+    for (const u of untaughtTerms(passSlides(), keyTerms)) {
       const message = `Slide ${u.number} asks about ${u.terms.map((t) => `"${t}"`).join(", ")}, which no earlier slide teaches.`;
       if (!findings.some((f) => f.message === message)) gateFinding(u.number, message);
     }
@@ -2675,6 +2823,26 @@ export async function planWriteSlides(
         gates.checkPicture.fallback += 1;
         continue;
       }
+      // lab/cand-fix: a teach picture whose own words hold this slide's answer stays where it taught.
+      const holds = diagrams[String(source.index + 1)]
+        ? visualHolds(
+            flat(diagrams[String(source.index + 1)]),
+            answersOf(p.plan.form, p.out),
+            brief.topic,
+          )
+        : undefined;
+      if (holds) {
+        gateHit("reusedVisual", n);
+        gates.reusedVisual.fallback += 1;
+        gates.checkPicture.fallback += 1;
+        gateFlags.push({
+          gate: "reusedVisual",
+          slide: n,
+          detail: `slide ${source.index + 1}'s picture holds the answer ${holds}`,
+          outcome: "not moved",
+        });
+        continue;
+      }
       const spec = diagrams[String(source.index + 1)];
       const photo = photoOf.get(source.index);
       let k = 0;
@@ -2707,6 +2875,10 @@ export async function planWriteSlides(
       await updateSlide(p.index, () => next);
     }
     deps.logger.info({ stage: "generate", call: "gates", gates, diagramRungs }, "quality gates");
+    deps.logger.info(
+      { stage: "generate", call: "gate-flags", keyTerms, flags: gateFlags },
+      "cand-fix gate flags",
+    );
   };
 
   let finalFacts = facts;
@@ -2815,6 +2987,72 @@ export async function planWriteSlides(
         p.out = fitted.out;
       }
     }
+  }
+  if (mode === "stream" && keyTerms.length > 0) {
+    // lab/cand-fix, audit problem 4. The terms reach the renderer two ways: the lesson's
+    // `facts.vocabulary` (what TEACH-150's `lessonKeyTerms` reads; the definition is the first
+    // on-screen sentence that uses the term), and `slide.keyTerms`, the terms each teaching slide
+    // shows (index for index, what `withKeyTerms` takes per slide). For the lab's screenshots each is
+    // set bold here at its first use on each teaching slide, never in a heading or on a question
+    // slide (UX ruling 150).
+    const slides = passSlides();
+    const first = firstUses(slides, keyTerms);
+    const sentenceWith = (term: string): string => {
+      const n = first.get(term);
+      const shown = n ? onScreen(slides.find((x) => x.number === n)?.out ?? {}) : "";
+      return (
+        shown
+          .split(/(?<=[.!?])\s+/)
+          .find((t) => hasTerm(t, term))
+          ?.trim() ?? ""
+      );
+    };
+    const known = new Set(finalFacts.vocabulary.map((v) => v.term.toLowerCase()));
+    finalFacts = {
+      ...finalFacts,
+      vocabulary: [
+        ...finalFacts.vocabulary,
+        ...keyTerms
+          .filter((t) => !known.has(t.toLowerCase()))
+          .map((term, i) => ({ id: `kt${i + 1}`, term, definition: sentenceWith(term) })),
+      ],
+    };
+    const perSlide: Record<number, string[]> = {};
+    lesson = {
+      ...lesson,
+      slides: lesson.slides.map((slide, i) => {
+        const row = placed.find((x) => x.index === i);
+        if (!row || row.plan.role !== "teach" || QUESTION_FORMS.has(row.plan.form)) return slide;
+        const terms = keyTerms.filter((t) => hasTerm(onScreen(row.out), t));
+        if (terms.length === 0) return slide;
+        perSlide[i + 1] = terms;
+        let elements = slide.elements;
+        for (const term of terms) {
+          for (const [k, el] of elements.entries()) {
+            if (
+              el.type !== "text" ||
+              ["title", "subtitle", "heading"].includes(el.style.preset ?? "")
+            )
+              continue;
+            const b = boldTerm(el.doc, term);
+            if (!b.done) continue;
+            elements = elements.map((e, j) => (j === k ? { ...el, doc: b.doc } : e));
+            break;
+          }
+        }
+        return { ...slide, elements, keyTerms: terms } as typeof slide;
+      }),
+    };
+    deps.logger.info(
+      {
+        stage: "generate",
+        call: "key-terms",
+        keyTerms,
+        firstUse: Object.fromEntries(first),
+        perSlide,
+      },
+      "key terms marked",
+    );
   }
   lesson = asGenerated(lesson, finalFacts);
   if (!deps.signal.aborted) await deps.persist(lesson);
