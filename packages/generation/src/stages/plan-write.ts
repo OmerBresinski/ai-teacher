@@ -3033,7 +3033,12 @@ export async function planWriteSlides(
         ...finalFacts.vocabulary,
         ...keyTerms
           .filter((t) => !known.has(t.toLowerCase()))
-          .map((term, i) => ({ id: `kt${i + 1}`, term, definition: sentenceWith(term) })),
+          .map((term, i) => ({
+            // Fact ids are one letter and digits (FactIdSchema): v<n>, after the facts' own.
+            id: `v${finalFacts.vocabulary.length + i + 1}`,
+            term,
+            definition: sentenceWith(term),
+          })),
       ],
     };
     const perSlide: Record<number, string[]> = {};
