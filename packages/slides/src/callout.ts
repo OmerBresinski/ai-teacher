@@ -25,6 +25,7 @@ import {
   text,
 } from "./layouts";
 import { SAFE_BOTTOM } from "./metrics";
+import { shortMisconception } from "./misconception";
 import { isBackdrop, isFootBand, stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";
@@ -235,6 +236,21 @@ export type CalloutHost = "content" | "image-text" | "worked-example";
  * condition like a fifth step (TEACH-245), so it is dropped rather than crashing a generation.
  */
 export function applyCallout(
+  laid: Layout,
+  t: Theme,
+  kind: CalloutHost,
+  variant: string,
+  callout: CalloutSpec,
+): Layout {
+  const placed = calloutOnce(laid, t, kind, variant, callout);
+  // TEACH-87: a composed COMMON MISTAKE card that has no room whole falls back to the belief
+  // alone (the correction is in the notes); never a shortened sentence.
+  const short = callout.kind === "watch-out" ? shortMisconception(callout.text) : undefined;
+  if (placed !== laid || short === undefined) return placed;
+  return calloutOnce(laid, t, kind, variant, { ...callout, text: short });
+}
+
+function calloutOnce(
   laid: Layout,
   t: Theme,
   kind: CalloutHost,

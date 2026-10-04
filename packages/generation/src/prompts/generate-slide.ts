@@ -5,7 +5,7 @@ import type {
   LessonPhase,
   OutlineEntry,
 } from "@tj/domain/documents";
-import { CALLOUT_LABELS, SPEC_LIMITS } from "@tj/slides";
+import { SPEC_LIMITS } from "@tj/slides";
 import { figureBlock, figureShownBlock } from "./figures";
 import {
   type Audience,
@@ -224,9 +224,9 @@ export function ownMisconceptions(input: GenerateSlideInput): string[] {
 }
 
 export const generateSlidePrompt = {
-  // v36 (TEACH-87): the watch-out line names the card's label and asks for the belief, negated.
-  // v32–v35 were used on lab branches only, so production goes v31 → v36 to keep evals unambiguous.
-  version: "generate-slide.v36",
+  // v37 (TEACH-87): no watch-out line; code composes the COMMON MISTAKE card from the facts
+  // (`composeMisconception`). v32–v35 were lab-only numbers and v36 never shipped.
+  version: "generate-slide.v37",
   system: [
     "You write one slide of a classroom lesson from the lesson's facts.",
     "",
@@ -308,18 +308,13 @@ export const generateSlidePrompt = {
     if (input.neighbours.previous)
       parts.push(`The slide before adds: ${input.neighbours.previous}`);
     if (input.neighbours.next) parts.push(`The slide after adds: ${input.neighbours.next}`);
-    if (input.entry.callout) {
+    // TEACH-87: a watch-out card is composed in code from the misconception; the writer never
+    // writes it (unframed, it wrote the correction under COMMON MISTAKE).
+    if (input.entry.callout && input.entry.callout.kind !== "watch-out") {
       const { kind, factRefs } = input.entry.callout;
       parts.push(
         `This slide carries a "${kind}" callout: set \`callout\` to kind "${kind}" with \`text\` one line for pupils, from ${factRefs.join(", ")} only.`,
       );
-      // TEACH-87: unframed, the writer copied the correction under COMMON MISTAKE. "Negated with
-      // 'not'" is the measured form (KB openai.md 2026-09-27, 11 of 11); a plain belief reads as true.
-      if (kind === "watch-out") {
-        parts.push(
-          `The card is labelled ${CALLOUT_LABELS[kind]}: its text is the belief pupils hold, negated with "not" so it cannot be copied down as true (for example "The Moon does not make its own light.").`,
-        );
-      }
     }
     const misconceptions = ownMisconceptions(input);
     if (misconceptions.length > 0) {

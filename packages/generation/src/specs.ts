@@ -23,6 +23,7 @@ import {
 import {
   BlockSpecSchema,
   blockSpecUnion,
+  composeMisconception,
   editorialIssue,
   FIGURE_TEMPLATES,
   noPictureReference,
@@ -1469,49 +1470,36 @@ export function withAssignedCallout(
   }) as unknown as z.ZodType<SlideSpec>;
 }
 
-/** Content words of a line, crudely stemmed, for the callout check below. */
-const CALLOUT_STOP = new Set(
-  "the a an and or but of to in on at by for with from as is are was were be been it its that this they their them than then into not do does did no".split(
-    " ",
-  ),
-);
-function contentWords(text: string): Set<string> {
-  const words = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-  return new Set(
-    words
-      .filter((w) => w.length > 2 && !CALLOUT_STOP.has(w))
-      .map((w) => w.replace(/(ing|ed|es|s)$/, "").replace(/e$/, "")),
-  );
-}
-const share = (of: Set<string>, text: Set<string>): number =>
-  of.size === 0 ? 0 : [...of].filter((w) => text.has(w)).length / of.size;
-
 /**
- * TEACH-87: a "watch-out" box is labelled COMMON MISTAKE, so its text must carry the misconception's
- * belief, never the correct fact alone. Belief and correction share most words, so the check
- * compares only the words each has that the other lacks: a text with no negation that carries more
- * of the correction's own words than the belief's is the correction, and falls back to the belief as
- * the facts state it. A negated text ("… do not …") is the asked-for form and is kept.
- * Deterministic, no model call; other kinds pass through.
+ * TEACH-87 (UX ruling 151): a "watch-out" box is labelled COMMON MISTAKE, so its text is composed
+ * from the misconception's fields by `composeMisconception` ("Thinking that {belief}. In fact,
+ * {correction}."), never kept from the writer. No belief: the box is dropped. When the card holds
+ * the belief alone (past its fit, or the slide's key idea already says the correction), the
+ * correction goes to the notes. Other kinds pass through untouched.
  */
-export function checkedCallout<S extends SlideSpec>(
+export function withComposedMisconception<S extends SlideSpec>(
   spec: S,
   callout: OutlineCallout | undefined,
-  misconceptions: readonly { id: string; belief: string; correction: string }[],
-): { spec: S; fellBack: boolean } {
-  const box = "callout" in spec ? spec.callout : undefined;
-  if (callout?.kind !== "watch-out" || box?.kind !== "watch-out") return { spec, fellBack: false };
-  const m = misconceptions.find((x) => callout.factRefs.includes(x.id));
-  if (!m) return { spec, fellBack: false };
-  if (/\b(not|never|no)\b|n't\b/i.test(box.text)) return { spec, fellBack: false };
-  const text = contentWords(box.text);
-  const b = contentWords(m.belief);
-  const c = contentWords(m.correction);
-  const own = (x: Set<string>, y: Set<string>) => new Set([...x].filter((w) => !y.has(w)));
-  if (share(own(c, b), text) <= share(own(b, c), text)) return { spec, fellBack: false };
-  const said = m.belief.trim().replace(/[.;:,]*$/, ".");
-  const line = said.charAt(0).toUpperCase() + said.slice(1);
-  return { spec: { ...spec, callout: { ...box, text: line } }, fellBack: true };
+  facts: Pick<LessonFacts, "misconceptions" | "keyIdeas">,
+  factRefs: readonly string[],
+): S {
+  if (callout?.kind !== "watch-out") return spec;
+  const m = facts.misconceptions.find((x) => callout.factRefs.includes(x.id));
+  const keyIdeas = (facts.keyIdeas ?? [])
+    .filter((k) => factRefs.includes(k.id))
+    .map((k) => k.statement);
+  const composed = m && composeMisconception(m.belief, m.correction, { keyIdeas });
+  const { callout: _writer, ...rest } = spec as S & { callout?: unknown };
+  if (!m || !composed) return rest as S;
+  const correction = m.correction.trim();
+  const noted = `${spec.notes ? `${spec.notes} ` : ""}In fact, ${correction}`;
+  return {
+    ...rest,
+    callout: { kind: "watch-out", text: composed.text },
+    ...(!composed.correctionShown && correction && noted.length <= SPEC_LIMITS.notes
+      ? { notes: noted }
+      : {}),
+  } as S;
 }
 
 /** Repair asks for the same spec the target was generated from, one target at a time. */

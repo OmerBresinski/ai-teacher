@@ -39,11 +39,19 @@ const taught = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("plan-teach-objective", () => {
+  test("TEACH-87 (v5): the misconception is written for the composed COMMON MISTAKE card", () => {
+    const system = planTeachObjectivePrompt.system;
+    expect(system).toContain('"Thinking that <belief>. In fact, <correction>."');
+    expect(system).toContain('no leading "that", lower case unless a name, no full stop');
+    expect(system).toContain('"correction" as the true statement in one short sentence');
+  });
+
   test("the system text is v14's teach rules and nothing about questions", () => {
     const system = planTeachObjectivePrompt.system;
     const v14 = planFactsObjectivePrompt.system;
-    // v14 is 487 words; the questions took their rules with them. The alarm follows the count.
-    expect(system.trim().split(/\s+/).length).toBeLessThan(330);
+    // v14 is 487 words; the questions took their rules with them. The alarm follows the count
+    // (v5, TEACH-87: +45 words for the composed COMMON MISTAKE card's two fields).
+    expect(system.trim().split(/\s+/).length).toBeLessThan(370);
     expect(system).toContain("British English");
     expect(system).toContain("Never invent or include the name of any pupil");
     expect(system).not.toContain("factRefs");

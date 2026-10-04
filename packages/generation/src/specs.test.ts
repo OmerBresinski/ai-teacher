@@ -6,7 +6,6 @@ import { lessonShapeOf, OBJECTIVE_VERBS, PRIOR_CONFIDENCES } from "./shapes";
 import {
   askableAsStem,
   assignFactIds,
-  checkedCallout,
   distractorsEchoingAnswer,
   EMPTY_PLAN_FACTS,
   EvaluateOutputSchema,
@@ -17,6 +16,7 @@ import {
   verifyOutputSchemaFor,
   WorksheetSpecSchema,
   withAssignedCallout,
+  withComposedMisconception,
   worksheetSpecSchemaFor,
 } from "./specs";
 import { FIXTURES, PLAN_SKELETONS } from "./testing";
@@ -1673,60 +1673,142 @@ describe("assignFactIds keeps a question's declared key ideas (lab round 1, test
   });
 });
 
-describe("checkedCallout (TEACH-87): a COMMON MISTAKE card never states the correct fact", () => {
-  const glucose = {
-    id: "m1",
-    belief: "plants store the extra glucose they make as glucose",
-    correction: "Plants usually change extra glucose into starch before storing it.",
-    objectiveRefs: ["o3"],
-  };
-  const spec = (kind: "watch-out" | "example", text: string): SlideSpec => ({
+describe("withComposedMisconception (TEACH-87): the COMMON MISTAKE card is composed, never written", () => {
+  const m = (id: string, belief: string, correction: string) => ({
+    id,
+    belief,
+    correction,
+    objectiveRefs: ["o1"],
+  });
+  const facts = (misconceptions: ReturnType<typeof m>[], statements: string[] = []) => ({
+    misconceptions,
+    keyIdeas: statements.map((statement, i) => ({
+      id: `k${i + 1}`,
+      statement,
+      explanation: "E.",
+      example: "X.",
+      objectiveRefs: ["o1"],
+    })),
+  });
+  const spec = (callout?: { kind: "watch-out" | "example"; text: string }): SlideSpec => ({
     kind: "content",
-    heading: "H",
-    body: "B",
+    heading: "Heading",
+    body: "Body.",
     factRefs: ["k1"],
-    callout: { kind, text },
+    notes: "Ask first.",
+    ...(callout ? { callout } : {}),
   });
   const watch: OutlineCallout = { kind: "watch-out", factRefs: ["m1"] };
+  const text = (s: SlideSpec) => ("callout" in s ? s.callout?.text : undefined);
 
-  test("a card that restates the correction falls back to the belief from the facts", () => {
-    const out = checkedCallout(
-      spec("watch-out", "Plants usually change extra glucose into starch before storing it."),
+  test.each([
+    [
+      "glucose",
+      "plants store their extra glucose as glucose",
+      "They change it into starch first.",
+      "Thinking that plants store their extra glucose as glucose. In fact, they change it into starch first.",
+    ],
+    [
+      "chlorophyll",
+      "chlorophyll is food that plants eat",
+      "Chlorophyll only captures light energy.",
+      "Thinking that chlorophyll is food that plants eat. In fact, chlorophyll only captures light energy.",
+    ],
+    [
+      "weimar",
+      "printing money made Germany richer",
+      "Each mark bought less, so prices soared.",
+      "Thinking that printing money made Germany richer. In fact, each mark bought less, so prices soared.",
+    ],
+    [
+      "particles",
+      "particles expand when heated",
+      "Particles stay the same size and spread apart.",
+      "Thinking that particles expand when heated. In fact, particles stay the same size and spread apart.",
+    ],
+  ])("%s: composed from the facts, whatever the writer sent", (_, belief, correction, want) => {
+    const out = withComposedMisconception(spec(), watch, facts([m("m1", belief, correction)]), [
+      "k1",
+    ]);
+    expect(text(out)).toBe(want);
+    expect(out.notes).toBe("Ask first.");
+  });
+
+  test("a writer's free text is replaced", () => {
+    const out = withComposedMisconception(
+      spec({ kind: "watch-out", text: "Plants usually change extra glucose into starch." }),
       watch,
-      [glucose],
+      facts([m("m1", "plants store glucose as glucose", "They make starch.")]),
+      [],
     );
-    expect(out.fellBack).toBe(true);
-    expect("callout" in out.spec && out.spec.callout?.text).toBe(
-      "Plants store the extra glucose they make as glucose.",
+    expect(text(out)).toBe(
+      "Thinking that plants store glucose as glucose. In fact, they make starch.",
     );
   });
 
-  test("a card that names the belief negated is kept as written", () => {
-    const text = "Plants do not store the extra glucose as glucose.";
-    const out = checkedCallout(spec("watch-out", text), watch, [glucose]);
-    expect(out.fellBack).toBe(false);
-    expect("callout" in out.spec && out.spec.callout?.text).toBe(text);
-  });
-
-  test("a card that names the belief and adds the correction is kept", () => {
-    const text = "Plants do not store glucose as glucose; they change it into starch.";
-    expect(checkedCallout(spec("watch-out", text), watch, [glucose]).fellBack).toBe(false);
-  });
-
-  test("a bare belief, as pupils hold it, is kept", () => {
-    const text = "Plants store the extra glucose they make as glucose.";
-    expect(checkedCallout(spec("watch-out", text), watch, [glucose]).fellBack).toBe(false);
-  });
-
-  test("other kinds, and a watch-out with no matching misconception, are untouched", () => {
-    const ex = spec("example", "Plants usually change extra glucose into starch.");
-    expect(checkedCallout(ex, { kind: "example", factRefs: ["k1"] }, [glucose]).fellBack).toBe(
-      false,
+  test("older facts are normalised", () => {
+    const out = withComposedMisconception(
+      spec(),
+      watch,
+      facts([m("m1", "That Particles expand when heated.", "They do not.")]),
+      [],
     );
-    const w = spec("watch-out", "Plants usually change extra glucose into starch.");
-    expect(checkedCallout(w, { kind: "watch-out", factRefs: ["m9"] }, [glucose]).fellBack).toBe(
-      false,
+    expect(text(out)).toBe("Thinking that particles expand when heated. In fact, they do not.");
+  });
+
+  test("a missing belief drops the card", () => {
+    const out = withComposedMisconception(
+      spec({ kind: "watch-out", text: "Free text." }),
+      watch,
+      facts([m("m1", "", "True.")]),
+      [],
     );
-    expect(checkedCallout(w, undefined, [glucose]).fellBack).toBe(false);
+    expect("callout" in out && out.callout).toBeFalsy();
+    const none = withComposedMisconception(
+      spec({ kind: "watch-out", text: "Free text." }),
+      watch,
+      facts([]),
+      [],
+    );
+    expect("callout" in none && none.callout).toBeFalsy();
+  });
+
+  test("past the card's fit, the belief alone; the correction goes to the notes", () => {
+    const long =
+      "Particles stay exactly the same size and shape; when heated they gain energy, move faster and spread further apart.";
+    const out = withComposedMisconception(
+      spec(),
+      watch,
+      facts([m("m1", "particles expand when heated", long)]),
+      [],
+    );
+    expect(text(out)).toBe("Thinking that particles expand when heated.");
+    expect(out.notes).toBe(`Ask first. In fact, ${long}`);
+  });
+
+  test("de-dupe: the slide's key idea already says the correction", () => {
+    const out = withComposedMisconception(
+      spec(),
+      watch,
+      facts(
+        [
+          m(
+            "m1",
+            "plants store their extra glucose as glucose",
+            "Plants change extra glucose into starch before storing it.",
+          ),
+        ],
+        ["Plants use glucose for energy or change it into starch for storing"],
+      ),
+      ["k1"],
+    );
+    expect(text(out)).toBe("Thinking that plants store their extra glucose as glucose.");
+  });
+
+  test("other kinds pass through", () => {
+    const ex = spec({ kind: "example", text: "Potatoes store starch." });
+    expect(
+      withComposedMisconception(ex, { kind: "example", factRefs: ["k1"] }, facts([]), []),
+    ).toBe(ex);
   });
 });

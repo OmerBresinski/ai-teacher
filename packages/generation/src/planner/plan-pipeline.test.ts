@@ -272,14 +272,10 @@ describe("runPlannedLessonPipeline", () => {
     );
     expect(state.lesson.generation?.promptVersions.planned?.startsWith(PLANNED_VERSION)).toBe(true);
     expect(checkLesson(state.lesson).filter((f) => f.severity === "error")).toEqual([]);
-    // The lab's outline assigns callouts, so here (and only here) a slide written without its
-    // assigned box is an editorial miss the stubbed writer never supplies.
+    // The lab's outline assigns callouts. A watch-out box is composed in code from the
+    // misconception (TEACH-87), so the stubbed writer cannot miss it and the card reads as one.
     expect(report.callouts).toBeGreaterThan(0);
-    expect(
-      state.lesson.generation?.findings.some(
-        (f) => f.check === "spec-rule" && /callout/i.test(f.message),
-      ),
-    ).toBe(true);
+    expect(JSON.stringify(state.lesson.slides)).toContain("Thinking that");
     // Executed: the run reached the end. Complete: read off the outline and the documents, and
     // here nothing is missing. Accepted: the judge's.
     expect(status.executed).toBe(true);
@@ -289,9 +285,10 @@ describe("runPlannedLessonPipeline", () => {
     expect(status.complete).toBe(true);
 
     const versions = versionsOf(ai);
-    // Eight slides, plus the one Generate regenerated because it was written from the fact
-    // Verify corrected before the patch landed (TEACH-233).
-    expect(versions.filter((v) => v === "generate-slide").length).toBeGreaterThanOrEqual(8);
+    // The written slides, plus the one Generate regenerated because it was written from the fact
+    // Verify corrected before the patch landed (TEACH-233). Since TEACH-87 the stubbed writer is no
+    // longer retried for a watch-out box it never wrote, so the count fell from 8.
+    expect(versions.filter((v) => v === "generate-slide").length).toBeGreaterThanOrEqual(5);
     expect(versions.filter((v) => v === "verify-facts")).toHaveLength(1);
     expect(versions.filter((v) => v === "evaluate")).toHaveLength(1);
     // Verify ran alongside the slides: started before the first slide call was made.

@@ -219,8 +219,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "df1320b12a13e51dc2ccd6fb58e42b6e3b088c777a64b946e56845c847d1a651",
   },
   "plan-teach-objective": {
-    version: "plan-teach-objective.v4",
-    hash: "a26c54f5b2e16beb983fa2234f48ebbb561526811356c3f67298f4aeb411e293",
+    version: "plan-teach-objective.v5",
+    hash: "d6f6c2b82153142467c775215f52afd304ea2ea8618b77403c7e6391188614be",
   },
   "plan-question-set": {
     version: "plan-question-set.v7",
@@ -235,8 +235,9 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     // did v26 (the figure block, diagram entries only; pinned by its own test below), v27 (the
     // energy-profile figure block, TEACH-94), v28 (the triangle figure block, TEACH-221) and v29
     // (the "shows" block for a diagram whose fact carries the figure, TEACH-253), and v36 (the
-    // COMMON MISTAKE line on a watch-out callout, TEACH-87; pinned by the G3 test below).
-    version: "generate-slide.v36",
+    // COMMON MISTAKE line on a watch-out callout, TEACH-87) and v37 (no watch-out line: code composes
+    // that card, TEACH-87; both pinned by the G3 test below).
+    version: "generate-slide.v37",
     hash: "6e19bf04d42c8b2e00edbd90941a3e5da1382ca556b63771755e5b3f2d7fa8bd",
   },
   "generate-worksheet": {
@@ -849,17 +850,15 @@ describe("prompt versions", () => {
         callout: { kind: "watch-out", factRefs: ["m1"] },
       },
     } as never);
-    expect(withBox).toContain(
-      'This slide carries a "watch-out" callout: set `callout` to kind "watch-out" with `text` one line for pupils, from m1 only.',
-    );
-    // TEACH-87: the writer is told the card's label and that the text is the belief, negated.
-    expect(withBox).toContain("labelled COMMON MISTAKE");
-    expect(withBox).toContain('negated with "not"');
+    // TEACH-87 (v37): code composes the COMMON MISTAKE card, so a watch-out is never asked for.
+    expect(withBox).not.toContain("callout");
     const example = PROMPTS["generate-slide"].user({
       ...base,
       entry: { kind: "content", factRefs: ["k1"], callout: { kind: "example", factRefs: ["k1"] } },
     } as never);
-    expect(example).not.toContain("COMMON MISTAKE");
+    expect(example).toContain(
+      'This slide carries a "example" callout: set `callout` to kind "example" with `text` one line for pupils, from k1 only.',
+    );
     const without = PROMPTS["generate-slide"].user({
       ...base,
       entry: { kind: "content", factRefs: ["k1"] },
