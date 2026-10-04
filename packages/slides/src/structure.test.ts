@@ -26,6 +26,7 @@ import {
   STEP_ARROW_NAME,
   STEP_NAME,
   stepsStrip,
+  withoutStatement,
   workingAndReason,
 } from "./structure";
 import { getTheme } from "./themes";
@@ -313,6 +314,92 @@ describe("key card", () => {
         ["Word equation", "carbon dioxide + water → glucose + oxygen"],
       );
       expect(els.every((e) => !e.locked)).toBe(true);
+    });
+  }
+});
+
+describe("key card leaves no lead-in stub", () => {
+  const EQ = "carbon dioxide + water → glucose + oxygen";
+  const BODY =
+    "Plants take in carbon dioxide and water. Matter is rearranged, not created or destroyed. Word equation: carbon dioxide + water → glucose + oxygen.";
+  test("the reproduced slide: 'Word equation:' goes with the equation", () => {
+    expect(withoutStatement(BODY, EQ, "Word equation")).toEqual([
+      "Plants take in carbon dioxide and water.",
+      "Matter is rearranged, not created or destroyed.",
+    ]);
+  });
+  test("'Symbol equation:' goes too", () => {
+    expect(
+      withoutStatement(
+        "It needs light. Symbol equation: 6CO2 + 6H2O → C6H12O6 + 6O2.",
+        "6CO2 + 6H2O → C6H12O6 + 6O2",
+        "Symbol equation",
+      ),
+    ).toEqual(["It needs light."]);
+  });
+  test("a label with no colon goes, and 'The word equation is' goes", () => {
+    expect(withoutStatement(`Word equation ${EQ}. It needs light.`, EQ, "Word equation")).toEqual([
+      "It needs light.",
+    ]);
+    expect(
+      withoutStatement(`The word equation is ${EQ}. It needs light.`, EQ, "Word equation"),
+    ).toEqual(["It needs light."]);
+  });
+  test("an equation mid-sentence takes its label and leaves a clean sentence", () => {
+    expect(
+      withoutStatement(
+        `Plants make glucose, and the word equation is ${EQ}, using light energy.`,
+        EQ,
+        "Word equation",
+      ),
+    ).toEqual(["Plants make glucose, using light energy."]);
+    expect(
+      withoutStatement(
+        `Leaves use carbon dioxide and water: ${EQ}. Light is not an ingredient.`,
+        EQ,
+        "Word equation",
+      ),
+    ).toEqual(["Leaves use carbon dioxide and water.", "Light is not an ingredient."]);
+  });
+  test("a formula keeps the rest of its sentence", () => {
+    expect(
+      withoutStatement(
+        "Speed = distance ÷ time tells us how fast.",
+        "Speed = distance ÷ time",
+        "Formula",
+      ),
+    ).toEqual(["tells us how fast."]);
+  });
+  test("inferStructure takes a no-colon label off the card and out of the words", () => {
+    const got = inferStructure(
+      "Photosynthesis",
+      `Chlorophyll absorbs light. The word equation is ${EQ}. It needs light.`,
+    );
+    expect(got?.structure.keyCard).toEqual({ label: "Word equation", text: EQ });
+    expect([got?.lead, got?.rest]).toEqual(["Chlorophyll absorbs light.", "It needs light."]);
+  });
+  for (const keyCard of [undefined, { label: "Word equation", text: EQ }]) {
+    test(`the rendered slide has no 'Word equation' bullet (${keyCard ? "written" : "inferred"} card)`, () => {
+      const slide = materialiseSlide(
+        {
+          kind: "content",
+          factRefs: [],
+          heading: "Photosynthesis changes carbon dioxide and water into glucose and oxygen",
+          body: BODY,
+        },
+        "chalk",
+        meta,
+        undefined,
+        0,
+        keyCard ? { keyCard } : {},
+      );
+      const words = slide.elements
+        .filter((e) => e.type === "text")
+        .map((e) => text((e as TextElement).doc));
+      expect(words.some((w) => w.includes(EQ))).toBe(true);
+      // Only the card's own label names the equation; no "Word equation:." is left in the column.
+      expect(words.filter((w) => /equation/i.test(w))).toEqual(["WORD EQUATION"]);
+      expect(words.join(" ")).not.toMatch(/equation:\s*\./i);
     });
   }
 });
