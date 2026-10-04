@@ -48,4 +48,25 @@ describe("fit ladder (no slide is saved overflowing)", () => {
     expect(kept[kept.length - 1]).toBe(steps[5]);
     for (const m of r.moved) expect(String(r.out.notes)).toContain(m);
   });
+  test("at its fewest steps, a worked example moves each step's bracketed reason to the notes word for word", () => {
+    const steps = [
+      "Freud read the fear of horses as an Oedipal conflict with the boy's father, and he wrote this up at great length (this was his interpretation, not an observation anyone else could check)",
+      "The father supplied every report and followed Freud's guidance on what to ask the boy each week (so the evidence was not independent of the theory being tested)",
+      "So the case does not establish unconscious conflict as the cause of the fear (a fitting interpretation is not the same thing as proof of a cause)",
+    ];
+    const out = {
+      heading: "Evaluating a case study",
+      question:
+        "Does Freud's 1909 Little Hans case establish that unconscious conflict caused a five-year-old boy's fear of horses, given how its evidence was gathered?",
+      steps,
+      notes: "",
+    };
+    const r = fitLadder("worked-example", "default", out);
+    if (r.rung === "none") return;
+    expect(r.rung).toBe("moved");
+    expect(fitWritten(r.form, r.layout, r.out).ok).toBe(true);
+    const kept = r.out.steps as string[];
+    expect(kept[kept.length - 1]?.startsWith("So the case does not establish")).toBe(true);
+    for (const m of r.moved) expect(String(r.out.notes)).toContain(m);
+  });
 });

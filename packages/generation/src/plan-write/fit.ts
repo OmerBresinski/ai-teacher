@@ -503,9 +503,10 @@ export function fitLadder(
   }
   const tryMove = (f0: string, l0: string, o0: Written): Laddered | undefined => {
     let cur = o0;
+    let relaxed = false;
     const moved: string[] = [];
     let fit = fitWritten(f0, l0, cur);
-    for (let guard = 0; !fit.ok && guard < 8; guard++) {
+    for (let guard = 0; !fit.ok && guard < 24; guard++) {
       const field = MOVABLE.includes(fit.field)
         ? fit.field
         : MOVABLE.find((m) => Array.isArray(cur[m]));
@@ -513,11 +514,37 @@ export function fitLadder(
       if (!field || !Array.isArray(list)) return undefined;
       const min = Math.max(
         1,
-        isSetForm(f0)
+        relaxed || isSetForm(f0)
           ? 1
           : (slotContract(f0 as PaletteFormId, l0).slots.find((s) => s.field === field)?.min ?? 1),
       );
-      if (list.length <= min) return undefined;
+      if (list.length <= min) {
+        // A worked example at its fewest steps: each step's bracketed reason is a whole unit too,
+        // moved to the notes word for word, first step first (round 2b: Freud s9, Tempest s6/s9).
+        const k =
+          field === "steps"
+            ? list.findIndex((t) => typeof t === "string" && /\s\([^()]+\)\s*$/.test(t))
+            : -1;
+        if (k < 0) {
+          // Last rung: below the slot's minimum (a worked example keeps at least its answer line),
+          // still whole units word for word, so no slide is saved overflowing.
+          if (relaxed) return undefined;
+          relaxed = true;
+          continue;
+        }
+        const step = list[k] as string;
+        const reason = (step.match(/\(([^()]+)\)\s*$/) ?? [])[1] ?? "";
+        moved.push(`${step.replace(/\s*\([^()]+\)\s*$/, "")}: ${reason}`);
+        const notes =
+          typeof cur.notes === "string" && cur.notes.trim() ? `${cur.notes.trim()}\n` : "";
+        cur = {
+          ...cur,
+          [field]: list.map((t, i) => (i === k ? step.replace(/\s*\([^()]+\)\s*$/, "") : t)),
+          notes: `${notes}${step.replace(/\s*\([^()]+\)\s*$/, "")}: ${reason}`,
+        };
+        fit = fitWritten(f0, l0, cur);
+        continue;
+      }
       const at = field === "steps" ? list.length - 2 : list.length - 1;
       const unit = list[at];
       const text = typeof unit === "string" ? unit : JSON.stringify(unit);
