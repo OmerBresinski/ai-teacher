@@ -291,7 +291,8 @@ export async function generate(state: PipelineState, deps: PipelineDeps): Promis
       meta(call.modelId),
       deps.ids,
       undefined,
-      {},
+      // UX ruling 150: the lesson's key terms bold at their first use on the slide.
+      { terms: facts.vocabulary.map((v) => v.term) },
       (note) => deps.logger.warn({ stage: "generate", call: "slide", index: i }, note),
     );
     return { slide, spec: captioned, misses: call.editorialMisses, builtFrom };

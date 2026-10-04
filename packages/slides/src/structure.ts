@@ -832,6 +832,11 @@ export function keyCard(
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** A term as a whole word in any case, a simple plural included ("tariff", "Tariffs", "taxes"). */
+export function termPattern(term: string): RegExp {
+  return new RegExp(`\\b${escapeRe(term.trim())}(?:e?s)?\\b`, "i");
+}
+
 /**
  * The first use of each term in `doc` in bold and the accent, which the renderer draws as a tinted
  * chip (`slide.css`). Bold and colour are marks the editor's toolbar already sets and clears, so a
@@ -857,7 +862,7 @@ export function markTerms(
     for (const term of list) {
       const key = term.toLowerCase();
       if (seen.has(key) || seen.size >= cap) continue;
-      const m = value.match(new RegExp(`\\b${escapeRe(term)}(?:e?s)?\\b`, "i"));
+      const m = value.match(termPattern(term));
       if (!m || m.index === undefined) continue;
       seen.add(key);
       const before = value.slice(0, m.index);
@@ -1013,6 +1018,8 @@ export function structureSlide(
       return structureWorked(slide, t, ids, options.pages !== false);
     case "content":
       return structureContent(slide, t, hints, ids, options.pages !== false);
+    case "image-text":
+      return [withTerms(slide, t, hints.terms)];
     case "open-response":
       return [structureOpen(slide, t)];
     case "matching":
@@ -2280,28 +2287,33 @@ function dotsColumn(
   return fits(y - SPACE[2]) ? els : undefined;
 }
 
-/** Key terms on a teaching slide's running text (never its heading, and never a question). */
+/**
+ * Key terms on a teaching slide's running text, its key-idea panel included (UX ruling 150); never
+ * its heading, and never a question.
+ */
 export function withTerms(slide: Slide, t: Theme, terms: string[] | undefined): Slide {
   if (!terms?.length) return slide;
   const seen = new Set<string>();
   const running = (e: SlideElement): e is TextElement =>
-    isText(e) &&
-    e.style.preset === "body" &&
-    e.name !== QUESTION_NAME &&
-    e.name !== PANEL_TEXT_NAME;
-  // Restraint, as in the examples: the first use of a term on the slide, in reading order, and at
-  // most two terms a slide. Marks from an earlier pass are cleared first, so a slide styled twice
-  // (generated, then restyled) never carries a term twice.
+    isText(e) && e.style.preset === "body" && e.name !== QUESTION_NAME;
+  // UX ruling 150: every key term at its first use on the slide, in reading order; later uses stay
+  // plain. Marks from an earlier pass are cleared first, so a slide styled twice (generated, then
+  // restyled) never carries a term twice. A term the writer already set in bold counts as marked,
+  // so it is never bolded a second time further on.
   const order = slide.elements
     .filter(running)
     .sort((a, b) => a.y - b.y || a.x - b.x)
     .map((e) => e.id);
-  const marked = new Map<string, RichDoc>();
+  const clean = new Map<string, RichDoc>();
   for (const id of order) {
     const e = slide.elements.find((x) => x.id === id) as TextElement;
-    const clean = unmarkTerms(e.doc, t);
-    marked.set(id, markTerms(clean, terms, t, seen, MAX_TERMS));
+    clean.set(id, unmarkTerms(e.doc, t));
   }
+  for (const bold of boldRuns([...clean.values()])) {
+    for (const term of terms) if (termPattern(term).test(bold)) seen.add(term.trim().toLowerCase());
+  }
+  const marked = new Map<string, RichDoc>();
+  for (const id of order) marked.set(id, markTerms(clean.get(id) as RichDoc, terms, t, seen));
   return {
     ...slide,
     elements: slide.elements.map((e) => {
@@ -2311,8 +2323,20 @@ export function withTerms(slide: Slide, t: Theme, terms: string[] | undefined): 
   };
 }
 
-/** Key terms picked out on one slide, at most. */
-export const MAX_TERMS = 2;
+/** The text of every bold run in `docs`. */
+function boldRuns(docs: RichDoc[]): string[] {
+  const out: string[] = [];
+  const walk = (nodes: RichNode[] | undefined) => {
+    for (const node of nodes ?? []) {
+      if (node.type === "text" && node.text && node.marks?.some((m) => m.type === "bold")) {
+        out.push(node.text);
+      }
+      walk(node.content);
+    }
+  };
+  for (const doc of docs) walk(doc.content);
+  return out;
+}
 
 /** A doc without the key-term chips `markTerms` set (bold together with the accent colour). */
 export function unmarkTerms(doc: RichDoc, t: Theme): RichDoc {
@@ -2472,7 +2496,7 @@ function splitContent(
     // The sentence is the slide's running text, so its key terms are picked out in the card.
     const said = card.elements.map((e, i) =>
       i === card.elements.length - 1 && isText(e) && hints.terms?.length
-        ? { ...e, doc: markTerms(e.doc, hints.terms, t, new Set<string>(), MAX_TERMS) }
+        ? { ...e, doc: markTerms(e.doc, hints.terms, t) }
         : e,
     );
     const keep = slide.elements.filter((e) => !bodies.includes(e as TextElement));

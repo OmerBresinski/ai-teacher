@@ -333,7 +333,7 @@ describe("design pass", () => {
     expect(named(s.elements, PANEL_NAME)).toHaveLength(1);
   });
 
-  test("key terms: the first use only, and at most two a slide, even when styled twice", () => {
+  test("key terms: the first use of each term only, even when styled twice (ruling 150)", () => {
     const s = slide(
       "Erosion wears cliffs. Abrasion scrapes; abrasion again. Hydraulic action cracks rock. Erosion again.",
     );
@@ -341,7 +341,7 @@ describe("design pass", () => {
       terms: ["abrasion", "hydraulic action", "erosion"],
     })[0] as Slide;
     const chips = JSON.stringify(twice).match(/"bold"\},\{"type":"textStyle"/g) ?? [];
-    expect(chips.length).toBeLessThanOrEqual(2);
+    expect(chips.length).toBeLessThanOrEqual(3);
   });
 
   test("one heading size across teaching slides: a long heading wraps at the display size, beside the counter", () => {

@@ -486,7 +486,7 @@ export async function repair(state: PipelineState, deps: PipelineDeps): Promise<
           meta(outcome.modelId, deps),
           deps.ids,
           undefined,
-          {},
+          { terms: (base.facts?.vocabulary ?? []).map((v) => v.term) },
           (note) => deps.logger.warn({ stage: "repair", index: outcome.index }, note),
         ),
         id: original.id,
