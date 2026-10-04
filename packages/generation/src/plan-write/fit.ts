@@ -460,7 +460,7 @@ export function answerKeyFaults(form: string, out: Written): string[] {
 }
 
 /** The fields whose units (chunks, steps, points) may move to the notes whole, in order of preference. */
-const MOVABLE = ["body", "steps", "points"];
+const MOVABLE = ["body", "steps", "points", "questions"];
 
 export type Laddered = {
   form: string;
@@ -547,7 +547,13 @@ export function fitLadder(
       }
       const at = field === "steps" ? list.length - 2 : list.length - 1;
       const unit = list[at];
-      const text = typeof unit === "string" ? unit : JSON.stringify(unit);
+      const q = unit as { question?: unknown; answer?: unknown };
+      const text =
+        typeof unit === "string"
+          ? unit
+          : typeof q?.question === "string"
+            ? `${q.question} (${String(q.answer ?? "")})`
+            : JSON.stringify(unit);
       moved.unshift(text);
       const notes =
         typeof cur.notes === "string" && cur.notes.trim() ? `${cur.notes.trim()}\n` : "";
