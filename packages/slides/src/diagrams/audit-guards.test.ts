@@ -212,19 +212,10 @@ describe("DIAGRAM-AUDIT leftovers", () => {
     const d = drawFigure("energy-profile", v, chalk, { x: 0, y: 0, w: 436, h: 356 });
     const names = JSON.stringify(d);
     expect(names).toContain("Catalysed profile");
-    // Its name clears both curves: not on the hump between the two peaks (the old spot).
-    const label = (
-      d.children as {
-        type: string;
-        x: number;
-        y: number;
-        w: number;
-        h: number;
-        style?: { color?: string };
-      }[]
-    ).find((k) => k.type === "text" && k.style?.color === chalk.colors.accent2);
-    expect(label).toBeDefined();
-    expect((label?.x ?? 0) + (label?.w ?? 0)).toBeLessThanOrEqual(436);
+    // A second Ea arrow, and a legend with a solid and a dashed line sample naming both curves.
+    expect(names).toContain("Catalysed activation energy");
+    expect((names.match(/Legend sample/g) ?? []).length).toBe(2);
+    expect(names).toContain("With catalyst");
   });
   test("a similar pair never cuts a side label", () => {
     const v = {

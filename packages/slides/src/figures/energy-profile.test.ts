@@ -174,7 +174,8 @@ describe("drawFigure: energy-profile", () => {
     expect(productsLabel.y + productsLabel.h).toBeLessThan(products);
     expect(productsLabel.y + productsLabel.h).toBeLessThan(changeTop.y);
     const curve = curveOf(g);
-    expect(productsLabel.x).toBeGreaterThanOrEqual(curve.x + 0.66 * curve.w);
+    // Within the 4-point right margin every label keeps inside the figure (DIAGRAM-AUDIT).
+    expect(productsLabel.x).toBeGreaterThanOrEqual(curve.x + 0.66 * curve.w - 4);
     // A name within the cap is never cut.
     expect(textOf(productsLabel)).toBe(NAMES.products);
   });

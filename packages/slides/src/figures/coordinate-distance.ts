@@ -118,12 +118,57 @@ function draw(
       true,
     ),
   );
-  const name = (p: typeof v.a, P: { x: number; y: number }) =>
-    label(
-      `${p.label?.trim() || ""} (${p.x}, ${p.y})`.trim(),
-      P.x,
-      P.y + (P === A ? (up ? 20 : -20) : up ? -20 : 20),
-    );
+  // A point's name goes in the first spot around it clear of every drawn line (axes, run, rise,
+  // distance) and inside the figure: the collision pass, so no name sits on a stroke.
+  const segs = out.flatMap((k) =>
+    k.type === "line" && k.name !== "Grid"
+      ? [
+          [
+            { x: k.x + k.from.x * k.w, y: k.y + k.from.y * k.h },
+            { x: k.x + k.to.x * k.w, y: k.y + k.to.y * k.h },
+          ],
+        ]
+      : [],
+  );
+  const clear = (b: { x: number; y: number; w: number; h: number }) =>
+    b.x >= 2 &&
+    b.y >= 0 &&
+    b.x + b.w <= size.w - 2 &&
+    b.y + b.h <= size.h &&
+    !segs.some(([p, q]) => {
+      for (let k = 0; k <= 24; k++) {
+        const x =
+          (p as { x: number }).x + (((q as { x: number }).x - (p as { x: number }).x) * k) / 24;
+        const y =
+          (p as { y: number }).y + (((q as { y: number }).y - (p as { y: number }).y) * k) / 24;
+        if (x > b.x + 6 && x < b.x + b.w - 6 && y > b.y + b.h * 0.2 && y < b.y + b.h * 0.8)
+          return true;
+      }
+      return false;
+    });
+  const name = (p: typeof v.a, P: { x: number; y: number }) => {
+    const f = fitLabel(t, `${p.label?.trim() || ""} (${p.x}, ${p.y})`.trim(), {
+      maxW: 160,
+      bold: true,
+    });
+    const spots = [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ].map(([dx, dy]) => ({
+      x: P.x + (dx as number) * (f.w / 2 + 10) - f.w / 2,
+      y: P.y + (dy as number) * (f.h / 2 + 8) - f.h / 2,
+      w: f.w,
+      h: f.h,
+    }));
+    const b = spots.find(clear) ?? (spots[0] as (typeof spots)[number]);
+    return labelText(t, f.text, b, "center", t.colors.ink, { bold: true });
+  };
   out.push(name(v.a, A), name(v.b, B));
   return {
     children: out,

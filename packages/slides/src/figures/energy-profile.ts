@@ -378,19 +378,61 @@ function drawEnergyProfile(
   const arrow = { stroke: t.colors.ink, strokeWidth: ARROW_STROKE, arrowEnd: true };
   // The catalysed profile: the same levels, a lower peak (its share of the main hump kept between
   // 0.3 and 0.8 so the two read apart), dashed in the second colour and named under its peak.
+  /** The catalysed peak's height, or undefined when no catalysed curve is drawn. */
+  const catPeak = (() => {
+    const cat = valid ? values?.catalysedActivationEnergy : undefined;
+    if (cat === undefined || !(cat > Math.max(0, energyChange)) || !(cat < activationEnergy))
+      return undefined;
+    const k = Math.min(
+      0.8,
+      Math.max(
+        0.3,
+        (cat - Math.max(0, energyChange)) / (activationEnergy - Math.max(0, energyChange)),
+      ),
+    );
+    return Math.min(yR, yP) - (Math.min(yR, yP) - plotTop) * k;
+  })();
+  const CAT_ARROW_DX = 14;
+
   /**
-   * The catalysed curve's name, through a small collision pass: the first candidate spot whose box
-   * clears both curves (sampled), the arrows and every other label; the top right as a last resort.
+   * The collision pass (DIAGRAM-AUDIT): every curve sampled as drawn (the smooth path's cubic
+   * segments), the arrows, and the labels already set. `clearSpot` gives the first candidate that
+   * clears them all and sits inside the figure with a margin; the first candidate otherwise.
    */
-  function catalysedBox(l: { w: number; h: number }, yC: number): Box {
-    const abs = (q: { x: number; y: number }, y?: number) => ({
+  const strokes = (): [{ x: number; y: number }, { x: number; y: number }][] => {
+    const abs = (q: { x: number; y: number }) => ({
       x: curveBox.x + q.x * curveBox.w,
-      y: y ?? curveBox.y + q.y * curveBox.h,
+      y: curveBox.y + q.y * curveBox.h,
     });
+    const smooth = (ps: { x: number; y: number }[]) => {
+      const out: { x: number; y: number }[] = [];
+      for (let i = 0; i < ps.length - 1; i++) {
+        const p0 = ps[i - 1] ?? ps[i];
+        const p1 = ps[i] as { x: number; y: number };
+        const p2 = ps[i + 1] as { x: number; y: number };
+        const p3 = ps[i + 2] ?? p2;
+        const c1 = {
+          x: p1.x + (p2.x - (p0 as typeof p1).x) / 6,
+          y: p1.y + (p2.y - (p0 as typeof p1).y) / 6,
+        };
+        const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+        for (let k = 0; k <= 16; k++) {
+          const u = k / 16;
+          const m = 1 - u;
+          out.push({
+            x: m * m * m * p1.x + 3 * m * m * u * c1.x + 3 * m * u * u * c2.x + u * u * u * p2.x,
+            y: m * m * m * p1.y + 3 * m * m * u * c1.y + 3 * m * u * u * c2.y + u * u * u * p2.y,
+          });
+        }
+      }
+      return out;
+    };
     const lines: [{ x: number; y: number }, { x: number; y: number }][] = [];
-    const pts = curve.points.map((q) => abs(q));
-    const cat = curve.points.map((q, i) => (i === 2 ? abs(q, yC) : abs(q)));
-    for (const ps of [pts, cat])
+    const main = curve.points.map(abs);
+    const curves = [smooth(main)];
+    if (catPeak !== undefined)
+      curves.push(smooth(main.map((q, i) => (i === 2 ? { x: q.x, y: catPeak } : q))));
+    for (const ps of curves)
       for (let i = 1; i < ps.length; i++) lines.push([ps[i - 1] as never, ps[i] as never]);
     lines.push(
       [
@@ -401,64 +443,149 @@ function drawEnergyProfile(
         { x: changeX, y: yR },
         { x: changeX, y: yP },
       ],
+      [
+        { x: AXIS_X, y: axisY },
+        { x: size.w, y: axisY },
+      ],
     );
-    const others = Object.values(placed) as Box[];
+    if (catPeak !== undefined)
+      lines.push([
+        { x: peakX + CAT_ARROW_DX, y: yR },
+        { x: peakX + CAT_ARROW_DX, y: catPeak },
+      ]);
+    return lines;
+  };
+  const MARGIN = 4;
+  const inRoom = (b: Box) =>
+    b.x >= MARGIN && b.y >= 0 && b.x + b.w <= size.w - MARGIN && b.y + b.h <= size.h;
+  function clearSpot(candidates: Box[], taken: Box[]): Box {
+    const lines = strokes();
     const hits = (b: Box) => {
-      const pad = { x: b.x - 6, y: b.y - 4, w: b.w + 12, h: b.h + 8 };
+      const pad = { x: b.x - 4, y: b.y - 2, w: b.w + 8, h: b.h + 4 };
       const inside = (x: number, y: number) =>
         x > pad.x && x < pad.x + pad.w && y > pad.y && y < pad.y + pad.h;
       for (const [p, q] of lines)
-        for (let k = 0; k <= 30; k++)
-          if (inside(p.x + ((q.x - p.x) * k) / 30, p.y + ((q.y - p.y) * k) / 30)) return true;
-      return others.some(
+        for (let k = 0; k <= 8; k++)
+          if (inside(p.x + ((q.x - p.x) * k) / 8, p.y + ((q.y - p.y) * k) / 8)) return true;
+      return taken.some(
         (o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h,
       );
     };
-    const inRoom = (b: Box) => b.x >= 0 && b.y >= 0 && b.x + b.w <= size.w && b.y + b.h <= size.h;
-    const right = size.w - l.w - 4;
-    const candidates: Box[] = [
-      { x: right, y: plotTop, ...l },
-      { x: right, y: plotTop + l.h + 6, ...l },
-      { x: peakX + (changeX - peakX) * 0.5 - l.w / 2, y: plotTop, ...l },
-      { x: PLOT_LEFT, y: plotTop + l.h, ...l },
-      { x: PLOT_LEFT, y: Math.min(yR, yP) - l.h - 6, ...l },
-      { x: right, y: Math.max(yR, yP) + l.h + 8, ...l },
-    ];
     return candidates.find((b) => inRoom(b) && !hits(b)) ?? (candidates[0] as Box);
   }
+  /** Every label kept inside the figure, `MARGIN` clear of its edges. */
+  const inside = (b: Box): Box => ({
+    ...b,
+    // Flush left is allowed (the axis names start there); the right edge keeps a margin, which a
+    // label wider than the room gives up before it would leave the box.
+    x: Math.max(0, Math.min(size.w - Math.max(0, Math.min(MARGIN, size.w - b.w)) - b.w, b.x)),
+    y: Math.max(0, Math.min(size.h - b.h, b.y)),
+  });
+  /**
+   * The catalysed profile: the same levels, a lower peak, dashed in the second colour, with its own
+   * Ea arrow beside the main one, and a legend with line samples naming both curves.
+   */
+  let legendBox: Box | undefined;
   function catalysed(): SlideElement[] {
-    const cat = valid ? values?.catalysedActivationEnergy : undefined;
-    if (cat === undefined || !(cat > Math.max(0, energyChange)) || !(cat < activationEnergy))
-      return [];
-    const top = Math.max(yR, yP);
-    const k = Math.min(
-      0.8,
-      Math.max(
-        0.3,
-        (cat - Math.max(0, energyChange)) / (activationEnergy - Math.max(0, energyChange)),
-      ),
-    );
-    const yC = Math.min(yR, yP) - (Math.min(yR, yP) - plotTop) * k;
-    void top;
+    if (catPeak === undefined) return [];
     const name = (values?.catalysedLabel ?? "With catalyst").trim() || "With catalyst";
-    const fitted = fitLabel(t, name, {
-      maxW: size.w * 0.4,
-      slack: ARROW_LABEL_SLACK,
-      minW: 0,
-      maxLines: 2,
-    });
-    return [
+    const rows = [
+      { text: "No catalyst", color: t.colors.accent, dash: undefined },
+      { text: name, color: t.colors.accent2, dash: "dashed" as const },
+    ].map((r) => ({
+      ...r,
+      l: fitLabel(t, r.text, {
+        maxW: size.w * 0.6,
+        slack: ARROW_LABEL_SLACK,
+        minW: 0,
+        maxLines: 1,
+      }),
+    }));
+    const SAMPLE = 30;
+    const rowH = Math.max(...rows.map((r) => r.l.h));
+    const legend = { w: SAMPLE + 8 + Math.max(...rows.map((r) => r.l.w)), h: rowH * 2 };
+    const taken = [
+      placed.energy,
+      placed.progress,
+      placed.reactants,
+      placed.products,
+      placed.change,
+    ];
+    // Any free spot, scanned from the top right (where a legend is looked for first).
+    const right = size.w - MARGIN - legend.w;
+    const grid: Box[] = [];
+    for (let y = 0; y + legend.h <= axisY; y += 8)
+      for (let x = right; x >= PLOT_LEFT; x -= 12) grid.push({ x, y, ...legend });
+    const spot = clearSpot(grid, taken);
+    taken.push(spot);
+    legendBox = spot;
+    const out: SlideElement[] = [
       {
         ...curve,
         id: uid(),
-        points: curve.points.map((p, i) => (i === 2 ? { x: p.x, y: at(yC) } : p)),
+        points: curve.points.map((p, i) => (i === 2 ? { x: p.x, y: at(catPeak) } : p)),
         stroke: t.colors.accent2,
         dash: "dashed",
         name: "Catalysed profile",
       } as PathElement,
-      labelText(t, fitted.text, catalysedBox(fitted, yC), "left", t.colors.accent2),
+      segment(
+        { x: peakX + CAT_ARROW_DX, y: yR },
+        { x: peakX + CAT_ARROW_DX, y: catPeak },
+        {
+          stroke: t.colors.accent2,
+          strokeWidth: ARROW_STROKE,
+          arrowEnd: true,
+          name: "Catalysed activation energy",
+        },
+      ),
     ];
+    rows.forEach((r, i) => {
+      const cy = spot.y + rowH * (i + 0.5);
+      out.push(
+        segment(
+          { x: spot.x, y: cy },
+          { x: spot.x + SAMPLE, y: cy },
+          {
+            stroke: r.color,
+            strokeWidth: CURVE_STROKE,
+            ...(r.dash ? { dash: r.dash } : {}),
+            name: "Legend sample",
+          },
+        ),
+        labelText(
+          t,
+          r.l.text,
+          { x: spot.x + SAMPLE + 8, y: cy - r.l.h / 2, w: r.l.w, h: r.l.h },
+          "left",
+        ),
+      );
+    });
+    return out;
   }
+  /** "Ea" beside its arrow and clear of both curves, when a catalysed curve is drawn too. */
+  const eaBox = (): Box => {
+    const a = labels.activation;
+    if (catPeak === undefined) return placed.activation;
+    const taken = [
+      placed.energy,
+      placed.progress,
+      placed.reactants,
+      placed.products,
+      placed.change,
+    ];
+    if (legendBox) taken.push(legendBox);
+    // Nearest the arrow's middle first, either side, then a step further out.
+    const mid = (yR + plotTop) / 2;
+    const cands: Box[] = [];
+    for (let d = 0; d <= (yR - plotTop) / 2; d += 6)
+      for (const y of [mid - d, mid + d])
+        for (const dx of [0, 10, 22])
+          cands.push(
+            { x: peakX - ARROW_LABEL_GAP - a.w - dx, y: y - a.h / 2, w: a.w, h: a.h },
+            { x: peakX + CAT_ARROW_DX + ARROW_LABEL_GAP + dx, y: y - a.h / 2, w: a.w, h: a.h },
+          );
+    return clearSpot(cands, taken);
+  };
   const children: SlideElement[] = [
     segment(
       { x: AXIS_X, y: axisY },
@@ -485,12 +612,12 @@ function drawEnergyProfile(
     ...catalysed(),
     segment({ x: peakX, y: yR }, { x: peakX, y: plotTop }, { ...arrow, name: "Activation energy" }),
     segment({ x: changeX, y: yR }, { x: changeX, y: yP }, { ...arrow, name: "Energy change" }),
-    labelText(t, labels.energy.text, placed.energy, "left"),
-    labelText(t, labels.progress.text, placed.progress, "center"),
-    labelText(t, labels.reactants.text, placed.reactants, "left"),
-    labelText(t, labels.products.text, placed.products, "right"),
-    labelText(t, labels.activation.text, placed.activation, "right"),
-    labelText(t, labels.change.text, placed.change, "right"),
+    labelText(t, labels.energy.text, inside(placed.energy), "left"),
+    labelText(t, labels.progress.text, inside(placed.progress), "center"),
+    labelText(t, labels.reactants.text, inside(placed.reactants), "left"),
+    labelText(t, labels.products.text, inside(placed.products), "right"),
+    labelText(t, labels.activation.text, inside(eaBox()), "right"),
+    labelText(t, labels.change.text, inside(placed.change), "right"),
   ];
   if (notToScale) children.push(notToScaleCaption(t, size));
   return { children, alt: energyProfileAlt(values, notToScale) };
