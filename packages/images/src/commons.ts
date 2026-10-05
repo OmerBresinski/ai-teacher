@@ -210,12 +210,17 @@ function toPhoto(
   const scaled = info.thumburl !== undefined && info.thumbwidth !== undefined;
   const width = scaled ? (info.thumbwidth as number) : info.width;
   const height = scaled ? (info.thumbheight ?? info.height) : info.height;
+  // Bundesarchiv files open every description with the same disclaimer ("For documentary purposes
+  // the German Federal Archive often retained the original image captions..."), so the alt said
+  // nothing and the text shortlist dropped the real 1923 hyperinflation photo (round 3). The file
+  // title carries the caption; a boilerplate description is skipped.
+  const rawDescription = metaText(info.extmetadata, "ImageDescription");
+  const description = /^For documentary purposes\b/i.test(rawDescription) ? "" : rawDescription;
   const alt =
-    metaText(info.extmetadata, "ImageDescription").slice(0, 200) ||
-    page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, "");
+    description.slice(0, 200) || page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, "");
   const about = [
     page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, ""),
-    metaText(info.extmetadata, "ImageDescription").slice(0, 400),
+    description.slice(0, 400),
     metaText(info.extmetadata, "ObjectName"),
     coordinatesOf(info.extmetadata),
     ...(page.categories ?? []).map((c) => c.title.replace(/^Category:/i, "")),

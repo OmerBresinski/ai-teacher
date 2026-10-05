@@ -96,6 +96,20 @@ describe("planPicture", () => {
     expect(planPicture(dir({ route: "code", pictures: [] }), ask).kind).toBe("photo");
   });
 
+  test("a real route searches the request's year-plus-event anchor first", () => {
+    const p = planPicture(
+      dir({ route: "commons", pictures: [pic({ queries: ["Weimar inflation children"] })] }),
+      {
+        text: "German children playing with banknotes during the hyperinflation crisis of 1923",
+        named: null,
+      },
+    );
+    expect(p.kind === "photo" && p.brief.queries).toEqual([
+      "hyperinflation 1923",
+      "Weimar inflation children",
+    ]);
+  });
+
   test("none leaves the zone empty", () => {
     expect(planPicture(dir({ route: "none", pictures: [] }), ask)).toEqual({ kind: "none" });
   });
@@ -115,7 +129,7 @@ describe("planPicture", () => {
     if (p.kind !== "photo") throw new Error("photo expected");
     expect(p.brief.mustShow).toHaveLength(3);
     expect(p.brief.mustShow[0]?.length ?? 0).toBeLessThanOrEqual(40);
-    expect(p.brief.queries).toEqual(["q1", "q2", "q3"]);
+    expect(p.brief.queries).toEqual(["q1", "q2", "q3", "q4"]);
   });
 
   test("no answer, or a photo route with no usable picture: the regex route and the fixed template", () => {

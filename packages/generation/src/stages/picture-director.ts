@@ -6,7 +6,7 @@
  */
 
 import type { ImageBrief } from "@tj/domain/documents";
-import { type CountArray, countArrayOf } from "@tj/images";
+import { anchorQueries, type CountArray, countArrayOf } from "@tj/images";
 import { type CallStructuredOptions, callStructured } from "../call";
 import {
   PICTURE_DIRECTOR_VERSION,
@@ -102,7 +102,7 @@ function pictureOf(p: PictureDirection["pictures"][number]): DirectedPicture | u
   return {
     shows: clip(shows, 400),
     mustShow: uniq(p.mustShow.map((m) => clip(m, ITEM_CHARS))).slice(0, 3),
-    queries: uniq(p.queries.map((q) => clip(q, QUERY_CHARS))).slice(0, 3),
+    queries: uniq(p.queries.map((q) => clip(q, QUERY_CHARS))).slice(0, 4),
     imagePrompt,
   };
 }
@@ -170,7 +170,16 @@ export function planPicture(direction: PictureDirection | undefined, ask: Ask): 
       return fallbackPlan(ask);
     }
     default: {
-      const pictures = direction.pictures.map(pictureOf).filter((p) => p !== undefined);
+      // Round 2's anchors from the writer's request are always searched. A year-plus-event anchor
+      // ("hyperinflation 1923") leads on a real route: Commons ranks the real photo third for it,
+      // while the director's "1923 German hyperinflation" fills the shortlist with banknote scans
+      // (round 3, Weimar). Two-name anchors follow the director's searches.
+      const anchors = anchorQueries(ask.text);
+      const dated = direction.route === "commons" ? anchors.filter((q) => /\d{4}/.test(q)) : [];
+      const pictures = direction.pictures
+        .map(pictureOf)
+        .filter((p) => p !== undefined)
+        .map((p) => ({ ...p, queries: uniq([...dated, ...p.queries, ...anchors]) }));
       const first = pictures[0];
       if (!first) return fallbackPlan(ask);
       const real = direction.route === "commons";
