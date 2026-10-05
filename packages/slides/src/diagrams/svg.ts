@@ -173,7 +173,10 @@ export function wrap(
   fs = x.fs,
   weight: number = WEIGHT.label,
 ) {
-  const words = s.trim().split(/\s+/).filter(Boolean);
+  const words = s
+    .trim()
+    .split(/[^\S\u00a0]+/)
+    .filter(Boolean);
   const lines: string[] = [];
   let cur = "";
   for (const word of words) {
