@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { newId, storageKey, type WorkspaceId } from "@tj/domain";
+import { LIBRARY_WORKSPACE_ID, newId, storageKey, type WorkspaceId } from "@tj/domain";
 import { LocalDiskStorage } from "@tj/storage";
 import { createApp } from "../app";
 import { fakeSql, silentLogger, TEST_ENV } from "../test-helpers";
@@ -33,6 +33,8 @@ beforeAll(async () => {
   await storage.put(key, bytes, { contentType: "application/pdf" });
   await storage.put(foreignKey, bytes, { contentType: "application/pdf" });
   await storage.put(htmlKey, htmlBytes, { contentType: "text/html" });
+  // The picture library: saved once by the worker under its reserved workspace (TEACH-84).
+  await storage.put(`${LIBRARY_WORKSPACE_ID}/bank/pic.png`, bytes, { contentType: "image/png" });
   app = createApp({ env: TEST_ENV, db: fakeSql(true), logger: silentLogger, storage });
 });
 
@@ -43,6 +45,16 @@ async function errorCode(res: Response) {
 }
 
 describe("GET /files/:key", () => {
+  test("a picture saved to the library is served to any workspace (read-only, TEACH-84)", async () => {
+    for (const who of [ws, other]) {
+      const res = await app.request(`/files/${LIBRARY_WORKSPACE_ID}/bank/pic.png`, {
+        headers: { [WORKSPACE_HEADER]: who },
+      });
+      expect(res.status).toBe(200);
+      expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+    }
+  });
+
   test("non-file routes keep the default same-origin CORP", async () => {
     const res = await app.request("/health");
     expect(res.status).toBe(200);

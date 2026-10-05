@@ -206,6 +206,8 @@ export const ImageBriefSchema = z.strictObject({
   named: z.string().trim().min(1).max(80).optional(),
   /** Searches the picture director wrote (most specific first); tried before code's own. */
   queries: z.array(z.string().trim().min(1).max(80)).max(4).optional(),
+  /** The time and place a historical subject belongs to (picture director): the judge's context. */
+  period: z.string().trim().min(1).max(120).optional(),
   /**
    * The picture zone's width over height (ruling 158): a photo is searched for, or generated, at
    * that shape. Absent: the search's own default.

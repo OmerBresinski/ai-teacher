@@ -13,12 +13,12 @@ import {
   touchBankImage,
 } from "@tj/db";
 import type { StorageAdapter } from "@tj/domain";
+import { LIBRARY_WORKSPACE_ID } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
 import type { BankRequest, PictureBank, PlacedPhoto } from "@tj/generation";
 import {
   type AspectFamily,
   bankLicenceOk,
-  countArrayOf,
   countArraySvg,
   directedImagePrompt,
   EMBED_DIMENSIONS,
@@ -27,7 +27,6 @@ import {
   familyOf,
   IMAGE_TERMS,
   type ImageGenerator,
-  imagePrompt,
   numbersAgree,
   pickReuse,
   REUSE_THRESHOLD,
@@ -135,7 +134,7 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
   ) => {
     const id = opts.ids();
     const ext = EXT[mime] ?? "bin";
-    const storageKey = `bank/${id}.${ext}`;
+    const storageKey = `${LIBRARY_WORKSPACE_ID}/bank/${id}.${ext}`;
     await storage.put(storageKey, bytes, { contentType: mime });
     const dims = size ?? imageDimensions(bytes) ?? { width: 1024, height: 1024 };
     return insertBankImage(db, {
@@ -204,13 +203,8 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
     async generate(req, faithful, signal) {
       // PHOTO-BANK round 2: a countable maths quantity is drawn in code (exact count, equal groups),
       // never photographed; free, so no generator or cap is needed.
-      // The director (or the fallback) decided: a count to draw, or null for never. Absent: the text.
-      const arr =
-        req.draw !== undefined
-          ? (req.draw ?? undefined)
-          : faithful
-            ? undefined
-            : countArrayOf(req.text);
+      // The director decided: a count to draw, or null.
+      const arr = req.draw ?? undefined;
       if (arr) {
         const t0 = Date.now();
         const svg = countArraySvg(arr, req.aspect ?? 1);
@@ -252,9 +246,8 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
         emit({ kind: "refused", ms: 0 });
         return undefined;
       }
-      const prompt = req.imagePrompt
-        ? directedImagePrompt(req.imagePrompt, faithful)
-        : imagePrompt(req, faithful);
+      if (!req.imagePrompt) return undefined;
+      const prompt = directedImagePrompt(req.imagePrompt, faithful);
       const out = await generator.generate({ prompt, size, signal });
       spent += out.costUsd;
       const [w, h] = size.split("x").map(Number) as [number, number];
@@ -288,7 +281,10 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
         { width: w, height: h },
       );
       emit({ kind: "generate", id: row.id, costUsd: out.costUsd, ms: out.ms });
-      return photoOf(row);
+      return {
+        ...photoOf(row),
+        dataUrl: `data:${out.mime};base64,${Buffer.from(out.bytes).toString("base64")}`,
+      };
     },
   };
 }

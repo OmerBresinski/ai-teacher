@@ -166,7 +166,15 @@ function judge(...answers: FakeScriptEntry[]) {
 }
 /** A pick that passes the gate for a brief with the given `mustShow` (none by default). */
 const pick = (id: string, visible: string[] = [], count: "one" | "several" = "one") =>
-  JSON.stringify({ pick: id, onSubject: true, clear: true, visible, count, query: null });
+  JSON.stringify({
+    pick: id,
+    onSubject: true,
+    clear: true,
+    fits: true,
+    visible,
+    count,
+    query: null,
+  });
 const requery = (query: string) => JSON.stringify({ pick: null, visible: [], count: null, query });
 const NONE = JSON.stringify({ pick: null, visible: [], count: null, query: null });
 const run = (lesson: Lesson, deps: ReturnType<typeof recordingDeps>) =>
@@ -181,7 +189,14 @@ describe("illustrate", () => {
     );
     const ai = judge(
       JSON.stringify({ query: "beaver gnawing", visible: [] }),
-      JSON.stringify({ pick: "r", onSubject: true, clear: true, visible: [], count: "one" }),
+      JSON.stringify({
+        pick: "r",
+        onSubject: true,
+        clear: true,
+        fits: true,
+        visible: [],
+        count: "one",
+      }),
     );
     const state = await run(
       imageLesson([{ subject: "rodent teeth" }]),
@@ -235,7 +250,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v9",
+        promptVersion: "pick-or-requery-photo.v14",
         thumbnail: second.src.tiny,
       },
     });
@@ -252,7 +267,9 @@ describe("illustrate", () => {
       failed: 0,
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
-    expect(state.lesson.generation?.promptVersions.generated).toContain("pick-or-requery-photo.v9");
+    expect(state.lesson.generation?.promptVersions.generated).toContain(
+      "pick-or-requery-photo.v14",
+    );
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
 
@@ -390,6 +407,7 @@ describe("illustrate", () => {
       pick: "A",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["petals"],
       count: "one",
       query: "buttercup macro",
@@ -408,7 +426,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v9",
+      promptVersion: "pick-or-requery-photo.v14",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -420,6 +438,7 @@ describe("illustrate", () => {
       pick: "A",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: [],
       count: "one",
       query: "buttercup macro",
@@ -439,6 +458,7 @@ describe("illustrate", () => {
       pick: "A",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: [],
       count: "one",
       query: null,
@@ -582,8 +602,10 @@ describe("illustrate", () => {
       recordingDeps(ai2, { images: emptied.images, logger }),
     );
     expect(ai2.calls).toHaveLength(2);
-    expect(ai2.calls[1]?.imageParts ?? 0).toBe(0);
-    expect(ai2.calls[1]?.promptText).toContain("Candidates: none.");
+    // Round 3: each query's first result is always shown, so the judge sees the top hit even when
+    // the caption shortlist names nothing.
+    expect(ai2.calls[1]?.imageParts ?? 0).toBe(1);
+    expect(ai2.calls[1]?.promptText).toContain("id p0");
     expect(emptied.stores).toEqual([]);
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     const counts = lines.map((l) => JSON.parse(l)).find((r) => r.pool !== undefined);
@@ -615,6 +637,7 @@ describe("illustrate", () => {
       pick: "A",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["stamens", "bee"],
       count: "one",
       query: null,
@@ -889,6 +912,7 @@ describe("PICTURE-AUDIT #4: a gated pick with no requery tries the next candidat
       pick: "ram",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["sheep"],
       count: "one",
       query: null,

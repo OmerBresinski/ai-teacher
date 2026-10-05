@@ -20,45 +20,24 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  * image-prompts-are-prompts: a listed example object turns up in every picture). Bump the version
  * on any change.
  *
- * Clause ledger (v1; each sentence and why it is there):
- *  S1 role + input: the model must know it is choosing a source, not writing the slide.
- *  S2 "earns its place": the gate for `none` and for what the picture centres on (openai.md
- *     2026-10-03: "nothing pupils could see explains it, or it would only decorate" calibrated).
- *  R-commons: named/dated things; the Weimar smoke failed because the dated event was not searched.
- *  R-pexels: stock first only where stock can plausibly show it (Greg 6 Oct: don't waste stock
- *     searches that can't succeed; real stock looks real and costs nothing).
- *  R-generate: unusual combinations and staged comparisons (Greg 6 Oct: cow, sheep and hen
- *     together is hard for real photos).
- *  R-code: counts were wrong in every generated image (round 1: ~12 of 24; round 2 drawn exact);
- *     the kinds list is rendered from the renderer's enum, names only.
- *  R-none: the escape the gate needs, named as the excluded failure (decoration).
- *  P-split: Greg/coordinator: separate pictures when a comparison reads better apart.
- *  F-shows: the library key and the judge's "wanted" line, written once by the model.
- *  F-mustShow: the judge's gate input (PICTURE-AUDIT #1); "the thing itself first" lets the
- *     one-item real gate pass on the subject (round 2: a 3-item list refused a real Tempest photo).
- *  F-queries: year + event / name first (round 2 root cause: first-three-words queries).
- *  F-imagePrompt: one subject + suiting setting (round 2, held up 9/9); natural, unposed (Greg 6
- *     Oct: animals facing the camera read as AI); period/place only when the subject belongs to
- *     one (round 1: a blanket UK line put Big Ben and flags everywhere); "draws every object it
- *     mentions" is the reason an inclusion list fails; "describe what is there" stops negative
- *     lists priming the image model; code adds the frame/text lines.
- *  F-count/diagram: typed slots instead of prose so code can draw (CORE 2026-10-01 geometry law).
- *
- * v2 (same day, 24 fixtures on luna low, PHOTO-BANK/DIRECTOR-PROMPTS.md): 22 of 24 routes agreed.
- *  - "a named work in performance" (commons): v1 sent a staging of The Tempest to generation, which
- *    would invent a production.
- *  - mustShow "one visible thing in two to four words": v1 wrote clauses ("ice cube keeps its shape
- *    while water conforms to the glass", "woolly coats, four legs and two ears visible on each"); the
- *    generic gate needs every item seen, and code's 40-character clip cut them mid-phrase.
- *  - queries "of two to four words each": v1 wrote 6-10 word searches; Commons returned nothing for
- *    the Weimar slot that "hyperinflation 1923" had filled in round 2.
- *
- * v3 (coordinator, 6 Oct): the Tempest staging still went to generation on v2, so commons now
- * reads "anything named or dated ... Always commons, even when the request describes a particular
- * moment of it", with generation named as the fallback; library-or-generate is "unnamed". Two to
- * four searches. Code appends the request's year-plus-event and two-name anchors (planPicture).
+ * Ledger (evidence: PHOTO-BANK/DIRECTOR.md, DIRECTOR-PROMPTS.md, COUNT-TEST, HISTORY-TEST):
+ * - routes by category, no examples: luna low agreed on 22 of 24 fixtures (v1).
+ * - pexels only where stock plausibly holds it; unusual combinations straight to generation (Greg).
+ * - commons for anything named or dated (v3: a Tempest staging had gone to generation).
+ * - mustShow is what a camera records, each one thing in 2-4 words; who, where and when come from
+ *   the source record the judge reads (v2 clauses failed the gate; v4 "German children").
+ * - queries of 2-4 words (v2: long searches found nothing on Commons).
+ * - image prompt: one subject, a setting that suits it, natural and unposed (Greg: posed animals
+ *   read as AI); period or place only when the subject belongs to one (round 1 UK overload);
+ *   "describe what is there" keeps negative lists away from the image model.
+ * - count slot with empty spaces; code writes COUNT-TEST arm B's prompt (16 of 16 exact) (v6).
+ * - named and period, for ruling 163's table; a historical event is a painted illustration (v7).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v3";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v7";
+
+/** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
+export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
+export type NamedKind = (typeof NAMED_KINDS)[number];
 
 export const PICTURE_ROUTES = ["commons", "pexels", "library-or-generate", "code", "none"] as const;
 export type PictureDirectorRoute = (typeof PICTURE_ROUTES)[number];
@@ -90,7 +69,9 @@ const Picture = z.object({
 });
 
 const Count = z.object({
+  things: z.string(),
   total: z.number().int(),
+  empty: z.number().int(),
   groups: z.number().int(),
   perGroup: z.number().int(),
   arrangement: z.enum(["groups", "rows"]),
@@ -102,6 +83,8 @@ export const PictureDirectorSchema = z.object({
   pictures: z.array(Picture),
   count: Count.nullable(),
   diagram: z.enum(DIAGRAM_KINDS as [string, ...string[]]).nullable(),
+  named: z.enum(NAMED_KINDS).nullable(),
+  period: z.string().nullable(),
 });
 export type PictureDirection = z.infer<typeof PictureDirectorSchema>;
 
@@ -111,18 +94,18 @@ Choose one route:
 - commons: anything named or dated: a named work or a production of it, an artwork, a person, a place, a building, a document, an object, or an event or scene tied to a date. Always commons, even when the request describes a particular moment of it: a real photograph or reproduction is searched first, and a generated one is only the fallback.
 - pexels: a real subject that ordinary stock photographs show: a single common subject, or a simple everyday scene, that a photo library very likely holds.
 - library-or-generate: an unnamed picture no real photograph is likely to show: an unusual combination of subjects, or a staged comparison.
-- code: the point is an exact number of countable things or their arrangement in equal groups or rows, or one of these drawings shows the idea better than a photo: ${DIAGRAM_KINDS.join(", ")}.
+- code: a drawing shows the idea better than a photograph, including an array of plain identical marks, or one of these: ${DIAGRAM_KINDS.join(", ")}.
 - none: nothing pupils could see explains the slide's point better than its words, so a picture would only decorate.
 
 For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. For code and none, pictures is empty.
 
 Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
-- mustShow: one to three things pupils must be able to see, each one visible thing in two to four words, most important first. For commons the first is the thing itself.
+- mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record.
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
 - imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
-For code, count is the total, the number of equal groups or rows, how many in each, and whether they are groups or rows (one group when none are asked for); diagram is the drawing's kind. Each is null when it does not apply.`;
+When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 
 function shapeOf(aspect: number): string {
   if (aspect > 1.15) return "landscape";

@@ -266,8 +266,8 @@ const PINNED: Record<PromptName, { version: string; hash: string }> = {
     hash: "92b8674ccbae4fdfb0c01bd4afa7f40527888700deb2c3be1e6672a9ea9bcc78",
   },
   "pick-or-requery-photo": {
-    version: "pick-or-requery-photo.v9",
-    hash: "b8355493c9c26d78c204bce7201b2b12cf2d233a4cfe4dd54c24aa7f8e4986eb",
+    version: "pick-or-requery-photo.v14",
+    hash: "3c6bd4766288fadf73eec4e98ac63384d90cae7cbddf855ca5e2c792bbaddbf8",
   },
   evaluate: {
     // v9 (TEACH-253): `factsBlock` renders a fact's figure, which the sample's facts have none of.

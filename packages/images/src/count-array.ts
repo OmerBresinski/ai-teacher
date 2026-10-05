@@ -6,24 +6,6 @@
  * an SVG at the zone's aspect: exact count, groups set apart, one colour, no scene.
  */
 
-const UNITS =
-  "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(
-    " ",
-  );
-const TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split(" ");
-const NUM =
-  "(\\d+|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[- ](?:one|two|three|four|five|six|seven|eight|nine))?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)";
-const THINGS =
-  "(counters|dots|cubes|multilink cubes|beads|buttons|tokens|blocks|marbles|cubes|discs|spots|circles|stars|sweets)";
-
-function toNumber(word: string): number {
-  if (/^\d+$/.test(word)) return Number(word);
-  const [t = "", u = ""] = word.toLowerCase().split(/[- ]/);
-  const tens = TENS.indexOf(t);
-  if (tens >= 2) return tens * 10 + Math.max(0, UNITS.indexOf(u));
-  return UNITS.indexOf(t);
-}
-
 export interface CountArray {
   total: number;
   /** Equal groups (or rows) and how many in each; one group when the request names none. */
@@ -31,28 +13,6 @@ export interface CountArray {
   perGroup: number;
   /** "rows": one array, rows touching; "groups": clusters set apart. */
   arrangement: "groups" | "rows";
-}
-
-/** The counting array a request asks for, or undefined when it is not a countable quantity. */
-export function countArrayOf(request: string): CountArray | undefined {
-  const s = request.toLowerCase().replace(/\s+/g, " ");
-  const total = new RegExp(`\\b${NUM} (?:[a-z-]+ ){0,3}?${THINGS}\\b`).exec(s);
-  const split = new RegExp(
-    `\\b${NUM} (?:equal |identical |separate )?(groups|rows|sets|piles|columns) of ${NUM}\\b`,
-  ).exec(s);
-  let n = total ? toNumber(total[1] ?? "") : undefined;
-  if (split) {
-    const g = toNumber(split[1] ?? "");
-    const k = toNumber(split[3] ?? "");
-    if (!(g > 0 && k > 0)) return undefined;
-    if (n === undefined && !new RegExp(THINGS).test(s)) return undefined;
-    n ??= g * k;
-    if (n !== g * k || n > 120) return undefined;
-    const arrangement = split[2] === "rows" || split[2] === "columns" ? "rows" : "groups";
-    return { total: n, groups: g, perGroup: k, arrangement };
-  }
-  if (n === undefined || n < 2 || n > 120) return undefined;
-  return { total: n, groups: 1, perGroup: n, arrangement: "groups" };
 }
 
 /** The grid (columns × rows) for `n` cells that best fills a box of aspect `a` (w/h). */

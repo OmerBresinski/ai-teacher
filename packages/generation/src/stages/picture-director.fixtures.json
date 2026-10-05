@@ -1,0 +1,437 @@
+[
+  {
+    "id": "y1-animals-s1",
+    "expect": ["pexels"],
+    "input": {
+      "yearGroup": "Year 1",
+      "subject": "Science",
+      "title": "Animals and their young",
+      "country": "England",
+      "heading": "Animals and their young",
+      "text": "",
+      "point": "",
+      "request": "An adult dog and its puppy sitting side by side, with both whole bodies clearly visible.",
+      "mustShow": ["adult dog", "puppy"],
+      "aspect": 1.78
+    }
+  },
+  {
+    "id": "y1-animals-s3",
+    "expect": ["library-or-generate", "pexels"],
+    "split": true,
+    "input": {
+      "yearGroup": "Year 1",
+      "subject": "Science",
+      "title": "Animals and their young",
+      "country": "England",
+      "heading": "Dogs and cats",
+      "text": "A young dog is a puppy. A young cat is a kitten.",
+      "point": "Point to each animal as you name it. Explain that young means an animal near the start of its life. Pupils repeat dog and puppy, then cat and kitten.",
+      "request": "A two-panel photographic collage: an adult dog beside a puppy on the left; an adult cat beside a kitten on the right. All animals are clearly visible.",
+      "mustShow": ["adult dog", "puppy", "adult cat"],
+      "aspect": 0.89
+    }
+  },
+  {
+    "id": "y1-animals-s4",
+    "expect": ["library-or-generate", "pexels"],
+    "split": true,
+    "input": {
+      "yearGroup": "Year 1",
+      "subject": "Science",
+      "title": "Animals and their young",
+      "country": "England",
+      "heading": "On the farm",
+      "text": "A young cow is a calf. A young sheep is a lamb. A young hen is a chick.",
+      "point": "Point to each adult and its young. Say each pair slowly and ask pupils to repeat it.",
+      "request": "A three-panel photographic collage: an adult cow beside a calf; an adult sheep beside a young lamb; an adult hen beside a small yellow chick. Show each animal's whole body.",
+      "mustShow": ["adult cow", "calf", "adult sheep"],
+      "aspect": 0.89
+    }
+  },
+  {
+    "id": "y1-animals-s7",
+    "expect": ["pexels"],
+    "input": {
+      "yearGroup": "Year 1",
+      "subject": "Science",
+      "title": "Animals and their young",
+      "country": "England",
+      "heading": "Look at their bodies",
+      "text": "Both have four legs and two ears. Both have wool on their bodies. This sheep has more wool than this lamb.",
+      "point": "Explain that a body covering is what covers an animal's body. Point out the wool. Model comparing body parts and coverings.",
+      "request": "A full-grown unshorn sheep with a thick woolly fleece beside a small young lamb with a short woolly coat. Both stand side on, with four legs and two ears clearly visible.",
+      "mustShow": ["full-grown unshorn sheep", "small young lamb"],
+      "aspect": 0.89
+    }
+  },
+  {
+    "id": "y5-fractions-s1",
+    "expect": ["code"],
+    "input": {
+      "yearGroup": "Year 5",
+      "subject": "Maths",
+      "title": "Fractions of amounts",
+      "country": "England",
+      "heading": "Fractions of amounts",
+      "text": "",
+      "point": "",
+      "request": "24 identical counters arranged in four equal groups of six on a classroom table",
+      "mustShow": ["24 identical counters"],
+      "aspect": 1.78
+    }
+  },
+  {
+    "id": "y7-particles-s1",
+    "expect": ["pexels", "library-or-generate"],
+    "input": {
+      "yearGroup": "Year 7",
+      "subject": "Science",
+      "title": "The particle model",
+      "country": "England",
+      "heading": "The particle model",
+      "text": "",
+      "point": "",
+      "request": "An ice cube beside a glass of liquid water, showing a solid keeping its shape and a liquid taking the shape of its container",
+      "mustShow": ["ice cube", "glass of liquid water"],
+      "aspect": 1.78
+    }
+  },
+  {
+    "id": "y9-weimar-s1",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 9",
+      "subject": "History",
+      "title": "Weimar Germany: the hyperinflation crisis of 1923",
+      "country": "England",
+      "heading": "Weimar Germany: the hyperinflation crisis of 1923",
+      "text": "",
+      "point": "",
+      "request": "German children playing with bundles of worthless banknotes during the hyperinflation crisis of 1923",
+      "mustShow": ["German children", "bundles of worthless banknotes"],
+      "aspect": 1.78
+    }
+  },
+  {
+    "id": "y10-tempest-s1",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 10",
+      "subject": "English",
+      "title": "The Tempest: Prospero and the mechanics of power",
+      "country": "England",
+      "heading": "The Tempest: Prospero and the mechanics of power",
+      "text": "",
+      "point": "",
+      "request": "A theatre production of The Tempest showing Prospero holding a staff, with Ariel and Caliban nearby",
+      "mustShow": ["theatre production of The Tempest", "Prospero", "staff"],
+      "aspect": 1.78
+    }
+  },
+  {
+    "id": "y11-rates-s1",
+    "expect": ["library-or-generate", "pexels"],
+    "input": {
+      "yearGroup": "Year 11",
+      "subject": "Chemistry",
+      "title": "Rates of reaction",
+      "country": "England",
+      "heading": "Rates of reaction",
+      "text": "",
+      "point": "",
+      "request": "School chemistry experiment showing marble chips reacting with dilute hydrochloric acid in a conical flask connected to a gas syringe",
+      "mustShow": ["School chemistry experiment"],
+      "aspect": 1.78
+    }
+  },
+  {
+    "id": "landmark-cliffs",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 8",
+      "subject": "Geography",
+      "title": "Coastal erosion",
+      "country": "England",
+      "heading": "Chalk cliffs",
+      "text": "Chalk is a soft rock. Waves erode the base of the cliff.",
+      "point": "Show how waves attack the foot of a chalk cliff and the cliff retreats.",
+      "request": "The White Cliffs of Dover seen from the sea, showing the chalk cliff face and the waves at its base",
+      "mustShow": ["White Cliffs of Dover", "waves at the base"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "event-great-fire",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 2",
+      "subject": "History",
+      "title": "The Great Fire of London, 1666",
+      "country": "England",
+      "heading": "London is burning",
+      "text": "The fire started in a bakery. It spread fast because the houses were made of wood.",
+      "point": "Pupils describe what they see: flames, smoke, wooden houses, people escaping by boat.",
+      "request": "A painting of the Great Fire of London in 1666, with flames over the city and people escaping on the river",
+      "mustShow": ["Great Fire of London", "flames", "boats on the river"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "person-darwin",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 6",
+      "subject": "Science",
+      "title": "Evolution and inheritance",
+      "country": "England",
+      "heading": "Charles Darwin",
+      "text": "Darwin sailed on HMS Beagle. He studied finches on the Galapagos Islands.",
+      "point": "Introduce Darwin as the scientist who explained evolution by natural selection.",
+      "request": "A portrait photograph of Charles Darwin as an old man",
+      "mustShow": ["Charles Darwin"],
+      "aspect": 0.8
+    }
+  },
+  {
+    "id": "artwork-starry-night",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 8",
+      "subject": "Art",
+      "title": "Post-Impressionism",
+      "country": "England",
+      "heading": "Movement in paint",
+      "text": "Van Gogh used thick, swirling brushstrokes.",
+      "point": "Pupils point out how the brushstrokes make the sky look as if it is moving.",
+      "request": "Van Gogh's painting The Starry Night, showing the swirling brushstrokes in the sky",
+      "mustShow": ["The Starry Night", "swirling brushstrokes"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "event-moon-landing",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 4",
+      "subject": "Science",
+      "title": "Earth and space",
+      "country": "England",
+      "heading": "People on the Moon",
+      "text": "In 1969 astronauts walked on the Moon.",
+      "point": "Use the photo to show the Moon's dusty, grey surface and the black sky.",
+      "request": "An astronaut standing on the Moon's surface during the Apollo 11 landing in 1969",
+      "mustShow": ["astronaut", "Moon's surface"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "generic-rainy-street",
+    "expect": ["pexels"],
+    "input": {
+      "yearGroup": "Year 3",
+      "subject": "Geography",
+      "title": "Weather and climate",
+      "country": "England",
+      "heading": "Rainy days",
+      "text": "Rain falls from clouds. We use umbrellas and coats to stay dry.",
+      "point": "Pupils name the clues that show it is raining.",
+      "request": "A rainy town street with people walking under umbrellas",
+      "mustShow": ["rain", "people with umbrellas"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "species-ladybird",
+    "expect": ["pexels"],
+    "input": {
+      "yearGroup": "Year 4",
+      "subject": "Science",
+      "title": "Classifying living things",
+      "country": "England",
+      "heading": "Insects",
+      "text": "An insect has six legs and three body parts.",
+      "point": "Pupils count the legs and find the three body parts.",
+      "request": "A close-up of a ladybird on a leaf, showing its spotted wing cases and six legs",
+      "mustShow": ["ladybird", "six legs", "spotted wing cases"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "locale-coins",
+    "expect": ["pexels", "library-or-generate"],
+    "input": {
+      "yearGroup": "Year 2",
+      "subject": "Maths",
+      "title": "Money",
+      "country": "England",
+      "heading": "Coins we use",
+      "text": "Each coin has a value. We can add coins to make an amount.",
+      "point": "Pupils name each coin and its value.",
+      "request": "A handful of coins of different values spread out on a table",
+      "mustShow": ["coins of different values"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "apparatus-filtration",
+    "expect": ["pexels", "library-or-generate", "code"],
+    "input": {
+      "yearGroup": "Year 7",
+      "subject": "Science",
+      "title": "Separating mixtures",
+      "country": "England",
+      "heading": "Filtration",
+      "text": "Filtration separates an insoluble solid from a liquid.",
+      "point": "Point out the filter paper, the residue left on it and the clear filtrate below.",
+      "request": "Filtration apparatus: a filter funnel lined with filter paper over a beaker, with muddy water poured in and clear water dripping through",
+      "mustShow": ["filter funnel", "filter paper", "beaker"],
+      "aspect": 0.89
+    }
+  },
+  {
+    "id": "count-array-dots",
+    "expect": ["code"],
+    "input": {
+      "yearGroup": "Year 2",
+      "subject": "Maths",
+      "title": "Multiplication arrays",
+      "country": "England",
+      "heading": "Arrays",
+      "text": "3 rows of 5 make 15. 3 × 5 = 15.",
+      "point": "Pupils count the rows and how many are in each row.",
+      "request": "15 dots arranged in 3 rows of 5",
+      "mustShow": ["15 dots"],
+      "aspect": 1.2
+    }
+  },
+  {
+    "id": "count-apples",
+    "expect": ["code"],
+    "input": {
+      "yearGroup": "Year 1",
+      "subject": "Maths",
+      "title": "Counting to 10",
+      "country": "England",
+      "heading": "How many?",
+      "text": "Count the apples. There are 7.",
+      "point": "Pupils touch-count each apple once.",
+      "request": "Seven red apples in a row on a table",
+      "mustShow": ["seven red apples"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "process-water-cycle",
+    "expect": ["code"],
+    "input": {
+      "yearGroup": "Year 4",
+      "subject": "Science",
+      "title": "States of matter",
+      "country": "England",
+      "heading": "The water cycle",
+      "text": "Water evaporates, condenses into clouds, falls as rain and flows back to the sea.",
+      "point": "Trace the cycle in order and name each change of state.",
+      "request": "A photo showing water evaporating from the sea, forming clouds, raining over hills and flowing back to the sea in rivers",
+      "mustShow": ["sea", "clouds", "rain"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "unusual-habitats",
+    "expect": ["library-or-generate", "pexels"],
+    "split": true,
+    "input": {
+      "yearGroup": "Year 2",
+      "subject": "Science",
+      "title": "Living things and their habitats",
+      "country": "England",
+      "heading": "Different habitats",
+      "text": "A polar bear lives in the Arctic. A camel lives in the desert. A monkey lives in the rainforest.",
+      "point": "Pupils match each animal to its habitat and say why it suits it.",
+      "request": "A polar bear, a camel and a monkey each in its own habitat",
+      "mustShow": ["polar bear", "camel", "monkey"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "nothing-equations",
+    "expect": ["none"],
+    "input": {
+      "yearGroup": "Year 10",
+      "subject": "Maths",
+      "title": "Simultaneous equations",
+      "country": "England",
+      "heading": "Solving by elimination",
+      "text": "Make one coefficient match, then subtract the equations to remove that variable.",
+      "point": "Model the elimination method step by step on the board.",
+      "request": "A student thinking hard while solving equations at a desk",
+      "mustShow": ["student", "equations"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "nothing-persuasion",
+    "expect": ["none"],
+    "input": {
+      "yearGroup": "Year 9",
+      "subject": "English",
+      "title": "Persuasive writing",
+      "country": "England",
+      "heading": "Rhetorical questions",
+      "text": "A rhetorical question makes the reader think without expecting an answer.",
+      "point": "Pupils spot rhetorical questions in the extract and explain their effect.",
+      "request": "A person giving a speech at a podium to an audience",
+      "mustShow": ["person giving a speech"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "history-jarrow",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 9",
+      "subject": "History",
+      "title": "Britain in the 1930s",
+      "country": "England",
+      "heading": "The Jarrow Crusade",
+      "text": "In 1936, 200 men marched from Jarrow to London to ask for work.",
+      "point": "Explain why the marchers walked to London and what they wanted.",
+      "request": "The Jarrow marchers walking along a road in 1936, carrying their banner",
+      "mustShow": ["marchers on a road", "banner"],
+      "aspect": 1.6
+    }
+  },
+  {
+    "id": "history-henry-viii",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 8",
+      "subject": "History",
+      "title": "The Tudors",
+      "country": "England",
+      "heading": "Henry VIII",
+      "text": "Henry VIII ruled England from 1509 to 1547.",
+      "point": "Introduce Henry VIII and how he showed his power.",
+      "request": "A portrait of King Henry VIII",
+      "mustShow": ["Henry VIII"],
+      "aspect": 0.8
+    }
+  },
+  {
+    "id": "history-sutton-hoo",
+    "expect": ["commons"],
+    "input": {
+      "yearGroup": "Year 7",
+      "subject": "History",
+      "title": "Anglo-Saxon England",
+      "country": "England",
+      "heading": "The Sutton Hoo helmet",
+      "text": "The helmet was found in a ship burial in Suffolk.",
+      "point": "Pupils describe what the helmet tells us about its owner.",
+      "request": "The Sutton Hoo helmet, showing its face mask and decorated panels",
+      "mustShow": ["helmet", "face mask"],
+      "aspect": 1.6
+    }
+  }
+]

@@ -23,6 +23,8 @@ const answer = {
   ],
   count: null,
   diagram: null,
+  named: null,
+  period: null,
 };
 
 describe("picture director schema", () => {
@@ -33,8 +35,17 @@ describe("picture director schema", () => {
     const code = {
       route: "code",
       pictures: [],
-      count: { total: 24, groups: 4, perGroup: 6, arrangement: "groups" },
+      count: {
+        things: "counters",
+        total: 24,
+        groups: 4,
+        perGroup: 6,
+        arrangement: "groups",
+        empty: 0,
+      },
       diagram: null,
+      named: null,
+      period: null,
     };
     expect(PictureDirectorSchema.parse(code).count?.total).toBe(24);
   });
@@ -90,10 +101,20 @@ describe("picture director prompt", () => {
   });
 });
 
+describe("who, where and when", () => {
+  test("mustShow is what a camera records; the judge reads identity from the source's record", async () => {
+    const { pickOrRequeryPrompt } = await import("./pick-or-requery-photo");
+    expect(pictureDirectorPrompt(input).system).toContain("one to three things a camera records");
+    expect(pickOrRequeryPrompt.system).toContain(
+      "its source's own record (title, description, date)",
+    );
+  });
+});
+
 describe("director fixtures", () => {
   test("24 slots: the 9 smoke slots plus 15 that cover every route", () => {
-    expect(DIRECTOR_FIXTURES).toHaveLength(24);
-    expect(new Set(DIRECTOR_FIXTURES.map((f) => f.id)).size).toBe(24);
+    expect(DIRECTOR_FIXTURES).toHaveLength(27);
+    expect(new Set(DIRECTOR_FIXTURES.map((f) => f.id)).size).toBe(27);
     const routes = new Set(DIRECTOR_FIXTURES.flatMap((f) => f.expect));
     for (const r of PICTURE_ROUTES) expect(routes.has(r)).toBe(true);
     for (const f of DIRECTOR_FIXTURES) {

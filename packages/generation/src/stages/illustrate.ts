@@ -1,6 +1,5 @@
 import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
-  anchorQueries,
   isBlockedQuery,
   normaliseQuery,
   PexelsError,
@@ -427,13 +426,19 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
+  /**
+   * Each query's first result: always shown to the judge beside the shortlist. A caption-only
+   * shortlist cannot know what a photo shows when its record does not say it (round 3: the 1923
+   * Weimar photo of children with banknote stacks is captioned only "Hyperinflation in Germany in
+   * 1923", was never shortlisted, and the judge never saw it).
+   */
+  const topHits: PhotoResult[] = [];
   // PHOTO-BANK round 2: a real subject searches its anchors (year + event, two proper names) and
   // the lesson's title before the request's first three words.
   const real = brief.specific ?? isSpecificSubject(brief.subject);
   const queries = [
     ...(brief.named ? [brief.named] : []),
     ...(brief.queries ?? []),
-    ...(real ? anchorQueries(brief.request ?? brief.subject) : []),
     ...(real && args.lesson.title ? queryCandidates({ subject: args.lesson.title }) : []),
     ...factQueryHints(args.lesson, index),
     ...queryCandidates(brief),
@@ -453,6 +458,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       for (const photo of fresh(photos)) {
         if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
         if (candidates.some((seen) => seen.id === photo.id)) continue;
+        if (kept === 0) topHits.push(photo);
         candidates.push(photo);
         kept += 1;
       }
@@ -489,12 +495,20 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   // shortlist + judge round over the new pool — its first result is never placed blind (TEACH-220).
   let pool = candidates;
   for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
-    const shortlisted = await shortlist(args, pool);
+    const listed = await shortlist(args, pool);
+    const shortlisted =
+      round === 0
+        ? [...listed, ...topHits.filter((t) => !listed.some((c) => c.id === t.id))].slice(
+            0,
+            SHORTLIST_MAX + 3,
+          )
+        : listed;
     deps.logger.info({
       stage: "illustrate",
       slideIndex: index,
       pool: pool.length,
-      shortlisted: shortlisted.length,
+      shortlisted: listed.length,
+      topHits: shortlisted.length - listed.length,
     });
     // No caption names the subject: nothing to pick. The old fallback sent the first few to the
     // judge anyway and placed off-topic stock (fix3: syringes on red for the particle model); no
@@ -504,6 +518,19 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     const unlisted = pool.length > 0 && shortlisted.length === 0;
     if (unlisted && round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
+    deps.logger.info({
+      stage: "illustrate",
+      slideIndex: index,
+      verdict: {
+        pick: verdict.pick,
+        onSubject: verdict.onSubject,
+        clear: verdict.clear,
+        fits: verdict.fits,
+        visible: verdict.visible,
+        why: verdict.why,
+      },
+      shown: shortlisted.map((c) => ({ id: c.id, alt: c.alt.slice(0, 120) })),
+    });
     // Only a photograph the judge was shown can be placed.
     // A photograph another slide placed while this judge looked is not placed twice.
     const picked = verdict.pick
@@ -592,7 +619,9 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
         mustShow: brief.mustShow,
         purpose: brief.purpose,
         avoid: brief.avoid,
-        candidates: pool.map((c) => ({ id: c.id, alt: c.alt })),
+        // The same source record the judge reads (Commons: title, description, date, categories):
+        // on the alt alone the Dutch-captioned 1923 Weimar photo was never shortlisted (round 3).
+        candidates: pool.map((c) => ({ id: c.id, alt: (c.about ?? c.alt).slice(0, 400) })),
       },
       schema: shortlistSchemaFor(pool.map((c) => c.id)),
       maxOutputTokens: MAX_OUTPUT_TOKENS.shortlist,
@@ -615,6 +644,48 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
 }
 
 /** One judge call over `pool`: the thumbnails as image parts, the captions and brief as text. */
+/**
+ * A generated picture shown to the photo judge as the one candidate, with the same brief (its
+ * mustShow, stated relations, count and period): one prompt checks stock and generated pictures.
+ */
+export async function judgeMade(args: {
+  lesson: Lesson;
+  index: number;
+  brief: ImageBrief;
+  deps: PipelineDeps;
+  dataUrl: string;
+}): Promise<boolean> {
+  const made: PhotoResult = {
+    id: "made",
+    width: 1024,
+    height: 1024,
+    alt: args.brief.request ?? args.brief.subject,
+    photographer: "",
+    photographerUrl: "",
+    pageUrl: "made",
+    src: { large: args.dataUrl, medium: args.dataUrl, tiny: args.dataUrl },
+  } as PhotoResult;
+  const verdict = await judge(
+    {
+      lesson: args.lesson,
+      slide: undefined,
+      slideBrief: args.brief.request,
+      brief: args.brief,
+      images: args.deps.images as PhotoPlacer,
+      deps: args.deps,
+      index: args.index,
+    },
+    [made],
+    [],
+  );
+  args.deps.logger.info({
+    stage: "illustrate",
+    slideIndex: args.index,
+    made: { fits: verdict.fits, why: verdict.why },
+  });
+  return verdict.pick === "made" && gatePasses(args.brief, verdict);
+}
+
 async function judge(
   args: PlaceArgs,
   pool: PhotoResult[],
@@ -641,10 +712,18 @@ async function judge(
       slideBrief: args.slideBrief ?? (slide ? slideText(slide) : brief.subject),
       subject: brief.request ?? brief.subject,
       mustShow: brief.mustShow,
+      needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
+      ...(brief.period ? { period: brief.period } : {}),
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,
-      candidates: pool.map((c) => ({ id: c.id, alt: c.alt, thumbnail: c.src.tiny })),
+      // The source's own record (Commons: title, description, date, categories) goes to the judge as
+      // text: who, where and when cannot be seen, so it decides from the picture and the record.
+      candidates: pool.map((c) => ({
+        id: c.id,
+        alt: (c.about ?? c.alt).slice(0, 400),
+        thumbnail: c.src.tiny,
+      })),
     },
     schema: pickOrRequerySchemaFor(brief),
     maxOutputTokens: MAX_JUDGE_TOKENS,
@@ -669,7 +748,7 @@ export function gatePasses(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
   verdict: PickOrRequery,
 ): boolean {
-  if (!verdict.onSubject || !verdict.clear) return false;
+  if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
   if (brief.mustShow.length === 0) return true;
   // PICTURE-AUDIT #1: items taken from the writer's request are the things the slide's words
   // name (the sheep AND the lamb), so every one must be in view; Plan's parts lists need one.
@@ -698,7 +777,9 @@ export function cropToAspect(width: number, height: number, aspect: number) {
   return { x: (width - w) / 2, y: (height - h) / 2, w, h, kept: (w * h) / (width * height) };
 }
 /** A Commons photo is kept when its crop to the zone keeps at least this share of it. */
-const COMMONS_MIN_KEPT = 0.55;
+// 0.45, not 0.55 (round 3): the real 1923 Weimar photo (1280x1517) keeps 47% of itself in a 16:9
+// zone and was dropped before any judge saw it; its subject sits in the centre band.
+const COMMONS_MIN_KEPT = 0.45;
 
 async function searchPortraits(
   images: PhotoPlacer,

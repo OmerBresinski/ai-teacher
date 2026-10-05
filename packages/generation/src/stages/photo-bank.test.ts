@@ -7,7 +7,6 @@ import {
   mustShowOf,
   type PictureBank,
   photoBankOn,
-  routePicture,
 } from "./photo-bank";
 
 const photo = (src: string): PlacedPhoto => ({
@@ -21,23 +20,6 @@ const photo = (src: string): PlacedPhoto => ({
     photographerUrl: "https://www.pexels.com/@a",
   },
   evidence: { visible: [], count: "one", alt: src, promptVersion: "t" },
-});
-
-describe("routePicture (ruling 158)", () => {
-  test.each([
-    ["An adult brown hen beside a very young yellow chick", null, "generic"],
-    ["24 identical counters arranged in four equal groups of six", null, "generic"],
-    ["An ice cube beside a glass of liquid water", null, "generic"],
-    ["School chemistry experiment with marble chips in acid", null, "generic"],
-    ["A full-grown unshorn sheep beside a small young lamb. Both stand side on.", null, "generic"],
-    ["A theatre production of The Tempest showing Prospero", null, "real"],
-    ["German children playing with banknotes during the hyperinflation of 1923", null, "real"],
-    ["Roman soldiers in the 2nd century", null, "real"],
-    ["The ruins of the north gate", "Housesteads Roman Fort", "real"],
-    ["Hadrian's Wall at sunset", null, "real"],
-  ] as const)("%s -> %s", (text, named, route) => {
-    expect(routePicture({ text, named })).toBe(route);
-  });
 });
 
 describe("mustShowOf (PICTURE-AUDIT #1)", () => {
@@ -74,6 +56,7 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
       pick: "1",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["sheep", "grass"],
     });
     expect(empty.success).toBe(true);
@@ -82,14 +65,17 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
       pick: "1",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["ram", "fence"],
     });
     expect(some.visible).toEqual(["ram"]);
   });
   const verdict = (visible: string[]) => ({
     pick: "1",
+    why: null,
     onSubject: true,
     clear: true,
+    fits: true,
     visible,
     count: "one" as const,
     query: null,
@@ -165,11 +151,15 @@ describe("findPicture ladder", () => {
     expect(out.via).toBe("fetched");
     expect(calls).toEqual(["lookup", "remember"]);
   });
-  test("a real thing no library had is generated faithfully and flagged for the look check", async () => {
+  test("a present-day real place no library had is generated faithfully", async () => {
     const { bank, calls } = fakeBank();
-    const out = await findPicture(req("real"), bank, async () => undefined, signal);
+    const out = await findPicture(
+      { ...req("real"), realFallback: "faithful" as const },
+      bank,
+      async () => undefined,
+      signal,
+    );
     expect(out.via).toBe("generated-faithful");
-    expect(out.lookCheck).toBe(true);
     expect(calls).toEqual(["lookup", "generate-faithful"]);
   });
   test("a generic scene is generated after a library miss, with no stock search", async () => {
@@ -185,7 +175,6 @@ describe("findPicture ladder", () => {
       signal,
     );
     expect(out.via).toBe("generated");
-    expect(out.lookCheck).toBe(false);
     expect(searched).toBe(false);
     expect(calls).toEqual(["lookup", "generate"]);
   });
@@ -250,5 +239,27 @@ describe("photoBankOn (A/B switch, default on)", () => {
     expect(photoBankOn(true)).toBe(true);
     process.env.PHOTO_BANK = "1";
     expect(photoBankOn(false)).toBe(false);
+  });
+});
+
+describe("judge fits (round 3: dog with an unrelated puppy, one cat, ice in the glass)", () => {
+  test("a pick the judge says does not fit the request as a whole never passes the gate", () => {
+    const brief = {
+      mustShow: ["adult dog", "puppy"],
+      request: "An adult dog and its puppy",
+      specific: false,
+    };
+    const v = {
+      why: null,
+      pick: "1",
+      onSubject: true,
+      clear: true,
+      fits: false,
+      visible: ["adult dog", "puppy"],
+      count: null,
+      query: null,
+    };
+    expect(gatePasses(brief, v)).toBe(false);
+    expect(gatePasses(brief, { ...v, fits: true })).toBe(true);
   });
 });

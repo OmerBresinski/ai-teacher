@@ -18,11 +18,8 @@ export {
   type ImageGenerator,
   type ImageSize,
   imageCostUsd,
-  imagePrompt,
   numbersAgree,
   numbersIn,
-  oneScene,
-  type PictureContext,
   pickReuse,
   REUSE_THRESHOLD,
   requestText,
@@ -44,7 +41,7 @@ export {
   licenceClass,
   rankCommons,
 } from "./commons";
-export { type CountArray, countArrayOf, countArraySvg } from "./count-array";
+export { type CountArray, countArraySvg } from "./count-array";
 export {
   type CreatePexelsClientOptions,
   createPexelsClient,
