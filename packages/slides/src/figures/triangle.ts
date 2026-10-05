@@ -649,7 +649,10 @@ function drawTriangle(
     if (one.right) {
       const [q, r] = VERTICES.filter((w) => w !== one.right) as [Vertex, Vertex];
       children.push(
-        rightAngleMark(P[one.right], P[q], P[r], p.markSize, t, { fill: figureLook(t, mix).mark }),
+        rightAngleMark(P[one.right], P[q], P[r], p.markSize, t, {
+          fill: figureLook(t, mix).mark,
+          color: figureLook(t, mix).markLine,
+        }),
       );
     }
     for (const w of VERTICES) {
@@ -688,7 +691,7 @@ function triangleOutline(P: Record<Vertex, Point>, t: Theme, name: string): Path
     points: VERTICES.map((v) => ({ x: (P[v].x - x) / w, y: (P[v].y - y) / h })),
     closed: true,
     fill: figureLook(t, mix).fill,
-    stroke: t.colors.ink,
+    stroke: figureLook(t, mix).stroke,
     strokeWidth: figureLook(t, mix).outline,
     name,
   };

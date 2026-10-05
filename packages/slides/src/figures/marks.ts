@@ -31,7 +31,6 @@ const LINE_BOX = 16;
 /** A path whose points all lie on one line still gets a box this wide, so no fraction is 0/0. */
 const PATH_MIN_BOX = 1;
 /** Right-angle squares, arcs, ticks, chevrons and crosses: `right-triangle`'s mark stroke. */
-const MARK_STROKE = LADDER.hair;
 /** The north line: `energy-profile`'s arrow stroke. */
 const ARROW_STROKE = 2.5;
 /** Between the concentric arcs that mark equal angles, and between equal-side ticks. */
@@ -151,12 +150,12 @@ export function rightAngleMark(
       stroke: color,
       fill,
       closed: true,
-      strokeWidth: MARK_STROKE,
+      strokeWidth: LADDER.hair,
       name: "Right angle",
     });
   return pathThrough([add(vertex, a), add(add(vertex, a), b), add(vertex, b)], {
     stroke: color,
-    strokeWidth: MARK_STROKE,
+    strokeWidth: LADDER.hair,
     name: "Right angle",
   });
 }
@@ -190,7 +189,7 @@ export function angleArc(
     return pathThrough(points, {
       smooth: true,
       stroke: color,
-      strokeWidth: MARK_STROKE,
+      strokeWidth: LADDER.hair,
       name: "Angle",
     });
   });
@@ -210,7 +209,7 @@ export function equalTicks(
     const at = add(mid, scale(u, (i - (count - 1) / 2) * TICK_GAP));
     return segment(sub(at, half), add(at, half), {
       stroke: color,
-      strokeWidth: MARK_STROKE,
+      strokeWidth: LADDER.hair,
       name: "Equal side",
     });
   });
@@ -232,7 +231,7 @@ export function parallelArrows(
     const tip = add(mid, scale(u, (i - (count - 1) / 2) * CHEVRON_GAP + CHEVRON_LENGTH / 2));
     return pathThrough([add(add(tip, back), out), tip, sub(add(tip, back), out)], {
       stroke: color,
-      strokeWidth: MARK_STROKE,
+      strokeWidth: LADDER.hair,
       name: "Parallel",
     });
   });
@@ -306,7 +305,7 @@ export function pointMark(
     };
     return [dot];
   }
-  const props = { stroke: color, strokeWidth: MARK_STROKE, name: "Point" };
+  const props = { stroke: color, strokeWidth: LADDER.hair, name: "Point" };
   const r = CROSS_REACH;
   return [
     segment({ x: p.x - r, y: p.y - r }, { x: p.x + r, y: p.y + r }, props),

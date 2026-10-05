@@ -5,7 +5,7 @@
  * values drawn as a labelled double arrow ("lag time").
  */
 import type { LineGraph } from "./schema";
-import { sub } from "./style";
+import { look, sub } from "./style";
 import { arrowHead, type Ctx, n, num, text, textWidth, ticks, wrap } from "./svg";
 
 type Axis = { label: string; min: number; max: number; step?: number };
@@ -104,10 +104,13 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     );
     out.push(text(x, left - 8, Y(v), [num(v)], { fs: small, anchor: "end", fill: c.ink }));
   }
+  // Modern looks: no tick marks and no upright axes; the gridlines and the baseline carry the scale.
+  const modern = look().preset !== "current";
   for (const v of xt) {
-    out.push(
-      `<line x1="${n(X(v))}" y1="${n(top + ph)}" x2="${n(X(v))}" y2="${n(top + ph + 6)}" stroke="${c.ink}" stroke-width="2"/>`,
-    );
+    if (!modern)
+      out.push(
+        `<line x1="${n(X(v))}" y1="${n(top + ph)}" x2="${n(X(v))}" y2="${n(top + ph + 6)}" stroke="${c.ink}" stroke-width="2"/>`,
+      );
     out.push(text(x, X(v), top + ph + 8, [num(v)], { fs: small, v: "top", fill: c.ink }));
   }
   if (g.y2) {
@@ -121,7 +124,9 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   // Axes, with the axis a zero crosses where it crosses.
   const baseY = Y(g.y.min <= 0 && g.y.max >= 0 ? 0 : g.y.min);
   out.push(
-    `<line x1="${n(left)}" y1="${n(top)}" x2="${n(left)}" y2="${n(top + ph)}" stroke="${c.ink}" stroke-width="2.5"/>`,
+    modern
+      ? ""
+      : `<line x1="${n(left)}" y1="${n(top)}" x2="${n(left)}" y2="${n(top + ph)}" stroke="${c.ink}" stroke-width="2.5"/>`,
     `<line x1="${n(left)}" y1="${n(top + ph)}" x2="${n(left + pw)}" y2="${n(top + ph)}" stroke="${c.ink}" stroke-width="2.5"/>`,
   );
   if (baseY !== top + ph) {
@@ -129,7 +134,7 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       `<line x1="${n(left)}" y1="${n(baseY)}" x2="${n(left + pw)}" y2="${n(baseY)}" stroke="${c.muted}" stroke-width="1.5"/>`,
     );
   }
-  if (g.y2) {
+  if (g.y2 && !modern) {
     out.push(
       `<line x1="${n(left + pw)}" y1="${n(top)}" x2="${n(left + pw)}" y2="${n(top + ph)}" stroke="${c.ink}" stroke-width="2.5"/>`,
     );

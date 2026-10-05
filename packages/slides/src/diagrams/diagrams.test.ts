@@ -16,6 +16,7 @@ import {
 } from "./index";
 import { resolveLabels } from "./labelled";
 import { DIAGRAM_SAMPLES } from "./samples";
+import { look } from "./style";
 import { context } from "./svg";
 
 const SLOT = { w: 436, h: 356 };
@@ -31,9 +32,13 @@ describe("samples", () => {
     }
   });
 
-  test.each(Object.keys(DIAGRAM_SAMPLES))("%s matches its snapshot (chalk)", (name) => {
-    expect(renderDiagram(DIAGRAM_SAMPLES[name], chalk, SLOT)).toMatchSnapshot();
-  });
+  // The snapshots freeze the current look; a modern preset (DIAGRAM_PRESET) skips them.
+  (look().preset === "current" ? test : test.skip).each(Object.keys(DIAGRAM_SAMPLES))(
+    "%s matches its snapshot (chalk)",
+    (name) => {
+      expect(renderDiagram(DIAGRAM_SAMPLES[name], chalk, SLOT)).toMatchSnapshot();
+    },
+  );
 
   test("every sample draws on every theme, deterministically, with no NaN", () => {
     for (const t of THEMES) {

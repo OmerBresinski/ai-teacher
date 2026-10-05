@@ -4,7 +4,7 @@
  * geometry; the writer gives categories, values and items. Pure string building on the shared kit.
  */
 import { z } from "zod";
-import { STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
+import { look, STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
 import { type Ctx, mix, n, num, text, textWidth, ticks, wrap } from "./svg";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
@@ -99,7 +99,11 @@ export function drawBarChart(s: BarChart, x: Ctx, w: number, h: number): string 
   if (!fits(cfs)) bad(x, "the bar chart's category names do not fit");
   const catLines = Math.max(...s.bars.map((b) => wrap(b.label, x, slotW0 - 6, 2, cfs).length));
   if (s.style === "bars") {
-    const tv = ticks(0, top > 0 ? top : 1, undefined, 5);
+    const counts = look().preset !== "current" && s.bars.every((b) => Number.isInteger(b.value));
+    // Modern looks: counts tick on whole numbers (no "7.5 pupils").
+    const tv = ticks(0, top > 0 ? top : 1, undefined, 5).filter(
+      (v, _, all) => !counts || all.every((u) => Number.isInteger(u)) || Number.isInteger(v),
+    );
     const yMax = Math.max(tv[tv.length - 1] ?? 1, top);
     const tw = Math.max(...tv.map((v) => textWidth(num(v), x, small)));
     const L = (s.y ? fs * 1.3 : 0) + tw + 10;
@@ -120,19 +124,20 @@ export function drawBarChart(s: BarChart, x: Ctx, w: number, h: number): string 
     s.bars.forEach((b, i) => {
       const cx = L + slot * (i + 0.5);
       out.push(
-        `<rect x="${n(cx - bw / 2)}" y="${n(Y(b.value))}" width="${n(bw)}" height="${n(Y(0) - Y(b.value))}" fill="${x.dark ? x.c.tint : mix(c.accent, c.surface, 0.55)}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
+        `<rect x="${n(cx - bw / 2)}" y="${n(Y(b.value))}" width="${n(bw)}" height="${n(Y(0) - Y(b.value))}" fill="${look().outlines ? (x.dark ? x.c.tint : mix(c.accent, c.surface, 0.55)) : c.accent}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
       );
       out.push(text(x, cx, Y(0) + 6, wrap(b.label, x, slot - 6, 2, cfs), { fs: cfs, v: "top" }));
     });
+    // Modern looks: the baseline only; the gridlines carry the scale.
     out.push(
-      `<line x1="${n(L)}" y1="${n(T)}" x2="${n(L)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/><line x1="${n(L)}" y1="${n(Y(0))}" x2="${n(L + pw)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
+      `${look().preset === "current" ? `<line x1="${n(L)}" y1="${n(T)}" x2="${n(L)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/>` : ""}<line x1="${n(L)}" y1="${n(Y(0))}" x2="${n(L + pw)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
     );
     x.strokes?.push([L, Y(0), L + pw, Y(0)], [L, T, L, Y(0)]);
     if (s.x)
-      out.push(text(x, L + pw / 2, h - 2, [s.x.label], { v: "bottom", weight: WEIGHT.value }));
+      out.push(text(x, L + pw / 2, h - 2, [s.x.label], { v: "bottom", weight: WEIGHT.name }));
     if (s.y)
       out.push(
-        `<text transform="rotate(-90 ${n(fs * 0.7)} ${n(T + ph / 2)})" x="${n(fs * 0.7)}" y="${n(T + ph / 2 + fs * 0.35)}" font-family="${x.body}" font-size="${fs}" font-weight="${WEIGHT.value}" fill="${c.ink}" text-anchor="middle">${s.y.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
+        `<text transform="rotate(-90 ${n(fs * 0.7)} ${n(T + ph / 2)})" x="${n(fs * 0.7)}" y="${n(T + ph / 2 + fs * 0.35)}" font-family="${x.body}" font-size="${fs}" font-weight="${WEIGHT.name}" fill="${c.ink}" text-anchor="middle">${s.y.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
       );
     return out.join("");
   }
@@ -279,13 +284,16 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
         [w / 2 - r * 0.6, cy],
         [w / 2 + r * 0.6, cy],
       ];
-  out.push(
-    `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
-  );
+  if (look().frame)
+    out.push(
+      `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
+    );
   const fills = [c.accent, c.accent2, c.ink];
+  // Flat: no outlines, so the sets read from stronger, overlapping washes.
+  const wash = look().outlines ? (x.dark ? 0.16 : 0.12) : x.dark ? 0.3 : 0.2;
   centres.forEach(([px, py], i) => {
     out.push(
-      `<circle cx="${n(px)}" cy="${n(py)}" r="${n(r)}" fill="${fills[i]}" fill-opacity="${x.dark ? 0.16 : 0.12}" stroke="${fills[i] === c.ink ? c.ink : fills[i]}" stroke-width="${STROKE.line}"/>`,
+      `<circle cx="${n(px)}" cy="${n(py)}" r="${n(r)}" fill="${fills[i]}" fill-opacity="${wash}" stroke="${fills[i] === c.ink ? c.ink : fills[i]}" stroke-width="${STROKE.line}"/>`,
     );
   });
   // Set names over their circles (the third under it).
@@ -297,12 +305,12 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
       text(
         x,
         Math.max(
-          textWidth(name, x, fs, WEIGHT.value) / 2 + 4,
-          Math.min(w - textWidth(name, x, fs, WEIGHT.value) / 2 - 4, ax),
+          textWidth(name, x, fs, WEIGHT.name) / 2 + 4,
+          Math.min(w - textWidth(name, x, fs, WEIGHT.name) / 2 - 4, ax),
         ),
         below ? Math.min(h - fs * 0.7, py + r + fs * 0.8) : py - r - fs * 0.6,
         [name],
-        { weight: WEIGHT.value },
+        { weight: WEIGHT.name },
       ),
     );
   });

@@ -6,6 +6,8 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
+import { figureLook, STROKE } from "../diagrams/style";
+import { mix } from "../diagrams/svg";
 import { boxH, FIGURE_RECT, FIGURE_RECT_WIDE } from "../layouts";
 import { pathSegments, samplePath } from "../path";
 import { isEditorialIssue } from "../specs";
@@ -304,7 +306,8 @@ describe("drawFigure: triangle", () => {
     expect(g.figure).toEqual({ template: "triangle", values: v });
     const [t] = triangles(g);
     if (!t) throw new Error("no triangle");
-    expect([t.strokeWidth, t.stroke, t.smooth]).toEqual([4, chalk.colors.ink, undefined]);
+    const fl = figureLook(chalk, mix);
+    expect([t.strokeWidth, t.stroke, t.smooth]).toEqual([fl.outline, fl.stroke, undefined]);
     const [A, B, C] = cornersOf(t) as [Point, Point, Point];
     // The longest side (c, AB) is the base, horizontal at the bottom, C above it.
     expect(A.y).toBeCloseTo(B.y, 5);
@@ -404,7 +407,9 @@ describe("drawFigure: triangle", () => {
     if (!square) throw new Error("no right-angle mark");
     const corners = cornersOf(square);
     // The filled square (the figure look) has a corner at C itself.
-    expect(Math.min(...corners.map((p) => dist(p, C)))).toBeLessThan(1);
+    // An open square (line art) starts its legs a mark's length from C instead.
+    if (figureLook(chalk, mix).mark)
+      expect(Math.min(...corners.map((p) => dist(p, C)))).toBeLessThan(1);
     expect(Math.max(...corners.map((p) => dist(p, C)))).toBeLessThan(40);
     expect(arcs(g)).toHaveLength(0);
     // The unknown shows its letter, never its value.
@@ -449,7 +454,7 @@ describe("drawFigure: triangle", () => {
       }).length;
     expect([arcCount(A), arcCount(B), arcCount(C)]).toEqual([2, 2, 1]);
     for (const a of arcs(g))
-      expect([a.smooth, a.closed, a.strokeWidth]).toEqual([true, undefined, 1.75]);
+      expect([a.smooth, a.closed, a.strokeWidth]).toEqual([true, undefined, STROKE.hair]);
   });
 
   it("draws a 5° angle at 15°, captioned (row 9)", () => {

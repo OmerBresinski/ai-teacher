@@ -17,8 +17,8 @@ import { drawLineGraph } from "./line-graph";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
-import { laddered } from "./style";
-import { context, type DrawnText, esc, n, text, wrap } from "./svg";
+import { finished, laddered, WEIGHT } from "./style";
+import { context, type DrawnText, esc, mix, n, text, wrap } from "./svg";
 import { drawTable, tableHeight } from "./table";
 import {
   drawCycle,
@@ -197,7 +197,7 @@ function body(
     head = text(x, w / 2, 0, lines, {
       v: "top",
       fs,
-      weight: 700,
+      weight: WEIGHT.title,
       family: x.title,
       fill: t.colors.heading ?? t.colors.ink,
     });
@@ -242,7 +242,7 @@ function body(
         return drawCarroll(s, ix, w, ih);
     }
   })();
-  const drawn = laddered(inner);
+  const drawn = finished(laddered(inner), x.c, mix, x.dark);
   return top ? `${head}<g transform="translate(0,${n(top)})">${drawn}</g>` : drawn;
 }
 

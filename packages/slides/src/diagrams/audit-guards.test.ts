@@ -7,6 +7,7 @@ import {
   parseDiagram,
   renderDiagram,
 } from "./index";
+import { WEIGHT } from "./style";
 import { longGaps, yearOf } from "./templates";
 
 const chalk = getTheme("chalk");
@@ -237,7 +238,7 @@ describe("DIAGRAM-AUDIT leftovers", () => {
       chalk,
       { x: 0, y: 0, w: 436, h: 356 },
     );
-    expect(JSON.stringify(d)).toContain('"fontWeight":500');
+    expect(JSON.stringify(d)).toContain(`"fontWeight":${WEIGHT.label}`);
   });
 });
 

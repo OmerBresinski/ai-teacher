@@ -19,7 +19,7 @@ import {
   scene,
 } from "./place";
 import type { Cycle, Hydrograph, Layers, Particles, River, Timeline } from "./schema";
-import { STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
+import { look, STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
 import { arrow, arrowHead, type Ctx, hBrace, mix, n, num, text, textWidth, ticks } from "./svg";
 
 type Pt = [number, number];
@@ -119,6 +119,8 @@ function panels(s: Particles): Panel[] {
   return [{ dots: before }, { dots: after }];
 }
 
+const panelInset = () => (look().preset === "current" ? 0 : 4);
+
 export function drawParticles(s: Particles, x: Ctx, w: number, h: number): string {
   const ps = panels(s);
   const k = ps.length;
@@ -157,7 +159,8 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
       ...gapWords.flatMap((g) => g.split(/\s+/).map((wd) => textWidth(wd, x, fs * 0.9, 600))),
     );
     const gap = hasArrows ? Math.max(w * 0.09, gapText + 12, 2.2 * fs) : Math.max(w * 0.05, 14);
-    const colW = (w - (k - 1) * gap) / k;
+    // Modern looks: soft panels stand clear of the drawing's edge.
+    const colW = (w - 2 * panelInset() - (k - 1) * gap) / k;
     const capLines = ps.map((_, i) => fitLines(x, cap(i), colW, 2, fs, 700));
     const noteLines = ps.map((_, i) =>
       note(i) ? fitLines(x, note(i) as string, colW, 3, fs * 0.9, WEIGHT.label) : [],
@@ -185,7 +188,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
   const boxY = top + capH;
   const r = R * side * 0.97;
   ps.forEach((p, i) => {
-    const cx0 = i * (colW + gap);
+    const cx0 = panelInset() + i * (colW + gap);
     const bx = cx0 + (colW - side) / 2;
     const capLines = fitLines(x, cap(i), colW, 2, fs, 700) as string[];
     const cb = blockSize(x, capLines, fs, 700);
@@ -449,7 +452,10 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   addLine(x, sc, pts);
   // Axes.
   out.push(
-    `<path d="M${n(X0)},${n(Y0 - 4)} L${n(X0)},${n(Y1)} L${n(X1)},${n(Y1)} L${n(X1)},${n(Y0 - 4)}" fill="none" stroke="${ink}" stroke-width="2"/>`,
+    // Modern looks: the baseline only; light gridlines carry the scale.
+    look().preset === "current"
+      ? `<path d="M${n(X0)},${n(Y0 - 4)} L${n(X0)},${n(Y1)} L${n(X1)},${n(Y1)} L${n(X1)},${n(Y0 - 4)}" fill="none" stroke="${ink}" stroke-width="2"/>`
+      : `<line x1="${n(X0)}" y1="${n(Y1)}" x2="${n(X1)}" y2="${n(Y1)}" stroke="${ink}" stroke-width="2"/>`,
   );
   addLine(x, sc, [
     [X0, Y0 - 4],
@@ -459,7 +465,11 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   ]);
   for (const t of qTicks) {
     out.push(
-      `<line x1="${n(X0 - 5)}" y1="${n(Y(t / qMax))}" x2="${n(X0)}" y2="${n(Y(t / qMax))}" stroke="${ink}" stroke-width="1.5"/>`,
+      look().preset === "current"
+        ? `<line x1="${n(X0 - 5)}" y1="${n(Y(t / qMax))}" x2="${n(X0)}" y2="${n(Y(t / qMax))}" stroke="${ink}" stroke-width="1.5"/>`
+        : t > 0
+          ? `<line x1="${n(X0)}" y1="${n(Y(t / qMax))}" x2="${n(X1)}" y2="${n(Y(t / qMax))}" stroke="${x.c.line}" stroke-width="1.5"/>`
+          : "",
     );
     out.push(text(x, X0 - 8, Y(t / qMax), [num(t)], { fs: tfs, anchor: "end" }));
     sc.labels.push({
@@ -471,7 +481,9 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   }
   for (const t of rTicks) {
     out.push(
-      `<line x1="${n(X1)}" y1="${n(Y(t / rMax))}" x2="${n(X1 + 5)}" y2="${n(Y(t / rMax))}" stroke="${ink}" stroke-width="1.5"/>`,
+      look().preset === "current"
+        ? `<line x1="${n(X1)}" y1="${n(Y(t / rMax))}" x2="${n(X1 + 5)}" y2="${n(Y(t / rMax))}" stroke="${ink}" stroke-width="1.5"/>`
+        : "",
     );
     out.push(text(x, X1 + 8, Y(t / rMax), [num(t)], { fs: tfs, anchor: "start" }));
     sc.labels.push({
@@ -488,7 +500,9 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
       ) ?? 48;
     for (let t = 0; t <= hours + 1e-9; t += hStep) {
       out.push(
-        `<line x1="${n(X(uOf(t)))}" y1="${n(Y1)}" x2="${n(X(uOf(t)))}" y2="${n(Y1 + 5)}" stroke="${ink}" stroke-width="1.5"/>`,
+        look().preset === "current"
+          ? `<line x1="${n(X(uOf(t)))}" y1="${n(Y1)}" x2="${n(X(uOf(t)))}" y2="${n(Y1 + 5)}" stroke="${ink}" stroke-width="1.5"/>`
+          : "",
       );
       out.push(text(x, X(uOf(t)), Y1 + 6, [num(t)], { fs: tfs, v: "top" }));
     }
@@ -545,7 +559,12 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
       peaksInBand = true;
       for (const p of pick) {
         sc.labels.push(p.b);
-        out.push(drawBlock(x, p.b, p.lines, fs, { weight: 700, halo: x.c.bg }));
+        out.push(
+          drawBlock(x, p.b, p.lines, fs, {
+            weight: look().preset === "current" ? 700 : WEIGHT.name,
+            halo: x.c.bg,
+          }),
+        );
       }
     }
     out.push(
@@ -1203,7 +1222,10 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
   } else {
     const g = geo.ground.map(t);
     out.push(
-      `<polygon points="${g.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="${mix("#8a6a3b", x.c.surface, 0.35)}" stroke="none"/>`,
+      // Modern looks: flat land in a neutral tint; line art draws only the profile.
+      look().open
+        ? ""
+        : `<polygon points="${g.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="${look().outlines ? mix("#8a6a3b", x.c.surface, 0.35) : mix(x.c.ink, x.c.surface, x.dark ? 0.16 : 0.1)}" stroke="none"/>`,
     );
     sc.areas.push(g);
     if (geo.water) {
@@ -1220,7 +1242,9 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
     }
     const profile = g.slice(0, g.length - 2);
     out.push(
-      `<polyline points="${profile.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="none" stroke="${x.c.ink}" stroke-width="2.5" stroke-linejoin="round"/>`,
+      look().outlines
+        ? `<polyline points="${profile.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="none" stroke="${x.c.ink}" stroke-width="2.5" stroke-linejoin="round"/>`
+        : "",
     );
     addLine(x, sc, profile);
   }

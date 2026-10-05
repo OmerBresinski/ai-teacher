@@ -12,7 +12,7 @@
 
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
-import { figureLook, STROKE as LADDER } from "../diagrams/style";
+import { figureLook, STROKE as LADDER, look as presetLook } from "../diagrams/style";
 import { mix } from "../diagrams/svg";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
@@ -282,7 +282,7 @@ function drawRightTriangle(
     ],
     closed: true,
     fill: look.fill,
-    stroke: t.colors.ink,
+    stroke: look.stroke,
     strokeWidth: look.outline,
     name: "Triangle",
   };
@@ -290,6 +290,7 @@ function drawRightTriangle(
   // Up the height and along the base from the right angle, `m` along each.
   const mark = rightAngleMark(A, { x: A.x, y: A.y - H }, { x: A.x + W, y: A.y }, m, t, {
     fill: look.mark,
+    color: look.markLine,
   });
   // The unknown side: the one with a label but no length, italic in the accent.
   const unknownSide = SIDES.find((n) => v[n].label.trim() !== "" && given(v[n]) === undefined);
@@ -305,6 +306,8 @@ function drawRightTriangle(
   const extras = [...sceneFor(v.scene, A, W, H, t), ...dimensionsFor(v, A, W, H, t)];
   if (v.scene) {
     triangle.fill = "none";
+    // Modern looks: the ladder is the triangle's hypotenuse, so the triangle's own outline goes.
+    if (!presetLook().textures && v.scene === "ladder") triangle.strokeWidth = 0;
     if (v.scene === "route") {
       triangle.points = [
         { x: 1, y: 1 },
@@ -349,7 +352,10 @@ const DIM_TICK = 7;
 /** A dimension line beside a→b, `DIM_OFFSET` along the outward unit normal `n`, with end ticks. */
 function dimensionLine(a: Pt, b: Pt, n: Pt, t: Theme): SlideElement[] {
   const o = (p: Pt, k: number) => ({ x: p.x + n.x * k, y: p.y + n.y * k });
-  const thin = { stroke: t.colors.ink, strokeWidth: LADDER.hair };
+  const thin = {
+    stroke: presetLook().textures ? t.colors.ink : t.colors.muted,
+    strokeWidth: LADDER.hair,
+  };
   return [
     segment(o(a, DIM_OFFSET), o(b, DIM_OFFSET), {
       ...thin,
@@ -421,7 +427,60 @@ function sceneFor(
   const C = { x: A.x, y: A.y - H };
   const bg = t.colors.background;
   const out: SlideElement[] = [];
-  if (scene === "ladder") {
+  if (scene === "ladder" && !presetLook().textures) {
+    // Modern looks: clean geometry. The wall a flat tinted block (an outline in line art), the
+    // ground one line, the ladder two accent rails and rungs: the focal element.
+    const L = presetLook();
+    const wallW = 18;
+    const top = C.y - 10;
+    const wallBox = { x: A.x - wallW, y: top, w: wallW, h: A.y - top };
+    out.push({
+      id: uid(),
+      type: "shape",
+      shape: "rect",
+      ...wallBox,
+      fill: L.open ? "none" : mix(t.colors.ink, bg, t.dark ? 0.16 : 0.09),
+      stroke: L.open ? t.colors.ink : "none",
+      strokeWidth: L.open ? LADDER.line : 0,
+      radius: 3,
+      name: "Wall",
+    } as SlideElement);
+    out.push(
+      segment(
+        { x: A.x - wallW - 14, y: A.y },
+        { x: B.x + 22, y: A.y },
+        {
+          stroke: L.open ? t.colors.ink : t.colors.muted,
+          strokeWidth: LADDER.line,
+          name: "Ground",
+        },
+      ),
+    );
+    const len = Math.hypot(W, H) || 1;
+    const nn = { x: (H / len) * 6, y: (W / len) * 6 };
+    const rail = (k: number) =>
+      segment(
+        { x: B.x + nn.x * k, y: B.y + nn.y * k },
+        { x: C.x + nn.x * k, y: C.y + nn.y * k },
+        {
+          stroke: t.colors.accent,
+          strokeWidth: L.open ? LADDER.line : LADDER.data,
+          name: "Ladder",
+        },
+      );
+    out.push(rail(1), rail(-1));
+    const rungs = Math.max(3, Math.round(len / 30));
+    for (let i = 1; i < rungs; i++) {
+      const p = { x: B.x + ((C.x - B.x) * i) / rungs, y: B.y + ((C.y - B.y) * i) / rungs };
+      out.push(
+        segment(
+          { x: p.x + nn.x, y: p.y + nn.y },
+          { x: p.x - nn.x, y: p.y - nn.y },
+          { stroke: t.colors.accent, strokeWidth: LADDER.line, name: "Ladder" },
+        ),
+      );
+    }
+  } else if (scene === "ladder") {
     // The wall up the height (bricks), the ground under the base, the ladder on the hypotenuse.
     const wallW = 16;
     const top = C.y - 8;

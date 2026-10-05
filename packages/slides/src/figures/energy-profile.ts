@@ -14,7 +14,7 @@
 
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
-import { STROKE as LADDER } from "../diagrams/style";
+import { STROKE as LADDER, look } from "../diagrams/style";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
@@ -140,9 +140,6 @@ const PLATEAU_AXIS_GAP = 14;
 const PROGRESS_GAP = 10;
 /** Above the "Not drawn to scale" caption. */
 const CAPTION_GAP = 8;
-const CURVE_STROKE = LADDER.data;
-const ARROW_STROKE = LADDER.line;
-const GUIDE_STROKE = LADDER.hair;
 /** The reactants' level guide runs this far past the ΔH arrow. */
 const GUIDE_OVERHANG = 14;
 /** Between a level and the name hanging under it or standing on it. */
@@ -372,10 +369,10 @@ function drawEnergyProfile(
     ],
     smooth: true,
     stroke: t.colors.accent,
-    strokeWidth: CURVE_STROKE,
+    strokeWidth: LADDER.data,
     name: "Reaction profile",
   };
-  const arrow = { stroke: t.colors.ink, strokeWidth: ARROW_STROKE, arrowEnd: true };
+  const arrow = { stroke: t.colors.ink, strokeWidth: LADDER.line, arrowEnd: true };
   // The catalysed profile: the same levels, a lower peak (its share of the main hump kept between
   // 0.3 and 0.8 so the two read apart), dashed in the second colour and named under its peak.
   /** The catalysed peak's height, or undefined when no catalysed curve is drawn. */
@@ -533,7 +530,7 @@ function drawEnergyProfile(
         { x: peakX + CAT_ARROW_DX, y: catPeak },
         {
           stroke: t.colors.accent2,
-          strokeWidth: ARROW_STROKE,
+          strokeWidth: LADDER.line,
           arrowEnd: true,
           name: "Catalysed activation energy",
         },
@@ -547,7 +544,7 @@ function drawEnergyProfile(
           { x: spot.x + SAMPLE, y: cy },
           {
             stroke: r.color,
-            strokeWidth: CURVE_STROKE,
+            strokeWidth: LADDER.data,
             ...(r.dash ? { dash: r.dash } : {}),
             name: "Legend sample",
           },
@@ -586,16 +583,21 @@ function drawEnergyProfile(
           );
     return clearSpot(cands, taken);
   };
+  // Modern looks: the axes recede (muted hairlines) so the curves lead.
+  const axis =
+    look().preset === "current"
+      ? arrow
+      : { ...arrow, stroke: t.colors.muted, strokeWidth: LADDER.hair };
   const children: SlideElement[] = [
     segment(
       { x: AXIS_X, y: axisY },
       { x: AXIS_X, y: labels.energy.h + AXIS_TOP_GAP },
-      { ...arrow, name: "Energy axis" },
+      { ...axis, name: "Energy axis" },
     ),
     segment(
       { x: AXIS_X, y: axisY },
       { x: size.w - AXIS_END_INSET, y: axisY },
-      { ...arrow, name: "Progress axis" },
+      { ...axis, name: "Progress axis" },
     ),
     // The reactants' level carried across, for both arrows to start from.
     segment(
@@ -603,7 +605,7 @@ function drawEnergyProfile(
       { x: changeX + GUIDE_OVERHANG, y: yR },
       {
         stroke: t.colors.muted,
-        strokeWidth: GUIDE_STROKE,
+        strokeWidth: LADDER.hair,
         dash: "dashed",
         name: "Reactants' level",
       },
