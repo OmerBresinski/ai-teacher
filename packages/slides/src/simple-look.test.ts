@@ -204,3 +204,46 @@ describe("simple: the open response is a question at the top, its parts on their
     for (const m of marks) expect(m.style.align).toBe("right");
   });
 });
+
+describe("simple: the two-sided contrast (item 6)", () => {
+  const cmp = (l: string, r: string) =>
+    ({
+      kind: "content",
+      heading: "Who lost, and who could gain?",
+      body: "Prices rose faster than most incomes.",
+      compare: {
+        left: {
+          label: l,
+          points: ["Savers: money bought less and less", "Workers: wages lagged prices"],
+        },
+        right: {
+          label: r,
+          points: ["Borrowers: debts in marks shrank", "Landowners kept real wealth"],
+        },
+      },
+      factRefs: [],
+    }) as SlideSpec;
+  for (const theme of THEMES) {
+    test(`${theme.id}: lost vs gained is two soft tinted columns, red and green, no outline`, () => {
+      const slide = materialiseSlide(cmp("Lost out", "Could gain"), theme.id, META, counter());
+      const cards = slide.elements.filter((e) => e.name === "Compare card");
+      expect(cards).toHaveLength(2);
+      const [a, b] = cards as Extract<(typeof cards)[number], { type: "shape" }>[];
+      expect(a?.strokeWidth ?? 0).toBe(0);
+      expect(a?.fill).not.toBe(b?.fill);
+      const labels = slide.elements.filter((e): e is TextElement => e.name === "Compare label");
+      expect(labels.map((l) => l.style.color)).toEqual([
+        theme.colors.incorrect,
+        theme.colors.correct,
+      ]);
+    });
+  }
+  test("a contrast without a gain/loss meaning takes no red or green", () => {
+    const t = THEMES.find((x) => x.id === "studio") as (typeof THEMES)[number];
+    const slide = materialiseSlide(cmp("Weather", "Climate"), "studio", META, counter());
+    const labels = slide.elements.filter((e): e is TextElement => e.name === "Compare label");
+    expect(labels).toHaveLength(2);
+    for (const l of labels)
+      expect([t.colors.incorrect, t.colors.correct]).not.toContain(l.style.color);
+  });
+});

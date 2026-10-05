@@ -20,6 +20,7 @@ import {
   DIAGRAM_NAME,
   HEADING_GAP,
   KIND_TAG_NAME,
+  mix,
   PHOTO_NAME,
   PHOTO_TEXT_SHARE,
   type PhotoBrief,
@@ -699,6 +700,20 @@ export function layoutQuiz(
  * Two labelled cards side by side, equal in height, from `top`. `undefined` when either side's
  * points do not fit above the foot at the body size or one step below it.
  */
+export const COMPARE_LABEL_NAME = "Compare label";
+const LOSS =
+  /\b(lost|loss|losers?|lose|cons|disadvantages?|threats?|harms?|against|negatives?|problems?|risks?|worse|costs?)\b/i;
+const GAIN =
+  /\b(gain(ed|s)?|won|winners?|win|pros|advantages?|promises?|benefits?|for|positives?|helps?|better)\b/i;
+/** A compare whose sides are a loss and a gain (in either order), or null for any other pair. */
+export function contrastTone(a: string, b: string): ["loss" | "gain", "loss" | "gain"] | null {
+  const of = (x: string) =>
+    LOSS.test(x) && !GAIN.test(x) ? "loss" : GAIN.test(x) && !LOSS.test(x) ? "gain" : null;
+  const l = of(a);
+  const r = of(b);
+  return l && r && l !== r ? [l, r] : null;
+}
+
 export function compareCards(
   left: CompareSide,
   right: CompareSide,
@@ -730,18 +745,33 @@ export function compareCards(
     const h = CARD_PAD + capH + SPACE[0] + (noteH ? noteH + SPACE[0] : 0) + bodyH + CARD_PAD;
     if (top + withSafety(h) > bottom) continue;
     const els: SlideElement[] = [];
+    // Two soft tinted columns, each with a coloured heading (item 6, the simple slide). Colour only
+    // for meaning: a lost/gained contrast is red and green; any other pair is the theme's panel.
+    const tone = contrastTone(left.label, right.label);
+    const ink = (i: number) =>
+      tone
+        ? tone[i] === "loss"
+          ? t.colors.incorrect
+          : t.colors.correct
+        : (t.colors.heading ?? t.colors.ink);
     [left, right].forEach((side, i) => {
       const x = SAFE.x + i * (w + gap);
       els.push(
-        card(ids, t, { x, y: top, w, h }, COMPARE_NAME, i === 0 ? { stroke: t.colors.accent } : {}),
+        card(ids, t, { x, y: top, w, h }, COMPARE_NAME, {
+          fill: tone ? mix(ink(i), t.colors.background, t.dark ? 0.22 : 0.12) : panelFill(t),
+          stroke: undefined,
+          strokeWidth: 0,
+        }),
       );
       let y = top + CARD_PAD;
       els.push(
-        text(ids, { x: x + CARD_PAD, y, w: inner, h: capH }, docFromText(side.label), {
-          preset: "caption",
-          color: t.colors.accent,
-          fontWeight: 700,
-        }),
+        text(
+          ids,
+          { x: x + CARD_PAD, y, w: inner, h: capH },
+          docFromText(side.label),
+          { preset: "caption", color: ink(i), fontWeight: 700 },
+          { name: COMPARE_LABEL_NAME },
+        ),
       );
       y += capH + SPACE[0];
       if (side.note) {

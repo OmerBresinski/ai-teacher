@@ -169,7 +169,10 @@ export function check(
   if (shape === "compare") {
     const cap = resolveFontSize(t, "caption") * t.lineHeights.caption;
     const labels = els.filter(
-      (e): e is TextElement => isText(e) && e.style.preset === "caption" && e.name === undefined,
+      (e): e is TextElement =>
+        isText(e) &&
+        e.style.preset === "caption" &&
+        (e.name === undefined || e.name === "Compare label"),
     );
     for (const l of labels) {
       if (l.h > cap * 1.05) return "label over one line";
