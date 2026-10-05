@@ -216,7 +216,20 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
       if (joined.length <= 40) whole.text = joined;
       continue;
     }
-    out.push({ text: l.text, side: l.side, target: best.i, part, at: best.at });
+    // A label with no side goes on the side of the canvas it sits nearest (DIAGRAM-AUDIT #5).
+    const W = s.canvas === "wide" ? 160 : 100;
+    const dx = l.at[0] - W / 2;
+    const dy = l.at[1] - 50;
+    const side =
+      l.side ??
+      (Math.abs(dx) * 100 >= Math.abs(dy) * W
+        ? dx < 0
+          ? ("left" as const)
+          : ("right" as const)
+        : dy < 0
+          ? ("top" as const)
+          : ("bottom" as const));
+    out.push({ text: l.text, side, target: best.i, part, at: best.at });
   }
   return out;
 }

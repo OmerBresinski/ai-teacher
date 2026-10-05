@@ -27,7 +27,14 @@ import {
   drawTimeline,
 } from "./templates";
 
-export { isHydrograph, isParticleRow, normaliseDiagram, simplerDiagrams } from "./normalise";
+export {
+  energyProfileOf,
+  isHydrograph,
+  isParticleRow,
+  normaliseDiagram,
+  simplerDiagrams,
+  withTangents,
+} from "./normalise";
 export * from "./schema";
 
 /** The drawn diagram's name in the layers list; present, export and print show it. */

@@ -36,12 +36,16 @@ function sizeFor(x: Ctx, ok: (fs: number) => boolean): number {
 
 /** Particle centres in a unit box (radius R), side 1. */
 const R = 0.09;
+// DIAGRAM-AUDIT guard: every state panel holds the same 12 particles, so a states row with
+// "melting" and "boiling" arrows never shows particles vanishing (it drew 20, 13 and 7).
+/** A solid: a regular 4 × 3 block of touching particles on the floor of the box. */
 const SOLID: Pt[] = (() => {
   const out: Pt[] = [];
-  for (let j = 0; j < 4; j++)
-    for (let i = 0; i < 5; i++) out.push([0.05 + R + i * 2 * R, 0.95 - R - j * 2 * R]);
+  for (let j = 0; j < 3; j++)
+    for (let i = 0; i < 4; i++) out.push([0.5 - 3 * R + i * 2 * R, 0.95 - R - j * 2 * R]);
   return out;
 })();
+/** A liquid: touching but irregular, filling the bottom of the box. */
 const LIQUID: Pt[] = [
   [0.14, 0.86],
   [0.33, 0.86],
@@ -55,16 +59,6 @@ const LIQUID: Pt[] = [
   [0.13, 0.535],
   [0.32, 0.52],
   [0.53, 0.535],
-  [0.74, 0.52],
-];
-const GAS: Pt[] = [
-  [0.2, 0.2],
-  [0.68, 0.14],
-  [0.86, 0.5],
-  [0.44, 0.47],
-  [0.15, 0.74],
-  [0.62, 0.8],
-  [0.88, 0.87],
 ];
 /** Spread positions for two substances mixing (four columns of three). */
 const MIX: Pt[] = [
@@ -81,11 +75,13 @@ const MIX: Pt[] = [
   [0.86, 0.57],
   [0.88, 0.87],
 ];
+/** A gas: the same 12 particles spread far apart through the whole box. */
+const GAS: Pt[] = MIX;
 /** Movement marks: [particle index, dx, dy] per state. */
 const MOVES: Record<string, [number, number, number][]> = {
   liquid: [
     [10, 0.7, -0.7],
-    [12, 1, 0],
+    [11, 1, 0],
     [6, -0.6, -0.8],
   ],
   gas: [
@@ -225,7 +221,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     if (s.motion && p.state) {
       if (p.state === "solid") {
         // Vibration: two short arcs over three particles of the top row.
-        for (const j of [15, 17, 19]) {
+        for (const j of [8, 9, 11]) {
           const c = SOLID[j] as Pt;
           const px = bx + c[0] * side;
           const py = boxY + c[1] * side;
@@ -671,6 +667,45 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
 
 // ─── timeline ───────────────────────────────────────────────────────────────────────────────
 
+/** A date's year (BC negative), or undefined when it names none ("Later that year"). */
+export function yearOf(date: string): number | undefined {
+  const m = /\b(\d{1,4})\s*(BCE|BC)?\b/i.exec(date);
+  if (!m?.[1]) return undefined;
+  const y = Number(m[1]);
+  if (m[2] || /\bBC/i.test(date)) return -y;
+  return y;
+}
+
+/**
+ * DIAGRAM-AUDIT guard: the gaps (index i: between events i and i+1) far longer than the shortest
+ * one, when every date names a year in order. Events are spaced evenly, so a long gap gets a break
+ * mark on the line: 55 BC, 54 BC and AD 43 no longer read as equal steps.
+ */
+export function longGaps(s: Timeline): Set<number> {
+  const ys = s.events.map((e) => yearOf(e.date));
+  if (ys.some((y) => y === undefined)) return new Set();
+  const gaps = (ys as number[]).slice(1).map((y, i) => y - (ys[i] as number));
+  if (gaps.some((g) => g < 0)) return new Set();
+  const pos = gaps.filter((g) => g > 0);
+  const least = pos.length ? Math.min(...pos) : 0;
+  if (!least) return new Set();
+  return new Set(gaps.flatMap((g, i) => (g >= 8 * least ? [i] : [])));
+}
+
+/** A break mark (two slashes on a ground-coloured gap) across a line at (cx, cy). */
+function breakMark(x: Ctx, cx: number, cy: number, vertical: boolean): string {
+  const d = 0.45 * x.fs;
+  const g = 0.22 * x.fs;
+  const sl = (o: number) =>
+    vertical
+      ? `<line x1="${n(cx - d)}" y1="${n(cy + o - g)}" x2="${n(cx + d)}" y2="${n(cy + o + g)}" stroke="${x.c.ink}" stroke-width="2.5" stroke-linecap="round"/>`
+      : `<line x1="${n(cx + o - g)}" y1="${n(cy + d)}" x2="${n(cx + o + g)}" y2="${n(cy - d)}" stroke="${x.c.ink}" stroke-width="2.5" stroke-linecap="round"/>`;
+  const gap = vertical
+    ? `<rect x="${n(cx - d)}" y="${n(cy - g)}" width="${n(2 * d)}" height="${n(2 * g)}" fill="${x.c.bg}"/>`
+    : `<rect x="${n(cx - g)}" y="${n(cy - d)}" width="${n(2 * g)}" height="${n(2 * d)}" fill="${x.c.bg}"/>`;
+  return gap + sl(-g) + sl(g);
+}
+
 export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string {
   const k = s.events.length;
   const pad = 6;
@@ -741,6 +776,8 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
       text(x, mid, by + 0.6 * fs, lines, { fs: fs * 0.92, weight: 700, v: "top", fill: x.c.ink }),
     );
   }
+  for (const i of longGaps(s))
+    out.push(breakMark(x, ((xs[i] as number) + (xs[i + 1] as number)) / 2, lineY, false));
   blocks.forEach((b, i) => {
     const cx = xs[i] as number;
     const above = i % 2 === 0;
@@ -793,6 +830,7 @@ function drawTimelineDown(s: Timeline, x: Ctx, w: number, h: number): string {
         `<text transform="rotate(90 ${n(bx)} ${n((a + b) / 2)})" x="${n(bx)}" y="${n((a + b) / 2 + fs * 0.3)}" font-family="${x.body}" font-size="${n(fs * 0.85)}" font-weight="700" fill="${x.c.ink}" text-anchor="middle">${s.period.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
       );
     }
+    for (const i of longGaps(s)) out.push(breakMark(x, lineX, (yc(i) + yc(i + 1)) / 2, true));
     s.events.forEach((e, i) => {
       const y = yc(i);
       out.push(

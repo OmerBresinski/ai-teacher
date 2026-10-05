@@ -87,7 +87,11 @@ export function diagramDisagreements(spec: unknown, text: string): string[] {
   }
   const drawn = numbersIn(words);
   const stated = numbersIn(text);
-  if (drawn.size >= 2 && ![...drawn].some((n) => stated.has(n)))
+  // DIAGRAM-AUDIT #3: a table or timeline carries data the text summarises (Freud's stage ages),
+  // so only drawings whose numbers ARE the point (bars, number lines, graphs) must repeat them.
+  const kind = (spec as { kind?: unknown } | null)?.kind;
+  const numbersArePoint = kind === "bar-model" || kind === "number-line" || kind === "line-graph";
+  if (numbersArePoint && drawn.size >= 2 && ![...drawn].some((n) => stated.has(n)))
     problems.push(
       `the diagram's numbers (${[...drawn].join(", ")}) appear nowhere in the slide's text`,
     );

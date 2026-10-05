@@ -66,7 +66,7 @@ const lineGraph = z.object({
       z.object({
         label: text(20),
         points: z.array(pt).min(2).max(40).describe("[x, y] pairs, x ascending"),
-        style: z.enum(["line", "bars"]).optional(),
+        style: z.enum(["line", "bars", "tangent"]).optional(),
         axis: z.enum(["left", "right"]).optional(),
       }),
     )
@@ -165,7 +165,13 @@ const labelledDiagram = z.object({
     .describe("square is 100 x 100, wide is 160 x 100, origin top-left"),
   shapes: z.array(shape).min(1).max(12),
   labels: z
-    .array(z.object({ text: text(24), at: pt, side: z.enum(["left", "right", "top", "bottom"]) }))
+    .array(
+      z.object({
+        text: text(24),
+        at: pt,
+        side: z.enum(["left", "right", "top", "bottom"]).optional(),
+      }),
+    )
     .max(8)
     .optional()
     .describe(
@@ -215,6 +221,7 @@ const particles = z.object({
     .array(z.enum(["solid", "liquid", "gas"]))
     .min(1)
     .max(3)
+    .optional()
     .describe("for show states: the states to draw, each once, in order"),
   captions: z
     .array(text(16))
@@ -274,7 +281,7 @@ const timeline = z.object({
   ...common,
   events: z
     .array(z.object({ date: text(14), text: text(40) }))
-    .min(3)
+    .min(2)
     .max(7)
     .describe("in time order"),
   period: z

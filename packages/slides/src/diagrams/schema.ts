@@ -216,7 +216,8 @@ export const LabelledDiagramSchema = z
         z.object({
           text: label(24),
           at: pt,
-          side: z.enum(["left", "right", "top", "bottom"]),
+          /** Optional: code places the label on the side that keeps it clear when absent. */
+          side: z.enum(["left", "right", "top", "bottom"]).optional(),
         }),
       )
       .max(8)
@@ -361,7 +362,7 @@ export const TimelineSchema = z
     /** In time order, evenly spaced. */
     events: z
       .array(z.object({ date: label(14), text: label(40) }))
-      .min(3)
+      .min(2)
       .max(7),
     /** A highlighted span between two events (1-based positions in `events`). */
     period: z

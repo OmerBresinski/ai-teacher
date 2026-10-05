@@ -22,6 +22,7 @@ import {
 } from "@tj/slides";
 import {
   diagramElement,
+  energyProfileOf,
   fittedDiagramElement,
   parseDiagram,
   settleDiagram,
@@ -365,7 +366,7 @@ const T3_DRAW = {
     title: phrase("one short line"),
     events: z
       .array(z.object({ date: phrase("a date"), text: phrase("a short phrase") }))
-      .min(3)
+      .min(2)
       .max(7),
   }),
   table: z.object({
@@ -443,7 +444,7 @@ const T3_DRAW = {
         z.object({
           label: phrase("1–3 words"),
           points: z.array(z.array(z.number()).length(2)).min(2).max(40),
-          style: z.enum(["line", "bars"]),
+          style: z.enum(["line", "bars", "tangent"]),
         }),
       )
       .min(1)
@@ -499,7 +500,7 @@ export function expandDrawing(p: Record<string, unknown>): Record<string, unknow
   const { kind, title, ...rest } = w;
   collect(rest);
   const said = words.filter(
-    (t) => !["states", "diffusion", "dissolving", "line", "bars"].includes(t),
+    (t) => !["states", "diffusion", "dissolving", "line", "bars", "tangent"].includes(t),
   );
   let alt = `${title ?? kind}: ${said.join(", ")}`;
   if (alt.length > 200) alt = alt.slice(0, alt.lastIndexOf(", ", 199));
@@ -837,11 +838,23 @@ const labelled = (s: string, sep: string) => {
  * zone, when its words fit that form's slots (explain; explain-callout with its mistake as a line).
  */
 export function withPictureZone(s: LightSlide): LightSlide {
-  if (!s.picture || (s.form !== "explain" && s.form !== "explain-callout")) return s;
-  const body =
-    s.form === "explain" ? s.body : [...s.body, ...s.items.map((t) => `Common mistake: ${t}`)];
-  return { ...s, form: "photo", body, items: [] };
+  if (!s.picture) return s;
+  if (s.form === "explain" || s.form === "explain-callout") {
+    const body =
+      s.form === "explain" ? s.body : [...s.body, ...s.items.map((t) => `Common mistake: ${t}`)];
+    return { ...s, form: "photo", body, items: [] };
+  }
+  // DIAGRAM-AUDIT #1: a drawing on a form with no picture zone (a worked example's steps, a
+  // sequence, a comparison) was dropped silently (12 of 42 T drawings). It goes to the picture
+  // form with its lines beside the drawing, in order; the fit ladder moves whole lines to the
+  // notes when they do not fit. A photo stays dropped here: the words are the point there.
+  const drawing = s.picture.kind === "diagram" || s.picture.kind === "figure";
+  if (drawing && DRAWING_TAKES_ZONE.has(s.form))
+    return { ...s, form: "photo", body: [...s.body, ...s.items], items: [] };
+  return s;
 }
+/** Forms whose drawing moves to the picture form rather than being dropped. */
+const DRAWING_TAKES_ZONE = new Set(["worked-example", "sequence", "compare"]);
 
 /** The thin adapter: a light slide as the candidate's form, layout and writer fields. */
 export function adapt(s: LightSlide): { form: string; layout: string; out: Written } {
@@ -1730,7 +1743,14 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         },
         "t3 fit ladder",
       );
-    const p = form === "photo" ? s.picture : null;
+    const p0 = form === "photo" ? s.picture : null;
+    // DIAGRAM-AUDIT #4: an energy profile written as a line graph is drawn as the energy-profile
+    // figure (a smooth curve with Ea and ΔH), not a jagged polyline with labels across it.
+    const ep = p0?.kind === "diagram" ? energyProfileOf(p0.spec) : undefined;
+    const p: Pic | null =
+      ep && FIGURE_TEMPLATES["energy-profile"].values.safeParse(ep).success
+        ? { kind: "figure", template: "energy-profile", values: ep }
+        : p0;
     let drawn: string | undefined;
     let invalid: string | undefined;
     let photoAsk: { subject: string; named: string | null } | undefined;

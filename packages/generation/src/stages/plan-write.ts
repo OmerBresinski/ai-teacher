@@ -488,11 +488,15 @@ export async function planWritePlan(
 
 type Placed = { index: number; plan: PlanSlide; out: Written };
 
+/** The fault when a valid drawing has no room beside the slide's text (the text is what overflows). */
+export const TEXT_CROWDS_DRAWING = "the slide's text leaves the drawing no room beside it";
+
 /** Why a written diagram does not draw, in words the writer can act on. */
 export function diagramFault(spec: unknown): string {
   if (!spec || typeof spec !== "object") return "no diagram was written";
   const r = DiagramSpecSchema.safeParse(spec);
-  if (r.success) return "it does not fit beside the text; draw it with fewer parts";
+  // DIAGRAM-AUDIT #2: a spec that parses is not the fault; the slide's text left it no room.
+  if (r.success) return TEXT_CROWDS_DRAWING;
   const issue = r.error.issues[0];
   return issue
     ? `${issue.path.join(".") || "the spec"}: ${issue.message}`
@@ -1182,6 +1186,25 @@ export async function planWriteSlides(
     return off.length > 0 ? `it disagrees with the slide: ${off.join("; ")}` : undefined;
   };
 
+  /**
+   * A diagram slot whose valid drawing the text crowds out, with its last body lines moved to the
+   * notes word for word until the drawing draws cleanly beside the rest; undefined when no cut does.
+   */
+  const roomForDrawing = (layout: string, out: Written): Written | undefined => {
+    const body = (out as { body?: unknown }).body;
+    if (!Array.isArray(body) || !body.every((b) => typeof b === "string")) return undefined;
+    const notes = typeof out.notes === "string" ? out.notes : "";
+    for (let k = body.length - 1; k >= 1; k--) {
+      const next = {
+        ...out,
+        body: body.slice(0, k),
+        notes: [notes, ...body.slice(k)].filter(Boolean).join("\n"),
+      } as Written;
+      if (diagramProblem(layout, next) === undefined) return next;
+    }
+    return undefined;
+  };
+
   /** A saved picture slide whose photo was not found: drawn again with the text full width. */
   const dropPicture = (n: number) => {
     const index = n - 1;
@@ -1549,10 +1572,21 @@ export async function planWriteSlides(
     // Round H ladder for a drawing that still fails its gate, never a text-only picture slide:
     // (a) ONE re-ask for a simpler drawing; (b) a Commons diagram of the taught idea; (c) an
     // on-topic photo; (d) only then the text full width.
-    const problem = s.form === "diagram-slot" ? diagramProblem(s.layout, fitted.out) : undefined;
+    let problem = s.form === "diagram-slot" ? diagramProblem(s.layout, fitted.out) : undefined;
     if (problem) gateHit("diagram", n);
+    // DIAGRAM-AUDIT #2: when the drawing is valid and the text is what crowds it out, the text
+    // gives way (whole lines to the notes, word for word), never a re-ask for "fewer parts".
+    if (problem?.includes(TEXT_CROWDS_DRAWING)) {
+      const roomy = roomForDrawing(s.layout, fitted.out);
+      if (roomy) {
+        fitted = { out: roomy, fit: fitWritten(s.form, s.layout, roomy) };
+        diagramRungs[String(n)] = "settled";
+        gates.diagram.fixed += 1;
+        problem = undefined;
+      }
+    }
     let fallback: { query?: string; subject?: string } = {};
-    if (s.form === "diagram-slot" && problem) {
+    if (s.form === "diagram-slot" && problem && !problem.includes(TEXT_CROWDS_DRAWING)) {
       const why = problem;
       const shape = (slideWriterSchema(s.form, s.layout) as unknown as z.ZodObject).shape;
       try {

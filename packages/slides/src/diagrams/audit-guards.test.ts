@@ -1,0 +1,145 @@
+import { describe, expect, test } from "bun:test";
+import { getTheme } from "../themes";
+import {
+  diagramFaults,
+  energyProfileOf,
+  normaliseDiagram,
+  parseDiagram,
+  renderDiagram,
+} from "./index";
+import { longGaps, yearOf } from "./templates";
+
+const chalk = getTheme("chalk");
+
+describe("DIAGRAM-AUDIT correctness guards", () => {
+  test("a two-event timeline parses and draws", () => {
+    const s = {
+      kind: "timeline",
+      alt: "Before and after",
+      events: [
+        { date: "1914", text: "War begins" },
+        { date: "1918", text: "War ends" },
+      ],
+    };
+    expect(parseDiagram(s)).toBeDefined();
+    expect(renderDiagram(s, chalk, { w: 436, h: 356 })).toContain("<svg");
+  });
+
+  test("a labelled-diagram label needs no side", () => {
+    const s = {
+      kind: "labelled-diagram",
+      alt: "A box",
+      shapes: [{ type: "rect", x: 20, y: 20, w: 60, h: 60 }],
+      labels: [{ text: "Box", at: [50, 50] }],
+    };
+    expect(parseDiagram(s)).toBeDefined();
+  });
+
+  test("a straight series named tangent is drawn as a tangent", () => {
+    const g = {
+      kind: "line-graph",
+      alt: "Gas",
+      x: { label: "Time / s", min: 0, max: 100 },
+      y: { label: "Volume", min: 0, max: 100 },
+      series: [
+        {
+          label: "Reaction curve",
+          points: [
+            [0, 0],
+            [20, 40],
+            [40, 64],
+            [60, 80],
+            [100, 88],
+          ],
+        },
+        {
+          label: "Tangent",
+          points: [
+            [20, 44],
+            [40, 64],
+            [60, 84],
+          ],
+          style: "line",
+        },
+      ],
+    };
+    const n = normaliseDiagram(g) as { series: { style: string }[] };
+    expect(n.series[1]?.style).toBe("tangent");
+    expect(n.series[0]?.style).toBe("line");
+  });
+
+  test("a single energy profile line graph maps to the figure's values", () => {
+    const g = {
+      kind: "line-graph",
+      alt: "Profile",
+      x: { label: "Reaction progress", min: 0, max: 4 },
+      y: { label: "Energy", min: 0, max: 10 },
+      series: [
+        {
+          label: "Profile",
+          points: [
+            [0, 4],
+            [1, 7],
+            [2, 10],
+            [3, 6],
+            [4, 2],
+          ],
+        },
+      ],
+      annotations: [
+        { x: 0, y: 4, label: "Reactants" },
+        { x: 4, y: 2, label: "Products" },
+      ],
+    };
+    expect(energyProfileOf(g)).toMatchObject({
+      reactants: "Reactants",
+      products: "Products",
+      activationEnergy: 6,
+      energyChange: -2,
+    });
+    const rate = { ...g, x: { label: "Time (s)", min: 0, max: 4 } };
+    expect(energyProfileOf(rate)).toBeUndefined();
+  });
+
+  test("every state panel holds the same number of particles", () => {
+    const svg =
+      renderDiagram(
+        {
+          kind: "particles",
+          alt: "States",
+          states: ["solid", "liquid", "gas"],
+          arrows: ["melting", "boiling"],
+        },
+        chalk,
+        { w: 560, h: 356 },
+      ) ?? "";
+    const circles = (svg.match(/<circle [^>]*stroke-width="[\d.]+"\/>/g) ?? []).length;
+    expect(circles % 3).toBe(0);
+    expect(circles).toBe(36);
+  });
+
+  test("a timeline with a long gap gets a break mark", () => {
+    expect(yearOf("55 BC")).toBe(-55);
+    expect(yearOf("AD 43")).toBe(43);
+    const s = {
+      kind: "timeline" as const,
+      alt: "Romans",
+      events: [
+        { date: "55 BC", text: "Caesar lands" },
+        { date: "54 BC", text: "Caesar returns" },
+        { date: "AD 43", text: "Claudius invades" },
+      ],
+    };
+    expect([...longGaps(s as never)]).toEqual([1]);
+    const evenly = {
+      ...s,
+      events: [
+        { date: "1918", text: "a" },
+        { date: "1920", text: "b" },
+        { date: "1923", text: "c" },
+      ],
+    };
+    expect(longGaps(evenly as never).size).toBe(0);
+    expect(diagramFaults(s, chalk, { w: 436, h: 356 })).toEqual([]);
+  });
+});
