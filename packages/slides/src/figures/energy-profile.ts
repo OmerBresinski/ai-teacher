@@ -378,6 +378,54 @@ function drawEnergyProfile(
   const arrow = { stroke: t.colors.ink, strokeWidth: ARROW_STROKE, arrowEnd: true };
   // The catalysed profile: the same levels, a lower peak (its share of the main hump kept between
   // 0.3 and 0.8 so the two read apart), dashed in the second colour and named under its peak.
+  /**
+   * The catalysed curve's name, through a small collision pass: the first candidate spot whose box
+   * clears both curves (sampled), the arrows and every other label; the top right as a last resort.
+   */
+  function catalysedBox(l: { w: number; h: number }, yC: number): Box {
+    const abs = (q: { x: number; y: number }, y?: number) => ({
+      x: curveBox.x + q.x * curveBox.w,
+      y: y ?? curveBox.y + q.y * curveBox.h,
+    });
+    const lines: [{ x: number; y: number }, { x: number; y: number }][] = [];
+    const pts = curve.points.map((q) => abs(q));
+    const cat = curve.points.map((q, i) => (i === 2 ? abs(q, yC) : abs(q)));
+    for (const ps of [pts, cat])
+      for (let i = 1; i < ps.length; i++) lines.push([ps[i - 1] as never, ps[i] as never]);
+    lines.push(
+      [
+        { x: peakX, y: yR },
+        { x: peakX, y: plotTop },
+      ],
+      [
+        { x: changeX, y: yR },
+        { x: changeX, y: yP },
+      ],
+    );
+    const others = Object.values(placed) as Box[];
+    const hits = (b: Box) => {
+      const pad = { x: b.x - 6, y: b.y - 4, w: b.w + 12, h: b.h + 8 };
+      const inside = (x: number, y: number) =>
+        x > pad.x && x < pad.x + pad.w && y > pad.y && y < pad.y + pad.h;
+      for (const [p, q] of lines)
+        for (let k = 0; k <= 30; k++)
+          if (inside(p.x + ((q.x - p.x) * k) / 30, p.y + ((q.y - p.y) * k) / 30)) return true;
+      return others.some(
+        (o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h,
+      );
+    };
+    const inRoom = (b: Box) => b.x >= 0 && b.y >= 0 && b.x + b.w <= size.w && b.y + b.h <= size.h;
+    const right = size.w - l.w - 4;
+    const candidates: Box[] = [
+      { x: right, y: plotTop, ...l },
+      { x: right, y: plotTop + l.h + 6, ...l },
+      { x: peakX + (changeX - peakX) * 0.5 - l.w / 2, y: plotTop, ...l },
+      { x: PLOT_LEFT, y: plotTop + l.h, ...l },
+      { x: PLOT_LEFT, y: Math.min(yR, yP) - l.h - 6, ...l },
+      { x: right, y: Math.max(yR, yP) + l.h + 8, ...l },
+    ];
+    return candidates.find((b) => inRoom(b) && !hits(b)) ?? (candidates[0] as Box);
+  }
   function catalysed(): SlideElement[] {
     const cat = valid ? values?.catalysedActivationEnergy : undefined;
     if (cat === undefined || !(cat > Math.max(0, energyChange)) || !(cat < activationEnergy))
@@ -408,13 +456,7 @@ function drawEnergyProfile(
         dash: "dashed",
         name: "Catalysed profile",
       } as PathElement,
-      labelText(
-        t,
-        fitted.text,
-        { x: peakX + LANE_GAP * 3, y: yC + CLEAR * 2, w: fitted.w, h: fitted.h },
-        "left",
-        t.colors.accent2,
-      ),
+      labelText(t, fitted.text, catalysedBox(fitted, yC), "left", t.colors.accent2),
     ];
   }
   const children: SlideElement[] = [
