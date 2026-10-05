@@ -224,7 +224,7 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
 
   // Steps of two lines each at the teaching body size: too long for step cards or a strip, so the
   // worked example keeps its working card (the fallback this pins).
-  test("a one-line question hands its second line to the working, which stays on its card", () => {
+  test("a one-line question and four long steps set as step rows, not the working card", () => {
     const slide = make(
       {
         kind: "worked-example",
@@ -240,17 +240,17 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       },
       "working-card",
     );
-    const card = slide.elements.find((el) => el.type === "shape" && el.name === "Working card");
-    const working = byPreset(slide, "body")[1];
-    if (!card || !working) throw new Error("worked example");
-    expect(bottom(card)).toBeLessThanOrEqual(SAFE_BOTTOM - SPACE[1]);
-    expect(bottom(working)).toBeLessThanOrEqual(bottom(card));
+    // UX ruling 151: the working is step rows, never the dense card.
+    expect(slide.elements.some((el) => el.name === "Working card")).toBe(false);
+    const steps = slide.elements.filter((el) => /^Step \d+$/.test(el.name ?? ""));
+    expect(steps).toHaveLength(4);
+    for (const s of steps) expect(bottom(s)).toBeLessThanOrEqual(SAFE_BOTTOM);
     expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
   // Steps of two lines each at the teaching body size: too long for step cards or a strip, so the
   // worked example keeps its working card (the fallback this pins).
-  test("the showcase's two-line question leaves five working lines no card can hold: reported", () => {
+  test("the showcase's two-line question and four long steps set as step rows that fit", () => {
     const slide = make(
       {
         kind: "worked-example",
@@ -267,12 +267,11 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       },
       "working-card",
     );
-    const card = slide.elements.find((el) => el.type === "shape" && el.name === "Working card");
-    if (!card) throw new Error("card");
-    // The card keeps its foot inside the safe area; the working that runs past it is the
-    // residual the editor's Tidy splits onto a continuation slide.
-    expect(bottom(card)).toBeLessThanOrEqual(SAFE_BOTTOM - SPACE[1]);
-    expect(fitSlide(slide, theme).overflow).toHaveLength(1);
+    // UX ruling 151: the working is step rows, each step with its reason inline, never the card;
+    // the long lines that overflowed the card now fit.
+    expect(slide.elements.some((el) => el.name === "Working card")).toBe(false);
+    expect(slide.elements.filter((el) => /^Step \d+$/.test(el.name ?? ""))).toHaveLength(4);
+    expect(fitSlide(slide, theme).overflow).toEqual([]);
   });
 
   test("an exit ticket's footnote stays on the foot of the slide while the list above grows", () => {

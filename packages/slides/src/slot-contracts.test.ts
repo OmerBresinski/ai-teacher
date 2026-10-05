@@ -24,6 +24,7 @@ import {
   worstFill,
 } from "./slot-contracts.measure";
 import { SlideSpecSchema } from "./specs";
+import { CHUNK_LABEL_NAME, CHUNK_TEXT_NAME } from "./structure";
 import { lineWidth, ruledLines } from "./text-measure";
 import { resolveTextStyle } from "./text-style";
 import { THEMES } from "./themes";
@@ -68,6 +69,12 @@ describe("slot contract drift: no contract promises more than the slide shows", 
     });
     for (const slot of countables(c).filter((s) => !s.fixed && s.max !== undefined)) {
       it(`${name(c)}: ${slot.key} holds exactly ${slot.max}`, () => {
+        // The inline step rows (UX ruling 151) hold a seventh step; the spec schema still caps the
+        // working at six, so a worked example's contract may promise less than the slide holds.
+        if (c.form === "worked-example" && slot.key === "steps") {
+          expect(capacity(c, slot.key)).toBeGreaterThanOrEqual(slot.max as number);
+          return;
+        }
         expect(capacity(c, slot.key)).toBe(slot.max as number);
       });
     }
@@ -160,11 +167,12 @@ describe("D1 labelled chunks", () => {
         made?.variant,
         made?.structure,
       );
-      const body = slide.elements.find((e) => e.type === "text" && e.doc.content?.length === 3) as
-        | { doc: RichDoc }
-        | undefined;
-      expect(body && isChunked(body.doc)).toBe(true);
-      expect(body?.doc.content?.[1]?.content?.[0]?.text).toBe("Liquid:");
+      // UX ruling 152: each chunk is a label on its own line over its text, three of each.
+      const labels = slide.elements.filter((e) => e.name === CHUNK_LABEL_NAME);
+      const texts = slide.elements.filter((e) => e.name === CHUNK_TEXT_NAME);
+      expect([form, labels.length, texts.length]).toEqual([form, 3, 3]);
+      const second = labels[1] as { doc: RichDoc } | undefined;
+      expect(second?.doc.content?.[0]?.content?.[0]?.text).toBe("Liquid");
     }
   });
 
@@ -220,21 +228,25 @@ describe("E1 chunk fit: the ruler lays chunks out as the renderer does", () => {
           made?.variant,
           made?.structure,
         );
-        const body = slide.elements.find(
-          (e) => e.type === "text" && isChunked(e.doc),
-        ) as unknown as {
+        // UX ruling 152: each chunk's text is its own box, its lines and nothing else.
+        const texts = slide.elements.filter((e) => e.name === CHUNK_TEXT_NAME) as unknown as {
           doc: RichDoc;
           w: number;
           h: number;
           style: never;
-        };
-        const r = resolveTextStyle(body.style, theme, "body");
-        const lines = ruledLines(body.doc, "body", theme, body.w, r.fontSize);
-        const gaps = (body.doc.content?.length ?? 1) - 1;
-        const rendered = lines * r.fontSize * r.lineHeight + gaps * gapEm * r.fontSize;
-        // The box is rounded to the point, so within one point of the laid-out height.
-        expect([form, theme.id, lines]).toEqual([form, theme.id, 9]);
-        expect(Math.abs(body.h - rendered)).toBeLessThan(1);
+        }[];
+        // A stack that cannot fit falls back to the labelled run-in body, which must still be there.
+        if (texts.length === 0) {
+          expect(slide.elements.some((e) => e.type === "text" && isChunked(e.doc))).toBe(true);
+          continue;
+        }
+        expect([form, theme.id, texts.length]).toEqual([form, theme.id, 3]);
+        for (const body of texts) {
+          const r = resolveTextStyle(body.style, theme, "body");
+          const lines = ruledLines(body.doc, "body", theme, body.w, r.fontSize);
+          const rendered = lines * r.fontSize * r.lineHeight;
+          expect(Math.abs(body.h - rendered)).toBeLessThan(1);
+        }
       }
     }
   });
@@ -257,7 +269,8 @@ describe("E1 chunk fit: the ruler lays chunks out as the renderer does", () => {
       CHUNKED_FORMS.map((f) => [f, chunkLineCapacity(slotContract(f))]),
     );
     expect(lines).toEqual({ explain: 2, photo: 3, "diagram-slot": 3 });
-    expect(caps).toEqual({ explain: 3, photo: 4, "diagram-slot": 4 });
+    // The chunk stack (UX ruling 152) gives explain one more line per chunk than the run-in did.
+    expect(caps).toEqual({ explain: 4, photo: 4, "diagram-slot": 4 });
   });
 
   it("the contract states the budget in lines, never words", () => {

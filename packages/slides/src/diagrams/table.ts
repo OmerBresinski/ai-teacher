@@ -2,7 +2,7 @@
  * Tables (UX ruling 154): no grid, no frame and no filled header. The header is bold ink on the
  * plain ground over a 2-point accent rule, rows are parted by 1-point hairlines, the first column is
  * set at weight 600. The table takes the full width of its box, columns shared out by their words,
- * cells wrapped to three lines. The type steps down only to the body floor (20): a table that does
+ * cells wrapped to three lines, padded 0.5em across and 0.35em above and below. The type steps down only to the body floor (20): a table that does
  * not fit there is the planner's fit failure, never an 11-point table. It sits on the slide's own
  * ground (the drawing paints it), so no card shows behind it.
  */
@@ -22,7 +22,7 @@ export function layoutTable(t: Table, x: Ctx, w: number, h: number): TableLayout
   const weightOf = (i: number, j: number) => (i === 0 && t.header ? 700 : j === 0 ? 600 : 400);
   let fs = Math.max(x.fs, TABLE_MIN_FS);
   for (;;) {
-    const padX = fs * 0.8;
+    const padX = fs * 0.5;
     const natural = Array.from({ length: cols }, (_, j) =>
       Math.max(fs * 2, ...all.map((r, i) => textWidth(r[j] ?? "", x, fs, weightOf(i, j)))),
     );
@@ -52,8 +52,8 @@ export function layoutTable(t: Table, x: Ctx, w: number, h: number): TableLayout
         wrap(r[j] ?? "", x, (widths[j] ?? 0) - 2 * padX, CELL_LINES, fs, weightOf(i, j)),
       ),
     );
-    const lh = fs * 1.2;
-    const heights = lines.map((r) => Math.max(1, ...r.map((cell) => cell.length)) * lh + fs);
+    const lh = fs * 1.15;
+    const heights = lines.map((r) => Math.max(1, ...r.map((cell) => cell.length)) * lh + fs * 0.7);
     const tableH = heights.reduce((a, b) => a + b, 0);
     const cut = lines.some((r, i) =>
       r.some((cell, j) => cell.join(" ") !== (all[i]?.[j] ?? "").trim().split(/\s+/).join(" ")),
@@ -74,12 +74,10 @@ export function drawTable(t: Table, x: Ctx, w: number, h: number): string {
   const { c } = x;
   const { fs, widths, lines, heights } = layoutTable(t, x, w, h);
   const weightOf = (i: number, j: number) => (i === 0 && t.header ? 700 : j === 0 ? 600 : 400);
-  const padX = fs * 0.8;
+  const padX = fs * 0.5;
   const tableW = widths.reduce((a, b) => a + b, 0);
   // The slide's ground under the whole drawing: no card shows behind a table.
-  const out: string[] = [
-    `<rect x="-2" y="-${n(h)}" width="${n(w + 4)}" height="${n(h * 3)}" fill="${c.bg}"/>`,
-  ];
+  const out: string[] = [`<rect x="0" y="0" width="${n(w)}" height="${n(h)}" fill="${c.bg}"/>`];
   let y = 0;
   lines.forEach((r, i) => {
     const rh = heights[i] ?? 0;

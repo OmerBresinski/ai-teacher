@@ -26,6 +26,7 @@ import {
   panelFill,
 } from "./look";
 import { SAFE_BOTTOM, withSafety } from "./metrics";
+import { curlyQuotes } from "./quote";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop, textPartsOf } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
@@ -360,7 +361,7 @@ export function chunkStack(
     });
     const total = blocks.reduce((a, b) => a + b.h, 0);
     const n = blocks.length;
-    if (withSafety(total + SPACE[3] * (n - 1)) > room) continue;
+    if (withSafety(total + SPACE[2] * (n - 1)) > room) continue;
     const gap = Math.min(SPACE[5], Math.floor((room - withSafety(total)) / Math.max(1, n - 1)));
     const used = total + gap * (n - 1);
     let y = snapY(box.top + Math.max(0, Math.floor((room - withSafety(used)) / 3)));
@@ -1500,7 +1501,10 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
     (e): e is TextElement => isText(e) && e.style.preset === "body" && e !== working,
   );
   if (!cardEl || !working || !question) return [slide];
-  const steps = docLines(working.doc);
+  // Quotes set curly before the rows are measured, as tidy will draw them (UX ruling 157).
+  const steps = docLines(working.doc).map(curlyQuotes);
+  // The step rows a step below the body, tried after the strip and before the working card.
+  let lastResort: () => Slide[] | undefined = () => undefined;
   // One full-width row per step, the working on one line at the left and its reason at the right;
   // step 1 is shown with the question and each later step is one reveal (layout audit #4).
   {
@@ -1541,7 +1545,7 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
     };
     const wrapped = rowCards(rows, top, SAFE_BOTTOM, t, ids, {
       ...rowOptions,
-      sizes: [resolveFontSize(t, "body"), floorBelow(t, "body")],
+      sizes: [resolveFontSize(t, "body")],
       textName: (i) => `Step ${i + 1}`,
     });
     if (wrapped) return [{ ...slide, elements: [...keep, ...wrapped.elements] }];
@@ -1567,6 +1571,48 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
         return [{ ...slide, elements: [...keep, ...a.elements] }, next];
       }
     }
+    // Still too long for one slide: each step with its reason inline after it, the step bold in
+    // ink and the reason in muted at the same size, so the working stays rows, never the card.
+    const inline = rows.map((r) => {
+      const [main, side] = workingAndReason(steps[Number(r.badge) - 1] ?? r.main);
+      const doc: RichDoc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: main, marks: [{ type: "bold" }] },
+              ...(side
+                ? [
+                    {
+                      type: "text",
+                      text: ` (${side})`,
+                      marks: [{ type: "textStyle", attrs: { color: t.colors.muted } }],
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ],
+      };
+      const { side: _side, ...rest } = r;
+      return { ...rest, main: side ? `${main} (${side})` : main, doc };
+    });
+    const inlineAt = (size: number) =>
+      rowCards(inline, top, SAFE_BOTTOM, t, ids, {
+        pads: [CARD_PAD, SPACE[1], SPACE[0], 2],
+        minGap: SPACE[0],
+        maxGap: SPACE[3],
+        cardName: STEP_NAME,
+        sizes: [size],
+        textName: (i) => `Step ${i + 1}`,
+      });
+    const inlined = inlineAt(resolveFontSize(t, "body"));
+    if (inlined) return [{ ...slide, elements: [...keep, ...inlined.elements] }];
+    lastResort = () => {
+      const small = inlineAt(floorBelow(t, "body"));
+      return small ? [{ ...slide, elements: [...keep, ...small.elements] }] : undefined;
+    };
   }
   // The look's fit set the question beside the working card this pass replaces, so the card's
   // lines could step the body preset down for the question too. With the strip in the card's
@@ -1588,6 +1634,8 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
   const keep = slide.elements.filter((e) => e !== cardEl && e !== working && e !== label);
   const strip = stepsStrip(steps, top, SAFE_BOTTOM, t, ids, { reveal: true });
   if (strip) return [{ ...slide, elements: [...keep, ...strip.elements] }];
+  const below = lastResort();
+  if (below) return below;
   if (!paginate || steps.length < 3) return [slide];
   // Too long for one strip: the first half here, the rest on the next slide under the question
   // again, numbered on (UX ruling 91).
@@ -2969,9 +3017,13 @@ export type Row = {
   reveal?: string;
   /** The whole row appears on this step (a worked example's later steps). */
   step?: number;
+  /** The main text as a rich doc (a worked step with its reason inline); `main` stays its words. */
+  doc?: RichDoc;
 };
 
 export type RowOptions = {
+  /** Card paddings to try, roomiest first (a long worked example goes down to SPACE[0]). */
+  pads?: number[];
   /** Candidate sizes, largest first; the default steps up from the body size for few rows. */
   sizes?: number[];
   /** `side` as its own card in the right half (matching). */
@@ -3013,7 +3065,7 @@ export function rowCards(
   const maxGap = options.maxGap ?? SPACE[5];
   const colGap = GUTTER;
   const tries = (options.sizes ?? rowSizes(t, rows.length)).flatMap((size) =>
-    [CARD_PAD, SPACE[1]].map((pad) => ({ size, pad })),
+    (options.pads ?? [CARD_PAD, SPACE[1]]).map((pad) => ({ size, pad })),
   );
   for (const { size, pad } of tries) {
     const badge = Math.max(30, Math.round(size * 1.35));
@@ -3043,8 +3095,9 @@ export function rowCards(
     const sideW = inner - mainW - SPACE[3];
     let ok = true;
     // The reason is a step under its step, never above it (UX ruling 151).
-    const sideSize = options.split ? size : Math.max(MIN_FONT_SIZE.small, Math.round(size * 0.9));
-    const sidePreset: TextPreset = options.split ? "body" : "small";
+    const sideSize = options.split ? size : Math.max(MIN_FONT_SIZE.body, Math.round(size * 0.9));
+    // Set as body (floor 20), never `small`, whose floor of 24 sits above the teaching body.
+    const sidePreset: TextPreset = "body";
     const wOf = (r: Row) => (hasSide && r.side ? mainW : inner);
     // A short answer is revealed at the card's right, beside its question; a long one under it.
     const revealW = Math.floor(inner * 0.34);
@@ -3077,7 +3130,7 @@ export function rowCards(
         !oneLine(r.main, mainW) &&
         oneLine(r.main, inner);
       const mw = at ? inner - revealW - SPACE[3] : stacked ? inner : wOf(r);
-      const main = heightOf(measure, docFromText(r.main), mw, "body", size, 0, style());
+      const main = heightOf(measure, r.doc ?? docFromText(r.main), mw, "body", size, 0, style());
       if (options.mainOneLine && !oneLine(r.main, mw)) ok = false;
       const side = r.side
         ? heightOf(
@@ -3157,7 +3210,7 @@ export function rowCards(
           text(
             ids,
             { x: tx, y: y + pad, w, h },
-            docFromText(words),
+            r.doc && words === r.main ? r.doc : docFromText(words),
             {
               preset: "body",
               fontSize: size,

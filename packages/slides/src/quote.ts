@@ -14,13 +14,12 @@ import { readingSize, resolveFontSize } from "./text-style";
  * speaker and the act and scene when the text gives them ("Prospero, Act 1 Scene 2").
  */
 
-/** Straight quotes set curly: an opening one after a space or bracket, a closing one otherwise. */
+/**
+ * Straight double quotes set curly: an opening one after a space or bracket, a closing one
+ * otherwise. Apostrophes stay as typed (a word's own mark, not a quotation).
+ */
 export function curlyQuotes(text: string): string {
-  return text
-    .replace(/(^|[\s([{—–])"/g, "$1“")
-    .replace(/"/g, "”")
-    .replace(/(^|[\s([{—–])'/g, "$1‘")
-    .replace(/'/g, "’");
+  return text.replace(/(^|[\s([{\u2014\u2013])"/g, "$1\u201C").replace(/"/g, "\u201D");
 }
 
 export type QuoteParts = {
@@ -115,19 +114,23 @@ export function withQuoteBlock(slide: Slide, t: Theme, ids: () => string = uid):
   const restDoc = q.rest ? ({ type: "doc", content: [para(q.rest)] } as RichDoc) : undefined;
   const rh = restDoc ? h(restDoc, "subtitle", qSize, SAFE.w) : 0;
   const total = qh + (aDoc ? SPACE[2] + ah : 0) + (restDoc ? SPACE[6] + rh : 0);
-  let y = snapY(SAFE.y + Math.max(0, Math.floor((SAFE_BOTTOM - SAFE.y - total) / 3)));
+  const markH = Math.round(size * 2.4);
+  let y = snapY(
+    SAFE.y + markH + SPACE[0] + Math.max(0, Math.floor((SAFE_BOTTOM - SAFE.y - markH - total) / 3)),
+  );
   const els: SlideElement[] = [
     {
+      // The open-quote hangs above the rule, clear of the words (UX ruling 157).
       id: ids(),
       type: "text",
-      x: SAFE.x - 4,
-      y: y - Math.round(size * 0.9),
-      w: SPACE[5],
-      h: Math.round(size * 2.2),
-      doc: { type: "doc", content: [para("“")] },
+      x: SAFE.x,
+      y: y - markH - SPACE[0],
+      w: SPACE[7],
+      h: markH,
+      doc: { type: "doc", content: [para("\u201C")] },
       style: {
         preset: "title",
-        fontSize: Math.round(size * 3),
+        fontSize: Math.round(size * 2.4),
         lineHeight: 1,
         color: t.colors.accent,
         autoHeight: false,

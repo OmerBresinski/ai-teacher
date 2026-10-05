@@ -22,6 +22,7 @@ import {
   getTheme,
   type MaterialiseMeta,
   materialiseSlide,
+  noPictureTitleVariant,
   PLACEHOLDER_IMAGE,
   SAFE,
   slideFits,
@@ -794,12 +795,15 @@ export async function planWriteSlides(
       factRefs: objectives.map((o) => o.id),
     };
     // The title with no picture: the slides package's no-picture title variant when it fits.
-    const titleWithoutPicture = () => {
-      const variant = withoutPicture(spec, "split").variant;
-      return variant && fitsPlanned(spec, { variant, stepDown: 0 }).ok
-        ? materialiseSlide(spec, themeId, codeMeta(), deps.ids, variant)
-        : materialiseSlide(spec, themeId, codeMeta(), deps.ids);
-    };
+    // The title with no picture: the theme's cover (UX ruling 156), never bare text.
+    const titleWithoutPicture = () =>
+      materialiseSlide(
+        spec,
+        themeId,
+        codeMeta(),
+        deps.ids,
+        noPictureTitleVariant((variant) => fitsPlanned(spec, { variant, stepDown: 0 }).ok),
+      );
     const pic = table[0]?.imageBrief;
     // The title always has a picture (ruling 134): beside the title when it fits there, else under
     // it in a band, a taller band for a long title. Only with a photo search to fill it: an empty

@@ -88,3 +88,15 @@ export function carriesPicture(
       return false;
   }
 }
+
+/**
+ * The title variant for a lesson with no photograph (UX ruling 156): `cover`, else `cover-long`
+ * for a title that needs a taller band, never the bare stack. `fits(variant)` is the caller's
+ * planned-fit check at full size; past it, `cover-long`, its title stepped down by the fit if need be.
+ */
+export function noPictureTitleVariant(
+  fits: (variant: string, stepDown: number) => boolean,
+): string {
+  if (fits(TITLE_NO_PICTURE_VARIANT, 0)) return TITLE_NO_PICTURE_VARIANT;
+  return TITLE_NO_PICTURE_LONG_VARIANT;
+}

@@ -84,7 +84,7 @@ function ranked(kind: SlideKind, ctx: VariantContext): VariantName[] {
     case "title":
       // A full-bleed topic photo under a dark band is the title (UX ruling 156); with no photo,
       // the theme's cover pattern over an accent band, never bare text.
-      if (!ctx.hasImage) return ["cover", "cover-long", "stack"];
+      if (!ctx.hasImage) return ["cover", "cover-long"];
       return ["photo-band", "photo-band-long", "split", "stack"];
     case "content": {
       // A statement has no heading to anchor it, which the deck's first idea needs (and any
