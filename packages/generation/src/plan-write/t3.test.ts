@@ -64,16 +64,17 @@ describe("t3Fit: T3 slides through the fit ladder (lab/t3)", () => {
     if (r.form !== "photo") expect(r.rung === "sibling" || r.rung === "moved").toBe(true);
   });
 
-  test("an overflowing check set moves whole questions with their answers to the notes", () => {
+  test("a check set too long for any rung keeps every question on the slide, unfit (lab/t3 fit-fix)", () => {
     const questions = Array.from({ length: 9 }, (_, i) => ({
       question: `Explain in two sentences why group ${i + 1} gained or lost from hyperinflation in 1923, using one example.`,
       answer: `Group ${i + 1} lost because their fixed incomes bought less each day.`,
     }));
     expect(fitWritten("check-set", "default", { questions, notes: "" }).ok).toBe(false);
     const r = t3Fit("check-set", "default", { questions, notes: "" });
-    expect(r.fits).toBe(true);
-    const where = JSON.stringify(r.out);
-    for (const q of questions) expect(where).toContain(q.question);
+    expect(r.fits).toBe(false);
+    expect(r.rung).toBe("unfit");
+    expect(r.moved).toEqual([]);
+    expect(r.out.questions).toEqual(questions);
   });
 });
 

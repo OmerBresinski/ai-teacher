@@ -70,7 +70,7 @@ describe("fit ladder (no slide is saved overflowing)", () => {
     expect(kept[kept.length - 1]?.startsWith("So the case does not establish")).toBe(true);
     for (const m of r.moved) expect(String(r.out.notes)).toContain(m);
   });
-  test("an overflowing question set moves a whole question and its answer to the notes", () => {
+  test("an overflowing question set keeps every question on the slide (lab/t3 fit-fix)", () => {
     const q = (k: number) => ({
       question: `Question ${k}: explain at length how a strict superego and a demanding id would each shape an adult's response to criticism at work?`,
       answer: `A long answer ${k} naming the superego, the id and the ego's defence`,
@@ -78,8 +78,12 @@ describe("fit ladder (no slide is saved overflowing)", () => {
     const out = { questions: [q(1), q(2), q(3)], notes: "" };
     const r = fitLadder("starter-set", "default", out);
     if (r.rung === "none") return;
-    expect(r.rung).toBe("moved");
-    expect(fitWritten(r.form, r.layout, r.out).ok).toBe(true);
-    for (const m of r.moved) expect(String(r.out.notes)).toContain(m);
+    expect(r.rung).not.toBe("moved");
+    expect(r.moved).toEqual([]);
+    expect(r.out.questions).toEqual(out.questions);
+    if (r.rung !== "unfit") {
+      const at = r.rung === "compact" || r.rung === "room";
+      expect(at || fitWritten(r.form, r.layout, r.out).ok).toBe(true);
+    }
   });
 });
