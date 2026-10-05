@@ -20,61 +20,18 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  * image-prompts-are-prompts: a listed example object turns up in every picture). Bump the version
  * on any change.
  *
- * Clause ledger (v1; each sentence and why it is there):
- *  S1 role + input: the model must know it is choosing a source, not writing the slide.
- *  S2 "earns its place": the gate for `none` and for what the picture centres on (openai.md
- *     2026-10-03: "nothing pupils could see explains it, or it would only decorate" calibrated).
- *  R-commons: named/dated things; the Weimar smoke failed because the dated event was not searched.
- *  R-pexels: stock first only where stock can plausibly show it (Greg 6 Oct: don't waste stock
- *     searches that can't succeed; real stock looks real and costs nothing).
- *  R-generate: unusual combinations and staged comparisons (Greg 6 Oct: cow, sheep and hen
- *     together is hard for real photos).
- *  R-code: counts were wrong in every generated image (round 1: ~12 of 24; round 2 drawn exact);
- *     the kinds list is rendered from the renderer's enum, names only.
- *  R-none: the escape the gate needs, named as the excluded failure (decoration).
- *  P-split: Greg/coordinator: separate pictures when a comparison reads better apart.
- *  F-shows: the library key and the judge's "wanted" line, written once by the model.
- *  F-mustShow: the judge's gate input (PICTURE-AUDIT #1); "the thing itself first" lets the
- *     one-item real gate pass on the subject (round 2: a 3-item list refused a real Tempest photo).
- *  F-queries: year + event / name first (round 2 root cause: first-three-words queries).
- *  F-imagePrompt: one subject + suiting setting (round 2, held up 9/9); natural, unposed (Greg 6
- *     Oct: animals facing the camera read as AI); period/place only when the subject belongs to
- *     one (round 1: a blanket UK line put Big Ben and flags everywhere); "draws every object it
- *     mentions" is the reason an inclusion list fails; "describe what is there" stops negative
- *     lists priming the image model; code adds the frame/text lines.
- *  F-count/diagram: typed slots instead of prose so code can draw (CORE 2026-10-01 geometry law).
- *
- * v2 (same day, 24 fixtures on luna low, PHOTO-BANK/DIRECTOR-PROMPTS.md): 22 of 24 routes agreed.
- *  - "a named work in performance" (commons): v1 sent a staging of The Tempest to generation, which
- *    would invent a production.
- *  - mustShow "one visible thing in two to four words": v1 wrote clauses ("ice cube keeps its shape
- *    while water conforms to the glass", "woolly coats, four legs and two ears visible on each"); the
- *    generic gate needs every item seen, and code's 40-character clip cut them mid-phrase.
- *  - queries "of two to four words each": v1 wrote 6-10 word searches; Commons returned nothing for
- *    the Weimar slot that "hyperinflation 1923" had filled in round 2.
- *
- * v3 (coordinator, 6 Oct): the Tempest staging still went to generation on v2, so commons now
- * reads "anything named or dated ... Always commons, even when the request describes a particular
- * moment of it", with generation named as the fallback; library-or-generate is "unnamed". Two to
- * four searches. Code appends the request's year-plus-event and two-name anchors (planPicture).
- *
- * v4 (coordinator, 6 Oct): the photo judge rejected the real 1923 Weimar photo; v3's mustShow held
- * "German children", which no vision judge can see. mustShow is now what a camera records; who,
- * where and when are read by the judge from the source's own record (title, description, date),
- * passed to it as text beside the image (Greg, 6 Oct: no code keyword checks for what is right).
- *
- * v5: `named` (event, person, work, place, object) for commons, so code can hold the faithful
- * generation fallback off per kind (FAITHFUL_FALLBACK in stages/photo-bank.ts; Greg to decide).
- *
- * v6 (COUNT-TEST/RESULT.md: arm B exact on 16 of 16, 3 to 24 objects): countable real things go
- * to library-or-generate with a count slot, and code writes arm B's prompt from it (count in words
- * and digits, layout from the slot, top-down on a plain surface, nothing else). The slot carries
- * empty spaces (the director's own egg-box prompt lost its 2 empty cups). code keeps drawn arrays.
- *
- * v7 (ruling 163, HISTORY-TEST/RESULT.md): `period` for historical subjects; a historical event's
- * imagePrompt is a painted educational illustration (9 of 9 faithful "photos" were misleading
- * fakes; illustrations of events were usable on 4 of 5). Code: people and particular objects are
- * Commons or none; an event miss is illustrated, then period-checked by the vision judge.
+ * Ledger (evidence: PHOTO-BANK/DIRECTOR.md, DIRECTOR-PROMPTS.md, COUNT-TEST, HISTORY-TEST):
+ * - routes by category, no examples: luna low agreed on 22 of 24 fixtures (v1).
+ * - pexels only where stock plausibly holds it; unusual combinations straight to generation (Greg).
+ * - commons for anything named or dated (v3: a Tempest staging had gone to generation).
+ * - mustShow is what a camera records, each one thing in 2-4 words; who, where and when come from
+ *   the source record the judge reads (v2 clauses failed the gate; v4 "German children").
+ * - queries of 2-4 words (v2: long searches found nothing on Commons).
+ * - image prompt: one subject, a setting that suits it, natural and unposed (Greg: posed animals
+ *   read as AI); period or place only when the subject belongs to one (round 1 UK overload);
+ *   "describe what is there" keeps negative lists away from the image model.
+ * - count slot with empty spaces; code writes COUNT-TEST arm B's prompt (16 of 16 exact) (v6).
+ * - named and period, for ruling 163's table; a historical event is a painted illustration (v7).
  */
 export const PICTURE_DIRECTOR_VERSION = "picture-director.v7";
 
