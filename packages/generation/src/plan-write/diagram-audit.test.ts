@@ -147,3 +147,21 @@ describe("DIAGRAM-AUDIT zone capacity", () => {
     expect(capacityLine("bar-chart")).toMatch(/^up to \d+ bars/);
   });
 });
+
+describe("DIAGRAM-AUDIT picture shape", () => {
+  const { orientationFor, cropToAspect } = require("../stages/illustrate");
+  test("the zone's aspect picks the Pexels orientation", () => {
+    expect(orientationFor(0.78)).toBe("portrait");
+    expect(orientationFor(2.2)).toBe("landscape");
+    expect(orientationFor(1)).toBe("square");
+    expect(orientationFor(undefined)).toBe("portrait");
+  });
+  test("a Commons photo is cropped centrally to the zone's shape", () => {
+    const c = cropToAspect(1600, 900, 0.8);
+    expect(c.h).toBe(900);
+    expect(c.w).toBeCloseTo(720, 5);
+    expect(c.x).toBeCloseTo(440, 5);
+    expect(c.kept).toBeCloseTo(0.45, 2);
+    expect(cropToAspect(800, 1000, 0.8).kept).toBeCloseTo(1, 5);
+  });
+});
