@@ -47,6 +47,7 @@ import {
   itemCount,
   parseDiagram,
   settleDiagram,
+  sparseDrawing,
   tableDrawnHeight,
   tableDrawsWhole,
   withLongLabels,
@@ -1219,6 +1220,10 @@ export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: b
   // The drawing needs the full zone here: lines past the caption's cap go to the notes.
   const big = asFigureFull(slide, theme, { spill: true });
   if (!big) return slide;
+  // lab/cand: a big diagram that leaves its full-width zone mostly empty (a 3-box flow) steps
+  // down to the half zone with its words beside it, when it draws clean there.
+  const bigZone = zone(big);
+  if (full && bigZone && at && sparseDrawing(spec, theme, bigZone) && clean(slide)) return slide;
   return full || clean(big) ? big : slide;
 }
 

@@ -21,7 +21,7 @@ describe("LAYOUT-FIX big diagrams replayed from the smoke", () => {
     picture: Record<string, unknown>;
   }[])
     for (const theme of THEMES.map((t) => getTheme(t.id)))
-      test(`${f.source} on ${theme.id}: drawn full width, every line on the slide or in the notes`, () => {
+      test(`${f.source} on ${theme.id}: drawn (full width unless sparse), every line on the slide or in the notes`, () => {
         const light = withPictureZone({
           form: "big-diagram",
           heading: f.heading,
@@ -44,7 +44,10 @@ describe("LAYOUT-FIX big diagrams replayed from the smoke", () => {
         const spec = expandDrawing(f.picture);
         const base = t3DiagramBase(slide, spec, theme, true);
         const zone = base.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
-        expect(zone?.w).toBe(844);
+        // lab/cand: y1's 3-box flow is sparse across the slide (a strip in empty space), so it
+        // steps down to the half zone with its words beside it; the others keep the full width.
+        if (f.heading === "A chick grows") expect(zone?.w ?? 844).toBeLessThan(844);
+        else expect(zone?.w).toBe(844);
         const d = placeT3Diagram(base, spec, theme, () => `g${n++}`);
         expect(d.reasons).toEqual([]);
         expect(d.slide).toBeDefined();

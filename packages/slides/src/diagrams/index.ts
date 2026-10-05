@@ -564,3 +564,71 @@ export {
   itemCount,
   zoneShape,
 } from "./capacity";
+
+/**
+ * lab/cand: how much of a `size` zone the spec's drawing covers: the bounding box of its words
+ * and recorded strokes against the zone under its title, 0 to 1. Undefined when it does not draw.
+ * Kinds whose shapes the probe does not record (`SPARSE_FILL` leaves them out) read low here.
+ */
+export function drawnFill(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number },
+): number | undefined {
+  const s = parseDiagram(spec);
+  const w = Math.round(size.w);
+  const h = Math.round(size.h);
+  if (!s || !(w >= 80) || !(h >= 60)) return undefined;
+  const probe = diagramProbe(h);
+  try {
+    body(s, theme, w, h, probe);
+  } catch {
+    return undefined;
+  }
+  let [x0, y0, x1, y1] = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, -1, -1];
+  for (const r of probe.rec)
+    [x0, y0, x1, y1] = [
+      Math.min(x0, r.x0),
+      Math.min(y0, r.y0),
+      Math.max(x1, r.x1),
+      Math.max(y1, r.y1),
+    ];
+  for (const [ax, ay, bx, by] of probe.strokes)
+    [x0, y0, x1, y1] = [
+      Math.min(x0, ax, bx),
+      Math.min(y0, ay, by),
+      Math.max(x1, ax, bx),
+      Math.max(y1, ay, by),
+    ];
+  if (x1 < x0 || y1 < y0) return 0;
+  const cw = Math.min(w, x1) - Math.max(0, x0);
+  const ch = Math.min(probe.ih, y1) - Math.max(0, y0);
+  return Math.max(0, Math.min(1, (cw * ch) / (w * Math.max(1, probe.ih))));
+}
+
+/**
+ * The share of a full-width zone below which a kind's drawing is sparse there: a 3-box chain
+ * drawn across the slide is a strip with empty space above and below (0.17). Only kinds whose
+ * labels and strokes outline the drawing are listed; pies, Venn, bar charts and the like draw
+ * shapes the probe does not record and are never called sparse.
+ */
+export const SPARSE_FILL: Partial<Record<DiagramSpec["kind"], number>> = {
+  flow: 0.35,
+  timeline: 0.35,
+  "number-line": 0.2,
+  "bar-model": 0.3,
+  table: 0.3,
+};
+
+/** Whether the spec drawn in `size` covers less of it than its kind's `SPARSE_FILL`. */
+export function sparseDrawing(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number },
+): boolean {
+  const kind = parseDiagram(spec)?.kind;
+  const min = kind ? SPARSE_FILL[kind] : undefined;
+  if (min === undefined) return false;
+  const f = drawnFill(spec, theme, size);
+  return f !== undefined && f < min;
+}
