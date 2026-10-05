@@ -3243,6 +3243,7 @@ export async function planWriteSlides(
   if (mode === "stream" && renderSlides && !deps.signal.aborted) {
     await writing;
     const objectiveTexts = finalFacts.objectives.map((o) => o.text);
+    const lookUsage = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
     const lookSlides = (): LookSlide[] =>
       placed
         .filter((p) => lesson.slides[p.index])
@@ -3279,6 +3280,12 @@ export async function planWriteSlides(
         maxOutputTokens: MAX_OUTPUT_TOKENS_LOOK_CHECK,
         images: [{ id: slide.slideId, url: image }],
       });
+      const { inputTokens = 0, outputTokens = 0, cachedInputTokens = 0 } = call.usage;
+      lookUsage.calls += 1;
+      lookUsage.inputTokens += inputTokens;
+      lookUsage.outputTokens += outputTokens;
+      lookUsage.costUsd +=
+        costUsd(call.modelId, { inputTokens, outputTokens, cachedInputTokens }) ?? 0;
       return parseLookFlags(call.output, {
         number: slide.index + 1,
         slideId: slide.slideId,
@@ -3366,6 +3373,7 @@ export async function planWriteSlides(
           ),
       });
       await writing;
+      lookCheck = { ...lookCheck, checkCalls: lookUsage };
       finalFacts = buildFacts();
       deps.logger.info(
         { stage: "generate", call: "look-check", version: LOOK_CHECK_VERSION, report: lookCheck },

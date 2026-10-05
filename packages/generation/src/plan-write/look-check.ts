@@ -200,6 +200,8 @@ export type LookReport = {
   renderMs: number;
   checkMs: number;
   totalMs: number;
+  /** The check calls alone (set by the caller): count, tokens and cost; re-asks are not in it. */
+  checkCalls?: { calls: number; inputTokens: number; outputTokens: number; costUsd: number };
 };
 
 export type LookIO = {
