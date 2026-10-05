@@ -26,8 +26,14 @@ import { segment } from "./marks";
 /* Values                                                              */
 /* ------------------------------------------------------------------ */
 
-/** Longest each label may be: the substances' names, the arrows' symbols and the axis names. */
-export const ENERGY_PROFILE_LABEL_MAX = { name: 24, arrow: 8, axis: 24 } as const;
+/**
+ * Longest each label may be: the substances' names, the arrows' labels and the axis names. An
+ * arrow's label up to `beside` characters sits beside its arrow; a longer one (LAYOUT-TEST: the
+ * writer wrote "Energy change unchanged" in 3 of 3 runs and the figure was dropped) leaves the
+ * arrow its symbol ("Ea", "ΔH") and is named in full in a key row under the plot, one line wide
+ * across the figure, which holds `arrow` characters in the half-slide zone on every theme.
+ */
+export const ENERGY_PROFILE_LABEL_MAX = { name: 24, beside: 8, arrow: 40, axis: 24 } as const;
 
 /** The two levels' names and energies, and the optional labels, with no rules. */
 const energyProfileShape = z.object({
@@ -200,6 +206,27 @@ const LABEL_KEYS: readonly LabelKey[] = [
 ];
 type Labels = Record<LabelKey, FittedLabel>;
 
+/** A key row's lines, and its inset from the figure's sides. */
+const KEY_LINES = 2;
+const KEY_INSET = 4;
+/** The arrows' symbols, drawn on an arrow whose label is in the key. */
+const ARROW_SYMBOL = { activation: "Ea", change: "ΔH" } as const;
+type ArrowKey = keyof typeof ARROW_SYMBOL;
+
+/**
+ * An arrow label too long to sit beside its arrow, as its key row: "ΔH: Energy change unchanged",
+ * or "Ea: Without catalyst" for "Ea without catalyst" (the symbol is not said twice).
+ */
+export function arrowKeyRow(key: ArrowKey, label: string): string {
+  const sym = ARROW_SYMBOL[key];
+  const rest = label
+    .trim()
+    .replace(new RegExp(`^${sym}(?=$|[\\s:,(-])[\\s:,-]*`, "i"), "")
+    .trim();
+  const said = rest || label.trim();
+  return `${sym}: ${said.charAt(0).toUpperCase()}${said.slice(1)}`;
+}
+
 function drawEnergyProfile(
   values: EnergyProfileValues | undefined,
   t: Theme,
@@ -209,6 +236,19 @@ function drawEnergyProfile(
   const { activationEnergy, energyChange } = valid ? values : FALLBACK;
   const exothermic = energyChange <= 0;
   const labelH = boxH(t, "small");
+  // An arrow label longer than its place beside the arrow goes to a key row under the plot.
+  const keyed = (["activation", "change"] as const).flatMap((key) => {
+    const given = (key === "activation" ? values?.activationLabel : values?.changeLabel)?.trim();
+    return given && given.length > ENERGY_PROFILE_LABEL_MAX.beside
+      ? [{ key, text: arrowKeyRow(key, given) }]
+      : [];
+  });
+  const isKeyed = (key: ArrowKey) => keyed.some((k) => k.key === key);
+  // Each key row across the figure, wrapping to a second line when it must.
+  const keyRows = keyed.map((k) =>
+    fitLabel(t, k.text, { maxW: size.w - 2 * KEY_INSET, maxLines: KEY_LINES }),
+  );
+  const keyH = keyRows.length ? keyRows.reduce((h, l) => h + l.h, 0) + CAPTION_GAP : 0;
 
   // Across: the plot, and where the plateaus, the peak and the ΔH arrow are on it.
   const plotRight = size.w - PLOT_RIGHT_INSET;
@@ -234,11 +274,11 @@ function drawEnergyProfile(
       fit: { maxW: size.w - (exothermic ? peakX + LANE_GAP : productsStart) },
     },
     activation: {
-      text: values?.activationLabel ?? "Ea",
+      text: isKeyed("activation") ? ARROW_SYMBOL.activation : (values?.activationLabel ?? "Ea"),
       fit: { ...arrowFit, maxW: reactantsEnd - CLEAR - (AXIS_X + ARROW_LABEL_GAP) },
     },
     change: {
-      text: values?.changeLabel ?? "ΔH",
+      text: isKeyed("change") ? ARROW_SYMBOL.change : (values?.changeLabel ?? "ΔH"),
       fit: {
         ...arrowFit,
         maxW: changeX - ARROW_LABEL_GAP - (exothermic ? productsStart : peakX + ARROW_LABEL_GAP),
@@ -262,7 +302,7 @@ function drawEnergyProfile(
     const plotTop = labels.energy.h + PEAK_TOP_GAP;
     const standing = (h: number) => h + NAME_GAP + CLEAR - PEAK_TOP_GAP;
     const axisY =
-      size.h - labels.progress.h - AXIS_BOTTOM_GAP - (notToScale ? labelH + CAPTION_GAP : 0);
+      size.h - labels.progress.h - AXIS_BOTTOM_GAP - keyH - (notToScale ? labelH + CAPTION_GAP : 0);
     const hanging = exothermic
       ? Math.max(labels.reactants.h, labels.products.h)
       : labels.reactants.h;
@@ -471,7 +511,21 @@ function drawEnergyProfile(
         (o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h,
       );
     };
-    return candidates.find((b) => inRoom(b) && !hits(b)) ?? (candidates[0] as Box);
+    const clear = candidates.find((b) => inRoom(b) && !hits(b));
+    if (clear) return clear;
+    // None clears everything: the one in the room that covers the least of the labels set.
+    const covered = (b: Box) =>
+      taken.reduce(
+        (sum, o) =>
+          sum +
+          Math.max(0, Math.min(b.x + b.w, o.x + o.w) - Math.max(b.x, o.x)) *
+            Math.max(0, Math.min(b.y + b.h, o.y + o.h) - Math.max(b.y, o.y)),
+        0,
+      );
+    const room = candidates.filter(inRoom);
+    return room.length
+      ? room.reduce((best, b) => (covered(b) < covered(best) ? b : best))
+      : (candidates[0] as Box);
   }
   /** Every label kept inside the figure, `MARGIN` clear of its edges. */
   const inside = (b: Box): Box => ({
@@ -565,7 +619,6 @@ function drawEnergyProfile(
   /** "Ea" beside its arrow and clear of both curves, when a catalysed curve is drawn too. */
   const eaBox = (): Box => {
     const a = labels.activation;
-    if (catPeak === undefined) return placed.activation;
     const taken = [
       placed.energy,
       placed.progress,
@@ -574,6 +627,12 @@ function drawEnergyProfile(
       placed.change,
     ];
     if (legendBox) taken.push(legendBox);
+    // Without a catalysed curve, its own place unless that runs into another label (a plot made
+    // short by key rows can leave the reactants' plateau too near the energy axis's name).
+    const meets = (b: Box, o: Box) =>
+      b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h;
+    if (catPeak === undefined && !taken.some((o) => meets(placed.activation, o)))
+      return placed.activation;
     // Nearest the arrow's middle first, either side, then a step further out.
     const mid = (yR + plotTop) / 2;
     const cands: Box[] = [];
@@ -619,6 +678,13 @@ function drawEnergyProfile(
     labelText(t, labels.activation.text, inside(eaBox()), "right"),
     labelText(t, labels.change.text, inside(placed.change), "right"),
   ];
+  // The key rows, under the axis's name and above the not-to-scale caption, each one line.
+  const keyTop = size.h - keyH + CAPTION_GAP - (notToScale ? labelH + CAPTION_GAP : 0);
+  let keyY = keyTop;
+  for (const l of keyRows) {
+    children.push(labelText(t, l.text, { x: KEY_INSET, y: keyY, w: l.w, h: l.h }, "left"));
+    keyY += l.h;
+  }
   if (notToScale) children.push(notToScaleCaption(t, size));
   return { children, alt: energyProfileAlt(values, notToScale) };
 }

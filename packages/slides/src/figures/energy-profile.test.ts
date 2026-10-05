@@ -283,8 +283,8 @@ describe("energyProfileValuesSchema", () => {
       values(0, -10), // no activation energy
       values(50, -90, { reactants: "magnesium and hydrochloric acid" }), // 31 characters
       values(50, -90, { products: "magnesium chloride and hydrogen" }),
-      values(50, -90, { activationLabel: "activation" }), // 10 characters
-      values(50, -90, { changeLabel: "energy change" }),
+      values(50, -90, { activationLabel: "a".repeat(41) }), // past the key's 40 characters
+      values(50, -90, { changeLabel: "b".repeat(41) }),
       values(50, -90, { energyAxis: "Energy stored in the chemicals" }),
       values(50, -90, { progressAxis: "How far the reaction has gone" }),
     ];
@@ -498,4 +498,74 @@ describe("energy-profile labels over their caps", () => {
       expect(g.alt).toContain(`from ${"M".repeat(24)} to ${"W".repeat(24)}.`);
     });
   }
+});
+
+/* ---- LAYOUT-TEST: an arrow label longer than its place beside the arrow goes to a key row ---- */
+describe("energy profile: long arrow labels in a key", () => {
+  const ZONE: FigureRect = { x: 58, y: 119, w: 363, h: 378 };
+  const long = values(80, -30, {
+    activationLabel: "Ea without catalyst",
+    changeLabel: "Energy change unchanged",
+  });
+  // Label boxes carry slack around their glyphs: a meeting of up to 4 points is not an overlap.
+  const TOL = 4;
+  const overlaps = (a: TextElement, b: TextElement) =>
+    Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > TOL &&
+    Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > TOL;
+
+  it("accepts the writer's labels up to the key's capacity and refuses longer", () => {
+    expect(energyProfileValuesSchema.safeParse(long).success).toBe(true);
+    const over = values(80, -30, { changeLabel: "x".repeat(41) });
+    expect(energyProfileValuesSchema.safeParse(over).success).toBe(false);
+  });
+
+  it("draws the symbols on the arrows and the labels whole in key rows, clear of every label", () => {
+    for (const t of THEMES) {
+      for (const rect of [ZONE, { x: 58, y: 101, w: 844, h: 351 }]) {
+        const g = drawFigure("energy-profile", long, t, rect) as GroupElement;
+        const all = texts(g).map(textOf);
+        expect(all).toContain("Ea");
+        expect(all).toContain("ΔH");
+        expect(all).toContain("Ea: Without catalyst");
+        expect(all).toContain("ΔH: Energy change unchanged");
+        expect(
+          all
+            .filter((s) => s.startsWith("Ea:") || s.startsWith("ΔH:"))
+            .some((s) => s.includes("…")),
+        ).toBe(false);
+        const ts = texts(g);
+        for (const a of ts) {
+          expect(a.x).toBeGreaterThanOrEqual(0);
+          expect(a.y).toBeGreaterThanOrEqual(0);
+          expect(a.x + a.w).toBeLessThanOrEqual(rect.w + 0.5);
+          expect(a.y + a.h).toBeLessThanOrEqual(rect.h + 0.5);
+          for (const b of ts) if (a !== b) expect(overlaps(a, b)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("fits a 40-character key row (two lines at most) in the half-slide zone on every theme", () => {
+    const forty = values(80, -30, { changeLabel: "A label of exactly forty characters, ok." });
+    expect("A label of exactly forty characters, ok.".length).toBe(40);
+    for (const t of THEMES) {
+      const g = drawFigure("energy-profile", forty, t, ZONE) as GroupElement;
+      expect(texts(g).map(textOf)).toContain("ΔH: A label of exactly forty characters, ok.");
+    }
+  });
+
+  it("keeps a short label beside its arrow", () => {
+    const g = drawFigure(
+      "energy-profile",
+      values(80, -30, { changeLabel: "ΔH = −30" }),
+      chalk,
+      ZONE,
+    ) as GroupElement;
+    expect(texts(g).map(textOf)).toContain("ΔH = −30");
+    expect(
+      texts(g)
+        .map(textOf)
+        .some((s) => s.startsWith("ΔH:")),
+    ).toBe(false);
+  });
 });
