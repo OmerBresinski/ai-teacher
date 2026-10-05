@@ -1,6 +1,5 @@
 import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
-  anchorQueries,
   isBlockedQuery,
   normaliseQuery,
   PexelsError,
@@ -440,7 +439,6 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const queries = [
     ...(brief.named ? [brief.named] : []),
     ...(brief.queries ?? []),
-    ...(real ? anchorQueries(brief.request ?? brief.subject) : []),
     ...(real && args.lesson.title ? queryCandidates({ subject: args.lesson.title }) : []),
     ...factQueryHints(args.lesson, index),
     ...queryCandidates(brief),
@@ -646,6 +644,48 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
 }
 
 /** One judge call over `pool`: the thumbnails as image parts, the captions and brief as text. */
+/**
+ * A generated picture shown to the photo judge as the one candidate, with the same brief (its
+ * mustShow, stated relations, count and period): one prompt checks stock and generated pictures.
+ */
+export async function judgeMade(args: {
+  lesson: Lesson;
+  index: number;
+  brief: ImageBrief;
+  deps: PipelineDeps;
+  dataUrl: string;
+}): Promise<boolean> {
+  const made: PhotoResult = {
+    id: "made",
+    width: 1024,
+    height: 1024,
+    alt: args.brief.request ?? args.brief.subject,
+    photographer: "",
+    photographerUrl: "",
+    pageUrl: "made",
+    src: { large: args.dataUrl, medium: args.dataUrl, tiny: args.dataUrl },
+  } as PhotoResult;
+  const verdict = await judge(
+    {
+      lesson: args.lesson,
+      slide: undefined,
+      slideBrief: args.brief.request,
+      brief: args.brief,
+      images: args.deps.images as PhotoPlacer,
+      deps: args.deps,
+      index: args.index,
+    },
+    [made],
+    [],
+  );
+  args.deps.logger.info({
+    stage: "illustrate",
+    slideIndex: args.index,
+    made: { fits: verdict.fits, why: verdict.why },
+  });
+  return verdict.pick === "made" && gatePasses(args.brief, verdict);
+}
+
 async function judge(
   args: PlaceArgs,
   pool: PhotoResult[],

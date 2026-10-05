@@ -59,7 +59,7 @@ import { callStructured } from "../call";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { audienceBlock } from "../prompts/shared";
 import { withUsage } from "../stages/generate";
-import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
+import { judgeMade, pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
 import { mustShowOf, photoBankOn } from "../stages/photo-bank";
 import { findDirected, type SlideForPicture } from "../stages/picture-director";
 
@@ -1790,6 +1790,10 @@ export async function simpleLessonSlides(
       country: "England",
       index,
       stock,
+      judgeMade: (brief, made) =>
+        made.dataUrl
+          ? judgeMade({ lesson, index, brief, deps, dataUrl: made.dataUrl })
+          : Promise.resolve(true),
       deps,
     });
   };
@@ -2122,6 +2126,10 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       country: "England",
       index,
       stock,
+      judgeMade: (brief, made) =>
+        made.dataUrl
+          ? judgeMade({ lesson, index, brief, deps, dataUrl: made.dataUrl })
+          : Promise.resolve(true),
       deps,
     });
   };
