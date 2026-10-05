@@ -38,7 +38,7 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
       // Modern looks: touching cells stand a hair apart instead of sharing an outline.
       const cut = look().gap * fs;
       out.push(
-        `<rect x="${n(px + cut / 2)}" y="${n(y)}" width="${n(pw - cut)}" height="${n(barH)}" fill="${p.shaded ? c.accent : c.tint}" stroke="${c.ink}" stroke-width="2"/>`,
+        `<rect x="${n(px + cut / 2)}" y="${n(y)}" width="${n(pw - cut)}" height="${n(barH)}" fill="${p.shaded ? c.accent : c.tint}"/>`,
       );
       if (p.label && textWidth(p.label, x, fs, 600) <= pw - 6) {
         out.push(
