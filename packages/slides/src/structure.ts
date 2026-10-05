@@ -3205,6 +3205,12 @@ export function rowCards(
             : Math.max(main + reveal, side);
       return { main, side, reveal, at, mw, stacked, h: Math.max(badge, content) + pad * 2 };
     });
+    // A plain list keeps an even pitch (item 9): every row takes the tallest row's room, so a hidden
+    // answer under one question does not leave a wider gap after it alone.
+    if (plain) {
+      const tallest = Math.max(...measured.map((m) => m.h));
+      for (const m of measured) m.h = tallest;
+    }
     const total = measured.reduce((n, m) => n + m.h, 0);
     const room = bottom - top;
     if (!ok) continue;
