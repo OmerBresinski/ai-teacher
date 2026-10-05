@@ -18,9 +18,10 @@ import {
 import type { PlacedPhoto } from "./illustrate";
 import {
   type BankRequest,
-  FAITHFUL_FALLBACK,
   findPicture,
+  historyPolicy,
   type PictureBank,
+  realFallback,
   routePicture,
 } from "./photo-bank";
 
@@ -135,6 +136,15 @@ const inWords = (n: number) => (WORDS[n] ? `${WORDS[n]} (${n})` : String(n));
  * view from directly above on a plain surface, every object separate, nothing else. Undefined when
  * the slot is not consistent (spaces = total + empty).
  */
+/** A historical subject Commons missed (ruling 163): an obvious painted illustration in its period. */
+export function illustrationPrompt(prompt: string, period: string | null): string {
+  return [
+    "A hand-painted educational illustration, clearly a painting and not a photograph.",
+    prompt.replace(/\s+/g, " ").trim(),
+    ...(period?.trim() ? [`Everything in it belongs to ${period.trim()}.`] : []),
+  ].join("\n");
+}
+
 export function countImagePrompt(c: NonNullable<PictureDirection["count"]>): string | undefined {
   const empty = Math.max(0, c.empty);
   const things = c.things.replace(/\s+/g, " ").trim();
@@ -247,8 +257,21 @@ export function planPicture(direction: PictureDirection | undefined, ask: Ask): 
           imagePrompt: first.imagePrompt,
           draw: null,
           stockFirst: direction.route !== "library-or-generate" && !counted,
-          ...(real && direction.named
-            ? { faithfulFallback: FAITHFUL_FALLBACK[direction.named] }
+          ...(real
+            ? {
+                realFallback: realFallback(
+                  direction.named,
+                  !!direction.period?.trim(),
+                  historyPolicy(),
+                ),
+              }
+            : {}),
+          ...(real && direction.period?.trim() ? { period: direction.period.trim() } : {}),
+          // A historical event's (or, by policy, person's) fallback is an obvious illustration.
+          ...(real &&
+          direction.period?.trim() &&
+          realFallback(direction.named, true, historyPolicy()) === "illustration"
+            ? { imagePrompt: illustrationPrompt(first.imagePrompt, direction.period) }
             : {}),
         },
         brief: {

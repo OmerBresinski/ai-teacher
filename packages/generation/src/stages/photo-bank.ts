@@ -30,19 +30,37 @@ export function photoBankOn(flag?: boolean): boolean {
 export type PictureRoute = "real" | "generic";
 
 /**
- * Whether a real thing Commons and Pexels missed may be generated as a faithful stand-in, by what
- * it is (on hold pending Greg, 6 Oct): a generated copy of a historical event or person (round 3:
- * the 1923 Weimar photo) is invented history, and a work's generated "reproduction" is not the
- * work, so those go to none. Places and objects keep the fallback.
+ * What a real thing Commons and Pexels missed falls back to (ruling 163, HISTORY-TEST): named
+ * people, particular objects and works are Commons or nothing; a historical event is drawn as an
+ * obvious illustration and period-checked; a present-day place may still be generated faithfully.
+ * Nothing historical is ever generated in photographic style.
  */
-export const FAITHFUL_FALLBACK: Record<"event" | "person" | "work" | "place" | "object", boolean> =
-  {
-    event: false,
-    person: false,
-    work: false,
-    place: true,
-    object: true,
-  };
+export type RealFallback = "none" | "illustration" | "faithful";
+
+/**
+ * History policy (ruling 163; Greg confirmed `strict` on 6 Oct). `strict`: people, objects and
+ * works are Commons or none, an event is illustrated. `illustrate`: people may be illustrated too.
+ * `labelled`: any AI style, every AI image on a historical subject captioned "AI reconstruction".
+ * The wrong-period check runs in every mode. Flip with HISTORY_POLICY; the code default is strict.
+ */
+export type HistoryPolicy = "strict" | "illustrate" | "labelled";
+export const HISTORY_POLICY_DEFAULT: HistoryPolicy = "strict";
+export function historyPolicy(env = process.env.HISTORY_POLICY): HistoryPolicy {
+  const v = env?.trim().toLowerCase();
+  return v === "illustrate" || v === "labelled" ? v : HISTORY_POLICY_DEFAULT;
+}
+
+export function realFallback(
+  named: "event" | "person" | "work" | "place" | "object" | null,
+  historical: boolean,
+  policy: HistoryPolicy = HISTORY_POLICY_DEFAULT,
+): RealFallback {
+  if (!historical) return named === "place" ? "faithful" : "none";
+  if (policy === "labelled") return named === "event" || named === "person" ? "faithful" : "none";
+  if (named === "event") return "illustration";
+  if (named === "person" && policy === "illustrate") return "illustration";
+  return "none";
+}
 
 /** A year (1066, 1923), a century or an era marks a historical, so real, subject. */
 const HISTORICAL =
@@ -84,8 +102,10 @@ export interface BankRequest {
    * photo is likely to show it, so the search is skipped.
    */
   stockFirst?: boolean;
-  /** false: a real thing no library had is not generated (FAITHFUL_FALLBACK); absent: generated. */
-  faithfulFallback?: boolean;
+  /** What a real miss falls back to (ruling 163). Absent: faithful (the pre-director behaviour). */
+  realFallback?: RealFallback;
+  /** The time and place a historical subject belongs to: the illustration and its period check. */
+  period?: string;
 }
 
 export interface PictureBank {
@@ -99,6 +119,12 @@ export interface PictureBank {
     faithful: boolean,
     signal: AbortSignal,
   ): Promise<PlacedPhoto | undefined>;
+  /**
+   * The wrong-period check on a generated illustration (ruling 163): the vision judge is given the
+   * period and place as text and says whether anything visible is out of period. true: keep.
+   * Absent: no illustration is placed.
+   */
+  checkPeriod?(req: BankRequest, picture: PlacedPhoto, signal: AbortSignal): Promise<boolean>;
 }
 
 export type BankVia = "library" | "fetched" | "generated" | "generated-faithful" | "none";
@@ -146,8 +172,25 @@ export async function findPicture(
       await bank.remember(req, fetched).catch(rethrowAbort);
       return done(fetched, "fetched");
     }
-    if (req.faithfulFallback === false) return done(undefined, "none");
+    const fallback = req.realFallback ?? "faithful";
+    if (fallback === "none") return done(undefined, "none");
+    if (fallback === "illustration") {
+      // Generate once, check the period, regenerate once on a fail, then nothing.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (!bank.checkPeriod) break;
+        const made = await bank.generate(req, false, signal).catch(rethrowAbort);
+        if (!made) break;
+        const ok = await bank.checkPeriod(req, made, signal).catch(rethrowAbort);
+        if (ok) return done(made, "generated");
+      }
+      return done(undefined, "none");
+    }
     const made = await bank.generate(req, true, signal).catch(rethrowAbort);
+    // A historical subject is period-checked whatever the policy (an AI label is the worker's job).
+    if (made && req.period && bank.checkPeriod) {
+      const ok = await bank.checkPeriod(req, made, signal).catch(rethrowAbort);
+      if (!ok) return done(undefined, "none");
+    }
     return done(made, "generated-faithful", true);
   }
   if (req.stockFirst) {

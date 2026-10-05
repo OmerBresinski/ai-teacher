@@ -3,7 +3,13 @@ import { createFakeAi } from "@tj/ai/testing";
 import type { PictureDirection, PictureDirectorInput } from "../prompts/picture-director";
 import { recordingDeps } from "../testing";
 import type { PlacedPhoto } from "./illustrate";
-import { type BankRequest, findPicture, type PictureBank } from "./photo-bank";
+import {
+  type BankRequest,
+  findPicture,
+  historyPolicy,
+  type PictureBank,
+  realFallback,
+} from "./photo-bank";
 import { countImagePrompt, directPicture, planPicture } from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
 
@@ -20,6 +26,7 @@ const dir = (over: Partial<PictureDirection>): PictureDirection => ({
   count: null,
   diagram: null,
   named: null,
+  period: null,
   ...over,
 });
 const ask = { text: "A full-grown sheep beside a lamb", named: null, aspect: 0.89 };
@@ -125,18 +132,27 @@ describe("planPicture", () => {
     ]);
   });
 
-  test("a commons miss on an event, person or work is not generated; a place or object is", () => {
-    const fb = (named: PictureDirection["named"]) => {
-      const p = planPicture(dir({ route: "commons", named }), ask);
-      return p.kind === "photo" ? p.request.faithfulFallback : "x";
+  test("ruling 163 (strict default): people, objects and works are Commons or none; an event is illustrated", () => {
+    const fb = (named: PictureDirection["named"], period: string | null = "London, 1666") => {
+      const p = planPicture(dir({ route: "commons", named, period }), ask);
+      return p.kind === "photo" ? p.request.realFallback : "x";
     };
-    expect([fb("event"), fb("person"), fb("work"), fb("place"), fb("object")]).toEqual([
-      false,
-      false,
-      false,
-      true,
-      true,
-    ]);
+    expect([
+      fb("person"),
+      fb("object"),
+      fb("work"),
+      fb("event"),
+      fb("place"),
+      fb("place", null),
+    ]).toEqual(["none", "none", "none", "illustration", "none", "faithful"]);
+    const ev = planPicture(dir({ route: "commons", named: "event", period: "London, 1666" }), ask);
+    expect(ev.kind === "photo" && ev.request.imagePrompt).toContain(
+      "clearly a painting and not a photograph",
+    );
+    expect(realFallback("person", true, "illustrate")).toBe("illustration");
+    expect(realFallback("person", true, "labelled")).toBe("faithful");
+    expect(historyPolicy(undefined)).toBe("strict");
+    expect(historyPolicy("labelled")).toBe("labelled");
   });
 
   test("a countable real thing generates from arm B's prompt, keeps its empty spaces and is judged on the count", () => {
@@ -297,16 +313,38 @@ describe("findPicture with a director's plan", () => {
     expect(log2).toEqual(["generate:false:P"]);
   });
 
-  test("faithfulFallback false: a real miss is none, never generated", async () => {
+  test("an illustrated event is period-checked: one regeneration on a fail, then none; no checker, nothing", async () => {
     const log: string[] = [];
+    let checks = 0;
+    const b = { ...bank(log), checkPeriod: async () => ++checks === 2 };
     const out = await findPicture(
-      req({ route: "real", faithfulFallback: false }),
-      bank(log),
+      req({ route: "real", realFallback: "illustration", imagePrompt: "I" }),
+      b,
       async () => undefined,
       AbortSignal.timeout(1000),
     );
-    expect(out.via).toBe("none");
-    expect(log).toEqual([]);
+    expect(out.via).toBe("generated");
+    expect(log).toEqual(["generate:false:I", "generate:false:I"]);
+    expect(
+      (
+        await findPicture(
+          req({ route: "real", realFallback: "none" }),
+          bank([]),
+          async () => undefined,
+          AbortSignal.timeout(1000),
+        )
+      ).via,
+    ).toBe("none");
+    expect(
+      (
+        await findPicture(
+          req({ route: "real", realFallback: "illustration" }),
+          bank([]),
+          async () => undefined,
+          AbortSignal.timeout(1000),
+        )
+      ).via,
+    ).toBe("none");
   });
 
   test("stockFirst false skips the search", async () => {

@@ -24,6 +24,7 @@ const answer = {
   count: null,
   diagram: null,
   named: null,
+  period: null,
 };
 
 describe("picture director schema", () => {
@@ -111,8 +112,8 @@ describe("who, where and when", () => {
 
 describe("director fixtures", () => {
   test("24 slots: the 9 smoke slots plus 15 that cover every route", () => {
-    expect(DIRECTOR_FIXTURES).toHaveLength(24);
-    expect(new Set(DIRECTOR_FIXTURES.map((f) => f.id)).size).toBe(24);
+    expect(DIRECTOR_FIXTURES).toHaveLength(27);
+    expect(new Set(DIRECTOR_FIXTURES.map((f) => f.id)).size).toBe(27);
     const routes = new Set(DIRECTOR_FIXTURES.flatMap((f) => f.expect));
     for (const r of PICTURE_ROUTES) expect(routes.has(r)).toBe(true);
     for (const f of DIRECTOR_FIXTURES) {

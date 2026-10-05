@@ -70,8 +70,13 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  * to library-or-generate with a count slot, and code writes arm B's prompt from it (count in words
  * and digits, layout from the slot, top-down on a plain surface, nothing else). The slot carries
  * empty spaces (the director's own egg-box prompt lost its 2 empty cups). code keeps drawn arrays.
+ *
+ * v7 (ruling 163, HISTORY-TEST/RESULT.md): `period` for historical subjects; a historical event's
+ * imagePrompt is a painted educational illustration (9 of 9 faithful "photos" were misleading
+ * fakes; illustrations of events were usable on 4 of 5). Code: people and particular objects are
+ * Commons or none; an event miss is illustrated, then period-checked by the vision judge.
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v6";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v7";
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -122,6 +127,7 @@ export const PictureDirectorSchema = z.object({
   count: Count.nullable(),
   diagram: z.enum(DIAGRAM_KINDS as [string, ...string[]]).nullable(),
   named: z.enum(NAMED_KINDS).nullable(),
+  period: z.string().nullable(),
 });
 export type PictureDirection = z.infer<typeof PictureDirectorSchema>;
 
@@ -142,7 +148,7 @@ Each picture has:
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
 - imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
-When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or an object. Each is null when it does not apply.`;
+When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 
 function shapeOf(aspect: number): string {
   if (aspect > 1.15) return "landscape";

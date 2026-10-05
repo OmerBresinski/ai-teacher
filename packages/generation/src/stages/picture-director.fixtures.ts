@@ -392,4 +392,48 @@ export const DIRECTOR_FIXTURES: DirectorFixture[] = [
     ),
     expect: ["none"],
   },
+  // ---- HISTORY-TEST (ruling 163): an event, a named person, a particular artefact ----
+  {
+    id: "history-jarrow",
+    input: base(
+      "Year 9",
+      "History",
+      "Britain in the 1930s",
+      "The Jarrow Crusade",
+      "In 1936, 200 men marched from Jarrow to London to ask for work.",
+      "Explain why the marchers walked to London and what they wanted.",
+      "The Jarrow marchers walking along a road in 1936, carrying their banner",
+      ["marchers on a road", "banner"],
+    ),
+    expect: ["commons"],
+  },
+  {
+    id: "history-henry-viii",
+    input: base(
+      "Year 8",
+      "History",
+      "The Tudors",
+      "Henry VIII",
+      "Henry VIII ruled England from 1509 to 1547.",
+      "Introduce Henry VIII and how he showed his power.",
+      "A portrait of King Henry VIII",
+      ["Henry VIII"],
+      0.8,
+    ),
+    expect: ["commons"],
+  },
+  {
+    id: "history-sutton-hoo",
+    input: base(
+      "Year 7",
+      "History",
+      "Anglo-Saxon England",
+      "The Sutton Hoo helmet",
+      "The helmet was found in a ship burial in Suffolk.",
+      "Pupils describe what the helmet tells us about its owner.",
+      "The Sutton Hoo helmet, showing its face mask and decorated panels",
+      ["helmet", "face mask"],
+    ),
+    expect: ["commons"],
+  },
 ];
