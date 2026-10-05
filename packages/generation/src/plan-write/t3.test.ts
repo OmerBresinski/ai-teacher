@@ -217,3 +217,28 @@ describe("adapt: no question dropped (lab/t3 fit-fix)", () => {
     expect(a.out.stem).toBe("Explain why.");
   });
 });
+
+describe("T3 option capacity (lab/t3 round 2)", () => {
+  test("the hinge menu line carries the capacity the layout code measures", async () => {
+    const { optionCapacity, t3Menu, teacher3Prompt } = await import("./simple");
+    const n = optionCapacity("hinge");
+    expect(n).toBeGreaterThan(30);
+    expect(n).toBeLessThan(80);
+    expect(t3Menu()).toContain(
+      `hinge: a multiple-choice question with 4 options, each up to ${n} characters`,
+    );
+    const p = teacher3Prompt({
+      slideCount: 10,
+      topic: "t",
+      context: "c",
+      yearGroup: "Year 9",
+      subject: "history",
+      objectives: ["a"],
+    });
+    expect(p.user).toContain(`each up to ${n} characters`);
+  });
+  test("a form without options has no capacity", async () => {
+    const { optionCapacity } = await import("./simple");
+    expect(optionCapacity("explain")).toBeUndefined();
+  });
+});

@@ -17,9 +17,11 @@ import {
   getTheme,
   isBackdrop,
   KIND_TAG_NAME,
+  layoutsOf,
   type MaterialiseMeta,
   materialiseSlide,
   measureHeadless,
+  type PaletteFormId,
   PLACEHOLDER_IMAGE,
   renderedHeights,
   SAFE,
@@ -324,7 +326,7 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
  * code, and code expands the wire shape into the renderer's spec and validates it with its parse.
  */
 // t4 (5 Oct): + closing independent practice before the exit ticket (T3-LEDGER U4b).
-export const TEACHER3_LESSON_VERSION = "simple-lesson.t4";
+export const TEACHER3_LESSON_VERSION = "simple-lesson.t5";
 /**
  * lab/t3 (Greg, 5 Oct 2026: T3 is the candidate): the plan-write planner writes with T3 by default.
  * `PLAN_WRITE_MODE=stream` or `plan-write` runs R3 instead.
@@ -366,6 +368,83 @@ const T3_FORMS: Record<string, string> = {
   // The drawn COMMON MISTAKE label is code's (bareCallout strips a written one), so the prompt no longer says it.
   "explain-callout": "an explanation, then one common mistake pupils make as the last line",
 };
+/*
+ * Option capacity (lab/t3 round 2): the longest option, in characters, that a question form's
+ * layouts hold on every theme at body size. Measured through the slide's own path (`adapt`, then
+ * `fitWritten` on each of the form's layouts), so the menu line moves with the layout code. A hinge
+ * gets 4 options (the palette's four cards); matching up to 3 pairs, each side measured alike.
+ */
+const CAPACITY_FORMS: Record<string, { count: number; line: (n: number) => string }> = {
+  hinge: {
+    count: 4,
+    line: (n) =>
+      `a multiple-choice question with 4 options, each up to ${n} characters (the options are the content; answer is the correct option)`,
+  },
+  matching: {
+    count: 3,
+    line: (n) =>
+      `pupils match up to 3 pairs (content lines 'left = right', each side up to ${n} characters)`,
+  },
+};
+const CAPACITY_STEM = "Which statement best explains why prices rose so quickly?";
+const FILLER =
+  "tax income fell but the government still paid striking workers so it printed money and prices rose every week".split(
+    " ",
+  );
+function filler(n: number, k: number): string {
+  let t = "";
+  for (let i = k; t.length < n; i++) t += (t ? " " : "") + FILLER[i % FILLER.length];
+  return t.slice(0, n).trimEnd();
+}
+function holdsOptions(form: string, count: number, n: number): boolean {
+  const items = Array.from({ length: count }, (_, k) =>
+    form === "matching" ? `${filler(n, k * 4)} = ${filler(n, k * 4 + 2)}` : filler(n, k * 3),
+  );
+  const { form: f, out } = adapt({
+    form,
+    heading: "Check your understanding",
+    body: [],
+    items,
+    questions: [{ question: CAPACITY_STEM, answer: items[1] ?? "" }],
+    picture: null,
+    notes: "",
+  });
+  return layoutsOf(f as PaletteFormId).some((c) => {
+    try {
+      return fitWritten(f, c.layout, out).ok;
+    } catch {
+      return false;
+    }
+  });
+}
+const capacities = new Map<string, number>();
+/** The form's option capacity in characters (binary search; memoised per process). */
+export function optionCapacity(form: string): number | undefined {
+  const spec = CAPACITY_FORMS[form];
+  if (!spec) return undefined;
+  const known = capacities.get(form);
+  if (known !== undefined) return known;
+  let lo = 8;
+  let hi = 160;
+  if (!holdsOptions(form, spec.count, lo)) return undefined;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (holdsOptions(form, spec.count, mid)) lo = mid;
+    else hi = mid;
+  }
+  capacities.set(form, lo);
+  return lo;
+}
+/** T3's menu lines: the form list, with each option capacity read from the layout code. */
+export function t3Menu(): string {
+  return Object.entries(T3_FORMS)
+    .map(([k, v]) => {
+      const n = optionCapacity(k);
+      const c = CAPACITY_FORMS[k];
+      return `- ${k}: ${n !== undefined && c ? c.line(n) : v}`;
+    })
+    .join("\n");
+}
 const phrase = (what: string) => z.string().describe(what);
 /** The lean wire shape of each drawing kind (no alt: code writes it from the title and labels). */
 const T3_DRAW = {
@@ -556,9 +635,7 @@ export function teacher3Prompt(i: Parameters<typeof teacherPrompt>[0] & { object
   user: string;
 } {
   const [lo, hi] = PICTURE_SHARE[(i.ageBand ?? "ks3").toLowerCase()] ?? [0.35, 0.5];
-  const menu = Object.entries(T3_FORMS)
-    .map(([k, v]) => `- ${k}: ${v}`)
-    .join("\n");
+  const menu = t3Menu();
   const drawn = [
     ...Object.entries(T3_DRAWS).map(([k, v]) => `- ${k}: ${v}`),
     ...figureTemplatesFor(i.subject).map((t) => `- figure ${t}: ${FIGURE_DRAWS[t] ?? t}`),
@@ -659,9 +736,7 @@ ${list}
 ${lacks} Write ${count} slide${count === 1 ? "" : "s"} that fill${count === 1 ? "s" : ""} this, each replacing one of slides ${i.spares.join(", ")} (replaces: its number), so the lesson keeps ${i.slideCount} slides.
 
 The slide types we can draw:
-${Object.entries(T3_FORMS)
-  .map(([k, v]) => `- ${k}: ${v}`)
-  .join("\n")}
+${t3Menu()}
 
 ${t3FieldsLine}`,
   };
