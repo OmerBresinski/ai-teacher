@@ -23,8 +23,8 @@
     "@tj/jobs": "workspace:*",
     "@tj/slides": "workspace:*",
     "@tj/storage": "workspace:*",
-    "ai": "7.0.114",
-    "pg-boss": "12.34.0",
+    "ai": "7.0.127",
+    "pg-boss": "12.35.1",
     "pino": "10.3.1",
     "zod": "4.6.5"
   },

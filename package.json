@@ -63,7 +63,7 @@
     "homepage:lint": "biome check homepage"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.5.15",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@commitlint/types": "21.2.3",
@@ -72,9 +72,9 @@
     "@tj/domain": "workspace:*",
     "@tj/editor": "workspace:*",
     "@types/bun": "1.4.2",
-    "lefthook": "2.1.14",
-    "railway": "3.11.0",
-    "turbo": "2.11.4",
+    "lefthook": "2.1.16",
+    "railway": "3.12.0",
+    "turbo": "2.11.6",
     "typescript": "5.9.3"
   }
 }
