@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
-import type { PictureDirection } from "../prompts/picture-director";
+import type { PictureDirection, PictureDirectorInput } from "../prompts/picture-director";
 import { recordingDeps } from "../testing";
 import type { PlacedPhoto } from "./illustrate";
 import { type BankRequest, findPicture, type PictureBank } from "./photo-bank";
@@ -114,7 +114,7 @@ describe("planPicture", () => {
     );
     if (p.kind !== "photo") throw new Error("photo expected");
     expect(p.brief.mustShow).toHaveLength(3);
-    expect(p.brief.mustShow[0]!.length).toBeLessThanOrEqual(40);
+    expect(p.brief.mustShow[0]?.length ?? 0).toBeLessThanOrEqual(40);
     expect(p.brief.queries).toEqual(["q1", "q2", "q3"]);
   });
 
@@ -144,7 +144,10 @@ describe("directPicture", () => {
       script: [JSON.stringify(answer)],
       usage: { inputTokens: 900, outputTokens: 300 },
     });
-    const out = await directPicture(DIRECTOR_FIXTURES[6]!.input, recordingDeps(ai));
+    const out = await directPicture(
+      DIRECTOR_FIXTURES[6]?.input as PictureDirectorInput,
+      recordingDeps(ai),
+    );
     expect(out?.direction).toEqual(answer);
     expect(ai.calls).toHaveLength(1);
     expect(ai.calls[0]?.modelClass ?? "small").toBe("small");
@@ -152,7 +155,9 @@ describe("directPicture", () => {
 
   test("a failed call is undefined, so the slot falls back rather than waiting", async () => {
     const ai = createFakeAi({ script: ["not json", "still not json", "nope"] });
-    expect(await directPicture(DIRECTOR_FIXTURES[0]!.input, recordingDeps(ai))).toBeUndefined();
+    expect(
+      await directPicture(DIRECTOR_FIXTURES[0]?.input as PictureDirectorInput, recordingDeps(ai)),
+    ).toBeUndefined();
   });
 });
 
@@ -192,7 +197,10 @@ describe("findPicture with a director's plan", () => {
     await findPicture(
       req({ draw: { total: 24, groups: 4, perGroup: 6, arrangement: "groups" } }),
       bank(log),
-      async () => (searched++, placed("s")),
+      async () => {
+        searched++;
+        return placed("s");
+      },
       AbortSignal.timeout(1000),
     );
     expect(searched).toBe(0);
@@ -226,7 +234,10 @@ describe("findPicture with a director's plan", () => {
     await findPicture(
       req({ stockFirst: false, imagePrompt: "P" }),
       bank(log),
-      async () => (searched++, placed("s")),
+      async () => {
+        searched++;
+        return placed("s");
+      },
       AbortSignal.timeout(1000),
     );
     expect(searched).toBe(0);

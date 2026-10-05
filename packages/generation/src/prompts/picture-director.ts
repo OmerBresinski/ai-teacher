@@ -43,8 +43,17 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  *     mentions" is the reason an inclusion list fails; "describe what is there" stops negative
  *     lists priming the image model; code adds the frame/text lines.
  *  F-count/diagram: typed slots instead of prose so code can draw (CORE 2026-10-01 geometry law).
+ *
+ * v2 (same day, 24 fixtures on luna low, PHOTO-BANK/DIRECTOR-PROMPTS.md): 22 of 24 routes agreed.
+ *  - "a named work in performance" (commons): v1 sent a staging of The Tempest to generation, which
+ *    would invent a production.
+ *  - mustShow "one visible thing in two to four words": v1 wrote clauses ("ice cube keeps its shape
+ *    while water conforms to the glass", "woolly coats, four legs and two ears visible on each"); the
+ *    generic gate needs every item seen, and code's 40-character clip cut them mid-phrase.
+ *  - queries "of two to four words each": v1 wrote 6-10 word searches; Commons returned nothing for
+ *    the Weimar slot that "hyperinflation 1923" had filled in round 2.
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v1";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v2";
 
 export const PICTURE_ROUTES = ["commons", "pexels", "library-or-generate", "code", "none"] as const;
 export type PictureDirectorRoute = (typeof PICTURE_ROUTES)[number];
@@ -94,7 +103,7 @@ export type PictureDirection = z.infer<typeof PictureDirectorSchema>;
 const SYSTEM = `You choose the picture for one slide of a school lesson. The slide's writer described the picture it wants in a sentence; you decide where the picture comes from and write what that source needs. A picture earns its place when pupils can see in it what the slide teaches.
 
 Choose one route:
-- commons: one particular real thing: a named place, building, person, artwork, document or object, or a scene tied to a date or a named event. Only a photograph or reproduction of that very thing is true to it.
+- commons: one particular real thing: a named place, building, person, artwork, document or object, a named work in performance, or a scene tied to a date or a named event. Only a photograph or reproduction of that very thing is true to it.
 - pexels: a real subject that ordinary stock photographs show: a single common subject, or a simple everyday scene, that a photo library very likely holds.
 - library-or-generate: a picture no real photograph is likely to show: an unusual combination of subjects, or a staged comparison.
 - code: the point is an exact number of countable things or their arrangement in equal groups or rows, or one of these drawings shows the idea better than a photo: ${DIAGRAM_KINDS.join(", ")}.
@@ -104,8 +113,8 @@ For commons, pexels and library-or-generate, give one picture, or two or three w
 
 Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
-- mustShow: one to three things pupils must be able to see, each a short label, most important first. For commons the first is the thing itself.
-- queries: two or three photo-library searches, most specific first, as a person would type them: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
+- mustShow: one to three things pupils must be able to see, each one visible thing in two to four words, most important first. For commons the first is the thing itself.
+- queries: two or three photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
 - imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
 For code, count is the total, the number of equal groups or rows, how many in each, and whether they are groups or rows (one group when none are asked for); diagram is the drawing's kind. Each is null when it does not apply.`;

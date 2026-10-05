@@ -5,11 +5,12 @@ import { DIRECTOR_FIXTURES } from "../stages/picture-director.fixtures";
 import {
   PICTURE_DIRECTOR_VERSION,
   PICTURE_ROUTES,
+  type PictureDirectorInput,
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "./picture-director";
 
-const input = DIRECTOR_FIXTURES[0]!.input;
+const input = DIRECTOR_FIXTURES[0]?.input as PictureDirectorInput;
 const answer = {
   route: "pexels",
   pictures: [
@@ -77,7 +78,8 @@ describe("picture director prompt", () => {
   });
 
   test("the user turn carries the request, the slide, the lesson, the country and the zone", () => {
-    const f = DIRECTOR_FIXTURES.find((x) => x.id === "y1-animals-s3")!.input;
+    const f = DIRECTOR_FIXTURES.find((x) => x.id === "y1-animals-s3")
+      ?.input as PictureDirectorInput;
     const { user } = pictureDirectorPrompt(f);
     expect(user).toContain(f.request);
     expect(user).toContain("Slide heading: Dogs and cats");
