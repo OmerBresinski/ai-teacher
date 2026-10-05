@@ -65,8 +65,13 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  *
  * v5: `named` (event, person, work, place, object) for commons, so code can hold the faithful
  * generation fallback off per kind (FAITHFUL_FALLBACK in stages/photo-bank.ts; Greg to decide).
+ *
+ * v6 (COUNT-TEST/RESULT.md: arm B exact on 16 of 16, 3 to 24 objects): countable real things go
+ * to library-or-generate with a count slot, and code writes arm B's prompt from it (count in words
+ * and digits, layout from the slot, top-down on a plain surface, nothing else). The slot carries
+ * empty spaces (the director's own egg-box prompt lost its 2 empty cups). code keeps drawn arrays.
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v5";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v6";
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -102,7 +107,9 @@ const Picture = z.object({
 });
 
 const Count = z.object({
+  things: z.string(),
   total: z.number().int(),
+  empty: z.number().int(),
   groups: z.number().int(),
   perGroup: z.number().int(),
   arrangement: z.enum(["groups", "rows"]),
@@ -124,7 +131,7 @@ Choose one route:
 - commons: anything named or dated: a named work or a production of it, an artwork, a person, a place, a building, a document, an object, or an event or scene tied to a date. Always commons, even when the request describes a particular moment of it: a real photograph or reproduction is searched first, and a generated one is only the fallback.
 - pexels: a real subject that ordinary stock photographs show: a single common subject, or a simple everyday scene, that a photo library very likely holds.
 - library-or-generate: an unnamed picture no real photograph is likely to show: an unusual combination of subjects, or a staged comparison.
-- code: the point is an exact number of countable things or their arrangement in equal groups or rows, or one of these drawings shows the idea better than a photo: ${DIAGRAM_KINDS.join(", ")}.
+- code: a drawing shows the idea better than a photograph, including an array of plain identical marks, or one of these: ${DIAGRAM_KINDS.join(", ")}.
 - none: nothing pupils could see explains the slide's point better than its words, so a picture would only decorate.
 
 For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. For code and none, pictures is empty.
@@ -135,7 +142,7 @@ Each picture has:
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
 - imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
-For code, count is the total, the number of equal groups or rows, how many in each, and whether they are groups or rows (one group when none are asked for); diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or an object. Each is null when it does not apply.`;
+When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or an object. Each is null when it does not apply.`;
 
 function shapeOf(aspect: number): string {
   if (aspect > 1.15) return "landscape";

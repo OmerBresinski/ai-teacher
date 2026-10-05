@@ -113,13 +113,49 @@ function pictureOf(p: PictureDirection["pictures"][number]): DirectedPicture | u
   };
 }
 
-/** A count code can draw: whole, consistent (total = groups x perGroup) and at most 120. */
+/** A count code can draw or prompt: whole, consistent (spaces = total + empty), at most 120. */
 function countOf(c: PictureDirection["count"]): CountArray | undefined {
   if (!c) return undefined;
   const { total, groups, perGroup, arrangement } = c;
+  const empty = Math.max(0, c.empty ?? 0);
   if (!(groups >= 1 && perGroup >= 1 && total >= 2 && total <= 120)) return undefined;
-  if (groups * perGroup !== total) return undefined;
+  if (groups * perGroup !== total + empty) return undefined;
+  if (empty > 0) return undefined; // a drawn array has no empty spaces
   return { total, groups, perGroup, arrangement };
+}
+
+const WORDS =
+  "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty".split(
+    " ",
+  );
+const inWords = (n: number) => (WORDS[n] ? `${WORDS[n]} (${n})` : String(n));
+
+/**
+ * COUNT-TEST arm B (16 of 16 exact): the count in words and digits, the layout from the slot, a
+ * view from directly above on a plain surface, every object separate, nothing else. Undefined when
+ * the slot is not consistent (spaces = total + empty).
+ */
+export function countImagePrompt(c: NonNullable<PictureDirection["count"]>): string | undefined {
+  const empty = Math.max(0, c.empty);
+  const things = c.things.replace(/\s+/g, " ").trim();
+  if (!things || c.total < 1 || c.total > 120 || c.groups < 1 || c.perGroup < 1) return undefined;
+  if (c.groups * c.perGroup !== c.total + empty) return undefined;
+  const layout =
+    empty > 0
+      ? `They fill ${inWords(c.total)} of ${inWords(c.groups * c.perGroup)} spaces set out in ${c.groups} ${c.arrangement === "rows" || c.groups === 1 ? "rows" : "groups"} of ${c.perGroup}; exactly ${inWords(empty)} spaces are empty and clearly visible.`
+      : c.groups === 1
+        ? c.total <= 10
+          ? `They are in one straight row.`
+          : `They are in one neat grid.`
+        : c.arrangement === "rows"
+          ? `They are in ${inWords(c.groups)} rows of ${inWords(c.perGroup)}, the rows evenly spaced.`
+          : `They are in ${inWords(c.groups)} separate groups of ${inWords(c.perGroup)}, with wide gaps between the groups, each group a neat block.`;
+  return [
+    `One realistic photograph, seen from directly above: exactly ${inWords(c.total)} ${things}, on a plain surface.`,
+    layout,
+    "Every object is whole and clearly separate, with a visible gap around it: none overlap, touch, stack or are cut off by the edge of the frame.",
+    "Nothing else is in the picture.",
+  ].join("\n");
 }
 
 interface Ask {
@@ -186,7 +222,20 @@ export function planPicture(direction: PictureDirection | undefined, ask: Ask): 
         .map(pictureOf)
         .filter((p) => p !== undefined)
         .map((p) => ({ ...p, queries: uniq([...dated, ...p.queries, ...anchors]) }));
-      const first = pictures[0];
+      // A countable real thing: code writes arm B's prompt from the slot and the judge checks the count.
+      const counted = direction.count ? countImagePrompt(direction.count) : undefined;
+      const first = pictures[0]
+        ? counted && direction.count
+          ? {
+              ...pictures[0],
+              imagePrompt: counted,
+              mustShow: uniq([
+                `exactly ${direction.count.total} ${direction.count.things}`,
+                ...pictures[0].mustShow,
+              ]).slice(0, 3),
+            }
+          : pictures[0]
+        : undefined;
       if (!first) return fallbackPlan(ask);
       const real = direction.route === "commons";
       return {
@@ -197,7 +246,7 @@ export function planPicture(direction: PictureDirection | undefined, ask: Ask): 
           route: real ? "real" : "generic",
           imagePrompt: first.imagePrompt,
           draw: null,
-          stockFirst: direction.route !== "library-or-generate",
+          stockFirst: direction.route !== "library-or-generate" && !counted,
           ...(real && direction.named
             ? { faithfulFallback: FAITHFUL_FALLBACK[direction.named] }
             : {}),

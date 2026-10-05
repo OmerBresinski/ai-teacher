@@ -4,7 +4,7 @@ import type { PictureDirection, PictureDirectorInput } from "../prompts/picture-
 import { recordingDeps } from "../testing";
 import type { PlacedPhoto } from "./illustrate";
 import { type BankRequest, findPicture, type PictureBank } from "./photo-bank";
-import { directPicture, planPicture } from "./picture-director";
+import { countImagePrompt, directPicture, planPicture } from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
 
 const pic = (over: Partial<PictureDirection["pictures"][number]> = {}) => ({
@@ -74,7 +74,14 @@ describe("planPicture", () => {
       dir({
         route: "code",
         pictures: [],
-        count: { total: 24, groups: 4, perGroup: 6, arrangement: "groups" },
+        count: {
+          things: "counters",
+          total: 24,
+          groups: 4,
+          perGroup: 6,
+          arrangement: "groups",
+          empty: 0,
+        },
       }),
       ask,
     );
@@ -88,7 +95,14 @@ describe("planPicture", () => {
       dir({
         route: "code",
         pictures: [],
-        count: { total: 30, groups: 4, perGroup: 6, arrangement: "groups" },
+        count: {
+          things: "counters",
+          total: 30,
+          groups: 4,
+          perGroup: 6,
+          arrangement: "groups",
+          empty: 0,
+        },
         diagram: "cycle",
       }),
       ask,
@@ -123,6 +137,32 @@ describe("planPicture", () => {
       true,
       true,
     ]);
+  });
+
+  test("a countable real thing generates from arm B's prompt, keeps its empty spaces and is judged on the count", () => {
+    const eggs = {
+      things: "eggs",
+      total: 10,
+      groups: 2,
+      perGroup: 6,
+      arrangement: "rows" as const,
+      empty: 2,
+    };
+    const p = planPicture(
+      dir({
+        route: "library-or-generate",
+        count: eggs,
+        pictures: [pic({ shows: "Ten eggs in a box of twelve", mustShow: ["egg box"] })],
+      }),
+      ask,
+    );
+    if (p.kind !== "photo") throw new Error("photo expected");
+    expect(p.request.imagePrompt).toContain("exactly ten (10) eggs");
+    expect(p.request.imagePrompt).toContain("exactly two (2) spaces are empty");
+    expect(p.request.imagePrompt).toContain("seen from directly above");
+    expect(p.request.stockFirst).toBe(false);
+    expect(p.brief.mustShow[0]).toBe("exactly 10 eggs");
+    expect(countImagePrompt({ ...eggs, empty: 0 })).toBeUndefined();
   });
 
   test("none leaves the zone empty", () => {

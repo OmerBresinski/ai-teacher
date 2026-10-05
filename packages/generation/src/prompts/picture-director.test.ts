@@ -34,7 +34,14 @@ describe("picture director schema", () => {
     const code = {
       route: "code",
       pictures: [],
-      count: { total: 24, groups: 4, perGroup: 6, arrangement: "groups" },
+      count: {
+        things: "counters",
+        total: 24,
+        groups: 4,
+        perGroup: 6,
+        arrangement: "groups",
+        empty: 0,
+      },
       diagram: null,
       named: null,
     };
