@@ -171,3 +171,72 @@ describe("DIAGRAM-AUDIT coverage kinds", () => {
     expect(parseDiagram({ kind: "pie", alt: "x" })).toBeUndefined();
   });
 });
+
+describe("DIAGRAM-AUDIT leftovers", () => {
+  const { drawFigure } = require("../figures/index");
+  test("catalysed against uncatalysed maps to one figure with a lower dashed peak", () => {
+    const g = {
+      kind: "line-graph",
+      alt: "P",
+      x: { label: "Reaction progress", min: 0, max: 4 },
+      y: { label: "Energy (arbitrary units)", min: 0, max: 10 },
+      series: [
+        {
+          label: "Without catalyst",
+          points: [
+            [0, 4],
+            [1, 7],
+            [2, 10],
+            [3, 6],
+            [4, 2],
+          ],
+        },
+        {
+          label: "With catalyst",
+          points: [
+            [0, 4],
+            [1, 5],
+            [2, 6],
+            [3, 4],
+            [4, 2],
+          ],
+        },
+      ],
+    };
+    const v = energyProfileOf(g);
+    expect(v).toMatchObject({
+      activationEnergy: 6,
+      catalysedActivationEnergy: 2,
+      catalysedLabel: "With catalyst",
+    });
+    const d = drawFigure("energy-profile", v, chalk, { x: 0, y: 0, w: 436, h: 356 });
+    const names = JSON.stringify(d);
+    expect(names).toContain("Catalysed profile");
+  });
+  test("a similar pair never cuts a side label", () => {
+    const v = {
+      vertices: { A: "A", B: "B", C: "C" },
+      sides: {
+        a: { value: 5, label: "5 cm" },
+        b: { value: 6, label: "6 cm" },
+        c: { value: 7, label: "7 cm" },
+      },
+      pair: { scale: 2, vertices: { A: "P", B: "Q", C: "R" }, sides: { a: "10 cm", c: "y" } },
+    };
+    const d = drawFigure("triangle", v, chalk, { x: 0, y: 0, w: 436, h: 356 });
+    expect(JSON.stringify(d)).not.toContain("…");
+  });
+  test("figure labels sit at the label weight", () => {
+    const d = drawFigure(
+      "right-triangle",
+      {
+        base: { length: 3, label: "3 cm" },
+        height: { length: 4, label: "4 cm" },
+        hypotenuse: { label: "x" },
+      },
+      chalk,
+      { x: 0, y: 0, w: 436, h: 356 },
+    );
+    expect(JSON.stringify(d)).toContain('"fontWeight":500');
+  });
+});

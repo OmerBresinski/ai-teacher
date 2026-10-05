@@ -47,7 +47,18 @@ const energyProfileShape = z.object({
   progressAxis: z.string().optional(),
 });
 
-export type EnergyProfileValues = z.infer<typeof energyProfileShape>;
+/**
+ * Code-only extras (not on the writer's shape): a second, catalysed profile between the same two
+ * levels with a lower peak, drawn dashed (DIAGRAM-AUDIT: every real energy-profile slide compared
+ * catalysed and uncatalysed reactions).
+ */
+const energyProfileFull = energyProfileShape.extend({
+  /** From the reactants' level up to the catalysed peak: above both levels, below the main peak. */
+  catalysedActivationEnergy: z.number().optional(),
+  /** "With catalyst" when absent. */
+  catalysedLabel: z.string().optional(),
+});
+export type EnergyProfileValues = z.infer<typeof energyProfileFull>;
 
 const LABEL_CAPS = [
   ["reactants", ENERGY_PROFILE_LABEL_MAX.name],
@@ -66,7 +77,7 @@ const peakAboveLevels = (v: Pick<EnergyProfileValues, "activationEnergy" | "ener
  * What the model supplies for a reaction profile. Every rule is editorial: a miss becomes a
  * finding for Repair, never a failed Generate stage, and the drawing copes with it.
  */
-export const energyProfileValuesSchema = energyProfileShape.superRefine((v, ctx) => {
+export const energyProfileValuesSchema = energyProfileFull.superRefine((v, ctx) => {
   if (!peakAboveLevels(v))
     ctx.addIssue(
       editorialIssue(
@@ -96,7 +107,8 @@ export function energyProfileAlt(values: EnergyProfileValues | undefined, notToS
   const products = values.products.trim();
   const from = reactants ? ` from ${reactants}` : "";
   const to = products ? ` to ${products}` : "";
-  const energies = `Activation energy ${spoken(values.activationEnergy)}, energy change ${spoken(values.energyChange)}.`;
+  const cat = values.catalysedActivationEnergy;
+  const energies = `Activation energy ${spoken(values.activationEnergy)}, energy change ${spoken(values.energyChange)}.${cat !== undefined ? ` With a catalyst the activation energy is ${spoken(cat)}.` : ""}`;
   return `Energy profile of an ${kind} reaction${from}${to}. ${energies}${scale}`;
 }
 
@@ -364,6 +376,47 @@ function drawEnergyProfile(
     name: "Reaction profile",
   };
   const arrow = { stroke: t.colors.ink, strokeWidth: ARROW_STROKE, arrowEnd: true };
+  // The catalysed profile: the same levels, a lower peak (its share of the main hump kept between
+  // 0.3 and 0.8 so the two read apart), dashed in the second colour and named under its peak.
+  function catalysed(): SlideElement[] {
+    const cat = valid ? values?.catalysedActivationEnergy : undefined;
+    if (cat === undefined || !(cat > Math.max(0, energyChange)) || !(cat < activationEnergy))
+      return [];
+    const top = Math.max(yR, yP);
+    const k = Math.min(
+      0.8,
+      Math.max(
+        0.3,
+        (cat - Math.max(0, energyChange)) / (activationEnergy - Math.max(0, energyChange)),
+      ),
+    );
+    const yC = Math.min(yR, yP) - (Math.min(yR, yP) - plotTop) * k;
+    void top;
+    const name = (values?.catalysedLabel ?? "With catalyst").trim() || "With catalyst";
+    const fitted = fitLabel(t, name, {
+      maxW: size.w * 0.4,
+      slack: ARROW_LABEL_SLACK,
+      minW: 0,
+      maxLines: 2,
+    });
+    return [
+      {
+        ...curve,
+        id: uid(),
+        points: curve.points.map((p, i) => (i === 2 ? { x: p.x, y: at(yC) } : p)),
+        stroke: t.colors.accent2,
+        dash: "dashed",
+        name: "Catalysed profile",
+      } as PathElement,
+      labelText(
+        t,
+        fitted.text,
+        { x: peakX + LANE_GAP * 3, y: yC + CLEAR * 2, w: fitted.w, h: fitted.h },
+        "left",
+        t.colors.accent2,
+      ),
+    ];
+  }
   const children: SlideElement[] = [
     segment(
       { x: AXIS_X, y: axisY },
@@ -387,6 +440,7 @@ function drawEnergyProfile(
       },
     ),
     curve,
+    ...catalysed(),
     segment({ x: peakX, y: yR }, { x: peakX, y: plotTop }, { ...arrow, name: "Activation energy" }),
     segment({ x: changeX, y: yR }, { x: changeX, y: yP }, { ...arrow, name: "Energy change" }),
     labelText(t, labels.energy.text, placed.energy, "left"),
@@ -402,7 +456,7 @@ function drawEnergyProfile(
 
 export const ENERGY_PROFILE: FigureTemplate<EnergyProfileValues> = {
   name: "Energy profile",
-  shape: energyProfileShape,
+  shape: energyProfileFull,
   values: energyProfileValuesSchema,
   draw: drawEnergyProfile,
 };

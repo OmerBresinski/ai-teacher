@@ -608,11 +608,23 @@ function drawTriangle(
   };
   // Labels that leave too little room are narrowed, then lose lines, until the triangle can be
   // drawn at `MIN_SIZE`; the alt text keeps every label whole.
+  // DIAGRAM-AUDIT: a narrower budget is taken only when it keeps every label whole ("10 cm",
+  // never "10…"); a figure a little under MIN_SIZE with whole labels beats a bigger one cut.
+  const whole = (p: Plan) =>
+    p.shown.every((sh) =>
+      [...Object.values(sh.sides), ...Object.values(sh.angles), ...Object.values(sh.names)].every(
+        (l) => !l?.text.endsWith("…"),
+      ),
+    );
   let plan = arranged(shownFor(LABEL_BUDGETS[0] as Budget));
   for (const budget of LABEL_BUDGETS.slice(1)) {
     if (plan.size >= MIN_SIZE) break;
     const narrower = arranged(shownFor(budget));
-    if (narrower.size > plan.size) plan = narrower;
+    if (
+      narrower.size > plan.size &&
+      (whole(narrower) || !whole(plan) || plan.size < MIN_SIZE * 0.85)
+    )
+      plan = narrower;
   }
   const { shown } = plan;
   const S = Math.max(1, Math.floor(plan.size));
