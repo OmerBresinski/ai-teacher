@@ -21,7 +21,7 @@ import { callStructured } from "../call";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { withUsage } from "../stages/generate";
 import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
-import { generationOf, planClassFor } from "../stages/shared";
+import { planClassFor } from "../stages/shared";
 import type { PipelineDeps, PipelineState } from "../types";
 import { renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
@@ -439,7 +439,14 @@ export async function simpleLessonSlides(
     } as OutlineEntry;
     slides.push(d.slide);
   });
-  const generation = generationOf(base);
+  const generation = base.generation ?? {
+    jobId: deps.context.jobId,
+    stage: "planned" as const,
+    startedAt: new Date(t0).toISOString(),
+    promptVersions: {},
+    usage: deps.budget.totals(),
+    findings: [],
+  };
   lesson = withUsage(
     {
       ...base,
