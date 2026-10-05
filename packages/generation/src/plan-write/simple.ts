@@ -1204,7 +1204,8 @@ export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: b
     (itemCount(spec) ?? 0) >
     (diagramCapacities(zones, [theme])[kind]?.half ?? Number.POSITIVE_INFINITY);
   if (!full && !over && clean(slide)) return slide;
-  const big = asFigureFull(slide, theme);
+  // The drawing needs the full zone here: lines past the caption's cap go to the notes.
+  const big = asFigureFull(slide, theme, { spill: true });
   if (!big) return slide;
   return full || clean(big) ? big : slide;
 }

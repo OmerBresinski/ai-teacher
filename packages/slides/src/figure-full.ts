@@ -113,7 +113,11 @@ function captionWords(els: SlideElement[]): string[] {
  * caption took two lines in a one-line box and the render-time refit moved it onto the table).
  * The heading keeps its words; the placeholder takes the full zone.
  */
-export function asFigureFull(slide: Slide, t: Theme): Slide | undefined {
+export function asFigureFull(
+  slide: Slide,
+  t: Theme,
+  { spill = false }: { spill?: boolean } = {},
+): Slide | undefined {
   const els = slide.elements as SlideElement[];
   const image = els.find(
     (e): e is ImageElement => e.type === "image" && (e as ImageElement).src === PLACEHOLDER_IMAGE,
@@ -122,9 +126,20 @@ export function asFigureFull(slide: Slide, t: Theme): Slide | undefined {
     (e): e is TextElement => e.type === "text" && (e as TextElement).style?.preset === "heading",
   );
   if (!image || !heading) return undefined;
-  const words = captionWords(els);
+  let words = captionWords(els);
+  let moved: string[] = [];
+  if (figureFullCaptionLines(t, words) > FIGURE_FULL_CAPTION_LINES) {
+    // LAYOUT-FIX smoke: y7's and y9's three lines measured 6 and 5 lines, the step-up was
+    // refused and the drawing dropped. With `spill` (the drawing needs the full zone), whole lines
+    // past the cap go to the notes word for word, from the end; the first line always stays.
+    if (!spill) return undefined;
+    let k = words.length - 1;
+    while (k > 1 && figureFullCaptionLines(t, words.slice(0, k)) > FIGURE_FULL_CAPTION_LINES) k--;
+    if (figureFullCaptionLines(t, words.slice(0, k)) > FIGURE_FULL_CAPTION_LINES) return undefined;
+    moved = words.slice(k);
+    words = words.slice(0, k);
+  }
   const lines = figureFullCaptionLines(t, words);
-  if (lines > FIGURE_FULL_CAPTION_LINES) return undefined;
   const r = figureFullRects(t, lines);
   const out: SlideElement[] = [
     { ...heading, ...r.heading, style: { ...heading.style, align: "left" } },
@@ -143,5 +158,8 @@ export function asFigureFull(slide: Slide, t: Theme): Slide | undefined {
     } as unknown as RichDoc;
     out.push(text("body", doc, r.caption, { align: "left" }));
   }
-  return { ...slide, elements: out } as Slide;
+  const notes = moved.length
+    ? [(slide as { notes?: string }).notes?.trim() ?? "", ...moved].filter(Boolean).join("\n")
+    : (slide as { notes?: string }).notes;
+  return { ...slide, elements: out, ...(notes === undefined ? {} : { notes }) } as Slide;
 }

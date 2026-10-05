@@ -1,0 +1,64 @@
+[
+  {
+    "source": "LAYOUT-FIX smoke y7 slide 3 (LAYOUT-FIX-y7-particle-model-new-generate.calls.jsonl)",
+    "heading": "3. Particles in solids, liquids and gases",
+    "content": [
+      "Solid: particles are closely packed in a regular arrangement; they vibrate in fixed positions.",
+      "Liquid: particles are close together in an irregular arrangement; they move past each other.",
+      "Gas: particles are far apart with no fixed arrangement; they move quickly in all directions."
+    ],
+    "notes": "Teach each panel explicitly, distinguishing arrangement (the pattern), spacing (the gaps) and movement. Use identical-sized particles in all three panels. Show short vibration marks around solid particles, arrows between liquid particles and longer arrows in different directions for gas particles. Emphasise that solid particles still move: they vibrate but do not move from place to place. Liquid particles are almost as close together as solid particles; gases have much larger gaps. Ask pupils orally to describe the three features for a liquid, then contrast its movement with a solid.",
+    "picture": {
+      "kind": "particles",
+      "title": "Arrangement, spacing and movement",
+      "show": "states",
+      "states": ["solid", "liquid", "gas"],
+      "notes": [
+        "Close, regular; vibrate in place",
+        "Close, irregular; move past each other",
+        "Far apart; move freely in all directions"
+      ],
+      "arrows": []
+    }
+  },
+  {
+    "source": "LAYOUT-FIX smoke y9 slide 4 (LAYOUT-FIX-y9-weimar-generate.calls.jsonl)",
+    "heading": "4. How did the crisis become hyperinflation?",
+    "content": [
+      "Passive resistance meant refusing to work for the occupying forces. The government paid striking workers.",
+      "With production and tax income falling, the government printed money to meet its costs.",
+      "More money chasing fewer goods helped prices spiral upwards: hyperinflation."
+    ],
+    "notes": "Trace the chain aloud, linking it back to reparations on slide 3. Explain that hyperinflation is extremely rapid inflation: money loses purchasing power very quickly. The flow simplifies interacting causes; both falling output and increasing money supply mattered. Printing additional notes did not create additional coal, food or other goods.",
+    "picture": {
+      "kind": "flow",
+      "title": "From occupation to soaring prices",
+      "steps": [
+        {
+          "label": "Ruhr occupied",
+          "arrow": "Government urges"
+        },
+        {
+          "label": "Passive resistance",
+          "arrow": "Output falls"
+        },
+        {
+          "label": "Less production and tax",
+          "arrow": "Costs continue"
+        },
+        {
+          "label": "Government pays strikers",
+          "arrow": "Financed by"
+        },
+        {
+          "label": "Printing more money",
+          "arrow": "Prices spiral"
+        },
+        {
+          "label": "Hyperinflation",
+          "arrow": ""
+        }
+      ]
+    }
+  }
+]
