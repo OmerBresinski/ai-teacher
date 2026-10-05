@@ -27,7 +27,6 @@ import {
   SAFE,
   slideFits,
   withDiagramDrawn,
-  withoutPicture,
   withPictureInSpace,
 } from "@tj/slides";
 import {
