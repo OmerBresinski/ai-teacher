@@ -41,6 +41,10 @@ export type Ctx = {
   strokes?: [number, number, number, number][];
   /** With `rec`: faults a renderer finds in its own layout (a squashed plot). */
   faults?: string[];
+  /** With `rec`: each arrow's tip and the box it points at (the geometry checks). */
+  arrows?: { tip: [number, number]; target: { x0: number; y0: number; x1: number; y1: number } }[];
+  /** With `rec`: each value axis's top and the largest value drawn against it. */
+  axes?: { name: string; max: number; data: number }[];
 };
 
 /** One drawn text block: its box in the drawing's points, its words, and whether a line was cut. */
@@ -51,6 +55,8 @@ export type DrawnText = {
   y1: number;
   text: string;
   cut: boolean;
+  /** The size it is set at, in slide points. */
+  fs?: number;
 };
 
 export type Tone = "accent" | "accent2" | "muted" | "surface" | "none";
@@ -240,6 +246,7 @@ export function text(x: Ctx, px: number, py: number, lines: string[], o: TextOpt
       y1: top + block + fs * 0.25,
       text: lines.join(" "),
       cut: lines.some((l) => l.endsWith("…")),
+      fs,
     });
   }
   const spans = lines
@@ -340,4 +347,12 @@ export function ticks(min: number, max: number, step?: number, aim = 6): number[
   const first = Math.ceil(min / s - 1e-9) * s;
   for (let v = first; v <= max + 1e-9; v += s) out.push(Math.round(v * 1e6) / 1e6);
   return out;
+}
+
+/** The axis top for data reaching `v`: the first round tick at or above it (about `aim` ticks). */
+export function niceTop(v: number, aim = 5): number {
+  if (!(v > 0)) return 1;
+  const tv = ticks(0, v, undefined, aim);
+  const step = (tv[1] ?? v) - (tv[0] ?? 0) || v;
+  return Math.ceil(v / step - 1e-9) * step;
 }

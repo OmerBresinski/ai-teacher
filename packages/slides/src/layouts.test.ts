@@ -9,7 +9,7 @@ import {
   type SlideKind,
   slideStepCount,
 } from "@tj/domain/documents";
-import { look } from "./diagrams/style";
+import { DEFAULT_DIAGRAM_PRESET, look } from "./diagrams/style";
 import defaultRecipes from "./fixtures/default-recipes.json";
 import { normaliseLayout } from "./fixtures/normalise";
 import { lastColLeft, SAFE, spanWidth, TRIM } from "./grid";
@@ -329,8 +329,8 @@ describe("layoutSlide", () => {
   const frozen = defaultRecipes as Record<string, unknown>;
   for (const theme of THEMES) {
     for (const kind of KINDS) {
-      // Frozen in the current diagram look; a modern preset (DIAGRAM_PRESET) skips it.
-      (look().preset === "current" ? it : it.skip)(
+      // Frozen in the default diagram look; another preset (DIAGRAM_PRESET) skips it.
+      (look().preset === DEFAULT_DIAGRAM_PRESET ? it : it.skip)(
         `${kind} on ${theme.id}: the default recipe is the one frozen before the catalogue`,
         () => {
           const expected = frozen[`${kind}/${theme.id}`];

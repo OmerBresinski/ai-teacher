@@ -20,7 +20,19 @@ import {
 } from "./place";
 import type { Cycle, Hydrograph, Layers, Particles, River, Timeline } from "./schema";
 import { look, STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
-import { arrow, arrowHead, type Ctx, hBrace, mix, n, num, text, textWidth, ticks } from "./svg";
+import {
+  arrow,
+  arrowHead,
+  type Ctx,
+  hBrace,
+  mix,
+  n,
+  niceTop,
+  num,
+  text,
+  textWidth,
+  ticks,
+} from "./svg";
 
 type Pt = [number, number];
 
@@ -345,13 +357,6 @@ const smooth = (t: number) => {
   return c * c * (3 - 2 * c);
 };
 
-/** A round number at or above `v` (1, 2, 2.5 or 5 times a power of ten). */
-function niceUp(v: number): number {
-  const p = 10 ** Math.floor(Math.log10(v));
-  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v - 1e-9) return m * p;
-  return 10 * p;
-}
-
 export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): string {
   // Graph labels a step below the slide's diagram size: six features share one plot.
   const x: Ctx = {
@@ -386,7 +391,9 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   const peakU = v.lagHours ? peakRainU + uOf(v.lagHours) : sh.peak;
   const riseU = peakU - (sh.peak - sh.rise);
   const fallU = peakU + (sh.fall - sh.peak);
-  const qMax = v.peakDischarge ? niceUp(v.peakDischarge / 0.8) : 1;
+  // Each axis fitted to its own data: the peak near 80 % of the discharge axis, the rain near 45 %
+  // of its own (the bars sit under the hump, never a sliver).
+  const qMax = v.peakDischarge ? niceTop(v.peakDischarge / 0.8) : 1;
   const top = v.peakDischarge ? v.peakDischarge / qMax : 0.8 * sh.top;
   const base =
     v.baseFlow !== undefined && v.peakDischarge ? Math.min(top * 0.5, v.baseFlow / qMax) : 0.16;
@@ -397,13 +404,15 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
       : u <= peakU
         ? base + (top - base) * smooth((u - riseU) / (peakU - riseU))
         : end + (top - end) * (1 - smooth((u - peakU) / (fallU - peakU)));
-  const rMax = v.peakRainfall ? niceUp(v.peakRainfall / 0.36) : 1;
+  const rMax = v.peakRainfall ? niceTop(v.peakRainfall / 0.45) : 1;
   const rainTop = v.peakRainfall ? v.peakRainfall / rMax : 0.36;
+  if (v.peakDischarge) x.axes?.push({ name: "discharge", max: qMax, data: v.peakDischarge });
+  if (v.peakRainfall) x.axes?.push({ name: "rainfall", max: rMax, data: v.peakRainfall });
 
   // Margins: rotated axis titles, tick numbers when there are values, the lag band on top.
   const lt = (a: string, b: string, room: number) => (textWidth(a, x, afs, 600) <= room ? a : b);
-  const qTicks = numbers && v.peakDischarge ? ticks(0, qMax, undefined, 4) : [];
-  const rTicks = numbers && v.peakRainfall ? ticks(0, rMax, undefined, 4) : [];
+  const qTicks = numbers && v.peakDischarge ? ticks(0, qMax, undefined, 5) : [];
+  const rTicks = numbers && v.peakRainfall ? ticks(0, rMax, undefined, 5) : [];
   const tw = (vals: number[]) => Math.max(0, ...vals.map((t) => textWidth(num(t), x, tfs)));
   const L = 4 + afs * 1.25 + (qTicks.length ? tw(qTicks) + 8 : 4);
   const Rm = 4 + afs * 1.25 + (rTicks.length ? tw(rTicks) + 8 : 4);
@@ -550,7 +559,8 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
       });
     const fits = (p: ReturnType<typeof set>) => {
       const [a, b] = p as [(typeof p)[0], (typeof p)[0]];
-      return a.b.x1 + 10 < b.b.x0;
+      // A clear gap of a label's size between the two names, or they read as one phrase.
+      return a.b.x1 + fs < b.b.x0;
     };
     const one = set(1);
     const two = set(2);
@@ -733,6 +743,17 @@ function breakMark(x: Ctx, cx: number, cy: number, vertical: boolean): string {
 
 export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string {
   const k = s.events.length;
+  // Modern looks: six or more events read as a list down the slot (one line each, a size up)
+  // rather than small labels alternating above and below a line.
+  if (look().preset !== "current" && k > 5) {
+    const probe = drawTimelineDown(
+      s,
+      { ...x, faults: [], rec: undefined, strokes: undefined },
+      w,
+      h,
+    );
+    if (probe) return drawTimelineDown(s, x, w, h);
+  }
   const pad = 6;
   const slot = (w - 2 * pad) / k;
   const xs = s.events.map((_, i) => pad + slot * (i + 0.5));
@@ -987,7 +1008,7 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
   const rx = (w - bw) / 2 - 2;
   const ry = (h - bh) / 2 - 2;
   const inside = (b: Box, [px, py]: Pt) =>
-    px > b.x0 - 5 && px < b.x1 + 5 && py > b.y0 - 5 && py < b.y1 + 5;
+    px > b.x0 - 4 && px < b.x1 + 4 && py > b.y0 - 4 && py < b.y1 + 4;
   const out: string[] = [];
   // Arrows along the ellipse from each box to the next, clockwise.
   for (let i = 0; i < k; i++) {
@@ -996,8 +1017,9 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
     const from = boxes[i] as Box;
     const to = boxes[(i + 1) % k] as Box;
     const pts: Pt[] = [];
-    for (let t = 0; t <= 60; t++) {
-      const a = a0 + ((a1 - a0) * t) / 60;
+    // Sampled finely, so each arrow starts and ends a fixed small gap (4) from the box edges.
+    for (let t = 0; t <= 360; t++) {
+      const a = a0 + ((a1 - a0) * t) / 360;
       const p: Pt = [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
       if (!inside(from, p) && !inside(to, p)) pts.push(p);
     }
@@ -1006,14 +1028,16 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
       continue;
     }
     const tip = pts[pts.length - 1] as Pt;
-    const prev = pts[pts.length - 3] as Pt;
+    const away = (p: Pt) => Math.hypot(p[0] - tip[0], p[1] - tip[1]) > 8;
+    const prev = [...pts].reverse().find(away) ?? (pts[pts.length - 3] as Pt);
     out.push(
       `<polyline points="${pts
-        .slice(0, -1)
+        .filter(away)
         .map(([a, b]) => `${n(a)},${n(b)}`)
         .join(" ")}" fill="none" stroke="${x.c.ink}" stroke-width="2.5" stroke-linecap="round"/>`,
     );
     out.push(arrowHead(tip[0], tip[1], prev[0], prev[1], 0, x.c.ink));
+    x.arrows?.push({ tip, target: to });
     for (let j = 1; j < pts.length; j++) {
       const p = pts[j - 1] as Pt;
       const q = pts[j] as Pt;
@@ -1159,14 +1183,61 @@ const BEND = (u: number): Pt => {
   return [80 + 50 * Math.cos(a), 78 - 48 * Math.sin(a)];
 };
 
+/**
+ * A section's names in one row, ordered as their anchors run left to right and spread so none
+ * touch, at the largest size from the label size down to the floor; undefined when they do not fit.
+ */
+function sectionRow(s: River, x: Ctx, w: number, ox: number, k: number) {
+  const geo = RIVERS[s.view];
+  const named = s.labels
+    .filter((l) => geo.anchors[l.part])
+    .map((l) => ({ ...l, ax: ox + (geo.anchors[l.part]?.at[0] ?? 0) * k }))
+    .sort((a, b) => a.ax - b.ax);
+  for (let fs = x.fs; fs >= TYPE_FLOOR; fs -= 1) {
+    const gap = fs;
+    const items = named.map((l) => ({
+      text: l.text,
+      part: l.part,
+      ax: l.ax,
+      bw: textWidth(l.text, x, fs, WEIGHT.name),
+      cx: l.ax,
+    }));
+    const total = items.reduce((a, it) => a + it.bw, 0) + gap * (items.length - 1);
+    if (total > w - 8) continue;
+    // Push right past each neighbour, then back from the right edge.
+    let edge = 4;
+    for (const it of items) {
+      it.cx = Math.max(it.cx, edge + it.bw / 2);
+      edge = it.cx + it.bw / 2 + gap;
+    }
+    edge = w - 4;
+    for (const it of [...items].reverse()) {
+      it.cx = Math.min(it.cx, edge - it.bw / 2);
+      edge = it.cx - it.bw / 2 - gap;
+    }
+    return { fs, items };
+  }
+  return undefined;
+}
+
 export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
   const x: Ctx = { ...x0, fs: Math.min(x0.fs, Math.max(TYPE_FLOOR, Math.round(w / 23))) };
   const geo = RIVERS[s.view];
   // A section sits low, its sky left for the labels (each on a leader); a plan fills the space.
   const plan = s.view === "meander-plan";
   const k = plan ? Math.min(w / 160, h / 100) * 0.92 : (w / 160) * 0.96;
-  const ky = plan ? k : (h * 0.6) / 80;
   const ox = (w - 160 * k) / 2;
+  // Modern looks: a section's names stand in one row above it, in the order of what they name,
+  // each on a straight leader; the section fills the rest of the zone.
+  const row = !plan && look().preset !== "current" ? sectionRow(s, x, w, ox, k) : undefined;
+  const band = row ? row.fs * 1.25 + row.fs * 0.9 : 0;
+  // The ground's highest point meets the label band; its base meets the zone's foot.
+  const span = 100 - Math.min(100, ...geo.ground.map((p) => p[1]));
+  const ky = plan
+    ? k
+    : row
+      ? Math.min(k * 1.6, (h - 2 - band) / Math.max(1, span))
+      : (h * 0.6) / 80;
   const oy = plan ? (h - 100 * k) / 2 : h - 100 * ky - 2;
   const t = ([a, b]: Pt): Pt => [ox + a * k, oy + b * ky];
   const WATER = mix("#3a7bc8", x.c.surface, 0.5);
@@ -1249,6 +1320,21 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
     addLine(x, sc, profile);
   }
   out.push(geo.marks(t, x, sc, has));
+  if (row) {
+    for (const it of row.items) {
+      const [ax, ay] = t(geo.anchors[it.part]?.at ?? [0, 0]);
+      const ly = row.fs * 1.25 + 4;
+      out.push(
+        `<line x1="${n(it.cx)}" y1="${n(ly)}" x2="${n(ax)}" y2="${n(ay)}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}" stroke-linecap="round"/>`,
+        `<circle cx="${n(ax)}" cy="${n(ay)}" r="3.5" fill="${x.c.ink}"/>`,
+      );
+      x.strokes?.push([it.cx, ly, ax, ay]);
+      out.push(
+        text(x, it.cx, row.fs * 0.62, [it.text], { fs: row.fs, weight: WEIGHT.name, halo: x.c.bg }),
+      );
+    }
+    return out.join("");
+  }
   // The deepest points first (their leaders are the longest), other orders when one is boxed in.
   const order = [...s.labels].sort(
     (p, q) => (geo.anchors[q.part]?.at[1] ?? 0) - (geo.anchors[p.part]?.at[1] ?? 0),

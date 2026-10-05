@@ -18,7 +18,7 @@ import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { finished, laddered, WEIGHT } from "./style";
-import { context, type DrawnText, esc, mix, n, text, wrap } from "./svg";
+import { type Ctx, context, type DrawnText, esc, mix, n, text, wrap } from "./svg";
 import { drawTable, tableHeight } from "./table";
 import {
   drawCycle,
@@ -173,6 +173,8 @@ function body(
     strokes: [number, number, number, number][];
     ih: number;
     faults: string[];
+    arrows?: Ctx["arrows"];
+    axes?: Ctx["axes"];
   },
   fs?: number,
 ): string {
@@ -205,7 +207,16 @@ function body(
   }
   const ih = h - top;
   if (probe) probe.ih = ih;
-  const ix = probe ? { ...x, rec: probe.rec, strokes: probe.strokes, faults: probe.faults } : x;
+  const ix = probe
+    ? {
+        ...x,
+        rec: probe.rec,
+        strokes: probe.strokes,
+        faults: probe.faults,
+        arrows: probe.arrows,
+        axes: probe.axes,
+      }
+    : x;
   const inner = (() => {
     switch (s.kind) {
       case "bar-model":
@@ -303,6 +314,27 @@ export function diagramElement(
  * empty when nothing is. A diagram that draws is not a pass on its own: labels that collide, run
  * off the drawing or are cut short, and panels meant to differ that draw the same, are faults.
  */
+/** What a renderer records about its own drawing when asked (`diagramFaults`, the geometry checks). */
+export type DiagramProbe = {
+  rec: DrawnText[];
+  strokes: [number, number, number, number][];
+  ih: number;
+  faults: string[];
+  arrows: NonNullable<Ctx["arrows"]>;
+  axes: NonNullable<Ctx["axes"]>;
+};
+const diagramProbe = (h: number): DiagramProbe => ({
+  rec: [],
+  strokes: [],
+  ih: h,
+  faults: [],
+  arrows: [],
+  axes: [],
+});
+let lastProbe: DiagramProbe | undefined;
+/** The probe of the last `diagramFaults` call (the geometry checks read arrows and axes from it). */
+export const lastDiagramProbe = (): DiagramProbe | undefined => lastProbe;
+
 export function diagramFaults(
   spec: unknown,
   theme: Theme,
@@ -312,18 +344,14 @@ export function diagramFaults(
   const w = Math.round(size.w);
   const h = Math.round(size.h);
   if (!s || !(w >= 80) || !(h >= 60)) return ["it does not draw"];
-  const probe = {
-    rec: [] as DrawnText[],
-    strokes: [] as [number, number, number, number][],
-    ih: h,
-    faults: [] as string[],
-  };
+  const probe = diagramProbe(h);
   try {
     body(s, theme, w, h, probe, size.fs);
   } catch {
     return ["it does not draw"];
   }
   const { rec, strokes, ih } = probe;
+  lastProbe = probe;
   const out: string[] = [...probe.faults];
   // A label set across a line of the drawing (an outline, a river, an arrow) reads as clutter and
   // hides what the line shows (F1 y8 drainage basin): its box, less a small margin, is crossed.

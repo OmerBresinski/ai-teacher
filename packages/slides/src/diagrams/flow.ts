@@ -86,6 +86,15 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     const [x1, y1] = edge(b, next.cx, next.cy, 4);
     const [x2, y2] = edge(next, b.cx, b.cy, 4);
     out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
+    x.arrows?.push({
+      tip: [x2, y2],
+      target: {
+        x0: next.cx - next.w / 2,
+        y0: next.cy - next.h / 2,
+        x1: next.cx + next.w / 2,
+        y1: next.cy + next.h / 2,
+      },
+    });
     const note = f.steps[i]?.arrow;
     if (note) {
       const vertical = Math.abs(x2 - x1) < 1;
@@ -158,6 +167,15 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
       `<path d="M${n(x1)},${n(y1)} Q${n(qx)},${n(qy)} ${n(ex)},${n(ey)}" fill="none" stroke="${c.ink}" stroke-width="3" stroke-linecap="round"/>`,
       arrowHead(x2, y2, qx, qy, head, c.ink),
     );
+    x.arrows?.push({
+      tip: [x2, y2],
+      target: {
+        x0: next.cx - next.w / 2,
+        y0: next.cy - next.h / 2,
+        x1: next.cx + next.w / 2,
+        y1: next.cy + next.h / 2,
+      },
+    });
     const note = f.steps[i]?.arrow;
     if (note) {
       const lx = qx + (ox / ol) * fs * 0.9;

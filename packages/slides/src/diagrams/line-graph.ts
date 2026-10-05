@@ -16,6 +16,14 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   const small = sub(fs);
   const xt = ticks(g.x.min, g.x.max, g.x.step);
   const yt = ticks(g.y.min, g.y.max, g.y.step);
+  for (const [name, ax, right] of [
+    ["y", g.y, false],
+    ["y2", g.y2, true],
+  ] as const) {
+    const pts = g.series.filter((s) => (s.axis === "right") === right).flatMap((s) => s.points);
+    if (ax && pts.length)
+      x.axes?.push({ name, max: ax.max, data: Math.max(...pts.map((p) => p[1])) });
+  }
   const y2t = g.y2 ? ticks(g.y2.min, g.y2.max, g.y2.step) : [];
   const tickW = (vals: number[]) => Math.max(0, ...vals.map((v) => textWidth(num(v), x, small)));
   // A flat two-point line is a threshold ("channel capacity"): drawn dashed and named on the line,

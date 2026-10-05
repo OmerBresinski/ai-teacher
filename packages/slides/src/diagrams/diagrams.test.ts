@@ -16,7 +16,7 @@ import {
 } from "./index";
 import { resolveLabels } from "./labelled";
 import { DIAGRAM_SAMPLES } from "./samples";
-import { look } from "./style";
+import { DEFAULT_DIAGRAM_PRESET, look } from "./style";
 import { context } from "./svg";
 
 const SLOT = { w: 436, h: 356 };
@@ -32,8 +32,8 @@ describe("samples", () => {
     }
   });
 
-  // The snapshots freeze the current look; a modern preset (DIAGRAM_PRESET) skips them.
-  (look().preset === "current" ? test : test.skip).each(Object.keys(DIAGRAM_SAMPLES))(
+  // The snapshots freeze the default look; another preset (DIAGRAM_PRESET) skips them.
+  (look().preset === DEFAULT_DIAGRAM_PRESET ? test : test.skip).each(Object.keys(DIAGRAM_SAMPLES))(
     "%s matches its snapshot (chalk)",
     (name) => {
       expect(renderDiagram(DIAGRAM_SAMPLES[name], chalk, SLOT)).toMatchSnapshot();

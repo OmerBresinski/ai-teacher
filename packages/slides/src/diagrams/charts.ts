@@ -100,11 +100,15 @@ export function drawBarChart(s: BarChart, x: Ctx, w: number, h: number): string 
   const catLines = Math.max(...s.bars.map((b) => wrap(b.label, x, slotW0 - 6, 2, cfs).length));
   if (s.style === "bars") {
     const counts = look().preset !== "current" && s.bars.every((b) => Number.isInteger(b.value));
-    // Modern looks: counts tick on whole numbers (no "7.5 pupils").
-    const tv = ticks(0, top > 0 ? top : 1, undefined, 5).filter(
-      (v, _, all) => !counts || all.every((u) => Number.isInteger(u)) || Number.isInteger(v),
-    );
-    const yMax = Math.max(tv[tv.length - 1] ?? 1, top);
+    // The axis covers the data: its top is the first round tick at or above the tallest bar.
+    // Counts tick on whole numbers (no "7.5 pupils"), so a fractional step rounds up.
+    const raw = ticks(0, top > 0 ? top : 1, undefined, 5);
+    const step0 = (raw[1] ?? 1) - (raw[0] ?? 0) || 1;
+    const step = counts ? Math.max(1, Math.ceil(step0)) : step0;
+    const yMax = Math.ceil((top > 0 ? top : 1) / step - 1e-9) * step;
+    const tv: number[] = [];
+    for (let v = 0; v <= yMax + 1e-9; v += step) tv.push(Math.round(v * 1e6) / 1e6);
+    x.axes?.push({ name: "bar chart", max: tv[tv.length - 1] ?? 0, data: top });
     const tw = Math.max(...tv.map((v) => textWidth(num(v), x, small)));
     const L = (s.y ? fs * 1.3 : 0) + tw + 10;
     const B = catLines * cfs * 1.2 + 8 + (s.x ? fs * 1.4 : 0);
@@ -272,8 +276,16 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
   const out: string[] = [];
   const three = s.sets.length === 3;
   const head = fs * 1.5;
-  const r = three ? Math.min(w / 3.1, (h - head) / 2.9) : Math.min(w / 3.3, (h - head) / 2.1);
-  const cy = head + (three ? r * 1.0 : (h - head) / 2);
+  const ifs = sub(fs, 0.9);
+  // Items in no set sit in a row along the foot of the universal box, below the circles.
+  const outside = s.items
+    .filter((it) => !it.in.some((i) => i < s.sets.length))
+    .map((it) => it.text);
+  const outLines = outside.length ? wrap(outside.join(",\u2003"), x, w - 28, 2, ifs) : [];
+  const strip = outLines.length ? outLines.length * ifs * 1.2 + ifs * 0.6 : 0;
+  const room = h - head - strip;
+  const r = three ? Math.min(w / 3.1, room / 2.9) : Math.min(w / 3.3, room / 2.1);
+  const cy = head + (three ? r * 1.0 : room / 2);
   const centres: [number, number][] = three
     ? [
         [w / 2 - r * 0.55, cy],
@@ -284,10 +296,12 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
         [w / 2 - r * 0.6, cy],
         [w / 2 + r * 0.6, cy],
       ];
-  if (look().frame)
-    out.push(
-      `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
-    );
+  // The universal set: a heavy frame in the current look, a quiet hairline in the modern ones.
+  out.push(
+    look().frame
+      ? `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`
+      : `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="12" fill="none" stroke="${mix(c.ink, c.bg, 0.35)}" stroke-width="${STROKE.hair}"/>`,
+  );
   const fills = [c.accent, c.accent2, c.ink];
   // Flat: no outlines, so the sets read from stronger, overlapping washes.
   const wash = look().outlines ? (x.dark ? 0.16 : 0.12) : x.dark ? 0.3 : 0.2;
@@ -308,7 +322,7 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
           textWidth(name, x, fs, WEIGHT.name) / 2 + 4,
           Math.min(w - textWidth(name, x, fs, WEIGHT.name) / 2 - 4, ax),
         ),
-        below ? Math.min(h - fs * 0.7, py + r + fs * 0.8) : py - r - fs * 0.6,
+        below ? Math.min(h - strip - fs * 0.7, py + r + fs * 0.8) : py - r - fs * 0.6,
         [name],
         { weight: WEIGHT.name },
       ),
@@ -338,20 +352,16 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
       .join(",");
     groups.set(key, [...(groups.get(key) ?? []), it.text]);
   }
-  const ifs = sub(fs, 0.9);
   for (const [key, items] of groups) {
     const ins = key ? key.split(",").map(Number) : [];
+    if (ins.length === 0) continue;
     const [ax, ay] = region(ins);
     const lh = ifs * 1.2;
     items.forEach((t, j) => {
-      out.push(
-        text(x, ins.length === 0 ? w - 8 : ax, ay + (j - (items.length - 1) / 2) * lh, [t], {
-          fs: ifs,
-          anchor: ins.length === 0 ? "end" : "middle",
-        }),
-      );
+      out.push(text(x, ax, ay + (j - (items.length - 1) / 2) * lh, [t], { fs: ifs }));
     });
   }
+  if (outLines.length) out.push(text(x, w / 2, h - strip / 2 - 1, outLines, { fs: ifs }));
   return out.join("");
 }
 

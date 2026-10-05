@@ -16,10 +16,12 @@ export const sub = (fs: number, k = 0.85): number => Math.max(TYPE_FLOOR, Math.r
  * names). `flat` drops outlines from filled shapes, keeps thin round-capped lines, rounds corners
  * and reads at medium weight with only values bold. `line` is a line illustration: one 2 pt
  * stroke, open shapes, the focal element the only fill. Every renderer reads the same tokens, so a
- * preset is a switch, not a second renderer. The default stays `current`.
+ * preset is a switch, not a second renderer. The default is `flat`.
  */
 export type DiagramPreset = "current" | "flat" | "line";
 export const DIAGRAM_PRESETS: readonly DiagramPreset[] = ["current", "flat", "line"];
+/** The shipped look: flat (Greg picked A, 5 Oct 2026). `current` and `line` stay behind the switch. */
+export const DEFAULT_DIAGRAM_PRESET: DiagramPreset = "flat";
 
 /**
  * Weights: labels read calmly, values and key terms stand out, a title leads. `name` is a box's,
@@ -105,6 +107,7 @@ const PRESETS: Record<
 
 let preset: DiagramPreset = "current";
 let LOOK: Look = { preset, ...PRESETS.current.look };
+setDiagramPreset(DEFAULT_DIAGRAM_PRESET);
 
 /** Switch every diagram and figure to `p` (process-wide; the default is `current`). */
 export function setDiagramPreset(p: DiagramPreset): void {
@@ -130,7 +133,7 @@ export function withDiagramPreset<T>(p: DiagramPreset, f: () => T): T {
 
 const envPreset = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
   ?.env?.DIAGRAM_PRESET as DiagramPreset | undefined;
-if (envPreset && envPreset !== "current") setDiagramPreset(envPreset);
+if (envPreset && PRESETS[envPreset]) setDiagramPreset(envPreset);
 
 /** Any width snapped to the ladder (a highlight band of 6 or more is kept as drawn). */
 export function onLadder(w: number): number {
