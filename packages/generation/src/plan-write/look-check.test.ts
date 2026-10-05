@@ -35,7 +35,7 @@ const hinge: LookSlide = {
 
 describe("look-check prompt", () => {
   test("version and user turn carry the slide, year and objectives", () => {
-    expect(LOOK_CHECK_VERSION).toBe("look-check.v1");
+    expect(LOOK_CHECK_VERSION).toBe("look-check.v2");
     const p = lookCheckPrompt({
       yearGroup: "Year 3",
       subject: "Science",
@@ -50,7 +50,7 @@ describe("look-check prompt", () => {
     expect(p.user).toContain("- Explain how a shadow forms");
     expect(p.user).toContain("slide 4 of 10, kind worked-example");
     expect(p.user).toContain('"heading":"Making a shadow"');
-    expect(p.system).toContain("Most slides have none");
+    expect(p.system).toContain("First write `looked`");
     for (const f of [
       "picture:",
       "question:",
@@ -79,57 +79,73 @@ describe("onScreenFields", () => {
   });
 });
 
+const FAULTS = ["picture", "question", "options", "examples", "role", "readability", "pitch"];
+const no = { seen: "looked", answer: "no", target: "picture", confidence: "medium", fix: "" };
+const checklist = (yes: Record<string, Partial<typeof no>> = {}) => ({
+  looked: "a diagram and two lines",
+  checks: Object.fromEntries(FAULTS.map((f) => [f, { ...no, ...(yes[f] ?? {}) }])),
+});
+
 describe("lookCheckSchema", () => {
-  test("target is closed to the slide's fields and picture", () => {
+  test("a verdict per fault type; target closed to the slide's fields and picture", () => {
     const s = lookCheckSchema(["heading", "body"]);
-    const ok = { fault: "pitch", target: "body", seen: "x", confidence: "medium", fix: "y" };
-    expect(s.safeParse({ flags: [ok] }).success).toBe(true);
-    expect(s.safeParse({ flags: [{ ...ok, target: "picture" }] }).success).toBe(true);
-    expect(s.safeParse({ flags: [{ ...ok, target: "stem" }] }).success).toBe(false);
-    expect(s.safeParse({ flags: [{ ...ok, confidence: "low" }] }).success).toBe(false);
-    expect(s.safeParse({ flags: [] }).success).toBe(true);
+    expect(s.safeParse(checklist()).success).toBe(true);
+    expect(s.safeParse(checklist({ pitch: { answer: "yes", target: "body" } })).success).toBe(true);
+    expect(s.safeParse(checklist({ pitch: { target: "stem" } })).success).toBe(false);
+    expect(s.safeParse(checklist({ pitch: { confidence: "low" as "medium" } })).success).toBe(
+      false,
+    );
+    const missing = checklist();
+    delete (missing.checks as Record<string, unknown>).role;
+    expect(s.safeParse(missing).success).toBe(false);
   });
 });
 
 describe("parseLookFlags", () => {
   const ctx = { number: 5, slideId: "s5", targets: ["heading", "stem", "options"] };
-  test("stamps id and number, drops bad targets, empty fixes and duplicates, high first, capped", () => {
+  test("each yes with a target and a fix is a flag, stamped with id and number, high first", () => {
     const got = parseLookFlags(
-      {
-        flags: [
-          { fault: "pitch", target: "stem", seen: "s", confidence: "medium", fix: "simpler words" },
-          { fault: "question", target: "stem", seen: "s", confidence: "high", fix: "reword" },
-          { fault: "question", target: "stem", seen: "again", confidence: "high", fix: "reword 2" },
-          { fault: "options", target: "body", seen: "s", confidence: "high", fix: "x" },
-          { fault: "options", target: "options", seen: "s", confidence: "high", fix: "  " },
-          {
-            fault: "readability",
-            target: "heading",
-            seen: "s",
-            confidence: "medium",
-            fix: "shorter",
-          },
-          { fault: "picture", target: "picture", seen: "s", confidence: "medium", fix: "a candle" },
-          { fault: "role", target: "heading", seen: "s", confidence: "medium", fix: "relabel" },
-          "junk",
-        ],
-      },
+      checklist({
+        pitch: { answer: "yes", target: "stem", fix: "simpler words" },
+        question: { answer: "yes", target: "stem", confidence: "high", fix: "reword", seen: " s " },
+        options: { answer: "yes", target: "options", confidence: "high", fix: "  " },
+        readability: { answer: "n/a", target: "heading", fix: "shorter" },
+        picture: { answer: "yes", target: "picture", fix: "a candle" },
+      }),
       ctx,
     );
-    expect(got.length).toBe(4);
+    expect(got.map((f) => `${f.fault}:${f.confidence}`)).toEqual([
+      "question:high",
+      "picture:medium",
+      "pitch:medium",
+    ]);
     expect(got[0]).toMatchObject({
       slideId: "s5",
       slide: 5,
-      fault: "question",
+      target: "stem",
+      seen: "s",
       fix: "reword",
-      confidence: "high",
     });
-    expect(got.filter((f) => f.fault === "question").length).toBe(1);
-    expect(got.some((f) => f.target === "body")).toBe(false);
+  });
+  test("a target the slide does not have is dropped, and at most four flags are kept", () => {
+    const yes = (target: string) => ({ answer: "yes", target, fix: "x" });
+    const got = parseLookFlags(
+      checklist({
+        picture: yes("picture"),
+        question: yes("stem"),
+        options: yes("options"),
+        examples: yes("body"),
+        role: yes("heading"),
+        readability: yes("heading"),
+      }),
+      ctx,
+    );
+    expect(got.length).toBe(4);
+    expect(got.some((f) => f.fault === "examples")).toBe(false);
   });
   test("a malformed answer is no flags, not a throw", () => {
     expect(parseLookFlags(null, ctx)).toEqual([]);
-    expect(parseLookFlags({ flags: "x" }, ctx)).toEqual([]);
+    expect(parseLookFlags({ checks: "x" }, ctx)).toEqual([]);
   });
 });
 

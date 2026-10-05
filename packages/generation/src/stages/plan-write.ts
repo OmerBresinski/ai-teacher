@@ -245,7 +245,13 @@ const EXIT_TEACHING_FORMS = new Set([
 ]);
 const MAX_OUTPUT_TOKENS_CAPTION_CLAIMS = 2000;
 /** One slide's look check at effort low: reasoning plus a short flag list. */
-const MAX_OUTPUT_TOKENS_LOOK_CHECK = 4000;
+const MAX_OUTPUT_TOKENS_LOOK_CHECK = 6000;
+/**
+ * Medium, not the checkers' low: on the owner's 24 rated slides look-check.v2 at low caught 1 of 7
+ * weak slides and at medium 2 of 7 (one strong slide flagged, a real title/task mismatch), for about
+ * $0.0007 a slide (LOOK-CHECK/BUILD.md).
+ */
+const LOOK_CHECK_EFFORT = "medium" as const;
 const captionClaimsSchema = z.object({
   claims: z.array(
     z.object({
@@ -3273,7 +3279,7 @@ export async function planWriteSlides(
         deps,
         stage: "generate",
         cls,
-        effort: planWriteCheckerEffort(),
+        effort: LOOK_CHECK_EFFORT,
         prompt: asPrompt<LookCheckInput>(LOOK_CHECK_VERSION, lookCheckPrompt(input)),
         input,
         schema: lookCheckSchema(slide.fields),

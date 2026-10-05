@@ -41,18 +41,20 @@ export function onScreenFields(out: Record<string, unknown>): Record<string, unk
   );
 }
 
-/** The output schema for one slide: `target` is closed to the slide's own fields and "picture". */
+/** The output schema for one slide: a verdict per fault type, `target` closed to its own fields. */
 export function lookCheckSchema(targets: readonly string[]) {
   const all = [...new Set([...targets, "picture"])] as [string, ...string[]];
+  const check = z.object({
+    seen: z.string(),
+    answer: z.enum(["yes", "no", "n/a"]),
+    target: z.enum(all),
+    confidence: z.enum(LOOK_CONFIDENCE),
+    fix: z.string(),
+  });
   return z.object({
-    flags: z.array(
-      z.object({
-        fault: z.enum(LOOK_FAULTS),
-        target: z.enum(all),
-        seen: z.string(),
-        confidence: z.enum(LOOK_CONFIDENCE),
-        fix: z.string(),
-      }),
+    looked: z.string(),
+    checks: z.object(
+      Object.fromEntries(LOOK_FAULTS.map((f) => [f, check])) as Record<LookFault, typeof check>,
     ),
   });
 }
@@ -70,34 +72,30 @@ export type LookFlag = {
 };
 
 /**
- * The model's flags for one slide, kept only when they name a target the slide has and carry a
- * fix; one per fault and target; at most `LOOK_MAX_FLAGS`, high ones first.
+ * The model's checklist for one slide as flags: each "yes" that names a target the slide has and
+ * carries a fix; at most `LOOK_MAX_FLAGS`, high ones first.
  */
 export function parseLookFlags(
   wire: unknown,
   slide: { number: number; slideId: string; targets: readonly string[] },
 ): LookFlag[] {
-  const parsed = z.object({ flags: z.array(z.unknown()) }).safeParse(wire);
+  const parsed = z.object({ checks: z.record(z.string(), z.unknown()) }).safeParse(wire);
   if (!parsed.success) return [];
   const allowed = new Set([...slide.targets, "picture"]);
-  const one = lookCheckSchema(slide.targets).shape.flags.element;
-  const seen = new Set<string>();
+  const one = lookCheckSchema(slide.targets).shape.checks.shape.picture;
   const out: LookFlag[] = [];
-  for (const raw of parsed.data.flags) {
-    const f = one.safeParse(raw);
-    if (!f.success) continue;
-    const fix = f.data.fix.trim();
-    if (!allowed.has(f.data.target) || fix === "") continue;
-    const key = `${f.data.fault}|${f.data.target}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+  for (const fault of LOOK_FAULTS) {
+    const c = one.safeParse(parsed.data.checks[fault]);
+    if (!c.success || c.data.answer !== "yes") continue;
+    const fix = c.data.fix.trim();
+    if (!allowed.has(c.data.target) || fix === "") continue;
     out.push({
       slideId: slide.slideId,
       slide: slide.number,
-      fault: f.data.fault,
-      target: f.data.target,
-      seen: f.data.seen.trim(),
-      confidence: f.data.confidence,
+      fault,
+      target: c.data.target,
+      seen: c.data.seen.trim(),
+      confidence: c.data.confidence,
       fix,
     });
   }
