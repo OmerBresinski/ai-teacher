@@ -1775,6 +1775,7 @@ export async function simpleLessonSlides(
       named: ask.named ?? null,
       ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
       route: routePicture({ text: ask.subject, named: ask.named ?? null }),
+      context: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
     };
     const out = await findPicture(
       req,
@@ -2116,6 +2117,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       named: ask.named ?? null,
       ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
       route: routePicture({ text: ask.subject, named: ask.named ?? null }),
+      context: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
     };
     const out = await findPicture(
       req,

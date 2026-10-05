@@ -52,6 +52,8 @@ export interface BankRequest {
   /** The zone's width over height; the size and the reuse family follow from it. */
   aspect?: number;
   route: PictureRoute;
+  /** The lesson's title, year and subject: the period and place a real subject is set in. */
+  context?: { title?: string; yearGroup?: string; subject?: string };
 }
 
 export interface PictureBank {

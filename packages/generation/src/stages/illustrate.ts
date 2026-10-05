@@ -1,5 +1,6 @@
 import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
+  anchorQueries,
   isBlockedQuery,
   normaliseQuery,
   PexelsError,
@@ -426,8 +427,13 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
+  // PHOTO-BANK round 2: a real subject searches its anchors (year + event, two proper names) and
+  // the lesson's title before the request's first three words.
+  const real = brief.specific ?? isSpecificSubject(brief.subject);
   const queries = [
     ...(brief.named ? [brief.named] : []),
+    ...(real ? anchorQueries(brief.request ?? brief.subject) : []),
+    ...(real && args.lesson.title ? queryCandidates({ subject: args.lesson.title }) : []),
     ...factQueryHints(args.lesson, index),
     ...queryCandidates(brief),
   ].filter((q, i, all) => all.indexOf(q) === i);
@@ -659,14 +665,16 @@ function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery):
  * shows less than the words claim. A brief with no items (pre-TEACH-159) needs the subject only.
  */
 export function gatePasses(
-  brief: Pick<ImageBrief, "mustShow" | "request">,
+  brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
   verdict: PickOrRequery,
 ): boolean {
   if (!verdict.onSubject || !verdict.clear) return false;
   if (brief.mustShow.length === 0) return true;
   // PICTURE-AUDIT #1: items taken from the writer's request are the things the slide's words
   // name (the sheep AND the lamb), so every one must be in view; Plan's parts lists need one.
-  const need = brief.request ? brief.mustShow.length : 1;
+  // A real thing's archive photograph (1923 Germany, a staging of The Tempest) is right with one
+  // item in view: the all-items rule rejected both in PHOTO-BANK round 1 for a generated stand-in.
+  const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
   return itemsSeen(brief, verdict).length >= need;
 }
 

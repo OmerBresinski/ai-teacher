@@ -102,6 +102,14 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
     expect(gatePasses(brief, verdict(["full-grown sheep"]))).toBe(false);
     expect(gatePasses(brief, verdict(["full-grown sheep", "young lamb"]))).toBe(true);
   });
+  test("a real thing's archive photo needs one item (1923 banknotes without the children)", () => {
+    const brief = {
+      mustShow: ["German children", "bundles of worthless banknotes"],
+      request: "German children with bundles of worthless banknotes in 1923",
+      specific: true,
+    };
+    expect(gatePasses(brief, verdict(["bundles of worthless banknotes"]))).toBe(true);
+  });
   test("Plan's parts lists still need one item; no items needs none", () => {
     expect(gatePasses({ mustShow: ["petals", "stamens"] }, verdict(["petals"]))).toBe(true);
     expect(gatePasses({ mustShow: [] }, verdict([]))).toBe(true);

@@ -8,11 +8,13 @@ import {
   imagePrompt,
   numbersAgree,
   numbersIn,
+  oneScene,
   pickReuse,
   REUSE_THRESHOLD,
   requestText,
   sizeForAspect,
 } from "./bank";
+import { countArrayOf, countArraySvg } from "./count-array";
 
 describe("sizeForAspect (ruling 158 item 3)", () => {
   test.each([
@@ -42,11 +44,49 @@ describe("sizeForAspect (ruling 158 item 3)", () => {
 
 describe("imagePrompt (ruling 158 items 4 and 5)", () => {
   const generic = imagePrompt({ text: "An adult brown hen beside a yellow chick" }, false);
-  test("sets a UK context and British everyday things", () => {
-    expect(generic).toContain("school in England");
-    expect(generic).toMatch(/United Kingdom/);
-    expect(generic).toMatch(/pounds/);
-    expect(generic).toMatch(/electric kettle/);
+  test("no blanket locale and no example objects (PHOTO-BANK round 2)", () => {
+    expect(generic).not.toMatch(/United Kingdom|England|British|kettle|plug|pounds|landmark/i);
+  });
+  test("one subject filling the frame, one image, nothing unasked", () => {
+    expect(generic).toMatch(/fills the frame/);
+    expect(generic).toMatch(/not a collage, grid or set of panels/);
+    expect(generic).toMatch(/no people, animals or objects the request does not name/);
+  });
+  test("locale only where the subject involves it, never landmarks", () => {
+    const money = imagePrompt({ text: "A purse with coins and a note" }, false);
+    expect(money).toMatch(/pounds and pence/);
+    expect(money).toMatch(/No landmarks, flags or national symbols/);
+    expect(money).not.toMatch(/plug|uniform/);
+    const lab = imagePrompt({ text: "School chemistry experiment with a conical flask" }, false);
+    expect(lab).not.toMatch(/uniform|pupils/);
+  });
+  test("a collage request becomes one scene", () => {
+    expect(
+      oneScene(
+        "A two-panel photographic collage: an adult dog beside a puppy on the left; an adult cat beside a kitten on the right. All animals are clearly visible.",
+      ),
+    ).toBe(
+      "An adult dog beside a puppy and an adult cat beside a kitten, together in one scene. All animals are clearly visible.",
+    );
+    expect(oneScene("An ice cube beside a glass of water")).toBe(
+      "An ice cube beside a glass of water",
+    );
+  });
+  test("a real thing is set in the lesson's time and place", () => {
+    const p = imagePrompt(
+      {
+        text: "German children with bundles of banknotes in 1923",
+        context: {
+          title: "Weimar Germany: hyperinflation",
+          yearGroup: "Year 9",
+          subject: "History",
+        },
+      },
+      true,
+    );
+    expect(p).toContain("For a lesson on Weimar Germany: hyperinflation, Year 9 History.");
+    expect(p).toMatch(/time and place/);
+    expect(p).not.toMatch(/pounds|uniform/);
   });
   test("asks for no text in the image", () => {
     expect(generic).toMatch(/No text anywhere in the image/);
@@ -156,5 +196,35 @@ describe("numbersAgree (reuse guard)", () => {
   });
   test("no numbers on either side agree", () => {
     expect(numbersAgree("a hen beside a chick", "a hen next to her chick")).toBe(true);
+  });
+});
+
+describe("countArrayOf and countArraySvg (PHOTO-BANK round 2)", () => {
+  test("reads a total and equal groups", () => {
+    expect(
+      countArrayOf("24 identical counters arranged in four equal groups of six on a table"),
+    ).toEqual({
+      total: 24,
+      groups: 4,
+      perGroup: 6,
+      arrangement: "groups",
+    });
+    expect(countArrayOf("Twelve red counters in 3 rows of 4")?.arrangement).toBe("rows");
+    expect(countArrayOf("Fifteen counters")).toEqual({
+      total: 15,
+      groups: 1,
+      perGroup: 15,
+      arrangement: "groups",
+    });
+  });
+  test("a total that disagrees with its groups, or no countable thing, is not drawn", () => {
+    expect(countArrayOf("20 counters in four groups of six")).toBeUndefined();
+    expect(countArrayOf("An adult dog and its puppy")).toBeUndefined();
+    expect(countArrayOf("A sheep with four legs and two ears")).toBeUndefined();
+  });
+  test("draws exactly the asked number", () => {
+    const svg = countArraySvg({ total: 24, groups: 4, perGroup: 6, arrangement: "groups" }, 1.6);
+    expect(svg.match(/<circle/g)?.length).toBe(48); // body + inner ring per counter
+    expect(svg.match(/<rect/g)?.length).toBe(5); // background + 4 group plates
   });
 });

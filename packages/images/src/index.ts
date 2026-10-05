@@ -20,6 +20,8 @@ export {
   imagePrompt,
   numbersAgree,
   numbersIn,
+  oneScene,
+  type PictureContext,
   pickReuse,
   REUSE_THRESHOLD,
   requestText,
@@ -41,6 +43,7 @@ export {
   licenceClass,
   rankCommons,
 } from "./commons";
+export { type CountArray, countArrayOf, countArraySvg } from "./count-array";
 export {
   type CreatePexelsClientOptions,
   createPexelsClient,
@@ -51,7 +54,7 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
 } from "./pexels";
-export { normaliseQuery, queryCandidates } from "./query";
+export { anchorQueries, normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
   MAX_PHOTO_BYTES,

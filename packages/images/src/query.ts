@@ -41,3 +41,49 @@ export function queryCandidates(brief: { subject: string }): string[] {
   if (words.length === 1) return [first];
   return [first, words.slice(0, -1).join(" ")];
 }
+
+/** Words that date or frame an event but find nothing on their own ("the crisis of 1923"). */
+const FRAME = new Set([
+  "crisis",
+  "period",
+  "time",
+  "era",
+  "years",
+  "year",
+  "during",
+  "age",
+  "events",
+  "event",
+]);
+
+/**
+ * Searches for a real subject from its anchors, ahead of the first-three-words queries (PHOTO-BANK
+ * round 2): "German children playing with bundles of worthless banknotes during the hyperinflation
+ * crisis of 1923" searched "german children playing" and "german children", lost the year and the
+ * event, and Commons returned no 1923 photograph (while "hyperinflation 1923" returns eight). So:
+ * each year with the content word just before it in its clause ("hyperinflation 1923"), and two
+ * proper names together when the request has two ("Tempest Prospero").
+ */
+export function anchorQueries(request: string): string[] {
+  const out: string[] = [];
+  for (const clause of request.split(/[,;.()]/)) {
+    for (const m of clause.matchAll(/\b(1[0-9]{3}|20[0-2][0-9])s?\b/g)) {
+      const before = contentWords(clause.slice(0, m.index)).filter(
+        (w) => !FRAME.has(w) && !/^\d+$/.test(w),
+      );
+      const word = before.at(-1);
+      out.push(word ? `${word} ${m[1]}` : (m[1] ?? ""));
+    }
+  }
+  const words = request
+    .replace(/[^A-Za-z'’\s-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const names: string[] = [];
+  words.forEach((w, i) => {
+    if (i === 0 || !/^[A-Z][a-z'’-]*[a-z]$/.test(w) || STOP_WORDS.has(w.toLowerCase())) return;
+    if (!names.includes(w)) names.push(w);
+  });
+  if (names.length >= 2) out.push(`${names[0]} ${names[1]}`);
+  return out.filter((q, i) => q && out.indexOf(q) === i);
+}

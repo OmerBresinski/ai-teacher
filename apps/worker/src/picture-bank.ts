@@ -18,6 +18,8 @@ import type { BankRequest, PictureBank, PlacedPhoto } from "@tj/generation";
 import {
   type AspectFamily,
   bankLicenceOk,
+  countArrayOf,
+  countArraySvg,
   EMBED_DIMENSIONS,
   type Embedder,
   expectedImageCostUsd,
@@ -58,6 +60,7 @@ const EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
+  "image/svg+xml": "svg",
 };
 
 /** Width and height from a PNG or JPEG header; undefined for anything else. */
@@ -198,6 +201,44 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       emit({ kind: "remember", id: row.id, ms: Date.now() - t0 });
     },
     async generate(req, faithful, signal) {
+      // PHOTO-BANK round 2: a countable maths quantity is drawn in code (exact count, equal groups),
+      // never photographed; free, so no generator or cap is needed.
+      const arr = faithful ? undefined : countArrayOf(req.text);
+      if (arr) {
+        const t0 = Date.now();
+        const svg = countArraySvg(arr, req.aspect ?? 1);
+        const id = opts.ids();
+        const source: PhotoSource = {
+          provider: "generated",
+          id,
+          pageUrl: "https://dayback.app/",
+          photographer: "Drawn by Dayback",
+          photographerUrl: "https://dayback.app/",
+          licence: "drawn (dayback)",
+        };
+        const [w, h] = (/viewBox="0 0 (\d+) (\d+)"/.exec(svg) ?? []).slice(1).map(Number);
+        const row = await store(
+          req,
+          new TextEncoder().encode(svg),
+          "image/svg+xml",
+          {
+            provider: "generated",
+            source,
+            licence: source.licence ?? null,
+            credit: source.photographer,
+            alt: req.text.trim().slice(0, 300),
+            tags: [],
+            generator: "count-array",
+            generatorTerms: "dayback",
+            prompt: null,
+            costUsd: "0",
+            flags: { drawn: true, ...arr },
+          },
+          { width: w ?? 1200, height: h ?? 1200 },
+        );
+        emit({ kind: "generate", id: row.id, costUsd: 0, ms: Date.now() - t0 });
+        return photoOf(row);
+      }
       if (!generator) return undefined;
       const { size } = sizeForAspect(req.aspect);
       if (opts.capUsd !== undefined && spent + expectedImageCostUsd(size) > opts.capUsd) {

@@ -1,7 +1,7 @@
 /**
  * The picture library (TEACH-84, UX ruling 158): the pure parts, shared by the worker, the lab
- * smoke and the tests. Aspect mapping per slide zone, the generation prompt (UK context, British
- * English, no text in the picture), the licence filter for what the library may keep, the reuse
+ * smoke and the tests. Aspect mapping per slide zone, the generation prompt (one subject, locale
+ * only where the subject involves it, no text in the picture), the licence filter for what the library may keep, the reuse
  * rule (cosine over request embeddings, same aspect family), and the OpenAI image generator and
  * embedder behind small interfaces. No database here: the store lives in `@tj/db` (`bank.ts`).
  */
@@ -64,30 +64,83 @@ export function embedCostUsd(tokens: number): number {
   return tokens * EMBED_USD;
 }
 
+/** The lesson a picture is for: its title carries the period and place of a real subject. */
+export interface PictureContext {
+  title?: string;
+  yearGroup?: string;
+  subject?: string;
+}
+
+/** A writer's "two-panel collage: A on the left; B on the right" as one scene with A and B. */
+export function oneScene(request: string): string {
+  const s = request.trim().replace(/\s+/g, " ");
+  const panels =
+    /^(?:an?\s+)?(?:(?:two|three|four|five|six|\d)[- ]panel|split[- ]screen|side[- ]by[- ]side)?\s*(?:photographic\s+|photo\s+|image\s+)?(?:collage|grid|panels?|montage|set of (?:photos|photographs|images))\b[^:]*:\s*/i;
+  if (!panels.test(s) || !/collage|grid|panel|montage|split|set of/i.test(s.split(":")[0] ?? ""))
+    return s;
+  const body = s
+    .replace(panels, "")
+    .replace(/\s+on the (?:left|right|top|bottom)\b/gi, "")
+    .replace(/\s+in the (?:middle|centre|center)\b/gi, "");
+  const [first = "", ...rest] = body.split(/(?<=[.!?])\s+/);
+  const parts = first
+    .replace(/[.!?]$/, "")
+    .split(/\s*;\s*/)
+    .filter(Boolean);
+  const scene = `${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : first.replace(/[.!?]$/, "")}, together in one scene.`;
+  return [scene.charAt(0).toUpperCase() + scene.slice(1), ...rest].join(" ");
+}
+
 /**
- * The generation prompt (ruling 158 items 4 and 5). `faithful`: a real, named or historical thing
- * no photo library had; the picture must show it as it really is (IMG-BAKEOFF faithful round:
- * this stopped the invented intact gatehouse) and goes to the look check.
+ * Locale only where the subject itself involves it (PHOTO-BANK round 2): a blanket "set it in the
+ * UK" put Big Ben, Union Jacks, kettles and pound notes into 4 of 9 unrelated pictures.
  */
-export function imagePrompt(request: { text: string; named?: string | null }, faithful: boolean) {
-  const subject = request.text.trim().replace(/\s+/g, " ");
-  const lines = [
-    `A realistic photograph for a lesson in a school in England: ${subject}`,
+const LOCALE: [RegExp, string][] = [
+  [
+    /\b(money|coins?|notes?|banknotes?|cash|price|pounds?|pence|£|shop|till|purse|wallet)\b/i,
+    "Any money is British pounds and pence.",
+  ],
+  [/\b(plugs?|sockets?|mains)\b/i, "Any plug or socket is the UK three-pin type."],
+  // People in a school, not "a school experiment" (that is apparatus, and stays empty of people).
+  [
+    /\b(pupils?|students?|schoolchildren|teachers?|uniform)\b/i,
+    "Any school is a UK school, with pupils in school uniform.",
+  ],
+];
+
+/**
+ * The generation prompt (ruling 158 items 4 and 5; PHOTO-BANK round 2). One photograph of the
+ * request, the subject filling the frame on a plain background, nothing the request does not name.
+ * `faithful`: a real, named or historical thing no photo library had; it is shown as it really
+ * looks or looked, set in the lesson's period and place, and goes to the look check.
+ */
+export function imagePrompt(
+  request: { text: string; named?: string | null; context?: PictureContext },
+  faithful: boolean,
+) {
+  const subject = oneScene(request.text);
+  const ctx = request.context;
+  const lesson = [ctx?.title?.trim(), [ctx?.yearGroup, ctx?.subject].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
+  const locale = faithful ? [] : LOCALE.filter(([re]) => re.test(subject)).map(([, line]) => line);
+  return [
+    `One realistic photograph: ${subject}`,
     ...(faithful
       ? [
+          ...(lesson
+            ? [`For a lesson on ${lesson}. Set it in the time and place that lesson is about.`]
+            : []),
           `It shows the real ${request.named ? request.named : "thing"} faithfully, as it really looks (or looked): nothing invented, nothing reconstructed, nothing added.`,
         ]
-      : []),
-    // PHOTO-BANK smoke: on a real (often historical or foreign) thing the UK line put modern
-    // British children and pound notes into 1923 Germany, so it goes on generic scenes only.
-    ...(faithful
-      ? []
       : [
-          "Set it in the United Kingdom where a setting shows: British people, places, money (pounds) and everyday objects (an electric kettle, a plug with three pins).",
+          "The subject fills the frame against a plain, uncluttered background. Nothing else is in the picture: no people, animals or objects the request does not name.",
         ]),
+    ...locale,
+    ...(locale.length ? ["No landmarks, flags or national symbols."] : []),
+    "A single image, not a collage, grid or set of panels.",
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
-  ];
-  return lines.join("\n");
+  ].join("\n");
 }
 
 /** What the library may keep (ruling 139): Pexels, generated, or Commons PD, CC0, CC BY, BY-SA. */
