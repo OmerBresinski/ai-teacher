@@ -598,6 +598,7 @@ export function teacher3GapPrompt(i: {
   gaps: ReturnType<typeof coverageGaps>;
   spares: number[];
   slideCount: number;
+  whole?: boolean;
 }): { user: string; count: number } {
   const list = i.slides
     .map(
@@ -611,10 +612,12 @@ export function teacher3GapPrompt(i: {
         `Objective ${g.objective} has no ${[g.teach ? "slide that teaches it" : "", g.check ? "slide with a question that checks it" : ""].filter(Boolean).join(" and no ")}.`,
     )
     .join(" ");
-  const count = Math.min(
-    i.spares.length,
-    i.gaps.reduce((a, g) => a + Number(g.teach) + Number(g.check), 0),
-  );
+  const count = i.whole
+    ? i.spares.length
+    : Math.min(
+        i.spares.length,
+        i.gaps.reduce((a, g) => a + Number(g.teach) + Number(g.check), 0),
+      );
   return {
     count,
     user: `${i.context}
@@ -907,8 +910,11 @@ async function t3Gate(i: {
   const slides = [...i.slides];
   const n = i.objectives.length;
   const gaps = coverageGaps(slides, n);
-  const spares = spareSlides(slides, n);
-  const gap: Record<string, unknown> = { gaps, spares };
+  // No slide can go without opening a new gap (a short deck): the re-ask may rewrite every slide.
+  const free = spareSlides(slides, n);
+  const whole = free.length === 0;
+  const spares = whole ? slides.map((_, k) => k + 3) : free;
+  const gap: Record<string, unknown> = { gaps, spares, whole };
   const used = new Set<number>();
   if (gaps.length > 0 && spares.length > 0) {
     const ask = teacher3GapPrompt({
@@ -918,6 +924,7 @@ async function t3Gate(i: {
       gaps,
       spares,
       slideCount: i.slideCount,
+      whole,
     });
     const gapSchema = teacher3GapSchema(i.base.subject, spares) as z.ZodType<unknown>;
     const t1 = Date.now();
