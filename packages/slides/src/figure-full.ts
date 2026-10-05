@@ -37,13 +37,18 @@ export function figureFullCaptionLines(t: Theme, words: string | string[]): numb
 const SAMPLE =
   "Particles in a solid vibrate about fixed positions, close together in a regular pattern, while ";
 
-/** About how many characters of ordinary words one caption line holds on `t`. */
-export function figureFullCaptionChars(t: Theme): number {
+/** About how many characters of ordinary words one body line `width` points wide holds on `t`. */
+export function bodyLineChars(t: Theme, width: number): number {
   const sample = SAMPLE.repeat(4);
   let n = 1;
-  while (n < sample.length && countLines(sample.slice(0, n + 1).trimEnd(), "body", t, SAFE.w) <= 1)
+  while (n < sample.length && countLines(sample.slice(0, n + 1).trimEnd(), "body", t, width) <= 1)
     n++;
   return n;
+}
+
+/** About how many characters of ordinary words one caption line holds on `t`. */
+export function figureFullCaptionChars(t: Theme): number {
+  return bodyLineChars(t, SAFE.w);
 }
 
 /**

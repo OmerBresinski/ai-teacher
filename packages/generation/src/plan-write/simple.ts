@@ -11,8 +11,11 @@ import {
 } from "@tj/domain/documents";
 import {
   asFigureFull,
+  bodyLineChars,
+  boxH,
   drawFigure,
   EXTRA_FIGURES,
+  FIGURE_FULL_CAPTION_LINES,
   FIGURE_TEMPLATES,
   figureFullCaptionChars,
   figureTemplatesFor,
@@ -36,6 +39,7 @@ import {
 } from "@tj/slides";
 import {
   capacityLine,
+  type DiagramZones,
   diagramCapacities,
   diagramElement,
   energyProfileOf,
@@ -488,8 +492,8 @@ export function optionCapacity(form: string): number | undefined {
   return lo;
 }
 /** T3's menu lines: the form list, with each option capacity read from the layout code. */
-export function t3Menu(): string {
-  const zones = t3ZoneLines();
+export function t3Menu(themeId = T3_DEFAULT_THEME): string {
+  const zones = t3ZoneLines(themeId);
   return Object.entries(T3_FORMS)
     .map(([k, v]) => {
       const n = optionCapacity(k);
@@ -505,10 +509,25 @@ export function t3Menu(): string {
  * code. Memoised per process.
  */
 type Rect = { x: number; y: number; w: number; h: number };
-let zoneGeometry: { picture: Rect; text: Rect; big: Rect } | undefined;
-export function t3ZoneGeometry(): { picture: Rect; text: Rect; big: Rect } {
-  if (zoneGeometry) return zoneGeometry;
-  const themeId = "chalk";
+/** The theme the menu is measured on when the deck's own is not given. */
+const T3_DEFAULT_THEME = "chalk";
+/**
+ * The big diagram's zone as the menu states it: with three lines under the drawing, which every
+ * LAYOUT-TEST drawing slide carried, so the stated shape and capacity hold for what is written.
+ */
+const BIG_SAMPLE_LINES = [
+  "Solid: closely packed in a regular arrangement. Particles vibrate about fixed positions.",
+  "Liquid: close together in an irregular arrangement. Particles move past each other.",
+  "Gas: far apart with no regular arrangement. Particles move freely in all directions.",
+];
+const zoneGeometries = new Map<string, { picture: Rect; text: Rect; big: Rect }>();
+export function t3ZoneGeometry(themeId = T3_DEFAULT_THEME): {
+  picture: Rect;
+  text: Rect;
+  big: Rect;
+} {
+  const known = zoneGeometries.get(themeId);
+  if (known) return known;
   const meta = { promptVersion: "zones", model: "code", at: "1970-01-01T00:00:00.000Z" };
   let n = 0;
   const ids = () => `z${n++}`;
@@ -525,6 +544,19 @@ export function t3ZoneGeometry(): { picture: Rect; text: Rect; big: Rect } {
   );
   const r = renderWritten(a.form, a.layout, a.out);
   const slide = materialiseSlide(r.spec, themeId, meta, ids, r.variant, r.structure);
+  const a3 = adapt(
+    withPictureZone({
+      form: "photo",
+      heading: "A slide heading",
+      body: BIG_SAMPLE_LINES,
+      items: [],
+      questions: [],
+      picture: { kind: "photo", subject: "x", named: null },
+      notes: "",
+    }),
+  );
+  const r3 = renderWritten(a3.form, a3.layout, a3.out);
+  const three = materialiseSlide(r3.spec, themeId, meta, ids, r3.variant, r3.structure);
   const rect = (e: { x: number; y: number; w: number; h: number }) => ({
     x: e.x,
     y: e.y,
@@ -537,25 +569,34 @@ export function t3ZoneGeometry(): { picture: Rect; text: Rect; big: Rect } {
   const body = slide.elements.find(
     (e) => e.type === "text" && (e as { style?: { preset?: string } }).style?.preset === "body",
   );
-  const big = img(asFigureFull(slide, getTheme(themeId)) ?? slide);
+  const big = img(asFigureFull(three, getTheme(themeId)) ?? slide);
   if (!pic || !body || !big) throw new Error("t3ZoneGeometry: no picture zone on the photo layout");
-  zoneGeometry = {
+  const geometry = {
     picture: rect(pic),
     text: { ...rect(body), h: SAFE_BOTTOM - body.y },
     big: rect(big),
   };
-  return zoneGeometry;
+  zoneGeometries.set(themeId, geometry);
+  return geometry;
 }
-/** Body text at 20 px with 1.4 line height, about 0.5 em per character. */
-const BODY_LINE = 20 * 1.4;
-const BODY_CHAR = 20 * 0.5;
-function t3ZoneLines(): Record<string, string> {
-  const g = t3ZoneGeometry();
-  const lines = Math.floor(g.text.h / BODY_LINE);
-  const chars = Math.floor(g.text.w / BODY_CHAR);
+/** The drawing zones a capacity is measured in, from the layout on `themeId`. */
+export function t3DrawingZones(themeId = T3_DEFAULT_THEME): DiagramZones {
+  const g = t3ZoneGeometry(themeId);
+  return { half: { w: g.picture.w, h: g.picture.h }, full: { w: g.big.w, h: g.big.h } };
+}
+/**
+ * LAYOUT-TEST fix 4: every number on these lines is measured on the deck's theme with the ruler
+ * (characters and lines of body text, the zones' shapes), not estimated from a font size.
+ */
+function t3ZoneLines(themeId = T3_DEFAULT_THEME): Record<string, string> {
+  const t = getTheme(themeId);
+  const g = t3ZoneGeometry(themeId);
+  let lines = 1;
+  while (boxH(t, "body", lines + 1) <= g.text.h) lines++;
+  const chars = bodyLineChars(t, g.text.w);
   return {
     picture: `2–3 lines in a column on the right (about ${chars} characters wide, room for ${lines} lines), the picture on the left (${zoneShape(g.picture.w, g.picture.h)})`,
-    "big-diagram": `a heading and one drawing filling the slide (full width under the heading, ${zoneShape(g.big.w, g.big.h)}), with an optional one-line caption of up to ${figureFullCaptionChars(getTheme("chalk"))} characters`,
+    "big-diagram": `a heading and one drawing filling the slide (full width under the heading, ${zoneShape(g.big.w, g.big.h)}), with an optional caption of up to ${FIGURE_FULL_CAPTION_LINES} lines of about ${figureFullCaptionChars(t)} characters`,
   };
 }
 
@@ -793,15 +834,18 @@ type T3Slide = z.infer<ReturnType<typeof t3Slide>>;
 const numbered = (objectives: string[]) => objectives.map((o, i) => `${i + 1}. ${o}`).join("\n");
 const t3FieldsLine = `Per slide: objectives (the numbers of the objectives it teaches or checks), form, heading, content (the lines on the slide), questions (question and answer; only ${QUESTION_FORMS.join(", ")} show them), picture (picture slides only), notes.`;
 
-export function teacher3Prompt(i: Parameters<typeof teacherPrompt>[0] & { objectives: string[] }): {
+export function teacher3Prompt(
+  i: Parameters<typeof teacherPrompt>[0] & { objectives: string[]; themeId?: string },
+): {
   system: string;
   user: string;
 } {
+  const theme = i.themeId ?? T3_DEFAULT_THEME;
   const [lo, hi] = PICTURE_SHARE[(i.ageBand ?? "ks3").toLowerCase()] ?? [0.35, 0.5];
-  const menu = t3Menu();
+  const menu = t3Menu(theme);
   const drawn = [
     ...Object.entries(T3_DRAWS).map(([k, v]) => {
-      const cap = capacityLine(k);
+      const cap = capacityLine(k, t3DrawingZones(theme), [getTheme(theme)]);
       return `- ${k}: ${v}${cap ? ` (${cap})` : ""}`;
     }),
     ...t3FigureLines(i.subject),
@@ -1147,8 +1191,13 @@ export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: b
   };
   // The renderer-derived capacity routes an over-full spec straight to the big diagram.
   const kind = (spec as { kind?: string } | null)?.kind ?? "";
+  const at = zone(slide);
+  const zones = at
+    ? { half: { w: at.w, h: at.h }, full: t3DrawingZones(theme.id).full }
+    : t3DrawingZones(theme.id);
   const over =
-    (itemCount(spec) ?? 0) > (diagramCapacities()[kind]?.half ?? Number.POSITIVE_INFINITY);
+    (itemCount(spec) ?? 0) >
+    (diagramCapacities(zones, [theme])[kind]?.half ?? Number.POSITIVE_INFINITY);
   if (!full && !over && clean(slide)) return slide;
   const big = asFigureFull(slide, theme);
   if (!big) return slide;
@@ -1528,7 +1577,7 @@ export async function simpleLessonSlides(
     };
     const built =
       arm === "T3"
-        ? teacher3Prompt({ ...teacherInput, objectives: givenObjectives })
+        ? teacher3Prompt({ ...teacherInput, objectives: givenObjectives, themeId: base.themeId })
         : arm === "T2"
           ? teacher2Prompt(teacherInput)
           : armT
@@ -2239,6 +2288,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     subject: base.subject ?? "",
     ageBand: audienceOf(base).ageBand,
     objectives: given,
+    themeId: base.themeId,
   });
   const schema = teacher3LessonSchema(base.subject) as z.ZodType<unknown>;
   // LAYOUT-TEST arm ZV: a contact sheet of every slide type's layout, zones outlined and labelled,

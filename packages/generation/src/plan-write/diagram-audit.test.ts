@@ -204,3 +204,40 @@ describe("DIAGRAM-AUDIT picture shape", () => {
     expect(cropToAspect(800, 1000, 0.8).kept).toBeCloseTo(1, 5);
   });
 });
+
+// LAYOUT-TEST fix 4: every number on the menu comes from the layout the deck is drawn with.
+describe("T3 menu numbers come from the layout actually used", () => {
+  const { getTheme, FIGURE_FULL_CAPTION_LINES, figureFullCaptionChars } = require("@tj/slides");
+  const diagrams = require("@tj/slides/diagrams");
+  const { teacher3Prompt, t3ZoneGeometry, t3DrawingZones } = require("./simple");
+  for (const themeId of ["chalk", "studio", "beacon"]) {
+    test(`${themeId}: zone shapes, caption and drawing capacities`, () => {
+      const user: string = teacher3Prompt({
+        slideCount: 10,
+        topic: "t",
+        context: "c",
+        yearGroup: "Year 7",
+        subject: "science",
+        ageBand: "ks3",
+        objectives: ["o"],
+        themeId,
+      }).user;
+      const g = t3ZoneGeometry(themeId);
+      const line = (k: string) => user.split("\n").find((l) => l.startsWith(`- ${k}:`)) ?? "";
+      expect(line("picture")).toContain(`(${diagrams.zoneShape(g.picture.w, g.picture.h)})`);
+      expect(line("big-diagram")).toContain(diagrams.zoneShape(g.big.w, g.big.h));
+      expect(line("big-diagram")).toContain(
+        `${FIGURE_FULL_CAPTION_LINES} lines of about ${figureFullCaptionChars(getTheme(themeId))} characters`,
+      );
+      // The picture zone is about square; the old fixed 422 x 540 zone printed "4:5".
+      expect(Math.abs(g.picture.w / g.picture.h - 1)).toBeLessThan(0.1);
+      expect(user).not.toContain("4:5");
+      const caps = diagrams.diagramCapacities(t3DrawingZones(themeId), [getTheme(themeId)]);
+      for (const [kind, c] of Object.entries(caps) as [string, { half: number; full: number }][]) {
+        if (!line(kind)) continue;
+        const want = c.half === c.full ? `up to ${c.full} ` : `up to ${c.half} `;
+        expect(line(kind)).toContain(want);
+      }
+    });
+  }
+});

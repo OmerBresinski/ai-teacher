@@ -479,4 +479,11 @@ export function drawingHeight(
   }
   return { h: size.h, fs };
 }
-export { capacityLine, DIAGRAM_ZONES, diagramCapacities, itemCount, zoneShape } from "./capacity";
+export {
+  capacityLine,
+  DIAGRAM_ZONES,
+  type DiagramZones,
+  diagramCapacities,
+  itemCount,
+  zoneShape,
+} from "./capacity";

@@ -4,6 +4,7 @@
  * drawing code. A capacity is the most items (events, steps, bars, rows, set items) a probe spec of
  * typical label length draws with no fault on every theme in that zone.
  */
+import type { Theme } from "@tj/domain/documents";
 import { THEMES } from "../themes";
 import { diagramFaults } from "./index";
 
@@ -13,6 +14,8 @@ export const DIAGRAM_ZONES = {
   full: { w: 844, h: 380 },
 } as const;
 export type DiagramZone = keyof typeof DIAGRAM_ZONES;
+/** The two zones a capacity is measured in: the picture zone beside text, and the big diagram. */
+export type DiagramZones = Record<DiagramZone, { w: number; h: number }>;
 
 const words = (n: number) =>
   [
@@ -122,15 +125,24 @@ const PROBES: Record<
   },
 };
 
-const clean = (spec: unknown, zone: DiagramZone) =>
-  THEMES.every((t) => diagramFaults(spec, t, DIAGRAM_ZONES[zone]).length === 0);
+type Capacities = Record<string, { noun: string; half: number; full: number }>;
+const caches = new Map<string, Capacities>();
 
-let cache: Record<string, { noun: string; half: number; full: number }> | undefined;
-
-/** Each sized kind's capacity in the half and full zones (0: none fit). Computed once. */
-export function diagramCapacities(): Record<string, { noun: string; half: number; full: number }> {
-  if (cache) return cache;
-  const out: Record<string, { noun: string; half: number; full: number }> = {};
+/**
+ * Each sized kind's capacity in the half and full zones (0: none fit), drawn clean on every theme
+ * of `themes`. LAYOUT-TEST: pass the zones of the layout actually used (the picture zone is about
+ * 363 x 378 on most themes, not the 422 x 540 default). Memoised per zones and themes.
+ */
+export function diagramCapacities(
+  zones: DiagramZones = DIAGRAM_ZONES,
+  themes: readonly Theme[] = THEMES,
+): Capacities {
+  const key = JSON.stringify([zones.half, zones.full, themes.map((t) => t.id)]);
+  const known = caches.get(key);
+  if (known) return known;
+  const clean = (spec: unknown, zone: DiagramZone) =>
+    themes.every((t) => diagramFaults(spec, t, zones[zone]).length === 0);
+  const out: Capacities = {};
   for (const [kind, p] of Object.entries(PROBES)) {
     const most = (zone: DiagramZone) => {
       let best = 0;
@@ -139,7 +151,7 @@ export function diagramCapacities(): Record<string, { noun: string; half: number
     };
     out[kind] = { noun: p.noun, half: most("half"), full: most("full") };
   }
-  cache = out;
+  caches.set(key, out);
   return out;
 }
 
@@ -171,8 +183,12 @@ export function itemCount(spec: unknown): number | undefined {
 }
 
 /** The capacity clause for a kind's menu line: "up to 5 events beside text, 7 on a big diagram". */
-export function capacityLine(kind: string): string | undefined {
-  const c = diagramCapacities()[kind];
+export function capacityLine(
+  kind: string,
+  zones?: DiagramZones,
+  themes?: readonly Theme[],
+): string | undefined {
+  const c = diagramCapacities(zones, themes)[kind];
   if (!c) return undefined;
   return c.half === c.full
     ? `up to ${c.full} ${c.noun}`
@@ -190,6 +206,8 @@ export function zoneShape(w: number, h: number): string {
     [16 / 9, "16:9"],
     [2, "2:1"],
     [7 / 3, "7:3"],
+    [5 / 2, "5:2"],
+    [3, "3:1"],
   ];
   const near = ratios.reduce((a, b) => (Math.abs(b[0] - r) < Math.abs(a[0] - r) ? b : a));
   const kind = r < 0.92 ? "portrait" : r > 1.08 ? "landscape" : "square";
