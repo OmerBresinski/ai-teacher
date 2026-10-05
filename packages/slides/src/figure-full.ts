@@ -15,7 +15,8 @@ import type {
 } from "@tj/domain/documents";
 import { SAFE } from "./grid";
 import { boxH, PLACEHOLDER_IMAGE, text } from "./layouts";
-import { countLines } from "./text-measure";
+import { renderedHeights } from "./lint";
+import { countLines, measureHeadless } from "./text-measure";
 
 /** The gap between the heading and the drawing, and between the drawing and its caption. */
 const GAP = 14;
@@ -55,10 +56,15 @@ export function figureFullCaptionChars(t: Theme): number {
  * Where the big diagram's heading, drawing and caption go on theme `t`, with a caption of
  * `caption` lines (true: one line).
  */
-export function figureFullRects(t: Theme, caption: boolean | number) {
+export function figureFullRects(
+  t: Theme,
+  caption: boolean | number,
+  height?: number,
+  headingHeight?: number,
+) {
   const lines = caption === true ? 1 : caption === false ? 0 : caption;
-  const headH = boxH(t, "heading", 1);
-  const capH = lines > 0 ? boxH(t, "body", lines) : 0;
+  const headH = Math.max(headingHeight ?? 0, boxH(t, "heading", 1));
+  const capH = lines > 0 ? Math.max(height ?? 0, boxH(t, "body", lines)) : 0;
   const top = SAFE.y + headH + GAP;
   const bottom = SAFE.y + SAFE.h - (lines > 0 ? capH + GAP : 0);
   return {
@@ -106,6 +112,33 @@ function captionWords(els: SlideElement[]): string[] {
   return out;
 }
 
+/** The words under the drawing as their text element: one line a caption, more a block of lines. */
+function wordsElement(
+  t: Theme,
+  words: string[],
+  rect: { x: number; y: number; w: number; h: number },
+) {
+  if (words.length === 1)
+    return text("body", words[0] as string, rect, { align: "center", color: t.colors.muted });
+  const doc = {
+    type: "doc",
+    content: words.map((w) => ({ type: "paragraph", content: [{ type: "text", text: w }] })),
+  } as unknown as RichDoc;
+  return text("body", doc, rect, { align: "left" });
+}
+
+/**
+ * The height the words take under the drawing, as the fit check's headless ruler measures it
+ * (paragraph gaps included: LAYOUT-FIX offline, a 4-paragraph block sized by line count alone
+ * overflowed its box on y1, y7 and y9).
+ */
+function wordsHeight(t: Theme, words: string[]): number {
+  if (!words.length) return 0;
+  const el = wordsElement(t, words, { x: SAFE.x, y: SAFE.y, w: SAFE.w, h: 1 });
+  const probe = { id: "probe", kind: "content", elements: [el] } as unknown as Slide;
+  return renderedHeights(probe, measureHeadless(t)).elements[0]?.h ?? 0;
+}
+
 /**
  * `slide` (a picture slide with its placeholder still empty) as the big-diagram composition, or
  * undefined when its words do not allow it: the words, measured on `t`, must fit the caption's
@@ -128,36 +161,34 @@ export function asFigureFull(
   if (!image || !heading) return undefined;
   let words = captionWords(els);
   let moved: string[] = [];
-  if (figureFullCaptionLines(t, words) > FIGURE_FULL_CAPTION_LINES) {
+  // The room under the drawing: the cap's lines plus one for the gaps between paragraphs.
+  const room = boxH(t, "body", FIGURE_FULL_CAPTION_LINES + 1);
+  const over = (w: string[]) =>
+    figureFullCaptionLines(t, w) > FIGURE_FULL_CAPTION_LINES || wordsHeight(t, w) > room;
+  if (over(words)) {
     // LAYOUT-FIX smoke: y7's and y9's three lines measured 6 and 5 lines, the step-up was
     // refused and the drawing dropped. With `spill` (the drawing needs the full zone), whole lines
     // past the cap go to the notes word for word, from the end; the first line always stays.
     if (!spill) return undefined;
     let k = words.length - 1;
-    while (k > 1 && figureFullCaptionLines(t, words.slice(0, k)) > FIGURE_FULL_CAPTION_LINES) k--;
-    if (figureFullCaptionLines(t, words.slice(0, k)) > FIGURE_FULL_CAPTION_LINES) return undefined;
+    while (k > 1 && over(words.slice(0, k))) k--;
+    if (over(words.slice(0, k))) return undefined;
     moved = words.slice(k);
     words = words.slice(0, k);
   }
   const lines = figureFullCaptionLines(t, words);
-  const r = figureFullRects(t, lines);
+  // The heading as tall as it measures across the full width (LAYOUT-FIX offline: y9's heading
+  // took two lines on chalk and ran into the drawing).
+  const headProbe = { id: "probe", kind: "content", elements: [{ ...heading, ...SAFE, h: 1 }] };
+  const headH = renderedHeights(headProbe as unknown as Slide, measureHeadless(t)).elements[0]?.h;
+  const r = figureFullRects(t, lines, wordsHeight(t, words), headH);
   const out: SlideElement[] = [
     { ...heading, ...r.heading, style: { ...heading.style, align: "left" } },
     { ...image, ...r.figure, fit: "contain" },
   ];
   // One line reads as a caption, centred and muted; the slide's teaching lines, one paragraph
   // each, read as text under the drawing.
-  if (words.length === 1)
-    out.push(
-      text("body", words[0] as string, r.caption, { align: "center", color: t.colors.muted }),
-    );
-  else if (words.length > 1) {
-    const doc = {
-      type: "doc",
-      content: words.map((w) => ({ type: "paragraph", content: [{ type: "text", text: w }] })),
-    } as unknown as RichDoc;
-    out.push(text("body", doc, r.caption, { align: "left" }));
-  }
+  if (words.length) out.push(wordsElement(t, words, r.caption));
   const notes = moved.length
     ? [(slide as { notes?: string }).notes?.trim() ?? "", ...moved].filter(Boolean).join("\n")
     : (slide as { notes?: string }).notes;

@@ -60,5 +60,33 @@
         }
       ]
     }
+  },
+  {
+    "source": "LAYOUT-FIX smoke y1 slide 8 (LAYOUT-FIX-y1-science-animals-young-generate.calls.jsonl)",
+    "heading": "A chick grows",
+    "content": [
+      "A chick starts small, with soft fluff.",
+      "As it grows, it gets bigger and grows feathers.",
+      "This chick grows into an adult hen."
+    ],
+    "notes": "Slide 8. Follow the arrows from left to right. Explain that growing takes time: a chick does not become an adult in one day. This example follows a female chick that becomes a hen. Check orally: 'What changes as this chick grows?' Expected answer: it gets bigger and grows feathers.",
+    "picture": {
+      "kind": "flow",
+      "title": "From chick to hen",
+      "steps": [
+        {
+          "label": "Small, fluffy chick",
+          "arrow": "Grows"
+        },
+        {
+          "label": "Bigger, feathered young chicken",
+          "arrow": "Grows"
+        },
+        {
+          "label": "Adult hen",
+          "arrow": ""
+        }
+      ]
+    }
   }
 ]
