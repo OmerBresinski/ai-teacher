@@ -888,10 +888,92 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
   return { form: "explain", layout: "default", out: { heading: s.heading, body: s.body, notes } };
 }
 
+/**
+ * T3's coverage gate: every objective has a teaching slide and a slide whose question checks it.
+ * On a gap, one re-ask writes just the missing slides, each replacing a slide code found can go.
+ */
+async function t3Gate(i: {
+  deps: PipelineDeps;
+  base: Lesson;
+  system: string;
+  context: string;
+  input: Record<string, unknown>;
+  objectives: string[];
+  slides: T3Slide[];
+  slideCount: number;
+  log: (row: Record<string, unknown>) => void;
+  replay?: string | undefined;
+}): Promise<{ slides: T3Slide[]; replaced: number[] }> {
+  const slides = [...i.slides];
+  const n = i.objectives.length;
+  const gaps = coverageGaps(slides, n);
+  const spares = spareSlides(slides, n);
+  const gap: Record<string, unknown> = { gaps, spares };
+  const used = new Set<number>();
+  if (gaps.length > 0 && spares.length > 0) {
+    const ask = teacher3GapPrompt({
+      context: i.context,
+      objectives: i.objectives,
+      slides,
+      gaps,
+      spares,
+      slideCount: i.slideCount,
+    });
+    const gapSchema = teacher3GapSchema(i.base.subject, spares) as z.ZodType<unknown>;
+    const t1 = Date.now();
+    const version = `${TEACHER3_LESSON_VERSION}-gap`;
+    const re = i.replay
+      ? (JSON.parse(readFileSync(i.replay, "utf8").split("\n")[1] ?? "{}") as Awaited<
+          ReturnType<typeof callStructured>
+        >)
+      : await callStructured({
+          deps: i.deps,
+          stage: "generate",
+          cls: planClassFor(i.base, i.deps),
+          effort: "low",
+          prompt: { version, system: i.system, user: () => ask.user },
+          input: { ...i.input, gaps },
+          schema: gapSchema,
+          maxOutputTokens: 8000,
+        });
+    for (const r of (
+      (re.output as { slides?: (T3Slide & { replaces: string })[] })?.slides ?? []
+    ).slice(0, ask.count)) {
+      const at = Number(r.replaces);
+      if (used.has(at) || !spares.includes(at)) continue;
+      used.add(at);
+      const { replaces: _r, ...slide } = r;
+      slides[at - 3] = slide;
+    }
+    const after = coverageGaps(slides, n);
+    Object.assign(gap, { reasked: true, replaced: [...used], after });
+    i.log({
+      version,
+      modelId: re.modelId,
+      effort: "low",
+      ms: Date.now() - t1,
+      usage: re.usage,
+      attempts: re.attempts,
+      gaps,
+      spares,
+      system: i.system,
+      user: ask.user,
+      schema: z.toJSONSchema(gapSchema),
+      output: re.output,
+      replaced: [...used],
+      after,
+    });
+  }
+  i.deps.logger.info({ stage: "generate", coverage: gap }, "t3 coverage");
+  return { slides, replaced: [...used] };
+}
+
 export async function simpleLessonSlides(
   state: PipelineState,
   deps: PipelineDeps,
 ): Promise<PipelineState> {
+  // Lab ABLATE T3S: the same T3 call streamed; slides saved as they close, photos off the writing path.
+  if (process.env.SIMPLE_ARM === "T3" && process.env.SIMPLE_STREAM) return t3Streamed(state, deps);
   const base = state.lesson;
   const brief = base.brief;
   if (!brief) throw new Error("simple: the lesson has no brief");
@@ -1009,69 +1091,21 @@ export async function simpleLessonSlides(
       output: call.output,
     });
     if (arm === "T3") {
-      // Coverage in code: every objective has a teaching slide and a slide whose question checks it.
       const t3 = structuredClone(call.output) as { titlePicture: unknown; slides: T3Slide[] };
-      const n = givenObjectives.length;
-      const writable = Math.max(0, slideCount - 2);
-      t3.slides = t3.slides.slice(0, writable);
-      const gaps = coverageGaps(t3.slides, n);
-      const spares = spareSlides(t3.slides, n);
-      const gap: Record<string, unknown> = { gaps, spares };
-      if (gaps.length > 0 && spares.length > 0) {
-        const ask = teacher3GapPrompt({
-          context,
-          objectives: givenObjectives,
-          slides: t3.slides,
-          gaps,
-          spares,
-          slideCount,
-        });
-        const gapSchema = teacher3GapSchema(base.subject, spares) as z.ZodType<unknown>;
-        const t1 = Date.now();
-        const re = replay
-          ? (JSON.parse(readFileSync(replay, "utf8").split("\n")[1] ?? "{}") as Awaited<
-              ReturnType<typeof callStructured>
-            >)
-          : await callStructured({
-              deps,
-              stage: "generate",
-              cls: planClassFor(base, deps),
-              effort: "low",
-              prompt: { version: `${version}-gap`, system: built.system, user: () => ask.user },
-              input: { ...input, gaps },
-              schema: gapSchema,
-              maxOutputTokens: 8000,
-            });
-        const used = new Set<number>();
-        for (const r of (
-          (re.output as { slides?: (T3Slide & { replaces: string })[] })?.slides ?? []
-        ).slice(0, ask.count)) {
-          const at = Number(r.replaces);
-          if (used.has(at) || !spares.includes(at)) continue;
-          used.add(at);
-          const { replaces: _r, ...slide } = r;
-          t3.slides[at - 3] = slide;
-        }
-        const after = coverageGaps(t3.slides, n);
-        Object.assign(gap, { reasked: true, replaced: [...used], after });
-        log({
-          version: `${version}-gap`,
-          modelId: re.modelId,
-          effort: "low",
-          ms: Date.now() - t1,
-          usage: re.usage,
-          attempts: re.attempts,
-          gaps,
-          spares,
-          system: built.system,
-          user: ask.user,
-          schema: z.toJSONSchema(gapSchema),
-          output: re.output,
-          replaced: [...used],
-          after,
-        });
-      }
-      deps.logger.info({ stage: "generate", coverage: gap }, "t3 coverage");
+      t3.slides = t3.slides.slice(0, Math.max(0, slideCount - 2));
+      const gate = await t3Gate({
+        deps,
+        base,
+        system: built.system,
+        context,
+        input,
+        objectives: givenObjectives,
+        slides: t3.slides,
+        slideCount,
+        log,
+        replay,
+      });
+      t3.slides = gate.slides;
       w = fromTeacher3(givenObjectives, t3);
     } else {
       w = armT ? fromTeacher(call.output as TeacherLesson) : (call.output as SimpleLesson);
@@ -1322,5 +1356,407 @@ export async function simpleLessonSlides(
     },
     "simple report",
   );
+  return { ...state, lesson, checkedPerSlide: true };
+}
+
+/**
+ * Arm T3S (5 Oct 2026): T3's one call streamed. A slide is drawn and saved the moment the next one
+ * starts; a drawing renders in code at once; a photo search starts the moment its request has
+ * streamed and fills the pending zone when it lands (an empty search redraws the slide as explain).
+ * The lesson is editable once every text slide is saved and the coverage gate has run, never
+ * waiting on a photo. Times (ms from start) are logged as "t3 times".
+ */
+async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
+  const base = state.lesson;
+  const brief = base.brief;
+  if (!brief) throw new Error("simple: the lesson has no brief");
+  const [title0] = base.slides;
+  if (!title0) throw new Error("simple: the plan step has not run");
+  const slideCount = brief.slideCount ?? DEFAULT_SLIDE_COUNT;
+  const writable = Math.max(0, slideCount - 2);
+  const themeId = base.themeId;
+  const theme = getTheme(themeId);
+  const version = TEACHER3_LESSON_VERSION;
+  const meta = (): MaterialiseMeta => ({
+    promptVersion: version,
+    model: CODE_MODEL,
+    at: deps.now().toISOString(),
+  });
+  const t0 = Date.now();
+  const times: Record<string, number> = {};
+  const mark = (k: string) => {
+    times[k] ??= Date.now() - t0;
+  };
+  const given: string[] = JSON.parse(
+    readFileSync(process.env.SIMPLE_OBJECTIVES_FILE ?? "", "utf8"),
+  );
+  const objectives = given.map((text, i) => ({ id: `o${i + 1}`, text }));
+  const refs = objectives.map((o) => o.id);
+  const titleSpec = {
+    kind: "title" as const,
+    title: base.title,
+    subtitle: [base.yearGroup, base.subject].filter(Boolean).join(" · ") || "Lesson",
+    factRefs: refs,
+  };
+  const outline: OutlineEntry[] = [
+    { id: "s1", kind: "title", factRefs: refs },
+    { id: "s2", kind: "objectives", factRefs: refs },
+  ] as OutlineEntry[];
+  const facts = {
+    objectives,
+    vocabulary: [],
+    workedExamples: [],
+    questions: [],
+    misconceptions: [],
+    outline,
+    durationMin: brief.durationMin ?? 60,
+  } as LessonFacts;
+  const generation = base.generation ?? {
+    jobId: deps.context.jobId,
+    stage: "planned" as const,
+    startedAt: new Date(t0).toISOString(),
+    promptVersions: {},
+    usage: deps.budget.totals(),
+    findings: [],
+  };
+  const deck: (Slide | undefined)[] = [];
+  let stage: "planned" | "generated" = "planned";
+  let lesson: Lesson = { ...base, facts };
+  let chain: Promise<unknown> = Promise.resolve();
+  /** Save the contiguous run of drawn slides (they arrive in order; a photo replaces in place). */
+  const save = (after?: () => void) => {
+    chain = chain.then(async () => {
+      const upTo = deck.findIndex((x) => !x);
+      const slides = (upTo < 0 ? deck : deck.slice(0, upTo)) as Slide[];
+      lesson = withUsage(
+        {
+          ...base,
+          slides,
+          facts: { ...facts, outline },
+          generation: {
+            ...generation,
+            stage,
+            promptVersions: { ...generation.promptVersions, planned: version, generated: version },
+            findings: [],
+          },
+        },
+        deps,
+      );
+      await deps.persist(lesson);
+      after?.();
+    });
+    return chain;
+  };
+  const briefOf = (p: { subject: string; named: string | null }): ImageBrief => ({
+    subject: plainSubject(p.subject).slice(0, 60),
+    mustShow: [],
+    purpose: "context",
+    ...(p.named ? { named: p.named, specific: true } : { specific: false }),
+  });
+  const find = async (index: number, b: ImageBrief) => {
+    const at = (x: ImageBrief) =>
+      pickPhoto(
+        {
+          ...lesson,
+          facts: {
+            ...facts,
+            outline: Array.from({ length: Math.max(outline.length, index + 1) }, (_, i) =>
+              i === index
+                ? ({
+                    ...(outline[i] ?? { id: `s${i + 1}`, kind: "image-text", factRefs: refs }),
+                    imageBrief: x,
+                  } as OutlineEntry)
+                : (outline[i] ??
+                  ({ id: `s${i + 1}`, kind: "content", factRefs: refs } as OutlineEntry)),
+            ),
+          },
+        },
+        index,
+        deps,
+      ).catch(() => ({ outcome: "empty" as const }));
+    let r = await at(b);
+    const wider = r.outcome === "placed" || r.outcome === "busy" ? undefined : broadenedBrief(b);
+    if (wider) r = await at(wider);
+    return r.outcome === "placed" && "photo" in r ? r.photo : undefined;
+  };
+  const placeIn = (slide: Slide, photo: Parameters<typeof withPhoto>[1]): Slide =>
+    ({
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.type === "image" && e.src === PLACEHOLDER_IMAGE ? withPhoto(e, photo) : e,
+      ),
+    }) as Slide;
+  const placeDrawing = (slide: Slide, spec: unknown): Slide | undefined => {
+    const at = slide.elements.findIndex((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+    const e = slide.elements[at];
+    const parsed = parseDiagram(spec);
+    if (!e || !parsed) return undefined;
+    const el = diagramElement(settleDiagram(parsed, { w: e.w, h: e.h }).spec, theme, {
+      x: e.x,
+      y: e.y,
+      w: e.w,
+      h: e.h,
+    });
+    return el
+      ? ({ ...slide, elements: slide.elements.map((x, i) => (i === at ? el : x)) } as Slide)
+      : undefined;
+  };
+  const photos: Promise<unknown>[] = [];
+  const report: Record<string, unknown>[] = [];
+  const round: number[] = [];
+
+  // Title and objectives are known before the call: saved at once (bare title; its photo fills later).
+  const bareTitle = (): Slide => {
+    const variant = withoutPicture(titleSpec, "split").variant;
+    return variant && fitsPlanned(titleSpec, { variant, stepDown: 0 }).ok
+      ? materialiseSlide(titleSpec, themeId, meta(), deps.ids, variant)
+      : materialiseSlide(titleSpec, themeId, meta(), deps.ids);
+  };
+  deck[0] = { ...bareTitle(), id: title0.id };
+  deck[1] = materialiseSlide(
+    { kind: "objectives", items: objectives.slice(0, 4).map((o) => o.text), factRefs: refs },
+    themeId,
+    meta(),
+    deps.ids,
+  );
+  void save(() => mark("title"));
+  let titleAsked = false;
+  const startTitle = (p: { subject?: string; named?: string | null } | null | undefined) => {
+    titleAsked = true;
+    const pv = PICTURE_ORDER.find((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok);
+    if (!p?.subject || !pv || !deps.images) return;
+    const pic = briefOf({ subject: p.subject, named: p.named ?? null });
+    photos.push(
+      find(0, pic).then((photo) => {
+        if (!photo) return;
+        deck[0] = {
+          ...placeIn(materialiseSlide(titleSpec, themeId, meta(), deps.ids, pv), photo),
+          id: title0.id,
+        };
+        mark("lastPicture");
+        return save();
+      }),
+    );
+  };
+
+  /** Draw slide k (0-based among slides 3..N) and save it; a photo request starts its search now. */
+  const drawSlide = (k: number, raw: T3Slide) => {
+    const index = k + 2;
+    round[index] = (round[index] ?? 0) + 1;
+    const gen = round[index];
+    const t: T3Slide = {
+      objectives: raw.objectives ?? [],
+      form: raw.form ?? "explain",
+      heading: raw.heading ?? "",
+      content: raw.content ?? [],
+      questions: (raw.questions ?? []).map((q) => ({
+        question: q?.question ?? "",
+        answer: q?.answer ?? "",
+      })),
+      picture: raw.picture ?? null,
+      notes: raw.notes ?? "",
+    };
+    const [light] = fromTeacher3(given, { titlePicture: null, slides: [t] }).slides;
+    if (!light) return;
+    const s = withPictureZone(light);
+    const { form, layout, out } = adapt(s);
+    const drawOne = (f: string, o: Written): Slide => {
+      const r = renderWritten(f, layout, o);
+      const slide = materialiseSlide(r.spec, themeId, meta(), deps.ids, r.variant, r.structure);
+      return isSetForm(f) ? withSetTag(withAnswersReveal(slide, themeId), f) : slide;
+    };
+    const { imageBrief: _i, ...plain } = out;
+    let slide: Slide;
+    try {
+      slide = drawOne(form, out);
+    } catch (e) {
+      report.push({ slide: index + 1, form, drawError: String(e).slice(0, 200) });
+      slide = drawOne("explain", {
+        heading: s.heading,
+        body: [...s.body, ...s.items],
+        notes: s.notes,
+      });
+    }
+    const p = form === "photo" ? s.picture : null;
+    let drawn: string | undefined;
+    let invalid: string | undefined;
+    let photoAsk: { subject: string; named: string | null } | undefined;
+    if (p && p.kind === "diagram") {
+      const d = placeDrawing(slide, p.spec);
+      if (d) {
+        slide = d;
+        drawn = "diagram";
+      } else {
+        const o = (p.spec ?? {}) as { kind?: string; title?: string };
+        invalid = `diagram ${o.kind ?? "?"}`;
+        photoAsk = { subject: o.title || s.heading, named: null };
+      }
+    } else if (p && p.kind === "figure") {
+      const name = p.template as FigureTemplateName;
+      const el = FIGURE_TEMPLATES[name]?.values.safeParse(p.values).success
+        ? (() => {
+            const at = slide.elements.findIndex(
+              (e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE,
+            );
+            const e = slide.elements[at];
+            const f = e
+              ? drawFigure(name, p.values, theme, { x: e.x, y: e.y, w: e.w, h: e.h })
+              : undefined;
+            return f
+              ? ({ ...slide, elements: slide.elements.map((x, i) => (i === at ? f : x)) } as Slide)
+              : undefined;
+          })()
+        : undefined;
+      if (el) {
+        slide = el;
+        drawn = "figure";
+      } else {
+        invalid = `figure ${p.template}`;
+        photoAsk = { subject: s.heading, named: null };
+      }
+    } else if (p)
+      photoAsk = {
+        subject: (p as { subject: string }).subject,
+        named: (p as { named: string | null }).named,
+      };
+    if (photoAsk && !deps.images) {
+      slide = drawOne("explain", plain);
+      photoAsk = undefined;
+    }
+    const pic = photoAsk ? briefOf(photoAsk) : undefined;
+    outline[index] = {
+      id: `s${index + 1}`,
+      kind: (pic
+        ? "image-text"
+        : renderWritten(form === "photo" && !drawn ? "explain" : form, "default", out).spec
+            .kind) as OutlineEntry["kind"],
+      factRefs: refs,
+      ...(pic ? { imageBrief: pic } : {}),
+    } as OutlineEntry;
+    deck[index] = slide;
+    void save(() => {
+      if (index === 2) mark("firstContent");
+    });
+    report.push({
+      slide: index + 1,
+      form,
+      picture: !!drawn || !!pic,
+      pictureDropped: !!s.picture && form !== "photo",
+      ...(drawn ? { drawn } : {}),
+      ...(invalid ? { invalidDrawing: invalid } : {}),
+    });
+    if (pic)
+      photos.push(
+        find(index, pic).then((photo) => {
+          if (round[index] !== gen) return; // a re-ask replaced this slide meanwhile
+          deck[index] = photo ? placeIn(slide, photo) : drawOne("explain", plain);
+          if (!photo)
+            outline[index] = {
+              id: `s${index + 1}`,
+              kind: "content",
+              factRefs: refs,
+            } as OutlineEntry;
+          report.push({ slide: index + 1, photo: !!photo, at: Date.now() - t0 });
+          mark("lastPicture");
+          times.lastPicture = Date.now() - t0;
+          return save();
+        }),
+      );
+  };
+
+  const context = [
+    `Topic: ${brief.topic}`,
+    audienceBlock(audienceOf(base)),
+    ...(brief.answers
+      ? ["The teacher's answers:", ...Object.entries(brief.answers).map(([k, v]) => `${k}: ${v}`)]
+      : []),
+  ].join("\n");
+  const input = { slideCount, topic: brief.topic, context };
+  const built = teacher3Prompt({
+    ...input,
+    yearGroup: base.yearGroup ?? "",
+    subject: base.subject ?? "",
+    ageBand: audienceOf(base).ageBand,
+    objectives: given,
+  });
+  const schema = teacher3LessonSchema(base.subject) as z.ZodType<unknown>;
+  let done = 0;
+  const onPartial = (partial: unknown) => {
+    const o = (partial ?? {}) as {
+      titlePicture?: { subject?: string; named?: string | null } | null;
+      slides?: T3Slide[];
+    };
+    const slides = o.slides ?? [];
+    if (!titleAsked && slides.length > 0) startTitle(o.titlePicture);
+    while (done < Math.min(slides.length - 1, writable)) {
+      const s = slides[done];
+      if (s) drawSlide(done, s);
+      done++;
+    }
+  };
+  const call = await callStructured({
+    deps,
+    stage: "generate",
+    cls: planClassFor(base, deps),
+    effort: "low",
+    prompt: { version, system: built.system, user: () => built.user },
+    input,
+    schema,
+    maxOutputTokens: 16000,
+    onPartial,
+  });
+  mark("streamEnd");
+  const dir = process.env.SIMPLE_CALLS_DIR;
+  const log = (row: Record<string, unknown>) => {
+    if (!dir) return;
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(`${dir}/${deps.context.jobId}.calls.jsonl`, `${JSON.stringify(row)}\n`);
+  };
+  log({
+    version,
+    streamed: true,
+    modelId: call.modelId,
+    effort: "low",
+    ms: Date.now() - t0,
+    usage: call.usage,
+    attempts: call.attempts,
+    context,
+    system: built.system,
+    user: built.user,
+    schema: z.toJSONSchema(schema),
+    output: call.output,
+  });
+  const final = structuredClone(call.output) as {
+    titlePicture: { subject?: string; named?: string | null } | null;
+    slides: T3Slide[];
+  };
+  final.slides = final.slides.slice(0, writable);
+  if (!titleAsked) startTitle(final.titlePicture);
+  // The last slide closes with the stream; a retried call's slides replace what streamed.
+  for (let k = 0; k < final.slides.length; k++) {
+    const s = final.slides[k];
+    if (s && (k >= done || call.attempts > 1)) drawSlide(k, s);
+  }
+  const gate = await t3Gate({
+    deps,
+    base,
+    system: built.system,
+    context,
+    input,
+    objectives: given,
+    slides: final.slides,
+    slideCount,
+    log,
+  });
+  for (const at of gate.replaced) {
+    const s = gate.slides[at - 3];
+    if (s) drawSlide(at - 3, s);
+  }
+  stage = "generated";
+  await save(() => mark("editable"));
+  await Promise.all(photos);
+  await chain;
+  mark("photosDone");
+  deps.logger.info({ stage: "generate", t3times: times, simple: { slides: report } }, "t3 times");
   return { ...state, lesson, checkedPerSlide: true };
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck lab script
 // Lab ABLATE T3: token counts (OpenAI input_tokens endpoint) and drawing checks; not shipped.
 import { readFileSync } from "node:fs";
 import { parseDiagram } from "@tj/slides/diagrams";

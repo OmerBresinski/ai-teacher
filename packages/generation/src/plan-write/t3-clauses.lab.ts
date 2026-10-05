@@ -1,3 +1,4 @@
+// @ts-nocheck lab script
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import {
