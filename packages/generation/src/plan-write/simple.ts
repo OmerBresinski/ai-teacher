@@ -314,7 +314,8 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
  * each kind's wire shape holds only the fields T2 used or the renderer needs, `alt` is composed in
  * code, and code expands the wire shape into the renderer's spec and validates it with its parse.
  */
-export const TEACHER3_LESSON_VERSION = "simple-lesson.t3";
+// t4 (5 Oct): + closing independent practice before the exit ticket (T3-LEDGER U4b).
+export const TEACHER3_LESSON_VERSION = "simple-lesson.t4";
 /**
  * lab/t3 (Greg, 5 Oct 2026: T3 is the candidate): the plan-write planner writes with T3 by default.
  * `PLAN_WRITE_MODE=stream` or `plan-write` runs R3 instead.
@@ -561,7 +562,7 @@ These are the lesson's objectives, and the lesson teaches each one:
 ${numbered(i.objectives)}
 
 Exactly ${i.slideCount} slides. Slide 1 (the title) and slide 2 (the objectives) are made from the objectives, so write slides 3 to ${i.slideCount}.
-Teach each objective, then check it with a real question pupils answer. Share the slides by need: a harder objective gets more of them. Stay within the objectives.
+Teach each objective, then check it with a real question pupils answer. Share the slides by need: a harder objective gets more of them. Stay within the objectives. Where the slide count allows, the lesson ends with practice pupils do on their own, before the exit ticket.
 About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture, counting the title. Pictures go on teaching slides, and every check stays. A picture shows exactly what its slide says.
 
 The slide types we can draw:
