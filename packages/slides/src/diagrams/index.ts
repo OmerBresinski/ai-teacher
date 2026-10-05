@@ -17,7 +17,7 @@ import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { context, type DrawnText, esc, n, text, wrap } from "./svg";
-import { drawTable, tableHeight } from "./table";
+import { drawTable, tableHeight, tableWhole } from "./table";
 import {
   drawCycle,
   drawHydrograph,
@@ -120,6 +120,13 @@ function parseLong(
  * overlapping on EVERY theme. Nothing is shortened. A spec that already parses is drawn as before
  * (settled, unstretched). `reasons` says why one could not be fitted, for the log.
  */
+/** lab/t3 fit-fix: a table spec draws whole in a `w` x `h` zone on `theme` (no column clipped). */
+export function tableDrawsWhole(spec: unknown, theme: Theme, w: number, h: number): boolean {
+  const s = parseDiagram(spec);
+  if (!s || s.kind !== "table") return true;
+  return tableWhole(s, context(theme, Math.round(w), Math.round(h)), w, h);
+}
+
 export function fittedDiagramElement(
   spec: unknown,
   theme: Theme,

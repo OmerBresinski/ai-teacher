@@ -25,6 +25,7 @@ import {
   fittedDiagramElement,
   parseDiagram,
   settleDiagram,
+  tableDrawsWhole,
 } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
@@ -35,7 +36,7 @@ import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
 import { audienceOf, planClassFor } from "../stages/shared";
 import type { PipelineDeps, PipelineState, T3Report } from "../types";
 import { DiagramSpecSchema } from "./diagram-spec";
-import { fitLadder, fitWritten, renderWritten, type Written, withSetTag } from "./fit";
+import { ASKED_FORMS, fitLadder, fitWritten, renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
 import { broadenedBrief, NO_PICTURE_ROW, noPictureOf } from "./slide-check";
 
@@ -667,7 +668,10 @@ export function teacher3GapSchema(subject: string | undefined, spares: number[])
   });
 }
 /** T3's slides in T2's shape: a drawing's wire shape becomes the renderer's spec. */
-function fromTeacher3(objectives: string[], t: { titlePicture: unknown; slides: T3Slide[] }) {
+export function fromTeacher3(
+  objectives: string[],
+  t: { titlePicture: unknown; slides: T3Slide[] },
+) {
   return fromTeacher({
     objectives,
     titlePicture: t.titlePicture as TeacherLesson["titlePicture"],
@@ -730,6 +734,8 @@ export function t3Fit(
   form: string,
   layout: string,
   out: Written,
+  /** The slide's questions as written: an open response that fits no layout is set as a check. */
+  questions: { question: string; answer: string }[] = [],
 ): ReturnType<typeof fitLadder> & { fits: boolean } {
   const judged = (f: string, l: string, o: Written) => {
     try {
@@ -750,7 +756,21 @@ export function t3Fit(
     ladder = undefined;
   }
   if (ladder && ladder.rung !== "unfit")
-    return { ...ladder, fits: judged(ladder.form, ladder.layout, ladder.out) };
+    return {
+      ...ladder,
+      fits: ladder.rung === "compact" || judged(ladder.form, ladder.layout, ladder.out),
+    };
+  // lab/t3 fit-fix: a question never falls to explain (its options and answer would be flattened
+  // into the teaching text). An open response that fits no layout is set as a check of every
+  // question it was written with (a layout change; no word leaves the slide); else it stays as it
+  // is, unfit, for the hard-failure log.
+  if (ASKED_FORMS.has(form)) {
+    if (form === "open-response" && questions.length > 0) {
+      const l2 = fitLadder("check-set", "default", { questions, notes: out.notes ?? "" });
+      if (l2.rung !== "unfit") return { ...l2, rung: "layout", fits: true };
+    }
+    return { form, layout, out, rung: "unfit", moved: [], fits: false };
+  }
   const lines = (v: unknown): string[] =>
     Array.isArray(v)
       ? v.flatMap((x) =>
@@ -800,6 +820,9 @@ export function placeT3Diagram(
   const at = slide.elements.findIndex((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
   const e = slide.elements[at];
   if (!e) return { stretched: false, reasons: ["the slide has no picture zone"] };
+  // lab/t3 fit-fix: a table cut at its smallest size is not drawn (the slide loses the picture).
+  if (!tableDrawsWhole(spec, theme, e.w, e.h))
+    return { stretched: false, reasons: ["the table is cut at its smallest size"] };
   const r = fittedDiagramElement(spec, theme, { x: e.x, y: e.y, w: e.w, h: e.h }, ids);
   if (!r.ok) return { stretched: false, reasons: r.reasons };
   return {
@@ -1691,7 +1714,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     const s = withPictureZone(light);
     const adapted = adapt(s);
     // lab/t3: no slide saved overflowing (cand-fix's fit ladder; units move to the notes whole).
-    const fitted = t3Fit(adapted.form, adapted.layout, adapted.out);
+    const fitted = t3Fit(adapted.form, adapted.layout, adapted.out, s.questions);
     const { form, layout, out } = fitted;
     const drawOne = (f: string, o: Written, l: string = layout): Slide => {
       const r = renderWritten(f, l, o);
@@ -1730,6 +1753,11 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         },
         "t3 fit ladder",
       );
+    if (!fitted.fits && ASKED_FORMS.has(adapted.form))
+      deps.logger.warn(
+        { stage: "generate", slide: index + 1, form: adapted.form, hardFailure: true },
+        "t3 question does not fit",
+      );
     const p = form === "photo" ? s.picture : null;
     let drawn: string | undefined;
     let invalid: string | undefined;
@@ -1745,7 +1773,10 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       } else {
         const o = (p.spec ?? {}) as { kind?: string; title?: string };
         invalid = `diagram ${o.kind ?? "?"}`;
-        photoAsk = { subject: o.title || s.heading, named: null };
+        // A table that will not draw whole is words, not a scene: the slide loses the picture
+        // (drawn full width) rather than asking for a photo of a table's title.
+        if (o.kind === "table") slide = drawPlain(plain);
+        else photoAsk = { subject: o.title || s.heading, named: null };
         deps.logger.warn(
           { stage: "generate", slide: index + 1, kind: o.kind, reasons: d.reasons.slice(0, 6) },
           "t3 drawing not drawn",

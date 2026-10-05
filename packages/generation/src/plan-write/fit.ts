@@ -2,6 +2,7 @@ import type { Slide } from "@tj/domain/documents";
 import {
   contractFits,
   docFromText,
+  fitsPlanned,
   KIND_TAG_NAME,
   layoutsOf,
   type MaterialiseMeta,
@@ -94,7 +95,14 @@ function setSpec(form: SetForm, out: Written, role?: string): SlideSpec {
   const answers = qs.map((q) => q.answer);
   const footnote = `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;
   const listed = `Answers: ${answers.map((a, i) => `${i + 1}. ${a}`).join(" ")}`;
-  const base = { factRefs: [] as string[], heading, footnote, notes: notesOf(out.notes, listed) };
+  // The fit ladder's last question rung: the answers too long for the reveal under every question
+  // are kept in the notes (where they are listed anyway) and the slide gives the questions the room.
+  const base = {
+    factRefs: [] as string[],
+    heading,
+    ...(out.answersInNotes === true ? {} : { footnote }),
+    notes: notesOf(out.notes, listed),
+  };
   return (kind === "instructions"
     ? { kind, ...base, steps: items }
     : { kind, ...base, items }) as unknown as SlideSpec;
@@ -459,15 +467,101 @@ export function answerKeyFaults(form: string, out: Written): string[] {
   return faults;
 }
 
-/** The fields whose units (chunks, steps, points) may move to the notes whole, in order of preference. */
-const MOVABLE = ["body", "steps", "points", "questions"];
+/**
+ * The fields whose units (chunks, steps, points, a discussion's support lines) may move to the
+ * notes whole, in order of preference. Never a question, its options or its answers: pupils must
+ * see every question (lab/t3 fit-fix; T3-CAND moved 12 questions off 9 check and exit slides).
+ */
+const MOVABLE = ["body", "steps", "points", "footnote"];
+
+/** Forms that put a question to pupils: the ladder may re-lay them, never move their words. */
+export const ASKED_FORMS: ReadonlySet<string> = new Set([
+  "starter-set",
+  "check-set",
+  "exit-ticket",
+  "hinge",
+  "true-false",
+  "open-response",
+  "fill-gap",
+  "matching",
+  "sort",
+]);
+
+/** A question form judged at one step down (UX ruling 91: options and stems, once, within floor). */
+function fitsCompact(form: string, layout: string, out: Written): boolean {
+  if (isSetForm(form)) {
+    const { spec, variant } = renderWritten(form, layout, out);
+    return THEMES.every(
+      (theme) =>
+        slideFits(
+          withAnswersReveal(
+            materialiseSlide(spec, theme.id, FIT_META, undefined, variant),
+            theme.id,
+          ),
+          theme,
+          1,
+        ).ok,
+    );
+  }
+  const { notes: _n, ...fields } = out;
+  const made = specOfWriter(form as PaletteFormId, drawable(form, fields), layout);
+  if (!made) return false;
+  return fitsPlanned(made.spec, {
+    stepDown: 1,
+    ...(made.variant ? { variant: made.variant } : {}),
+    structure: made.structure,
+  }).ok;
+}
+
+/**
+ * A question slide's ladder (lab/t3 fit-fix): its words never leave the slide. In order: another
+ * layout of the form; the same at one step down (options as full-width rows, one stop under their
+ * floor); for a set, the answers kept in the notes so the questions get the reveal's room. Unfit
+ * otherwise, every word still on the slide, for the caller to log as a hard failure.
+ */
+function questionLadder(form: string, layout: string, out: Written): Laddered {
+  const layouts = isSetForm(form)
+    ? [layout, ...[...SET_VARIANTS].filter((l) => l !== layout)]
+    : [
+        layout,
+        ...layoutsOf(form as PaletteFormId)
+          .map((c) => c.layout)
+          .filter((l) => l !== layout),
+      ];
+  const tries: [Laddered["rung"], (l: string, o: Written) => boolean, Written][] = [
+    ["layout", (l, o) => fitWritten(form, l, o).ok, out],
+    ["compact", (l, o) => fitsCompact(form, l, o), out],
+  ];
+  if (isSetForm(form)) {
+    const roomy = { ...out, answersInNotes: true };
+    tries.push(["room", (l, o) => fitWritten(form, l, o).ok, roomy]);
+    tries.push(["room", (l, o) => fitsCompact(form, l, o), roomy]);
+  }
+  for (const [rung, ok, o] of tries)
+    for (const l of layouts) {
+      try {
+        if (ok(l, o))
+          return {
+            form,
+            layout: l,
+            out: o,
+            rung: l === layout && rung === "layout" ? "none" : rung,
+            moved: [],
+          };
+      } catch {}
+    }
+  return { form, layout, out, rung: "unfit", moved: [] };
+}
 
 export type Laddered = {
   form: string;
   layout: string;
   out: Written;
-  /** Which rung made it fit: none needed, another layout of the form, the no-picture sibling, units moved. */
-  rung: "none" | "layout" | "sibling" | "moved" | "unfit";
+  /**
+   * Which rung made it fit: none needed, another layout of the form, the no-picture sibling, units
+   * moved; for a question, one step down (`compact`) or the set's answers kept in the notes (`room`).
+   */
+  rung: "none" | "layout" | "sibling" | "moved" | "compact" | "room" | "unfit";
   /** Units moved to the notes, word for word. */
   moved: string[];
 };
@@ -487,6 +581,7 @@ export function fitLadder(
 ): Laddered {
   const first = fitWritten(form, layout, out);
   if (first.ok) return { form, layout, out, rung: "none", moved: [] };
+  if (ASKED_FORMS.has(form)) return questionLadder(form, layout, out);
   if (!isSetForm(form)) {
     for (const c of layoutsOf(form as PaletteFormId)) {
       if (c.layout === layout) continue;

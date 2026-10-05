@@ -66,6 +66,19 @@ export function layoutTable(t: Table, x: Ctx, w: number, h: number): TableLayout
 }
 
 /** The height the table takes drawn `w` wide (at most `h`), for sizing its box to the drawing. */
+/**
+ * lab/t3 fit-fix: whether the table draws whole `w` wide: at its smallest size no column is wider
+ * than its share and no cell is cut (T3-CAND y11 s7 drew "Activati", "Unchang" off the right edge).
+ */
+export function tableWhole(t: Table, x: Ctx, w: number, h: number): boolean {
+  const { widths, lines } = layoutTable(t, x, w, h);
+  const all = [...(t.header ? [t.header] : []), ...t.rows];
+  const cut = lines.some((r, i) =>
+    r.some((cell, j) => cell.join(" ") !== (all[i]?.[j] ?? "").trim().split(/\s+/).join(" ")),
+  );
+  return !cut && widths.reduce((a, b) => a + b, 0) <= w + 0.5;
+}
+
 export function tableHeight(t: Table, x: Ctx, w: number, h: number): number {
   return Math.ceil(layoutTable(t, x, w, h).heights.reduce((a, b) => a + b, 0) + 2);
 }
