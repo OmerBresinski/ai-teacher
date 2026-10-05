@@ -66,7 +66,8 @@ export function OptionView({
     { preset: "small", valign: "middle", lineHeight: 1.35, ...element.textStyle },
     theme,
     element.textStyle?.preset ?? "small",
-    "option",
+    // A card set in body (the hinge's 2×2 grid, ruling 161) takes the body floor, as the fit does.
+    element.textStyle?.preset === "body" ? undefined : "option",
   );
 
   const correctColor = theme.colors.correct;

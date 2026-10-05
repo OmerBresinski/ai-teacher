@@ -34,6 +34,11 @@ describe("r2 overflow: nothing lands past the save gate unflagged", () => {
       const hinge = slot(key);
       if (hinge.form !== "hinge") throw new Error("form");
       const fit = await fitSlot(hinge, { seed: key, themeId: "chalk", refill: noAnswer });
+      // Since the hinge's 2×2 grid sets its options in body (ruling 161), it may land as it is.
+      if (fit.rung === "fits") {
+        expect(passesGate(fit)).toBe(true);
+        continue;
+      }
       expect(fit.tried.map((t) => t.rung)).toEqual(["refill", "sibling"]);
       expect(fit.rung).toBe("sibling");
       expect(fit.slot.form).toBe("open-response");
@@ -53,9 +58,13 @@ describe("r2 overflow: nothing lands past the save gate unflagged", () => {
     };
     expect(hingeAsked(reads)).toBeUndefined();
     const fit = await fitSlot(reads, { seed: "r", themeId: "chalk", refill: noAnswer });
-    expect(fit.rung).toBe("flagged");
+    // Never asked open: it lands as written (the body-size grid, ruling 161) or is flagged.
+    expect(fit.slot.form).toBe("hinge");
     expect(fit.slot).toEqual(reads);
-    expect(flagReason(slotRender(reads, "r"))).toContain("Why? panel's lane");
+    if (fit.rung !== "fits") {
+      expect(fit.rung).toBe("flagged");
+      expect(flagReason(slotRender(reads, "r"))).toContain("Why? panel's lane");
+    }
   });
 
   test("a slot nothing can land is flagged with why, never saved silently", async () => {

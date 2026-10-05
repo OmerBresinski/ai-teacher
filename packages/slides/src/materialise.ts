@@ -26,7 +26,7 @@ import {
 } from "./diagrams";
 import { docFromBullets, docFromChunks, docFromText, isChunked, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
-import { fitSlide } from "./fit-slide";
+import { bodyGrid, fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
 import {
   AGENDA_OBJECTIVES,
@@ -251,7 +251,9 @@ export function lookAndFitPages(
   }
   // The structure pass places its components under the heading as the fit sets it, so it runs on
   // the fitted look.
-  const looked = fitSlide(applyLook(slide, theme, ids, { tag: structure.tag }), theme).slide;
+  // Ruling 161: a hinge whose options each take two lines or fewer at body size is the 2×2 grid.
+  const gridded = slide.kind === "multiple-choice" ? (bodyGrid(slide, theme) ?? slide) : slide;
+  const looked = fitSlide(applyLook(gridded, theme, ids, { tag: structure.tag }), theme).slide;
   // One list kind a slide, the marker drawn by the slide, never typed by the writer (spike/fmt):
   // a numbered list runs on across its pages.
   let next = 1;

@@ -118,6 +118,9 @@ describe("palette drift: every slide form at its maximum fits at body size on al
       const base = sizes(materialise(form, form.example as SlideSpec, theme), theme);
       for (const [preset, size] of sizes(full, theme)) {
         const at = base.get(preset);
+        // The hinge's 2×2 grid sets its options in body and may take one stop under it (rulings
+        // 91 and 161); the column it would otherwise be is the larger option size.
+        if (form.id === "hinge" && preset === "option") continue;
         if (at !== undefined) expect(size, `${preset} stepped`).toBeGreaterThanOrEqual(at);
       }
       // The form was placed as itself, not a fallback.

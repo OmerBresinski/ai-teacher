@@ -97,7 +97,7 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       for (const el of texts(p)) expect(bottom(el)).toBeLessThanOrEqual(SAFE_BOTTOM);
   });
 
-  test("options that wrap in the grid's cards are laid as full-width rows, one line each, in order", () => {
+  test("options that wrap in the grid's cards stay the grid at body size (ruling 161)", () => {
     const slide = make({
       kind: "multiple-choice",
       stem: "Which slogan helped the Bolsheviks gain support in 1917?",
@@ -112,21 +112,9 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
     });
     const cards = slide.elements.filter((el): el is OptionElement => el.type === "option");
     expect(cards).toHaveLength(4);
-    for (const card of cards) {
-      expect(card.x).toBe(SAFE.x);
-      expect(card.w).toBe(SAFE.w);
-      expect(card.textStyle?.padding).toBe(SPACE[1]);
-    }
-    // One line each: every row is as tall as the first, and A to D read top to bottom with at
-    // least a 14pt gap between rows (T28-8: the rows read as separate cards), landed on the pitch.
-    const heights = new Set(cards.map((card) => card.h));
-    expect(heights.size).toBe(1);
-    for (let i = 1; i < cards.length; i++) {
-      const prev = cards[i - 1] as OptionElement;
-      const gap = (cards[i] as OptionElement).y - bottom(prev);
-      expect(gap).toBeGreaterThanOrEqual(SPACE[2]);
-      expect(gap).toBeLessThan(SPACE[2] + 7);
-    }
+    // Ruling 161: options of two lines or fewer in a grid card stay the 2×2 grid, set in body.
+    expect(new Set(cards.map((card) => card.x)).size).toBe(2);
+    for (const card of cards) expect(card.textStyle?.preset).toBe("body");
     // The stem stays on the question floor: shrinking it would buy the cards no room.
     expect(byPreset(slide, "heading")[0]?.style.fontSize).toBeUndefined();
     for (const card of cards) expect(bottom(card)).toBeLessThanOrEqual(SAFE_BOTTOM);

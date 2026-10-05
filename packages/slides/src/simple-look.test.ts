@@ -120,3 +120,51 @@ describe("simple: question sets and the objectives are plain numbered lists (rul
     }
   }
 });
+
+describe("simple: the hinge grid at body size (ruling 161)", () => {
+  const mc = (texts: string[]) =>
+    ({
+      kind: "multiple-choice",
+      stem: "Which explanation best links printing money to hyperinflation in 1923?",
+      options: texts.map((text, i) => ({ text, correct: i === 1 })),
+      explanation: "More money chased fewer goods.",
+      factRefs: [],
+    }) as SlideSpec;
+  for (const theme of THEMES) {
+    test(`${theme.id}: short options stay a 2×2 grid, set at body size`, () => {
+      const slide = materialiseSlide(
+        mc(["More money", "Fewer goods", "Lower taxes", "More coal"]),
+        theme.id,
+        META,
+        counter(),
+      );
+      const opts = slide.elements.filter((e) => e.type === "option");
+      expect(opts).toHaveLength(4);
+      expect(new Set(opts.map((o) => o.x)).size).toBe(2);
+      for (const o of opts) if (o.type === "option") expect(o.textStyle?.preset).toBe("body");
+    });
+  }
+  for (const id of ["studio", "night-lab"])
+    test(`${id}: y9's four sentence options (two lines in a card) are the grid`, () => {
+      const slide = materialiseSlide(
+        mc([
+          "It created more goods for people to buy.",
+          "It increased money while output fell.",
+          "It cancelled Germany's reparations.",
+          "It made the Ruhr produce more coal.",
+        ]),
+        id,
+        META,
+        counter(),
+      );
+      const opts = slide.elements.filter((e) => e.type === "option");
+      expect(new Set(opts.map((o) => o.x)).size).toBe(2);
+    });
+  test("long options take the single column", () => {
+    const long =
+      "Printing more money while output fell meant more marks chased fewer goods, so prices kept rising";
+    const slide = materialiseSlide(mc([long, long, long, long]), "studio", META, counter());
+    const opts = slide.elements.filter((e) => e.type === "option");
+    expect(new Set(opts.map((o) => o.x)).size).toBe(1);
+  });
+});

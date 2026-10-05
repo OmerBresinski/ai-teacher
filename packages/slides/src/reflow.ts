@@ -272,8 +272,9 @@ export function textPartsOf(
       doc: el.doc,
       style: { preset: "small", valign: "middle", lineHeight: OPTION.line, ...el.textStyle },
       preset: el.textStyle?.preset ?? "small",
-      // An answer card sits on the 31pt option floor whichever stop it is set in.
-      role: "option",
+      // An answer card sits on the 31pt option floor whichever stop it is set in, unless it is set
+      // in body (the hinge's 2×2 grid, ruling 161), which takes the body floor.
+      role: el.textStyle?.preset === "body" ? undefined : "option",
       inset,
       chrome: pad * 2 + OPTION.border * 2,
       autoHeight: el.textStyle?.autoHeight !== false,

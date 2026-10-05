@@ -22,7 +22,7 @@ import {
   textPartsOf,
 } from "./reflow";
 import { measureHeadless } from "./text-measure";
-import { floorBelow, ladderStops, resolveTextStyle } from "./text-style";
+import { floorBelow, ladderStops, resolveFontSize, resolveTextStyle } from "./text-style";
 import type { TextRole } from "./themes";
 
 /*
@@ -60,8 +60,30 @@ export function fitSlide(slide: Slide, theme: Theme): FitResult {
       : {};
   let start = slide.kind === "worked-example" ? raiseCard(slide, theme, measure) : slide;
   const options = { ...lane, keep: stemOf(start) };
-  let result = reflowSlide(start, theme, measure, options);
-  if (slide.kind === "multiple-choice") {
+  // Ruling 161: a hinge whose options each take at most two lines in a grid card at body size is
+  // the 2×2 grid at body size; only longer options go on to the single column.
+  // The grid is kept only when it fits at body size, or one stop under it (UX ruling 91).
+  // `bodyGrid` (at materialise) marks such a grid by setting its options in body; a stored slide
+  // without that mark keeps the fit it always had.
+  const gridSlide =
+    slide.kind === "multiple-choice" &&
+    start.elements.some((el) => el.type === "option") &&
+    start.elements.every((el) => el.type !== "option" || el.textStyle?.preset === "body")
+      ? start
+      : null;
+  const gridFit = gridSlide ? reflowSlide(gridSlide, theme, measure, options) : null;
+  const grid =
+    gridSlide &&
+    gridFit &&
+    gridFit.overflow.length === 0 &&
+    gridFit.elements.every(
+      (el) => el.type !== "option" || (el.textStyle?.fontSize ?? 0) >= floorBelow(theme, "body"),
+    )
+      ? gridSlide
+      : null;
+  if (grid) start = grid;
+  let result = grid && gridFit ? gridFit : reflowSlide(start, theme, measure, options);
+  if (slide.kind === "multiple-choice" && !grid) {
     let column = columnOptions(slide, theme);
     let alt = column ? reflowSlide(column, theme, measure, options) : null;
     // UX ruling 91: when the column still overruns at the floor, the type steps down one size,
@@ -84,6 +106,34 @@ export function fitSlide(slide: Slide, theme: Theme): FitResult {
   let elements = growCards(start.elements, result.elements);
   if (slide.kind === "title") elements = restackTitle(start.elements, elements);
   return { slide: { ...slide, elements }, overflow: overflowOf({ ...slide, elements }) };
+}
+
+/**
+ * The hinge's 2×2 grid with its options set in the theme's body size (ruling 161), or null when an
+ * option would take more than two lines in its card (the single column is for those).
+ */
+export function bodyGrid(slide: Slide, theme: Theme): Slide | null {
+  const opts = slide.elements.filter((el) => el.type === "option");
+  if (opts.length !== 4 || new Set(opts.map((o) => Math.round(o.x))).size !== 2) return null;
+  const measure = measureHeadless(theme);
+  const size = resolveFontSize(theme, "body");
+  const next = {
+    ...slide,
+    elements: slide.elements.map((el) =>
+      el.type === "option"
+        ? { ...el, textStyle: { ...el.textStyle, preset: "body" as const, fontSize: size } }
+        : el,
+    ),
+  };
+  for (const el of next.elements) {
+    if (el.type !== "option") continue;
+    const parts = textPartsOf(el, next);
+    if (!parts) return null;
+    const h = measure({ ...parts, width: el.w }) - parts.chrome;
+    const line = size * (parts.style?.lineHeight ?? OPTION.line);
+    if (h > line * 2 + 1) return null;
+  }
+  return next;
 }
 
 /** A question slide's stem: the `heading` text its recipe sets across the top. */
