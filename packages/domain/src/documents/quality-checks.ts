@@ -273,7 +273,13 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
       slide.kind === "open-response"
         ? [stemOf(slide)]
         : slide.kind === "exit-ticket"
-          ? lines(textsByPreset(slide, "body"))
+          ? // A plain list's number (ruling 162, "Row badge") is not an item.
+            lines(
+              textsByPreset(
+                { ...slide, elements: slide.elements.filter((e) => e.name !== "Row badge") },
+                "body",
+              ),
+            )
           : [];
     for (const stem of stems) {
       const verdict = questionless(stem);

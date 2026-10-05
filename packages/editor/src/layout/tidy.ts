@@ -15,10 +15,9 @@ import {
   KIND_TAG_NAME,
   owesExplanationLane,
   SAFE,
-  SPACE,
   snapY,
 } from "@tj/slides";
-import { cloneSlide, docFromText, uid } from "../model/factories";
+import { cloneSlide, docFromText } from "../model/factories";
 import * as reducers from "../model/reducers";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";

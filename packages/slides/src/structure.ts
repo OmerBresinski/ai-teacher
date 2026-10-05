@@ -1155,6 +1155,7 @@ function structureObjectives(slide: Slide, t: Theme, ids: Ids): Slide {
     ids,
     {
       textName: (i) => `Objective ${i + 1}`,
+      plain: true,
     },
   );
   return placed ? { ...slide, elements: [...rest, ...placed.elements] } : slide;
@@ -1300,6 +1301,7 @@ function structureSet(
       foot ? SAFE_BOTTOM - footH - SPACE[3] : SAFE_BOTTOM,
       t,
       ids,
+      { plain: true },
     );
     if (placed) {
       const moved = rest.map((e) =>
@@ -3040,6 +3042,11 @@ export type RowOptions = {
   cardName?: string;
   /** Row i's main text's name ("Step 1"); `ROW_TEXT_NAME` when absent. */
   textName?: (i: number) => string;
+  /**
+   * A plain numbered list (ruling 162, the simple slide): no card and no disc, the number in the
+   * muted ink, the rows from the top of the room at a reading gap.
+   */
+  plain?: boolean;
 };
 
 /** The sizes a set of `n` rows tries: larger type for fewer rows, never below the body floor. */
@@ -3064,11 +3071,13 @@ export function rowCards(
   const minGap = options.minGap ?? SPACE[3];
   const maxGap = options.maxGap ?? SPACE[5];
   const colGap = GUTTER;
+  const plain = !!options.plain;
   const tries = (options.sizes ?? rowSizes(t, rows.length)).flatMap((size) =>
-    (options.pads ?? [CARD_PAD, SPACE[1]]).map((pad) => ({ size, pad })),
+    (plain ? [0] : (options.pads ?? [CARD_PAD, SPACE[1]])).map((pad) => ({ size, pad })),
   );
   for (const { size, pad } of tries) {
-    const badge = Math.max(30, Math.round(size * 1.35));
+    // A plain list's number column: the number and the gap after it.
+    const badge = plain ? Math.round(size * 1.6) : Math.max(30, Math.round(size * 1.35));
     const cardW = options.split ? Math.floor((SAFE.w - colGap) / 2) : SAFE.w;
     const inner = cardW - pad * 3 - badge;
     const hasSide = !options.split && rows.some((r) => r.side);
@@ -3121,7 +3130,10 @@ export function rowCards(
         ? { ...r, main: r.main.split(" → ").join("\n→ ") }
         : r,
     );
-    const measured = rs.map((r) => {
+    // Ruling 141: a set's answers stay a reveal (a short one beside its question, a long one
+    // under it), so the teacher can show them.
+    const kept = rs;
+    const measured = kept.map((r) => {
       const at = beside(r);
       const stacked =
         !!options.mainOneLine &&
@@ -3169,14 +3181,17 @@ export function rowCards(
     const n = rows.length;
     if (withSafety(total + minGap * (n - 1)) > room) continue;
     const spare = room - withSafety(total) - minGap * (n - 1);
-    const gap = n > 1 ? Math.min(maxGap, minGap + Math.floor(spare / n)) : 0;
+    const gap = n > 1 ? Math.min(plain ? SPACE[4] : maxGap, minGap + Math.floor(spare / n)) : 0;
     const used = total + gap * (n - 1);
     // What is left after the widest gap sits above the group, a third of it (optical centre).
-    let y = snapY(
-      top + Math.max(0, Math.floor((withSafety(used) > room ? 0 : room - withSafety(used)) / 3)),
-    );
+    let y = plain
+      ? snapY(top)
+      : snapY(
+          top +
+            Math.max(0, Math.floor((withSafety(used) > room ? 0 : room - withSafety(used)) / 3)),
+        );
     const els: SlideElement[] = [];
-    rs.forEach((r, i) => {
+    kept.forEach((r, i) => {
       const m = measured[i] as (typeof measured)[number];
       const when = r.step ? { revealStep: r.step, reveal: "fade" as const } : {};
       const place = (
@@ -3187,25 +3202,45 @@ export function rowCards(
         w: number,
         name: string,
       ) => {
-        els.push(card(ids, t, { x, y, w: cardW, h: m.h }, options.cardName ?? ROW_CARD_NAME, when));
-        els.push({
-          ...card(ids, t, { x: x + pad, y: y + pad, w: badge, h: badge }, ROW_BADGE_NAME, {
-            shape: "ellipse",
-            fill: t.colors.accent,
-            stroke: t.colors.accent,
-            doc: docFromText(label),
-            textStyle: {
-              preset: "caption",
-              fontSize: Math.max(resolveFontSize(t, "caption"), Math.round(badge * 0.55)),
-              color: t.colors.onAccent,
-              align: "center",
-              valign: "middle",
-              fontWeight: 700,
-            },
-          }),
-          ...when,
-        });
-        const tx = x + pad * 2 + badge;
+        if (plain) {
+          els.push(
+            text(
+              ids,
+              { x, y, w: badge, h: m.main },
+              docFromText(label),
+              {
+                preset: "body",
+                fontSize: size,
+                lineHeight: leading,
+                color: t.colors.muted,
+                fontWeight: 700,
+              },
+              { name: ROW_BADGE_NAME, ...when },
+            ),
+          );
+        } else {
+          els.push(
+            card(ids, t, { x, y, w: cardW, h: m.h }, options.cardName ?? ROW_CARD_NAME, when),
+          );
+          els.push({
+            ...card(ids, t, { x: x + pad, y: y + pad, w: badge, h: badge }, ROW_BADGE_NAME, {
+              shape: "ellipse",
+              fill: t.colors.accent,
+              stroke: t.colors.accent,
+              doc: docFromText(label),
+              textStyle: {
+                preset: "caption",
+                fontSize: Math.max(resolveFontSize(t, "caption"), Math.round(badge * 0.55)),
+                color: t.colors.onAccent,
+                align: "center",
+                valign: "middle",
+                fontWeight: 700,
+              },
+            }),
+            ...when,
+          });
+        }
+        const tx = plain ? x + badge : x + pad * 2 + badge;
         els.push(
           text(
             ids,

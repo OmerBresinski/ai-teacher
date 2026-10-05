@@ -6,7 +6,6 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { type DiagramSpecInput, diagramElement } from "./diagrams";
 import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";

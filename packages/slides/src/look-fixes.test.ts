@@ -159,7 +159,9 @@ describe("the answers never cover the questions", () => {
         }
       }
       const withAnswers = pages.filter((p) => named(p.elements, ANSWERS_NAME).length > 0);
-      expect(withAnswers.length).toBeGreaterThan(0);
+      // On a panel, or (a plain list that now fits, ruling 162) revealed in each question's row.
+      const inRows = pages.some((p) => named(p.elements, ROW_REVEAL_NAME).length > 0);
+      expect(withAnswers.length > 0 || inRows).toBe(true);
       const own = withAnswers.find((p) => texts(p).some((x) => x.endsWith(": answers")));
       if (own) {
         expect(own.question).toBeUndefined();

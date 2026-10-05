@@ -75,3 +75,48 @@ describe("simple: the cover (ruling 162)", () => {
     });
   }
 });
+
+describe("simple: question sets and the objectives are plain numbered lists (ruling 162)", () => {
+  const long = [
+    "Explain how passive resistance led the government to print more money in 1923.",
+    "Why could hyperinflation harm a saver but help someone with a fixed debt in marks?",
+    "Explain how ending passive resistance and the Rentenmark helped stabilise Germany.",
+  ];
+  const specs: SlideSpec[] = [
+    { kind: "exit-ticket", heading: "Exit ticket", items: long, factRefs: [] } as SlideSpec,
+    {
+      kind: "starter",
+      heading: "Quick check",
+      items: long,
+      footnote: `Answers: ${long.map((_, i) => `${i + 1} A full sentence that answers question ${i + 1} at length, as a teacher would.`).join("  ·  ")}`,
+      factRefs: [],
+    } as SlideSpec,
+    {
+      kind: "objectives",
+      items: ["explain one thing", "compare two things"],
+      factRefs: [],
+    } as SlideSpec,
+  ];
+  for (const theme of THEMES) {
+    for (const spec of specs) {
+      test(`${theme.id} ${spec.kind}: no card, no disc, no reserved answer room`, () => {
+        const slide = materialiseSlide(spec, theme.id, META, counter());
+        expect(named(slide, "Row card")).toHaveLength(0);
+        expect(slide.elements.some((e) => e.type === "shape" && e.shape === "ellipse")).toBe(false);
+        const rows = slide.elements
+          .filter(
+            (e): e is TextElement =>
+              e.type === "text" && /^(Row text|Row reveal|Objective \d)$/.test(e.name ?? ""),
+          )
+          .sort((a, b) => a.y - b.y);
+        expect(rows.length).toBeGreaterThan(1);
+        // Rows (and a hidden answer under its question) follow at a reading gap: no empty card room.
+        let foot = (rows[0] as TextElement).y + (rows[0] as TextElement).h;
+        for (const r of rows.slice(1)) {
+          expect(r.y - foot).toBeLessThanOrEqual(48);
+          foot = Math.max(foot, r.y + r.h);
+        }
+      });
+    }
+  }
+});

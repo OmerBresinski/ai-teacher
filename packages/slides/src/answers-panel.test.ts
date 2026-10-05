@@ -5,7 +5,7 @@ import { fitSlide } from "./fit-slide";
 import { SAFE } from "./grid";
 import { materialiseSlide } from "./materialise";
 import type { SlideSpec } from "./specs";
-import { ROW_CARD_NAME, ROW_REVEAL_NAME } from "./structure";
+import { ROW_CARD_NAME, ROW_REVEAL_NAME, ROW_TEXT_NAME } from "./structure";
 import { THEMES } from "./themes";
 
 /*
@@ -37,15 +37,20 @@ describe("a set's answers are revealed inside their own cards (layout audit #2)"
   ] as const) {
     it.each(THEMES.map((t) => [t.id, t]))(`${label} on %s`, (_id, theme: Theme) => {
       const slide = fitSlide(materialiseSlide(starter([...answers]), theme.id, meta), theme).slide;
-      const cards = slide.elements.filter((e) => e.name === ROW_CARD_NAME);
+      // A plain numbered list (ruling 162): no cards; each answer revealed in its question's row.
+      expect(slide.elements.filter((e) => e.name === ROW_CARD_NAME)).toHaveLength(0);
+      const cards = slide.elements
+        .filter((e) => e.name === ROW_TEXT_NAME)
+        .sort((a, b) => a.y - b.y);
       const reveals = slide.elements.filter((e) => e.name === ROW_REVEAL_NAME);
       expect(cards).toHaveLength(3);
       expect(reveals).toHaveLength(3);
       reveals.forEach((r, i) => {
         const c = cards[i] as (typeof cards)[number];
+        const next = cards[i + 1];
         expect(r.revealStep).toBe(1);
         expect(r.y).toBeGreaterThanOrEqual(c.y);
-        expect(r.y + r.h).toBeLessThanOrEqual(c.y + c.h);
+        if (next) expect(r.y + r.h).toBeLessThanOrEqual(next.y);
       });
       // Measured in the revealed state: nothing past the safe area with every answer shown.
       expect(fitSlide(slide, theme).overflow).toEqual([]);
