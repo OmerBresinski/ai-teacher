@@ -96,6 +96,101 @@ Per slide: form, heading, body (sentences shown on the slide), items, questions 
   };
 }
 
+/* Arm T (Greg's design): an expert teacher given only constraints and context, nothing forced. */
+export const TEACHER_LESSON_VERSION = "simple-lesson.t1";
+const T_FORMS: Record<string, string> = {
+  ...FORMS,
+  "explain-callout": "an explanation with one common mistake called out (the last line of content)",
+  list: "a lead sentence then a few short points (one per line of content)",
+  compare: "two things side by side (two lines of content, each 'Label: text')",
+  hinge:
+    "a multiple-choice question with 4 options (the options are the content; answer is the correct option)",
+  matching: "pupils match up to 3 pairs (content lines 'left = right')",
+};
+const ITEM_FORMS = new Set([
+  "sequence",
+  "hinge",
+  "matching",
+  "vocabulary",
+  "sort",
+  "compare",
+  "worked-example",
+]);
+const PICTURE_SHARE: Record<string, [number, number]> = {
+  ks1: [0.55, 0.75],
+  ks2: [0.55, 0.75],
+  ks3: [0.35, 0.5],
+  ks4: [0.3, 0.45],
+  ks5: [0.3, 0.45],
+};
+const teacherSlide = z.object({
+  form: z.enum(Object.keys(FORMS) as [string, ...string[]]),
+  heading: z.string(),
+  content: z.array(z.string()),
+  questions: z.array(z.object({ question: z.string(), answer: z.string() })),
+  picture: z.object({ subject: z.string(), named: z.string().nullable() }).nullable(),
+  notes: z.string(),
+});
+export const teacherLessonSchema = z.object({
+  objectives: z.array(z.string()),
+  titlePicture: z.object({ subject: z.string(), named: z.string().nullable() }).nullable(),
+  slides: z.array(teacherSlide),
+});
+type TeacherLesson = z.infer<typeof teacherLessonSchema>;
+
+export function teacherPrompt(i: {
+  slideCount: number;
+  topic: string;
+  context: string;
+  yearGroup: string;
+  subject: string;
+  ageBand?: string | undefined;
+}): { system: string; user: string } {
+  const [lo, hi] = PICTURE_SHARE[(i.ageBand ?? "ks3").toLowerCase()] ?? [0.35, 0.5];
+  const menu = Object.entries(T_FORMS)
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join("\n");
+  return {
+    system: `You're an expert teacher in England, teaching ${i.yearGroup} ${i.subject}: ${i.topic}, at the right reading age for that year. Write the lesson as you'd teach it.`,
+    user: `${i.context}
+
+Exactly ${i.slideCount} slides. Slide 1 (the title) and slide 2 (the objectives) are made from your objectives, so write slides 3 to ${i.slideCount}.
+About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture (a photo form).
+
+The slide types we can draw:
+${menu}
+
+Per slide: form, heading, content (the lines on the slide), questions (question and answer, if any), picture request (if any), notes.`,
+  };
+}
+
+/** Arm T's slides in the shared light shape, so the same adapter draws them. */
+function fromTeacher(t: TeacherLesson): SimpleLesson {
+  return {
+    objectives: t.objectives,
+    titlePicture: t.titlePicture,
+    slides: t.slides.map((s) => {
+      const c = s.content;
+      const split =
+        s.form === "list"
+          ? { body: c.slice(0, 1), items: c.slice(1) }
+          : s.form === "explain-callout"
+            ? { body: c.slice(0, -1), items: c.slice(-1) }
+            : ITEM_FORMS.has(s.form)
+              ? { body: [], items: c }
+              : { body: c, items: [] };
+      return {
+        form: s.form,
+        heading: s.heading,
+        ...split,
+        questions: s.questions,
+        picture: s.picture,
+        notes: s.notes,
+      };
+    }),
+  };
+}
+
 const PICTURE_ORDER = ["split", "photo-band", "photo-band-long"] as const;
 const SET_OF: Record<string, string> = {
   starter: "starter-set",
@@ -295,18 +390,28 @@ export async function simpleLessonSlides(
         : []),
     ].join("\n");
     const input = { slideCount, topic: brief.topic, context };
-    const built = simpleLessonPrompt(input);
+    const armT = process.env.SIMPLE_ARM === "T";
+    const built = armT
+      ? teacherPrompt({
+          ...input,
+          yearGroup: base.yearGroup ?? "",
+          subject: base.subject ?? "",
+          ageBand: audienceOf(base).ageBand,
+        })
+      : simpleLessonPrompt(input);
+    const version = armT ? TEACHER_LESSON_VERSION : SIMPLE_LESSON_VERSION;
+    const schema = (armT ? teacherLessonSchema : simpleLessonSchema) as z.ZodType<unknown>;
     const call = await callStructured({
       deps,
       stage: "generate",
       cls: planClassFor(base, deps),
       effort: "low",
-      prompt: { version: SIMPLE_LESSON_VERSION, system: built.system, user: () => built.user },
+      prompt: { version, system: built.system, user: () => built.user },
       input,
-      schema: simpleLessonSchema,
+      schema,
       maxOutputTokens: 16000,
     });
-    w = call.output as SimpleLesson;
+    w = armT ? fromTeacher(call.output as TeacherLesson) : (call.output as SimpleLesson);
     // Lab ABLATE: the full request and the response, one line per call.
     const dir = process.env.SIMPLE_CALLS_DIR;
     if (dir) {
@@ -314,7 +419,7 @@ export async function simpleLessonSlides(
       appendFileSync(
         `${dir}/${deps.context.jobId}.calls.jsonl`,
         `${JSON.stringify({
-          version: SIMPLE_LESSON_VERSION,
+          version,
           modelId: call.modelId,
           effort: "low",
           ms: Date.now() - t0,
@@ -323,7 +428,7 @@ export async function simpleLessonSlides(
           context,
           system: built.system,
           user: built.user,
-          schema: z.toJSONSchema(simpleLessonSchema),
+          schema: z.toJSONSchema(schema),
           output: call.output,
         })}\n`,
       );
