@@ -1,3 +1,28 @@
+export {
+  type AspectFamily,
+  type BankCandidate,
+  bankLicenceOk,
+  cosine,
+  createOpenAiEmbedder,
+  createOpenAiImageGenerator,
+  EMBED_DIMENSIONS,
+  EMBED_MODEL,
+  type Embedder,
+  embedCostUsd,
+  expectedImageCostUsd,
+  familyOf,
+  IMAGE_MODEL,
+  IMAGE_QUALITY,
+  IMAGE_TERMS,
+  type ImageGenerator,
+  type ImageSize,
+  imageCostUsd,
+  imagePrompt,
+  pickReuse,
+  REUSE_THRESHOLD,
+  requestText,
+  sizeForAspect,
+} from "./bank";
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {
   COMMONS_USER_AGENT,

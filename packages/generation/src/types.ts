@@ -12,6 +12,7 @@ import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 import type { ReasoningEffort } from "./call";
 import type { VerifyCorrection } from "./specs";
+import type { PictureBank } from "./stages/photo-bank";
 
 /*
  * The pipeline's contract with its host (ADR 0025 §17): everything the stages need arrives in
@@ -112,6 +113,11 @@ export interface PhotoPlacer {
    * that would not draw cleanly: Commons only, landscape kept.
    */
   diagrams?: boolean;
+  /**
+   * The picture library (TEACH-84, ruling 158): looked up before any search, fed every placed
+   * picture, and the generator on a miss. Absent: the stock ladder only.
+   */
+  bank?: PictureBank;
 }
 
 /**
@@ -160,6 +166,8 @@ export interface PipelineDeps {
   context: PipelineContext;
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
+  /** The picture library switch (TEACH-84); unset: `photoBankOn()` (default on, `PHOTO_BANK=0` off). */
+  photoBank?: boolean;
   /**
    * lab/cand-fix look check: renders the given slides (0-based indices) of this lesson as the
    * presenter shows them and returns each as an image data URL. Absent: the look check is off.

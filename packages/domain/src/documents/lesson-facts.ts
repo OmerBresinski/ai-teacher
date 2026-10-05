@@ -183,6 +183,11 @@ export type ImagePurpose = (typeof IMAGE_PURPOSES)[number];
 const MustShowItem = z.string().trim().min(1).max(120);
 export const ImageBriefSchema = z.strictObject({
   subject: z.string().trim().min(1).max(60),
+  /**
+   * The writer's whole picture request (PICTURE-AUDIT #1): the judge reads it; the search uses the
+   * clipped `subject`. Absent: the judge reads `subject`.
+   */
+  request: z.string().trim().min(1).max(400).optional(),
   mustShow: z
     .union([MustShowItem.transform((one) => [one]), z.array(MustShowItem).max(4)])
     .optional()

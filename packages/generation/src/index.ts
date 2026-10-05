@@ -66,6 +66,7 @@ export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";
 export { type FactsStepReport, facts, runFactsStep } from "./stages/facts";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
+export { type PlacedPhoto, pickPhoto, withPhoto } from "./stages/illustrate";
 export {
   MAX_OUTPUT_TOKENS_OBJECTIVES,
   ObjectivesBlocked,
@@ -89,6 +90,7 @@ export {
   resumeFromDesigner,
   resumeFromObjectivesFirst,
 } from "./stages/objectives-first";
+export * from "./stages/photo-bank";
 export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";
 export {
   batchesOf,

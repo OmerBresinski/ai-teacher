@@ -522,10 +522,20 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         stage: "illustrate",
         slideIndex: index,
         gated: true,
+        nextCandidate: round < MAX_JUDGE_CALLS - 1 && shortlisted.length > 1,
         offSubject: !verdict.onSubject,
         unclear: !verdict.clear,
         noneVisible: brief.mustShow.length > 0 && itemsSeen(brief, verdict).length === 0,
       });
+    }
+    // PICTURE-AUDIT #4: a pick the gate refused (the ram with no lamb) with no better search
+    // offered is struck off, and the judge looks again at the rest.
+    if (picked && !verdict.query && round < MAX_JUDGE_CALLS - 1) {
+      const rest = pool.filter((candidate) => candidate.id !== picked.id);
+      if (shortlisted.some((candidate) => candidate.id !== picked.id)) {
+        pool = rest;
+        continue;
+      }
     }
     const requery = verdict.query;
     if (!requery || round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
@@ -571,7 +581,7 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
       prompt: shortlistPhotosPrompt,
       input: {
         topic: lesson.brief?.topic ?? lesson.title,
-        subject: brief.subject,
+        subject: brief.request ?? brief.subject,
         mustShow: brief.mustShow,
         purpose: brief.purpose,
         avoid: brief.avoid,
@@ -622,7 +632,7 @@ async function judge(
       objectives: facts?.objectives.map((o) => o.text) ?? [],
       vocabulary: facts?.vocabulary.map((v) => v.term) ?? [],
       slideBrief: args.slideBrief ?? (slide ? slideText(slide) : brief.subject),
-      subject: brief.subject,
+      subject: brief.request ?? brief.subject,
       mustShow: brief.mustShow,
       purpose: brief.purpose,
       avoid: brief.avoid,
@@ -648,9 +658,16 @@ function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery):
  * both ears clear in one frame). The slide's text is written to `visible`, so the picture never
  * shows less than the words claim. A brief with no items (pre-TEACH-159) needs the subject only.
  */
-export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): boolean {
+export function gatePasses(
+  brief: Pick<ImageBrief, "mustShow" | "request">,
+  verdict: PickOrRequery,
+): boolean {
   if (!verdict.onSubject || !verdict.clear) return false;
-  return brief.mustShow.length === 0 || itemsSeen(brief, verdict).length > 0;
+  if (brief.mustShow.length === 0) return true;
+  // PICTURE-AUDIT #1: items taken from the writer's request are the things the slide's words
+  // name (the sheep AND the lamb), so every one must be in view; Plan's parts lists need one.
+  const need = brief.request ? brief.mustShow.length : 1;
+  return itemsSeen(brief, verdict).length >= need;
 }
 
 /** A Commons photo up to 3:2 landscape is kept: the slot crops to cover, and named things are rarely portrait. */

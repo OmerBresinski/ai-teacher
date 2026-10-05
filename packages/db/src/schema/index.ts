@@ -1,4 +1,5 @@
 import { accounts, sessions, users, verifications } from "./auth";
+import { bankImages } from "./bank-images";
 import { documents } from "./documents";
 import { jobEvents } from "./job-events";
 import { sources } from "./sources";
@@ -6,6 +7,7 @@ import { workspaces } from "./workspaces";
 
 export * from "./_columns";
 export { accounts, authSchema, sessions, users, verifications } from "./auth";
+export { bankImages } from "./bank-images";
 export { DOCUMENTS_REQUEST_ID_INDEX, documentKind, documents } from "./documents";
 export { JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX, jobEvents } from "./job-events";
 export { sourceKind, sources } from "./sources";
@@ -23,7 +25,15 @@ export const TENANT_TABLES = [jobEvents, documents, sources] as const;
  * better-auth identity tables (ADR 0008 — identity sits above the Workspace; see `auth.ts`).
  * Anything else needs a written justification in its schema file.
  */
-export const NON_TENANT_TABLES = [workspaces, users, sessions, accounts, verifications] as const;
+export const NON_TENANT_TABLES = [
+  workspaces,
+  users,
+  sessions,
+  accounts,
+  verifications,
+  // TEACH-84: the shared picture library; no Workspace content (justified in bank-images.ts).
+  bankImages,
+] as const;
 
 /** Every application table, for the exhaustiveness check below and for tests. */
 export const ALL_TABLES = {
@@ -35,6 +45,7 @@ export const ALL_TABLES = {
   jobEvents,
   documents,
   sources,
+  bankImages,
 } as const;
 
 // ---------------------------------------------------------------------------------------------
