@@ -108,12 +108,26 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
               fill: c.ink,
               weight: WEIGHT.label,
             })
-          : text(x, (x1 + x2) / 2, Math.min(y1, y2) - 6, [note], {
-              v: "bottom",
-              fs: small,
-              fill: c.ink,
-              weight: WEIGHT.label,
-            }),
+          : // Within the gap between the boxes (CANDIDATE y9 s4: "Government urges" ran into both):
+            // wrapped to the gap, never smaller than the label floor.
+            (() => {
+              const room = Math.max(0, Math.abs(x2 - x1) - 8);
+              const fits = (f: number) => {
+                const lines = wrap(note, x, room, 2, f, WEIGHT.label);
+                return lines.every((l) => textWidth(l, x, f, WEIGHT.label) <= room) ? lines : null;
+              };
+              const lines = fits(small) ?? [note];
+              const style = { fs: small, fill: c.ink, weight: WEIGHT.label };
+              // Two lines sit either side of the arrow, so neither leaves the row.
+              const above = text(x, (x1 + x2) / 2, Math.min(y1, y2) - 6, [lines[0] ?? note], {
+                v: "bottom",
+                ...style,
+              });
+              return lines[1]
+                ? above +
+                    text(x, (x1 + x2) / 2, Math.max(y1, y2) + 6, [lines[1]], { v: "top", ...style })
+                : above;
+            })(),
       );
     }
   });
