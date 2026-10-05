@@ -6,6 +6,7 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
+import { STROKE } from "../diagrams/style";
 import { boxH, FIGURE_RECT } from "../layouts";
 import { pathSegments, samplePath } from "../path";
 import { isEditorialIssue } from "../specs";
@@ -91,7 +92,7 @@ describe("drawFigure: energy-profile", () => {
     expect(curve.smooth).toBe(true);
     expect(curve.closed).toBeFalsy();
     expect(curve.stroke).toBe(chalk.colors.accent);
-    expect(curve.strokeWidth).toBe(4);
+    expect(curve.strokeWidth).toBe(STROKE.data);
     expect(curve.points.map((p) => p.x)).toEqual([0, 0.24, 0.45, 0.66, 1]);
     expect(curve.points[0]?.y).toBe(curve.points[1]?.y);
     expect(curve.points[3]?.y).toBe(curve.points[4]?.y);

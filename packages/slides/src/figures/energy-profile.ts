@@ -14,10 +14,11 @@
 
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
-import { STROKE as LADDER } from "../diagrams/style";
+import { STROKE as LADDER, look } from "../diagrams/style";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
+import { pathSegments, samplePath } from "../path";
 import type { FigureDrawing, FigureTemplate } from "./index";
 import { type FittedLabel, fitLabel, type LabelFit, labelText, notToScaleCaption } from "./labels";
 import { segment } from "./marks";
@@ -143,12 +144,11 @@ const PEAK_TOP_GAP = 20;
 /** Under the horizontal axis, and from the lower plateau down to the axis, past its name. */
 const AXIS_BOTTOM_GAP = 16;
 const PLATEAU_AXIS_GAP = 14;
+/** The catalysed peak stands this share of the curve's width right of the main one, so each Ea arrow has its own peak. */
+const CAT_PEAK_SHIFT = 0.07;
 const PROGRESS_GAP = 10;
 /** Above the "Not drawn to scale" caption. */
 const CAPTION_GAP = 8;
-const CURVE_STROKE = LADDER.data;
-const ARROW_STROKE = LADDER.line;
-const GUIDE_STROKE = LADDER.hair;
 /** The reactants' level guide runs this far past the ΔH arrow. */
 const GUIDE_OVERHANG = 14;
 /** Between a level and the name hanging under it or standing on it. */
@@ -306,7 +306,10 @@ function drawEnergyProfile(
     const hanging = exothermic
       ? Math.max(labels.reactants.h, labels.products.h)
       : labels.reactants.h;
-    const plotBottom = axisY - hanging - PLATEAU_AXIS_GAP;
+    // Modern looks: the hanging names stand clear of the axis, unless key rows already took the
+    // plot's height (the extra gap then pushes "ΔH" into the products' name on a short plot).
+    const modernGap = look().preset === "current" || keyRows.length > 0 ? 0 : 10;
+    const plotBottom = axisY - hanging - PLATEAU_AXIS_GAP - modernGap;
     const height = Math.max(1, plotBottom - plotTop);
     const levelsMin = Math.max(LEVEL_GAP, (labels.change.h + 2 * CLEAR) / height);
     // The rise "Ea" needs beside its arrow as low as it goes, just over the guide. Exothermic, it
@@ -412,10 +415,10 @@ function drawEnergyProfile(
     ],
     smooth: true,
     stroke: t.colors.accent,
-    strokeWidth: CURVE_STROKE,
+    strokeWidth: LADDER.data,
     name: "Reaction profile",
   };
-  const arrow = { stroke: t.colors.ink, strokeWidth: ARROW_STROKE, arrowEnd: true };
+  const arrow = { stroke: t.colors.ink, strokeWidth: LADDER.line, arrowEnd: true };
   // The catalysed profile: the same levels, a lower peak (its share of the main hump kept between
   // 0.3 and 0.8 so the two read apart), dashed in the second colour and named under its peak.
   /** The catalysed peak's height, or undefined when no catalysed curve is drawn. */
@@ -432,7 +435,28 @@ function drawEnergyProfile(
     );
     return Math.min(yR, yP) - (Math.min(yR, yP) - plotTop) * k;
   })();
-  const CAT_ARROW_DX = 14;
+  /** The catalysed curve: the same levels, its lower peak a little right of the main one. */
+  const catCurve: PathElement | undefined =
+    catPeak === undefined
+      ? undefined
+      : ({
+          ...curve,
+          id: uid(),
+          points: curve.points.map((p, i) =>
+            i === 2 ? { x: p.x + CAT_PEAK_SHIFT, y: at(catPeak) } : p,
+          ),
+          stroke: t.colors.accent2,
+          dash: "dashed",
+          name: "Catalysed profile",
+        } as PathElement);
+  /** A curve's highest point as drawn (the smooth path sampled), in the figure's points. */
+  const topOf = (el: PathElement) => {
+    const ps = samplePath(pathSegments(el, el.w, el.h), 48);
+    const p = ps.reduce((a, b) => (b.y < a.y ? b : a));
+    return { x: el.x + p.x, y: el.y + p.y };
+  };
+  const mainTop = topOf(curve);
+  const catTop = catCurve ? topOf(catCurve) : undefined;
 
   /**
    * The collision pass (DIAGRAM-AUDIT): every curve sampled as drawn (the smooth path's cubic
@@ -470,15 +494,11 @@ function drawEnergyProfile(
     const lines: [{ x: number; y: number }, { x: number; y: number }][] = [];
     const main = curve.points.map(abs);
     const curves = [smooth(main)];
-    if (catPeak !== undefined)
-      curves.push(smooth(main.map((q, i) => (i === 2 ? { x: q.x, y: catPeak } : q))));
+    if (catCurve) curves.push(smooth(catCurve.points.map(abs)));
     for (const ps of curves)
       for (let i = 1; i < ps.length; i++) lines.push([ps[i - 1] as never, ps[i] as never]);
     lines.push(
-      [
-        { x: peakX, y: yR },
-        { x: peakX, y: plotTop },
-      ],
+      [{ x: mainTop.x, y: yR }, mainTop],
       [
         { x: changeX, y: yR },
         { x: changeX, y: yP },
@@ -488,11 +508,7 @@ function drawEnergyProfile(
         { x: size.w, y: axisY },
       ],
     );
-    if (catPeak !== undefined)
-      lines.push([
-        { x: peakX + CAT_ARROW_DX, y: yR },
-        { x: peakX + CAT_ARROW_DX, y: catPeak },
-      ]);
+    if (catTop) lines.push([{ x: catTop.x, y: yR }, catTop]);
     return lines;
   };
   const MARGIN = 4;
@@ -573,25 +589,15 @@ function drawEnergyProfile(
     const spot = clearSpot(grid, taken);
     taken.push(spot);
     legendBox = spot;
+    if (!catCurve || !catTop) return [];
     const out: SlideElement[] = [
-      {
-        ...curve,
-        id: uid(),
-        points: curve.points.map((p, i) => (i === 2 ? { x: p.x, y: at(catPeak) } : p)),
+      catCurve,
+      segment({ x: catTop.x, y: yR }, catTop, {
         stroke: t.colors.accent2,
-        dash: "dashed",
-        name: "Catalysed profile",
-      } as PathElement,
-      segment(
-        { x: peakX + CAT_ARROW_DX, y: yR },
-        { x: peakX + CAT_ARROW_DX, y: catPeak },
-        {
-          stroke: t.colors.accent2,
-          strokeWidth: ARROW_STROKE,
-          arrowEnd: true,
-          name: "Catalysed activation energy",
-        },
-      ),
+        strokeWidth: LADDER.line,
+        arrowEnd: true,
+        name: "Catalysed activation energy",
+      }),
     ];
     rows.forEach((r, i) => {
       const cy = spot.y + rowH * (i + 0.5);
@@ -601,7 +607,7 @@ function drawEnergyProfile(
           { x: spot.x + SAMPLE, y: cy },
           {
             stroke: r.color,
-            strokeWidth: CURVE_STROKE,
+            strokeWidth: LADDER.data,
             ...(r.dash ? { dash: r.dash } : {}),
             name: "Legend sample",
           },
@@ -638,23 +644,38 @@ function drawEnergyProfile(
     const cands: Box[] = [];
     for (let d = 0; d <= (yR - plotTop) / 2; d += 6)
       for (const y of [mid - d, mid + d])
-        for (const dx of [0, 10, 22])
-          cands.push(
-            { x: peakX - ARROW_LABEL_GAP - a.w - dx, y: y - a.h / 2, w: a.w, h: a.h },
-            { x: peakX + CAT_ARROW_DX + ARROW_LABEL_GAP + dx, y: y - a.h / 2, w: a.w, h: a.h },
-          );
+        for (const dx of [0, 10, 22, 36, 52]) {
+          cands.push({ x: mainTop.x - ARROW_LABEL_GAP - a.w - dx, y: y - a.h / 2, w: a.w, h: a.h });
+          // Without a catalysed arrow, the right of the main arrow is free too.
+          if (!catTop)
+            cands.push({ x: mainTop.x + ARROW_LABEL_GAP + dx, y: y - a.h / 2, w: a.w, h: a.h });
+        }
+    // "Ea" names the main arrow from its left (the catalysed arrow stands to its right); else
+    // right of it above the catalysed peak, where only the main arrow runs; else past both.
+    if (catTop) {
+      for (let y = catTop.y - a.h / 2 - CLEAR; y >= mainTop.y + a.h / 2; y -= 6)
+        cands.push({ x: mainTop.x + ARROW_LABEL_GAP, y: y - a.h / 2, w: a.w, h: a.h });
+      for (let d = 0; d <= (yR - plotTop) / 2; d += 6)
+        for (const y of [mid - d, mid + d])
+          cands.push({ x: catTop.x + ARROW_LABEL_GAP, y: y - a.h / 2, w: a.w, h: a.h });
+    }
     return clearSpot(cands, taken);
   };
+  // Modern looks: the axes recede (muted hairlines) so the curves lead.
+  const axis =
+    look().preset === "current"
+      ? arrow
+      : { ...arrow, stroke: t.colors.muted, strokeWidth: LADDER.hair };
   const children: SlideElement[] = [
     segment(
       { x: AXIS_X, y: axisY },
       { x: AXIS_X, y: labels.energy.h + AXIS_TOP_GAP },
-      { ...arrow, name: "Energy axis" },
+      { ...axis, name: "Energy axis" },
     ),
     segment(
       { x: AXIS_X, y: axisY },
       { x: size.w - AXIS_END_INSET, y: axisY },
-      { ...arrow, name: "Progress axis" },
+      { ...axis, name: "Progress axis" },
     ),
     // The reactants' level carried across, for both arrows to start from.
     segment(
@@ -662,14 +683,14 @@ function drawEnergyProfile(
       { x: changeX + GUIDE_OVERHANG, y: yR },
       {
         stroke: t.colors.muted,
-        strokeWidth: GUIDE_STROKE,
+        strokeWidth: LADDER.hair,
         dash: "dashed",
         name: "Reactants' level",
       },
     ),
     curve,
     ...catalysed(),
-    segment({ x: peakX, y: yR }, { x: peakX, y: plotTop }, { ...arrow, name: "Activation energy" }),
+    segment({ x: mainTop.x, y: yR }, mainTop, { ...arrow, name: "Activation energy" }),
     segment({ x: changeX, y: yR }, { x: changeX, y: yP }, { ...arrow, name: "Energy change" }),
     labelText(t, labels.energy.text, inside(placed.energy), "left"),
     labelText(t, labels.progress.text, inside(placed.progress), "center"),

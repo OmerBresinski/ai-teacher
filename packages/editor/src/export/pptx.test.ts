@@ -693,9 +693,9 @@ describe("exportLessonPptx", () => {
     const blob = await exportLessonPptx(lesson, theme, { includeAnswers: false });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const xml = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
-    // The closed triangle and the open right-angle mark.
+    // The closed triangle and the filled (closed) right-angle mark of the figure look.
     expect(xml.split("<a:custGeom>").length - 1).toBe(2);
-    expect(xml.match(/<a:close ?\/>/g)).toHaveLength(1);
+    expect(xml.match(/<a:close ?\/>/g)).toHaveLength(2);
     for (const label of ["3 cm", "4 cm", "x"]) expect(xml).toContain(`<a:t>${label}</a:t>`);
     expect(xml.split("<p:txBody>").length - 1).toBe(6);
     const figure = diagram.elements[0];
@@ -742,9 +742,9 @@ describe("exportLessonPptx", () => {
     };
     const figure = drawFigure("triangle", values, theme, FIGURE_RECT);
     const xml = await slideXml([figure]);
-    // The closed outline, the open right-angle square, and two double arcs (at A and at B).
+    // The closed outline, the filled right-angle square, and two double arcs (at A and at B).
     expect(xml.split("<a:custGeom>").length - 1).toBe(6);
-    expect(xml.split(/<a:close ?\/>/).length - 1).toBe(1);
+    expect(xml.split(/<a:close ?\/>/).length - 1).toBe(2);
     // The arcs are smooth: cubic Béziers, never a polygon of straight steps.
     expect(xml.split("<a:cubicBezTo>").length - 1).toBeGreaterThan(0);
     // The two equal-side ticks are lines.

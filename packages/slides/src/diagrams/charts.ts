@@ -4,7 +4,7 @@
  * geometry; the writer gives categories, values and items. Pure string building on the shared kit.
  */
 import { z } from "zod";
-import { STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
+import { look, STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
 import { type Ctx, mix, n, num, text, textWidth, ticks, wrap } from "./svg";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
@@ -99,8 +99,16 @@ export function drawBarChart(s: BarChart, x: Ctx, w: number, h: number): string 
   if (!fits(cfs)) bad(x, "the bar chart's category names do not fit");
   const catLines = Math.max(...s.bars.map((b) => wrap(b.label, x, slotW0 - 6, 2, cfs).length));
   if (s.style === "bars") {
-    const tv = ticks(0, top > 0 ? top : 1, undefined, 5);
-    const yMax = Math.max(tv[tv.length - 1] ?? 1, top);
+    const counts = look().preset !== "current" && s.bars.every((b) => Number.isInteger(b.value));
+    // The axis covers the data: its top is the first round tick at or above the tallest bar.
+    // Counts tick on whole numbers (no "7.5 pupils"), so a fractional step rounds up.
+    const raw = ticks(0, top > 0 ? top : 1, undefined, 5);
+    const step0 = (raw[1] ?? 1) - (raw[0] ?? 0) || 1;
+    const step = counts ? Math.max(1, Math.ceil(step0)) : step0;
+    const yMax = Math.ceil((top > 0 ? top : 1) / step - 1e-9) * step;
+    const tv: number[] = [];
+    for (let v = 0; v <= yMax + 1e-9; v += step) tv.push(Math.round(v * 1e6) / 1e6);
+    x.axes?.push({ name: "bar chart", max: tv[tv.length - 1] ?? 0, data: top });
     const tw = Math.max(...tv.map((v) => textWidth(num(v), x, small)));
     const L = (s.y ? fs * 1.3 : 0) + tw + 10;
     const B = catLines * cfs * 1.2 + 8 + (s.x ? fs * 1.4 : 0);
@@ -120,19 +128,20 @@ export function drawBarChart(s: BarChart, x: Ctx, w: number, h: number): string 
     s.bars.forEach((b, i) => {
       const cx = L + slot * (i + 0.5);
       out.push(
-        `<rect x="${n(cx - bw / 2)}" y="${n(Y(b.value))}" width="${n(bw)}" height="${n(Y(0) - Y(b.value))}" fill="${x.dark ? x.c.tint : mix(c.accent, c.surface, 0.55)}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
+        `<rect x="${n(cx - bw / 2)}" y="${n(Y(b.value))}" width="${n(bw)}" height="${n(Y(0) - Y(b.value))}" fill="${look().outlines ? (x.dark ? x.c.tint : mix(c.accent, c.surface, 0.55)) : c.accent}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
       );
       out.push(text(x, cx, Y(0) + 6, wrap(b.label, x, slot - 6, 2, cfs), { fs: cfs, v: "top" }));
     });
+    // Modern looks: the baseline only; the gridlines carry the scale.
     out.push(
-      `<line x1="${n(L)}" y1="${n(T)}" x2="${n(L)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/><line x1="${n(L)}" y1="${n(Y(0))}" x2="${n(L + pw)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
+      `${look().preset === "current" ? `<line x1="${n(L)}" y1="${n(T)}" x2="${n(L)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/>` : ""}<line x1="${n(L)}" y1="${n(Y(0))}" x2="${n(L + pw)}" y2="${n(Y(0))}" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
     );
     x.strokes?.push([L, Y(0), L + pw, Y(0)], [L, T, L, Y(0)]);
     if (s.x)
-      out.push(text(x, L + pw / 2, h - 2, [s.x.label], { v: "bottom", weight: WEIGHT.value }));
+      out.push(text(x, L + pw / 2, h - 2, [s.x.label], { v: "bottom", weight: WEIGHT.name }));
     if (s.y)
       out.push(
-        `<text transform="rotate(-90 ${n(fs * 0.7)} ${n(T + ph / 2)})" x="${n(fs * 0.7)}" y="${n(T + ph / 2 + fs * 0.35)}" font-family="${x.body}" font-size="${fs}" font-weight="${WEIGHT.value}" fill="${c.ink}" text-anchor="middle">${s.y.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
+        `<text transform="rotate(-90 ${n(fs * 0.7)} ${n(T + ph / 2)})" x="${n(fs * 0.7)}" y="${n(T + ph / 2 + fs * 0.35)}" font-family="${x.body}" font-size="${fs}" font-weight="${WEIGHT.name}" fill="${c.ink}" text-anchor="middle">${s.y.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
       );
     return out.join("");
   }
@@ -266,9 +275,31 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
   const fs = x.fs;
   const out: string[] = [];
   const three = s.sets.length === 3;
-  const head = fs * 1.5;
-  const r = three ? Math.min(w / 3.1, (h - head) / 2.9) : Math.min(w / 3.3, (h - head) / 2.1);
-  const cy = head + (three ? r * 1.0 : (h - head) / 2);
+  const ifs = sub(fs, 0.9);
+  // The two top names side by side over their circles; when they would touch, each keeps to its
+  // own half (left- and right-aligned) and wraps onto two lines, and the head grows to hold them.
+  const nameW = (t: string) => textWidth(t, x, fs, WEIGHT.name);
+  const top2 = s.sets.slice(0, 2);
+  const roomOf = (rr: number) => 3.2 * rr;
+  const clash = (rr: number) =>
+    top2.reduce((a, t) => a + nameW(t), 0) + fs > Math.min(w - 8, roomOf(rr));
+  const split = (t: string) => wrap(t, x, w / 2 - fs * 0.5 - 4, 2, fs, WEIGHT.name);
+  // Items in no set sit in a row along the foot of the universal box, below the circles.
+  const outside = s.items
+    .filter((it) => !it.in.some((i) => i < s.sets.length))
+    .map((it) => it.text);
+  const outLines = outside.length ? wrap(outside.join(",\u2003"), x, w - 28, 2, ifs) : [];
+  const strip = outLines.length ? outLines.length * ifs * 1.2 + ifs * 0.6 : 0;
+  const radius = (head: number) => {
+    const room = h - head - strip;
+    return three ? Math.min(w / 3.1, room / 2.9) : Math.min(w / 3.3, room / 2.1);
+  };
+  const wrapNames = clash(radius(fs * 1.5));
+  const nameLines = top2.map((t) => (wrapNames ? split(t) : [t]));
+  const head = fs * (1.5 + 1.2 * (Math.max(...nameLines.map((l) => l.length)) - 1));
+  const room = h - head - strip;
+  const r = radius(head);
+  const cy = head + (three ? r * 1.0 : room / 2);
   const centres: [number, number][] = three
     ? [
         [w / 2 - r * 0.55, cy],
@@ -279,30 +310,45 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
         [w / 2 - r * 0.6, cy],
         [w / 2 + r * 0.6, cy],
       ];
+  // The universal set: a heavy frame in the current look, a quiet hairline in the modern ones.
   out.push(
-    `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
+    look().frame
+      ? `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`
+      : `<rect x="1" y="1" width="${n(w - 2)}" height="${n(h - 2)}" rx="12" fill="none" stroke="${mix(c.ink, c.bg, 0.35)}" stroke-width="${STROKE.hair}"/>`,
   );
   const fills = [c.accent, c.accent2, c.ink];
+  // Flat: no outlines, so the sets read from stronger, overlapping washes.
+  const wash = look().outlines ? (x.dark ? 0.16 : 0.12) : x.dark ? 0.3 : 0.2;
   centres.forEach(([px, py], i) => {
     out.push(
-      `<circle cx="${n(px)}" cy="${n(py)}" r="${n(r)}" fill="${fills[i]}" fill-opacity="${x.dark ? 0.16 : 0.12}" stroke="${fills[i] === c.ink ? c.ink : fills[i]}" stroke-width="${STROKE.line}"/>`,
+      `<circle cx="${n(px)}" cy="${n(py)}" r="${n(r)}" fill="${fills[i]}" fill-opacity="${wash}" stroke="${fills[i] === c.ink ? c.ink : fills[i]}" stroke-width="${STROKE.line}"/>`,
     );
   });
   // Set names over their circles (the third under it).
   s.sets.forEach((name, i) => {
     const [px, py] = centres[i] as [number, number];
     const below = i === 2;
+    if (wrapNames && !below) {
+      out.push(
+        text(x, i === 0 ? 4 : w - 4, py - r - fs * 0.3, nameLines[i] ?? [name], {
+          weight: WEIGHT.name,
+          anchor: i === 0 ? "start" : "end",
+          v: "bottom",
+        }),
+      );
+      return;
+    }
     const ax = i === 0 ? px - r * 0.3 : i === 1 ? px + r * 0.3 : px;
     out.push(
       text(
         x,
         Math.max(
-          textWidth(name, x, fs, WEIGHT.value) / 2 + 4,
-          Math.min(w - textWidth(name, x, fs, WEIGHT.value) / 2 - 4, ax),
+          textWidth(name, x, fs, WEIGHT.name) / 2 + 4,
+          Math.min(w - textWidth(name, x, fs, WEIGHT.name) / 2 - 4, ax),
         ),
-        below ? Math.min(h - fs * 0.7, py + r + fs * 0.8) : py - r - fs * 0.6,
+        below ? Math.min(h - strip - fs * 0.7, py + r + fs * 0.8) : py - r - fs * 0.6,
         [name],
-        { weight: WEIGHT.value },
+        { weight: WEIGHT.name },
       ),
     );
   });
@@ -330,20 +376,16 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
       .join(",");
     groups.set(key, [...(groups.get(key) ?? []), it.text]);
   }
-  const ifs = sub(fs, 0.9);
   for (const [key, items] of groups) {
     const ins = key ? key.split(",").map(Number) : [];
+    if (ins.length === 0) continue;
     const [ax, ay] = region(ins);
     const lh = ifs * 1.2;
     items.forEach((t, j) => {
-      out.push(
-        text(x, ins.length === 0 ? w - 8 : ax, ay + (j - (items.length - 1) / 2) * lh, [t], {
-          fs: ifs,
-          anchor: ins.length === 0 ? "end" : "middle",
-        }),
-      );
+      out.push(text(x, ax, ay + (j - (items.length - 1) / 2) * lh, [t], { fs: ifs }));
     });
   }
+  if (outLines.length) out.push(text(x, w / 2, h - strip / 2 - 1, outLines, { fs: ifs }));
   return out.join("");
 }
 

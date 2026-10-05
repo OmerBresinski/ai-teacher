@@ -4,6 +4,7 @@
  * of the drawing's lines and filled marks, and clear of every label and leader already placed. A
  * label set away from its point gets a leader line. Pure and deterministic.
  */
+import { WEIGHT } from "./style";
 import { type Ctx, n, text, textWidth, wrap } from "./svg";
 
 export type Box = { x0: number; y0: number; x1: number; y1: number };
@@ -206,7 +207,7 @@ function nearest(b: Box, px: number, py: number): [number, number] {
  * and a fault is recorded, so the gate sees it.
  */
 export function placeLabel(x: Ctx, sc: Scene, w: number, h: number, req: LabelReq): string {
-  const weight = req.weight ?? 600;
+  const weight = req.weight ?? WEIGHT.name;
   const [px, py] = req.at;
   const sizes = [
     x.fs,
@@ -248,6 +249,7 @@ export function placeLabel(x: Ctx, sc: Scene, w: number, h: number, req: LabelRe
           const out: string[] = [];
           if (far) {
             sc.leaders.push(leader);
+            x.leaders?.push(leader);
             x.strokes?.push(leader);
             out.push(
               `<line x1="${n(px)}" y1="${n(py)}" x2="${n(end[0])}" y2="${n(end[1])}" stroke="${x.c.ink}" stroke-width="1.75" stroke-linecap="round"/>`,

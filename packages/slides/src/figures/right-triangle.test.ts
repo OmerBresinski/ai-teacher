@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { GroupElement, PathElement, SlideElement, TextElement } from "@tj/domain/documents";
+import { figureLook } from "../diagrams/style";
+import { mix } from "../diagrams/svg";
 import { boxH, FIGURE_RECT } from "../layouts";
 import { isEditorialIssue } from "../specs";
 import { getTheme, THEMES } from "../themes";
@@ -59,11 +61,14 @@ describe("drawFigure: right-triangle", () => {
     expect(paths(g)).toHaveLength(2);
     expect(triangle?.closed).toBe(true);
     expect(triangle?.points).toHaveLength(3);
-    expect(triangle?.stroke).toBe(chalk.colors.ink);
-    expect(triangle?.strokeWidth).toBe(4);
+    expect(triangle?.stroke).toBe(figureLook(chalk, mix).stroke);
+    expect(triangle?.strokeWidth).toBe(figureLook(chalk, mix).outline);
     expect(triangle?.fill).toBeDefined();
-    expect(mark?.closed).toBe(true);
-    expect(mark?.points).toHaveLength(4);
+    // The filled square is closed from the vertex; line art draws the open two-leg mark.
+    if (figureLook(chalk, mix).mark) {
+      expect(mark?.closed).toBe(true);
+      expect(mark?.points).toHaveLength(4);
+    }
     // The mark sits in the corner between the base and the height.
     if (!triangle || !mark) throw new Error("no paths");
     expect(mark.x).toBe(triangle.x);

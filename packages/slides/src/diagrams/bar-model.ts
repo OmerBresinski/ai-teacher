@@ -1,5 +1,6 @@
 /** Bar models: one to four bars cut into parts, drawn to one scale, with totals as braces. */
 import type { BarModel } from "./schema";
+import { look, WEIGHT } from "./style";
 import { type Ctx, hBrace, n, text, textWidth, vBrace } from "./svg";
 
 export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string {
@@ -27,13 +28,17 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
     y += tops[i] ?? 0;
     if (i === 0) firstTop = y;
     if (b.label) {
-      out.push(text(x, left - gap, y + barH / 2, [b.label], { anchor: "end", weight: 600 }));
+      out.push(
+        text(x, left - gap, y + barH / 2, [b.label], { anchor: "end", weight: WEIGHT.name }),
+      );
     }
     let px = x0;
     for (const p of b.parts) {
       const pw = p.value * unit;
+      // Modern looks: touching cells stand a hair apart instead of sharing an outline.
+      const cut = look().gap * fs;
       out.push(
-        `<rect x="${n(px)}" y="${n(y)}" width="${n(pw)}" height="${n(barH)}" fill="${p.shaded ? c.accent : c.tint}" stroke="${c.ink}" stroke-width="2"/>`,
+        `<rect x="${n(px + cut / 2)}" y="${n(y)}" width="${n(pw - cut)}" height="${n(barH)}" fill="${p.shaded ? c.accent : c.tint}" stroke="${c.ink}" stroke-width="2"/>`,
       );
       if (p.label && textWidth(p.label, x, fs, 600) <= pw - 6) {
         out.push(

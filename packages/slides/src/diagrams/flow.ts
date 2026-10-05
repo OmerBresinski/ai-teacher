@@ -11,7 +11,7 @@ type Box = { cx: number; cy: number; w: number; h: number };
 /** A label's lines in box `b` at `f` (as many as the box holds, 1.2 em each), or undefined if cut. */
 function boxLines(x: Ctx, b: Box, label: string, f: number): string[] | undefined {
   const room = Math.max(1, Math.floor((b.h - f * 0.5) / (f * 1.2)));
-  const lines = wrap(label, x, b.w - f * 0.9, Math.min(3, room), f, WEIGHT.value);
+  const lines = wrap(label, x, b.w - f * 0.9, Math.min(3, room), f, WEIGHT.name);
   return lines[lines.length - 1]?.endsWith("…") ? undefined : lines;
 }
 
@@ -27,8 +27,8 @@ function boxSize(x: Ctx, boxes: Box[], labels: string[]): number {
 
 function box(x: Ctx, b: Box, label: string, fs: number): string {
   const { c } = x;
-  const lines = boxLines(x, b, label, fs) ?? wrap(label, x, b.w - fs * 0.9, 3, fs, WEIGHT.value);
-  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>${text(x, b.cx, b.cy, lines, { weight: WEIGHT.value, fs })}`;
+  const lines = boxLines(x, b, label, fs) ?? wrap(label, x, b.w - fs * 0.9, 3, fs, WEIGHT.name);
+  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>${text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs })}`;
 }
 
 /** Where the segment from `b`'s centre towards (tx, ty) leaves `b`, plus a small gap. */
@@ -86,6 +86,15 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     const [x1, y1] = edge(b, next.cx, next.cy, 4);
     const [x2, y2] = edge(next, b.cx, b.cy, 4);
     out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
+    x.arrows?.push({
+      tip: [x2, y2],
+      target: {
+        x0: next.cx - next.w / 2,
+        y0: next.cy - next.h / 2,
+        x1: next.cx + next.w / 2,
+        y1: next.cy + next.h / 2,
+      },
+    });
     const note = f.steps[i]?.arrow;
     if (note) {
       const vertical = Math.abs(x2 - x1) < 1;
@@ -158,6 +167,15 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
       `<path d="M${n(x1)},${n(y1)} Q${n(qx)},${n(qy)} ${n(ex)},${n(ey)}" fill="none" stroke="${c.ink}" stroke-width="3" stroke-linecap="round"/>`,
       arrowHead(x2, y2, qx, qy, head, c.ink),
     );
+    x.arrows?.push({
+      tip: [x2, y2],
+      target: {
+        x0: next.cx - next.w / 2,
+        y0: next.cy - next.h / 2,
+        x1: next.cx + next.w / 2,
+        y1: next.cy + next.h / 2,
+      },
+    });
     const note = f.steps[i]?.arrow;
     if (note) {
       const lx = qx + (ox / ol) * fs * 0.9;
