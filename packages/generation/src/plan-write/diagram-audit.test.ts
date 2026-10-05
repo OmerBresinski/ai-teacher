@@ -167,7 +167,7 @@ describe("DIAGRAM-AUDIT big diagram", () => {
 });
 
 describe("DIAGRAM-AUDIT zone capacity", () => {
-  const { t3ZoneLines } = require("./simple");
+  const { t3ZoneLines, t3Menu } = require("./simple");
   const { capacityLine, diagramCapacities, zoneShape } = require("@tj/slides/diagrams");
   test("picture forms state their zone's position and shape, from code", () => {
     const z = t3ZoneLines();
@@ -176,7 +176,11 @@ describe("DIAGRAM-AUDIT zone capacity", () => {
     // The picture zone is read from the photo layout itself, not a constant.
     expect(z.picture).toContain(`the picture on the left (${zoneShape(g.picture.w, g.picture.h)})`);
     expect(z.picture).toMatch(/about \d+ characters wide, room for \d+ lines/);
-    expect(z["big-diagram"]).toContain("full width under the heading, landscape");
+    expect(z["big-diagram"]).toContain("across the slide under the heading (landscape");
+    expect(z["big-diagram"]).toContain("its 2–3 lines below it");
+    const menu = t3Menu().split("\n");
+    const pic = menu.findIndex((l: string) => l.startsWith("- picture:"));
+    expect(menu[pic + 1]).toMatch(/^- big-diagram: the picture form/);
     expect(zoneShape(422, 540)).toBe("portrait, about 4:5");
   });
   test("capacities come from the renderer and only grow with the zone", () => {

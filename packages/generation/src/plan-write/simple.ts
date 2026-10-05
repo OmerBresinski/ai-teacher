@@ -381,7 +381,7 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
  * code, and code expands the wire shape into the renderer's spec and validates it with its parse.
  */
 // t4 (5 Oct): + closing independent practice before the exit ticket (T3-LEDGER U4b).
-export const TEACHER3_LESSON_VERSION = "simple-lesson.t6";
+export const TEACHER3_LESSON_VERSION = "simple-lesson.t7";
 /**
  * lab/t3 (Greg, 5 Oct 2026: T3 is the candidate): the plan-write planner writes with T3 by default.
  * `PLAN_WRITE_MODE=stream` or `plan-write` runs R3 instead.
@@ -494,7 +494,11 @@ export function optionCapacity(form: string): number | undefined {
 /** T3's menu lines: the form list, with each option capacity read from the layout code. */
 export function t3Menu(themeId = T3_DEFAULT_THEME): string {
   const zones = t3ZoneLines(themeId);
-  return Object.entries(T3_FORMS)
+  // big-diagram is read as a kind of picture slide, so it follows picture (LAYOUT-FIX ledger B1).
+  const entries = Object.entries(T3_FORMS).filter(([k]) => k !== "big-diagram");
+  const at = entries.findIndex(([k]) => k === "picture") + 1;
+  entries.splice(at, 0, ["big-diagram", T3_FORMS["big-diagram"] as string]);
+  return entries
     .map(([k, v]) => {
       const n = optionCapacity(k);
       const c = CAPACITY_FORMS[k];
@@ -596,7 +600,8 @@ function t3ZoneLines(themeId = T3_DEFAULT_THEME): Record<string, string> {
   const chars = bodyLineChars(t, g.text.w);
   return {
     picture: `2–3 lines in a column on the right (about ${chars} characters wide, room for ${lines} lines), the picture on the left (${zoneShape(g.picture.w, g.picture.h)})`,
-    "big-diagram": `a heading and one drawing filling the slide (full width under the heading, ${zoneShape(g.big.w, g.big.h)}), with an optional caption of up to ${FIGURE_FULL_CAPTION_LINES} lines of about ${figureFullCaptionChars(t)} characters`,
+    // LAYOUT-FIX ledger B1: named as the picture form at full width, its lines kept, beside it.
+    "big-diagram": `the picture form with the picture across the slide under the heading (${zoneShape(g.big.w, g.big.h)}) and its 2–3 lines below it (room for ${FIGURE_FULL_CAPTION_LINES} lines of about ${figureFullCaptionChars(t)} characters), for a drawing of a sequence, a process or panels side by side`,
   };
 }
 
