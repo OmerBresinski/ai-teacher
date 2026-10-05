@@ -134,12 +134,15 @@ export function imagePrompt(
           `It shows the real ${request.named ? request.named : "thing"} faithfully, as it really looks (or looked): nothing invented, nothing reconstructed, nothing added.`,
         ]
       : [
-          "The subject fills the frame against a plain, uncluttered background. Nothing else is in the picture: no people, animals or objects the request does not name.",
+          "The subject fills the frame in a simple, uncluttered setting that suits it. Nothing else is in the picture: no people, animals or objects the request does not name.",
         ]),
     ...locale,
     ...(locale.length ? ["No landmarks, flags or national symbols."] : []),
     "A single image, not a collage, grid or set of panels.",
-    "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
+    // A real thing carries its own text (a 1923 banknote's numbers): only added text is ruled out.
+    faithful
+      ? "No added captions, labels or watermarks."
+      : "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ].join("\n");
 }
 
