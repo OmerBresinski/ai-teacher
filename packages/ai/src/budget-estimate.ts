@@ -10,11 +10,12 @@ export const PROTOCOL_TOKEN_HEADROOM = 4096;
 export const MAX_IMAGE_INPUT_TOKENS = 36_001;
 /**
  * Models whose image input the 32-px patch formula below bounds: the GPT-5.6 family on Bedrock and
- * OpenAI direct, and GPT-6 Luna direct (the default since 25–26 Sept 2026). Any other model's
+ * OpenAI direct, GPT-6 Luna direct (the default since 25–26 Sept 2026) and, for the lab's layout
+ * sheet (LAYOUT-TEST), GPT-6.1 Sol direct. Any other model's
  * image call is unestimable and refused before it is sent.
  */
 const IMAGE_MODELS =
-  /^(?:(?:us|global|in)\.openai\.gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-6-luna)$/;
+  /^(?:(?:us|global|in)\.openai\.gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-5\.6-(?:luna|terra|sol)|openai\/gpt-6-luna|openai\/gpt-6\.1-sol)$/;
 /**
  * A model id as IMAGE_MODELS names it: the direct OpenAI provider reports the bare id
  * (`gpt-6-luna`), which is the gateway's `openai/` row (as `priceOf` reads it).
