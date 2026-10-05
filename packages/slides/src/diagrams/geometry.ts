@@ -16,6 +16,9 @@ import { pathSegments, samplePath } from "../path";
 import { diagramElement, diagramFaults, lastDiagramProbe } from "./index";
 import { TYPE_FLOOR } from "./style";
 
+/** The least room between a label and the drawing's left or right edge, in points. */
+export const EDGE_INSET = 3;
+
 /** How far an arrow's tip may stand off the box it points at, in points. */
 export const ARROW_GAP_MAX = 10;
 
@@ -38,6 +41,10 @@ export function diagramGeometryFaults(
         `the label "${b.text}" renders at ${Math.round(pt * 10) / 10} pt, under the ${TYPE_FLOOR} pt floor`,
       );
   }
+  // A label keeps an inset from the drawing's left and right edges.
+  for (const b of probe.rec)
+    if (b.x0 < EDGE_INSET - 0.5 || b.x1 > size.w - EDGE_INSET + 0.5)
+      out.push(`the label "${b.text}" touches the drawing's edge`);
   // Any two labels touching (diagramFaults allows a 15 % graze; the eye does not).
   const rec = probe.rec;
   for (let i = 0; i < rec.length; i++)

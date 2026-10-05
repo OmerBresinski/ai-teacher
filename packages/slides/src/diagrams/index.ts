@@ -17,7 +17,7 @@ import { drawLineGraph } from "./line-graph";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
-import { finished, laddered, WEIGHT } from "./style";
+import { finished, laddered, look, WEIGHT } from "./style";
 import { type Ctx, context, type DrawnText, esc, mix, n, text, wrap } from "./svg";
 import { drawTable, tableHeight } from "./table";
 import {
@@ -38,6 +38,9 @@ export {
   withTangents,
 } from "./normalise";
 export * from "./schema";
+
+/** The modern looks' inset between a drawing and its zone's left and right edges, in points. */
+export const DRAW_INSET = 4;
 
 /** The drawn diagram's name in the layers list; present, export and print show it. */
 export const DIAGRAM_DRAWN_NAME = "Diagram";
@@ -219,43 +222,75 @@ function body(
         leaders: probe.leaders,
       }
     : x;
+  // Modern looks: the drawing keeps an inset from its zone's left and right edges, so no label,
+  // axis title or bar name touches them.
+  // A river scene places its names against its own drawn margins, so it keeps the full width.
+  const inset = look().preset === "current" || s.kind === "river" ? 0 : DRAW_INSET;
+  const wi = w - 2 * inset;
+  const marks = probe
+    ? {
+        rec: probe.rec.length,
+        strokes: probe.strokes.length,
+        arrows: probe.arrows?.length ?? 0,
+        leaders: probe.leaders?.length ?? 0,
+      }
+    : undefined;
   const inner = (() => {
     switch (s.kind) {
       case "bar-model":
-        return drawBarModel(s, ix, w, ih);
+        return drawBarModel(s, ix, wi, ih);
       case "line-graph":
-        return drawLineGraph(s, ix, w, ih);
+        return drawLineGraph(s, ix, wi, ih);
       case "flow":
-        return drawFlow(s, ix, w, ih);
+        return drawFlow(s, ix, wi, ih);
       case "labelled-diagram":
-        return drawLabelled(s, ix, w, ih);
+        return drawLabelled(s, ix, wi, ih);
       case "number-line":
-        return drawNumberLine(s, ix, w, ih);
+        return drawNumberLine(s, ix, wi, ih);
       case "table":
-        return drawTable(s, ix, w, ih);
+        return drawTable(s, ix, wi, ih);
       case "particles":
-        return drawParticles(s, ix, w, ih);
+        return drawParticles(s, ix, wi, ih);
       case "hydrograph":
-        return drawHydrograph(s, ix, w, ih);
+        return drawHydrograph(s, ix, wi, ih);
       case "timeline":
-        return drawTimeline(s, ix, w, ih);
+        return drawTimeline(s, ix, wi, ih);
       case "layers":
-        return drawLayers(s, ix, w, ih);
+        return drawLayers(s, ix, wi, ih);
       case "cycle":
-        return drawCycle(s, ix, w, ih);
+        return drawCycle(s, ix, wi, ih);
       case "river":
-        return drawRiver(s, ix, w, ih);
+        return drawRiver(s, ix, wi, ih);
       case "bar-chart":
-        return drawBarChart(s, ix, w, ih);
+        return drawBarChart(s, ix, wi, ih);
       case "pie":
-        return drawPie(s, ix, w, ih);
+        return drawPie(s, ix, wi, ih);
       case "venn":
-        return drawVenn(s, ix, w, ih);
+        return drawVenn(s, ix, wi, ih);
       case "carroll":
-        return drawCarroll(s, ix, w, ih);
+        return drawCarroll(s, ix, wi, ih);
     }
   })();
-  const drawn = finished(laddered(inner), x.c, mix, x.dark);
+  if (inset && probe && marks) {
+    for (const r of probe.rec.slice(marks.rec)) {
+      r.x0 += inset;
+      r.x1 += inset;
+    }
+    for (const sg of probe.strokes.slice(marks.strokes)) {
+      sg[0] += inset;
+      sg[2] += inset;
+    }
+    for (const a of probe.arrows?.slice(marks.arrows) ?? []) {
+      a.tip = [a.tip[0] + inset, a.tip[1]];
+      a.target = { ...a.target, x0: a.target.x0 + inset, x1: a.target.x1 + inset };
+    }
+    for (const l of probe.leaders?.slice(marks.leaders) ?? []) {
+      l[0] += inset;
+      l[2] += inset;
+    }
+  }
+  const fin = finished(laddered(inner), x.c, mix, x.dark);
+  const drawn = inset ? `<g transform="translate(${n(inset)},0)">${fin}</g>` : fin;
   return top ? `${head}<g transform="translate(0,${n(top)})">${drawn}</g>` : drawn;
 }
 
@@ -444,6 +479,8 @@ const FILLS_BOX = new Set([
   // Plots keep their box: a chart cut to its smallest clean height squashes its scale.
   "bar-chart",
   "venn",
+  // A timeline keeps its box and stands in its middle: its type sized up to fill it.
+  "timeline",
   "pie",
   "line-graph",
   "hydrograph",

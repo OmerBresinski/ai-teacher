@@ -131,7 +131,8 @@ function panels(s: Particles): Panel[] {
   return [{ dots: before }, { dots: after }];
 }
 
-const panelInset = () => (look().preset === "current" ? 0 : 4);
+// The modern looks' drawing inset (DRAW_INSET) already keeps the panels off the edges.
+const panelInset = () => 0;
 
 export function drawParticles(s: Particles, x: Ctx, w: number, h: number): string {
   const ps = panels(s);
@@ -750,11 +751,52 @@ function breakMark(x: Ctx, cx: number, cy: number, vertical: boolean): string {
   return gap + sl(-g) + sl(g);
 }
 
+/** The gaps a dated timeline caps (longer than three times the median gap): each gets a break. */
+function cappedGaps(s: Timeline): Set<number> {
+  const g = yearGaps(s);
+  if (!g) return new Set();
+  const med = median(g);
+  return new Set(g.flatMap((v, i) => (v > 3 * med ? [i] : [])));
+}
+
+const median = (v: number[]) => {
+  const o = [...v].sort((a, b) => a - b);
+  const m = Math.floor(o.length / 2);
+  return o.length % 2 ? (o[m] as number) : ((o[m - 1] as number) + (o[m] as number)) / 2;
+};
+
+/** The year gaps between events, or undefined when a date names no year or runs backwards. */
+function yearGaps(s: Timeline): number[] | undefined {
+  const ys = s.events.map((e) => yearOf(e.date));
+  if (ys.length < 2 || ys.some((y) => y === undefined)) return undefined;
+  const g = (ys as number[]).slice(1).map((y, i) => y - (ys[i] as number));
+  return g.some((v) => v < 0) ? undefined : g;
+}
+
+/** Event x positions from `a` to `b` spaced by date (see `drawTimeline`), or undefined. */
+function datedXs(s: Timeline, a: number, b: number): number[] | undefined {
+  const g = yearGaps(s);
+  if (!g || g.every((v) => v === 0)) return undefined;
+  const med = Math.max(median(g), 1e-9);
+  const capped = g.map((v) => Math.min(v, 3 * med));
+  const mean = capped.reduce((p, q) => p + q, 0) / capped.length;
+  const wts = capped.map((v) => Math.max(v, mean * 0.75));
+  const total = wts.reduce((p, q) => p + q, 0);
+  const out = [a];
+  for (const v of wts) out.push((out[out.length - 1] as number) + ((b - a) * v) / total);
+  return out;
+}
+
 export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string {
   const k = s.events.length;
   const pad = 6;
   const slot = (w - 2 * pad) / k;
-  const xs = s.events.map((_, i) => pad + slot * (i + 0.5));
+  const even = s.events.map((_, i) => pad + slot * (i + 0.5));
+  const modern = look().preset !== "current";
+  // Modern looks: events stand by date (a long gap capped at three times the median and marked
+  // with a break, a short one held to three quarters of the mean gap), evenly only when that will not fit.
+  const dated = modern ? datedXs(s, pad + slot / 2, w - pad - slot / 2) : undefined;
+  let xs = even;
   const colW = Math.min(slot * 2 - 10, w * 0.42);
   const stem = 0.9 * x.fs;
   type Fit = {
@@ -765,42 +807,48 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
     per: number;
   };
   let fit: Fit | undefined;
-  const midOf = (cx: number, bw: number) => Math.max(bw / 2 + 2, Math.min(w - bw / 2 - 2, cx));
+  // Modern looks: labels keep an inset from the drawing's edges.
+  const edge = modern ? Math.max(8, x.fs * 0.5) : 2;
+  const midOf = (cx: number, bw: number) =>
+    Math.max(bw / 2 + edge, Math.min(w - bw / 2 - edge, cx));
   // DIAGRAM-AUDIT look #7: many events go down the slot at a readable size before crowding across it.
   const floor = k > 5 ? Math.max(TYPE_FLOOR, x.fs - 4) : TYPE_FLOOR;
-  for (let fs = x.fs; fs >= floor && !fit; fs -= 1) {
-    for (const share of [1, 0.82, 0.66]) {
-      if (fit) break;
-      const cw = colW * share;
-      const blocks = s.events.map((e) => {
-        const date = fitLines(x, e.date, cw, 1, fs, 700);
-        const body = fitLines(x, e.text, cw, 3, sub(fs, 0.92), WEIGHT.label);
-        if (!date || !body) return undefined;
-        const bw = Math.max(
-          blockSize(x, date, fs, 700).bw,
-          blockSize(x, body, sub(fs, 0.92), WEIGHT.label).bw,
-        );
-        const bh = 1.05 * fs + 0.15 * fs + blockSize(x, body, sub(fs, 0.92), WEIGHT.label).bh;
-        return { date, body, bw, bh };
-      });
-      if (blocks.some((b) => !b)) continue;
-      const bs = blocks as Fit["blocks"];
-      const up = Math.max(...bs.filter((_, i) => i % 2 === 0).map((b) => b.bh));
-      const down = Math.max(0, ...bs.filter((_, i) => i % 2 === 1).map((b) => b.bh));
-      const per = s.period ? 1.1 * fs + 0.9 * fs : 0;
-      if (up + down + 2 * stem + per + 12 > h) continue;
-      // Neighbours on the same side, where they are drawn (edge labels move in), keep a clear gap.
-      const clash = bs.some((b, i) => {
-        const o = bs[i + 2];
-        if (!o) return false;
-        const a = midOf(xs[i] as number, b.bw) + b.bw / 2;
-        const c = midOf(xs[i + 2] as number, o.bw) - o.bw / 2;
-        return a + 0.8 * fs > c;
-      });
-      if (clash) continue;
-      fit = { fs, blocks: bs, up, down, per };
+  for (const cand of dated ? [dated, even] : [even])
+    for (let fs = x.fs; fs >= floor && !fit; fs -= 1) {
+      for (const share of modern ? [1, 0.82, 0.66, 0.54] : [1, 0.82, 0.66]) {
+        if (fit) break;
+        xs = cand;
+        const cw = colW * share;
+        const blocks = s.events.map((e) => {
+          const date = fitLines(x, e.date, cw, 1, fs, 700);
+          const body = fitLines(x, e.text, cw, modern ? 4 : 3, sub(fs, 0.92), WEIGHT.label);
+          if (!date || !body) return undefined;
+          const bw = Math.max(
+            blockSize(x, date, fs, 700).bw,
+            blockSize(x, body, sub(fs, 0.92), WEIGHT.label).bw,
+          );
+          const bh = 1.05 * fs + 0.15 * fs + blockSize(x, body, sub(fs, 0.92), WEIGHT.label).bh;
+          return { date, body, bw, bh };
+        });
+        if (blocks.some((b) => !b)) continue;
+        const bs = blocks as Fit["blocks"];
+        const up = Math.max(...bs.filter((_, i) => i % 2 === 0).map((b) => b.bh));
+        const down = Math.max(0, ...bs.filter((_, i) => i % 2 === 1).map((b) => b.bh));
+        const per = s.period ? 1.1 * fs + 0.9 * fs : 0;
+        if (up + down + 2 * stem + per + 12 > h) continue;
+        // Neighbours on the same side, where they are drawn (edge labels move in), keep a clear gap.
+        const clash = bs.some((b, i) => {
+          const o = bs[i + 2];
+          if (!o) return false;
+          const a = midOf(xs[i] as number, b.bw) + b.bw / 2;
+          const c = midOf(xs[i + 2] as number, o.bw) - o.bw / 2;
+          return a + 0.8 * fs > c;
+        });
+        if (clash) continue;
+        fit = { fs, blocks: bs, up, down, per };
+      }
     }
-  }
+  if (fit && modern && xs !== dated) xs = even;
   if (!fit) return drawTimelineDown(s, x, w, h);
   const { fs, blocks, up, down, per } = fit;
   const total = up + down + 2 * stem + per;
@@ -830,13 +878,12 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
       }),
     );
   }
-  for (const i of longGaps(s))
+  for (const i of modern && xs === dated ? cappedGaps(s) : longGaps(s))
     out.push(breakMark(x, ((xs[i] as number) + (xs[i + 1] as number)) / 2, lineY, false));
   blocks.forEach((b, i) => {
     const cx = xs[i] as number;
     const above = i % 2 === 0;
-    const half = b.bw / 2;
-    const mid = Math.max(half + 2, Math.min(w - half - 2, cx));
+    const mid = midOf(cx, b.bw);
     const y0 = above ? lineY - stem - b.bh : lineY + stem;
     out.push(
       `<line x1="${n(cx)}" y1="${n(lineY)}" x2="${n(cx)}" y2="${n(above ? lineY - stem + 3 : lineY + stem - 3)}" stroke="${x.c.muted}" stroke-width="2"/>`,
