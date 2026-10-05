@@ -161,6 +161,11 @@ export interface PipelineDeps {
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
   /**
+   * lab/cand-fix look check: renders the given slides (0-based indices) of this lesson as the
+   * presenter shows them and returns each as an image data URL. Absent: the look check is off.
+   */
+  renderSlides?: (lesson: Lesson, indices: number[]) => Promise<Map<number, string>>;
+  /**
    * Plan (skeleton, facts, Verify) runs on the `frontier` class for a lesson whose year group is
    * this number or above (TEACH-259; `AI_PLAN_FRONTIER_FROM_YEAR`). Unset: every Plan call is
    * `standard`, as before. Generate and the later stages never read it.

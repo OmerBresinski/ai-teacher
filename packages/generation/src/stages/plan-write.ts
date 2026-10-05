@@ -96,6 +96,16 @@ import {
   visualHolds,
   withoutPlanning,
 } from "../plan-write/giveaway";
+import {
+  type LookFlag,
+  type LookReport,
+  type LookSlide,
+  lookCheckSchema,
+  lookFailure,
+  onScreenFields,
+  parseLookFlags,
+  runLookCheck,
+} from "../plan-write/look-check";
 import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
@@ -139,6 +149,7 @@ import {
   exitItemsPrompt,
   exitItemsSchema,
 } from "../prompts/exit-items";
+import { LOOK_CHECK_VERSION, type LookCheckInput, lookCheckPrompt } from "../prompts/look-check";
 import {
   MASTER_CHECK_KINDS,
   MASTER_CHECK_VERSION,
@@ -233,6 +244,8 @@ const EXIT_TEACHING_FORMS = new Set([
   "vocabulary",
 ]);
 const MAX_OUTPUT_TOKENS_CAPTION_CLAIMS = 2000;
+/** One slide's look check at effort low: reasoning plus a short flag list. */
+const MAX_OUTPUT_TOKENS_LOOK_CHECK = 4000;
 const captionClaimsSchema = z.object({
   claims: z.array(
     z.object({
@@ -699,6 +712,8 @@ export type PlanWriteReport = {
    * commons = a Commons diagram; photo = an on-topic photo; fullWidth = text only).
    */
   diagramRungs?: Record<string, "settled" | "simpler" | "commons" | "photo" | "fullWidth">;
+  /** lab/cand-fix look check: flags, actions and the re-check, when `deps.renderSlides` is given. */
+  lookCheck?: LookReport;
 };
 
 export type GateName =
@@ -3221,6 +3236,149 @@ export async function planWriteSlides(
       },
       "cand-fix planning cut",
     );
+  // lab/cand-fix look check: each slide rendered as the presenter shows it and checked by eye; high
+  // flags act once (item, field, diagram or photo), touched slides are re-rendered and re-checked once.
+  let lookCheck: LookReport | undefined;
+  const renderSlides = deps.renderSlides;
+  if (mode === "stream" && renderSlides && !deps.signal.aborted) {
+    await writing;
+    const objectiveTexts = finalFacts.objectives.map((o) => o.text);
+    const lookSlides = (): LookSlide[] =>
+      placed
+        .filter((p) => lesson.slides[p.index])
+        .sort((a, b) => a.index - b.index)
+        .map((p) => ({
+          index: p.index,
+          slideId: lesson.slides[p.index]?.id ?? `s${p.index + 1}`,
+          form: p.plan.form,
+          fields: Object.keys(onScreenFields(p.out)),
+          hasPhoto: photoOf.has(p.index),
+          itemFields: ITEM_FIELDS[p.plan.form],
+        }));
+    const checkOne = async (slide: LookSlide, image: string): Promise<LookFlag[]> => {
+      const p = placed.find((x) => x.index === slide.index);
+      if (!p) return [];
+      const input: LookCheckInput = {
+        yearGroup: base.yearGroup ?? "",
+        subject: base.subject ?? "",
+        topic: brief.topic,
+        objectives: objectiveTexts,
+        slide: slide.index + 1,
+        of: lesson.slides.length,
+        kind: p.plan.form,
+        fields: onScreenFields(p.out),
+      };
+      const call = await callStructured({
+        deps,
+        stage: "generate",
+        cls,
+        effort: planWriteCheckerEffort(),
+        prompt: asPrompt<LookCheckInput>(LOOK_CHECK_VERSION, lookCheckPrompt(input)),
+        input,
+        schema: lookCheckSchema(slide.fields),
+        maxOutputTokens: MAX_OUTPUT_TOKENS_LOOK_CHECK,
+        images: [{ id: slide.slideId, url: image }],
+      });
+      return parseLookFlags(call.output, {
+        number: slide.index + 1,
+        slideId: slide.slideId,
+        targets: slide.fields,
+      });
+    };
+    try {
+      lookCheck = await runLookCheck({
+        slides: lookSlides,
+        render: async (indices) => {
+          await writing;
+          return renderSlides(asGenerated(lesson, finalFacts), indices);
+        },
+        check: checkOne,
+        apply: async (slide, action, flag) => {
+          const n = slide.index + 1;
+          const p = placed.find((x) => x.index === slide.index);
+          if (!p) return false;
+          const failure = lookFailure(flag);
+          if (action.kind === "photo") {
+            const photo = await findPhoto(slide.index, {
+              subject: plainSubject(action.query).slice(0, 60),
+              mustShow: [],
+              purpose: "context",
+              specific: false,
+            });
+            if (!photo) return false;
+            await placePhoto(slide.index, photo);
+            return true;
+          }
+          if (action.kind === "diagram") {
+            const value = await checkRewrite(n, "diagram", failure, p.out).catch(() => undefined);
+            if (value === undefined) return false;
+            const next = settled(p.plan.layout, { ...p.out, diagram: value });
+            if (diagramProblem(p.plan.layout, next) !== undefined) return false;
+            if (!fitWritten(p.plan.form, p.plan.layout, next).ok) return false;
+            p.out = next;
+            await redraw(slide.index, {
+              promptVersion: WRITE_SLIDES_VERSION,
+              model: "look-check",
+              at: at(),
+            });
+            return true;
+          }
+          if (action.kind === "unit") {
+            const before = p.out;
+            const patch = await unitRewrite(n, action.fields, failure, before);
+            if (!patch) return false;
+            const out = { ...before, ...patch };
+            if (!keyHolds(p.plan.form, before, out)) return false;
+            const fitted = await fitWithRewrite(
+              p.plan.form,
+              p.plan.layout,
+              out,
+              async () => undefined,
+            );
+            if (!fitted.fit.ok) return false;
+            p.out = fitted.out;
+            await redraw(slide.index, {
+              promptVersion: WRITE_SLIDES_VERSION,
+              model: "look-check",
+              at: at(),
+            });
+            return true;
+          }
+          return gateFix(n, action.field, failure, () => false);
+        },
+        snapshot: (index) => ({
+          out: placed.find((x) => x.index === index)?.out,
+          slide: lesson.slides[index],
+          photo: photoOf.get(index),
+        }),
+        restore: async (index, snap) => {
+          const s0 = snap as { out?: Written; slide?: Slide; photo?: PlacedPhoto };
+          const p = placed.find((x) => x.index === index);
+          if (p && s0.out) p.out = s0.out;
+          if (s0.photo) photoOf.set(index, s0.photo);
+          else photoOf.delete(index);
+          if (s0.slide) await updateSlide(index, () => s0.slide as Slide);
+        },
+        log: (entry) =>
+          deps.logger.info(
+            { stage: "generate", call: "look-check", version: LOOK_CHECK_VERSION, ...entry },
+            "look-check flag",
+          ),
+      });
+      await writing;
+      finalFacts = buildFacts();
+      deps.logger.info(
+        { stage: "generate", call: "look-check", version: LOOK_CHECK_VERSION, report: lookCheck },
+        "look-check report",
+      );
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      deps.logger.error(
+        { stage: "generate", call: "look-check", err: safeError(error) },
+        "look check failed; the lesson is kept as it was checked",
+      );
+    }
+  }
   if (mode === "stream" && keyTerms.length > 0) {
     // lab/cand-fix, audit problem 4. The terms reach the renderer two ways: the lesson's
     // `facts.vocabulary` (what TEACH-150's `lessonKeyTerms` reads; the definition is the first
@@ -3336,6 +3494,7 @@ export async function planWriteSlides(
           ...(masterCheck ? { masterCheck } : {}),
           gates,
           diagramRungs,
+          ...(lookCheck ? { lookCheck } : {}),
         }
       : { ...(noPicture.length > 0 ? { noPicture } : {}) }),
   };
