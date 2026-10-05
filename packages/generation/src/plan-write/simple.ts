@@ -7,8 +7,10 @@ import {
   type LessonFacts,
   type OutlineEntry,
   type Slide,
+  type Theme,
 } from "@tj/domain/documents";
 import {
+  asFigureFull,
   drawFigure,
   FIGURE_TEMPLATES,
   figureTemplatesFor,
@@ -26,6 +28,7 @@ import {
   fittedDiagramElement,
   parseDiagram,
   settleDiagram,
+  withLongLabels,
 } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
@@ -89,7 +92,11 @@ type Pic =
   | { kind?: "photo"; subject: string; named: string | null }
   | { kind: "diagram"; spec: unknown }
   | { kind: "figure"; template: string; values: unknown };
-type LightSlide = Omit<z.infer<typeof lightSlide>, "picture"> & { picture: Pic | null };
+type LightSlide = Omit<z.infer<typeof lightSlide>, "picture"> & {
+  picture: Pic | null;
+  /** The big-diagram composition (DIAGRAM-AUDIT item 5): the drawing fills the slide. */
+  full?: boolean;
+};
 export type SimpleLesson = {
   objectives: string[];
   titlePicture: Pic | null;
@@ -357,6 +364,7 @@ const T3_FORMS: Record<string, string> = {
   ...T2_FORMS,
   // The drawn COMMON MISTAKE label is code's (bareCallout strips a written one), so the prompt no longer says it.
   "explain-callout": "an explanation, then one common mistake pupils make as the last line",
+  "big-diagram": "a heading and one diagram filling the slide, with an optional one-line caption",
 };
 const phrase = (what: string) => z.string().describe(what);
 /** The lean wire shape of each drawing kind (no alt: code writes it from the title and labels). */
@@ -861,6 +869,25 @@ export function placeT3Diagram(
 }
 
 /**
+ * DIAGRAM-AUDIT item 5: the slide a T3 drawing is placed on. A big-diagram slide takes the
+ * figure-full composition; a picture slide whose drawing does not draw cleanly in the half zone
+ * (on every theme) steps up to it when its words allow (a one-line caption), before any label
+ * shrinks. Otherwise the slide as it is.
+ */
+export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: boolean): Slide {
+  const zone = (sl: Slide) =>
+    sl.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+  const clean = (sl: Slide) => {
+    const e = zone(sl);
+    return !!e && withLongLabels(() => settleDiagram(spec, { w: e.w, h: e.h }).clean);
+  };
+  if (!full && clean(slide)) return slide;
+  const big = asFigureFull(slide, theme);
+  if (!big) return slide;
+  return full || clean(big) ? big : slide;
+}
+
+/**
  * lab/t3: whether the slides after the title and objectives can hold a teaching slide and a check
  * for every objective (two per objective); the line for the generation summary when they cannot.
  */
@@ -885,7 +912,9 @@ const labelled = (s: string, sep: string) => {
  * zone, when its words fit that form's slots (explain; explain-callout with its mistake as a line).
  */
 export function withPictureZone(s: LightSlide): LightSlide {
-  if (!s.picture) return s;
+  if (!s.picture) return s.form === "big-diagram" ? { ...s, form: "explain" } : s;
+  if (s.form === "big-diagram")
+    return { ...s, form: "photo", body: [...s.body, ...s.items], items: [], full: true };
   if (s.form === "explain" || s.form === "explain-callout") {
     const body =
       s.form === "explain" ? s.body : [...s.body, ...s.items.map((t) => `Common mistake: ${t}`)];
@@ -1804,7 +1833,12 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     let longLabels = false;
     if (p && p.kind === "diagram") {
       // lab/t3: long labels are wrapped or set a step smaller before the drawing is given up.
-      const d = placeT3Diagram(slide, p.spec, theme, deps.ids);
+      const d = placeT3Diagram(
+        t3DiagramBase(slide, p.spec, theme, !!s.full),
+        p.spec,
+        theme,
+        deps.ids,
+      );
       if (d.slide) {
         slide = d.slide;
         drawn = "diagram";

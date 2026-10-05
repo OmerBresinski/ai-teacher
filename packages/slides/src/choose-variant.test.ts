@@ -47,7 +47,7 @@ describe("chooseVariant", () => {
 
   // TEACH-98 row 7: the Figure template, not the deck's rhythm, picks the wide diagram.
   it("always sets a diagram figure-left, whatever came before", () => {
-    expect(variantsFor("diagram")).toEqual(["figure-left", "figure-wide"]);
+    expect(variantsFor("diagram")).toEqual(["figure-left", "figure-wide", "figure-full"]);
     for (const previousVariant of ["figure-left", "figure-wide", "photo-left", null]) {
       for (const personality of ["calm", "bold", "playful", undefined] as const) {
         for (const previousKind of ["diagram", "image-text", null] as const) {

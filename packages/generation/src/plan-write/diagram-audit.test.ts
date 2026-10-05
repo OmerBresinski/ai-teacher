@@ -63,3 +63,70 @@ describe("DIAGRAM-AUDIT generation fixes", () => {
     ).toBe(true);
   });
 });
+
+describe("DIAGRAM-AUDIT big diagram", () => {
+  const { getTheme, materialiseSlide, asFigureFull, PLACEHOLDER_IMAGE } = require("@tj/slides");
+  const { renderWritten } = require("./fit");
+  const { t3DiagramBase } = require("./simple");
+  const theme = getTheme("chalk");
+  const meta = { promptVersion: "t", model: "code", at: "1970-01-01T00:00:00.000Z" };
+  const photoSlide = (body: string[]) => {
+    const r = renderWritten("photo", "default", {
+      heading: "The Weimar years",
+      body,
+      imageBrief: { subject: "x", named: null, mustShow: [] },
+    });
+    return materialiseSlide(
+      r.spec,
+      "chalk",
+      meta,
+      () => Math.random().toString(36).slice(2),
+      r.variant,
+      r.structure,
+    );
+  };
+  const zone = (s: { elements: { type: string; src?: string; w: number; h: number }[] }) =>
+    s.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+  const seven = {
+    kind: "timeline",
+    alt: "Weimar",
+    events: [1918, 1919, 1920, 1923, 1924, 1929, 1933].map((y) => ({
+      date: String(y),
+      text: `Hyperinflation and crisis ${y}`,
+    })),
+  };
+
+  test("a big-diagram slide gives the drawing the full safe width", () => {
+    const s = t3DiagramBase(photoSlide(["One line."]), seven, theme, true);
+    expect(zone(s)?.w).toBe(844);
+  });
+  test("a drawing that does not fit half width steps up when the words allow", () => {
+    const y7 = {
+      kind: "particles",
+      alt: "States",
+      title: "From solid to liquid to gas",
+      show: "states",
+      states: ["solid", "liquid", "gas"],
+      notes: [
+        "Close, regular; vibrate in place",
+        "Close, irregular; move past",
+        "Far apart; move freely",
+      ],
+      arrows: ["Melting", "Boiling"],
+    };
+    const s = t3DiagramBase(photoSlide(["Heating moves particles apart."]), y7, theme, false);
+    expect(zone(s)?.w).toBe(844);
+  });
+  test("long words keep the half-slide picture slide", () => {
+    const long = ["A".repeat(80), "B".repeat(80)];
+    expect(asFigureFull(photoSlide(long), theme)).toBeUndefined();
+  });
+  test("the big-diagram form maps to a full picture slide", () => {
+    const s = withPictureZone({
+      ...base,
+      form: "big-diagram",
+      picture: { kind: "diagram", spec: {} },
+    } as never);
+    expect([s.form, (s as { full?: boolean }).full]).toEqual(["photo", true]);
+  });
+});
