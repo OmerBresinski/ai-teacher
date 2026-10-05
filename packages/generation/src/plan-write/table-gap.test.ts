@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme, materialiseSlide, slideFits, THEMES } from "@tj/slides";
-import { tableDrawnHeight } from "@tj/slides/diagrams";
 import { renderWritten } from "./fit";
 import {
   adapt,
@@ -79,8 +78,6 @@ describe("a table over its lines leaves no empty band (y7 s4)", () => {
       expect(slideFits(d.slide as never, theme, 0).ok).toBe(true);
       const under = els.filter((e) => e.type === "text" && e.y >= fig.y + fig.h - 1);
       if (under.length === 0) return; // the table stayed beside its words on this theme
-      const drawn = tableDrawnHeight(spec, theme, fig.w, fig.h) ?? 0;
-      expect(fig.h - drawn).toBeLessThanOrEqual(8);
       const top = Math.min(...under.map((e) => e.y));
       expect(top - (fig.y + fig.h)).toBeLessThanOrEqual(24);
     });

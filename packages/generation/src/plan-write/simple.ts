@@ -45,6 +45,7 @@ import {
   type DiagramZones,
   diagramCapacities,
   diagramElement,
+  diagramFs,
   energyProfileOf,
   fittedDiagramElement,
   itemCount,
@@ -1157,12 +1158,15 @@ export function placeT3Diagram(
   // CANDIDATE 9c (y7 s4): a table is drawn from the top of its zone at its rows' own height, so a
   // zone much taller than the table left an empty band over the words under it. The zone closes up
   // to the table and everything under it moves up by the same amount, keeping the normal gap.
+  // The table keeps the type size of the zone it was given (a shorter zone would set it smaller).
+  const fs0 = diagramFs(theme, e.w, e.h);
   const need = tableDrawnHeight(spec, theme, e.w, e.h);
   const h = need !== undefined && e.h - need > 8 ? Math.ceil(need) + 2 : e.h;
-  const closes = h < e.h && tableDrawnHeight(spec, theme, e.w, h) !== undefined;
+  const closes = h < e.h && tableDrawnHeight(spec, theme, e.w, h, fs0) !== undefined;
   const zoneH = closes ? h : e.h;
   const lift = e.h - zoneH;
-  const r = fittedDiagramElement(spec, theme, { x: e.x, y: e.y, w: e.w, h: zoneH }, ids);
+  const rect = { x: e.x, y: e.y, w: e.w, h: zoneH, ...(closes ? { fs: fs0 } : {}) };
+  const r = fittedDiagramElement(spec, theme, rect, ids);
   if (!r.ok) return { stretched: false, reasons: r.reasons };
   const foot = e.y + e.h - 1;
   return {

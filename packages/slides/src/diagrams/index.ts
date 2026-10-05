@@ -151,15 +151,21 @@ export function tableDrawnHeight(
   theme: Theme,
   w: number,
   h: number,
+  fs?: number,
 ): number | undefined {
   const s = parseDiagram(spec);
   if (s?.kind !== "table") return undefined;
-  const x = context(theme, Math.round(w), Math.round(h));
+  const x = context(theme, Math.round(w), Math.round(h), fs);
   const title = s.title ? Math.ceil(x.fs * 1.1 * 1.7 + x.fs * 1.2) : 0;
   const ih = h - title;
   if (ih <= 0 || !tableWhole(s, x, w, ih)) return undefined;
   const need = title + tableHeight(s, x, w, ih);
   return need <= h ? need : undefined;
+}
+
+/** The type size a drawing takes in a `w` x `h` zone on `theme` (to keep it when the zone closes up). */
+export function diagramFs(theme: Theme, w: number, h: number): number {
+  return context(theme, Math.round(w), Math.round(h)).fs;
 }
 
 export function fittedDiagramElement(
