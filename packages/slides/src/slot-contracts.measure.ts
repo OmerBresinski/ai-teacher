@@ -14,7 +14,7 @@ import {
   type TextKind,
   type WriterOutput,
 } from "./slot-contracts";
-import { workingAndReason } from "./structure";
+import { CHUNK_LABEL_NAME, workingAndReason } from "./structure";
 import { countLines, ruledLines } from "./text-measure";
 import { THEMES } from "./themes";
 
@@ -234,7 +234,10 @@ export function contractFits(contract: SlotContract, out: WriterOutput): Contrac
     // room is left off, and neither is an overflow.
     const shown = norm(
       [
-        ...slide.elements.map((e) => ("doc" in e && e.doc ? docText(e.doc) : "")),
+        // A chunk stack's label reads back with its colon, as the writer gave it (UX ruling 152).
+        ...slide.elements.map((e) =>
+          "doc" in e && e.doc ? `${docText(e.doc)}${e.name === CHUNK_LABEL_NAME ? ":" : ""}` : "",
+        ),
         JSON.stringify(slide.question ?? {}),
         typeof slide.notes === "string" ? slide.notes : JSON.stringify(slide.notes ?? ""),
       ].join(" "),

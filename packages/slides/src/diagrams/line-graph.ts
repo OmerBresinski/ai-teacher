@@ -148,6 +148,9 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   const order = g.series
     .map((s, i) => ({ s, i }))
     .sort((a, b) => (a.s.style === "bars" ? -1 : 0) - (b.s.style === "bars" ? -1 : 0));
+  const tangents: string[] = [];
+  const touchDots: string[] = [];
+  const firstData = out.length;
   for (const { s, i } of order) {
     const colour = colours[i] ?? c.accent;
     const axis = s.axis === "right" && g.y2 ? g.y2 : g.y;
@@ -173,18 +176,41 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
         `<line x1="${n(X(s.points[0]?.[0] ?? g.x.min))}" y1="${n(yy)}" x2="${n(X(s.points[1]?.[0] ?? g.x.max))}" y2="${n(yy)}" stroke="${c.ink}" stroke-width="2.5" stroke-dasharray="${n(fs * 0.5)} ${n(fs * 0.3)}"/>`,
       );
       if (s.label) flatLabels.push({ label: s.label, y: yy });
+    } else if (s.style === "tangent") {
+      // A tangent is a guide, not data (UX ruling 155): thin, dashed, in the second colour, run a
+      // little past its two points, under the data line, with a dot where it touches the curve.
+      const [p0, p1] = [s.points[0], s.points[s.points.length - 1]] as [
+        [number, number],
+        [number, number],
+      ];
+      const [ax, ay, bx, by] = [X(p0[0]), Ys(p0[1]), X(p1[0]), Ys(p1[1])];
+      const len = Math.hypot(bx - ax, by - ay) || 1;
+      const ext = fs * 0.8;
+      const [ux, uy] = [((bx - ax) / len) * ext, ((by - ay) / len) * ext];
+      tangents.push(
+        `<line x1="${n(ax - ux)}" y1="${n(ay - uy)}" x2="${n(bx + ux)}" y2="${n(by + uy)}" stroke="${c.accent2}" stroke-width="2" stroke-dasharray="${n(fs * 0.45)} ${n(fs * 0.3)}" stroke-linecap="round"/>`,
+      );
+      const touch = touchPoint(g, s, Yof);
+      if (touch) {
+        touchDots.push(
+          `<circle cx="${n(X(touch[0]))}" cy="${n(Ys(touch[1]))}" r="${n(Math.max(4, fs * 0.22))}" fill="${c.accent2}" stroke="${c.surface}" stroke-width="1.5"/>`,
+        );
+      }
     } else {
       s.points.forEach(([px, py], j) => {
         const q = s.points[j + 1];
         if (q) curves.push([X(px), Ys(py), X(q[0]), Ys(q[1])]);
       });
-      const d = s.points.map(([px, py]) => `${n(X(px))},${n(Ys(py))}`).join(" ");
+      // A smooth curve through the points (monotone cubic, so it never overshoots a plateau).
+      const d = monotonePath(s.points.map(([px, py]) => [X(px), Ys(py)] as [number, number]));
       out.push(
-        `<polyline points="${d}" fill="none" stroke="${colour}" stroke-width="${n(Math.max(3.5, fs * 0.22))}" stroke-linejoin="round" stroke-linecap="round"/>`,
+        `<path d="${d}" fill="none" stroke="${colour}" stroke-width="${n(Math.max(3.5, fs * 0.22))}" stroke-linejoin="round" stroke-linecap="round"/>`,
       );
     }
   }
 
+  out.splice(firstData, 0, ...tangents);
+  out.push(...touchDots);
   x.strokes?.push(...curves);
   const crossesCurve = (b: Box) =>
     curves.some(([ax, ay, bx, by]) => {
@@ -433,9 +459,11 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     const colour = colours[i] ?? c.accent;
     const ly = row * fs * 1.3;
     const sw =
-      sr.style === "bars"
-        ? `<rect x="${n(lx)}" y="${n(ly + fs * 0.3)}" width="${n(fs)}" height="${n(fs * 0.8)}" fill="${colour}" fill-opacity="0.55"/>`
-        : `<line x1="${n(lx)}" y1="${n(ly + fs * 0.7)}" x2="${n(lx + fs)}" y2="${n(ly + fs * 0.7)}" stroke="${colour}" stroke-width="4" stroke-linecap="round"/>`;
+      sr.style === "tangent"
+        ? `<line x1="${n(lx)}" y1="${n(ly + fs * 0.7)}" x2="${n(lx + fs)}" y2="${n(ly + fs * 0.7)}" stroke="${c.accent2}" stroke-width="2" stroke-dasharray="${n(fs * 0.3)} ${n(fs * 0.2)}"/>`
+        : sr.style === "bars"
+          ? `<rect x="${n(lx)}" y="${n(ly + fs * 0.3)}" width="${n(fs)}" height="${n(fs * 0.8)}" fill="${colour}" fill-opacity="0.55"/>`
+          : `<line x1="${n(lx)}" y1="${n(ly + fs * 0.7)}" x2="${n(lx + fs)}" y2="${n(ly + fs * 0.7)}" stroke="${colour}" stroke-width="4" stroke-linecap="round"/>`;
     out.push(sw, text(x, lx + fs * 1.4, ly + fs * 0.7, [sr.label], { anchor: "start", fs: small }));
   }
   return out.join("");
@@ -464,4 +492,64 @@ function at(points: [number, number][], v: number): number {
     }
   }
   return points[points.length - 1]?.[1] ?? 0;
+}
+
+/** The point on the first data series nearest the tangent's midpoint (where it touches). */
+function touchPoint(
+  g: LineGraph,
+  tangent: LineGraph["series"][number],
+  _y: unknown,
+): [number, number] | undefined {
+  const data = g.series.find((s) => s.style === "line" && s !== tangent);
+  const a = tangent.points[0];
+  const b = tangent.points[tangent.points.length - 1];
+  if (!data || !a || !b) return undefined;
+  const mx = (a[0] + b[0]) / 2;
+  const pts = data.points;
+  for (let j = 0; j + 1 < pts.length; j++) {
+    const p = pts[j] as [number, number];
+    const q = pts[j + 1] as [number, number];
+    if (mx >= p[0] && mx <= q[0]) {
+      const k = q[0] === p[0] ? 0 : (mx - p[0]) / (q[0] - p[0]);
+      return [mx, p[1] + (q[1] - p[1]) * k];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * An SVG path through points in x order as a monotone cubic (Fritsch-Carlson): smooth, and never
+ * above or below its neighbouring points, so a curve that levels off stays level.
+ */
+export function monotonePath(p: [number, number][]): string {
+  if (p.length < 3) return p.map(([x, y], i) => `${i ? "L" : "M"}${n(x)},${n(y)}`).join(" ");
+  const k = p.length;
+  const dx: number[] = [];
+  const m: number[] = [];
+  for (let i = 0; i + 1 < k; i++) {
+    const [x0, y0] = p[i] as [number, number];
+    const [x1, y1] = p[i + 1] as [number, number];
+    dx.push(x1 - x0);
+    m.push(x1 === x0 ? 0 : (y1 - y0) / (x1 - x0));
+  }
+  const t: number[] = [m[0] ?? 0];
+  for (let i = 1; i + 1 < k; i++) {
+    const a = m[i - 1] ?? 0;
+    const b = m[i] ?? 0;
+    t.push(
+      a * b <= 0
+        ? 0
+        : (3 * (dx[i - 1]! + dx[i]!)) /
+            ((2 * dx[i]! + dx[i - 1]!) / a + (dx[i]! + 2 * dx[i - 1]!) / b),
+    );
+  }
+  t.push(m[k - 2] ?? 0);
+  let d = `M${n(p[0]![0])},${n(p[0]![1])}`;
+  for (let i = 0; i + 1 < k; i++) {
+    const [x0, y0] = p[i] as [number, number];
+    const [x1, y1] = p[i + 1] as [number, number];
+    const h = dx[i]! / 3;
+    d += ` C${n(x0 + h)},${n(y0 + t[i]! * h)} ${n(x1 - h)},${n(y1 - t[i + 1]! * h)} ${n(x1)},${n(y1)}`;
+  }
+  return d;
 }

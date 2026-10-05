@@ -17,7 +17,7 @@ import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { context, type DrawnText, esc, n, text, wrap } from "./svg";
-import { drawTable } from "./table";
+import { drawTable, tableHeight } from "./table";
 import {
   drawCycle,
   drawHydrograph,
@@ -50,8 +50,9 @@ function body(
     ih: number;
     faults: string[];
   },
+  fs?: number,
 ): string {
-  const x = context(t, w, h);
+  const x = context(t, w, h, fs);
   let top = 0;
   let head = "";
   if (s.title) {
@@ -119,14 +120,14 @@ function body(
 export function renderDiagram(
   spec: unknown,
   theme: Theme,
-  size: { w: number; h: number },
+  size: { w: number; h: number; fs?: number },
 ): string | undefined {
   const s = parseDiagram(spec);
   const w = Math.round(size.w);
   const h = Math.round(size.h);
   if (!s || !(w >= 80) || !(h >= 60)) return undefined;
   try {
-    const inner = body(s, theme, w, h);
+    const inner = body(s, theme, w, h, undefined, size.fs);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(s.alt)}"><title>${esc(s.alt)}</title>${inner}</svg>`;
   } catch {
     return undefined;
@@ -144,7 +145,7 @@ export const svgDataUrl = (svg: string) =>
 export function diagramElement(
   spec: unknown,
   theme: Theme,
-  rect: { x: number; y: number; w: number; h: number },
+  rect: { x: number; y: number; w: number; h: number; fs?: number },
   ids: () => string = uid,
 ): ImageElement | undefined {
   const svg = renderDiagram(spec, theme, rect);
@@ -172,7 +173,7 @@ export function diagramElement(
 export function diagramFaults(
   spec: unknown,
   theme: Theme,
-  size: { w: number; h: number },
+  size: { w: number; h: number; fs?: number },
 ): string[] {
   const s = parseDiagram(spec);
   const w = Math.round(size.w);
@@ -185,7 +186,7 @@ export function diagramFaults(
     faults: [] as string[],
   };
   try {
-    body(s, theme, w, h, probe);
+    body(s, theme, w, h, probe, size.fs);
   } catch {
     return ["it does not draw"];
   }
@@ -271,4 +272,50 @@ export function settleDiagram(
       return { spec: f, rung, clean: true };
   }
   return { spec: forms[0] ?? spec, rung: 0, clean: false };
+}
+
+/** Kinds whose drawing fills whatever box it gets (a plot, a scene): kept, at most 0.85 as tall as wide. */
+const FILLS_BOX = new Set([
+  "line-graph",
+  "hydrograph",
+  "labelled-diagram",
+  "river",
+  "cycle",
+  "layers",
+  "particles",
+]);
+
+/**
+ * The height a spec needs drawn `size.w` wide, at the label size of its full `size` box (UX ruling
+ * 155: the figure's card is sized to its drawing, not run to the foot of the slide). A table takes
+ * its own rows; a plot or scene keeps its box, capped at 0.85 of its width; anything else takes the
+ * smallest height at which it draws with no fault. Never more than `size.h`.
+ */
+export function drawingHeight(
+  spec: unknown,
+  theme: Theme,
+  size: { w: number; h: number },
+): { h: number; fs: number } {
+  const s = parseDiagram(spec);
+  const fs = context(theme, size.w, size.h).fs;
+  if (!s) return { h: size.h, fs };
+  if (FILLS_BOX.has(s.kind)) return { h: Math.min(size.h, Math.round(size.w * 0.85)), fs };
+  if (s.kind === "table") {
+    for (let h = 80; h < size.h; h += 8) {
+      const probe = { rec: [] as DrawnText[], strokes: [], ih: h, faults: [] as string[] };
+      body(s, theme, size.w, h, probe, fs);
+      const x = context(theme, size.w, h, fs);
+      if (
+        tableHeight(s, x, size.w, size.h) <= probe.ih &&
+        diagramFaults(spec, theme, { w: size.w, h, fs }).length === 0
+      ) {
+        return { h: h + 8, fs };
+      }
+    }
+    return { h: size.h, fs };
+  }
+  for (let h = 120; h < size.h; h += 12) {
+    if (diagramFaults(spec, theme, { w: size.w, h, fs }).length === 0) return { h, fs };
+  }
+  return { h: size.h, fs };
 }

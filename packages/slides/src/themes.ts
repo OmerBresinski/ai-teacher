@@ -492,7 +492,8 @@ export type TextRole = "title" | "question" | "option" | "heading" | "body" | "s
  * six themes above their own heading stop, which is the theme's decision, not ours.
  * `stem()` in layouts.ts therefore asks for the `question` role by name.
  *
- * `small` keeps the flat 24 the six themes were drawn against. It is the footnote
+ * `small` is 18, a step under the body floor (design pass, UX ruling 151; it was a flat 24, which
+ * set a worked step's reason above the step once the teaching cut took body to 20). It is the footnote
  * and task-instruction stop (`footnote()` in layouts.ts) and it is still readable;
  * raising it would put every theme's smallest reading size above its own ladder.
  * `caption` is the one to four word uppercase eyebrow and is exempt from the
@@ -505,7 +506,7 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
   option: 31,
   heading: 26,
   body: 20,
-  small: 24,
+  small: 18,
   caption: 14,
 };
 
@@ -531,7 +532,7 @@ export const MIN_FONT_SIZE: Record<TextRole, number> = {
  * 2 — wave 4, 4 Sept 2026: the per-role projector floors above (SPEC §7).
  * 3 — spike/teach-type, 30 Sep 2026: the teaching body floor 26 → 20 (30 px at 1440).
  */
-export const FIT_VERSION = 3;
+export const FIT_VERSION = 4;
 
 /**
  * Preset to role. The preset names a stop on the theme's ladder; the role names

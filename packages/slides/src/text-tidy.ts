@@ -6,6 +6,7 @@ import type {
   SlideElement,
   TextElement,
 } from "@tj/domain/documents";
+import { curlyQuotes } from "./quote";
 
 /*
  * Generated text, tidied in code (spike/fmt, Greg's review 1 Oct 2026):
@@ -126,7 +127,7 @@ function stripParagraph(p: RichNode): { node: RichNode; numbered: boolean; marke
 
 /** Every text run's dashes cleaned. */
 function cleanNode(n: RichNode): RichNode {
-  if (n.type === "text") return n.text ? { ...n, text: cleanDashes(n.text) } : n;
+  if (n.type === "text") return n.text ? { ...n, text: curlyQuotes(cleanDashes(n.text)) } : n;
   return n.content ? { ...n, content: n.content.map(cleanNode) } : n;
 }
 
@@ -156,11 +157,16 @@ function listKinds(n: RichNode, out: ListKind[]): ListKind[] {
 
 const plain = (doc: RichDoc): string => (doc.content ?? []).map((p) => docLeadText(p)).join(" ");
 
+/** A numbered point's disc, in ems of its text (UX ruling 153; the CSS list disc matches). */
+export const DISC_EM = 0.96;
+
 export type TidyOptions = {
   /** The list kind the layout chose (generation's practise slide is numbered); else inferred. */
   ordered?: boolean;
   /** The first number on this page, for a numbered list continued from an earlier page. */
   start?: number;
+  /** The colour a number is set in on its accent disc (the theme's `onAccent`). */
+  onAccent?: string;
 };
 
 /**
@@ -190,50 +196,61 @@ export function tidySlide(slide: Slide, options: TidyOptions = {}): Slide {
     .filter((e): e is ShapeElement => e.type === "shape" && e.name === BULLET)
     .sort((a, b) => a.y - b.y);
   const points = [...items].sort((a, b) => a.y - b.y);
-  const numberFor = new Map<SlideElement, TextElement>();
-  if (ordered && bullets.length === points.length) {
+  const numberFor = new Map<SlideElement, TextElement | null>();
+  // One list marker (UX ruling 153): a numbered list's points take the same accent disc as every
+  // other numbered list, never "1)"; a single point takes no marker at all.
+  const alone = points.length === 1 && bullets.length === 1 && (options.start ?? 1) === 1;
+  if (alone) numberFor.set(bullets[0] as SlideElement, null);
+  else if (ordered && bullets.length === points.length) {
     const start = options.start ?? 1;
     bullets.forEach((b, i) => {
       const p = points[i] as TextElement;
       const size = p.style.fontSize ?? 20;
       const lh = p.style.lineHeight ?? 1.4;
       const indent = Math.round(size * 1.3);
+      const d = Math.round(size * DISC_EM);
       numberFor.set(b, {
         id: b.id,
         type: "text",
         x: p.x - indent,
-        y: p.y,
-        w: indent,
-        h: Math.round(size * lh),
+        y: Math.round(p.y + (size * lh - d) / 2),
+        w: d,
+        h: d,
         doc: {
           type: "doc",
-          content: [{ type: "paragraph", content: [{ type: "text", text: `${start + i})` }] }],
+          content: [{ type: "paragraph", content: [{ type: "text", text: `${start + i}` }] }],
         },
         style: {
-          preset: "body",
-          fontSize: size,
-          lineHeight: lh,
+          preset: "caption",
+          fontSize: Math.round(d * 0.58),
+          lineHeight: 1,
           fontWeight: 700,
+          align: "center",
+          valign: "middle",
           autoHeight: false,
-          ...(b.fill ? { color: b.fill } : {}),
+          radius: Math.ceil(d / 2),
+          ...(b.fill ? { background: b.fill } : {}),
+          ...(options.onAccent ? { color: options.onAccent } : {}),
         },
         name: NUMBER_NAME,
       });
     });
   }
 
-  const elements = slide.elements.map((e): SlideElement => {
-    const number = numberFor.get(e);
-    if (number) return number;
-    if (!isText(e)) return e;
-    let doc = e.doc as RichNode;
-    if (e.name === ITEM && doc.content?.[0]?.type === "paragraph") {
-      const [first, ...rest] = doc.content;
-      doc = { ...doc, content: [stripParagraph(first as RichNode).node, ...rest] };
-    }
-    doc = cleanNode(tidyLists(doc, kind));
-    return { ...e, doc: doc as RichDoc };
-  });
+  const elements = slide.elements
+    .filter((e) => numberFor.get(e) !== null)
+    .map((e): SlideElement => {
+      const number = numberFor.get(e);
+      if (number) return number;
+      if (!isText(e)) return e;
+      let doc = e.doc as RichNode;
+      if (e.name === ITEM && doc.content?.[0]?.type === "paragraph") {
+        const [first, ...rest] = doc.content;
+        doc = { ...doc, content: [stripParagraph(first as RichNode).node, ...rest] };
+      }
+      doc = cleanNode(tidyLists(doc, kind));
+      return { ...e, doc: doc as RichDoc };
+    });
   return {
     ...slide,
     elements,

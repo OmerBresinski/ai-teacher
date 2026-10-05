@@ -100,7 +100,7 @@ export function family(stack: string): string {
     .replace(/"/g, "'");
 }
 
-export function context(t: Theme, w: number, h: number): Ctx {
+export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
   const bg = t.colors.background;
   const surface = t.colors.panel ?? t.colors.surface;
   return {
@@ -120,7 +120,8 @@ export function context(t: Theme, w: number, h: number): Ctx {
     title: family(t.fonts.title),
     stack: t.fonts.body,
     // Round A6: labels a step larger (a 403-wide panel draws 24, was 20), so a class reads them.
-    fs: Math.max(16, Math.min(26, Math.round(Math.min(w, h) / 16))),
+    // A drawing sized to its content (UX ruling 155) keeps the label size of its full panel.
+    fs: fs ?? Math.max(16, Math.min(26, Math.round(Math.min(w, h) / 16))),
   };
 }
 

@@ -2,6 +2,7 @@ import type {
   GapTextElement,
   GeneratedFrom,
   Id,
+  ImageElement,
   OptionElement,
   QuestionData,
   RichDoc,
@@ -16,11 +17,17 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, objectiveLine, richDocToPlainText } from "@tj/domain/documents";
 import { applyCallout, detachCallout, isCalloutElement, placeCallout } from "./callout";
 import { type ContentShape, shapeOf } from "./content-shapes";
-import { DIAGRAM_DRAWN_NAME, type DiagramSpecInput, parseDiagram } from "./diagrams";
+import {
+  DIAGRAM_DRAWN_NAME,
+  type DiagramSpecInput,
+  diagramElement,
+  drawingHeight,
+  parseDiagram,
+} from "./diagrams";
 import { docFromBullets, docFromChunks, docFromText, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
-import { SAFE } from "./grid";
+import { SAFE, SPACE } from "./grid";
 import {
   AGENDA_OBJECTIVES,
   AGENDA_STEM,
@@ -47,11 +54,14 @@ import {
   withDiagramSlot,
   withPhotoSlot,
 } from "./look";
+import { withQuoteBlock } from "./quote";
 import { HEADING_NAME } from "./reflow";
 import { type BlockSpec, GAP_MARKER, type SlideSpec, type SlideSpecOf } from "./specs";
 import {
   BODY_NAME,
   BULLET_NAME,
+  CHUNK_LABEL_NAME,
+  CHUNK_TEXT_NAME,
   COMPARE_NAME,
   continueParagraph,
   ITEM_NAME,
@@ -245,9 +255,13 @@ export function lookAndFitPages(
   // a numbered list runs on across its pages.
   let next = 1;
   const pages = structureSlide(looked, theme, structure, ids, options).map((page) => {
-    const tidied = tidySlide(page, { ordered: structure.ordered, start: next });
+    const tidied = tidySlide(page, {
+      ordered: structure.ordered,
+      start: next,
+      onAccent: theme.colors.onAccent,
+    });
     next += tidied.elements.filter((e) => e.name === NUMBER_NAME).length;
-    return tidied;
+    return withQuoteBlock(tidied, theme, ids);
   });
   const done = pages.flatMap((page) => {
     const looked = fitSlide(page, theme);
@@ -346,7 +360,32 @@ export function withDiagramDrawn(slide: Slide, theme: Theme, spec: unknown): Sli
   );
   if (drawn === slide || !drawn.elements.some((e) => e.name === DIAGRAM_DRAWN_NAME)) return slide;
   const { diagram: _undrawn, ...rest } = drawn;
-  return rest;
+  return fittedDrawing(rest, theme, spec);
+}
+
+/**
+ * The drawn figure's box cut to its drawing (UX ruling 155): no empty card under a table, a bar
+ * model or a flow. The drawing keeps the label size of its full panel and is centred on the text
+ * column beside it, inside the room the panel had.
+ */
+function fittedDrawing(slide: Slide, theme: Theme, spec: unknown): Slide {
+  const el = slide.elements.find(
+    (e): e is ImageElement => e.type === "image" && e.name === DIAGRAM_DRAWN_NAME,
+  );
+  if (!el) return slide;
+  const { h, fs } = drawingHeight(spec, theme, { w: el.w, h: el.h });
+  if (h >= el.h - SPACE[2]) return slide;
+  const column = slide.elements.filter(
+    (e) => e.type === "text" && e.x + e.w <= el.x + 1 && e.y + e.h > el.y,
+  );
+  const mid =
+    column.length > 0
+      ? (Math.min(...column.map((e) => e.y)) + Math.max(...column.map((e) => e.y + e.h))) / 2
+      : el.y + h / 2;
+  const y = Math.round(Math.min(Math.max(el.y, mid - h / 2), el.y + el.h - h));
+  const redrawn = diagramElement(spec, theme, { x: el.x, y, w: el.w, h, fs }, () => el.id);
+  if (!redrawn) return slide;
+  return { ...slide, elements: slide.elements.map((e) => (e === el ? redrawn : e)) };
 }
 
 /**
@@ -355,12 +394,51 @@ export function withDiagramDrawn(slide: Slide, theme: Theme, spec: unknown): Sli
  * look and the fit. The top line and counter are kept as they were.
  */
 function relaid(
-  slide: Slide,
+  input: Slide,
   theme: Theme,
   shape: (bare: Slide, ids: IdSupplier) => Slide,
   fallback: Slide,
 ): Slide {
-  const heading = slide.elements.find((e) => e.name === HEADING_NAME);
+  let slide = input;
+  const heading0 = slide.elements.find((e) => e.name === HEADING_NAME);
+  // A chunk stack (UX ruling 152) goes back to the one labelled-chunk body it was set from.
+  const labels = slide.elements
+    .filter((e): e is TextElement => e.type === "text" && e.name === CHUNK_LABEL_NAME)
+    .sort((a, b) => a.y - b.y);
+  const texts = slide.elements
+    .filter((e): e is TextElement => e.type === "text" && e.name === CHUNK_TEXT_NAME)
+    .sort((a, b) => a.y - b.y);
+  if (texts.length > 0 && texts.length === labels.length) {
+    const first = texts[0] as TextElement;
+    const joined: TextElement = {
+      ...first,
+      name: undefined,
+      w: first.w,
+      style: { preset: "body" },
+      doc: {
+        type: "doc",
+        content: texts.map((e, i) => ({
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: `${richDocToPlainText((labels[i] as TextElement).doc).trim()}:`,
+              marks: [{ type: "bold" }],
+            },
+            { type: "text", text: " " },
+            ...((e.doc.content?.[0]?.content ?? []) as RichNode[]),
+          ],
+        })),
+      },
+    };
+    const { name: _n, ...plainJoined } = joined;
+    const gone = new Set<SlideElement>([...labels, ...texts]);
+    const rest = slide.elements.filter((e) => !gone.has(e));
+    const at = slide.elements.indexOf(labels[0] as TextElement);
+    rest.splice(Math.min(at, rest.length), 0, { ...plainJoined, y: (labels[0] as TextElement).y });
+    slide = { ...slide, elements: rest };
+  }
+  const heading = heading0 && slide.elements.find((e) => e.name === HEADING_NAME);
   const column = new Set([LEAD_NAME, ITEM_NAME, BODY_NAME, KEY_IDEA_NAME]);
   const words = slide.elements
     .filter(
@@ -631,7 +709,10 @@ function fillTitle(spec: SlideSpecOf<"title">, laid: Layout, variant: TitleVaria
   setText(textOf(laid, "title"), spec.title);
   // The photo-band variants set the class line in `small`, named so it can be found.
   setText(
-    variant === "photo-band" || variant === "photo-band-long"
+    variant === "photo-band" ||
+      variant === "photo-band-long" ||
+      variant === "cover" ||
+      variant === "cover-long"
       ? slot(laid, "Subtitle")
       : textOf(laid, "subtitle"),
     spec.subtitle,

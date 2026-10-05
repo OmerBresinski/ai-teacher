@@ -56,7 +56,8 @@ const Series = z.object({
     .array(z.tuple([finite, finite]))
     .min(2)
     .max(40),
-  style: z.enum(["line", "bars"]).default("line"),
+  /** `tangent`: a thin dashed guide line touching the curve, drawn under the data (UX ruling 155). */
+  style: z.enum(["line", "bars", "tangent"]).default("line"),
   axis: z.enum(["left", "right"]).default("left"),
 });
 

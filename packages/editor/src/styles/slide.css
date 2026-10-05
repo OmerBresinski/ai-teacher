@@ -136,8 +136,8 @@
 
 /*
  * Numbers sit in a filled accent disc (the lesson look, quality PRD "look", 26 Sept 2026), drawn in
- * the list's own indent. The disc is 0.86em in a 1.45em indent (the headless ruler's
- * `ORDERED_INDENT_EM`), leaving a 0.59em gap before the words (Greg, 27 Sept 2026, twice: the
+ * the list's own indent. The disc is 0.96em in a 1.45em indent (the headless ruler's
+ * `ORDERED_INDENT_EM`), leaving a 0.49em gap before the words (Greg, 27 Sept 2026, twice: the
  * number sat too close to its text). `counter(list-item)` honours the list's `start`, so a continuation slide
  * keeps counting.
  */
@@ -149,13 +149,16 @@
 .td-rt ol > li::before {
   content: counter(list-item);
   position: absolute;
-  /* In the disc's own em (0.54 of the item's): a 0.86em disc at the indent's left edge. */
-  font-size: 0.54em;
-  left: -2.685em;
-  top: calc((0.5em * var(--td-lh) - 0.43em) / 0.54);
-  width: 1.593em;
-  height: 1.593em;
-  line-height: 1.593em;
+  /*
+   * In the disc's own em (0.58 of the item's): a 0.96em disc at the indent's left edge (UX ruling
+   * 153: one marker, large enough to read as a number; @tj/slides text-tidy DISC_EM matches).
+   */
+  font-size: 0.58em;
+  left: -2.5em;
+  top: calc((0.5em * var(--td-lh) - 0.48em) / 0.58);
+  width: 1.655em;
+  height: 1.655em;
+  line-height: 1.655em;
   border-radius: 50%;
   background: var(--td-accent);
   color: var(--td-on-accent, #fff);

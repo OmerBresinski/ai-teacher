@@ -195,7 +195,8 @@ const QUESTION_FORMS = new Set([
 ]);
 
 /** The title variants that carry a photograph, in the order drawTitle tries them. */
-const TITLE_PICTURE_ORDER = ["split", "photo-band", "photo-band-long"] as const;
+// The full-bleed photo band is the title (UX ruling 156); the split is the second choice.
+const TITLE_PICTURE_ORDER = ["photo-band", "photo-band-long", "split"] as const;
 
 /*
  * Plan-write's two steps (spike/plan-write). `planWritePlan`: the title saved before any call, one
