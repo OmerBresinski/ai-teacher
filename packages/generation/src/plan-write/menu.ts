@@ -88,8 +88,8 @@ export function layoutCapacity(form: string, layout: string): number | undefined
 }
 
 /**
- * Layouts left off the menu: the stacked hinge carries whole ideas as options, and a hinge's
- * options are a word, a number or a short phrase (UX ruling 136); those ideas take another check.
+ * Layouts left off the menu: the planner never picks a hinge's layout. Code sets it from the
+ * options' measured length (ruling 161, `hingeLayout`): the 2×2 grid or the single column.
  */
 const OFF_MENU = new Set(["hinge/stacked"]);
 

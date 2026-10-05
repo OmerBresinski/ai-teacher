@@ -13,6 +13,7 @@ import {
   asFigureFull,
   bodyLineChars,
   boxH,
+  docFromText,
   drawFigure,
   EXTRA_FIGURES,
   FIGURE_FULL_CAPTION_LINES,
@@ -34,6 +35,7 @@ import {
   renderedHeights,
   SAFE,
   SAFE_BOTTOM,
+  SPACE,
   slideFits,
   withoutPicture,
 } from "@tj/slides";
@@ -1273,6 +1275,38 @@ export function withPictureZone(s: LightSlide): LightSlide {
 const DRAWING_TAKES_ZONE = new Set(["worked-example", "sequence", "compare"]);
 
 /** The thin adapter: a light slide as the candidate's form, layout and writer fields. */
+/**
+ * A hinge's layout (ruling 161): the 2×2 grid when every option takes at most two lines at body
+ * size in a grid card (half the safe width less the card's letter and padding), measured on the
+ * default theme; otherwise the single column.
+ */
+export function hingeLayout(options: string[], themeId = T3_DEFAULT_THEME): "default" | "stacked" {
+  const t = getTheme(themeId);
+  const measure = measureHeadless(t);
+  const line = measure({
+    doc: docFromText("X"),
+    width: 400,
+    style: { preset: "body" },
+    preset: "body",
+    inset: 0,
+    chrome: 0,
+  });
+  const w = Math.floor((SAFE.w - SPACE[3]) / 2) - 2 * SPACE[3] - Math.round(t.sizes.body * 1.6);
+  const fits = options.every(
+    (o) =>
+      measure({
+        doc: docFromText(o),
+        width: w,
+        style: { preset: "body" },
+        preset: "body",
+        inset: 0,
+        chrome: 0,
+      }) <=
+      line * 2 + 1,
+  );
+  return fits ? "default" : "stacked";
+}
+
 export function adapt(s: LightSlide): { form: string; layout: string; out: Written } {
   const q = s.questions[0] ?? { question: "", answer: "" };
   const notes = s.notes;
@@ -1359,13 +1393,15 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
         .filter((o) => o.n === a || a.startsWith(o.n) || o.n.startsWith(a))
         .sort((x, y) => (x.n === a ? -1 : y.n === a ? 1 : y.n.length - x.n.length));
       const key = named ? "abcd".indexOf(named.toLowerCase()) : (fits[0]?.i ?? -1);
+      const options = s.items.map((t) => t.replace(letter, ""));
       return {
         form: "hinge",
-        layout: "default",
+        // Ruling 161: code sets the hinge out, from the options' measured length.
+        layout: hingeLayout(options),
         out: {
           stem: q.question || s.heading,
           // The option letters are drawn by the slide, never written in the text.
-          options: s.items.map((t, i) => ({ text: t.replace(letter, ""), correct: i === key })),
+          options: options.map((text, i) => ({ text, correct: i === key })),
           explanation: q.answer,
           notes,
         },
