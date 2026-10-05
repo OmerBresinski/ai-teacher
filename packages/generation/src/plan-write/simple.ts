@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import {
   DEFAULT_SLIDE_COUNT,
   type ImageBrief,
@@ -19,9 +19,10 @@ import {
 import { z } from "zod";
 import { callStructured } from "../call";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
+import { audienceBlock } from "../prompts/shared";
 import { withUsage } from "../stages/generate";
 import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
-import { planClassFor } from "../stages/shared";
+import { audienceOf, planClassFor } from "../stages/shared";
 import type { PipelineDeps, PipelineState } from "../types";
 import { renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
@@ -33,7 +34,7 @@ import { broadenedBrief } from "./slide-check";
  * ladder. SIMPLE_ORACLE_FILE skips the call and draws a lesson written in session (arm O).
  */
 
-export const SIMPLE_LESSON_VERSION = "simple-lesson.v1";
+export const SIMPLE_LESSON_VERSION = "simple-lesson.v2";
 
 const FORMS: Record<string, string> = {
   explain: "a heading and a few sentences explaining one idea",
@@ -75,19 +76,20 @@ type LightSlide = z.infer<typeof lightSlide>;
 
 export function simpleLessonPrompt(i: {
   slideCount: number;
-  yearGroup: string;
-  subject: string;
   topic: string;
+  /** The lesson context the stream gets, as the stream renders it (topic, audience, answers). */
+  context: string;
 }): { system: string; user: string } {
   const menu = Object.entries(FORMS)
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
   return {
     system: "You are an expert UK teacher.",
-    user: `Write a ${i.slideCount}-slide lesson for ${i.yearGroup} ${i.subject}: ${i.topic}.
-First write the lesson's objectives (2 or 3). Slide 1 (the title) and slide 2 (the objectives) are made from them, so write slides 3 to ${i.slideCount}: ${i.slideCount - 2} slides.
+    user: `${i.context}
 
-The slide forms available:
+Write a ${i.slideCount}-slide lesson on this. First write the lesson's objectives. Slide 1 (the title) and slide 2 (the objectives) are made from them, so write slides 3 to ${i.slideCount}: ${i.slideCount - 2} slides.
+
+The slide forms we can draw:
 ${menu}
 
 Per slide: form, heading, body (sentences shown on the slide), items, questions (question and answer, when the form asks one), picture (what a photo should show, and its proper name if it must be one named thing; null for none), notes (what the teacher says and does). Leave fields a form does not use empty. Also give a picture for the title slide.`,
@@ -280,12 +282,19 @@ export async function simpleLessonSlides(
   if (oracle) {
     w = simpleLessonSchema.parse(JSON.parse(readFileSync(oracle, "utf8")));
   } else {
-    const input = {
-      slideCount,
-      yearGroup: base.yearGroup ?? "",
-      subject: base.subject ?? "",
-      topic: brief.topic,
-    };
+    const answers = brief.answers
+      ? Object.entries(brief.answers).map(([k, v]) => `${k}: ${v}`)
+      : [];
+    const context = [
+      `Topic: ${brief.topic}`,
+      audienceBlock(audienceOf(base)),
+      ...(answers.length > 0 ? ["The teacher's answers:", ...answers] : []),
+      // Lab ABLATE arm K: reference text (Oak lessons) as plain context after the brief.
+      ...(process.env.SIMPLE_CONTEXT_FILE
+        ? ["", readFileSync(process.env.SIMPLE_CONTEXT_FILE, "utf8").trim()]
+        : []),
+    ].join("\n");
+    const input = { slideCount, topic: brief.topic, context };
     const built = simpleLessonPrompt(input);
     const call = await callStructured({
       deps,
@@ -298,6 +307,27 @@ export async function simpleLessonSlides(
       maxOutputTokens: 16000,
     });
     w = call.output as SimpleLesson;
+    // Lab ABLATE: the full request and the response, one line per call.
+    const dir = process.env.SIMPLE_CALLS_DIR;
+    if (dir) {
+      mkdirSync(dir, { recursive: true });
+      appendFileSync(
+        `${dir}/${deps.context.jobId}.calls.jsonl`,
+        `${JSON.stringify({
+          version: SIMPLE_LESSON_VERSION,
+          modelId: call.modelId,
+          effort: "low",
+          ms: Date.now() - t0,
+          usage: call.usage,
+          attempts: call.attempts,
+          context,
+          system: built.system,
+          user: built.user,
+          schema: z.toJSONSchema(simpleLessonSchema),
+          output: call.output,
+        })}\n`,
+      );
+    }
   }
   const writeMs = Date.now() - t0;
   const objectives = w.objectives.map((text, i) => ({ id: `o${i + 1}`, text }));
