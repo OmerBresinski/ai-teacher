@@ -45,6 +45,7 @@ describe("picture director schema", () => {
       },
       diagram: null,
       named: null,
+      period: null,
     };
     expect(PictureDirectorSchema.parse(code).count?.total).toBe(24);
   });
