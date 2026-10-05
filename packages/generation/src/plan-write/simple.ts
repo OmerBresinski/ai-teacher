@@ -1154,12 +1154,23 @@ export function placeT3Diagram(
   // lab/t3 fit-fix: a table cut at its smallest size is not drawn (the slide loses the picture).
   if (!tableDrawsWhole(spec, theme, e.w, e.h))
     return { stretched: false, reasons: ["the table is cut at its smallest size"] };
-  const r = fittedDiagramElement(spec, theme, { x: e.x, y: e.y, w: e.w, h: e.h }, ids);
+  // CANDIDATE 9c (y7 s4): a table is drawn from the top of its zone at its rows' own height, so a
+  // zone much taller than the table left an empty band over the words under it. The zone closes up
+  // to the table and everything under it moves up by the same amount, keeping the normal gap.
+  const need = tableDrawnHeight(spec, theme, e.w, e.h);
+  const h = need !== undefined && e.h - need > 8 ? Math.ceil(need) + 2 : e.h;
+  const closes = h < e.h && tableDrawnHeight(spec, theme, e.w, h) !== undefined;
+  const zoneH = closes ? h : e.h;
+  const lift = e.h - zoneH;
+  const r = fittedDiagramElement(spec, theme, { x: e.x, y: e.y, w: e.w, h: zoneH }, ids);
   if (!r.ok) return { stretched: false, reasons: r.reasons };
+  const foot = e.y + e.h - 1;
   return {
     slide: {
       ...slide,
-      elements: slide.elements.map((x, i) => (i === at ? r.element : x)),
+      elements: slide.elements.map((x, i) =>
+        i === at ? r.element : lift > 0 && x.y >= foot ? { ...x, y: x.y - lift } : x,
+      ),
     } as Slide,
     stretched: r.stretched,
     reasons: [],
