@@ -8,6 +8,7 @@ import {
 import { callStructured } from "../call";
 import { checkObjectives, describeIssues } from "../objectives-check";
 import { type Bookends, bookendCount, fitBookends, maxObjectives } from "../planner/cycles";
+import { LessonObjectivesOutputSchema, lessonObjectivesPrompt } from "../prompts/lesson-objectives";
 import {
   type PlanRetrievalQuestion,
   planObjectivesOutputSchemaFor,
@@ -93,6 +94,12 @@ export interface ObjectivesStepOptions {
    * a bookend first when the objectives would fall under their minimum.
    */
   r6?: boolean;
+  /**
+   * lab/t3: the objectives T3 writes from come from `lesson-objectives` (text only: no arcs,
+   * retrieval or bookends, which T3 does not read). `planWriteRoute` sends it to the planner's
+   * model (Sol): round T3-CAND/OBJECTIVES ranked Sol first on 5 of 6 briefs, Luna on 1.
+   */
+  t3?: boolean;
 }
 
 /** The r6 bookends as the objectives call wrote them (`opening`, `closing`), when it did. */
@@ -185,33 +192,53 @@ export async function runObjectivesStep(
         "plan call",
       );
       calls += 1;
-      const call = await callStructured({
-        deps,
-        stage: "plan",
-        cls,
-        effort,
-        prompt: planObjectivesPrompt,
-        input: {
-          topic: brief.topic,
-          shape,
-          audience: audienceOf(lesson),
-          priorKnowledge: brief.classContext?.priorKnowledge,
-          curriculum,
-          ...(r6
-            ? {
+      const call = options.t3
+        ? await (async () => {
+            const c = await callStructured({
+              deps,
+              stage: "plan",
+              cls,
+              effort,
+              prompt: lessonObjectivesPrompt,
+              input: {
+                topic: brief.topic,
+                audience: audienceOf(lesson),
+                answers: brief.answers,
                 slideCount: r6SlideCount,
-                maxObjectives: maxObjectives(r6SlideCount),
-                maxObjectivesByBookends: {
-                  none: maxObjectives(r6SlideCount, 0),
-                  one: maxObjectives(r6SlideCount, 1),
-                  two: maxObjectives(r6SlideCount, 2),
-                },
-              }
-            : {}),
-        },
-        schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
-        maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
-      });
+              },
+              schema: LessonObjectivesOutputSchema,
+              maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
+            });
+            const objectives = c.output.objectives.map((text) => ({ text }));
+            return { ...c, output: { objectives, retrieval: undefined } };
+          })()
+        : await callStructured({
+            deps,
+            stage: "plan",
+            cls,
+            effort,
+            prompt: planObjectivesPrompt,
+            input: {
+              topic: brief.topic,
+              shape,
+              audience: audienceOf(lesson),
+              priorKnowledge: brief.classContext?.priorKnowledge,
+              curriculum,
+              ...(r6
+                ? {
+                    slideCount: r6SlideCount,
+                    maxObjectives: maxObjectives(r6SlideCount),
+                    maxObjectivesByBookends: {
+                      none: maxObjectives(r6SlideCount, 0),
+                      one: maxObjectives(r6SlideCount, 1),
+                      two: maxObjectives(r6SlideCount, 2),
+                    },
+                  }
+                : {}),
+            },
+            schema: planObjectivesOutputSchemaFor(curriculum !== undefined),
+            maxOutputTokens: MAX_OUTPUT_TOKENS_OBJECTIVES,
+          });
       const check = checkObjectives(call.output.objectives, shape.verb, {
         hasSource: curriculum !== undefined,
       });
@@ -290,7 +317,7 @@ export async function runObjectivesStep(
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
   const objectivesSlide = keepId(
     materialiseObjectives(lesson, facts, deps, {
-      promptVersion: planObjectivesPrompt.version,
+      promptVersion: options.t3 ? lessonObjectivesPrompt.version : planObjectivesPrompt.version,
       model,
       at: deps.now().toISOString(),
     }),

@@ -97,7 +97,9 @@ export function planWriteRoute(
     if (
       v.startsWith("plan-lesson.") ||
       v.startsWith("stream-lesson.") ||
-      v.startsWith("simple-lesson.")
+      v.startsWith("simple-lesson.") ||
+      // T3's objectives (lesson-objectives, round T3-CAND/OBJECTIVES): Sol ranked first on 5 of 6.
+      v.startsWith("lesson-objectives.")
     )
       return plannerModel;
     if (v.startsWith("write-slides.")) return writerModel;

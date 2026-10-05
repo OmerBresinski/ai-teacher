@@ -364,7 +364,7 @@ export async function planWritePlan(
   // teacher's), stamped T3's so a resume stays on plan-write. A lab file skips the call.
   if (t3Writer()) {
     if (process.env.SIMPLE_OBJECTIVES_FILE) return { ...state, lesson };
-    const { state: next } = await runObjectivesStep({ ...state, lesson }, deps);
+    const { state: next } = await runObjectivesStep({ ...state, lesson }, deps, { t3: true });
     const g = next.lesson.generation;
     const planned: Lesson = g
       ? {
