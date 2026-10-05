@@ -86,9 +86,11 @@ type BriefInput = {
   subject: string;
   mustShow?: string | string[];
   purpose?: ImageBrief["purpose"];
+  request?: string;
 };
 const brief = (b: BriefInput): ImageBrief => ({
   subject: b.subject,
+  ...(b.request ? { request: b.request } : {}),
   mustShow: b.mustShow === undefined ? [] : Array.isArray(b.mustShow) ? b.mustShow : [b.mustShow],
   purpose: b.purpose ?? "context",
 });
@@ -602,7 +604,7 @@ describe("illustrate", () => {
     expect(imageOf(state4.lesson, 0).src).toBe("/files/ws/images/M.jpg");
   });
 
-  test("row 3: a visible item outside mustShow is a validation issue the retry names", async () => {
+  test("row 3 (PICTURE-AUDIT #4): a visible item outside mustShow is dropped, not a retry", async () => {
     const flower = {
       subject: "buttercup",
       mustShow: ["stamens"],
@@ -617,10 +619,9 @@ describe("illustrate", () => {
       count: "one",
       query: null,
     });
-    const ai = judge(bad, pick("A", ["stamens"]));
+    const ai = judge(bad);
     const state = await run(imageLesson([flower]), recordingDeps(ai, { images }));
-    expect(ai.calls).toHaveLength(2);
-    expect(ai.calls[1]?.promptText).toContain("visible lists only items from mustShow: stamens");
+    expect(ai.calls).toHaveLength(1);
     expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/A.jpg");
   });
 
@@ -875,5 +876,31 @@ describe("factQueryHints (quality lab, Sept 2026)", () => {
     expect(ai.calls[0]?.promptText).toContain("Had0");
     expect(ai.calls[0]?.promptText).toContain("rom0");
     expect(ai.calls[0]?.promptText).not.toContain("Hou10");
+  });
+});
+
+describe("PICTURE-AUDIT #4: a gated pick with no requery tries the next candidate", () => {
+  test("the ram without the lamb is struck off and the judge picks again", async () => {
+    const { images, stores } = fakeImages(async () => [
+      pexelsPhoto("ram", true),
+      pexelsPhoto("ewe", true),
+    ]);
+    const ramOnly = JSON.stringify({
+      pick: "ram",
+      onSubject: true,
+      clear: true,
+      visible: ["sheep"],
+      count: "one",
+      query: null,
+    });
+    const brief = {
+      subject: "sheep and lamb",
+      request: "a sheep beside a lamb",
+      mustShow: ["sheep", "lamb"],
+    };
+    const ai = judge(ramOnly, pick("ewe", ["sheep", "lamb"]));
+    const state = await run(imageLesson([brief]), recordingDeps(ai, { images }));
+    expect(stores).toEqual(["ewe"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/ewe.jpg");
   });
 });

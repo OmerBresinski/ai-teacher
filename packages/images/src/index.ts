@@ -1,3 +1,33 @@
+export {
+  type AspectFamily,
+  type BankCandidate,
+  bankLicenceOk,
+  cosine,
+  createOpenAiEmbedder,
+  createOpenAiImageGenerator,
+  directedImagePrompt,
+  EMBED_DIMENSIONS,
+  EMBED_MODEL,
+  type Embedder,
+  embedCostUsd,
+  expectedImageCostUsd,
+  familyOf,
+  IMAGE_MODEL,
+  IMAGE_QUALITY,
+  IMAGE_TERMS,
+  type ImageGenerator,
+  type ImageSize,
+  imageCostUsd,
+  imagePrompt,
+  numbersAgree,
+  numbersIn,
+  oneScene,
+  type PictureContext,
+  pickReuse,
+  REUSE_THRESHOLD,
+  requestText,
+  sizeForAspect,
+} from "./bank";
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {
   COMMONS_USER_AGENT,
@@ -14,6 +44,7 @@ export {
   licenceClass,
   rankCommons,
 } from "./commons";
+export { type CountArray, countArrayOf, countArraySvg } from "./count-array";
 export {
   type CreatePexelsClientOptions,
   createPexelsClient,
@@ -24,7 +55,7 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
 } from "./pexels";
-export { normaliseQuery, queryCandidates } from "./query";
+export { anchorQueries, normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
   MAX_PHOTO_BYTES,

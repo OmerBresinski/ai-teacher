@@ -63,12 +63,29 @@ import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { audienceBlock } from "../prompts/shared";
 import { withUsage } from "../stages/generate";
 import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
+import { mustShowOf, photoBankOn } from "../stages/photo-bank";
+import { findDirected, type SlideForPicture } from "../stages/picture-director";
+
 import { audienceOf, planClassFor } from "../stages/shared";
 import type { PipelineDeps, PipelineState, T3Report } from "../types";
 import { DiagramSpecSchema } from "./diagram-spec";
 import { ASKED_FORMS, fitLadder, fitWritten, renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
 import { broadenedBrief, NO_PICTURE_ROW, noPictureOf } from "./slide-check";
+
+/** What the picture director reads of a written slide: its heading, words and notes. */
+function slideForPicture(s: {
+  heading: string;
+  body?: readonly string[] | null;
+  items?: readonly string[] | null;
+  notes?: string | null;
+}): SlideForPicture {
+  return {
+    heading: s.heading,
+    text: [...(s.body ?? []), ...(s.items ?? [])].join(" "),
+    point: s.notes ?? "",
+  };
+}
 
 /*
  * Lab arm ABLATE S/O (lab/ablate, 5 Oct 2026): one plain call for the whole lesson in a light schema,
@@ -1753,7 +1770,10 @@ export async function simpleLessonSlides(
   ] as OutlineEntry[];
   const briefOf = (p: { subject: string; named: string | null }): ImageBrief => ({
     subject: plainSubject(p.subject).slice(0, 60),
-    mustShow: [],
+    // PICTURE-AUDIT #1: the search query is clipped, the judge reads the whole request, and the
+    // things the request names are required in the picture.
+    request: p.subject.trim().slice(0, 400),
+    mustShow: mustShowOf(p.subject),
     purpose: "context",
     ...(p.named ? { named: p.named, specific: true } : { specific: false }),
   });
@@ -1767,7 +1787,12 @@ export async function simpleLessonSlides(
     durationMin: brief.durationMin ?? 60,
   } as LessonFacts;
   let lesson: Lesson = { ...base, facts };
-  const find = async (index: number, b: ImageBrief) => {
+  const find = async (
+    index: number,
+    b: ImageBrief,
+    ask?: { subject: string; named?: string | null },
+    slide?: SlideForPicture,
+  ) => {
     const at = (x: ImageBrief) =>
       pickPhoto(
         {
@@ -1789,10 +1814,28 @@ export async function simpleLessonSlides(
         index,
         deps,
       ).catch(() => ({ outcome: "empty" as const }));
-    let r = await at(b);
-    const wider = r.outcome === "placed" || r.outcome === "busy" ? undefined : broadenedBrief(b);
-    if (wider) r = await at(wider);
-    return r.outcome === "placed" && "photo" in r ? r.photo : undefined;
+    const stock = async (first: ImageBrief) => {
+      let r = await at(first);
+      const wider =
+        r.outcome === "placed" || r.outcome === "busy" ? undefined : broadenedBrief(first);
+      if (wider) r = await at(wider);
+      return r.outcome === "placed" && "photo" in r ? r.photo : undefined;
+    };
+    // TEACH-84 / ruling 158: the picture library first; real things to Commons and Pexels, then a
+    // faithful generation; generic scenes generated. Off (`photoBank: false`, PHOTO_BANK=0): stock.
+    const bank = deps.images?.bank;
+    if (!bank || !ask || !photoBankOn(deps.photoBank)) return stock(b);
+    return findDirected({
+      bank,
+      ask,
+      brief: b,
+      slide: slide ?? { heading: lesson.title },
+      lesson,
+      country: "England",
+      index,
+      stock,
+      deps,
+    });
   };
   const placeIn = (slide: Slide, photo: Parameters<typeof withPhoto>[1]): Slide =>
     ({
@@ -1811,22 +1854,20 @@ export async function simpleLessonSlides(
     | { kind: "figure"; template: FigureTemplateName; values: unknown };
   const resolvePic = (
     p: Pic,
-    heading: string,
+    _heading: string,
   ): { drawing?: Drawing; photo?: { subject: string; named: string | null }; invalid?: string } => {
     if (p.kind === "diagram") {
       const spec = parseDiagram(p.spec);
       if (spec) return { drawing: { kind: "diagram", spec } };
       const o = (p.spec ?? {}) as { kind?: string; title?: string };
-      return {
-        photo: { subject: o.title || heading, named: null },
-        invalid: `diagram ${o.kind ?? "?"}`,
-      };
+      // PICTURE-AUDIT #2: a drawing that fails falls back to the text layout, never a photo.
+      return { invalid: `diagram ${o.kind ?? "?"}` };
     }
     if (p.kind === "figure") {
       const name = p.template as FigureTemplateName;
       if (T3_FIGURES[name]?.values.safeParse(p.values).success)
         return { drawing: { kind: "figure", template: name, values: p.values } };
-      return { photo: { subject: heading, named: null }, invalid: `figure ${p.template}` };
+      return { invalid: `figure ${p.template}` };
     }
     return { photo: { subject: p.subject, named: p.named } };
   };
@@ -1905,7 +1946,7 @@ export async function simpleLessonSlides(
       }
       const pic = !placed && r?.photo ? briefOf(r.photo) : undefined;
       if (pic && deps.images) {
-        const photo = await find(index, pic);
+        const photo = await find(index, pic, r?.photo, slideForPicture(s));
         if (photo) {
           slide = placeIn(slide, photo);
           placed = true;
@@ -1913,6 +1954,10 @@ export async function simpleLessonSlides(
           const { imageBrief: _i, ...rest } = out;
           slide = drawOne("explain", rest);
         }
+      } else if (r && !placed) {
+        // No photo asked or no placer, or a drawing that failed: the text layout, no empty zone.
+        const { imageBrief: _i, ...rest } = out;
+        slide = drawOne("explain", rest);
       }
       const fits = slideFits(slide, theme, 0).ok;
       report.push({
@@ -2068,11 +2113,19 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
   };
   const briefOf = (p: { subject: string; named: string | null }): ImageBrief => ({
     subject: plainSubject(p.subject).slice(0, 60),
-    mustShow: [],
+    // PICTURE-AUDIT #1: the search query is clipped, the judge reads the whole request, and the
+    // things the request names are required in the picture.
+    request: p.subject.trim().slice(0, 400),
+    mustShow: mustShowOf(p.subject),
     purpose: "context",
     ...(p.named ? { named: p.named, specific: true } : { specific: false }),
   });
-  const find = async (index: number, b: ImageBrief) => {
+  const find = async (
+    index: number,
+    b: ImageBrief,
+    ask?: { subject: string; named?: string | null },
+    slide?: SlideForPicture,
+  ) => {
     const at = (x: ImageBrief) =>
       pickPhoto(
         {
@@ -2093,10 +2146,28 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         index,
         deps,
       ).catch(() => ({ outcome: "empty" as const }));
-    let r = await at(b);
-    const wider = r.outcome === "placed" || r.outcome === "busy" ? undefined : broadenedBrief(b);
-    if (wider) r = await at(wider);
-    return r.outcome === "placed" && "photo" in r ? r.photo : undefined;
+    const stock = async (first: ImageBrief) => {
+      let r = await at(first);
+      const wider =
+        r.outcome === "placed" || r.outcome === "busy" ? undefined : broadenedBrief(first);
+      if (wider) r = await at(wider);
+      return r.outcome === "placed" && "photo" in r ? r.photo : undefined;
+    };
+    // TEACH-84 / ruling 158: the picture library first; real things to Commons and Pexels, then a
+    // faithful generation; generic scenes generated. Off (`photoBank: false`, PHOTO_BANK=0): stock.
+    const bank = deps.images?.bank;
+    if (!bank || !ask || !photoBankOn(deps.photoBank)) return stock(b);
+    return findDirected({
+      bank,
+      ask,
+      brief: b,
+      slide: slide ?? { heading: lesson.title },
+      lesson,
+      country: "England",
+      index,
+      stock,
+      deps,
+    });
   };
   const placeIn = (slide: Slide, photo: Parameters<typeof withPhoto>[1]): Slide =>
     ({
@@ -2132,9 +2203,15 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     titleAsked = true;
     const pv = PICTURE_ORDER.find((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok);
     if (!p?.subject || !pv || !deps.images) return;
-    const pic = briefOf({ subject: p.subject, named: p.named ?? null });
+    const zone = materialiseSlide(titleSpec, themeId, meta(), deps.ids, pv).elements.find(
+      (e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE,
+    );
+    const pic = {
+      ...briefOf({ subject: p.subject, named: p.named ?? null }),
+      ...(zone ? { aspect: Math.round((zone.w / zone.h) * 100) / 100 } : {}),
+    };
     photos.push(
-      find(0, pic).then((photo) => {
+      find(0, pic, { subject: p.subject, named: p.named ?? null }).then((photo) => {
         if (!photo) return;
         deck[0] = {
           ...placeIn(materialiseSlide(titleSpec, themeId, meta(), deps.ids, pv), photo),
@@ -2250,7 +2327,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
               { stage: "generate", slide: index + 1, kind: "table", hardFailure: true },
               "t3 table does not fit",
             );
-        } else photoAsk = { subject: o.title || s.heading, named: null };
+        } else slide = drawPlain(plain); // PICTURE-AUDIT #2: a failed drawing is never a stock photo.
         deps.logger.warn(
           { stage: "generate", slide: index + 1, kind: o.kind, reasons: d.reasons.slice(0, 6) },
           "t3 drawing not drawn",
@@ -2277,7 +2354,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         drawn = "figure";
       } else {
         invalid = `figure ${p.template}`;
-        photoAsk = { subject: s.heading, named: null };
+        slide = drawPlain(plain); // PICTURE-AUDIT #2: the text layout, not a photo of the heading.
       }
     } else if (p)
       photoAsk = {
@@ -2321,7 +2398,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     });
     if (pic)
       photos.push(
-        find(index, pic).then((photo) => {
+        find(index, pic, photoAsk, slideForPicture(s)).then((photo) => {
           if (round[index] !== gen) return; // a re-ask replaced this slide meanwhile
           deck[index] = photo ? placeIn(slide, photo) : drawPlain(plain);
           if (!photo)

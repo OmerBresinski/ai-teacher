@@ -1,13 +1,19 @@
 import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
-import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
+import { newId, type ReadableStorageAdapter, type StorageAdapter } from "@tj/domain";
 import { type Planner, planWriteRoute, type ReasoningEffort } from "@tj/generation";
-import { createPexelsClient, type PexelsClient } from "@tj/images";
+import {
+  createOpenAiEmbedder,
+  createOpenAiImageGenerator,
+  createPexelsClient,
+  type PexelsClient,
+} from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { createPerJobFakeAi } from "./fake-ai";
+import { createPictureBank } from "./picture-bank";
 
 /**
  * Boot-owned dependencies every handler receives as `ctx.deps`. `db` is the same pooled Drizzle
@@ -37,7 +43,12 @@ export type WorkerDeps = {
   /** `AI_LESSON_COST_WARN_USD` (TEACH-93): the per-lesson cost a finished lesson is warned above. */
   costWarnUsd?: number;
   storage: ReadableStorageAdapter;
-  images?: { client: PexelsClient; storage: StorageAdapter };
+  images?: {
+    client: PexelsClient;
+    storage: StorageAdapter;
+    /** TEACH-84 picture library: present with an OpenAI key (embeddings and generation). */
+    bank?: ReturnType<typeof createPictureBank>;
+  };
   jobs?: JobsContext;
 };
 
@@ -82,6 +93,19 @@ export function createWorkerDeps(
       ? {
           client: createPexelsClient({ apiKey: env.PEXELS_API_KEY }),
           storage: storage.adapter,
+          ...(env.OPENAI_API_KEY
+            ? {
+                bank: createPictureBank({
+                  db,
+                  storage: storage.adapter,
+                  embedder: createOpenAiEmbedder({ apiKey: env.OPENAI_API_KEY }),
+                  generator: createOpenAiImageGenerator({ apiKey: env.OPENAI_API_KEY }),
+                  // A process-life cap until IMAGE_BANK_DAILY_CAP_USD lands (TEACH-84 FR 4).
+                  capUsd: 1,
+                  ids: newId,
+                }),
+              }
+            : {}),
         }
       : undefined,
     storageKind: storage.kind,

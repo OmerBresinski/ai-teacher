@@ -183,6 +183,11 @@ export type ImagePurpose = (typeof IMAGE_PURPOSES)[number];
 const MustShowItem = z.string().trim().min(1).max(120);
 export const ImageBriefSchema = z.strictObject({
   subject: z.string().trim().min(1).max(60),
+  /**
+   * The writer's whole picture request (PICTURE-AUDIT #1): the judge reads it; the search uses the
+   * clipped `subject`. Absent: the judge reads `subject`.
+   */
+  request: z.string().trim().min(1).max(400).optional(),
   mustShow: z
     .union([MustShowItem.transform((one) => [one]), z.array(MustShowItem).max(4)])
     .optional()
@@ -199,6 +204,8 @@ export const ImageBriefSchema = z.strictObject({
   specific: z.boolean().optional(),
   /** The proper name of the one thing the photo must show (the writer's `named`); searched first. */
   named: z.string().trim().min(1).max(80).optional(),
+  /** Searches the picture director wrote (most specific first); tried before code's own. */
+  queries: z.array(z.string().trim().min(1).max(80)).max(4).optional(),
   /**
    * The picture zone's width over height (ruling 158): a photo is searched for, or generated, at
    * that shape. Absent: the search's own default.

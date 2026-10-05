@@ -1,0 +1,31 @@
+CREATE TABLE "bank_images" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"storage_key" text NOT NULL,
+	"mime" text NOT NULL,
+	"byte_size" integer NOT NULL,
+	"width" integer NOT NULL,
+	"height" integer NOT NULL,
+	"family" text NOT NULL,
+	"provider" text NOT NULL,
+	"source" jsonb NOT NULL,
+	"licence" text,
+	"credit" text,
+	"alt" text NOT NULL,
+	"tags" text[] DEFAULT '{}' NOT NULL,
+	"request" text NOT NULL,
+	"route" text NOT NULL,
+	"generator" text,
+	"generator_terms" text,
+	"prompt" text,
+	"cost_usd" text,
+	"embed_model" text NOT NULL,
+	"embed_dims" integer NOT NULL,
+	"embedding" vector(1536) NOT NULL,
+	"flags" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"status" text DEFAULT 'ready' NOT NULL,
+	"use_count" integer DEFAULT 0 NOT NULL,
+	"last_used_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX "bank_images_status_family_idx" ON "bank_images" USING btree ("status","family");

@@ -161,7 +161,8 @@ export type TextElement = ElementBase & {
  * icon and the export credits page; `provider` widens only when a second provider ships.
  */
 export type PhotoSource = {
-  provider: "pexels" | "commons";
+  /** `generated`: made by the picture library's image model (TEACH-84, ruling 158). */
+  provider: "pexels" | "commons" | "generated";
   /** The provider's photo id. */
   id: string;
   /** The photo's page on the provider, http(s). */
@@ -456,7 +457,7 @@ export const PhotoEvidenceSchema = z.strictObject({
 export type PhotoEvidence = z.infer<typeof PhotoEvidenceSchema>;
 
 export const PhotoSourceSchema = z.strictObject({
-  provider: z.enum(["pexels", "commons"]),
+  provider: z.enum(["pexels", "commons", "generated"]),
   id: z.string().min(1),
   pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
   photographer: z.string(),
