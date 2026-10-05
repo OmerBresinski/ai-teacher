@@ -249,6 +249,7 @@ export function placeLabel(x: Ctx, sc: Scene, w: number, h: number, req: LabelRe
           const out: string[] = [];
           if (far) {
             sc.leaders.push(leader);
+            x.leaders?.push(leader);
             x.strokes?.push(leader);
             out.push(
               `<line x1="${n(px)}" y1="${n(py)}" x2="${n(end[0])}" y2="${n(end[1])}" stroke="${x.c.ink}" stroke-width="1.75" stroke-linecap="round"/>`,

@@ -175,6 +175,7 @@ function body(
     faults: string[];
     arrows?: Ctx["arrows"];
     axes?: Ctx["axes"];
+    leaders?: Ctx["leaders"];
   },
   fs?: number,
 ): string {
@@ -215,6 +216,7 @@ function body(
         faults: probe.faults,
         arrows: probe.arrows,
         axes: probe.axes,
+        leaders: probe.leaders,
       }
     : x;
   const inner = (() => {
@@ -322,6 +324,7 @@ export type DiagramProbe = {
   faults: string[];
   arrows: NonNullable<Ctx["arrows"]>;
   axes: NonNullable<Ctx["axes"]>;
+  leaders: NonNullable<Ctx["leaders"]>;
 };
 const diagramProbe = (h: number): DiagramProbe => ({
   rec: [],
@@ -330,6 +333,7 @@ const diagramProbe = (h: number): DiagramProbe => ({
   faults: [],
   arrows: [],
   axes: [],
+  leaders: [],
 });
 let lastProbe: DiagramProbe | undefined;
 /** The probe of the last `diagramFaults` call (the geometry checks read arrows and axes from it). */
@@ -437,6 +441,10 @@ export function settleDiagram(
 
 /** Kinds whose drawing fills whatever box it gets (a plot, a scene): kept, at most 0.85 as tall as wide. */
 const FILLS_BOX = new Set([
+  // Plots keep their box: a chart cut to its smallest clean height squashes its scale.
+  "bar-chart",
+  "venn",
+  "pie",
   "line-graph",
   "hydrograph",
   "labelled-diagram",

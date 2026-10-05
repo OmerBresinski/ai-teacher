@@ -13,7 +13,7 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { pathSegments, samplePath } from "../path";
-import { diagramFaults, lastDiagramProbe } from "./index";
+import { diagramElement, diagramFaults, lastDiagramProbe } from "./index";
 import { TYPE_FLOOR } from "./style";
 
 /** How far an arrow's tip may stand off the box it points at, in points. */
@@ -28,9 +28,31 @@ export function diagramGeometryFaults(
   const out = diagramFaults(spec, theme, size);
   const probe = lastDiagramProbe();
   if (!probe || out.includes("it does not draw")) return out;
-  for (const b of probe.rec)
-    if ((b.fs ?? TYPE_FLOOR) < TYPE_FLOOR - 0.01)
-      out.push(`the label "${b.text}" is set at ${b.fs} pt, under the ${TYPE_FLOOR} pt floor`);
+  // Rendered size: a label's size in the drawing times the scale the slide shows the drawing at
+  // (the placed image's width over the SVG's own viewBox).
+  const scale = renderedScale(spec, theme, size);
+  for (const b of probe.rec) {
+    const pt = (b.fs ?? TYPE_FLOOR) * scale;
+    if (pt < TYPE_FLOOR - 0.01)
+      out.push(
+        `the label "${b.text}" renders at ${Math.round(pt * 10) / 10} pt, under the ${TYPE_FLOOR} pt floor`,
+      );
+  }
+  // Any two labels touching (diagramFaults allows a 15 % graze; the eye does not).
+  const rec = probe.rec;
+  for (let i = 0; i < rec.length; i++)
+    for (let j = i + 1; j < rec.length; j++) {
+      const a = rec[i];
+      const b = rec[j];
+      if (!a || !b) continue;
+      const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (ox > 1 && oy > 1) out.push(`the labels "${a.text}" and "${b.text}" touch`);
+    }
+  const ls = probe.leaders;
+  for (let i = 0; i < ls.length; i++)
+    for (let j = i + 1; j < ls.length; j++)
+      if (segmentsCross(ls[i] as Seg, ls[j] as Seg)) out.push("two leader lines cross");
   for (const a of probe.arrows) {
     const [px, py] = a.tip;
     const { x0, y0, x1, y1 } = a.target;
@@ -46,6 +68,28 @@ export function diagramGeometryFaults(
     if (a.max < a.data - 1e-9)
       out.push(`the ${a.name} axis stops at ${a.max}, under its data (${a.data})`);
   return [...new Set(out)];
+}
+
+type Seg = [number, number, number, number];
+
+/** Two segments cross at a point inside both (touching ends do not count). */
+export function segmentsCross([ax, ay, bx, by]: Seg, [cx, cy, dx, dy]: Seg): boolean {
+  const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+  if (Math.abs(d) < 1e-9) return false;
+  const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d;
+  const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
+  return t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98;
+}
+
+/** How large the slide shows the drawing against its own units: the image width over the viewBox. */
+export function renderedScale(spec: unknown, theme: Theme, size: { w: number; h: number }): number {
+  const el = diagramElement(spec, theme, { x: 0, y: 0, ...size });
+  if (!el) return 1;
+  const svg = decodeURIComponent((el.src as string).replace(/^data:image\/svg\+xml[^,]*,/, ""));
+  const vb = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(svg);
+  if (!vb) return 1;
+  // An image fitted with "contain" scales by the tighter of its two ratios.
+  return Math.min(el.w / Number(vb[1]), el.h / Number(vb[2]));
 }
 
 type Pt = { x: number; y: number };

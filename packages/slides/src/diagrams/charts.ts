@@ -275,16 +275,30 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
   const fs = x.fs;
   const out: string[] = [];
   const three = s.sets.length === 3;
-  const head = fs * 1.5;
   const ifs = sub(fs, 0.9);
+  // The two top names side by side over their circles; when they would touch, each keeps to its
+  // own half (left- and right-aligned) and wraps onto two lines, and the head grows to hold them.
+  const nameW = (t: string) => textWidth(t, x, fs, WEIGHT.name);
+  const top2 = s.sets.slice(0, 2);
+  const roomOf = (rr: number) => 3.2 * rr;
+  const clash = (rr: number) =>
+    top2.reduce((a, t) => a + nameW(t), 0) + fs > Math.min(w - 8, roomOf(rr));
+  const split = (t: string) => wrap(t, x, w / 2 - fs * 0.5 - 4, 2, fs, WEIGHT.name);
   // Items in no set sit in a row along the foot of the universal box, below the circles.
   const outside = s.items
     .filter((it) => !it.in.some((i) => i < s.sets.length))
     .map((it) => it.text);
   const outLines = outside.length ? wrap(outside.join(",\u2003"), x, w - 28, 2, ifs) : [];
   const strip = outLines.length ? outLines.length * ifs * 1.2 + ifs * 0.6 : 0;
+  const radius = (head: number) => {
+    const room = h - head - strip;
+    return three ? Math.min(w / 3.1, room / 2.9) : Math.min(w / 3.3, room / 2.1);
+  };
+  const wrapNames = clash(radius(fs * 1.5));
+  const nameLines = top2.map((t) => (wrapNames ? split(t) : [t]));
+  const head = fs * (1.5 + 1.2 * (Math.max(...nameLines.map((l) => l.length)) - 1));
   const room = h - head - strip;
-  const r = three ? Math.min(w / 3.1, room / 2.9) : Math.min(w / 3.3, room / 2.1);
+  const r = radius(head);
   const cy = head + (three ? r * 1.0 : room / 2);
   const centres: [number, number][] = three
     ? [
@@ -314,6 +328,16 @@ export function drawVenn(s: Venn, x: Ctx, w: number, h: number): string {
   s.sets.forEach((name, i) => {
     const [px, py] = centres[i] as [number, number];
     const below = i === 2;
+    if (wrapNames && !below) {
+      out.push(
+        text(x, i === 0 ? 4 : w - 4, py - r - fs * 0.3, nameLines[i] ?? [name], {
+          weight: WEIGHT.name,
+          anchor: i === 0 ? "start" : "end",
+          v: "bottom",
+        }),
+      );
+      return;
+    }
     const ax = i === 0 ? px - r * 0.3 : i === 1 ? px + r * 0.3 : px;
     out.push(
       text(

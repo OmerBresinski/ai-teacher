@@ -124,6 +124,9 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   if (g.y2) {
     const Y2 = Yof(g.y2);
     for (const v of y2t) {
+      // Modern looks: the right axis's bottom tick would sit on the last time tick; the
+      // baseline already reads as its zero.
+      if (modern && v === g.y2.min) continue;
       out.push(
         text(x, left + pw + 8, Y2(v), [num(v)], { fs: small, anchor: "start", fill: c.ink }),
       );

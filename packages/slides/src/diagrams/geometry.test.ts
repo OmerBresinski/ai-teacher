@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { FIGURE_TEMPLATES } from "../figures";
 import { getTheme } from "../themes";
 import { DIAGRAM_ZONES } from "./capacity";
-import { diagramGeometryFaults, figureGeometryFaults } from "./geometry";
+import {
+  diagramGeometryFaults,
+  figureGeometryFaults,
+  renderedScale,
+  segmentsCross,
+} from "./geometry";
 import H1 from "./h1-specs.json";
 import { diagramFaults, lastDiagramProbe, withLongLabels } from "./index";
 import { DIAGRAM_SAMPLES } from "./samples";
@@ -93,4 +98,26 @@ describe("DIAGRAM-MODERN geometry checks", () => {
             }
         });
       });
+  test("crossing leaders are caught, and a meander section's leaders never cross", () => {
+    expect(segmentsCross([0, 0, 10, 10], [0, 10, 10, 0])).toBe(true);
+    expect(segmentsCross([0, 0, 10, 0], [0, 5, 10, 5])).toBe(false);
+    const t = getTheme("studio");
+    for (const p of PRESETS)
+      withDiagramPreset(p, () => {
+        const f = diagramGeometryFaults(
+          TEMPLATE_SPECS["river-meander-section"],
+          t,
+          DIAGRAM_ZONES.full,
+        );
+        expect(f).toEqual([]);
+      });
+  });
+
+  test("labels are measured at the size the slide renders them", () => {
+    const t = getTheme("studio");
+    expect(renderedScale(TEMPLATE_SPECS["timeline-seven"], t, DIAGRAM_ZONES.full)).toBeCloseTo(
+      1,
+      5,
+    );
+  });
 });

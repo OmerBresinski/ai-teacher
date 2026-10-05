@@ -444,8 +444,14 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
     );
     sc.boxes.push({ x0: X(u) - bw / 2, x1: X(u) + bw / 2, y0: Y1 - bh, y1: Y1 });
   });
+  // Modern looks: the rain bars sit behind the lines, which cut through them on a ground-coloured
+  // underlay, so a bar taller than the base flow never reads as drawn over it.
+  const under = look().preset !== "current";
   // Base flow, dashed.
   out.push(
+    under
+      ? `<line x1="${n(X0)}" y1="${n(Y(base))}" x2="${n(X1)}" y2="${n(Y(base))}" stroke="${x.c.bg}" stroke-width="6"/>`
+      : "",
     `<line x1="${n(X0)}" y1="${n(Y(base))}" x2="${n(X1)}" y2="${n(Y(base))}" stroke="${x.c.muted}" stroke-width="1.5" stroke-dasharray="6 5"/>`,
   );
   addLine(x, sc, [
@@ -456,6 +462,9 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   const pts: Pt[] = [];
   for (let i = 0; i <= 80; i++) pts.push([X(i / 80), Y(q(i / 80))]);
   out.push(
+    under
+      ? `<polyline points="${pts.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="none" stroke="${x.c.bg}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>`
+      : "",
     `<polyline points="${pts.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="none" stroke="${x.c.accent}" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`,
   );
   addLine(x, sc, pts);
@@ -743,17 +752,6 @@ function breakMark(x: Ctx, cx: number, cy: number, vertical: boolean): string {
 
 export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string {
   const k = s.events.length;
-  // Modern looks: six or more events read as a list down the slot (one line each, a size up)
-  // rather than small labels alternating above and below a line.
-  if (look().preset !== "current" && k > 5) {
-    const probe = drawTimelineDown(
-      s,
-      { ...x, faults: [], rec: undefined, strokes: undefined },
-      w,
-      h,
-    );
-    if (probe) return drawTimelineDown(s, x, w, h);
-  }
   const pad = 6;
   const slot = (w - 2 * pad) / k;
   const xs = s.events.map((_, i) => pad + slot * (i + 0.5));
@@ -868,6 +866,12 @@ function drawTimelineDown(s: Timeline, x: Ctx, w: number, h: number): string {
     const top = (h - row * k) / 2;
     const yc = (i: number) => top + row * (i + 0.5);
     const out: string[] = [];
+    // Modern looks: the timeline stands in the middle of its zone, not against its left edge.
+    const bodyW = Math.max(
+      ...(bodies as string[][]).map((b) => blockSize(x, b, sub(fs, 0.92), WEIGHT.label).bw),
+    );
+    const shift =
+      look().preset === "current" ? 0 : Math.max(0, (w - (lineX + 16 + bodyW + bandW)) / 2);
     out.push(arrow(lineX, 2, lineX, h - 2, x.c.ink, 3, 12));
     x.strokes?.push([lineX, 2, lineX, h - 2]);
     if (s.period) {
@@ -897,6 +901,18 @@ function drawTimelineDown(s: Timeline, x: Ctx, w: number, h: number): string {
         text(x, lineX + 16, y, bodies[i] as string[], { fs: sub(fs, 0.92), anchor: "start" }),
       );
     });
+    if (shift > 0) {
+      for (const r of x.rec?.slice(-2 * k) ?? []) {
+        r.x0 += shift;
+        r.x1 += shift;
+      }
+      const st = x.strokes?.[x.strokes.length - 1];
+      if (st) {
+        st[0] += shift;
+        st[2] += shift;
+      }
+      return `<g transform="translate(${n(shift)},0)">${out.join("")}</g>`;
+    }
     return out.join("");
   }
   bad(x, "the timeline's events do not fit the space");
@@ -1184,6 +1200,38 @@ const BEND = (u: number): Pt => {
 };
 
 /**
+ * Where a meander section's names stand, in the section's own units: each beside the feature it
+ * names, with room measured from the drawing (water, land under the slope, land left of the
+ * cliff). `room` is the width in units a name may take; a leader only where the name stands off
+ * its point. Undefined when a name does not fit its room at the floor (the section then falls
+ * back to placed labels, and steps up when those crowd).
+ */
+const MEANDER_SPOTS: Record<
+  string,
+  { at: Pt; anchor: "start" | "middle" | "end"; room: number; leader?: Pt }
+> = {
+  "river-cliff": { at: [30.5, 50], anchor: "end", room: 29, leader: [35, 50] },
+  "fastest-flow": { at: [49.5, 72], anchor: "start", room: 32 },
+  erosion: { at: [60.5, 62], anchor: "start", room: 20 },
+  deposition: { at: [97, 56.5], anchor: "middle", room: 26 },
+  "slip-off-slope": { at: [128, 68.5], anchor: "middle", room: 34, leader: [112, 58.5] },
+  "outer-bank": { at: [16, 25], anchor: "middle", room: 30 },
+  "inner-bank": { at: [146, 35], anchor: "middle", room: 26 },
+};
+
+function meanderSpots(s: River, x: Ctx, k: number) {
+  if (!s.labels.every((l) => MEANDER_SPOTS[l.part])) return undefined;
+  for (let fs = x.fs; fs >= TYPE_FLOOR; fs -= 1) {
+    const items = s.labels.map((l) => {
+      const sp = MEANDER_SPOTS[l.part] as (typeof MEANDER_SPOTS)[string];
+      return { ...sp, text: l.text, bw: textWidth(l.text, x, fs, WEIGHT.name) };
+    });
+    if (items.every((it) => it.bw <= it.room * k)) return { fs, items };
+  }
+  return undefined;
+}
+
+/**
  * A section's names in one row, ordered as their anchors run left to right and spread so none
  * touch, at the largest size from the label size down to the floor; undefined when they do not fit.
  */
@@ -1229,13 +1277,23 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
   const ox = (w - 160 * k) / 2;
   // Modern looks: a section's names stand in one row above it, in the order of what they name,
   // each on a straight leader; the section fills the rest of the zone.
-  const row = !plan && look().preset !== "current" ? sectionRow(s, x, w, ox, k) : undefined;
-  const band = row ? row.fs * 1.25 + row.fs * 0.9 : 0;
+  const modern = !plan && look().preset !== "current";
+  // A meander section names its features in place (in the water, on the banks); other sections
+  // name theirs in a row above.
+  const spots = modern && s.view === "meander-section" ? meanderSpots(s, x, k) : undefined;
+  const row = modern && !spots ? sectionRow(s, x, w, ox, k) : undefined;
+  const band = row
+    ? row.fs * 1.25 + row.fs * 0.9
+    : spots
+      ? s.labels.some((l) => l.part === "outer-bank" || l.part === "inner-bank")
+        ? spots.fs * 1.6
+        : 4
+      : 0;
   // The ground's highest point meets the label band; its base meets the zone's foot.
   const span = 100 - Math.min(100, ...geo.ground.map((p) => p[1]));
   const ky = plan
     ? k
-    : row
+    : row || spots
       ? Math.min(k * 1.6, (h - 2 - band) / Math.max(1, span))
       : (h * 0.6) / 80;
   const oy = plan ? (h - 100 * k) / 2 : h - 100 * ky - 2;
@@ -1320,6 +1378,28 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
     addLine(x, sc, profile);
   }
   out.push(geo.marks(t, x, sc, has));
+  if (spots) {
+    for (const sp of spots.items) {
+      const [px, py] = t(sp.at);
+      const lx = sp.anchor === "start" ? px : sp.anchor === "end" ? px - sp.bw : px - sp.bw / 2;
+      out.push(
+        text(x, px, py, [sp.text], { fs: spots.fs, weight: WEIGHT.name, anchor: sp.anchor }),
+      );
+      if (sp.leader) {
+        // A short leader from the label's nearest edge to its point.
+        const [ax, ay] = t(sp.leader);
+        const ex = Math.max(lx, Math.min(lx + sp.bw, ax));
+        const ey = ay < py - spots.fs * 0.6 ? py - spots.fs * 0.6 : py;
+        const sx = ax < lx ? lx - 3 : ax > lx + sp.bw ? lx + sp.bw + 3 : ex;
+        out.push(
+          `<line x1="${n(sx)}" y1="${n(ey)}" x2="${n(ax)}" y2="${n(ay)}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}" stroke-linecap="round"/>`,
+          `<circle cx="${n(ax)}" cy="${n(ay)}" r="3.5" fill="${x.c.ink}"/>`,
+        );
+        x.leaders?.push([sx, ey, ax, ay]);
+      }
+    }
+    return out.join("");
+  }
   if (row) {
     for (const it of row.items) {
       const [ax, ay] = t(geo.anchors[it.part]?.at ?? [0, 0]);
@@ -1329,6 +1409,7 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
         `<circle cx="${n(ax)}" cy="${n(ay)}" r="3.5" fill="${x.c.ink}"/>`,
       );
       x.strokes?.push([it.cx, ly, ax, ay]);
+      x.leaders?.push([it.cx, ly, ax, ay]);
       out.push(
         text(x, it.cx, row.fs * 0.62, [it.text], { fs: row.fs, weight: WEIGHT.name, halo: x.c.bg }),
       );
