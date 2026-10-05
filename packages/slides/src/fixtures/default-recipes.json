@@ -2273,24 +2273,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 195,
-        "fill": "#FFFBF0",
-        "stroke": "#A94A18",
-        "strokeWidth": 2.5,
-        "radius": 14,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 137,
         "doc": {
           "type": "doc",
@@ -2308,9 +2294,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -4886,24 +4870,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 193,
-        "fill": "#FFFFFF",
-        "stroke": "#6532BE",
-        "strokeWidth": 2.5,
-        "radius": 22,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 135,
         "doc": {
           "type": "doc",
@@ -4921,9 +4891,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -7222,24 +7190,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 198,
-        "fill": "#FFFFFF",
-        "stroke": "#A31F2E",
-        "strokeWidth": 2.5,
-        "radius": 6,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 140,
         "doc": {
           "type": "doc",
@@ -7257,9 +7211,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -9558,24 +9510,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 193,
-        "fill": "#FFFFFF",
-        "stroke": "#0A5CA2",
-        "strokeWidth": 2.5,
-        "radius": 26,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 135,
         "doc": {
           "type": "doc",
@@ -9593,9 +9531,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -11894,24 +11830,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 193,
-        "fill": "#FFFFFF",
-        "stroke": "#245F28",
-        "strokeWidth": 2.5,
-        "radius": 10,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 135,
         "doc": {
           "type": "doc",
@@ -11929,9 +11851,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -14507,24 +14427,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 195,
-        "fill": "#FFFCF6",
-        "stroke": "#2C5A4D",
-        "strokeWidth": 2.5,
-        "radius": 6,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 137,
         "doc": {
           "type": "doc",
@@ -14542,9 +14448,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -16843,24 +16747,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 195,
-        "fill": "#FFFFFF",
-        "stroke": "#0B6E86",
-        "strokeWidth": 2.5,
-        "radius": 14,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 137,
         "doc": {
           "type": "doc",
@@ -16878,9 +16768,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -19456,24 +19344,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 198,
-        "fill": "#F3F5F8",
-        "stroke": "#1B3A8C",
-        "strokeWidth": 2.5,
-        "radius": 4,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 140,
         "doc": {
           "type": "doc",
@@ -19491,9 +19365,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -22069,24 +21941,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 195,
-        "fill": "#1C1F25",
-        "stroke": "#F2B551",
-        "strokeWidth": 2.5,
-        "radius": 12,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 137,
         "doc": {
           "type": "doc",
@@ -22104,9 +21962,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],
@@ -24682,24 +24538,10 @@
     "elements": [
       {
         "id": "_1",
-        "type": "shape",
-        "shape": "rounded",
-        "x": 58,
-        "y": 161,
-        "w": 844,
-        "h": 195,
-        "fill": "#FFFFFF",
-        "stroke": "#0A46C8",
-        "strokeWidth": 2.5,
-        "radius": 6,
-        "name": "Prompt card"
-      },
-      {
-        "id": "_2",
         "type": "text",
-        "x": 87,
-        "y": 190,
-        "w": 786,
+        "x": 58,
+        "y": 43,
+        "w": 844,
         "h": 137,
         "doc": {
           "type": "doc",
@@ -24717,9 +24559,7 @@
         },
         "style": {
           "preset": "heading",
-          "autoHeight": true,
-          "align": "center",
-          "valign": "middle"
+          "autoHeight": true
         }
       }
     ],

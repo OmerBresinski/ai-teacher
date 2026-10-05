@@ -168,3 +168,39 @@ describe("simple: the hinge grid at body size (ruling 161)", () => {
     expect(new Set(opts.map((o) => o.x)).size).toBe(1);
   });
 });
+
+describe("simple: the open response is a question at the top, its parts on their own lines", () => {
+  const or = (stem: string) =>
+    materialiseSlide(
+      { kind: "open-response", stem, factRefs: [] } as SlideSpec,
+      "studio",
+      META,
+      counter(),
+    );
+  test("no floating box: the question opens the slide", () => {
+    const slide = or("How does a chick change as it grows into a hen?");
+    expect(slide.elements.some((e) => e.name === "Prompt card")).toBe(false);
+    const q = slide.elements.find((e): e is TextElement => e.type === "text");
+    expect(q?.y).toBe(43);
+    expect(q?.style.align ?? "left").toBe("left");
+  });
+  test("a three-part question sets (a), (b) and (c) on their own lines", () => {
+    const slide = or(
+      "How did Germany's hyperinflation develop, why did its effects differ, and how was it brought under control?",
+    );
+    const parts = slide.elements.filter((e) => e.name === "Part");
+    expect(parts.map((p) => (p.type === "text" ? plain(p) : ""))).toEqual([
+      "(a)\u2003How did Germany's hyperinflation develop?",
+      "(b)\u2003Why did its effects differ?",
+      "(c)\u2003How was it brought under control?",
+    ]);
+    for (let i = 1; i < parts.length; i++)
+      expect((parts[i] as TextElement).y).toBeGreaterThan((parts[i - 1] as TextElement).y);
+  });
+  test("written parts keep their marks, right-aligned on the part's line", () => {
+    const slide = or("Answer in full. (a) Name the gas. [1] (b) Explain why it rises. [3]");
+    const marks = slide.elements.filter((e): e is TextElement => e.name === "Marks");
+    expect(marks.map(plain)).toEqual(["[1]", "[3]"]);
+    for (const m of marks) expect(m.style.align).toBe("right");
+  });
+});

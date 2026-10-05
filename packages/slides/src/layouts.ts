@@ -976,28 +976,16 @@ function sortSlide(t: Theme): Layout {
  * board shows no empty answer box (the box belongs on the handout; layout audit #8).
  */
 function openResponseSlide(t: Theme): Layout {
+  // The simple slide (ruling 162): the question opens the slide at the heading's place, no box.
   const promptH = boxH(t, "heading", 3, "question");
-  const pad = SPACE[4];
-  const top = centreY(promptH + pad * 2);
   return {
     elements: [
-      shape(
-        "rounded",
-        { x: SAFE.x, y: top, w: FULL, h: promptH + pad * 2 },
-        {
-          fill: t.colors.surface,
-          stroke: t.colors.accent,
-          strokeWidth: 2.5,
-          radius: t.radius,
-          name: "Prompt card",
-        },
-      ),
-      text(
-        "heading",
-        "Ask an open question worth writing about.",
-        { x: SAFE.x + pad, y: top + pad, w: FULL - pad * 2, h: promptH },
-        { align: "center", valign: "middle" },
-      ),
+      text("heading", "Ask an open question worth writing about.", {
+        x: SAFE.x,
+        y: SAFE.y,
+        w: FULL,
+        h: promptH,
+      }),
     ],
     // Without this the slide is not a question slide: the answer drawer, the model
     // answer field and "Show answers" on export all key off `slide.question`.

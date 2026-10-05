@@ -364,7 +364,7 @@ describe("key terms", () => {
 });
 
 describe("overflow fixes", () => {
-  test("an open question is a framed prompt with no answer box on the board, inside the slide", () => {
+  test("an open question is the question at the top, no frame and no answer box, inside the slide", () => {
     for (const t of THEMES) {
       const slide = materialiseSlide(
         {
@@ -376,8 +376,9 @@ describe("overflow fixes", () => {
         meta,
       );
       expect(named(slide.elements, "Answer space")).toHaveLength(0);
-      const card = named(slide.elements, "Prompt card")[0] as SlideElement;
-      expect(card.y + card.h).toBeLessThanOrEqual(SAFE_BOTTOM);
+      // The simple slide (ruling 162): no framing box, the question opens the slide.
+      expect(named(slide.elements, "Prompt card")).toHaveLength(0);
+      for (const e of slide.elements) expect(e.y + e.h).toBeLessThanOrEqual(SAFE_BOTTOM);
       expect(fitSlide(slide, t).overflow).toEqual([]);
     }
   });

@@ -27,7 +27,7 @@ import {
 import { docFromBullets, docFromChunks, docFromText, isChunked, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { bodyGrid, fitSlide } from "./fit-slide";
-import { SAFE, SPACE } from "./grid";
+import { SAFE, SPACE, snapY } from "./grid";
 import {
   AGENDA_OBJECTIVES,
   AGENDA_STEM,
@@ -77,6 +77,7 @@ import {
   withTerms,
 } from "./structure";
 import { measureHeadless } from "./text-measure";
+import { resolveFontSize } from "./text-style";
 import { NUMBER_NAME, tidySlide } from "./text-tidy";
 import { withThemeColours } from "./theme-colours";
 import { getTheme } from "./themes";
@@ -706,7 +707,7 @@ function fillSlide(
     case "sort":
       return fillSort(spec, laid);
     case "open-response":
-      return fillOpenResponse(spec, laid);
+      return fillOpenResponse(spec, themeId, laid, ids);
     case "plenary":
       return fillPlenary(spec, laid, variantName(spec.kind, variant));
   }
@@ -1113,11 +1114,111 @@ function labelledDoc(label: string, content: string): RichDoc {
   };
 }
 
-function fillOpenResponse(spec: SlideSpecOf<"open-response">, laid: Layout): Layout {
-  setText(textOf(laid, "heading"), spec.stem);
+function fillOpenResponse(
+  spec: SlideSpecOf<"open-response">,
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+): Layout {
   const question: QuestionData = { type: "open-response" };
   if (spec.modelAnswer) question.modelAnswer = spec.modelAnswer;
-  return { ...laid, question };
+  const split = questionParts(spec.stem);
+  if (!split) {
+    setText(textOf(laid, "heading"), spec.stem);
+    return { ...laid, question };
+  }
+  // A question in parts: its lead (if any) as the heading, then (a), (b), (c) each on its own
+  // line in the body, any marks right-aligned on the part's line (item 4, simple slide).
+  const t = getTheme(themeId);
+  const measure = measureHeadless(t);
+  const head = textOf(laid, "heading");
+  const els: SlideElement[] = [];
+  let y: number = SAFE.y;
+  if (split.lead) {
+    setText(head, split.lead);
+    const h = measure({
+      doc: head.doc,
+      width: head.w,
+      style: head.style,
+      preset: "heading",
+      inset: 0,
+      chrome: 0,
+    });
+    head.h = Math.ceil(h);
+    els.push(head);
+    y = snapY(SAFE.y + head.h + SPACE[4]);
+  }
+  const size = Math.round(resolveFontSize(t, "body") * 1.15);
+  const marksW = 96;
+  for (const part of split.parts) {
+    const doc: RichDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: `(${part.label})`, marks: [{ type: "bold" }] },
+            { type: "text", text: `\u2003${part.text}` },
+          ],
+        },
+      ],
+    };
+    const w = SAFE.w - (part.marks ? marksW + SPACE[3] : 0);
+    const style = { preset: "body" as const, fontSize: size };
+    const h = Math.ceil(measure({ doc, width: w, style, preset: "body", inset: 0, chrome: 0 }));
+    els.push({ id: ids(), type: "text", name: "Part", x: SAFE.x, y, w, h, doc, style });
+    if (part.marks)
+      els.push({
+        id: ids(),
+        type: "text",
+        name: "Marks",
+        x: SAFE.x + SAFE.w - marksW,
+        y,
+        w: marksW,
+        h,
+        doc: docFromText(part.marks),
+        style: { preset: "body", fontSize: size, align: "right", color: t.colors.muted },
+      });
+    y = snapY(y + h + SPACE[4]);
+  }
+  return { ...laid, elements: els, question };
+}
+
+/**
+ * A question's parts: written "(a) … (b) …" (with any "[2]" or "(2 marks)" after a part), or one
+ * question of two or three "how/why/what…" clauses joined by commas ("How did X develop, why did
+ * it differ, and how was it ended?"), each set as its own question. Null when it is one question.
+ */
+export function questionParts(
+  stem: string,
+): { lead: string; parts: { label: string; text: string; marks?: string }[] } | null {
+  const marked = /\(([a-e])\)\s*/g;
+  const at = [...stem.matchAll(marked)];
+  if (at.length >= 2 && at.every((m, i) => m[1] === "abcde"[i])) {
+    const lead = stem.slice(0, at[0]?.index ?? 0).trim();
+    const parts = at.map((m, i) => {
+      const end = at[i + 1]?.index ?? stem.length;
+      let text = stem.slice((m.index ?? 0) + m[0].length, end).trim();
+      const mk = /\s*(\[\d+\]|\(\d+ marks?\))\s*$/.exec(text);
+      const marks = mk?.[1];
+      if (mk) text = text.slice(0, mk.index).trim();
+      return { label: m[1] as string, text, ...(marks ? { marks } : {}) };
+    });
+    return { lead, parts };
+  }
+  const wh = "how|why|what|which|when|where|who";
+  const clauses = stem
+    .replace(/\?\s*$/, "")
+    .split(new RegExp(`,\\s*(?:and\\s+)?(?=(?:${wh})\\b)`, "i"));
+  if (clauses.length < 2 || clauses.length > 3) return null;
+  if (!clauses.every((c) => new RegExp(`^(?:${wh})\\b`, "i").test(c.trim()))) return null;
+  return {
+    lead: "",
+    parts: clauses.map((c, i) => {
+      const x = c.trim();
+      return { label: "abc"[i] as string, text: `${x.charAt(0).toUpperCase()}${x.slice(1)}?` };
+    }),
+  };
 }
 
 function fillPlenary(spec: SlideSpecOf<"plenary">, laid: Layout, variant: ListVariant): Layout {
