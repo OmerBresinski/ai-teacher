@@ -17,6 +17,7 @@ export * from "./content-shapes";
 export * from "./demo-lesson";
 export * from "./explanation-metrics";
 export * from "./factories";
+export * from "./figure-full";
 export * from "./figures";
 export * from "./fill-space";
 export * from "./fit-check";

@@ -11,6 +11,7 @@
  *
  * Pure. A spec that is not one of these, or does not parse, comes back unchanged.
  */
+import type { EnergyProfileValues } from "../figures/energy-profile";
 import { resolveLabels } from "./labelled";
 import {
   type DiagramSpec,
@@ -75,11 +76,105 @@ export function asTemplate(s: DiagramSpec): DiagramSpec | undefined {
   return undefined;
 }
 
+/**
+ * DIAGRAM-AUDIT #6: a series named as a tangent with at most three points on one straight line is
+ * a guide, not data: drawn in the tangent style (thin, dashed, no legend entry), whatever the
+ * writer set. Both real tangent graphs were drawn as a third data line with a "Tangent" legend.
+ */
+export function withTangents(g: LineGraph): LineGraph {
+  const straight = (p: Pt[]) => {
+    if (p.length === 2) return true;
+    const [a, b, c] = p as [Pt, Pt, Pt];
+    const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+    const scale = Math.hypot(c[0] - a[0], c[1] - a[1]) ** 2 || 1;
+    return Math.abs(cross) / scale < 1e-3;
+  };
+  const series = g.series.map((s) =>
+    s.style !== "tangent" &&
+    /tangent/i.test(s.label ?? "") &&
+    s.points.length <= 3 &&
+    straight(s.points as Pt[])
+      ? { ...s, style: "tangent" as const }
+      : s,
+  );
+  return series.some((s, i) => s !== g.series[i]) ? { ...g, series } : g;
+}
+
+type Hump = { first: number; last: number; top: number };
+/** A curve's two ends and its interior peak (above both ends), or undefined when it has none. */
+function humpOf(pts: Pt[]): Hump | undefined {
+  const ys = pts.map((p) => p[1]);
+  const top = Math.max(...ys);
+  const at = ys.indexOf(top);
+  const first = ys[0] as number;
+  const last = ys[ys.length - 1] as number;
+  if (at <= 0 || at >= ys.length - 1 || top <= Math.max(first, last)) return undefined;
+  return { first, last, top };
+}
+
+/**
+ * DIAGRAM-AUDIT #4: a line graph that is an energy profile (x is the reaction's progress, one
+ * curve rising from the reactants' level to an interior peak and down to the products') as the
+ * `energy-profile` figure's values, which draws it as a textbook curve with Ea and ΔH. Undefined
+ * for anything else, and for two profiles (catalysed against uncatalysed: the figure draws one).
+ */
+export function energyProfileOf(spec: unknown): EnergyProfileValues | undefined {
+  const r = DiagramSpecSchema.safeParse(spec);
+  if (!r.success || r.data.kind !== "line-graph") return undefined;
+  const g = r.data;
+  if (!/progress|reaction|pathway/i.test(g.x.label) || !/energy/i.test(g.y.label)) return undefined;
+  const curves = g.series.filter((s) => s.style === "line");
+  if (curves.length < 1 || curves.length > 2 || g.series.length !== curves.length) return undefined;
+  const humps = curves.map((c) => humpOf(c.points as Pt[]));
+  if (humps.some((h) => !h)) return undefined;
+  // Two profiles: the same two levels (within a tenth of the span), the lower peak catalysed.
+  const order = humps
+    .map((_, i) => i)
+    .sort((a, b) => (humps[b] as Hump).top - (humps[a] as Hump).top);
+  const main = humps[order[0] as number] as Hump;
+  const other = order.length > 1 ? (humps[order[1] as number] as Hump) : undefined;
+  const tol = 0.1 * (g.y.max - g.y.min);
+  if (
+    other &&
+    (Math.abs(other.first - main.first) > tol ||
+      Math.abs(other.last - main.last) > tol ||
+      other.top >= main.top)
+  )
+    return undefined;
+  const pts = (curves[order[0] as number] as LineGraph["series"][number]).points as Pt[];
+  const ys = pts.map((p) => p[1]);
+  const top = Math.max(...ys);
+  const at = ys.indexOf(top);
+  const first = ys[0] as number;
+  const last = ys[ys.length - 1] as number;
+  if (at <= 0 || at >= ys.length - 1 || top <= Math.max(first, last)) return undefined;
+  const near = (x: number) =>
+    g.annotations.find((a) => Math.abs(a.x - x) <= 0.15 * (g.x.max - g.x.min))?.label;
+  const x0 = (pts[0] as Pt)[0];
+  const x1 = (pts[pts.length - 1] as Pt)[0];
+  const catLabel = other ? curves[order[1] as number]?.label : undefined;
+  return {
+    reactants: near(x0) ?? "Reactants",
+    products: near(x1) ?? "Products",
+    activationEnergy: top - first,
+    energyChange: last - first,
+    ...(other
+      ? {
+          catalysedActivationEnergy: other.top - first,
+          ...(catLabel && catLabel.length <= 24 ? { catalysedLabel: catLabel } : {}),
+        }
+      : {}),
+    energyAxis: g.y.label,
+    progressAxis: g.x.label,
+  };
+}
+
 /** `spec` with the core kinds' geometry decided in code; anything else as it came. */
 export function normaliseDiagram(spec: unknown): unknown {
   const r = DiagramSpecSchema.safeParse(spec);
   if (!r.success) return spec;
-  const s = r.data;
+  const s0 = r.data;
+  const s = s0.kind === "line-graph" ? withTangents(s0) : s0;
   const tpl = asTemplate(s);
   if (tpl) return tpl;
   const out: DiagramSpec | undefined =
@@ -88,7 +183,7 @@ export function normaliseDiagram(spec: unknown): unknown {
       : s.kind === "labelled-diagram" && isParticleRow(s)
         ? normaliseParticles(s)
         : undefined;
-  if (!out) return spec;
+  if (!out) return s === s0 ? spec : s;
   return DiagramSpecSchema.safeParse(out).success ? out : spec;
 }
 

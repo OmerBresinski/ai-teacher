@@ -285,7 +285,7 @@ describe("layoutSlide", () => {
       expect(variantsFor(kind), kind).toEqual(["numbered", "cards", "stepped"]);
     expect(compositionOf("content", "headed")).toBe(compositionOf("starter", "numbered"));
     // TEACH-98 row 3: the default first, so the frozen recipe below is still the default.
-    expect(variantsFor("diagram")).toEqual(["figure-left", "figure-wide"]);
+    expect(variantsFor("diagram")).toEqual(["figure-left", "figure-wide", "figure-full"]);
   });
 
   // TEACH-98 row 1: the per-variant loop below holds the text and floors; this places the figure.

@@ -8,6 +8,7 @@
  * rule after its retry fails the whole Generate stage), and values it cannot draw from get a safe
  * fallback drawing captioned "Not drawn to scale".
  */
+
 import type {
   FigureRef,
   FigureTemplateName,
@@ -17,6 +18,7 @@ import type {
 } from "@tj/domain/documents";
 import type { z } from "zod";
 import { uid } from "../factories";
+import { COORDINATE_DISTANCE } from "./coordinate-distance";
 import { ENERGY_PROFILE } from "./energy-profile";
 import { RIGHT_TRIANGLE } from "./right-triangle";
 import { TRIANGLE } from "./triangle";
@@ -75,6 +77,12 @@ export const FIGURE_TEMPLATES: Record<FigureTemplateName, FigureTemplate> = {
 };
 
 /**
+ * DIAGRAM-AUDIT figures drawn by code but not yet on the writer's menu (adding a name to the
+ * domain's figure list needs its prompt clauses, which the prompt owner writes).
+ */
+export const EXTRA_FIGURES = { "coordinate-distance": COORDINATE_DISTANCE } as const;
+
+/**
  * The diagram variant a template's slide is laid out in when nothing else picks one: what
  * `materialiseSlide` uses for a diagram spec called without a variant. The template decides,
  * not the deck's rhythm (`chooseVariant` always gives `figure-left`). A template whose layout
@@ -103,7 +111,10 @@ export function drawFigure(
   theme: Theme,
   rect: FigureRect,
 ): GroupElement {
-  const figure = FIGURE_TEMPLATES[template];
+  // A lab-menu figure (EXTRA_FIGURES) draws through the same path as a registered one.
+  const figure =
+    FIGURE_TEMPLATES[template] ??
+    (EXTRA_FIGURES as Record<string, FigureTemplate>)[template as string];
   const parsed = figure.shape.safeParse(values);
   const drawn = figure.draw(parsed.success ? parsed.data : undefined, theme, rect);
   return {

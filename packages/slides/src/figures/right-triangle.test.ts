@@ -60,10 +60,10 @@ describe("drawFigure: right-triangle", () => {
     expect(triangle?.closed).toBe(true);
     expect(triangle?.points).toHaveLength(3);
     expect(triangle?.stroke).toBe(chalk.colors.ink);
-    expect(triangle?.strokeWidth).toBe(3);
-    expect(triangle?.fill).toBeUndefined();
-    expect(mark?.closed).toBeFalsy();
-    expect(mark?.points).toHaveLength(3);
+    expect(triangle?.strokeWidth).toBe(4);
+    expect(triangle?.fill).toBeDefined();
+    expect(mark?.closed).toBe(true);
+    expect(mark?.points).toHaveLength(4);
     // The mark sits in the corner between the base and the height.
     if (!triangle || !mark) throw new Error("no paths");
     expect(mark.x).toBe(triangle.x);

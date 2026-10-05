@@ -100,6 +100,8 @@ export interface CallStructuredOptions<I, T> {
    * carries them again. Billed as input tokens on the GPT-5.6 family (stop-gate, 10 Sept).
    */
   images?: { id: string; url: string }[] | undefined;
+  /** Put the images before the text, so a fixed image is part of a cacheable prefix. */
+  imagesFirst?: boolean | undefined;
   /**
    * Stream the answer (the lesson designer's design cycles): called with each partial object as it
    * parses, so a caller can act on a slot once the next one has started. The complete answer is
@@ -396,7 +398,8 @@ export const PROVIDER_RETRY_DELAY_MS = 1500;
 export async function callStructured<I, T>(
   options: CallStructuredOptions<I, T>,
 ): Promise<CallResult<T>> {
-  const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images } = options;
+  const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images, imagesFirst } =
+    options;
   // The stage's effort unless the host overrides it (the lab's effort bench).
   const effort =
     deps.effortFor?.(stage, prompt.version.replace(/\.v\d+$/, ""), options.effort) ??
@@ -436,7 +439,7 @@ export async function callStructured<I, T>(
           const streamed = streamText({
             model,
             system: prompt.system,
-            ...userTurn(text, images),
+            ...userTurn(text, images, imagesFirst),
             output,
             abortSignal,
             maxOutputTokens,
@@ -457,7 +460,7 @@ export async function callStructured<I, T>(
         generateText({
           model,
           system: prompt.system,
-          ...userTurn(text, images),
+          ...userTurn(text, images, imagesFirst),
           output,
           abortSignal,
           maxOutputTokens,
@@ -643,22 +646,17 @@ export async function callStructured<I, T>(
 function userTurn(
   text: string,
   images: { id: string; url: string }[] | undefined,
+  imagesFirst = false,
 ): { prompt: string } | { messages: ModelMessage[] } {
   if (!images || images.length === 0) return { prompt: text };
+  const files = images.map((image) => ({
+    type: "file" as const,
+    data: new URL(image.url),
+    mediaType: imageMediaType(image.url),
+  }));
+  const words = { type: "text" as const, text };
   return {
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text },
-          ...images.map((image) => ({
-            type: "file" as const,
-            data: new URL(image.url),
-            mediaType: imageMediaType(image.url),
-          })),
-        ],
-      },
-    ],
+    messages: [{ role: "user", content: imagesFirst ? [...files, words] : [words, ...files] }],
   };
 }
 

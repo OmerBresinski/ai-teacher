@@ -7,9 +7,13 @@ import {
   type LessonFacts,
   type OutlineEntry,
   type Slide,
+  type Theme,
 } from "@tj/domain/documents";
 import {
+  asFigureFull,
   drawFigure,
+  EXTRA_FIGURES,
+  FIGURE_FULL_CAPTION_MAX,
   FIGURE_TEMPLATES,
   figureTemplatesFor,
   fitSlide,
@@ -23,6 +27,7 @@ import {
   measureHeadless,
   type PaletteFormId,
   PLACEHOLDER_IMAGE,
+  paletteSubjects,
   renderedHeights,
   SAFE,
   SAFE_BOTTOM,
@@ -30,12 +35,18 @@ import {
   withoutPicture,
 } from "@tj/slides";
 import {
+  capacityLine,
+  diagramCapacities,
   diagramElement,
+  energyProfileOf,
   fittedDiagramElement,
+  itemCount,
   parseDiagram,
   settleDiagram,
   tableDrawnHeight,
   tableDrawsWhole,
+  withLongLabels,
+  zoneShape,
 } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
@@ -99,7 +110,11 @@ type Pic =
   | { kind?: "photo"; subject: string; named: string | null }
   | { kind: "diagram"; spec: unknown }
   | { kind: "figure"; template: string; values: unknown };
-type LightSlide = Omit<z.infer<typeof lightSlide>, "picture"> & { picture: Pic | null };
+type LightSlide = Omit<z.infer<typeof lightSlide>, "picture"> & {
+  picture: Pic | null;
+  /** The big-diagram composition (DIAGRAM-AUDIT item 5): the drawing fills the slide. */
+  full?: boolean;
+};
 export type SimpleLesson = {
   objectives: string[];
   titlePicture: Pic | null;
@@ -257,6 +272,42 @@ const FIGURE_DRAWS: Record<string, string> = {
   triangle: "a triangle with its sides and angles",
   "energy-profile": "a reaction's energy profile",
 };
+/**
+ * LAYOUT-TEST: T3's figures are the registered templates plus the lab's extra figures, and a
+ * figure's scenes get menu lines of their own (the scene is a field on the figure's values).
+ */
+const T3_FIGURES: Record<string, (typeof FIGURE_TEMPLATES)[FigureTemplateName]> = {
+  ...FIGURE_TEMPLATES,
+  ...(EXTRA_FIGURES as unknown as Record<string, (typeof FIGURE_TEMPLATES)[FigureTemplateName]>),
+};
+const T3_EXTRA_FIGURE_DRAWS: Record<string, { subject: string; line: string }> = {
+  "coordinate-distance": {
+    subject: "maths",
+    line: "two points on a squared grid with the run, the rise and the straight-line distance between them (Pythagoras on coordinates; whole-number coordinates from -12 to 12)",
+  },
+};
+const T3_SCENE_LINES: Record<string, string[]> = {
+  "right-triangle": [
+    'figure right-triangle with scene "ladder": the triangle drawn as a ladder leaning against a wall',
+    'figure right-triangle with scene "route": the triangle drawn as a route across a field, with the direct path',
+  ],
+};
+/** The figures T3 offers a subject: the registered ones, then the lab's extras. */
+function t3FiguresFor(subject?: string): string[] {
+  const extras = Object.entries(T3_EXTRA_FIGURE_DRAWS)
+    .filter(
+      ([, e]) => subject === undefined || paletteSubjects(subject).includes(e.subject as never),
+    )
+    .map(([k]) => k);
+  return [...figureTemplatesFor(subject), ...extras];
+}
+/** The figure menu lines: one per figure, then one per scene. */
+function t3FigureLines(subject?: string): string[] {
+  return t3FiguresFor(subject).flatMap((t) => [
+    `- figure ${t}: ${FIGURE_DRAWS[t] ?? T3_EXTRA_FIGURE_DRAWS[t]?.line ?? t}`,
+    ...(T3_SCENE_LINES[t] ?? []).map((l) => `- ${l}`),
+  ]);
+}
 /** The picture field: a photo found by search, a diagram spec, or a figure the subject offers. */
 function t2Picture(subject?: string) {
   const figures = figureTemplatesFor(subject).map((t) =>
@@ -326,7 +377,7 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
  * code, and code expands the wire shape into the renderer's spec and validates it with its parse.
  */
 // t4 (5 Oct): + closing independent practice before the exit ticket (T3-LEDGER U4b).
-export const TEACHER3_LESSON_VERSION = "simple-lesson.t5";
+export const TEACHER3_LESSON_VERSION = "simple-lesson.t6";
 /**
  * lab/t3 (Greg, 5 Oct 2026: T3 is the candidate): the plan-write planner writes with T3 by default.
  * `PLAN_WRITE_MODE=stream` or `plan-write` runs R3 instead.
@@ -367,6 +418,7 @@ const T3_FORMS: Record<string, string> = {
   ...T2_FORMS,
   // The drawn COMMON MISTAKE label is code's (bareCallout strips a written one), so the prompt no longer says it.
   "explain-callout": "an explanation, then one common mistake pupils make as the last line",
+  "big-diagram": "a heading and one diagram filling the slide, with an optional one-line caption",
 };
 /*
  * Option capacity (lab/t3 round 2): the longest option, in characters, that a question form's
@@ -437,14 +489,78 @@ export function optionCapacity(form: string): number | undefined {
 }
 /** T3's menu lines: the form list, with each option capacity read from the layout code. */
 export function t3Menu(): string {
+  const zones = t3ZoneLines();
   return Object.entries(T3_FORMS)
     .map(([k, v]) => {
       const n = optionCapacity(k);
       const c = CAPACITY_FORMS[k];
-      return `- ${k}: ${n !== undefined && c ? c.line(n) : v}`;
+      return `- ${k}: ${n !== undefined && c ? c.line(n) : (zones[k] ?? v)}`;
     })
     .join("\n");
 }
+/**
+ * DIAGRAM-AUDIT item 6, LAYOUT-TEST: the picture forms' menu lines carry their zone's position,
+ * shape and capacity, read from the slide's own layout (adapt, renderWritten, materialiseSlide,
+ * and asFigureFull for the big diagram, on the default theme), so the line moves with the layout
+ * code. Memoised per process.
+ */
+type Rect = { x: number; y: number; w: number; h: number };
+let zoneGeometry: { picture: Rect; text: Rect; big: Rect } | undefined;
+export function t3ZoneGeometry(): { picture: Rect; text: Rect; big: Rect } {
+  if (zoneGeometry) return zoneGeometry;
+  const themeId = "chalk";
+  const meta = { promptVersion: "zones", model: "code", at: "1970-01-01T00:00:00.000Z" };
+  let n = 0;
+  const ids = () => `z${n++}`;
+  const a = adapt(
+    withPictureZone({
+      form: "photo",
+      heading: "A slide heading",
+      body: ["A line of slide text about this long"],
+      items: [],
+      questions: [],
+      picture: { kind: "photo", subject: "x", named: null },
+      notes: "",
+    }),
+  );
+  const r = renderWritten(a.form, a.layout, a.out);
+  const slide = materialiseSlide(r.spec, themeId, meta, ids, r.variant, r.structure);
+  const rect = (e: { x: number; y: number; w: number; h: number }) => ({
+    x: e.x,
+    y: e.y,
+    w: e.w,
+    h: e.h,
+  });
+  const img = (sl: Slide) =>
+    sl.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+  const pic = img(slide);
+  const body = slide.elements.find(
+    (e) => e.type === "text" && (e as { style?: { preset?: string } }).style?.preset === "body",
+  );
+  const big = img(asFigureFull(slide, getTheme(themeId)) ?? slide);
+  if (!pic || !body || !big) throw new Error("t3ZoneGeometry: no picture zone on the photo layout");
+  zoneGeometry = {
+    picture: rect(pic),
+    text: { ...rect(body), h: SAFE_BOTTOM - body.y },
+    big: rect(big),
+  };
+  return zoneGeometry;
+}
+/** Body text at 20 px with 1.4 line height, about 0.5 em per character. */
+const BODY_LINE = 20 * 1.4;
+const BODY_CHAR = 20 * 0.5;
+function t3ZoneLines(): Record<string, string> {
+  const g = t3ZoneGeometry();
+  const lines = Math.floor(g.text.h / BODY_LINE);
+  const chars = Math.floor(g.text.w / BODY_CHAR);
+  return {
+    picture: `2–3 lines in a column on the right (about ${chars} characters wide, room for ${lines} lines), the picture on the left (${zoneShape(g.picture.w, g.picture.h)})`,
+    "big-diagram": `a heading and one drawing filling the slide (full width under the heading, ${zoneShape(g.big.w, g.big.h)}), with an optional one-line caption of up to ${FIGURE_FULL_CAPTION_MAX} characters`,
+  };
+}
+
+export { t3ZoneLines };
+
 const phrase = (what: string) => z.string().describe(what);
 /** The lean wire shape of each drawing kind (no alt: code writes it from the title and labels). */
 const T3_DRAW = {
@@ -453,7 +569,7 @@ const T3_DRAW = {
     title: phrase("one short line"),
     events: z
       .array(z.object({ date: phrase("a date"), text: phrase("a short phrase") }))
-      .min(3)
+      .min(2)
       .max(7),
   }),
   table: z.object({
@@ -531,7 +647,7 @@ const T3_DRAW = {
         z.object({
           label: phrase("1–3 words"),
           points: z.array(z.array(z.number()).length(2)).min(2).max(40),
-          style: z.enum(["line", "bars"]),
+          style: z.enum(["line", "bars", "tangent"]),
         }),
       )
       .min(1)
@@ -548,6 +664,39 @@ const T3_DRAW = {
     notes: z.array(phrase("a short phrase under each panel")).max(3).optional(),
     arrows: z.array(phrase("1–2 words on the arrow between panels")).max(2).optional(),
   }),
+  "bar-chart": z.object({
+    kind: z.literal("bar-chart"),
+    title: phrase("one short line"),
+    style: z.enum(["bars", "pictogram", "tally"]),
+    bars: z
+      .array(z.object({ label: phrase("1–2 words"), value: z.number() }))
+      .min(1)
+      .max(8),
+    per: z.number().optional(),
+  }),
+  pie: z.object({
+    kind: z.literal("pie"),
+    title: phrase("one short line"),
+    slices: z
+      .array(z.object({ label: phrase("1–2 words"), value: z.number() }))
+      .max(6)
+      .optional(),
+    parts: z.number().optional(),
+    shaded: z.number().optional(),
+  }),
+  venn: z.object({
+    kind: z.literal("venn"),
+    title: phrase("one short line"),
+    sets: z.array(phrase("1–3 words")).min(2).max(3),
+    items: z.array(z.object({ text: phrase("1–2 words"), in: z.array(z.number()) })).max(12),
+  }),
+  carroll: z.object({
+    kind: z.literal("carroll"),
+    title: phrase("one short line"),
+    rows: z.array(phrase("1–3 words")).length(2),
+    cols: z.array(phrase("1–3 words")).length(2),
+    cells: z.array(z.array(z.array(phrase("1–2 words")))),
+  }),
 } as const;
 type T3Kind = keyof typeof T3_DRAW;
 const T3_DRAWS: Record<T3Kind, string> = {
@@ -559,6 +708,10 @@ const T3_DRAWS: Record<T3Kind, string> = {
   "number-line": "a number line with marked points or jumps",
   "line-graph": "a line or bar graph on labelled axes",
   particles: "particles in solids, liquids and gases, or diffusion or dissolving",
+  "bar-chart": "a bar chart, pictogram or tally chart of counts in named categories",
+  pie: "a pie chart of shares, or a circle in equal parts with some shaded",
+  venn: "a Venn diagram sorting items into 2 or 3 overlapping sets",
+  carroll: "a Carroll diagram sorting items by two yes/no properties",
 };
 /** Drop the empty strings, nulls and empty lists a writer leaves in optional fields. */
 function pruned(v: unknown): unknown {
@@ -587,7 +740,17 @@ export function expandDrawing(p: Record<string, unknown>): Record<string, unknow
   const { kind, title, ...rest } = w;
   collect(rest);
   const said = words.filter(
-    (t) => !["states", "diffusion", "dissolving", "line", "bars"].includes(t),
+    (t) =>
+      ![
+        "states",
+        "diffusion",
+        "dissolving",
+        "line",
+        "bars",
+        "tangent",
+        "pictogram",
+        "tally",
+      ].includes(t),
   );
   let alt = `${title ?? kind}: ${said.join(", ")}`;
   if (alt.length > 200) alt = alt.slice(0, alt.lastIndexOf(", ", 199));
@@ -598,11 +761,11 @@ export function expandDrawing(p: Record<string, unknown>): Record<string, unknow
 }
 /** The picture field: a photo, a drawing of one kind, or a figure the subject offers. */
 function t3Picture(subject?: string) {
-  const figures = figureTemplatesFor(subject).map((t) =>
+  const figures = t3FiguresFor(subject).map((t) =>
     z.object({
       kind: z.literal("figure"),
       template: z.literal(t),
-      values: FIGURE_TEMPLATES[t].shape,
+      values: (T3_FIGURES[t] as (typeof FIGURE_TEMPLATES)[FigureTemplateName]).shape,
     }),
   );
   return z.union([
@@ -637,8 +800,11 @@ export function teacher3Prompt(i: Parameters<typeof teacherPrompt>[0] & { object
   const [lo, hi] = PICTURE_SHARE[(i.ageBand ?? "ks3").toLowerCase()] ?? [0.35, 0.5];
   const menu = t3Menu();
   const drawn = [
-    ...Object.entries(T3_DRAWS).map(([k, v]) => `- ${k}: ${v}`),
-    ...figureTemplatesFor(i.subject).map((t) => `- figure ${t}: ${FIGURE_DRAWS[t] ?? t}`),
+    ...Object.entries(T3_DRAWS).map(([k, v]) => {
+      const cap = capacityLine(k);
+      return `- ${k}: ${v}${cap ? ` (${cap})` : ""}`;
+    }),
+    ...t3FigureLines(i.subject),
   ].join("\n");
   return {
     system: "You're an expert teacher in England.",
@@ -967,6 +1133,29 @@ export function t3TableBelow(
 }
 
 /**
+ * DIAGRAM-AUDIT item 5: the slide a T3 drawing is placed on. A big-diagram slide takes the
+ * figure-full composition; a picture slide whose drawing does not draw cleanly in the half zone
+ * (on every theme) steps up to it when its words allow (a one-line caption), before any label
+ * shrinks. Otherwise the slide as it is.
+ */
+export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: boolean): Slide {
+  const zone = (sl: Slide) =>
+    sl.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+  const clean = (sl: Slide) => {
+    const e = zone(sl);
+    return !!e && withLongLabels(() => settleDiagram(spec, { w: e.w, h: e.h }).clean);
+  };
+  // The renderer-derived capacity routes an over-full spec straight to the big diagram.
+  const kind = (spec as { kind?: string } | null)?.kind ?? "";
+  const over =
+    (itemCount(spec) ?? 0) > (diagramCapacities()[kind]?.half ?? Number.POSITIVE_INFINITY);
+  if (!full && !over && clean(slide)) return slide;
+  const big = asFigureFull(slide, theme);
+  if (!big) return slide;
+  return full || clean(big) ? big : slide;
+}
+
+/**
  * lab/t3: whether the slides after the title and objectives can hold a teaching slide and a check
  * for every objective (two per objective); the line for the generation summary when they cannot.
  */
@@ -991,11 +1180,25 @@ const labelled = (s: string, sep: string) => {
  * zone, when its words fit that form's slots (explain; explain-callout with its mistake as a line).
  */
 export function withPictureZone(s: LightSlide): LightSlide {
-  if (!s.picture || (s.form !== "explain" && s.form !== "explain-callout")) return s;
-  const body =
-    s.form === "explain" ? s.body : [...s.body, ...s.items.map((t) => `Common mistake: ${t}`)];
-  return { ...s, form: "photo", body, items: [] };
+  if (!s.picture) return s.form === "big-diagram" ? { ...s, form: "explain" } : s;
+  if (s.form === "big-diagram")
+    return { ...s, form: "photo", body: [...s.body, ...s.items], items: [], full: true };
+  if (s.form === "explain" || s.form === "explain-callout") {
+    const body =
+      s.form === "explain" ? s.body : [...s.body, ...s.items.map((t) => `Common mistake: ${t}`)];
+    return { ...s, form: "photo", body, items: [] };
+  }
+  // DIAGRAM-AUDIT #1: a drawing on a form with no picture zone (a worked example's steps, a
+  // sequence, a comparison) was dropped silently (12 of 42 T drawings). It goes to the picture
+  // form with its lines beside the drawing, in order; the fit ladder moves whole lines to the
+  // notes when they do not fit. A photo stays dropped here: the words are the point there.
+  const drawing = s.picture.kind === "diagram" || s.picture.kind === "figure";
+  if (drawing && DRAWING_TAKES_ZONE.has(s.form))
+    return { ...s, form: "photo", body: [...s.body, ...s.items], items: [] };
+  return s;
 }
+/** Forms whose drawing moves to the picture form rather than being dropped. */
+const DRAWING_TAKES_ZONE = new Set(["worked-example", "sequence", "compare"]);
 
 /** The thin adapter: a light slide as the candidate's form, layout and writer fields. */
 export function adapt(s: LightSlide): { form: string; layout: string; out: Written } {
@@ -1505,7 +1708,7 @@ export async function simpleLessonSlides(
     }
     if (p.kind === "figure") {
       const name = p.template as FigureTemplateName;
-      if (FIGURE_TEMPLATES[name]?.values.safeParse(p.values).success)
+      if (T3_FIGURES[name]?.values.safeParse(p.values).success)
         return { drawing: { kind: "figure", template: name, values: p.values } };
       return { photo: { subject: heading, named: null }, invalid: `figure ${p.template}` };
     }
@@ -1893,14 +2096,26 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         { stage: "generate", slide: index + 1, form: adapted.form, hardFailure: true },
         "t3 question does not fit",
       );
-    const p = form === "photo" ? s.picture : null;
+    const p0 = form === "photo" ? s.picture : null;
+    // DIAGRAM-AUDIT #4: an energy profile written as a line graph is drawn as the energy-profile
+    // figure (a smooth curve with Ea and ΔH), not a jagged polyline with labels across it.
+    const ep = p0?.kind === "diagram" ? energyProfileOf(p0.spec) : undefined;
+    const p: Pic | null =
+      ep && FIGURE_TEMPLATES["energy-profile"].values.safeParse(ep).success
+        ? { kind: "figure", template: "energy-profile", values: ep }
+        : p0;
     let drawn: string | undefined;
     let invalid: string | undefined;
     let photoAsk: { subject: string; named: string | null } | undefined;
     let longLabels = false;
     if (p && p.kind === "diagram") {
       // lab/t3: long labels are wrapped or set a step smaller before the drawing is given up.
-      const d = placeT3Diagram(slide, p.spec, theme, deps.ids);
+      const d = placeT3Diagram(
+        t3DiagramBase(slide, p.spec, theme, !!s.full),
+        p.spec,
+        theme,
+        deps.ids,
+      );
       if (d.slide) {
         slide = d.slide;
         drawn = "diagram";
@@ -1930,7 +2145,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       }
     } else if (p && p.kind === "figure") {
       const name = p.template as FigureTemplateName;
-      const el = FIGURE_TEMPLATES[name]?.values.safeParse(p.values).success
+      const el = T3_FIGURES[name]?.values.safeParse(p.values).success
         ? (() => {
             const at = slide.elements.findIndex(
               (e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE,
@@ -1960,7 +2175,13 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       slide = drawPlain(plain);
       photoAsk = undefined;
     }
-    const pic = photoAsk ? briefOf(photoAsk) : undefined;
+    const zoneEl = slide.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+    const pic = photoAsk
+      ? {
+          ...briefOf(photoAsk),
+          ...(zoneEl ? { aspect: Math.round((zoneEl.w / zoneEl.h) * 100) / 100 } : {}),
+        }
+      : undefined;
     outline[index] = {
       id: `s${index + 1}`,
       kind: (pic
@@ -2020,6 +2241,22 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     objectives: given,
   });
   const schema = teacher3LessonSchema(base.subject) as z.ZodType<unknown>;
+  // LAYOUT-TEST arm ZV: a contact sheet of every slide type's layout, zones outlined and labelled,
+  // sent before the text (same bytes every call, so the prefix is cacheable).
+  const sheetPath = process.env.T3_LAYOUT_SHEET;
+  const sheet = sheetPath
+    ? [
+        {
+          id: "layout-sheet",
+          url: `data:image/png;base64,${readFileSync(sheetPath).toString("base64")}`,
+        },
+      ]
+    : undefined;
+  if (sheet)
+    built.user = built.user.replace(
+      "The slide types we can draw:",
+      "The slide types we can draw (the image shows each one's layout, its zones outlined and labelled):",
+    );
   let done = 0;
   const onPartial = (partial: unknown) => {
     const o = (partial ?? {}) as {
@@ -2044,6 +2281,8 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     schema,
     maxOutputTokens: 16000,
     onPartial,
+    images: sheet,
+    imagesFirst: !!sheet,
   });
   mark("streamEnd");
   const dir = process.env.SIMPLE_CALLS_DIR;
@@ -2063,6 +2302,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     context,
     system: built.system,
     user: built.user,
+    sheet: sheetPath ?? null,
     schema: z.toJSONSchema(schema),
     output: call.output,
   });

@@ -440,7 +440,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         continue;
       }
       if (!tried.includes(query)) tried.push(query);
-      const photos = await searchPortraits(images, query, deps.signal, source);
+      const photos = await searchPortraits(images, query, deps.signal, source, brief.aspect);
       if (photos === "busy") return "busy";
       let kept = 0;
       for (const photo of fresh(photos)) {
@@ -539,7 +539,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       return { outcome: "empty", judged: "query" };
     }
     tried.push(requery);
-    const photos = await searchPortraits(images, requery, deps.signal, source);
+    const photos = await searchPortraits(images, requery, deps.signal, source, brief.aspect);
     if (photos === "busy") return { outcome: "busy" };
     const unseen = fresh(photos);
     if (unseen.length === 0) return { outcome: "empty", judged: "query" };
@@ -656,11 +656,30 @@ export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrR
 /** A Commons photo up to 3:2 landscape is kept: the slot crops to cover, and named things are rarely portrait. */
 const COMMONS_MAX_ASPECT = 1.5;
 
+/** The Pexels orientation for a zone of `aspect` (width over height); portrait when unknown. */
+export function orientationFor(aspect?: number): "portrait" | "landscape" | "square" {
+  if (aspect === undefined) return "portrait";
+  return aspect < 0.92 ? "portrait" : aspect > 1.08 ? "landscape" : "square";
+}
+
+/**
+ * The centred crop of a `width`×`height` photo to `aspect` (width over height), and the share of
+ * the photo it keeps. Placement draws the photo to cover its zone, which is this crop.
+ */
+export function cropToAspect(width: number, height: number, aspect: number) {
+  const w = Math.min(width, height * aspect);
+  const h = w / aspect;
+  return { x: (width - w) / 2, y: (height - h) / 2, w, h, kept: (w * h) / (width * height) };
+}
+/** A Commons photo is kept when its crop to the zone keeps at least this share of it. */
+const COMMONS_MIN_KEPT = 0.55;
+
 async function searchPortraits(
   images: PhotoPlacer,
   query: string,
   signal: AbortSignal,
   source: PhotoSourceName = "pexels",
+  aspect?: number,
 ): Promise<PhotoResult[] | "busy"> {
   if (source === "commons" && images.searchCommons) {
     const photos = await images.searchCommons(query, {
@@ -670,15 +689,23 @@ async function searchPortraits(
     });
     // A diagram is drawn to be read whole (contain), so a landscape one is kept.
     const most = images.diagrams ? 2.4 : COMMONS_MAX_ASPECT;
+    // With the zone's shape known (ruling 158), a photo is kept when cropping it to that shape
+    // keeps most of it; a diagram (drawn whole) keeps the old rule.
+    if (aspect !== undefined && !images.diagrams)
+      return photos.filter((c) => cropToAspect(c.width, c.height, aspect).kept >= COMMONS_MIN_KEPT);
     return photos.filter((c) => c.width <= c.height * most);
   }
   try {
-    const photos = await images.search(query, {
-      orientation: "portrait",
-      perPage: PER_PAGE,
-      signal,
-    });
-    return photos.filter((candidate) => candidate.height > candidate.width);
+    // The zone's shape picks the search's orientation (ruling 158); portrait when unknown.
+    const orientation = orientationFor(aspect);
+    const photos = await images.search(query, { orientation, perPage: PER_PAGE, signal });
+    return photos.filter((c) =>
+      orientation === "portrait"
+        ? c.height > c.width
+        : orientation === "landscape"
+          ? c.width > c.height
+          : c.width <= c.height * 1.25 && c.height <= c.width * 1.25,
+    );
   } catch (error) {
     if (error instanceof PexelsError && error.status === 429) return "busy";
     throw error;

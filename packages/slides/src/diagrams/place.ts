@@ -20,9 +20,50 @@ export type Scene = {
   leaders: Seg[];
   /** Filled shapes a label may not sit on (ground, water): it goes outside, on a leader. */
   areas: [number, number][][];
+  /** Labels with no clear room by their point: numbered there, named in a key (`drawKey`). */
+  key: string[];
 };
 
-export const scene = (): Scene => ({ segs: [], boxes: [], labels: [], leaders: [], areas: [] });
+export const scene = (): Scene => ({
+  segs: [],
+  boxes: [],
+  labels: [],
+  leaders: [],
+  areas: [],
+  key: [],
+});
+
+/**
+ * DIAGRAM-AUDIT layout pass: the numbered key for labels that found no clear room by their point,
+ * set in the first free corner. Never truncated: when no corner holds it, a fault says so.
+ */
+export function drawKey(x: Ctx, sc: Scene, w: number, h: number): string {
+  if (sc.key.length === 0) return "";
+  const fs = Math.max(18, Math.round(x.fs * 0.85));
+  const rows = sc.key.map((t, i) => `${i + 1}  ${t}`);
+  const bw = Math.max(...rows.map((r) => textWidth(r, x, fs, 500))) + 12;
+  const bh = rows.length * fs * 1.25 + 8;
+  for (const [x0, y0] of [
+    [4, 4],
+    [w - bw - 4, 4],
+    [4, h - bh - 4],
+    [w - bw - 4, h - bh - 4],
+  ] as const) {
+    const b = { x0, y0, x1: x0 + bw, y1: y0 + bh };
+    if (x0 < 0 || y0 < 0) continue;
+    if (sc.segs.some((sg) => segHitsBox(sg, b))) continue;
+    if ([...sc.boxes, ...sc.labels].some((o) => overlaps(o, b))) continue;
+    if (sc.leaders.some((sg) => segHitsBox(sg, b))) continue;
+    sc.labels.push(b);
+    return `<rect x="${n(x0)}" y="${n(y0)}" width="${n(bw)}" height="${n(bh)}" rx="6" fill="${x.c.bg}" stroke="${x.c.ink}" stroke-width="1.75"/>${rows
+      .map((r, i) =>
+        text(x, x0 + 6, y0 + 4 + fs * 1.25 * (i + 0.5), [r], { fs, anchor: "start", weight: 500 }),
+      )
+      .join("")}`;
+  }
+  x.faults?.push(`no room for the key of ${sc.key.length} labels`);
+  return "";
+}
 
 function inPoly(poly: [number, number][], px: number, py: number): boolean {
   let c = false;
@@ -169,8 +210,8 @@ export function placeLabel(x: Ctx, sc: Scene, w: number, h: number, req: LabelRe
   const [px, py] = req.at;
   const sizes = [
     x.fs,
-    Math.max(14, Math.round(x.fs * 0.88)),
-    Math.max(14, Math.round(x.fs * 0.78)),
+    Math.max(18, Math.round(x.fs * 0.88)),
+    Math.max(18, Math.round(x.fs * 0.78)),
   ];
   const dirs = [...(req.prefer ?? []), ...ALL.filter((d) => !req.prefer?.includes(d))];
   const maxW = req.maxW ?? w * 0.4;
@@ -220,6 +261,37 @@ export function placeLabel(x: Ctx, sc: Scene, w: number, h: number, req: LabelRe
     }
   }
   if (req.soft) return "";
+  // DIAGRAM-AUDIT layout pass: no clear spot by the point, so the label is numbered there (a
+  // small disc that sits on the drawing's own lines) and named in the key; never truncated.
+  {
+    const fs = Math.max(18, Math.round(x.fs * 0.8));
+    const r = fs * 0.62;
+    const free = (cx: number, cy: number) => {
+      const b = { x0: cx - r, x1: cx + r, y0: cy - r, y1: cy + r };
+      return (
+        b.x0 >= 2 &&
+        b.y0 >= 2 &&
+        b.x1 <= w - 2 &&
+        b.y1 <= h - 2 &&
+        !sc.labels.some((o) => overlaps(o, b, 2)) &&
+        !sc.boxes.some((o) => overlaps(o, b))
+      );
+    };
+    const spot = [
+      [px, py],
+      [px + 1.6 * r, py],
+      [px - 1.6 * r, py],
+      [px, py - 1.6 * r],
+      [px, py + 1.6 * r],
+    ].find(([cx, cy]) => free(cx as number, cy as number));
+    if (spot) {
+      const [cx, cy] = spot as [number, number];
+      sc.key.push(req.text);
+      const k = sc.key.length;
+      sc.labels.push({ x0: cx - r, x1: cx + r, y0: cy - r, y1: cy + r });
+      return `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${x.c.ink}" stroke="${x.c.bg}" stroke-width="1.75"/>${text({ ...x, rec: undefined }, cx, cy, [String(k)], { fs: fs * 0.8, weight: 700, fill: x.c.bg })}`;
+    }
+  }
   x.faults?.push(`no room for the label "${req.text}"`);
   const fs = sizes[sizes.length - 1] as number;
   const lines = wrap(req.text, x, maxW, 2, fs, weight);
@@ -250,6 +322,7 @@ export function placeAll(x: Ctx, sc: Scene, w: number, h: number, reqs: LabelReq
     labels: [...sc.labels],
     leaders: [...sc.leaders],
     areas: sc.areas,
+    key: [...sc.key],
   });
   const quiet: Ctx = { ...x, rec: undefined, strokes: undefined, faults: undefined };
   let pick = reqs.map((_, i) => i);

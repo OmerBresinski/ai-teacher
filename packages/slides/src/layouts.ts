@@ -16,6 +16,7 @@ import type {
 import { OBJECTIVES_SLIDE_HEADING, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { explanationReserve, RESERVED_LINES } from "./explanation-metrics";
 import { docFromBullets, docFromText, newText, uid } from "./factories";
+import { figureFullRects } from "./figure-full";
 import { drawFigure } from "./figures";
 import { BASELINE, GUTTER, HALF, lastColLeft, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
@@ -571,7 +572,37 @@ function diagramVariant(t: Theme, variant: number | string): Layout {
       return diagramSlide(t, FIGURE_RECT_WIDE, { x: WIDE_TEXT_X, w: WIDE_TEXT_W }, 5);
     case "figure-left":
       return diagramSlide(t, FIGURE_RECT, { x: RIGHT_X, w: HALF_W }, 4);
+    case "figure-full":
+      return diagramFullSlide(t);
   }
+}
+
+/**
+ * DIAGRAM-AUDIT item 5, the big diagram: a heading, the figure across the full safe width and most
+ * of the height, and a one-line caption under it (`figure-full.ts` owns the geometry).
+ */
+function diagramFullSlide(t: Theme): Layout {
+  const r = figureFullRects(t, true);
+  const figure = drawFigure(
+    "right-triangle",
+    {
+      base: { length: 3, label: "3 cm" },
+      height: { length: 4, label: "4 cm" },
+      hypotenuse: { label: "x" },
+    },
+    t,
+    r.figure,
+  );
+  return {
+    elements: [
+      text("heading", "What the diagram shows", r.heading),
+      figure,
+      text("body", "One line that links the diagram to the idea.", r.caption, {
+        align: "center",
+        color: t.colors.muted,
+      }),
+    ],
+  };
 }
 
 /** Worked example — the problem left, the teacher's working right on a tinted card. */
@@ -1437,7 +1468,7 @@ export const TITLE_VARIANT_NAMES = [
 export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column", "callout-row"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
 /** The diagram's compositions: the default, and the wider figure a template may ask for. */
-export const DIAGRAM_VARIANT_NAMES = ["figure-left", "figure-wide"] as const;
+export const DIAGRAM_VARIANT_NAMES = ["figure-left", "figure-wide", "figure-full"] as const;
 /** The one composition each remaining kind has, named for a picker. */
 const SINGLE_VARIANT_NAMES = [
   "grid",
@@ -1594,6 +1625,11 @@ export const LAYOUT_CATALOGUE: {
       name: "figure-wide",
       composition: "figure-wide",
       description: "A wider figure down the left, the text in a narrower column beside it",
+    },
+    {
+      name: "figure-full",
+      composition: "figure-full",
+      description: "A heading and one figure filling the slide, with a one-line caption",
     },
   ],
   "worked-example": one("working-card", "The question on top, the working on a card below"),

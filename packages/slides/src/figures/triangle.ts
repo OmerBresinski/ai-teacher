@@ -11,7 +11,10 @@
  *
  * Load it through `./index` or the package root, never first on its own (see `./right-triangle`).
  */
+
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
+import { figureLook, STROKE as LADDER } from "../diagrams/style";
+import { mix } from "../diagrams/svg";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
 import type { FigureDrawing, FigureTemplate } from "./index";
@@ -117,7 +120,7 @@ const PAIR_SCALE = { min: 1 / 3, max: 3 } as const;
 const SCHEMATIC: Record<Vertex, number> = { A: 50, B: 60, C: 70 };
 const SCHEMATIC_RIGHT_OTHER = deg(Math.atan(3 / 4));
 /** `right-triangle`'s strokes. */
-const STROKE = 3;
+const STROKE = LADDER.line;
 /** Between a side and its label, a vertex and its name, an arc and its angle's label. */
 const SIDE_GAP = 10;
 const NAME_GAP = 4;
@@ -606,11 +609,23 @@ function drawTriangle(
   };
   // Labels that leave too little room are narrowed, then lose lines, until the triangle can be
   // drawn at `MIN_SIZE`; the alt text keeps every label whole.
+  // DIAGRAM-AUDIT: a narrower budget is taken only when it keeps every label whole ("10 cm",
+  // never "10…"); a figure a little under MIN_SIZE with whole labels beats a bigger one cut.
+  const whole = (p: Plan) =>
+    p.shown.every((sh) =>
+      [...Object.values(sh.sides), ...Object.values(sh.angles), ...Object.values(sh.names)].every(
+        (l) => !l?.text.endsWith("…"),
+      ),
+    );
   let plan = arranged(shownFor(LABEL_BUDGETS[0] as Budget));
   for (const budget of LABEL_BUDGETS.slice(1)) {
     if (plan.size >= MIN_SIZE) break;
     const narrower = arranged(shownFor(budget));
-    if (narrower.size > plan.size) plan = narrower;
+    if (
+      narrower.size > plan.size &&
+      (whole(narrower) || !whole(plan) || plan.size < MIN_SIZE * 0.85)
+    )
+      plan = narrower;
   }
   const { shown } = plan;
   const S = Math.max(1, Math.floor(plan.size));
@@ -633,7 +648,9 @@ function drawTriangle(
     const one = shown[i] as Shown;
     if (one.right) {
       const [q, r] = VERTICES.filter((w) => w !== one.right) as [Vertex, Vertex];
-      children.push(rightAngleMark(P[one.right], P[q], P[r], p.markSize, t));
+      children.push(
+        rightAngleMark(P[one.right], P[q], P[r], p.markSize, t, { fill: figureLook(t, mix).mark }),
+      );
     }
     for (const w of VERTICES) {
       const count = one.arcs[w];
@@ -670,8 +687,9 @@ function triangleOutline(P: Record<Vertex, Point>, t: Theme, name: string): Path
     h,
     points: VERTICES.map((v) => ({ x: (P[v].x - x) / w, y: (P[v].y - y) / h })),
     closed: true,
+    fill: figureLook(t, mix).fill,
     stroke: t.colors.ink,
-    strokeWidth: STROKE,
+    strokeWidth: figureLook(t, mix).outline,
     name,
   };
 }

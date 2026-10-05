@@ -9,7 +9,9 @@
  * Load it through a template (so through `./index`), not first on its own: it reads `boxH` from
  * `../layouts`, which is in the layouts ↔ figures import cycle (see `./right-triangle`).
  */
+
 import type { RichDoc, TextElement, Theme } from "@tj/domain/documents";
+import { WEIGHT } from "../diagrams/style";
 import { docFromText, newText } from "../factories";
 import { boxH } from "../layouts";
 import { countLines, lineWidth } from "../text-measure";
@@ -104,10 +106,32 @@ export function labelText(
   box: Box,
   align: "left" | "center" | "right",
   color = t.colors.ink,
-  { bold = false }: { bold?: boolean } = {},
+  { bold = false, italic = false }: { bold?: boolean; italic?: boolean } = {},
 ): TextElement {
-  const el = newText("small", bold ? boldDoc(docFromText(text)) : text, box);
-  el.style = { ...el.style, align, valign: "middle", color, padding: 0 };
+  const doc = bold ? boldDoc(docFromText(text)) : undefined;
+  const marked =
+    doc && italic
+      ? {
+          ...doc,
+          content: doc.content?.map((p) => ({
+            ...p,
+            content: p.content?.map((nd) => ({
+              ...nd,
+              marks: [{ type: "bold" }, { type: "italic" }],
+            })),
+          })),
+        }
+      : doc;
+  const el = newText("small", (marked as RichDoc | undefined) ?? text, box);
+  // DIAGRAM-AUDIT look: figure labels sit on the diagrams' weight ladder (500), not regular.
+  el.style = {
+    ...el.style,
+    align,
+    valign: "middle",
+    color,
+    padding: 0,
+    ...(bold ? {} : { fontWeight: WEIGHT.label }),
+  };
   return el;
 }
 

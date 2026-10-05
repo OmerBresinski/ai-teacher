@@ -6,6 +6,7 @@
  * and a spec that does not parse draws nothing.
  */
 import { z } from "zod";
+import { BarChartSchema, CarrollSchema, PieSchema, VennSchema } from "./charts";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
 const finite = z.number().finite();
@@ -216,7 +217,8 @@ export const LabelledDiagramSchema = z
         z.object({
           text: label(24),
           at: pt,
-          side: z.enum(["left", "right", "top", "bottom"]),
+          /** Optional: code places the label on the side that keeps it clear when absent. */
+          side: z.enum(["left", "right", "top", "bottom"]).optional(),
         }),
       )
       .max(8)
@@ -361,7 +363,7 @@ export const TimelineSchema = z
     /** In time order, evenly spaced. */
     events: z
       .array(z.object({ date: label(14), text: label(40) }))
-      .min(3)
+      .min(2)
       .max(7),
     /** A highlighted span between two events (1-based positions in `events`). */
     period: z
@@ -463,6 +465,10 @@ export const DiagramSpecSchema = z.discriminatedUnion("kind", [
   LayersSchema,
   CycleSchema,
   RiverSchema,
+  BarChartSchema,
+  PieSchema,
+  VennSchema,
+  CarrollSchema,
 ]);
 
 export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
@@ -480,6 +486,7 @@ export type Timeline = z.infer<typeof TimelineSchema>;
 export type Layers = z.infer<typeof LayersSchema>;
 export type Cycle = z.infer<typeof CycleSchema>;
 export type River = z.infer<typeof RiverSchema>;
+export type { BarChart, Carroll, Pie, Venn } from "./charts";
 
 /** The hand-built templates (round I): code owns their geometry; the picture ladder tries them first. */
 export const TEMPLATE_KINDS = [
@@ -506,4 +513,8 @@ export const DIAGRAM_KINDS: DiagramKind[] = [
   "layers",
   "cycle",
   "river",
+  "bar-chart",
+  "pie",
+  "venn",
+  "carroll",
 ];

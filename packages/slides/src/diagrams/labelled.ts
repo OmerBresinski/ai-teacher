@@ -8,6 +8,7 @@
  */
 import { MIN_FONT_SIZE } from "../themes";
 import type { LabelledDiagram } from "./schema";
+import { WEIGHT } from "./style";
 import { arrow, type Ctx, n, text, textWidth, toneFill, wrap } from "./svg";
 
 type Shape = LabelledDiagram["shapes"][number];
@@ -216,7 +217,20 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
       if (joined.length <= 40) whole.text = joined;
       continue;
     }
-    out.push({ text: l.text, side: l.side, target: best.i, part, at: best.at });
+    // A label with no side goes on the side of the canvas it sits nearest (DIAGRAM-AUDIT #5).
+    const W = s.canvas === "wide" ? 160 : 100;
+    const dx = l.at[0] - W / 2;
+    const dy = l.at[1] - 50;
+    const side =
+      l.side ??
+      (Math.abs(dx) * 100 >= Math.abs(dy) * W
+        ? dx < 0
+          ? ("left" as const)
+          : ("right" as const)
+        : dy < 0
+          ? ("top" as const)
+          : ("bottom" as const));
+    out.push({ text: l.text, side, target: best.i, part, at: best.at });
   }
   return out;
 }
@@ -340,8 +354,8 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       // A particle box's description goes in the slot under its caption, in its column.
       if (s.shapes[l.target]?.type === "particles") {
         const t = against[l.target] as Box;
-        const lines = wrap(l.text, x, column(l.target), 3, lf, 400);
-        const bw = Math.max(...lines.map((ln) => textWidth(ln, x, lf, 400)));
+        const lines = wrap(l.text, x, column(l.target), 3, lf, WEIGHT.label);
+        const bw = Math.max(...lines.map((ln) => textWidth(ln, x, lf, WEIGHT.label)));
         const cx = (t.x0 + t.x1) / 2;
         const y0 = t.y1 + lf * 0.2;
         const box = { x0: cx - bw / 2, y0, x1: cx + bw / 2, y1: y0 + blockH(lines.length) };

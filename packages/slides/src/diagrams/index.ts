@@ -10,12 +10,14 @@ import type { ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { THEMES } from "../themes";
 import { drawBarModel } from "./bar-model";
+import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
 import { drawFlow } from "./flow";
 import { drawLabelled } from "./labelled";
 import { drawLineGraph } from "./line-graph";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
+import { laddered } from "./style";
 import { context, type DrawnText, esc, n, text, wrap } from "./svg";
 import { drawTable, tableHeight, tableWhole } from "./table";
 import {
@@ -27,7 +29,14 @@ import {
   drawTimeline,
 } from "./templates";
 
-export { isHydrograph, isParticleRow, normaliseDiagram, simplerDiagrams } from "./normalise";
+export {
+  energyProfileOf,
+  isHydrograph,
+  isParticleRow,
+  normaliseDiagram,
+  simplerDiagrams,
+  withTangents,
+} from "./normalise";
 export * from "./schema";
 
 /** The drawn diagram's name in the layers list; present, export and print show it. */
@@ -250,9 +259,18 @@ function body(
         return drawCycle(s, ix, w, ih);
       case "river":
         return drawRiver(s, ix, w, ih);
+      case "bar-chart":
+        return drawBarChart(s, ix, w, ih);
+      case "pie":
+        return drawPie(s, ix, w, ih);
+      case "venn":
+        return drawVenn(s, ix, w, ih);
+      case "carroll":
+        return drawCarroll(s, ix, w, ih);
     }
   })();
-  return top ? `${head}<g transform="translate(0,${n(top)})">${inner}</g>` : inner;
+  const drawn = laddered(inner);
+  return top ? `${head}<g transform="translate(0,${n(top)})">${drawn}</g>` : drawn;
 }
 
 /**
@@ -461,3 +479,4 @@ export function drawingHeight(
   }
   return { h: size.h, fs };
 }
+export { capacityLine, DIAGRAM_ZONES, diagramCapacities, itemCount, zoneShape } from "./capacity";

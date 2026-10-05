@@ -796,7 +796,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 101,
+            "x": 103,
             "y": 5,
             "w": 296,
             "h": 395,
@@ -815,18 +815,23 @@
               }
             ],
             "closed": true,
+            "fill": "#f1dfcd",
             "stroke": "#2C2A24",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 101,
+            "x": 103,
             "y": 376,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -841,7 +846,9 @@
               }
             ],
             "stroke": "#2C2A24",
-            "strokeWidth": 2,
+            "fill": "#A94A18",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -849,7 +856,7 @@
             "type": "text",
             "x": 214,
             "y": 412,
-            "w": 71,
+            "w": 75,
             "h": 38,
             "doc": {
               "type": "doc",
@@ -859,7 +866,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -877,9 +889,9 @@
           {
             "id": "_5",
             "type": "text",
-            "x": 16,
+            "x": 15,
             "y": 184,
-            "w": 73,
+            "w": 76,
             "h": 38,
             "doc": {
               "type": "doc",
@@ -889,7 +901,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -907,7 +924,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 261,
+            "x": 263,
             "y": 160,
             "w": 40,
             "h": 38,
@@ -919,7 +936,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -930,7 +955,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#2C2A24",
+              "color": "#A94A18",
               "padding": 0
             }
           }
@@ -3384,7 +3409,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 102,
+            "x": 103,
             "y": 4,
             "w": 296,
             "h": 395,
@@ -3403,18 +3428,23 @@
               }
             ],
             "closed": true,
+            "fill": "#e6def5",
             "stroke": "#2B2118",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 102,
+            "x": 103,
             "y": 375,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -3429,7 +3459,9 @@
               }
             ],
             "stroke": "#2B2118",
-            "strokeWidth": 2,
+            "fill": "#6532BE",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -3437,7 +3469,7 @@
             "type": "text",
             "x": 214,
             "y": 411,
-            "w": 73,
+            "w": 74,
             "h": 39,
             "doc": {
               "type": "doc",
@@ -3447,7 +3479,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -3467,7 +3504,7 @@
             "type": "text",
             "x": 15,
             "y": 182,
-            "w": 75,
+            "w": 76,
             "h": 39,
             "doc": {
               "type": "doc",
@@ -3477,7 +3514,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -3495,7 +3537,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 262,
+            "x": 263,
             "y": 158,
             "w": 40,
             "h": 39,
@@ -3507,7 +3549,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -3518,7 +3568,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#2B2118",
+              "color": "#6532BE",
               "padding": 0
             }
           }
@@ -12980,7 +13030,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 99,
+            "x": 100,
             "y": 4,
             "w": 299,
             "h": 399,
@@ -12999,18 +13049,23 @@
               }
             ],
             "closed": true,
+            "fill": "#dde2db",
             "stroke": "#22201C",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 99,
+            "x": 100,
             "y": 379,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -13025,15 +13080,17 @@
               }
             ],
             "stroke": "#22201C",
-            "strokeWidth": 2,
+            "fill": "#2C5A4D",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
             "id": "_4",
             "type": "text",
-            "x": 213,
+            "x": 214,
             "y": 415,
-            "w": 71,
+            "w": 72,
             "h": 35,
             "doc": {
               "type": "doc",
@@ -13043,7 +13100,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -13061,9 +13123,9 @@
           {
             "id": "_5",
             "type": "text",
-            "x": 16,
+            "x": 15,
             "y": 186,
-            "w": 71,
+            "w": 73,
             "h": 35,
             "doc": {
               "type": "doc",
@@ -13073,7 +13135,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -13091,7 +13158,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 259,
+            "x": 260,
             "y": 163,
             "w": 40,
             "h": 35,
@@ -13103,7 +13170,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -13114,7 +13189,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#22201C",
+              "color": "#2C5A4D",
               "padding": 0
             }
           }
@@ -17923,8 +17998,9 @@
               }
             ],
             "closed": true,
+            "fill": "#d0d7e7",
             "stroke": "#111418",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
@@ -17935,6 +18011,10 @@
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -17949,15 +18029,17 @@
               }
             ],
             "stroke": "#111418",
-            "strokeWidth": 2,
+            "fill": "#1B3A8C",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
             "id": "_4",
             "type": "text",
-            "x": 213,
+            "x": 212,
             "y": 415,
-            "w": 71,
+            "w": 73,
             "h": 35,
             "doc": {
               "type": "doc",
@@ -17967,7 +18049,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -17985,9 +18072,9 @@
           {
             "id": "_5",
             "type": "text",
-            "x": 16,
+            "x": 15,
             "y": 186,
-            "w": 71,
+            "w": 72,
             "h": 35,
             "doc": {
               "type": "doc",
@@ -17997,7 +18084,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -18027,7 +18119,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -18038,7 +18138,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#111418",
+              "color": "#1B3A8C",
               "padding": 0
             }
           }
@@ -20492,7 +20592,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 99,
+            "x": 100,
             "y": 5,
             "w": 298,
             "h": 397,
@@ -20511,18 +20611,23 @@
               }
             ],
             "closed": true,
+            "fill": "#35383d",
             "stroke": "#ECEDEF",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 99,
+            "x": 100,
             "y": 378,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -20537,15 +20642,17 @@
               }
             ],
             "stroke": "#ECEDEF",
-            "strokeWidth": 2,
+            "fill": "#F2B551",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
             "id": "_4",
             "type": "text",
-            "x": 213,
+            "x": 214,
             "y": 414,
-            "w": 70,
+            "w": 71,
             "h": 36,
             "doc": {
               "type": "doc",
@@ -20555,7 +20662,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -20575,7 +20687,7 @@
             "type": "text",
             "x": 16,
             "y": 186,
-            "w": 71,
+            "w": 72,
             "h": 36,
             "doc": {
               "type": "doc",
@@ -20585,7 +20697,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -20603,7 +20720,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 259,
+            "x": 260,
             "y": 162,
             "w": 40,
             "h": 36,
@@ -20615,7 +20732,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -20626,7 +20751,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#ECEDEF",
+              "color": "#F2B551",
               "padding": 0
             }
           }
@@ -23080,7 +23205,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 103,
+            "x": 104,
             "y": 5,
             "w": 294,
             "h": 392,
@@ -23099,18 +23224,23 @@
               }
             ],
             "closed": true,
+            "fill": "#d8e1f6",
             "stroke": "#0E0E0E",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 103,
+            "x": 104,
             "y": 373,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -23125,15 +23255,17 @@
               }
             ],
             "stroke": "#0E0E0E",
-            "strokeWidth": 2,
+            "fill": "#0A46C8",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
             "id": "_4",
             "type": "text",
-            "x": 214,
+            "x": 213,
             "y": 409,
-            "w": 73,
+            "w": 76,
             "h": 41,
             "doc": {
               "type": "doc",
@@ -23143,7 +23275,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -23161,9 +23298,9 @@
           {
             "id": "_5",
             "type": "text",
-            "x": 17,
+            "x": 15,
             "y": 181,
-            "w": 74,
+            "w": 77,
             "h": 41,
             "doc": {
               "type": "doc",
@@ -23173,7 +23310,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -23191,7 +23333,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 262,
+            "x": 263,
             "y": 156,
             "w": 40,
             "h": 41,
@@ -23203,7 +23345,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -23214,7 +23364,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#0E0E0E",
+              "color": "#0A46C8",
               "padding": 0
             }
           }
@@ -24885,7 +25035,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 101,
+            "x": 102,
             "y": 5,
             "w": 298,
             "h": 397,
@@ -24904,18 +25054,23 @@
               }
             ],
             "closed": true,
+            "fill": "#f0cf93",
             "stroke": "#232120",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 101,
+            "x": 102,
             "y": 378,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -24930,7 +25085,9 @@
               }
             ],
             "stroke": "#232120",
-            "strokeWidth": 2,
+            "fill": "#A31F2E",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -24938,7 +25095,7 @@
             "type": "text",
             "x": 213,
             "y": 414,
-            "w": 75,
+            "w": 76,
             "h": 36,
             "doc": {
               "type": "doc",
@@ -24948,7 +25105,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -24968,7 +25130,7 @@
             "type": "text",
             "x": 14,
             "y": 186,
-            "w": 75,
+            "w": 76,
             "h": 36,
             "doc": {
               "type": "doc",
@@ -24978,7 +25140,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -24996,7 +25163,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 261,
+            "x": 262,
             "y": 162,
             "w": 40,
             "h": 36,
@@ -25008,7 +25175,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25019,7 +25194,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#232120",
+              "color": "#A31F2E",
               "padding": 0
             }
           }
@@ -25137,7 +25312,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 101,
+            "x": 102,
             "y": 4,
             "w": 296,
             "h": 395,
@@ -25156,18 +25331,23 @@
               }
             ],
             "closed": true,
+            "fill": "#d8e5f0",
             "stroke": "#10252F",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 101,
+            "x": 102,
             "y": 375,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -25182,7 +25362,9 @@
               }
             ],
             "stroke": "#10252F",
-            "strokeWidth": 2,
+            "fill": "#0A5CA2",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -25190,7 +25372,7 @@
             "type": "text",
             "x": 213,
             "y": 411,
-            "w": 73,
+            "w": 74,
             "h": 39,
             "doc": {
               "type": "doc",
@@ -25200,7 +25382,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25220,7 +25407,7 @@
             "type": "text",
             "x": 16,
             "y": 182,
-            "w": 73,
+            "w": 74,
             "h": 39,
             "doc": {
               "type": "doc",
@@ -25230,7 +25417,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25248,7 +25440,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 261,
+            "x": 262,
             "y": 158,
             "w": 40,
             "h": 39,
@@ -25260,7 +25452,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25271,7 +25471,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#10252F",
+              "color": "#0A5CA2",
               "padding": 0
             }
           }
@@ -25389,7 +25589,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 101,
+            "x": 102,
             "y": 4,
             "w": 296,
             "h": 395,
@@ -25408,18 +25608,23 @@
               }
             ],
             "closed": true,
+            "fill": "#d9ddc5",
             "stroke": "#1D291D",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 101,
+            "x": 102,
             "y": 375,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -25434,7 +25639,9 @@
               }
             ],
             "stroke": "#1D291D",
-            "strokeWidth": 2,
+            "fill": "#245F28",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -25442,7 +25649,7 @@
             "type": "text",
             "x": 213,
             "y": 411,
-            "w": 73,
+            "w": 74,
             "h": 39,
             "doc": {
               "type": "doc",
@@ -25452,7 +25659,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25472,7 +25684,7 @@
             "type": "text",
             "x": 16,
             "y": 182,
-            "w": 73,
+            "w": 74,
             "h": 39,
             "doc": {
               "type": "doc",
@@ -25482,7 +25694,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25500,7 +25717,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 261,
+            "x": 262,
             "y": 158,
             "w": 40,
             "h": 39,
@@ -25512,7 +25729,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25523,7 +25748,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#1D291D",
+              "color": "#245F28",
               "padding": 0
             }
           }
@@ -25641,7 +25866,7 @@
           {
             "id": "_2",
             "type": "path",
-            "x": 99,
+            "x": 100,
             "y": 5,
             "w": 297,
             "h": 396,
@@ -25660,18 +25885,23 @@
               }
             ],
             "closed": true,
+            "fill": "#d8e8ec",
             "stroke": "#0F172A",
-            "strokeWidth": 3,
+            "strokeWidth": 4,
             "name": "Triangle"
           },
           {
             "id": "_3",
             "type": "path",
-            "x": 99,
+            "x": 100,
             "y": 377,
             "w": 24,
             "h": 24,
             "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
               {
                 "x": 0,
                 "y": 0
@@ -25686,13 +25916,15 @@
               }
             ],
             "stroke": "#0F172A",
-            "strokeWidth": 2,
+            "fill": "#0B6E86",
+            "closed": true,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
             "id": "_4",
             "type": "text",
-            "x": 213,
+            "x": 214,
             "y": 413,
             "w": 69,
             "h": 37,
@@ -25704,7 +25936,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "3 cm"
+                      "text": "3 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25724,7 +25961,7 @@
             "type": "text",
             "x": 17,
             "y": 185,
-            "w": 70,
+            "w": 71,
             "h": 37,
             "doc": {
               "type": "doc",
@@ -25734,7 +25971,12 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "4 cm"
+                      "text": "4 cm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25752,7 +25994,7 @@
           {
             "id": "_6",
             "type": "text",
-            "x": 259,
+            "x": 260,
             "y": 161,
             "w": 40,
             "h": 37,
@@ -25764,7 +26006,15 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "x"
+                      "text": "x",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        },
+                        {
+                          "type": "italic"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -25775,7 +26025,7 @@
               "autoHeight": true,
               "align": "center",
               "valign": "middle",
-              "color": "#0F172A",
+              "color": "#0B6E86",
               "padding": 0
             }
           }
