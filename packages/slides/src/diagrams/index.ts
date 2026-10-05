@@ -10,6 +10,7 @@ import type { ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { THEMES } from "../themes";
 import { drawBarModel } from "./bar-model";
+import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
 import { drawFlow } from "./flow";
 import { drawLabelled } from "./labelled";
 import { drawLineGraph } from "./line-graph";
@@ -231,6 +232,14 @@ function body(
         return drawCycle(s, ix, w, ih);
       case "river":
         return drawRiver(s, ix, w, ih);
+      case "bar-chart":
+        return drawBarChart(s, ix, w, ih);
+      case "pie":
+        return drawPie(s, ix, w, ih);
+      case "venn":
+        return drawVenn(s, ix, w, ih);
+      case "carroll":
+        return drawCarroll(s, ix, w, ih);
     }
   })();
   const drawn = laddered(inner);

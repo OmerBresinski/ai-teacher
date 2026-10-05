@@ -461,6 +461,39 @@ const T3_DRAW = {
     notes: z.array(phrase("a short phrase under each panel")).max(3).optional(),
     arrows: z.array(phrase("1–2 words on the arrow between panels")).max(2).optional(),
   }),
+  "bar-chart": z.object({
+    kind: z.literal("bar-chart"),
+    title: phrase("one short line"),
+    style: z.enum(["bars", "pictogram", "tally"]),
+    bars: z
+      .array(z.object({ label: phrase("1–2 words"), value: z.number() }))
+      .min(1)
+      .max(8),
+    per: z.number().optional(),
+  }),
+  pie: z.object({
+    kind: z.literal("pie"),
+    title: phrase("one short line"),
+    slices: z
+      .array(z.object({ label: phrase("1–2 words"), value: z.number() }))
+      .max(6)
+      .optional(),
+    parts: z.number().optional(),
+    shaded: z.number().optional(),
+  }),
+  venn: z.object({
+    kind: z.literal("venn"),
+    title: phrase("one short line"),
+    sets: z.array(phrase("1–3 words")).min(2).max(3),
+    items: z.array(z.object({ text: phrase("1–2 words"), in: z.array(z.number()) })).max(12),
+  }),
+  carroll: z.object({
+    kind: z.literal("carroll"),
+    title: phrase("one short line"),
+    rows: z.array(phrase("1–3 words")).length(2),
+    cols: z.array(phrase("1–3 words")).length(2),
+    cells: z.array(z.array(z.array(phrase("1–2 words")))),
+  }),
 } as const;
 type T3Kind = keyof typeof T3_DRAW;
 const T3_DRAWS: Record<T3Kind, string> = {
@@ -472,6 +505,10 @@ const T3_DRAWS: Record<T3Kind, string> = {
   "number-line": "a number line with marked points or jumps",
   "line-graph": "a line or bar graph on labelled axes",
   particles: "particles in solids, liquids and gases, or diffusion or dissolving",
+  "bar-chart": "a bar chart, pictogram or tally chart of counts in named categories",
+  pie: "a pie chart of shares, or a circle in equal parts with some shaded",
+  venn: "a Venn diagram sorting items into 2 or 3 overlapping sets",
+  carroll: "a Carroll diagram sorting items by two yes/no properties",
 };
 /** Drop the empty strings, nulls and empty lists a writer leaves in optional fields. */
 function pruned(v: unknown): unknown {
@@ -500,7 +537,17 @@ export function expandDrawing(p: Record<string, unknown>): Record<string, unknow
   const { kind, title, ...rest } = w;
   collect(rest);
   const said = words.filter(
-    (t) => !["states", "diffusion", "dissolving", "line", "bars", "tangent"].includes(t),
+    (t) =>
+      ![
+        "states",
+        "diffusion",
+        "dissolving",
+        "line",
+        "bars",
+        "tangent",
+        "pictogram",
+        "tally",
+      ].includes(t),
   );
   let alt = `${title ?? kind}: ${said.join(", ")}`;
   if (alt.length > 200) alt = alt.slice(0, alt.lastIndexOf(", ", 199));

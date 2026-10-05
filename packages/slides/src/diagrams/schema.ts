@@ -6,6 +6,7 @@
  * and a spec that does not parse draws nothing.
  */
 import { z } from "zod";
+import { BarChartSchema, CarrollSchema, PieSchema, VennSchema } from "./charts";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
 const finite = z.number().finite();
@@ -464,6 +465,10 @@ export const DiagramSpecSchema = z.discriminatedUnion("kind", [
   LayersSchema,
   CycleSchema,
   RiverSchema,
+  BarChartSchema,
+  PieSchema,
+  VennSchema,
+  CarrollSchema,
 ]);
 
 export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
@@ -481,6 +486,7 @@ export type Timeline = z.infer<typeof TimelineSchema>;
 export type Layers = z.infer<typeof LayersSchema>;
 export type Cycle = z.infer<typeof CycleSchema>;
 export type River = z.infer<typeof RiverSchema>;
+export type { BarChart, Carroll, Pie, Venn } from "./charts";
 
 /** The hand-built templates (round I): code owns their geometry; the picture ladder tries them first. */
 export const TEMPLATE_KINDS = [
@@ -507,4 +513,8 @@ export const DIAGRAM_KINDS: DiagramKind[] = [
   "layers",
   "cycle",
   "river",
+  "bar-chart",
+  "pie",
+  "venn",
+  "carroll",
 ];

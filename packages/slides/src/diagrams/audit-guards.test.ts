@@ -143,3 +143,31 @@ describe("DIAGRAM-AUDIT correctness guards", () => {
     expect(diagramFaults(s, chalk, { w: 436, h: 356 })).toEqual([]);
   });
 });
+
+describe("DIAGRAM-AUDIT coverage kinds", () => {
+  const { DIAGRAM_SAMPLES } = require("./samples");
+  const { THEMES } = require("../themes");
+  for (const k of [
+    "bar-chart",
+    "bar-chart-pictogram",
+    "bar-chart-tally",
+    "pie",
+    "pie-fraction",
+    "venn",
+    "carroll",
+  ]) {
+    test(`${k} parses and draws cleanly on every theme, half and full`, () => {
+      const spec = DIAGRAM_SAMPLES[k];
+      expect(parseDiagram(spec)).toBeDefined();
+      for (const size of [
+        { w: 436, h: 356 },
+        { w: 844, h: 370 },
+      ])
+        expect(THEMES.flatMap((t: never) => diagramFaults(spec, t, size))).toEqual([]);
+    });
+  }
+  test("a fraction circle needs parts, a pie needs slices, not both", () => {
+    expect(parseDiagram({ kind: "pie", alt: "x", parts: 4, shaded: 5 })).toBeUndefined();
+    expect(parseDiagram({ kind: "pie", alt: "x" })).toBeUndefined();
+  });
+});
