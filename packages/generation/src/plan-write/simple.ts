@@ -345,7 +345,16 @@ export async function simpleLessonSlides(
           ...lesson,
           facts: {
             ...facts,
-            outline: outline.map((e, i) => (i === index ? { ...e, imageBrief: x } : e)),
+            // The slide's entry is not saved yet while the slides draw: one is made for the pick.
+            outline: Array.from({ length: Math.max(outline.length, index + 1) }, (_, i) =>
+              i === index
+                ? ({
+                    ...(outline[i] ?? { id: `s${i + 1}`, kind: "image-text", factRefs: refs }),
+                    imageBrief: x,
+                  } as OutlineEntry)
+                : (outline[i] ??
+                  ({ id: `s${i + 1}`, kind: "content", factRefs: refs } as OutlineEntry)),
+            ),
           },
         },
         index,
