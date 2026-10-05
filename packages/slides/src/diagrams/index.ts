@@ -36,7 +36,122 @@ export const DIAGRAM_DRAWN_NAME = "Diagram";
 /** `spec` parsed, or `undefined` when it is not a diagram spec. */
 export function parseDiagram(spec: unknown): DiagramSpec | undefined {
   const r = DiagramSpecSchema.safeParse(spec);
-  return r.success ? r.data : undefined;
+  if (r.success) return r.data;
+  return longLabels > 0 ? parseLong(spec, r.error.issues).spec : undefined;
+}
+
+/**
+ * lab/t3: how far past its limit a label may run when the drawing is checked to fit it (wrapped
+ * onto more lines, or the labels a step smaller). The limits stay the writer's contract; this is
+ * the room the materialiser gives a label that misses by a few characters before rejecting it.
+ */
+export const LONG_LABEL_STRETCH = 1.5;
+/** The smallest label size a long label may shrink to (the renderers' own floor). */
+const LONG_LABEL_MIN_FS = 16;
+let longLabels = 0;
+
+/** Run `f` with labels up to `LONG_LABEL_STRETCH` times their limit parsing (synchronous). */
+export function withLongLabels<T>(f: () => T): T {
+  longLabels += 1;
+  try {
+    return f();
+  } finally {
+    longLabels -= 1;
+  }
+}
+
+type Issue = {
+  code: string;
+  path: PropertyKey[];
+  message: string;
+  origin?: string;
+  maximum?: unknown;
+};
+const at = (o: unknown, path: PropertyKey[]): unknown =>
+  path.reduce<unknown>((v, k) => (v as Record<PropertyKey, unknown> | undefined)?.[k], o);
+const put = (o: unknown, path: PropertyKey[], value: unknown) => {
+  const parent = at(o, path.slice(0, -1)) as Record<PropertyKey, unknown> | undefined;
+  const last = path[path.length - 1];
+  if (parent && last !== undefined) parent[last] = value;
+};
+
+/**
+ * A spec whose only faults are labels over their limit, by no more than the stretch: parsed with
+ * each long label held at its limit, then the whole label put back. Anything else: the reasons.
+ */
+function parseLong(
+  spec: unknown,
+  issues: readonly Issue[],
+): { spec?: DiagramSpec; reasons: string[] } {
+  const long: { path: PropertyKey[]; text: string }[] = [];
+  const reasons: string[] = [];
+  for (const i of issues) {
+    const value = at(spec, i.path);
+    const max = typeof i.maximum === "number" ? i.maximum : Number(i.maximum);
+    const where = i.path.join(".");
+    if (i.code !== "too_big" || i.origin !== "string" || typeof value !== "string") {
+      reasons.push(`${where}: ${i.message}`);
+      continue;
+    }
+    const text = value.trim();
+    if (text.length > Math.floor(max * LONG_LABEL_STRETCH))
+      reasons.push(
+        `${where}: ${text.length} characters, past ${Math.floor(max * LONG_LABEL_STRETCH)}`,
+      );
+    else long.push({ path: i.path, text });
+  }
+  if (reasons.length > 0 || long.length === 0) return { reasons };
+  const held = structuredClone(spec);
+  for (const l of long) {
+    const max = issues.find((i) => i.path.join(".") === l.path.join("."))?.maximum as number;
+    put(held, l.path, l.text.slice(0, max));
+  }
+  const r = DiagramSpecSchema.safeParse(held);
+  if (!r.success)
+    return { reasons: r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) };
+  for (const l of long) put(r.data, l.path, l.text);
+  return { spec: r.data, reasons: [] };
+}
+
+/**
+ * lab/t3: the drawing for `spec` in `rect`, fitting labels a little over their limit before giving
+ * up: the label is drawn whole (the renderers wrap it), at the slot's label size or a step smaller
+ * down to the renderers' floor, and only when it draws with no label cut, off the drawing or
+ * overlapping on EVERY theme. Nothing is shortened. A spec that already parses is drawn as before
+ * (settled, unstretched). `reasons` says why one could not be fitted, for the log.
+ */
+export function fittedDiagramElement(
+  spec: unknown,
+  theme: Theme,
+  rect: { x: number; y: number; w: number; h: number },
+  ids: () => string = uid,
+):
+  | { ok: true; element: ImageElement; stretched: boolean; fs?: number }
+  | { ok: false; reasons: string[] } {
+  const strict = DiagramSpecSchema.safeParse(spec);
+  if (strict.success) {
+    const element = diagramElement(settleDiagram(strict.data, rect).spec, theme, rect, ids);
+    return element
+      ? { ok: true, element, stretched: false }
+      : { ok: false, reasons: ["it does not draw"] };
+  }
+  const long = parseLong(spec, strict.error.issues);
+  if (!long.spec) return { ok: false, reasons: long.reasons };
+  const parsed = long.spec;
+  const size = { w: rect.w, h: rect.h };
+  const base = context(theme, Math.round(rect.w), Math.round(rect.h)).fs;
+  let last: string[] = [];
+  for (let fs = base; fs >= LONG_LABEL_MIN_FS; fs -= 2) {
+    const faults = withLongLabels(() =>
+      THEMES.flatMap((t) => diagramFaults(parsed, t, { ...size, fs })),
+    );
+    if (faults.length === 0) {
+      const element = withLongLabels(() => diagramElement(parsed, theme, { ...rect, fs }, ids));
+      if (element) return { ok: true, element, stretched: true, fs };
+    }
+    last = [...new Set(faults)];
+  }
+  return { ok: false, reasons: last.length > 0 ? last : ["it does not draw"] };
 }
 
 function body(
