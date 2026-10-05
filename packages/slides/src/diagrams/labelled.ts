@@ -561,7 +561,8 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       case "particles": {
         const { r, at } = particleCentres(sh);
         out.push(
-          `<rect x="${n(X(sh.x))}" y="${n(Y(sh.y))}" width="${n(sh.w * k)}" height="${n(sh.h * k)}" fill="${c.surface}" stroke="${c.muted}" stroke-width="2"/>`,
+          // A beaker: three sides open at the top, an outline on the ground (rulings 160, 162).
+          `<path d="M${n(X(sh.x))},${n(Y(sh.y))} L${n(X(sh.x))},${n(Y(sh.y) + sh.h * k)} L${n(X(sh.x) + sh.w * k)},${n(Y(sh.y) + sh.h * k)} L${n(X(sh.x) + sh.w * k)},${n(Y(sh.y))}" fill="none" stroke="${c.muted}" stroke-width="2" stroke-linejoin="round"/>`,
         );
         for (const [u, v] of at) {
           out.push(

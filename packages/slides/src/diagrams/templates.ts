@@ -222,9 +222,10 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         },
       ),
     );
-    // A container open at the top: three sides.
+    // A container open at the top: three sides, an outline on the ground, never a filled panel
+    // (rulings 160, 162).
     out.push(
-      `<path d="M${n(bx)},${n(boxY)} L${n(bx)},${n(boxY + side)} L${n(bx + side)},${n(boxY + side)} L${n(bx + side)},${n(boxY)}" fill="${x.c.surface}" stroke="${x.c.muted}" stroke-width="2.5" stroke-linejoin="round"/>`,
+      `<path d="M${n(bx)},${n(boxY)} L${n(bx)},${n(boxY + side)} L${n(bx + side)},${n(boxY + side)} L${n(bx + side)},${n(boxY)}" fill="none" stroke="${x.c.muted}" stroke-width="2.5" stroke-linejoin="round"/>`,
     );
     x.strokes?.push(
       [bx, boxY, bx, boxY + side],
