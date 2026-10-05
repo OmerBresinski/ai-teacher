@@ -59,7 +59,8 @@ describe("ImageView", () => {
 });
 
 /* lab/cand: a drawn diagram renders inline, so the page's theme fonts reach its text (an SVG
-   inside <img> cannot load a web font and falls back to a generic sans). */
+   inside <img> cannot load a web font and falls back to a generic sans), and it sits on the
+   slide's own ground, not on a surface-coloured box. */
 const viewOf = (element: ImageElement, t = theme) =>
   render(
     <ImageView
@@ -81,7 +82,7 @@ describe("ImageView: a drawn diagram", () => {
     steps: [{ label: "Chick", arrow: "grows" }, { label: "Young chicken" }, { label: "Hen" }],
   };
   for (const t of THEMES) {
-    test(`renders inline in the theme's body font (${t.id})`, () => {
+    test(`renders inline in the theme's body font on its own ground (${t.id})`, () => {
       const el = diagramElement(spec, t, { x: 0, y: 0, w: 600, h: 300 });
       if (!el) throw new Error("no diagram");
       const c = viewOf(el, t);
@@ -90,6 +91,8 @@ describe("ImageView: a drawn diagram", () => {
       expect(svg).not.toBeNull();
       const fam = svg?.querySelector("text")?.getAttribute("font-family") ?? "";
       expect(fam.startsWith(family(t.fonts.body).split(",")[0] as string)).toBe(true);
+      const box = c.firstElementChild as HTMLElement;
+      expect(box.style.background).toBe("transparent");
     });
   }
 
@@ -100,5 +103,11 @@ describe("ImageView: a drawn diagram", () => {
     expect(c.querySelector("script")).toBeNull();
     expect(c.innerHTML).not.toContain("alert");
     expect(c.querySelector("text")?.textContent).toBe("hi");
+  });
+
+  test("a photo keeps its <img> on the surface colour", () => {
+    const c = viewOf({ ...base, src: "https://example.test/a.jpg" });
+    expect(c.querySelector("img")).not.toBeNull();
+    expect((c.firstElementChild as HTMLElement).style.background).not.toBe("transparent");
   });
 });

@@ -82,12 +82,8 @@ export function inlineDiagram(el: ImageElement): string | undefined {
   }
 }
 
-/** A drawn diagram as inline SVG. */
-function DrawnDiagram({
-  element,
-  theme,
-  markup,
-}: ElementViewProps<ImageElement> & { markup: string }) {
+/** A drawn diagram: inline SVG straight on the slide's ground, never on a surface-coloured box. */
+function DrawnDiagram({ element, markup }: ElementViewProps<ImageElement> & { markup: string }) {
   const html = useMemo(() => ({ __html: markup }), [markup]);
   return (
     <div
@@ -99,7 +95,7 @@ function DrawnDiagram({
         height: "100%",
         overflow: "hidden",
         borderRadius: element.radius || undefined,
-        background: theme.colors.surface,
+        background: "transparent",
       }}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: our own renderer's SVG, sanitised by `inlineDiagram`
       dangerouslySetInnerHTML={html}
