@@ -641,6 +641,7 @@ async function judge(
       slideBrief: args.slideBrief ?? (slide ? slideText(slide) : brief.subject),
       subject: brief.request ?? brief.subject,
       mustShow: brief.mustShow,
+      needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,
@@ -675,7 +676,7 @@ export function gatePasses(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
   verdict: PickOrRequery,
 ): boolean {
-  if (!verdict.onSubject || !verdict.clear) return false;
+  if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
   if (brief.mustShow.length === 0) return true;
   // PICTURE-AUDIT #1: items taken from the writer's request are the things the slide's words
   // name (the sheep AND the lamb), so every one must be in view; Plan's parts lists need one.

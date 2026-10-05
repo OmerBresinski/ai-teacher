@@ -74,6 +74,7 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
       pick: "1",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["sheep", "grass"],
     });
     expect(empty.success).toBe(true);
@@ -82,6 +83,7 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
       pick: "1",
       onSubject: true,
       clear: true,
+      fits: true,
       visible: ["ram", "fence"],
     });
     expect(some.visible).toEqual(["ram"]);
@@ -90,6 +92,7 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
     pick: "1",
     onSubject: true,
     clear: true,
+    fits: true,
     visible,
     count: "one" as const,
     query: null,
@@ -250,5 +253,26 @@ describe("photoBankOn (A/B switch, default on)", () => {
     expect(photoBankOn(true)).toBe(true);
     process.env.PHOTO_BANK = "1";
     expect(photoBankOn(false)).toBe(false);
+  });
+});
+
+describe("judge fits (round 3: dog with an unrelated puppy, one cat, ice in the glass)", () => {
+  test("a pick the judge says does not fit the request as a whole never passes the gate", () => {
+    const brief = {
+      mustShow: ["adult dog", "puppy"],
+      request: "An adult dog and its puppy",
+      specific: false,
+    };
+    const v = {
+      pick: "1",
+      onSubject: true,
+      clear: true,
+      fits: false,
+      visible: ["adult dog", "puppy"],
+      count: null,
+      query: null,
+    };
+    expect(gatePasses(brief, v)).toBe(false);
+    expect(gatePasses(brief, { ...v, fits: true })).toBe(true);
   });
 });
