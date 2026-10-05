@@ -431,27 +431,31 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
         out: { heading: s.heading, question: q.question, steps: s.items, notes },
       };
     case "hinge": {
+      const letter = /^\s*[A-Da-d]\s*[).:]\s*/;
       const norm = (t: string) =>
         t
           .trim()
           .toLowerCase()
-          .replace(/^[a-d][).:]\s*/, "")
+          .replace(letter, "")
           .replace(/[.\s]+$/, "");
       // The palette's hinge draws four option cards: fewer would show an empty "Option D".
       if (s.items.length < 4)
         return { form: "check-set", layout: "default", out: { questions: [q], notes } };
+      // The key: the option the answer names, by its letter, else by its text (the longest that fits).
       const a = norm(q.answer);
-      const exact = s.items.findIndex((t) => norm(t) === a);
-      const key =
-        exact >= 0
-          ? exact
-          : s.items.findIndex((t) => a.startsWith(norm(t)) || norm(t).startsWith(a));
+      const named = /^\s*([A-Da-d])\s*(?:[).:]|$)/.exec(q.answer)?.[1];
+      const fits = s.items
+        .map((t, i) => ({ i, n: norm(t) }))
+        .filter((o) => o.n === a || a.startsWith(o.n) || o.n.startsWith(a))
+        .sort((x, y) => (x.n === a ? -1 : y.n === a ? 1 : y.n.length - x.n.length));
+      const key = named ? "abcd".indexOf(named.toLowerCase()) : (fits[0]?.i ?? -1);
       return {
         form: "hinge",
         layout: "default",
         out: {
           stem: q.question || s.heading,
-          options: s.items.map((t, i) => ({ text: t, correct: i === key })),
+          // The option letters are drawn by the slide, never written in the text.
+          options: s.items.map((t, i) => ({ text: t.replace(letter, ""), correct: i === key })),
           explanation: q.answer,
           notes,
         },
@@ -594,7 +598,11 @@ export async function simpleLessonSlides(
           : simpleLessonSchema
     ) as z.ZodType<unknown>;
     // Lab ABLATE T2: SIMPLE_REPLAY_FILE redraws a logged call's output (no writing call, no new log line).
-    const replay = process.env.SIMPLE_REPLAY_FILE;
+    const replay =
+      process.env.SIMPLE_REPLAY_FILE ||
+      (process.env.SIMPLE_REPLAY_DIR
+        ? `${process.env.SIMPLE_REPLAY_DIR}/${deps.context.jobId}.calls.jsonl`
+        : undefined);
     const call = replay
       ? (JSON.parse(readFileSync(replay, "utf8").split("\n")[0] ?? "{}") as Awaited<
           ReturnType<typeof callStructured>
@@ -833,7 +841,8 @@ export async function simpleLessonSlides(
     const r = renderWritten(d.form === "photo" && !d.placed ? "explain" : d.form, "default", d.out);
     outline[index] = {
       id: `s${index + 1}`,
-      kind: (d.placed ? "image-text" : r.spec.kind) as OutlineEntry["kind"],
+      // A drawn picture has no photo brief: its entry is the slide's own kind.
+      kind: (d.placed && d.pic ? "image-text" : r.spec.kind) as OutlineEntry["kind"],
       factRefs: refs,
       ...(d.placed && d.pic ? { imageBrief: d.pic } : {}),
     } as OutlineEntry;
