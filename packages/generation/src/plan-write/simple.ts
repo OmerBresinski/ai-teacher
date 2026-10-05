@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import {
   DEFAULT_SLIDE_COUNT,
+  type FigureTemplateName,
   type ImageBrief,
   type Lesson,
   type LessonFacts,
@@ -8,16 +9,18 @@ import {
   type Slide,
 } from "@tj/domain/documents";
 import {
+  drawFigure,
+  FIGURE_TEMPLATES,
+  figureTemplatesFor,
   fitsPlanned,
   getTheme,
   type MaterialiseMeta,
   materialiseSlide,
   PLACEHOLDER_IMAGE,
   slideFits,
-  withDiagramDrawn,
   withoutPicture,
 } from "@tj/slides";
-import { DIAGRAM_DRAWN_NAME, settleDiagram } from "@tj/slides/diagrams";
+import { diagramElement, parseDiagram, settleDiagram } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
@@ -75,8 +78,15 @@ export const simpleLessonSchema = z.object({
   slides: z.array(lightSlide),
 });
 /** A light slide; arm T2's diagram form carries the drawing's spec. */
-type LightSlide = z.infer<typeof lightSlide> & { diagram?: unknown };
-export type SimpleLesson = Omit<z.infer<typeof simpleLessonSchema>, "slides"> & {
+/** A picture: a photo request, or (arm T2) a drawing code makes, a diagram spec or a figure. */
+type Pic =
+  | { kind?: "photo"; subject: string; named: string | null }
+  | { kind: "diagram"; spec: unknown }
+  | { kind: "figure"; template: string; values: unknown };
+type LightSlide = Omit<z.infer<typeof lightSlide>, "picture"> & { picture: Pic | null };
+export type SimpleLesson = {
+  objectives: string[];
+  titlePicture: Pic | null;
   slides: LightSlide[];
 };
 
@@ -195,8 +205,7 @@ const T2_FORMS: Record<string, string> = {
   list: "a lead sentence then a few short points (one per line of content)",
   compare: "two things side by side (two lines of content, each 'Label: text')",
   sequence: "a short process in order (the steps are the content)",
-  photo: "2–3 lines beside a real photograph found by search (the picture request)",
-  diagram: "2–3 lines beside a drawn diagram (the diagram field)",
+  picture: "2–3 lines beside a picture",
   "worked-example":
     "a problem worked step by step (question is the problem, the steps are the content)",
   hinge:
@@ -212,13 +221,56 @@ const T2_FORMS: Record<string, string> = {
   check: "1-3 quick questions on what was just taught, with answers",
   "exit-ticket": "1-3 closing questions, with answers",
 };
-const teacher2Slide = teacherSlide.extend({
-  form: z.enum(Object.keys(T2_FORMS) as [string, ...string[]]),
-  diagram: DiagramSpecSchema.nullable(),
-});
-export const teacher2LessonSchema = teacherLessonSchema.extend({
-  slides: z.array(teacher2Slide),
-});
+/** What each drawing draws, one line each (the diagram spec's kinds, then the figure templates). */
+const DRAWN: Record<string, string> = {
+  particles: "particles in solids, liquids and gases, or diffusion or dissolving",
+  hydrograph: "a storm hydrograph",
+  timeline: "dated events in order",
+  layers: "a layered structure or cross-section",
+  cycle: "a cycle of 3 to 5 steps",
+  river: "a V-shaped valley, or a meander across or from above",
+  "bar-model": "amounts as bars split into equal or labelled parts",
+  "number-line": "a number line with marked points, jumps or a range",
+  "line-graph": "a line or bar graph on labelled axes",
+  flow: "steps in a chain or a loop, joined by arrows",
+  "labelled-diagram": "simple shapes with labels, drawn on a grid",
+  table: "a small table of short entries",
+};
+const FIGURE_DRAWS: Record<string, string> = {
+  "right-triangle": "a right-angled triangle with its sides and angles",
+  triangle: "a triangle with its sides and angles",
+  "energy-profile": "a reaction's energy profile",
+};
+/** The picture field: a photo found by search, a diagram spec, or a figure the subject offers. */
+function t2Picture(subject?: string) {
+  const figures = figureTemplatesFor(subject).map((t) =>
+    z.object({
+      kind: z.literal("figure"),
+      template: z.literal(t),
+      values: FIGURE_TEMPLATES[t].shape,
+    }),
+  );
+  return z.union([
+    z.object({ kind: z.literal("photo"), subject: z.string(), named: z.string().nullable() }),
+    z.object({ kind: z.literal("diagram"), spec: DiagramSpecSchema }),
+    ...figures,
+  ]);
+}
+export function teacher2LessonSchema(subject?: string) {
+  const picture = t2Picture(subject).nullable();
+  // The title's picture is a photo: a second copy of the drawing union would double the schema.
+  return teacherLessonSchema.extend({
+    titlePicture: z
+      .object({ kind: z.literal("photo"), subject: z.string(), named: z.string().nullable() })
+      .nullable(),
+    slides: z.array(
+      teacherSlide.extend({
+        form: z.enum(Object.keys(T2_FORMS) as [string, ...string[]]),
+        picture,
+      }),
+    ),
+  });
+}
 
 export function teacher2Prompt(i: Parameters<typeof teacherPrompt>[0]): {
   system: string;
@@ -228,18 +280,25 @@ export function teacher2Prompt(i: Parameters<typeof teacherPrompt>[0]): {
   const menu = Object.entries(T2_FORMS)
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
+  const drawn = [
+    ...Object.entries(DRAWN).map(([k, v]) => `- diagram ${k}: ${v}`),
+    ...figureTemplatesFor(i.subject).map((t) => `- figure ${t}: ${FIGURE_DRAWS[t] ?? t}`),
+  ].join("\n");
   return {
     system: `You're an expert teacher in England, teaching ${i.yearGroup} ${i.subject}: ${i.topic}, at the right reading age for that year. Write the lesson as you'd teach it.`,
     user: `${i.context}
 
 Exactly ${i.slideCount} slides. Slide 1 (the title) and slide 2 (the objectives) are made from your objectives, so write slides 3 to ${i.slideCount}.
 Teach each objective, then check it with a real question pupils answer. Share the slides by need: a harder objective gets more of them. Stay within the objectives.
-About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture, counting the title. Pictures go on teaching slides (a photo or a diagram), and every check stays. A picture shows exactly what its slide says.
+About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture, counting the title. Pictures go on teaching slides, and every check stays. A picture shows exactly what its slide says.
 
 The slide types we can draw:
 ${menu}
 
-Per slide: form, heading, content (the lines on the slide), questions (question and answer; only ${QUESTION_FORMS.join(", ")} show them), picture request (photo only), diagram (diagram only), notes.`,
+A picture is a photo (a real photograph found by search) or a drawing we make from your spec:
+${drawn}
+
+Per slide: form, heading, content (the lines on the slide), questions (question and answer; only ${QUESTION_FORMS.join(", ")} show them), picture (picture slides only), notes. Also give a photo for the title slide.`,
   };
 }
 
@@ -255,8 +314,10 @@ const bareCallout = (t: string) => {
 function fromTeacher(t: TeacherLesson): SimpleLesson {
   return {
     objectives: t.objectives,
-    titlePicture: t.titlePicture,
-    slides: (t.slides as (TeacherLesson["slides"][number] & { diagram?: unknown })[]).map((s) => {
+    titlePicture: t.titlePicture as Pic | null,
+    slides: (
+      t.slides as (Omit<TeacherLesson["slides"][number], "picture"> & { picture: Pic | null })[]
+    ).map((s) => {
       const c = s.content;
       const split =
         s.form === "list"
@@ -267,12 +328,11 @@ function fromTeacher(t: TeacherLesson): SimpleLesson {
               ? { body: [], items: c }
               : { body: c, items: [] };
       return {
-        form: s.form,
+        form: s.form === "picture" ? "photo" : s.form,
         heading: bareHeading(s.heading),
         ...split,
         questions: s.questions,
         picture: s.picture,
-        ...(s.diagram ? { diagram: s.diagram } : {}),
         notes: s.notes,
       };
     }),
@@ -346,8 +406,8 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
           heading: s.heading,
           body: s.body,
           imageBrief: {
-            subject: s.picture?.subject ?? s.heading,
-            named: s.picture?.named ?? null,
+            subject: (s.picture && "subject" in s.picture && s.picture.subject) || s.heading,
+            named: (s.picture && "named" in s.picture && s.picture.named) || null,
             mustShow: [],
           },
           notes,
@@ -386,12 +446,7 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
         },
       };
     }
-    case "diagram":
-      return {
-        form: "diagram-slot",
-        layout: "default",
-        out: { heading: s.heading, body: s.body, diagram: s.diagram, notes },
-      };
+
     case "true-false":
       return {
         form: "true-false",
@@ -521,7 +576,11 @@ export async function simpleLessonSlides(
           ? TEACHER_LESSON_VERSION
           : SIMPLE_LESSON_VERSION;
     const schema = (
-      arm === "T2" ? teacher2LessonSchema : armT ? teacherLessonSchema : simpleLessonSchema
+      arm === "T2"
+        ? teacher2LessonSchema(base.subject)
+        : armT
+          ? teacherLessonSchema
+          : simpleLessonSchema
     ) as z.ZodType<unknown>;
     const call = await callStructured({
       deps,
@@ -630,13 +689,58 @@ export async function simpleLessonSlides(
       ),
     }) as Slide;
 
+  /**
+   * Arm T2: a drawn picture checked against the renderer's own schemas; one that does not parse
+   * becomes a photo request on the same subject (logged in the report as invalidDrawing).
+   */
+  type Drawing =
+    | { kind: "diagram"; spec: unknown }
+    | { kind: "figure"; template: FigureTemplateName; values: unknown };
+  const resolvePic = (
+    p: Pic,
+    heading: string,
+  ): { drawing?: Drawing; photo?: { subject: string; named: string | null }; invalid?: string } => {
+    if (p.kind === "diagram") {
+      const spec = parseDiagram(p.spec);
+      if (spec) return { drawing: { kind: "diagram", spec } };
+      const o = (p.spec ?? {}) as { kind?: string; title?: string };
+      return {
+        photo: { subject: o.title || heading, named: null },
+        invalid: `diagram ${o.kind ?? "?"}`,
+      };
+    }
+    if (p.kind === "figure") {
+      const name = p.template as FigureTemplateName;
+      if (FIGURE_TEMPLATES[name]?.values.safeParse(p.values).success)
+        return { drawing: { kind: "figure", template: name, values: p.values } };
+      return { photo: { subject: heading, named: null }, invalid: `figure ${p.template}` };
+    }
+    return { photo: { subject: p.subject, named: p.named } };
+  };
+  /** A drawing in the slide's picture zone, where a photo would go (the drawing code R3 uses). */
+  const placeDrawing = (slide: Slide, d: Drawing): Slide | undefined => {
+    const at = slide.elements.findIndex((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+    const e = slide.elements[at];
+    if (!e) return undefined;
+    const rect = { x: e.x, y: e.y, w: e.w, h: e.h };
+    const el =
+      d.kind === "diagram"
+        ? diagramElement(settleDiagram(d.spec, { w: rect.w, h: rect.h }).spec, theme, rect)
+        : drawFigure(d.template, d.values, theme, rect);
+    if (!el) return undefined;
+    return { ...slide, elements: slide.elements.map((x, i) => (i === at ? el : x)) } as Slide;
+  };
+
   const slides: Slide[] = [];
   const pv = w.titlePicture
     ? PICTURE_ORDER.find((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok)
     : undefined;
   let title = pv ? materialiseSlide(titleSpec, themeId, meta(), deps.ids, pv) : bareTitle();
-  if (pv && w.titlePicture && deps.images) {
-    const photo = await find(0, briefOf(w.titlePicture));
+  const tp = w.titlePicture ? resolvePic(w.titlePicture, base.title) : undefined;
+  const titleDrawn = pv && tp?.drawing ? placeDrawing(title, tp.drawing) : undefined;
+  if (titleDrawn) title = titleDrawn;
+  else if (pv && tp?.photo && deps.images) {
+    const photo = await find(0, briefOf(tp.photo));
     title = photo ? placeIn(title, photo) : bareTitle();
   }
   slides.push({ ...title, id: title0.id });
@@ -658,32 +762,31 @@ export async function simpleLessonSlides(
       const drawOne = (f: string, o: Written): Slide => {
         const r = renderWritten(f, layout, o);
         const slide = materialiseSlide(r.spec, themeId, meta(), deps.ids, r.variant, r.structure);
-        if (isSetForm(f)) return withSetTag(withAnswersReveal(slide, themeId), f);
-        if (f !== "diagram-slot") return slide;
-        // Arm T2: the diagram drawn by code as the stream draws it (settled to its box), or no slot.
-        const spec = o.diagram;
-        const made =
-          spec && typeof spec === "object" ? withDiagramDrawn(slide, theme, spec) : slide;
-        const el = made.elements.find((e) => e.name === DIAGRAM_DRAWN_NAME);
-        if (made === slide || !el) throw new Error("the diagram does not draw");
-        return withDiagramDrawn(slide, theme, settleDiagram(spec, { w: el.w, h: el.h }).spec);
+        return isSetForm(f) ? withSetTag(withAnswersReveal(slide, themeId), f) : slide;
       };
       let slide: Slide;
-      let diagramDrawn: boolean | undefined;
       try {
         slide = drawOne(form, out);
-        if (form === "diagram-slot") diagramDrawn = true;
       } catch (e) {
         report.push({ slide: index + 1, form, drawError: String(e).slice(0, 200) });
-        if (form === "diagram-slot") diagramDrawn = false;
         slide = drawOne("explain", {
           heading: s.heading,
           body: [...s.body, ...s.items],
           notes: s.notes,
         });
       }
-      const pic = form === "photo" && s.picture ? briefOf(s.picture) : undefined;
+      const r = form === "photo" && s.picture ? resolvePic(s.picture, s.heading) : undefined;
       let placed = false;
+      let drawn: string | undefined;
+      if (r?.drawing) {
+        const d = placeDrawing(slide, r.drawing);
+        if (d) {
+          slide = d;
+          placed = true;
+          drawn = r.drawing.kind;
+        }
+      }
+      const pic = !placed && r?.photo ? briefOf(r.photo) : undefined;
       if (pic && deps.images) {
         const photo = await find(index, pic);
         if (photo) {
@@ -701,17 +804,15 @@ export async function simpleLessonSlides(
         fits,
         picture: placed,
         pictureDropped: !!s.picture && form !== "photo",
-        ...(diagramDrawn !== undefined ? { diagram: diagramDrawn } : {}),
+        ...(drawn ? { drawn } : {}),
+        ...(r?.invalid ? { invalidDrawing: r.invalid } : {}),
       });
-      return { slide, form, out, placed, pic, diagramDrawn };
+      return { slide, form, out, placed, pic };
     }),
   );
   drawnAll.forEach((d, k) => {
     const index = k + 2;
-    const plain = (d.form === "photo" && !d.placed) || d.diagramDrawn === false;
-    const r = plain
-      ? renderWritten("explain", "default", { heading: "x", body: ["x"] })
-      : renderWritten(d.form, "default", d.out);
+    const r = renderWritten(d.form === "photo" && !d.placed ? "explain" : d.form, "default", d.out);
     outline[index] = {
       id: `s${index + 1}`,
       kind: (d.placed ? "image-text" : r.spec.kind) as OutlineEntry["kind"],
