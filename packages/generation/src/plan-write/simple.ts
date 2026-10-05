@@ -23,12 +23,17 @@ import {
   withoutPicture,
 } from "@tj/slides";
 import {
+  capacityLine,
+  DIAGRAM_ZONES,
+  diagramCapacities,
   diagramElement,
   energyProfileOf,
   fittedDiagramElement,
+  itemCount,
   parseDiagram,
   settleDiagram,
   withLongLabels,
+  zoneShape,
 } from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
@@ -366,6 +371,16 @@ const T3_FORMS: Record<string, string> = {
   "explain-callout": "an explanation, then one common mistake pupils make as the last line",
   "big-diagram": "a heading and one diagram filling the slide, with an optional one-line caption",
 };
+/**
+ * DIAGRAM-AUDIT item 6: the picture forms' menu lines carry their zone's position and shape,
+ * generated from the zones the drawings are placed in, so the writer picks a form knowing the
+ * space (a left-to-right sequence suits the landscape big diagram).
+ */
+const T3_ZONE_LINES: Record<string, string> = {
+  picture: `2–3 lines on the right, picture on the left half (${zoneShape(DIAGRAM_ZONES.half.w, DIAGRAM_ZONES.half.h)})`,
+  "big-diagram": `a heading and one diagram filling the slide, with an optional one-line caption (full width under the heading, ${zoneShape(DIAGRAM_ZONES.full.w, DIAGRAM_ZONES.full.h)})`,
+};
+export const t3ZoneLines = () => ({ ...T3_ZONE_LINES });
 const phrase = (what: string) => z.string().describe(what);
 /** The lean wire shape of each drawing kind (no alt: code writes it from the title and labels). */
 const T3_DRAW = {
@@ -604,10 +619,13 @@ export function teacher3Prompt(i: Parameters<typeof teacherPrompt>[0] & { object
 } {
   const [lo, hi] = PICTURE_SHARE[(i.ageBand ?? "ks3").toLowerCase()] ?? [0.35, 0.5];
   const menu = Object.entries(T3_FORMS)
-    .map(([k, v]) => `- ${k}: ${v}`)
+    .map(([k, v]) => `- ${k}: ${T3_ZONE_LINES[k] ?? v}`)
     .join("\n");
   const drawn = [
-    ...Object.entries(T3_DRAWS).map(([k, v]) => `- ${k}: ${v}`),
+    ...Object.entries(T3_DRAWS).map(([k, v]) => {
+      const cap = capacityLine(k);
+      return `- ${k}: ${v}${cap ? ` (${cap})` : ""}`;
+    }),
     ...figureTemplatesFor(i.subject).map((t) => `- figure ${t}: ${FIGURE_DRAWS[t] ?? t}`),
   ].join("\n");
   return {
@@ -881,7 +899,11 @@ export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: b
     const e = zone(sl);
     return !!e && withLongLabels(() => settleDiagram(spec, { w: e.w, h: e.h }).clean);
   };
-  if (!full && clean(slide)) return slide;
+  // The renderer-derived capacity routes an over-full spec straight to the big diagram.
+  const kind = (spec as { kind?: string } | null)?.kind ?? "";
+  const over =
+    (itemCount(spec) ?? 0) > (diagramCapacities()[kind]?.half ?? Number.POSITIVE_INFINITY);
+  if (!full && !over && clean(slide)) return slide;
   const big = asFigureFull(slide, theme);
   if (!big) return slide;
   return full || clean(big) ? big : slide;
@@ -1884,7 +1906,13 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       slide = drawPlain(plain);
       photoAsk = undefined;
     }
-    const pic = photoAsk ? briefOf(photoAsk) : undefined;
+    const zoneEl = slide.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+    const pic = photoAsk
+      ? {
+          ...briefOf(photoAsk),
+          ...(zoneEl ? { aspect: Math.round((zoneEl.w / zoneEl.h) * 100) / 100 } : {}),
+        }
+      : undefined;
     outline[index] = {
       id: `s${index + 1}`,
       kind: (pic

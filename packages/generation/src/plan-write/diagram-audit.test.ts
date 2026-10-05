@@ -130,3 +130,20 @@ describe("DIAGRAM-AUDIT big diagram", () => {
     expect([s.form, (s as { full?: boolean }).full]).toEqual(["photo", true]);
   });
 });
+
+describe("DIAGRAM-AUDIT zone capacity", () => {
+  const { t3ZoneLines } = require("./simple");
+  const { capacityLine, diagramCapacities, zoneShape } = require("@tj/slides/diagrams");
+  test("picture forms state their zone's position and shape, from code", () => {
+    const z = t3ZoneLines();
+    expect(z.picture).toContain("left half (portrait");
+    expect(z["big-diagram"]).toContain("full width under the heading, landscape");
+    expect(zoneShape(422, 540)).toBe("portrait, about 4:5");
+  });
+  test("capacities come from the renderer and only grow with the zone", () => {
+    const c = diagramCapacities();
+    for (const k of Object.keys(c)) expect(c[k].full).toBeGreaterThanOrEqual(c[k].half > 0 ? 1 : 0);
+    expect(c["bar-chart"].full).toBeGreaterThanOrEqual(c["bar-chart"].half);
+    expect(capacityLine("bar-chart")).toMatch(/^up to \d+ bars/);
+  });
+});
