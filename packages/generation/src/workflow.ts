@@ -435,6 +435,7 @@ export async function runLessonPipeline(
           ...(readableMs !== undefined ? { readableMs } : {}),
           ...(checkedMs !== undefined ? { checkedMs } : {}),
           ...(fit ? { fit } : {}),
+          ...(checkpoint?.t3Report ? { t3: checkpoint.t3Report } : {}),
         },
       },
       "generation summary",

@@ -225,7 +225,7 @@ const streamLesson = (): Lesson => {
   return { ...l, brief: { ...(l.brief as NonNullable<Lesson["brief"]>), slideCount: 9 as 8 } };
 };
 
-/** Runs `fn` with PLAN_WRITE_MODE set (undefined: unset, the default). */
+/** Runs `fn` with PLAN_WRITE_MODE set (undefined: unset, the default: T3 on lab/t3; "stream" is R3). */
 async function inMode<T>(mode: string | undefined, fn: () => Promise<T>): Promise<T> {
   const before = process.env.PLAN_WRITE_MODE;
   if (mode === undefined) delete process.env.PLAN_WRITE_MODE;
@@ -307,7 +307,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
   });
 
   test("ruling 141's checkbox: the worksheet's exit questions on the closing slide, answers on reveal", async () => {
-    await inMode(undefined, async () => {
+    await inMode("stream", async () => {
       const ai = planWriteAi([]);
       const l = streamLesson();
       const on: Lesson = {
@@ -345,7 +345,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
   });
 
   test("round Q: the model's exit items, checked, go to the closing slide and the worksheet's exit ticket", async () => {
-    await inMode(undefined, async () => {
+    await inMode("stream", async () => {
       const items = [
         {
           objective: 1,
@@ -389,7 +389,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
   });
 
   test("round S: the lesson is editable before the exit items land; they are drawn in place after", async () => {
-    await inMode(undefined, async () => {
+    await inMode("stream", async () => {
       const items = [
         {
           objective: 1,
@@ -439,8 +439,8 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
     });
   });
 
-  test("the stream by default: one call plans and writes; a slide that fails its schema goes to a writer", async () => {
-    await inMode(undefined, async () => {
+  test("the stream (PLAN_WRITE_MODE=stream): one call plans and writes; a slide that fails its schema goes to a writer", async () => {
+    await inMode("stream", async () => {
       const calls: WriteSlidesInput[] = [];
       const ai = planWriteAi(calls);
       const deps = recordingDeps(ai);
@@ -495,7 +495,7 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
   });
 
   test("the stream's master check reads the whole lesson once; its fixes go through the named-field re-write", async () => {
-    await inMode(undefined, async () => {
+    await inMode("stream", async () => {
       const calls: WriteSlidesInput[] = [];
       const ai = planWriteAi(calls, {
         masterFixes: [

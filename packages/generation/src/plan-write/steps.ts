@@ -22,7 +22,12 @@ export const STREAM_WRITE_VERSION = `${STREAM_LESSON_VERSION}+${WRITE_SLIDES_VER
 /** Whether a `planned` stamp was written by plan-write (any version of its planner prompt). */
 export function isPlanWriteStamp(planned: string | undefined): boolean {
   const head = planned?.split("+")[0] ?? "";
-  return head.startsWith("plan-lesson.") || head.startsWith("stream-lesson.");
+  return (
+    head.startsWith("plan-lesson.") ||
+    head.startsWith("stream-lesson.") ||
+    // lab/t3: the T3 writer (one call after the objectives step).
+    head.startsWith("simple-lesson.")
+  );
 }
 
 export type PlanWriteStageName =
@@ -60,8 +65,10 @@ export function resumeFromPlanWrite(lesson: Lesson): PlanWriteStageName | null {
   const done = lesson.generation?.stage;
   if (!done) return PLAN_WRITE_ORDER[0] ?? null;
   if (done === "planned") {
+    // lab/t3: a T3 lesson's plan is its objectives (no slide table).
+    const t3 = (lesson.generation?.promptVersions.planned ?? "").startsWith("simple-lesson.");
     const ready =
-      (lesson.facts?.objectives.length ?? 0) > 0 && lesson.facts?.slidePlan !== undefined;
+      (lesson.facts?.objectives.length ?? 0) > 0 && (t3 || lesson.facts?.slidePlan !== undefined);
     return ready ? "write" : "check-input";
   }
   const index = PLAN_WRITE_ORDER.findIndex((stage) => PLAN_WRITE_CHECKPOINT[stage] === done);

@@ -20,7 +20,12 @@ import {
   slideFits,
   withoutPicture,
 } from "@tj/slides";
-import { diagramElement, parseDiagram, settleDiagram } from "@tj/slides/diagrams";
+import {
+  diagramElement,
+  fittedDiagramElement,
+  parseDiagram,
+  settleDiagram,
+} from "@tj/slides/diagrams";
 import { z } from "zod";
 import { callStructured } from "../call";
 import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
@@ -28,11 +33,11 @@ import { audienceBlock } from "../prompts/shared";
 import { withUsage } from "../stages/generate";
 import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
 import { audienceOf, planClassFor } from "../stages/shared";
-import type { PipelineDeps, PipelineState } from "../types";
+import type { PipelineDeps, PipelineState, T3Report } from "../types";
 import { DiagramSpecSchema } from "./diagram-spec";
-import { renderWritten, type Written, withSetTag } from "./fit";
+import { fitLadder, fitWritten, renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
-import { broadenedBrief } from "./slide-check";
+import { broadenedBrief, NO_PICTURE_ROW, noPictureOf } from "./slide-check";
 
 /*
  * Lab arm ABLATE S/O (lab/ablate, 5 Oct 2026): one plain call for the whole lesson in a light schema,
@@ -310,6 +315,19 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
  * code, and code expands the wire shape into the renderer's spec and validates it with its parse.
  */
 export const TEACHER3_LESSON_VERSION = "simple-lesson.t3";
+/**
+ * lab/t3 (Greg, 5 Oct 2026: T3 is the candidate): the plan-write planner writes with T3 by default.
+ * `PLAN_WRITE_MODE=stream` or `plan-write` runs R3 instead.
+ */
+export function t3Writer(): boolean {
+  const m = process.env.PLAN_WRITE_MODE;
+  return m !== "stream" && m !== "plan-write";
+}
+/** The simple writer's arm: T3 unless a lab run names another (S, T, T2). */
+export function simpleArm(): string {
+  return process.env.SIMPLE_ARM || "T3";
+}
+
 /** Forms that teach (credit every objective they name). */
 const T3_TEACH = new Set([
   "explain",
@@ -700,6 +718,107 @@ function fromTeacher(t: TeacherLesson): SimpleLesson {
   };
 }
 
+/**
+ * lab/t3: a T3 slide through lab/cand-fix's fit ladder before it is drawn, so none is saved
+ * overflowing: as written when it fits; else another layout of the form; else the picture form's
+ * no-picture sibling (full width); else whole units (lines, steps, questions with their answers)
+ * moved to the notes word for word. Never summarised or split. A form the ladder cannot judge, or
+ * one no rung fits, falls to the explain form with every line it had, laddered the same way.
+ */
+export function t3Fit(
+  form: string,
+  layout: string,
+  out: Written,
+): ReturnType<typeof fitLadder> & { fits: boolean } {
+  const judged = (f: string, l: string, o: Written) => {
+    try {
+      return fitWritten(f, l, o).ok;
+    } catch {
+      return false;
+    }
+  };
+  let ladder: ReturnType<typeof fitLadder> | undefined;
+  try {
+    ladder = fitLadder(
+      form,
+      layout,
+      out,
+      form === "photo" ? { ...NO_PICTURE_ROW, of: noPictureOf } : undefined,
+    );
+  } catch {
+    ladder = undefined;
+  }
+  if (ladder && ladder.rung !== "unfit")
+    return { ...ladder, fits: judged(ladder.form, ladder.layout, ladder.out) };
+  const lines = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? v.flatMap((x) =>
+          typeof x === "string"
+            ? [x]
+            : x && typeof x === "object"
+              ? [
+                  Object.values(x as Record<string, unknown>)
+                    .filter((y) => typeof y === "string")
+                    .join(": "),
+                ]
+              : [],
+        )
+      : typeof v === "string" && v.trim()
+        ? [v]
+        : [];
+  if (form !== NO_PICTURE_ROW.form && typeof out.heading === "string") {
+    const { notes, heading, imageBrief: _i, ...rest } = out;
+    const body = Object.values(rest).flatMap(lines).filter(Boolean);
+    const plain: Written = { heading, body, notes: notes ?? "" };
+    try {
+      const l2 = fitLadder(NO_PICTURE_ROW.form, NO_PICTURE_ROW.layout, plain);
+      if (l2.rung !== "unfit")
+        return { ...l2, rung: "sibling", fits: judged(l2.form, l2.layout, l2.out) };
+    } catch {}
+  }
+  return {
+    form,
+    layout,
+    out,
+    rung: "unfit",
+    moved: [],
+    fits: judged(form, layout, out),
+  };
+}
+
+/**
+ * lab/t3: a diagram in the slide's picture zone, long labels fitted (wrapped or a step smaller)
+ * before it is given up; `reasons` say why one could not be drawn, for the log.
+ */
+export function placeT3Diagram(
+  slide: Slide,
+  spec: unknown,
+  theme: ReturnType<typeof getTheme>,
+  ids?: () => string,
+): { slide?: Slide; stretched: boolean; reasons: string[] } {
+  const at = slide.elements.findIndex((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
+  const e = slide.elements[at];
+  if (!e) return { stretched: false, reasons: ["the slide has no picture zone"] };
+  const r = fittedDiagramElement(spec, theme, { x: e.x, y: e.y, w: e.w, h: e.h }, ids);
+  if (!r.ok) return { stretched: false, reasons: r.reasons };
+  return {
+    slide: {
+      ...slide,
+      elements: slide.elements.map((x, i) => (i === at ? r.element : x)),
+    } as Slide,
+    stretched: r.stretched,
+    reasons: [],
+  };
+}
+
+/**
+ * lab/t3: whether the slides after the title and objectives can hold a teaching slide and a check
+ * for every objective (two per objective); the line for the generation summary when they cannot.
+ */
+export function t3Room(objectives: number, writable: number): string | undefined {
+  return writable < 2 * objectives ? `slide count too low for ${objectives} objectives` : undefined;
+}
+
 const PICTURE_ORDER = ["split", "photo-band", "photo-band-long"] as const;
 const SET_OF: Record<string, string> = {
   starter: "starter-set",
@@ -906,7 +1025,13 @@ async function t3Gate(i: {
   slideCount: number;
   log: (row: Record<string, unknown>) => void;
   replay?: string | undefined;
-}): Promise<{ slides: T3Slide[]; replaced: number[] }> {
+}): Promise<{
+  slides: T3Slide[];
+  replaced: number[];
+  before: ReturnType<typeof coverageGaps>;
+  after: ReturnType<typeof coverageGaps>;
+  room?: string;
+}> {
   const slides = [...i.slides];
   const n = i.objectives.length;
   const gaps = coverageGaps(slides, n);
@@ -971,8 +1096,14 @@ async function t3Gate(i: {
       after,
     });
   }
+  // lab/t3: teach + check for every objective needs two slides each; when the count cannot hold
+  // them the summary says so (the brief's slide count, not the writing, is the limit).
+  const room = t3Room(n, i.slideCount - 2);
+  const after = coverageGaps(slides, n);
+  gap.room = room ?? "ok";
+  gap.after = after;
   i.deps.logger.info({ stage: "generate", coverage: gap }, "t3 coverage");
-  return { slides, replaced: [...used] };
+  return { slides, replaced: [...used], before: gaps, after, ...(room ? { room } : {}) };
 }
 
 export async function simpleLessonSlides(
@@ -980,7 +1111,8 @@ export async function simpleLessonSlides(
   deps: PipelineDeps,
 ): Promise<PipelineState> {
   // Lab ABLATE T3S: the same T3 call streamed; slides saved as they close, photos off the writing path.
-  if (process.env.SIMPLE_ARM === "T3" && process.env.SIMPLE_STREAM) return t3Streamed(state, deps);
+  // lab/t3: T3 streams by default; SIMPLE_STREAM=0 runs the one-shot lab arm.
+  if (simpleArm() === "T3" && process.env.SIMPLE_STREAM !== "0") return t3Streamed(state, deps);
   const base = state.lesson;
   const brief = base.brief;
   if (!brief) throw new Error("simple: the lesson has no brief");
@@ -988,11 +1120,11 @@ export async function simpleLessonSlides(
   const themeId = base.themeId;
   const theme = getTheme(themeId);
   const armVersion =
-    process.env.SIMPLE_ARM === "T3"
+    simpleArm() === "T3"
       ? TEACHER3_LESSON_VERSION
-      : process.env.SIMPLE_ARM === "T2"
+      : simpleArm() === "T2"
         ? TEACHER2_LESSON_VERSION
-        : process.env.SIMPLE_ARM === "T"
+        : simpleArm() === "T"
           ? TEACHER_LESSON_VERSION
           : SIMPLE_LESSON_VERSION;
   const meta = (): MaterialiseMeta => ({
@@ -1019,7 +1151,7 @@ export async function simpleLessonSlides(
         : []),
     ].join("\n");
     const input = { slideCount, topic: brief.topic, context };
-    const arm = process.env.SIMPLE_ARM;
+    const arm = simpleArm();
     const armT = arm === "T" || arm === "T2" || arm === "T3";
     // Lab ABLATE T3: the lesson's objectives are given (R3's, one JSON list per brief).
     const givenObjectives: string[] =
@@ -1394,10 +1526,12 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
   const mark = (k: string) => {
     times[k] ??= Date.now() - t0;
   };
-  const given: string[] = JSON.parse(
-    readFileSync(process.env.SIMPLE_OBJECTIVES_FILE ?? "", "utf8"),
-  );
-  const objectives = given.map((text, i) => ({ id: `o${i + 1}`, text }));
+  // The lesson's objectives: the plan step's (lab/t3 default), or a lab file (ABLATE: R3's).
+  const file = process.env.SIMPLE_OBJECTIVES_FILE;
+  const saved = base.facts?.objectives ?? [];
+  const given: string[] = file ? JSON.parse(readFileSync(file, "utf8")) : saved.map((o) => o.text);
+  if (given.length === 0) throw new Error("t3: the lesson has no objectives");
+  const objectives = file ? given.map((text, i) => ({ id: `o${i + 1}`, text })) : saved;
   const refs = objectives.map((o) => o.id);
   const titleSpec = {
     kind: "title" as const,
@@ -1493,21 +1627,6 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         e.type === "image" && e.src === PLACEHOLDER_IMAGE ? withPhoto(e, photo) : e,
       ),
     }) as Slide;
-  const placeDrawing = (slide: Slide, spec: unknown): Slide | undefined => {
-    const at = slide.elements.findIndex((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
-    const e = slide.elements[at];
-    const parsed = parseDiagram(spec);
-    if (!e || !parsed) return undefined;
-    const el = diagramElement(settleDiagram(parsed, { w: e.w, h: e.h }).spec, theme, {
-      x: e.x,
-      y: e.y,
-      w: e.w,
-      h: e.h,
-    });
-    return el
-      ? ({ ...slide, elements: slide.elements.map((x, i) => (i === at ? el : x)) } as Slide)
-      : undefined;
-  };
   const photos: Promise<unknown>[] = [];
   const report: Record<string, unknown>[] = [];
   const round: number[] = [];
@@ -1520,12 +1639,15 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       : materialiseSlide(titleSpec, themeId, meta(), deps.ids);
   };
   deck[0] = { ...bareTitle(), id: title0.id };
-  deck[1] = materialiseSlide(
+  const objectivesSlide = materialiseSlide(
     { kind: "objectives", items: objectives.slice(0, 4).map((o) => o.text), factRefs: refs },
     themeId,
     meta(),
     deps.ids,
   );
+  // The plan step's objectives slide keeps its id, so the editor keeps it.
+  const shown = base.slides[1];
+  deck[1] = shown?.kind === "objectives" ? { ...objectivesSlide, id: shown.id } : objectivesSlide;
   void save(() => mark("title"));
   let titleAsked = false;
   const startTitle = (p: { subject?: string; named?: string | null } | null | undefined) => {
@@ -1566,11 +1688,20 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     const [light] = fromTeacher3(given, { titlePicture: null, slides: [t] }).slides;
     if (!light) return;
     const s = withPictureZone(light);
-    const { form, layout, out } = adapt(s);
-    const drawOne = (f: string, o: Written): Slide => {
-      const r = renderWritten(f, layout, o);
+    const adapted = adapt(s);
+    // lab/t3: no slide saved overflowing (cand-fix's fit ladder; units move to the notes whole).
+    const fitted = t3Fit(adapted.form, adapted.layout, adapted.out);
+    const { form, layout, out } = fitted;
+    const drawOne = (f: string, o: Written, l: string = layout): Slide => {
+      const r = renderWritten(f, l, o);
       const slide = materialiseSlide(r.spec, themeId, meta(), deps.ids, r.variant, r.structure);
       return isSetForm(f) ? withSetTag(withAnswersReveal(slide, themeId), f) : slide;
+    };
+    /** The no-picture explain form, laddered the same way. */
+    const drawPlain = (o: Written): Slide => {
+      const q = t3Fit("explain", "default", o);
+      if (!q.fits) report.push({ slide: index + 1, form: "explain", fits: false, ladder: q.rung });
+      return drawOne(q.form, q.out, q.layout);
     };
     const { imageBrief: _i, ...plain } = out;
     let slide: Slide;
@@ -1578,25 +1709,46 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       slide = drawOne(form, out);
     } catch (e) {
       report.push({ slide: index + 1, form, drawError: String(e).slice(0, 200) });
-      slide = drawOne("explain", {
+      slide = drawPlain({
         heading: s.heading,
         body: [...s.body, ...s.items],
         notes: s.notes,
       });
     }
+    if (fitted.rung !== "none" || !fitted.fits)
+      deps.logger.info(
+        {
+          stage: "generate",
+          call: "fit-ladder",
+          slide: index + 1,
+          rung: fitted.rung,
+          fits: fitted.fits,
+          moved: fitted.moved.length,
+          from: [adapted.form, adapted.layout],
+          to: [form, layout],
+        },
+        "t3 fit ladder",
+      );
     const p = form === "photo" ? s.picture : null;
     let drawn: string | undefined;
     let invalid: string | undefined;
     let photoAsk: { subject: string; named: string | null } | undefined;
+    let longLabels = false;
     if (p && p.kind === "diagram") {
-      const d = placeDrawing(slide, p.spec);
-      if (d) {
-        slide = d;
+      // lab/t3: long labels are wrapped or set a step smaller before the drawing is given up.
+      const d = placeT3Diagram(slide, p.spec, theme, deps.ids);
+      if (d.slide) {
+        slide = d.slide;
         drawn = "diagram";
+        longLabels = d.stretched;
       } else {
         const o = (p.spec ?? {}) as { kind?: string; title?: string };
         invalid = `diagram ${o.kind ?? "?"}`;
         photoAsk = { subject: o.title || s.heading, named: null };
+        deps.logger.warn(
+          { stage: "generate", slide: index + 1, kind: o.kind, reasons: d.reasons.slice(0, 6) },
+          "t3 drawing not drawn",
+        );
       }
     } else if (p && p.kind === "figure") {
       const name = p.template as FigureTemplateName;
@@ -1627,7 +1779,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         named: (p as { named: string | null }).named,
       };
     if (photoAsk && !deps.images) {
-      slide = drawOne("explain", plain);
+      slide = drawPlain(plain);
       photoAsk = undefined;
     }
     const pic = photoAsk ? briefOf(photoAsk) : undefined;
@@ -1649,14 +1801,17 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       form,
       picture: !!drawn || !!pic,
       pictureDropped: !!s.picture && form !== "photo",
+      fits: fitted.fits,
+      ...(fitted.rung !== "none" ? { ladder: fitted.rung, moved: fitted.moved.length } : {}),
       ...(drawn ? { drawn } : {}),
+      ...(longLabels ? { longLabels } : {}),
       ...(invalid ? { invalidDrawing: invalid } : {}),
     });
     if (pic)
       photos.push(
         find(index, pic).then((photo) => {
           if (round[index] !== gen) return; // a re-ask replaced this slide meanwhile
-          deck[index] = photo ? placeIn(slide, photo) : drawOne("explain", plain);
+          deck[index] = photo ? placeIn(slide, photo) : drawPlain(plain);
           if (!photo)
             outline[index] = {
               id: `s${index + 1}`,
@@ -1765,5 +1920,46 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
   await chain;
   mark("photosDone");
   deps.logger.info({ stage: "generate", t3times: times, simple: { slides: report } }, "t3 times");
-  return { ...state, lesson, checkedPerSlide: true };
+  const t3Report = summariseT3(report, {
+    objectives: given.length,
+    writable,
+    gate,
+  });
+  if (t3Report.room) deps.logger.warn({ stage: "generate", coverage: t3Report }, t3Report.room);
+  return { ...state, lesson, checkedPerSlide: true, t3Report };
+}
+
+/** lab/t3: the summary's counts from the per-slide report (the last row per slide wins). */
+export function summariseT3(
+  report: Record<string, unknown>[],
+  i: {
+    objectives: number;
+    writable: number;
+    gate: { before: unknown[]; after: unknown[]; replaced: number[]; room?: string };
+  },
+): T3Report {
+  const last = new Map<number, Record<string, unknown>>();
+  for (const r of report) if ("form" in r && typeof r.slide === "number") last.set(r.slide, r);
+  const rows = [...last.values()];
+  const ladder: Record<string, number> = {};
+  for (const r of rows)
+    if (typeof r.ladder === "string") ladder[r.ladder] = (ladder[r.ladder] ?? 0) + 1;
+  const drawn = rows.filter((r) => r.drawn).length;
+  const failed = rows.filter((r) => r.invalidDrawing).length;
+  return {
+    objectives: i.objectives,
+    writable: i.writable,
+    ...(i.gate.room ? { room: i.gate.room } : {}),
+    gapsBefore: i.gate.before.length,
+    gapsAfter: i.gate.after.length,
+    reasked: i.gate.replaced.length > 0,
+    ladder,
+    unfit: rows.filter((r) => r.fits === false).length,
+    drawings: {
+      asked: drawn + failed,
+      drawn,
+      longLabels: rows.filter((r) => r.longLabels).length,
+      failed,
+    },
+  };
 }

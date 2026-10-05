@@ -110,7 +110,7 @@ import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
 import { recheckKinds } from "../plan-write/recheck";
-import { simpleLessonSlides } from "../plan-write/simple";
+import { simpleLessonSlides, TEACHER3_LESSON_VERSION, t3Writer } from "../plan-write/simple";
 import {
   answerKeyMismatches,
   broadenedBrief,
@@ -190,6 +190,7 @@ import { VERIFY_EFFORT } from "./designer";
 import { evaluateSlides } from "./evaluate";
 import { withUsage } from "./generate";
 import { joinVersions, type PlacedPhoto, pickPhoto, plainSubject, withPhoto } from "./illustrate";
+import { runObjectivesStep } from "./objectives";
 import { existingTitle, materialiseTitle } from "./plan";
 import { audienceOf, BUDGET_FINDING, generationOf, planClassFor } from "./shared";
 import { runVerify } from "./verify";
@@ -358,6 +359,24 @@ export async function planWritePlan(
     lesson = { ...bare, slides: [materialiseTitle(bare, deps)] };
     const { updatedAt } = await deps.persist(lesson);
     await deps.onProgress(PROGRESS_STARTING, "Title ready", "plan", updatedAt);
+  }
+  // lab/t3: T3 writes from the lesson's objectives: the objectives step (a pinned re-plan keeps the
+  // teacher's), stamped T3's so a resume stays on plan-write. A lab file skips the call.
+  if (t3Writer()) {
+    if (process.env.SIMPLE_OBJECTIVES_FILE) return { ...state, lesson };
+    const { state: next } = await runObjectivesStep({ ...state, lesson }, deps);
+    const g = next.lesson.generation;
+    const planned: Lesson = g
+      ? {
+          ...next.lesson,
+          generation: {
+            ...g,
+            promptVersions: { ...g.promptVersions, planned: TEACHER3_LESSON_VERSION },
+          },
+        }
+      : next.lesson;
+    await deps.persist(planned);
+    return { ...next, lesson: planned };
   }
   // The stream plans and writes in one call, in the write step.
   if (planWriteMode() === "stream") return { ...state, lesson };
@@ -741,8 +760,8 @@ export async function planWriteSlides(
   state: PipelineState,
   deps: PipelineDeps,
 ): Promise<PipelineState> {
-  // Lab ABLATE: the plain one-call arm, no gates (plan-write/simple.ts).
-  if (process.env.PLAN_WRITE_MODE === "simple") return simpleLessonSlides(state, deps);
+  // lab/t3: T3 writes by default (plan-write/simple.ts); PLAN_WRITE_MODE=stream|plan-write is R3.
+  if (t3Writer()) return simpleLessonSlides(state, deps);
   const base = state.lesson;
   const brief = base.brief;
   if (!brief) throw new Error("plan-write: the lesson has no brief");

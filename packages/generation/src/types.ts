@@ -253,6 +253,28 @@ export interface PipelineState {
   checkedPerSlide?: boolean;
   /** The design step's report (allocation, per-slot forms and fit rungs, timings), for the summary. */
   designReport?: DesignReport;
+  /**
+   * lab/t3: the T3 writer's counts for the summary: objective coverage (and "slide count too low
+   * for N objectives" when the count cannot hold a teach and a check slide per objective), fit
+   * ladder rungs and drawings. Counts only, never content.
+   */
+  t3Report?: T3Report;
+}
+
+export interface T3Report {
+  objectives: number;
+  writable: number;
+  /** "slide count too low for N objectives", when it is. */
+  room?: string;
+  /** Objectives missing a teach or a check slide, before and after the one re-ask. */
+  gapsBefore: number;
+  gapsAfter: number;
+  reasked: boolean;
+  /** Slides the fit ladder changed, by rung, and any still not fitting. */
+  ladder: Record<string, number>;
+  unfit: number;
+  /** Drawings asked for, drawn (of which with long labels fitted), and not drawn. */
+  drawings: { asked: number; drawn: number; longLabels: number; failed: number };
 }
 
 /** The design step's latency profile, for the fit block and the latency eval. */
