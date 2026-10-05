@@ -297,3 +297,29 @@ describe("DIAGRAM-AUDIT figure options", () => {
     expect(named(d, "Start")).toHaveLength(1);
   });
 });
+
+describe("DIAGRAM-AUDIT coordinate distance", () => {
+  const { EXTRA_FIGURES } = require("../figures/index");
+  const { THEMES } = require("../themes");
+  const f = EXTRA_FIGURES["coordinate-distance"];
+  const v = { a: { x: 1, y: 2, label: "A" }, b: { x: 7, y: 10, label: "B" } };
+  test("draws the run, the rise and the distance, inside its box on every theme", () => {
+    for (const t of THEMES) {
+      const d = f.draw(v, t, { w: 436, h: 356 });
+      const names = d.children.map((k: { name?: string }) => k.name);
+      expect(names).toContain("Run");
+      expect(names).toContain("Rise");
+      expect(names).toContain("Distance");
+      expect(
+        d.children.every(
+          (k: { x: number; y: number; w: number; h: number }) =>
+            k.x >= -8 && k.y >= -8 && k.x + k.w <= 444 && k.y + k.h <= 364,
+        ),
+      ).toBe(true);
+    }
+    expect(f.unknown(v).value).toBe(10);
+  });
+  test("points on one line are refused", () => {
+    expect(f.values.safeParse({ a: { x: 1, y: 2 }, b: { x: 1, y: 6 } }).success).toBe(false);
+  });
+});

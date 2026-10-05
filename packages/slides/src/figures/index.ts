@@ -8,6 +8,7 @@
  * rule after its retry fails the whole Generate stage), and values it cannot draw from get a safe
  * fallback drawing captioned "Not drawn to scale".
  */
+
 import type {
   FigureRef,
   FigureTemplateName,
@@ -17,6 +18,7 @@ import type {
 } from "@tj/domain/documents";
 import type { z } from "zod";
 import { uid } from "../factories";
+import { COORDINATE_DISTANCE } from "./coordinate-distance";
 import { ENERGY_PROFILE } from "./energy-profile";
 import { RIGHT_TRIANGLE } from "./right-triangle";
 import { TRIANGLE } from "./triangle";
@@ -73,6 +75,12 @@ export const FIGURE_TEMPLATES: Record<FigureTemplateName, FigureTemplate> = {
   "energy-profile": ENERGY_PROFILE,
   triangle: TRIANGLE,
 };
+
+/**
+ * DIAGRAM-AUDIT figures drawn by code but not yet on the writer's menu (adding a name to the
+ * domain's figure list needs its prompt clauses, which the prompt owner writes).
+ */
+export const EXTRA_FIGURES = { "coordinate-distance": COORDINATE_DISTANCE } as const;
 
 /**
  * The diagram variant a template's slide is laid out in when nothing else picks one: what
