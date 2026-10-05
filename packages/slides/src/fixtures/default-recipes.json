@@ -816,7 +816,7 @@
             ],
             "closed": true,
             "stroke": "#2C2A24",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -841,7 +841,7 @@
               }
             ],
             "stroke": "#2C2A24",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -1477,7 +1477,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -1500,7 +1500,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -3404,7 +3404,7 @@
             ],
             "closed": true,
             "stroke": "#2B2118",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -3429,7 +3429,7 @@
               }
             ],
             "stroke": "#2B2118",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -4065,7 +4065,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -4088,7 +4088,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -6401,7 +6401,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -6424,7 +6424,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -8737,7 +8737,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -8760,7 +8760,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -11073,7 +11073,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -11096,7 +11096,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -13000,7 +13000,7 @@
             ],
             "closed": true,
             "stroke": "#22201C",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -13025,7 +13025,7 @@
               }
             ],
             "stroke": "#22201C",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -13661,7 +13661,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -13684,7 +13684,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -15997,7 +15997,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -16020,7 +16020,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -17924,7 +17924,7 @@
             ],
             "closed": true,
             "stroke": "#111418",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -17949,7 +17949,7 @@
               }
             ],
             "stroke": "#111418",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -18585,7 +18585,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -18608,7 +18608,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -20512,7 +20512,7 @@
             ],
             "closed": true,
             "stroke": "#ECEDEF",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -20537,7 +20537,7 @@
               }
             ],
             "stroke": "#ECEDEF",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -21173,7 +21173,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -21196,7 +21196,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -23100,7 +23100,7 @@
             ],
             "closed": true,
             "stroke": "#0E0E0E",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -23125,7 +23125,7 @@
               }
             ],
             "stroke": "#0E0E0E",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -23761,7 +23761,7 @@
             }
           ]
         },
-        "label": "✓"
+        "label": "\u2713"
       },
       {
         "id": "_3",
@@ -23784,7 +23784,7 @@
             }
           ]
         },
-        "label": "✗"
+        "label": "\u2717"
       }
     ],
     "question": {
@@ -24905,7 +24905,7 @@
             ],
             "closed": true,
             "stroke": "#232120",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -24930,7 +24930,7 @@
               }
             ],
             "stroke": "#232120",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -25157,7 +25157,7 @@
             ],
             "closed": true,
             "stroke": "#10252F",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -25182,7 +25182,7 @@
               }
             ],
             "stroke": "#10252F",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -25409,7 +25409,7 @@
             ],
             "closed": true,
             "stroke": "#1D291D",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -25434,7 +25434,7 @@
               }
             ],
             "stroke": "#1D291D",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {
@@ -25661,7 +25661,7 @@
             ],
             "closed": true,
             "stroke": "#0F172A",
-            "strokeWidth": 3,
+            "strokeWidth": 2.5,
             "name": "Triangle"
           },
           {
@@ -25686,7 +25686,7 @@
               }
             ],
             "stroke": "#0F172A",
-            "strokeWidth": 2,
+            "strokeWidth": 1.75,
             "name": "Right angle"
           },
           {

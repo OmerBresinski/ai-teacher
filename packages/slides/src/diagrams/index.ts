@@ -16,6 +16,7 @@ import { drawLineGraph } from "./line-graph";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
+import { laddered } from "./style";
 import { context, type DrawnText, esc, n, text, wrap } from "./svg";
 import { drawTable, tableHeight } from "./table";
 import {
@@ -232,7 +233,8 @@ function body(
         return drawRiver(s, ix, w, ih);
     }
   })();
-  return top ? `${head}<g transform="translate(0,${n(top)})">${inner}</g>` : inner;
+  const drawn = laddered(inner);
+  return top ? `${head}<g transform="translate(0,${n(top)})">${drawn}</g>` : drawn;
 }
 
 /**

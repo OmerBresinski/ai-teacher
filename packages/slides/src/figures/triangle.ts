@@ -11,7 +11,9 @@
  *
  * Load it through `./index` or the package root, never first on its own (see `./right-triangle`).
  */
+
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
+import { STROKE as LADDER } from "../diagrams/style";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
 import type { FigureDrawing, FigureTemplate } from "./index";
@@ -117,7 +119,7 @@ const PAIR_SCALE = { min: 1 / 3, max: 3 } as const;
 const SCHEMATIC: Record<Vertex, number> = { A: 50, B: 60, C: 70 };
 const SCHEMATIC_RIGHT_OTHER = deg(Math.atan(3 / 4));
 /** `right-triangle`'s strokes. */
-const STROKE = 3;
+const STROKE = LADDER.line;
 /** Between a side and its label, a vertex and its name, an arc and its angle's label. */
 const SIDE_GAP = 10;
 const NAME_GAP = 4;

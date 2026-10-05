@@ -304,7 +304,7 @@ describe("drawFigure: triangle", () => {
     expect(g.figure).toEqual({ template: "triangle", values: v });
     const [t] = triangles(g);
     if (!t) throw new Error("no triangle");
-    expect([t.strokeWidth, t.stroke, t.smooth]).toEqual([3, chalk.colors.ink, undefined]);
+    expect([t.strokeWidth, t.stroke, t.smooth]).toEqual([2.5, chalk.colors.ink, undefined]);
     const [A, B, C] = cornersOf(t) as [Point, Point, Point];
     // The longest side (c, AB) is the base, horizontal at the bottom, C above it.
     expect(A.y).toBeCloseTo(B.y, 5);
@@ -449,7 +449,7 @@ describe("drawFigure: triangle", () => {
       }).length;
     expect([arcCount(A), arcCount(B), arcCount(C)]).toEqual([2, 2, 1]);
     for (const a of arcs(g))
-      expect([a.smooth, a.closed, a.strokeWidth]).toEqual([true, undefined, 2]);
+      expect([a.smooth, a.closed, a.strokeWidth]).toEqual([true, undefined, 1.75]);
   });
 
   it("draws a 5° angle at 15°, captioned (row 9)", () => {

@@ -11,8 +11,10 @@
  *
  * Load it through `./index` or the package root, never first on its own (see `./right-triangle`).
  */
+
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
+import { STROKE as LADDER } from "../diagrams/style";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
@@ -126,9 +128,9 @@ const PLATEAU_AXIS_GAP = 14;
 const PROGRESS_GAP = 10;
 /** Above the "Not drawn to scale" caption. */
 const CAPTION_GAP = 8;
-const CURVE_STROKE = 4;
-const ARROW_STROKE = 2.5;
-const GUIDE_STROKE = 2;
+const CURVE_STROKE = LADDER.data;
+const ARROW_STROKE = LADDER.line;
+const GUIDE_STROKE = LADDER.hair;
 /** The reactants' level guide runs this far past the ΔH arrow. */
 const GUIDE_OVERHANG = 14;
 /** Between a level and the name hanging under it or standing on it. */

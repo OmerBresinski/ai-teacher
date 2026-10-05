@@ -6,6 +6,7 @@
 import type { Theme } from "@tj/domain/documents";
 import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
+import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
 /** The colours a diagram draws in, all from the theme. */
 export type Palette = {
@@ -30,7 +31,9 @@ export type Ctx = {
   title: string;
   /** The body family's stack, for measuring. */
   stack: string;
-  /** The label size in slide points: never below 14 (the back of the room). */
+  /** A dark theme: washes and ramps come from ink, not the accent. */
+  dark?: boolean;
+  /** The label size in slide points: never below the type floor, 18 (the back of the room). */
   fs: number;
   /** When set, every text block drawn is recorded here (`diagramFaults` reads the geometry). */
   rec?: DrawnText[];
@@ -113,15 +116,15 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
       accent2: t.colors.accent2,
       onAccent: t.colors.onAccent,
       line: t.colors.line,
-      tint: mix(t.colors.accent, surface, 0.16),
-      tint2: mix(t.colors.accent2, surface, 0.18),
+      ...washes(t, surface, mix),
     },
+    dark: !!t.dark,
     body: family(t.fonts.body),
     title: family(t.fonts.title),
     stack: t.fonts.body,
     // Round A6: labels a step larger (a 403-wide panel draws 24, was 20), so a class reads them.
     // A drawing sized to its content (UX ruling 155) keeps the label size of its full panel.
-    fs: fs ?? Math.max(16, Math.min(26, Math.round(Math.min(w, h) / 16))),
+    fs: fs ?? Math.max(TYPE_FLOOR, Math.min(26, Math.round(Math.min(w, h) / 16))),
   };
 }
 
@@ -145,7 +148,7 @@ const KEY_BY_STACK = new Map<string, FontKey>(
 );
 
 /** How wide `s` is at `fs` in the body family, in points (unknown glyphs count as 0.62 em). */
-export function textWidth(s: string, x: Ctx, fs = x.fs, weight = 400): number {
+export function textWidth(s: string, x: Ctx, fs = x.fs, weight: number = WEIGHT.label): number {
   const key = KEY_BY_STACK.get(x.stack);
   const table = key ? ADVANCES[key] : undefined;
   const adv = table ? (weight >= 650 ? table[700] : weight >= 500 ? table[600] : table[400]) : [];
@@ -162,7 +165,14 @@ export function textWidth(s: string, x: Ctx, fs = x.fs, weight = 400): number {
  * `s` broken into lines no wider than `maxW`, at most `maxLines` of them; a last line that still
  * overflows is cut with an ellipsis. Deterministic, greedy, no hyphenation.
  */
-export function wrap(s: string, x: Ctx, maxW: number, maxLines = 2, fs = x.fs, weight = 400) {
+export function wrap(
+  s: string,
+  x: Ctx,
+  maxW: number,
+  maxLines = 2,
+  fs = x.fs,
+  weight: number = WEIGHT.label,
+) {
   const words = s.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let cur = "";
@@ -217,7 +227,7 @@ export function text(x: Ctx, px: number, py: number, lines: string[], o: TextOpt
     ? ` stroke="${o.halo}" stroke-width="${n(fs * 0.28)}" stroke-linejoin="round" paint-order="stroke"`
     : "";
   if (x.rec && lines.length > 0) {
-    const bw = Math.max(...lines.map((l) => textWidth(l, x, fs, o.weight ?? 400)));
+    const bw = Math.max(...lines.map((l) => textWidth(l, x, fs, o.weight ?? WEIGHT.label)));
     const anchor = o.anchor ?? "middle";
     const x0 = anchor === "middle" ? px - bw / 2 : anchor === "end" ? px - bw : px;
     x.rec.push({
@@ -232,22 +242,28 @@ export function text(x: Ctx, px: number, py: number, lines: string[], o: TextOpt
   const spans = lines
     .map((l, i) => `<tspan x="${n(px)}" y="${n(top + i * lh)}">${esc(l)}</tspan>`)
     .join("");
-  return `<text font-family="${o.family ?? x.body}" font-size="${n(fs)}" font-weight="${o.weight ?? 400}" fill="${o.fill ?? x.c.ink}" text-anchor="${o.anchor ?? "middle"}"${halo}>${spans}</text>`;
+  return `<text font-family="${o.family ?? x.body}" font-size="${n(fs)}" font-weight="${o.weight ?? WEIGHT.label}" fill="${o.fill ?? x.c.ink}" text-anchor="${o.anchor ?? "middle"}"${halo}>${spans}</text>`;
 }
 
-/** A filled arrowhead with its tip at (tx, ty), pointing away from (fx, fy). */
+/**
+ * The one arrowhead (DIAGRAM-AUDIT look #5): tip at (tx, ty), pointing away from (fx, fy), its
+ * length 4.2 × the line's stroke, half as wide as 0.6 of that, with a swept-back notch. `_size` is
+ * kept for old callers and ignored: every head is sized from its stroke.
+ */
 export function arrowHead(
   tx: number,
   ty: number,
   fx: number,
   fy: number,
-  size: number,
+  _size: number,
   fill: string,
+  stroke: number = STROKE.line,
 ) {
+  const size = headFor(stroke);
   const a = Math.atan2(ty - fy, tx - fx);
-  const p = (d: number, s: number) =>
-    `${n(tx - size * Math.cos(a) + s * Math.cos(a + Math.PI / 2) * d)},${n(ty - size * Math.sin(a) + s * Math.sin(a + Math.PI / 2) * d)}`;
-  return `<polygon points="${n(tx)},${n(ty)} ${p(1, size * 0.55)} ${p(-1, size * 0.55)}" fill="${fill}"/>`;
+  const p = (back: number, s: number) =>
+    `${n(tx - back * Math.cos(a) + s * Math.cos(a + Math.PI / 2))},${n(ty - back * Math.sin(a) + s * Math.sin(a + Math.PI / 2))}`;
+  return `<polygon points="${n(tx)},${n(ty)} ${p(size, size * 0.6)} ${p(size * 0.85, 0)} ${p(size, -size * 0.6)}" fill="${fill}"/>`;
 }
 
 /** A straight arrow from (x1, y1) to (x2, y2). */
@@ -257,17 +273,25 @@ export function arrow(
   x2: number,
   y2: number,
   color: string,
-  width = 3,
-  head = 14,
+  width: number = STROKE.line,
+  _head = 0,
 ) {
+  const head = headFor(width);
   const a = Math.atan2(y2 - y1, x2 - x1);
   const ex = x2 - Math.cos(a) * head * 0.8;
   const ey = y2 - Math.sin(a) * head * 0.8;
-  return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(ex)}" y2="${n(ey)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>${arrowHead(x2, y2, x1, y1, head, color)}`;
+  return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(ex)}" y2="${n(ey)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>${arrowHead(x2, y2, x1, y1, head, color, width)}`;
 }
 
 /** A horizontal curly brace from x1 to x2 whose ends sit at `y` and whose point is `d` above (d < 0: below). */
-export function hBrace(x1: number, x2: number, y: number, d: number, color: string, width = 2) {
+export function hBrace(
+  x1: number,
+  x2: number,
+  y: number,
+  d: number,
+  color: string,
+  width: number = STROKE.line,
+) {
   const m = (x1 + x2) / 2;
   const r = Math.min(Math.abs(d) / 2, (x2 - x1) / 4);
   const s = Math.sign(d) || 1;
@@ -278,7 +302,14 @@ export function hBrace(x1: number, x2: number, y: number, d: number, color: stri
 }
 
 /** A vertical curly brace from y1 to y2 whose ends sit at `x` and whose point is `d` to the right. */
-export function vBrace(y1: number, y2: number, x: number, d: number, color: string, width = 2) {
+export function vBrace(
+  y1: number,
+  y2: number,
+  x: number,
+  d: number,
+  color: string,
+  width: number = STROKE.line,
+) {
   const m = (y1 + y2) / 2;
   const r = Math.min(Math.abs(d) / 2, (y2 - y1) / 4);
   const xl = x + r;

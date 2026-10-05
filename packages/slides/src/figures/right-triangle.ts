@@ -9,8 +9,10 @@
  * placeholder through `drawFigure`, so this module sits in the layouts ↔ figures import cycle and
  * the registry in `./index` would read `RIGHT_TRIANGLE` before it exists.
  */
+
 import type { PathElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
+import { STROKE as LADDER } from "../diagrams/style";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
@@ -145,7 +147,7 @@ type Box = { x: number; y: number; w: number; h: number };
 export const RIGHT_TRIANGLE_RATIO = { min: 0.4, max: 2.5 } as const;
 /** The schematic triangle drawn when the values cannot give two legs: base 3, height 4. */
 const SCHEMATIC_RATIO = 4 / 3;
-const STROKE = 3;
+const STROKE = LADDER.line;
 /** Between a side and the nearest edge of its label's box. */
 const GAP = 12;
 /** Between the drawing and its box, so the round joins of the stroke stay inside. */

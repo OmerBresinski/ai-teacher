@@ -8,6 +8,7 @@ import {
   type Box,
   blockSize,
   drawBlock,
+  drawKey,
   fitLines,
   type LabelReq,
   overlaps,
@@ -18,6 +19,7 @@ import {
   scene,
 } from "./place";
 import type { Cycle, Hydrograph, Layers, Particles, River, Timeline } from "./schema";
+import { STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
 import { arrow, arrowHead, type Ctx, hBrace, mix, n, num, text, textWidth, ticks } from "./svg";
 
 type Pt = [number, number];
@@ -26,10 +28,10 @@ const bad = (x: Ctx, why: string) => {
   x.faults?.push(why);
 };
 
-/** The largest size from `x.fs` down to 14 at which every text fits; the smallest otherwise. */
+/** The largest size from `x.fs` down to the type floor at which every text fits; the floor otherwise. */
 function sizeFor(x: Ctx, ok: (fs: number) => boolean): number {
-  for (let fs = x.fs; fs >= 14; fs -= 1) if (ok(fs)) return fs;
-  return 14;
+  for (let fs = x.fs; fs >= TYPE_FLOOR; fs -= 1) if (ok(fs)) return fs;
+  return TYPE_FLOOR;
 }
 
 // ─── particles ──────────────────────────────────────────────────────────────────────────────
@@ -146,7 +148,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         keyH: number;
       }
     | undefined;
-  for (let fs = x.fs; fs >= 14 && !layout; fs -= 1) {
+  for (let fs = x.fs; fs >= TYPE_FLOOR && !layout; fs -= 1) {
     const gapWords = Array.from({ length: k - 1 }, (_, i) => arrowWord(i)).filter(
       Boolean,
     ) as string[];
@@ -158,7 +160,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     const colW = (w - (k - 1) * gap) / k;
     const capLines = ps.map((_, i) => fitLines(x, cap(i), colW, 2, fs, 700));
     const noteLines = ps.map((_, i) =>
-      note(i) ? fitLines(x, note(i) as string, colW, 3, fs * 0.9, 400) : [],
+      note(i) ? fitLines(x, note(i) as string, colW, 3, fs * 0.9, WEIGHT.label) : [],
     );
     const arrowLines = gapWords.map((g) => fitLines(x, g, gap - 6, 2, fs * 0.9, 600));
     if (capLines.some((l) => !l) || noteLines.some((l) => !l) || arrowLines.some((l) => !l))
@@ -166,7 +168,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     const capH =
       Math.max(...capLines.map((l) => blockSize(x, l as string[], fs, 700).bh)) + 0.35 * fs;
     const nl = Math.max(0, ...noteLines.map((l) => (l as string[]).length));
-    const noteH = nl ? blockSize(x, Array(nl).fill("x"), fs * 0.9, 400).bh + 0.35 * fs : 0;
+    const noteH = nl ? blockSize(x, Array(nl).fill("x"), fs * 0.9, WEIGHT.label).bh + 0.35 * fs : 0;
     const keyH = key ? 1.6 * fs : 0;
     const side = Math.min(colW, h - capH - noteH - keyH - 4);
     if (side < 4.5 * fs || side < 70) continue;
@@ -215,7 +217,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     );
     for (const d of p.dots) {
       out.push(
-        `<circle cx="${n(bx + d.at[0] * side)}" cy="${n(boxY + d.at[1] * side)}" r="${n(r)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="1.25"/>`,
+        `<circle cx="${n(bx + d.at[0] * side)}" cy="${n(boxY + d.at[1] * side)}" r="${n(r)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
       );
     }
     if (s.motion && p.state) {
@@ -247,8 +249,8 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     }
     const nt = note(i);
     if (nt) {
-      const lines = fitLines(x, nt, colW, 3, fs * 0.9, 400) as string[];
-      const b = blockSize(x, lines, fs * 0.9, 400);
+      const lines = fitLines(x, nt, colW, 3, fs * 0.9, WEIGHT.label) as string[];
+      const b = blockSize(x, lines, fs * 0.9, WEIGHT.label);
       const y0 = boxY + side + 0.35 * fs;
       out.push(
         drawBlock(
@@ -281,7 +283,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
             lines,
             fs * 0.9,
             {
-              weight: 600,
+              weight: WEIGHT.label,
               fill: x.c.ink,
             },
           ),
@@ -292,17 +294,17 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
   if (key) {
     const ky = top + capH + side + noteH + keyH * 0.55;
     const kfs = fs * 0.9;
-    const wa = textWidth(key[0], x, kfs, 400);
-    const wb = textWidth(key[1], x, kfs, 400);
+    const wa = textWidth(key[0], x, kfs, WEIGHT.label);
+    const wb = textWidth(key[1], x, kfs, WEIGHT.label);
     const total = r * 2 + 6 + wa + 24 + r * 2 + 6 + wb;
     let kx = (w - total) / 2;
     out.push(
-      `<circle cx="${n(kx + r)}" cy="${n(ky)}" r="${n(r)}" fill="${x.c.accent}" stroke="${x.c.ink}" stroke-width="1.25"/>`,
+      `<circle cx="${n(kx + r)}" cy="${n(ky)}" r="${n(r)}" fill="${x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
     );
     out.push(text(x, kx + 2 * r + 6, ky, [key[0]], { fs: kfs, anchor: "start" }));
     kx += 2 * r + 6 + wa + 24;
     out.push(
-      `<circle cx="${n(kx + r)}" cy="${n(ky)}" r="${n(r)}" fill="${x.c.accent2}" stroke="${x.c.ink}" stroke-width="1.25"/>`,
+      `<circle cx="${n(kx + r)}" cy="${n(ky)}" r="${n(r)}" fill="${x.c.accent2}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
     );
     out.push(text(x, kx + 2 * r + 6, ky, [key[1]], { fs: kfs, anchor: "start" }));
     if (total > w) bad(x, "the key is wider than the drawing");
@@ -351,7 +353,7 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   // Graph labels a step below the slide's diagram size: six features share one plot.
   const x: Ctx = {
     ...x0,
-    fs: Math.min(x0.fs, Math.max(16, Math.round(Math.min(w, h * 1.4) / 24))),
+    fs: Math.min(x0.fs, Math.max(TYPE_FLOOR, Math.round(Math.min(w, h * 1.4) / 22))),
   };
   const sh = SHAPES[s.shape];
   const v = s.values ?? {};
@@ -368,8 +370,9 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   const numbers =
     v.peakDischarge !== undefined || v.peakRainfall !== undefined || v.lagHours !== undefined;
   const fs = x.fs;
-  const afs = Math.max(14, Math.round(fs * 0.85));
-  const tfs = Math.max(14, Math.round(fs * 0.78));
+  // DIAGRAM-AUDIT look #8: axis titles at the label size, ticks a step down, never under the floor.
+  const afs = fs;
+  const tfs = sub(fs);
   const sc = scene();
   const out: string[] = [];
   const peakRainU = sh.b0 + sh.bars.indexOf(1) * sh.step;
@@ -480,7 +483,9 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
   }
   if (numbers) {
     const hStep =
-      [6, 12, 24, 48].find((st) => (st / hours) * pw >= textWidth("000", x, tfs) * 1.8) ?? 48;
+      [1, 2, 6, 12, 24, 48].find(
+        (st) => hours / st <= 7 && (st / hours) * pw >= textWidth("000", x, tfs) * 1.8,
+      ) ?? 48;
     for (let t = 0; t <= hours + 1e-9; t += hStep) {
       out.push(
         `<line x1="${n(X(uOf(t)))}" y1="${n(Y1)}" x2="${n(X(uOf(t)))}" y2="${n(Y1 + 5)}" stroke="${ink}" stroke-width="1.5"/>`,
@@ -489,7 +494,7 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
     }
   }
   const xTitle = numbers ? "Time (hours)" : "Time";
-  out.push(text(x, (X0 + X1) / 2, h - 2, [xTitle], { fs: afs, weight: 600, v: "bottom" }));
+  out.push(text(x, (X0 + X1) / 2, h - 2, [xTitle], { fs: afs, weight: WEIGHT.label, v: "bottom" }));
   const rot = (label: string, cx: number, cy: number, deg: number) => {
     const len = textWidth(label, x, afs, 600);
     x.rec?.push({
@@ -558,7 +563,7 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
       [rx, ay],
       [px, ay],
     ]);
-    const word = v.lagHours ? `Lag time: ${num(v.lagHours)} h` : "Lag time";
+    const word = v.lagHours ? `Lag time: ${num(v.lagHours)}\u00a0h` : "Lag time";
     out.push(
       placeFirst(x, sc, w, h, [
         {
@@ -662,6 +667,7 @@ export function drawHydrograph(s: Hydrograph, x0: Ctx, w: number, h: number): st
       });
     out.push(req(0.94, true) || req(0.8, true) || req(0.66, false));
   }
+  out.push(drawKey(x, sc, w, h));
   return out.join("");
 }
 
@@ -722,16 +728,21 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
   };
   let fit: Fit | undefined;
   const midOf = (cx: number, bw: number) => Math.max(bw / 2 + 2, Math.min(w - bw / 2 - 2, cx));
-  for (let fs = x.fs; fs >= 14 && !fit; fs -= 1) {
+  // DIAGRAM-AUDIT look #7: many events go down the slot at a readable size before crowding across it.
+  const floor = k > 5 ? Math.max(TYPE_FLOOR, x.fs - 4) : TYPE_FLOOR;
+  for (let fs = x.fs; fs >= floor && !fit; fs -= 1) {
     for (const share of [1, 0.82, 0.66]) {
       if (fit) break;
       const cw = colW * share;
       const blocks = s.events.map((e) => {
         const date = fitLines(x, e.date, cw, 1, fs, 700);
-        const body = fitLines(x, e.text, cw, 3, fs * 0.92, 400);
+        const body = fitLines(x, e.text, cw, 3, sub(fs, 0.92), WEIGHT.label);
         if (!date || !body) return undefined;
-        const bw = Math.max(blockSize(x, date, fs, 700).bw, blockSize(x, body, fs * 0.92, 400).bw);
-        const bh = 1.05 * fs + 0.15 * fs + blockSize(x, body, fs * 0.92, 400).bh;
+        const bw = Math.max(
+          blockSize(x, date, fs, 700).bw,
+          blockSize(x, body, sub(fs, 0.92), WEIGHT.label).bw,
+        );
+        const bh = 1.05 * fs + 0.15 * fs + blockSize(x, body, sub(fs, 0.92), WEIGHT.label).bh;
         return { date, body, bw, bh };
       });
       if (blocks.some((b) => !b)) continue;
@@ -767,13 +778,18 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
     );
     const by = lineY + stem + down + 0.35 * fs;
     out.push(hBrace(a, b, by, -0.55 * fs, x.c.accent2, 2.5));
-    const lines = fitLines(x, s.period.label, Math.max(b - a, colW), 1, fs * 0.92, 700) ?? [
+    const lines = fitLines(x, s.period.label, Math.max(b - a, colW), 1, sub(fs, 0.92), 700) ?? [
       s.period.label,
     ];
-    const lw = blockSize(x, lines, fs * 0.92, 700).bw;
+    const lw = blockSize(x, lines, sub(fs, 0.92), 700).bw;
     const mid = Math.max(lw / 2 + 2, Math.min(w - lw / 2 - 2, (a + b) / 2));
     out.push(
-      text(x, mid, by + 0.6 * fs, lines, { fs: fs * 0.92, weight: 700, v: "top", fill: x.c.ink }),
+      text(x, mid, by + 0.6 * fs, lines, {
+        fs: sub(fs, 0.92),
+        weight: 700,
+        v: "top",
+        fill: x.c.ink,
+      }),
     );
   }
   for (const i of longGaps(s))
@@ -790,8 +806,8 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
     out.push(
       `<circle cx="${n(cx)}" cy="${n(lineY)}" r="${n(Math.max(6, fs * 0.32))}" fill="${x.c.accent}" stroke="${x.c.bg}" stroke-width="2"/>`,
     );
-    out.push(text(x, mid, y0, b.date, { fs, weight: 700, v: "top", fill: x.c.ink }));
-    out.push(text(x, mid, y0 + 1.2 * fs, b.body, { fs: fs * 0.92, v: "top", fill: x.c.ink }));
+    out.push(text(x, mid, y0, b.date, { fs, weight: WEIGHT.value, v: "top", fill: x.c.ink }));
+    out.push(text(x, mid, y0 + 1.2 * fs, b.body, { fs: sub(fs, 0.92), v: "top", fill: x.c.ink }));
   });
   return out.join("");
 }
@@ -799,14 +815,14 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
 /** The timeline read downwards (many events in a narrow slot): dates left of the line, words right. */
 function drawTimelineDown(s: Timeline, x: Ctx, w: number, h: number): string {
   const k = s.events.length;
-  for (let fs = x.fs; fs >= 14; fs -= 1) {
+  for (let fs = x.fs; fs >= TYPE_FLOOR; fs -= 1) {
     const dateW = Math.max(...s.events.map((e) => textWidth(e.date, x, fs, 700)));
     const lineX = dateW + 14;
     const bandW = s.period ? fs * 1.6 : 0;
     const textW = w - lineX - 16 - bandW - 4;
-    const bodies = s.events.map((e) => fitLines(x, e.text, textW, 2, fs * 0.92, 400));
+    const bodies = s.events.map((e) => fitLines(x, e.text, textW, 3, sub(fs, 0.92), WEIGHT.label));
     if (bodies.some((b) => !b)) continue;
-    const hs = (bodies as string[][]).map((b) => blockSize(x, b, fs * 0.92, 400).bh);
+    const hs = (bodies as string[][]).map((b) => blockSize(x, b, sub(fs, 0.92), WEIGHT.label).bh);
     const row = Math.min((h - 4) / k, Math.max(...hs) + 1.3 * fs);
     if (Math.max(...hs) + 0.4 * fs > row) continue;
     const top = (h - row * k) / 2;
@@ -824,10 +840,10 @@ function drawTimelineDown(s: Timeline, x: Ctx, w: number, h: number): string {
       out.push(
         `<line x1="${n(w - bandW - 2)}" y1="${n(a)}" x2="${n(w - bandW - 2)}" y2="${n(b)}" stroke="${x.c.accent2}" stroke-width="2.5"/>`,
       );
-      const len = textWidth(s.period.label, x, fs * 0.85, 700);
+      const len = textWidth(s.period.label, x, sub(fs, 0.85), 700);
       if (len > b - a + row) bad(x, "the period's name is longer than its span");
       out.push(
-        `<text transform="rotate(90 ${n(bx)} ${n((a + b) / 2)})" x="${n(bx)}" y="${n((a + b) / 2 + fs * 0.3)}" font-family="${x.body}" font-size="${n(fs * 0.85)}" font-weight="700" fill="${x.c.ink}" text-anchor="middle">${s.period.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
+        `<text transform="rotate(90 ${n(bx)} ${n((a + b) / 2)})" x="${n(bx)}" y="${n((a + b) / 2 + fs * 0.3)}" font-family="${x.body}" font-size="${n(sub(fs, 0.85))}" font-weight="700" fill="${x.c.ink}" text-anchor="middle">${s.period.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>`,
       );
     }
     for (const i of longGaps(s)) out.push(breakMark(x, lineX, (yc(i) + yc(i + 1)) / 2, true));
@@ -837,7 +853,9 @@ function drawTimelineDown(s: Timeline, x: Ctx, w: number, h: number): string {
         `<circle cx="${n(lineX)}" cy="${n(y)}" r="${n(Math.max(6, fs * 0.32))}" fill="${x.c.accent}" stroke="${x.c.bg}" stroke-width="2"/>`,
       );
       out.push(text(x, lineX - 12, y, [e.date], { fs, weight: 700, anchor: "end" }));
-      out.push(text(x, lineX + 16, y, bodies[i] as string[], { fs: fs * 0.92, anchor: "start" }));
+      out.push(
+        text(x, lineX + 16, y, bodies[i] as string[], { fs: sub(fs, 0.92), anchor: "start" }),
+      );
     });
     return out.join("");
   }
@@ -859,8 +877,9 @@ export function drawLayers(s: Layers, x: Ctx, w: number, h: number): string {
   const mids: number[] = [];
   s.layers.forEach((l, i) => {
     const lh = (l.thickness / total) * H;
-    const share = 0.12 + (0.5 * i) / Math.max(1, s.layers.length - 1);
-    const fill = mix(i % 2 ? x.c.accent2 : x.c.accent, x.c.surface, share);
+    // DIAGRAM-AUDIT look #11: one hue, deepening downwards (from ink on dark themes, never mud).
+    const share = 0.1 + (0.35 * i) / Math.max(1, s.layers.length - 1);
+    const fill = mix(x.dark ? x.c.ink : x.c.accent, x.c.surface, x.dark ? share * 0.6 : share);
     out.push(
       `<rect x="2" y="${n(y)}" width="${n(blockW)}" height="${n(lh)}" fill="${fill}" stroke="${x.c.ink}" stroke-width="1.5"/>`,
     );
@@ -903,7 +922,7 @@ export function drawLayers(s: Layers, x: Ctx, w: number, h: number): string {
     );
     out.push(
       drawBlock(x, { x0: lx, x1: lx + b.bw, y0, y1: y0 + b.bh }, b.lines, fs, {
-        weight: 600,
+        weight: WEIGHT.label,
         anchor: "start",
       }),
     );
@@ -921,7 +940,7 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
   const cy = h / 2;
   type Fit = { fs: number; bw: number; lines: string[][]; bh: number; boxes: Box[]; ang: number[] };
   let fit: Fit | undefined;
-  for (let fs = x.fs; fs >= 14 && !fit; fs -= 1) {
+  for (let fs = x.fs; fs >= TYPE_FLOOR && !fit; fs -= 1) {
     for (let share = 0.42; share >= 0.24 && !fit; share -= 0.03) {
       const bw = w * share;
       const lines = s.steps.map((st) => fitLines(x, st, bw - 16, 3, fs, 600));
@@ -975,7 +994,7 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
         .map(([a, b]) => `${n(a)},${n(b)}`)
         .join(" ")}" fill="none" stroke="${x.c.ink}" stroke-width="2.5" stroke-linecap="round"/>`,
     );
-    out.push(arrowHead(tip[0], tip[1], prev[0], prev[1], Math.max(10, fs * 0.55), x.c.ink));
+    out.push(arrowHead(tip[0], tip[1], prev[0], prev[1], 0, x.c.ink));
     for (let j = 1; j < pts.length; j++) {
       const p = pts[j - 1] as Pt;
       const q = pts[j] as Pt;
@@ -984,12 +1003,14 @@ export function drawCycle(s: Cycle, x: Ctx, w: number, h: number): string {
   }
   boxes.forEach((b, i) => {
     out.push(
-      `<rect x="${n(b.x0)}" y="${n(b.y0)}" width="${n(b.x1 - b.x0)}" height="${n(b.y1 - b.y0)}" rx="10" fill="${i % 2 ? x.c.tint2 : x.c.tint}" stroke="${x.c.accent}" stroke-width="2"/>`,
+      `<rect x="${n(b.x0)}" y="${n(b.y0)}" width="${n(b.x1 - b.x0)}" height="${n(b.y1 - b.y0)}" rx="10" fill="${x.c.tint}" stroke="${x.c.accent}" stroke-width="2"/>`,
     );
     const l = lines[i] as string[];
     const bb = blockSize(x, l, fs, 600);
     const y0 = (b.y0 + b.y1) / 2 - bb.bh / 2;
-    out.push(drawBlock(x, { x0: b.x0, x1: b.x1, y0, y1: y0 + bb.bh }, l, fs, { weight: 600 }));
+    out.push(
+      drawBlock(x, { x0: b.x0, x1: b.x1, y0, y1: y0 + bb.bh }, l, fs, { weight: WEIGHT.label }),
+    );
   });
   return out.join("");
 }
@@ -1120,7 +1141,7 @@ const BEND = (u: number): Pt => {
 };
 
 export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
-  const x: Ctx = { ...x0, fs: Math.min(x0.fs, Math.max(16, Math.round(w / 23))) };
+  const x: Ctx = { ...x0, fs: Math.min(x0.fs, Math.max(TYPE_FLOOR, Math.round(w / 23))) };
   const geo = RIVERS[s.view];
   // A section sits low, its sky left for the labels (each on a leader); a plan fills the space.
   const plan = s.view === "meander-plan";
@@ -1229,5 +1250,6 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
       }),
     ),
   );
+  out.push(drawKey(x, sc, w, h));
   return out.join("");
 }

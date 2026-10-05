@@ -5,6 +5,7 @@
  * values drawn as a labelled double arrow ("lag time").
  */
 import type { LineGraph } from "./schema";
+import { sub } from "./style";
 import { arrowHead, type Ctx, n, num, text, textWidth, ticks, wrap } from "./svg";
 
 type Axis = { label: string; min: number; max: number; step?: number };
@@ -12,7 +13,7 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
 
 export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
-  const small = Math.max(14, Math.round(fs * 0.85));
+  const small = sub(fs);
   const xt = ticks(g.x.min, g.x.max, g.x.step);
   const yt = ticks(g.y.min, g.y.max, g.y.step);
   const y2t = g.y2 ? ticks(g.y2.min, g.y2.max, g.y2.step) : [];
@@ -101,19 +102,19 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     out.push(
       `<line x1="${n(left)}" y1="${n(Y(v))}" x2="${n(left + pw)}" y2="${n(Y(v))}" stroke="${c.line}" stroke-width="1.5"/>`,
     );
-    out.push(text(x, left - 8, Y(v), [num(v)], { fs: small, anchor: "end", fill: c.muted }));
+    out.push(text(x, left - 8, Y(v), [num(v)], { fs: small, anchor: "end", fill: c.ink }));
   }
   for (const v of xt) {
     out.push(
       `<line x1="${n(X(v))}" y1="${n(top + ph)}" x2="${n(X(v))}" y2="${n(top + ph + 6)}" stroke="${c.ink}" stroke-width="2"/>`,
     );
-    out.push(text(x, X(v), top + ph + 8, [num(v)], { fs: small, v: "top", fill: c.muted }));
+    out.push(text(x, X(v), top + ph + 8, [num(v)], { fs: small, v: "top", fill: c.ink }));
   }
   if (g.y2) {
     const Y2 = Yof(g.y2);
     for (const v of y2t) {
       out.push(
-        text(x, left + pw + 8, Y2(v), [num(v)], { fs: small, anchor: "start", fill: c.muted }),
+        text(x, left + pw + 8, Y2(v), [num(v)], { fs: small, anchor: "start", fill: c.ink }),
       );
     }
   }

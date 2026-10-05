@@ -8,6 +8,7 @@
  */
 import { MIN_FONT_SIZE } from "../themes";
 import type { LabelledDiagram } from "./schema";
+import { WEIGHT } from "./style";
 import { arrow, type Ctx, n, text, textWidth, toneFill, wrap } from "./svg";
 
 type Shape = LabelledDiagram["shapes"][number];
@@ -353,8 +354,8 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       // A particle box's description goes in the slot under its caption, in its column.
       if (s.shapes[l.target]?.type === "particles") {
         const t = against[l.target] as Box;
-        const lines = wrap(l.text, x, column(l.target), 3, lf, 400);
-        const bw = Math.max(...lines.map((ln) => textWidth(ln, x, lf, 400)));
+        const lines = wrap(l.text, x, column(l.target), 3, lf, WEIGHT.label);
+        const bw = Math.max(...lines.map((ln) => textWidth(ln, x, lf, WEIGHT.label)));
         const cx = (t.x0 + t.x1) / 2;
         const y0 = t.y1 + lf * 0.2;
         const box = { x0: cx - bw / 2, y0, x1: cx + bw / 2, y1: y0 + blockH(lines.length) };

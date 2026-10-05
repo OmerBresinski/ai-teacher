@@ -7,7 +7,7 @@
  * ground (the drawing paints it), so no card shows behind it.
  */
 import type { Table } from "./schema";
-import { type Ctx, n, text, textWidth, wrap } from "./svg";
+import { type Ctx, mix, n, text, textWidth, wrap } from "./svg";
 
 const CELL_LINES = 3;
 /** The smallest size a table's cells are set at: the body floor (`MIN_FONT_SIZE.body`). */
@@ -99,7 +99,7 @@ export function drawTable(t: Table, x: Ctx, w: number, h: number): string {
       out.push(
         head
           ? `<line x1="0" y1="${n(y)}" x2="${n(tableW)}" y2="${n(y)}" stroke="${c.accent}" stroke-width="2"/>`
-          : `<line x1="0" y1="${n(y)}" x2="${n(tableW)}" y2="${n(y)}" stroke="${c.line}" stroke-width="1"/>`,
+          : `<line x1="0" y1="${n(y)}" x2="${n(tableW)}" y2="${n(y)}" stroke="${mix(c.ink, c.bg, 0.25)}" stroke-width="1.75"/>`,
       );
     }
   });

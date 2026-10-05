@@ -60,7 +60,7 @@ describe("drawFigure: right-triangle", () => {
     expect(triangle?.closed).toBe(true);
     expect(triangle?.points).toHaveLength(3);
     expect(triangle?.stroke).toBe(chalk.colors.ink);
-    expect(triangle?.strokeWidth).toBe(3);
+    expect(triangle?.strokeWidth).toBe(2.5);
     expect(triangle?.fill).toBeUndefined();
     expect(mark?.closed).toBeFalsy();
     expect(mark?.points).toHaveLength(3);

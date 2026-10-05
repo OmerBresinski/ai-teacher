@@ -9,6 +9,7 @@
  * Nothing here reads `./index` or `../layouts` at module load, so the module can sit anywhere in
  * the layouts ↔ figures import cycle (see `./right-triangle`).
  */
+
 import type {
   LineElement,
   PathElement,
@@ -16,6 +17,7 @@ import type {
   SlideElement,
   Theme,
 } from "@tj/domain/documents";
+import { STROKE as LADDER } from "../diagrams/style";
 import { uid } from "../factories";
 import { fitLabel, labelText } from "./labels";
 
@@ -29,7 +31,7 @@ const LINE_BOX = 16;
 /** A path whose points all lie on one line still gets a box this wide, so no fraction is 0/0. */
 const PATH_MIN_BOX = 1;
 /** Right-angle squares, arcs, ticks, chevrons and crosses: `right-triangle`'s mark stroke. */
-const MARK_STROKE = 2;
+const MARK_STROKE = LADDER.hair;
 /** The north line: `energy-profile`'s arrow stroke. */
 const ARROW_STROKE = 2.5;
 /** Between the concentric arcs that mark equal angles, and between equal-side ticks. */

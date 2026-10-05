@@ -3,22 +3,32 @@
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
 import type { Flow } from "./schema";
+import { STROKE, sub, WEIGHT } from "./style";
 import { arrow, arrowHead, type Ctx, n, text, textWidth, wrap } from "./svg";
 
 type Box = { cx: number; cy: number; w: number; h: number };
 
-function box(x: Ctx, b: Box, label: string): string {
+/** A label's lines in box `b` at `f` (as many as the box holds, 1.2 em each), or undefined if cut. */
+function boxLines(x: Ctx, b: Box, label: string, f: number): string[] | undefined {
+  const room = Math.max(1, Math.floor((b.h - f * 0.5) / (f * 1.2)));
+  const lines = wrap(label, x, b.w - f * 0.9, Math.min(3, room), f, WEIGHT.value);
+  return lines[lines.length - 1]?.endsWith("…") ? undefined : lines;
+}
+
+/**
+ * DIAGRAM-AUDIT look #9: one text size for every box in a drawing, the largest at which every
+ * step fits (a step down from the label size at most), so no single box shrinks alone.
+ */
+function boxSize(x: Ctx, boxes: Box[], labels: string[]): number {
+  for (const f of [x.fs, x.fs * 0.88, x.fs * 0.76].map((v) => Math.max(sub(v, 1), 16)))
+    if (labels.every((l, i) => boxes[i] && boxLines(x, boxes[i] as Box, l, f))) return f;
+  return Math.max(16, x.fs * 0.76);
+}
+
+function box(x: Ctx, b: Box, label: string, fs: number): string {
   const { c } = x;
-  // As many lines as the box holds (1.2 em each), a step down in size before any word is cut.
-  let fs = x.fs;
-  let lines: string[] = [];
-  for (const f of [x.fs, x.fs * 0.88, x.fs * 0.76]) {
-    fs = f;
-    const room = Math.max(1, Math.floor((b.h - f * 0.5) / (f * 1.2)));
-    lines = wrap(label, x, b.w - f * 0.9, Math.min(3, room), f, 600);
-    if (!lines[lines.length - 1]?.endsWith("…")) break;
-  }
-  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="2.5"/>${text(x, b.cx, b.cy, lines, { weight: 600, fs })}`;
+  const lines = boxLines(x, b, label, fs) ?? wrap(label, x, b.w - fs * 0.9, 3, fs, WEIGHT.value);
+  return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>${text(x, b.cx, b.cy, lines, { weight: WEIGHT.value, fs })}`;
 }
 
 /** Where the segment from `b`'s centre towards (tx, ty) leaves `b`, plus a small gap. */
@@ -69,13 +79,13 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     return { cx: ox + col * (bw + gapX) + bw / 2, cy: oy + r * (bh + gapY) + bh / 2, w: bw, h: bh };
   });
   const out: string[] = [];
-  const small = Math.max(14, Math.round(fs * 0.85));
+  const small = sub(fs);
   boxes.forEach((b, i) => {
     const next = boxes[i + 1];
     if (!next) return;
     const [x1, y1] = edge(b, next.cx, next.cy, 4);
     const [x2, y2] = edge(next, b.cx, b.cy, 4);
-    out.push(arrow(x1, y1, x2, y2, c.ink, 3, fs * 0.75));
+    out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
     const note = f.steps[i]?.arrow;
     if (note) {
       const vertical = Math.abs(x2 - x1) < 1;
@@ -86,21 +96,26 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
             text(x, x1 > fullW / 2 ? x1 - 10 : x1 + 10, (y1 + y2) / 2, [note], {
               anchor: x1 > fullW / 2 ? "end" : "start",
               fs: small,
-              fill: c.muted,
-              weight: 600,
+              fill: c.ink,
+              weight: WEIGHT.label,
             })
           : text(x, (x1 + x2) / 2, Math.min(y1, y2) - 6, [note], {
               v: "bottom",
               fs: small,
-              fill: c.muted,
-              weight: 600,
+              fill: c.ink,
+              weight: WEIGHT.label,
             }),
       );
     }
   });
+  const bfs = boxSize(
+    x,
+    boxes,
+    f.steps.map((s) => s.label),
+  );
   f.steps.forEach((s, i) => {
     const b = boxes[i];
-    if (b) out.push(box(x, b, s.label));
+    if (b) out.push(box(x, b, s.label, bfs));
   });
   return out.join("");
 }
@@ -110,8 +125,9 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   const k = f.steps.length;
   const bw = Math.min(w * (k <= 4 ? 0.42 : 0.36), fs * 11);
   const bh = Math.min(h * 0.22, fs * 3.6);
-  const rx = (w - bw) / 2;
-  const ry = (h - bh) / 2;
+  // An inset, so the boxes' strokes never clip at the slot's edge.
+  const rx = (w - bw) / 2 - 4;
+  const ry = (h - bh) / 2 - 4;
   const cx = w / 2;
   const cy = h / 2;
   const boxes: Box[] = f.steps.map((_, i) => {
@@ -119,7 +135,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
     return { cx: cx + rx * Math.cos(a), cy: cy + ry * Math.sin(a), w: bw, h: bh };
   });
   const out: string[] = [];
-  const small = Math.max(14, Math.round(fs * 0.85));
+  const small = sub(fs);
   boxes.forEach((b, i) => {
     const next = boxes[(i + 1) % k];
     if (!next) return;
@@ -150,16 +166,21 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
         text(x, lx, ly, [note], {
           anchor: Math.abs(ox) < 4 ? "middle" : ox > 0 ? "start" : "end",
           fs: small,
-          fill: c.muted,
+          fill: c.ink,
           weight: 600,
           halo: c.bg,
         }),
       );
     }
   });
+  const bfs = boxSize(
+    x,
+    boxes,
+    f.steps.map((s) => s.label),
+  );
   f.steps.forEach((s, i) => {
     const b = boxes[i];
-    if (b) out.push(box(x, b, s.label));
+    if (b) out.push(box(x, b, s.label, bfs));
   });
   return out.join("");
 }
