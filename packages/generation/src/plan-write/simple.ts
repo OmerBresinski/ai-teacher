@@ -18,6 +18,7 @@ import {
   EXTRA_FIGURES,
   FIGURE_FULL_CAPTION_LINES,
   FIGURE_TEMPLATES,
+  FIT_VERSION,
   figureFullCaptionChars,
   figureTemplatesFor,
   fitSlide,
@@ -1576,6 +1577,13 @@ async function t3Gate(i: {
   return { slides, replaced: [...used], before: gaps, after, ...(room ? { room } : {}) };
 }
 
+/**
+ * The lesson stamped with the `FIT_VERSION` its slides were laid out under. Without it the editor
+ * takes the lesson as stale and re-fits it with the browser's ruler on first open (`refitStaleLesson`),
+ * relaying a generated slide and continuing what it thinks overflows (CANDIDATE y9 s8 → s9).
+ */
+export const laidOut = <T extends Lesson>(lesson: T): T => ({ ...lesson, fitVersion: FIT_VERSION });
+
 export async function simpleLessonSlides(
   state: PipelineState,
   deps: PipelineDeps,
@@ -1941,7 +1949,7 @@ export async function simpleLessonSlides(
   };
   lesson = withUsage(
     {
-      ...base,
+      ...laidOut(base),
       slides,
       facts: { ...facts, outline },
       generation: {
@@ -2041,7 +2049,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       const slides = (upTo < 0 ? deck : deck.slice(0, upTo)) as Slide[];
       lesson = withUsage(
         {
-          ...base,
+          ...laidOut(base),
           slides,
           facts: { ...facts, outline },
           generation: {

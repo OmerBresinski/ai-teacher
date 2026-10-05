@@ -242,3 +242,13 @@ describe("T3 option capacity (lab/t3 round 2)", () => {
     expect(optionCapacity("explain")).toBeUndefined();
   });
 });
+
+describe("a simple lesson is saved laid out (CANDIDATE y9 s8)", () => {
+  test("it carries the current FIT_VERSION, so the editor does not re-fit it on open", async () => {
+    const { laidOut } = await import("./simple");
+    const { FIT_VERSION } = await import("@tj/slides");
+    expect(
+      laidOut({ fitVersion: 0 } as never as import("@tj/domain/documents").Lesson).fitVersion,
+    ).toBe(FIT_VERSION);
+  });
+});
