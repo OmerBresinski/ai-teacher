@@ -427,6 +427,13 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
+  /**
+   * Each query's first result: always shown to the judge beside the shortlist. A caption-only
+   * shortlist cannot know what a photo shows when its record does not say it (round 3: the 1923
+   * Weimar photo of children with banknote stacks is captioned only "Hyperinflation in Germany in
+   * 1923", was never shortlisted, and the judge never saw it).
+   */
+  const topHits: PhotoResult[] = [];
   // PHOTO-BANK round 2: a real subject searches its anchors (year + event, two proper names) and
   // the lesson's title before the request's first three words.
   const real = brief.specific ?? isSpecificSubject(brief.subject);
@@ -453,6 +460,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       for (const photo of fresh(photos)) {
         if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
         if (candidates.some((seen) => seen.id === photo.id)) continue;
+        if (kept === 0) topHits.push(photo);
         candidates.push(photo);
         kept += 1;
       }
@@ -489,7 +497,14 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   // shortlist + judge round over the new pool — its first result is never placed blind (TEACH-220).
   let pool = candidates;
   for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
-    const shortlisted = await shortlist(args, pool);
+    const listed = await shortlist(args, pool);
+    const shortlisted =
+      round === 0
+        ? [...listed, ...topHits.filter((t) => !listed.some((c) => c.id === t.id))].slice(
+            0,
+            SHORTLIST_MAX + 3,
+          )
+        : listed;
     deps.logger.info({
       stage: "illustrate",
       slideIndex: index,
@@ -504,6 +519,19 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     const unlisted = pool.length > 0 && shortlisted.length === 0;
     if (unlisted && round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
     const verdict = await judge(args, shortlisted, tried);
+    deps.logger.info({
+      stage: "illustrate",
+      slideIndex: index,
+      verdict: {
+        pick: verdict.pick,
+        onSubject: verdict.onSubject,
+        clear: verdict.clear,
+        fits: verdict.fits,
+        visible: verdict.visible,
+        why: verdict.why,
+      },
+      shown: shortlisted.map((c) => ({ id: c.id, alt: c.alt.slice(0, 120) })),
+    });
     // Only a photograph the judge was shown can be placed.
     // A photograph another slide placed while this judge looked is not placed twice.
     const picked = verdict.pick
@@ -592,7 +620,9 @@ async function shortlist(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoRes
         mustShow: brief.mustShow,
         purpose: brief.purpose,
         avoid: brief.avoid,
-        candidates: pool.map((c) => ({ id: c.id, alt: c.alt })),
+        // The same source record the judge reads (Commons: title, description, date, categories):
+        // on the alt alone the Dutch-captioned 1923 Weimar photo was never shortlisted (round 3).
+        candidates: pool.map((c) => ({ id: c.id, alt: (c.about ?? c.alt).slice(0, 400) })),
       },
       schema: shortlistSchemaFor(pool.map((c) => c.id)),
       maxOutputTokens: MAX_OUTPUT_TOKENS.shortlist,
@@ -642,6 +672,7 @@ async function judge(
       subject: brief.request ?? brief.subject,
       mustShow: brief.mustShow,
       needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
+      ...(brief.period ? { period: brief.period } : {}),
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,

@@ -250,7 +250,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v11",
+        promptVersion: "pick-or-requery-photo.v12",
         thumbnail: second.src.tiny,
       },
     });
@@ -268,7 +268,7 @@ describe("illustrate", () => {
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
     expect(state.lesson.generation?.promptVersions.generated).toContain(
-      "pick-or-requery-photo.v11",
+      "pick-or-requery-photo.v12",
     );
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
@@ -426,7 +426,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v11",
+      promptVersion: "pick-or-requery-photo.v12",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -602,7 +602,9 @@ describe("illustrate", () => {
       recordingDeps(ai2, { images: emptied.images, logger }),
     );
     expect(ai2.calls).toHaveLength(2);
-    expect(ai2.calls[1]?.imageParts ?? 0).toBe(0);
+    // Round 3: each query's first result is always shown, so the judge sees the top hit even when
+    // the caption shortlist names nothing.
+    expect(ai2.calls[1]?.imageParts ?? 0).toBe(1);
     expect(ai2.calls[1]?.promptText).toContain("Candidates: none.");
     expect(emptied.stores).toEqual([]);
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);

@@ -351,6 +351,7 @@ export async function findDirected(args: {
           request: plan.brief.request,
           ...(plan.brief.mustShow.length ? { mustShow: plan.brief.mustShow } : {}),
           ...(plan.brief.queries.length ? { queries: plan.brief.queries } : {}),
+          ...(req.period ? { period: req.period } : {}),
           specific: plan.brief.specific || b.specific === true,
         }
       : b;

@@ -90,6 +90,7 @@ describe("judge schema and gate (PICTURE-AUDIT #1, #4)", () => {
   });
   const verdict = (visible: string[]) => ({
     pick: "1",
+    why: null,
     onSubject: true,
     clear: true,
     fits: true,
@@ -264,6 +265,7 @@ describe("judge fits (round 3: dog with an unrelated puppy, one cat, ice in the 
       specific: false,
     };
     const v = {
+      why: null,
       pick: "1",
       onSubject: true,
       clear: true,
