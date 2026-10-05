@@ -1,6 +1,7 @@
 import type { ImageElement } from "@tj/domain/documents";
 import { isOpenPhotoSlot } from "@tj/slides";
-import { useEffect, useRef, useState } from "react";
+import { DIAGRAM_DRAWN_NAME } from "@tj/slides/diagrams";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
 import type { ElementViewProps } from "./kit";
@@ -42,7 +43,68 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
       />
     );
   }
+  const inline = inlineDiagram(props.element);
+  if (inline !== undefined) return <DrawnDiagram {...props} markup={inline} />;
   return <Picture {...props} />;
+}
+
+const SVG_DATA = /^data:image\/svg\+xml(;[^,]*)?,/;
+
+/**
+ * A drawn diagram (`diagramElement`: an SVG data URL named `Diagram`) as sanitised SVG markup to
+ * render inline, or `undefined` for any other picture. Inline, its text takes the page's loaded
+ * theme fonts (the families the renderer names and measures with); inside an `<img>` an SVG cannot
+ * load a web font and its words fall back to a generic sans. A diagram the teacher has cropped,
+ * turned or refocused keeps the `<img>` path, which knows those adjustments.
+ */
+export function inlineDiagram(el: ImageElement): string | undefined {
+  if (el.name !== DIAGRAM_DRAWN_NAME || el.crop || el.imageTransform || el.focal) return undefined;
+  const m = SVG_DATA.exec(el.src);
+  if (!m || typeof DOMParser === "undefined") return undefined;
+  try {
+    const raw = el.src.slice(m[0].length);
+    const xml = m[1]?.includes("base64") ? atob(raw) : decodeURIComponent(raw);
+    const doc = new DOMParser().parseFromString(xml, "image/svg+xml");
+    const svg = doc.documentElement;
+    if (svg.nodeName.toLowerCase() !== "svg") return undefined;
+    // Our renderer writes shapes and text only; anything that could run or fetch is dropped.
+    for (const bad of Array.from(svg.querySelectorAll("script, foreignObject, iframe, use")))
+      bad.remove();
+    for (const node of [svg, ...Array.from(svg.querySelectorAll("*"))])
+      for (const a of Array.from(node.attributes))
+        if (/^on/i.test(a.name) || /href$/i.test(a.name)) node.removeAttribute(a.name);
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    return new XMLSerializer().serializeToString(svg);
+  } catch {
+    return undefined;
+  }
+}
+
+/** A drawn diagram as inline SVG. */
+function DrawnDiagram({
+  element,
+  theme,
+  markup,
+}: ElementViewProps<ImageElement> & { markup: string }) {
+  const html = useMemo(() => ({ __html: markup }), [markup]);
+  return (
+    <div
+      role="img"
+      aria-label={element.alt ?? ""}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        borderRadius: element.radius || undefined,
+        background: theme.colors.surface,
+      }}
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: our own renderer's SVG, sanitised by `inlineDiagram`
+      dangerouslySetInnerHTML={html}
+    />
+  );
 }
 
 function Picture({ element, theme, mode }: ElementViewProps<ImageElement>) {

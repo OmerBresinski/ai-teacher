@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, render } from "@testing-library/react";
 import type { ImageElement } from "@tj/domain/documents";
+import {
+  DIAGRAM_DRAWN_NAME,
+  diagramElement,
+  svgFontFamily as family,
+  svgDataUrl,
+} from "@tj/slides/diagrams";
+import { THEMES } from "@tj/slides/themes";
 import { getTheme } from "../../model/themes";
 import { ImageView } from "./ImageView";
 
@@ -48,5 +55,50 @@ describe("ImageView", () => {
     );
     expect(imgOf({ ...base, focal: { x: 0.2, y: 0.8 } }).style.objectFit).toBe("cover");
     expect(imgOf({ ...base, imageTransform: { rotate: 90 } }).style.objectFit).toBe("cover");
+  });
+});
+
+/* lab/cand: a drawn diagram renders inline, so the page's theme fonts reach its text (an SVG
+   inside <img> cannot load a web font and falls back to a generic sans). */
+const viewOf = (element: ImageElement, t = theme) =>
+  render(
+    <ImageView
+      element={element}
+      theme={t}
+      mode="present"
+      slideId="s1"
+      hidden={false}
+      ghost={false}
+      revealAnswer={false}
+    />,
+  ).container;
+
+describe("ImageView: a drawn diagram", () => {
+  const spec = {
+    kind: "flow",
+    alt: "A chick grows into a hen.",
+    layout: "chain",
+    steps: [{ label: "Chick", arrow: "grows" }, { label: "Young chicken" }, { label: "Hen" }],
+  };
+  for (const t of THEMES) {
+    test(`renders inline in the theme's body font (${t.id})`, () => {
+      const el = diagramElement(spec, t, { x: 0, y: 0, w: 600, h: 300 });
+      if (!el) throw new Error("no diagram");
+      const c = viewOf(el, t);
+      expect(c.querySelector("img")).toBeNull();
+      const svg = c.querySelector("svg");
+      expect(svg).not.toBeNull();
+      const fam = svg?.querySelector("text")?.getAttribute("font-family") ?? "";
+      expect(fam.startsWith(family(t.fonts.body).split(",")[0] as string)).toBe(true);
+    });
+  }
+
+  test("drops scripts and event handlers from the inlined drawing", () => {
+    const bad =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><text x="1" y="5" onclick="alert(3)">hi</text></svg>';
+    const c = viewOf({ ...base, name: DIAGRAM_DRAWN_NAME, src: svgDataUrl(bad) });
+    expect(c.querySelector("script")).toBeNull();
+    expect(c.innerHTML).not.toContain("alert");
+    expect(c.querySelector("text")?.textContent).toBe("hi");
   });
 });

@@ -31,6 +31,8 @@ export type Ctx = {
   title: string;
   /** The body family's stack, for measuring. */
   stack: string;
+  /** The heading family's stack, for measuring a title (`titleCtx`). */
+  titleStack?: string;
   /** A dark theme: washes and ramps come from ink, not the accent. */
   dark?: boolean;
   /** The label size in slide points: never below the type floor, 18 (the back of the room). */
@@ -130,11 +132,15 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
     body: family(t.fonts.body),
     title: family(t.fonts.title),
     stack: t.fonts.body,
+    titleStack: t.fonts.title,
     // Round A6: labels a step larger (a 403-wide panel draws 24, was 20), so a class reads them.
     // A drawing sized to its content (UX ruling 155) keeps the label size of its full panel.
     fs: fs ?? Math.max(TYPE_FLOOR, Math.min(26, Math.round(Math.min(w, h) / 16))),
   };
 }
+
+/** `x` drawing and measuring in the heading family: for a diagram's own title. */
+export const titleCtx = (x: Ctx): Ctx => ({ ...x, body: x.title, stack: x.titleStack ?? x.stack });
 
 export function toneFill(c: Palette, tone: Tone | undefined, fallback: Tone = "surface"): string {
   switch (tone ?? fallback) {

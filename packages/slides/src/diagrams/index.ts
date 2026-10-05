@@ -18,7 +18,7 @@ import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { finished, laddered, look, WEIGHT } from "./style";
-import { type Ctx, context, type DrawnText, esc, mix, n, text, wrap } from "./svg";
+import { type Ctx, context, type DrawnText, esc, mix, n, text, titleCtx, wrap } from "./svg";
 import { drawTable, tableHeight, tableWhole } from "./table";
 import {
   drawCycle,
@@ -44,6 +44,8 @@ export const DRAW_INSET = 4;
 
 /** The drawn diagram's name in the layers list; present, export and print show it. */
 export const DIAGRAM_DRAWN_NAME = "Diagram";
+/** A theme font stack as the family an SVG names (the `var(--font-*)` part resolved). */
+export { family as svgFontFamily } from "./svg";
 
 /** `spec` parsed, or `undefined` when it is not a diagram spec. */
 export function parseDiagram(spec: unknown): DiagramSpec | undefined {
@@ -215,8 +217,10 @@ function body(
   if (s.title) {
     // A title is never cut (C2, B0's y4 tables): one line at its own size, else two lines, else
     // two lines at the body size; only a title past all three keeps the ellipsis.
+    // Drawn in the heading family and measured with its advances (`titleCtx`).
+    const tx = titleCtx(x);
     const whole = (fs: number, n: number) => {
-      const l = wrap(s.title as string, x, w, n, fs, 700);
+      const l = wrap(s.title as string, tx, w, n, fs, 700);
       return l[l.length - 1]?.endsWith("…") ? undefined : l;
     };
     const big = Math.round(x.fs * 1.1);
@@ -224,14 +228,13 @@ function body(
       (whole(big, 2) && { fs: big, lines: whole(big, 2) as string[] }) ||
       (whole(x.fs, 2) && { fs: x.fs, lines: whole(x.fs, 2) as string[] }) || {
         fs: x.fs,
-        lines: wrap(s.title, x, w, 2, x.fs, 700),
+        lines: wrap(s.title, tx, w, 2, x.fs, 700),
       };
     const { fs, lines } = fit;
-    head = text(x, w / 2, 0, lines, {
+    head = text(tx, w / 2, 0, lines, {
       v: "top",
       fs,
       weight: WEIGHT.title,
-      family: x.title,
       fill: t.colors.heading ?? t.colors.ink,
     });
     top = fs * 1.7 + (lines.length - 1) * fs * 1.2;
