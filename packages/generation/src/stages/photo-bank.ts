@@ -29,6 +29,21 @@ export function photoBankOn(flag?: boolean): boolean {
 
 export type PictureRoute = "real" | "generic";
 
+/**
+ * Whether a real thing Commons and Pexels missed may be generated as a faithful stand-in, by what
+ * it is (on hold pending Greg, 6 Oct): a generated copy of a historical event or person (round 3:
+ * the 1923 Weimar photo) is invented history, and a work's generated "reproduction" is not the
+ * work, so those go to none. Places and objects keep the fallback.
+ */
+export const FAITHFUL_FALLBACK: Record<"event" | "person" | "work" | "place" | "object", boolean> =
+  {
+    event: false,
+    person: false,
+    work: false,
+    place: true,
+    object: true,
+  };
+
 /** A year (1066, 1923), a century or an era marks a historical, so real, subject. */
 const HISTORICAL =
   /\b(1[0-9]{3}|20[0-2][0-9])s?\b|\b\d{1,2}(st|nd|rd|th) century\b|\b(BC|BCE|AD)\b/;
@@ -69,6 +84,8 @@ export interface BankRequest {
    * photo is likely to show it, so the search is skipped.
    */
   stockFirst?: boolean;
+  /** false: a real thing no library had is not generated (FAITHFUL_FALLBACK); absent: generated. */
+  faithfulFallback?: boolean;
 }
 
 export interface PictureBank {
@@ -129,6 +146,7 @@ export async function findPicture(
       await bank.remember(req, fetched).catch(rethrowAbort);
       return done(fetched, "fetched");
     }
+    if (req.faithfulFallback === false) return done(undefined, "none");
     const made = await bank.generate(req, true, signal).catch(rethrowAbort);
     return done(made, "generated-faithful", true);
   }

@@ -19,6 +19,7 @@ const dir = (over: Partial<PictureDirection>): PictureDirection => ({
   pictures: [pic()],
   count: null,
   diagram: null,
+  named: null,
   ...over,
 });
 const ask = { text: "A full-grown sheep beside a lamb", named: null, aspect: 0.89 };
@@ -107,6 +108,20 @@ describe("planPicture", () => {
     expect(p.kind === "photo" && p.brief.queries).toEqual([
       "hyperinflation 1923",
       "Weimar inflation children",
+    ]);
+  });
+
+  test("a commons miss on an event, person or work is not generated; a place or object is", () => {
+    const fb = (named: PictureDirection["named"]) => {
+      const p = planPicture(dir({ route: "commons", named }), ask);
+      return p.kind === "photo" ? p.request.faithfulFallback : "x";
+    };
+    expect([fb("event"), fb("person"), fb("work"), fb("place"), fb("object")]).toEqual([
+      false,
+      false,
+      false,
+      true,
+      true,
     ]);
   });
 
@@ -240,6 +255,18 @@ describe("findPicture with a director's plan", () => {
     );
     expect(miss.via).toBe("generated");
     expect(log2).toEqual(["generate:false:P"]);
+  });
+
+  test("faithfulFallback false: a real miss is none, never generated", async () => {
+    const log: string[] = [];
+    const out = await findPicture(
+      req({ route: "real", faithfulFallback: false }),
+      bank(log),
+      async () => undefined,
+      AbortSignal.timeout(1000),
+    );
+    expect(out.via).toBe("none");
+    expect(log).toEqual([]);
   });
 
   test("stockFirst false skips the search", async () => {

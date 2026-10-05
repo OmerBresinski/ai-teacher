@@ -23,6 +23,7 @@ const answer = {
   ],
   count: null,
   diagram: null,
+  named: null,
 };
 
 describe("picture director schema", () => {
@@ -35,6 +36,7 @@ describe("picture director schema", () => {
       pictures: [],
       count: { total: 24, groups: 4, perGroup: 6, arrangement: "groups" },
       diagram: null,
+      named: null,
     };
     expect(PictureDirectorSchema.parse(code).count?.total).toBe(24);
   });

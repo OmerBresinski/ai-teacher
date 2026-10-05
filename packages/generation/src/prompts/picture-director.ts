@@ -62,8 +62,15 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  * "German children", which no vision judge can see. mustShow is now what a camera records; who,
  * where and when are read by the judge from the source's own record (title, description, date),
  * passed to it as text beside the image (Greg, 6 Oct: no code keyword checks for what is right).
+ *
+ * v5: `named` (event, person, work, place, object) for commons, so code can hold the faithful
+ * generation fallback off per kind (FAITHFUL_FALLBACK in stages/photo-bank.ts; Greg to decide).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v4";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v5";
+
+/** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
+export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
+export type NamedKind = (typeof NAMED_KINDS)[number];
 
 export const PICTURE_ROUTES = ["commons", "pexels", "library-or-generate", "code", "none"] as const;
 export type PictureDirectorRoute = (typeof PICTURE_ROUTES)[number];
@@ -107,6 +114,7 @@ export const PictureDirectorSchema = z.object({
   pictures: z.array(Picture),
   count: Count.nullable(),
   diagram: z.enum(DIAGRAM_KINDS as [string, ...string[]]).nullable(),
+  named: z.enum(NAMED_KINDS).nullable(),
 });
 export type PictureDirection = z.infer<typeof PictureDirectorSchema>;
 
@@ -127,7 +135,7 @@ Each picture has:
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
 - imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
-For code, count is the total, the number of equal groups or rows, how many in each, and whether they are groups or rows (one group when none are asked for); diagram is the drawing's kind. Each is null when it does not apply.`;
+For code, count is the total, the number of equal groups or rows, how many in each, and whether they are groups or rows (one group when none are asked for); diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or an object. Each is null when it does not apply.`;
 
 function shapeOf(aspect: number): string {
   if (aspect > 1.15) return "landscape";

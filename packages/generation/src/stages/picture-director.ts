@@ -16,7 +16,13 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PlacedPhoto } from "./illustrate";
-import { type BankRequest, findPicture, type PictureBank, routePicture } from "./photo-bank";
+import {
+  type BankRequest,
+  FAITHFUL_FALLBACK,
+  findPicture,
+  type PictureBank,
+  routePicture,
+} from "./photo-bank";
 
 export const PICTURE_DIRECTOR_EFFORT = "low" as const;
 const MAX_OUTPUT_TOKENS_DIRECTOR = 3000;
@@ -192,6 +198,9 @@ export function planPicture(direction: PictureDirection | undefined, ask: Ask): 
           imagePrompt: first.imagePrompt,
           draw: null,
           stockFirst: direction.route !== "library-or-generate",
+          ...(real && direction.named
+            ? { faithfulFallback: FAITHFUL_FALLBACK[direction.named] }
+            : {}),
         },
         brief: {
           request: first.shows,
