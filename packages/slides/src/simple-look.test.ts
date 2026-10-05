@@ -121,6 +121,49 @@ describe("simple: question sets and the objectives are plain numbered lists (rul
   }
 });
 
+describe("simple: an exit ticket keeps a natural rhythm (y1 s10)", () => {
+  const items = [
+    "What is a young cat called?",
+    "A lamb goes with which adult? Tell one way they can look alike.",
+    "Tell two ways a chick changes as it grows into a hen.",
+  ];
+  const answers = [
+    "A kitten.",
+    "A sheep. They can both have woolly coats.",
+    "It gets bigger and grows feathers.",
+  ];
+  const spec = {
+    kind: "exit-ticket",
+    heading: "Exit ticket",
+    items,
+    footnote: `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`,
+    factRefs: [],
+  } as SlideSpec;
+  for (const theme of THEMES) {
+    test(`${theme.id}: one fixed gap between items, the group at the top, not stretched`, () => {
+      const slide = materialiseSlide(spec, theme.id, META, counter());
+      const heading = named(slide, "Heading")[0] as TextElement;
+      const qs = named(slide, "Row text").sort((a, b) => a.y - b.y) as TextElement[];
+      const rs = named(slide, "Row reveal") as TextElement[];
+      expect(qs).toHaveLength(3);
+      // Every answer sits the same way (all beside or all under), so the rows read alike.
+      const under = rs.map((r) => qs.some((q) => r.y > q.y && Math.abs(r.x - q.x) < 2));
+      expect(new Set(under).size).toBe(1);
+      // A row's foot is its question or the answer under it; the gap to the next row is fixed.
+      const foot = (q: TextElement) =>
+        Math.max(
+          q.y + q.h,
+          ...rs.filter((r) => r.y >= q.y && r.y < q.y + q.h + 12).map((r) => r.y + r.h),
+        );
+      const gaps = qs.slice(1).map((q, i) => q.y - foot(qs[i] as TextElement));
+      expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThanOrEqual(2);
+      expect(Math.max(...gaps)).toBeLessThanOrEqual(24);
+      // The group starts under the heading and leaves the rest of the slide free.
+      expect((qs[0] as TextElement).y - (heading.y + heading.h)).toBeLessThanOrEqual(48);
+    });
+  }
+});
+
 describe("simple: the hinge grid at body size (ruling 161)", () => {
   const mc = (texts: string[]) =>
     ({

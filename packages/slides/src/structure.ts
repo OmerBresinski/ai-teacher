@@ -3163,8 +3163,11 @@ export function rowCards(
     // Ruling 141: a set's answers stay a reveal (a short one beside its question, a long one
     // under it), so the teacher can show them.
     const kept = rs;
+    // A plain list's answers all sit the same way (item 9): when one is too long to go beside its
+    // question, every answer goes under its own, so the rows read alike.
+    const allUnder = plain && rs.some((r) => r.reveal && !beside(r));
     const measured = kept.map((r) => {
-      const at = beside(r);
+      const at = !allUnder && beside(r);
       const stacked =
         !!options.mainOneLine &&
         hasSide &&
@@ -3205,19 +3208,15 @@ export function rowCards(
             : Math.max(main + reveal, side);
       return { main, side, reveal, at, mw, stacked, h: Math.max(badge, content) + pad * 2 };
     });
-    // A plain list keeps an even pitch (item 9): every row takes the tallest row's room, so a hidden
-    // answer under one question does not leave a wider gap after it alone.
-    if (plain) {
-      const tallest = Math.max(...measured.map((m) => m.h));
-      for (const m of measured) m.h = tallest;
-    }
     const total = measured.reduce((n, m) => n + m.h, 0);
     const room = bottom - top;
     if (!ok) continue;
     const n = rows.length;
     if (withSafety(total + minGap * (n - 1)) > room) continue;
     const spare = room - withSafety(total) - minGap * (n - 1);
-    const gap = n > 1 ? Math.min(plain ? SPACE[4] : maxGap, minGap + Math.floor(spare / n)) : 0;
+    // A plain list keeps a natural rhythm: one fixed reading gap after each row's own content, the
+    // group at the top of the room, never stretched to fill it.
+    const gap = n <= 1 ? 0 : plain ? minGap : Math.min(maxGap, minGap + Math.floor(spare / n));
     const used = total + gap * (n - 1);
     // What is left after the widest gap sits above the group, a third of it (optical centre).
     let y = plain
