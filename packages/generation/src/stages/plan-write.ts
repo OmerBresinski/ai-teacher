@@ -110,6 +110,7 @@ import { planWriteCheckerEffort } from "../plan-write/master-check";
 import { contractFor, isSetForm, planMenu, SET_MAX, slideWriterSchema } from "../plan-write/menu";
 import { modelExitItems } from "../plan-write/model-exit";
 import { recheckKinds } from "../plan-write/recheck";
+import { simpleLessonSlides } from "../plan-write/simple";
 import {
   answerKeyMismatches,
   broadenedBrief,
@@ -739,6 +740,8 @@ export async function planWriteSlides(
   state: PipelineState,
   deps: PipelineDeps,
 ): Promise<PipelineState> {
+  // Lab ABLATE: the plain one-call arm, no gates (plan-write/simple.ts).
+  if (process.env.PLAN_WRITE_MODE === "simple") return simpleLessonSlides(state, deps);
   const base = state.lesson;
   const brief = base.brief;
   if (!brief) throw new Error("plan-write: the lesson has no brief");

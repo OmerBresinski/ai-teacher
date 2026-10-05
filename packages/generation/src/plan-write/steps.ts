@@ -87,7 +87,12 @@ export function planWriteRoute(
 ) {
   return (_cls: unknown, context: { promptVersion?: string } | undefined): string | undefined => {
     const v = context?.promptVersion ?? "";
-    if (v.startsWith("plan-lesson.") || v.startsWith("stream-lesson.")) return plannerModel;
+    if (
+      v.startsWith("plan-lesson.") ||
+      v.startsWith("stream-lesson.") ||
+      v.startsWith("simple-lesson.")
+    )
+      return plannerModel;
     if (v.startsWith("write-slides.")) return writerModel;
     // Round J: the caption-claims check (a place's geography, a date) on the checker's model too.
     // Round Q: the exit items too.
