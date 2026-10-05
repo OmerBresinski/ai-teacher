@@ -30,6 +30,7 @@ import { ANSWERS_NAME, HEADING_NAME, isBackdrop, textPartsOf } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { floorBelow, readingLeading, readingSize, resolveFontSize } from "./text-style";
+import { MIN_FONT_SIZE } from "./themes";
 
 /*
  * Structured components (quality PRD "look", 26 Sept 2026): the shapes the homepage example lessons
@@ -293,6 +294,103 @@ function text(
   return { id: ids(), type: "text", ...rect, doc, style: { autoHeight: true, ...style }, ...extra };
 }
 
+/** A chunk stack's label (eyebrow over its text) and its text (UX ruling 152). */
+export const CHUNK_LABEL_NAME = "Chunk label";
+export const CHUNK_TEXT_NAME = "Chunk";
+/** Characters a line of teaching text holds at most: about 65 (UX ruling 152). */
+export const MEASURE_CHARS = 65;
+/** The average advance of a character in the theme fonts, in ems (measured on the round-3 decks). */
+const CHAR_EM = 0.37;
+
+/** A labelled-chunk body's parts: each paragraph's bold label (colon dropped) and the rest. */
+export function chunksOf(doc: RichDoc): { label: string; body: RichDoc }[] {
+  return (doc.content ?? []).map((p) => {
+    const [first, ...rest] = p.content ?? [];
+    const label = (first?.text ?? "").replace(/:\s*$/, "").trim();
+    const nodes = rest.map((n, i) =>
+      i === 0 && n.type === "text" ? { ...n, text: (n.text ?? "").replace(/^\s+/, "") } : n,
+    );
+    return {
+      label,
+      body: {
+        type: "doc",
+        content: [{ type: "paragraph", content: nodes.filter((n) => n.text !== "") }],
+      },
+    };
+  });
+}
+
+/** The column width that keeps teaching text at about `MEASURE_CHARS` a line at `size`. */
+export const measureWidth = (size: number, available: number) =>
+  Math.min(available, Math.round(MEASURE_CHARS * CHAR_EM * size));
+
+/**
+ * Labelled chunks as a stack (UX ruling 152): each label on its own line over its text, in the
+ * accent's caption style, the text in ink. The largest size that fits wins (the body x1.2, x1.1,
+ * the body, the step below); the column keeps about 65 characters a line; the chunks spread down
+ * the room with a gap between SPACE[3] and SPACE[5], what is left a third above (optical centre).
+ * Undefined when the chunks do not fit even at the step below the body.
+ */
+export function chunkStack(
+  doc: RichDoc,
+  t: Theme,
+  ids: Ids,
+  box: { x: number; top: number; w: number; bottom: number },
+): SlideElement[] | undefined {
+  const parts = chunksOf(doc);
+  if (parts.length < 2) return undefined;
+  const measure = measureHeadless(t);
+  const body = readingSize(t);
+  const leading = readingLeading(t);
+  const sizes = [
+    ...new Set([Math.round(body * 1.2), Math.round(body * 1.1), body, floorBelow(t, "body")]),
+  ];
+  const room = box.bottom - box.top;
+  // The measure is kept before the size: about 65 characters, then 78, then the whole column.
+  const tries = [MEASURE_CHARS, 78, 400].flatMap((chars) => sizes.map((size) => ({ size, chars })));
+  for (const { size, chars } of tries) {
+    const w = Math.min(box.w, Math.round(chars * CHAR_EM * size));
+    const labelSize = Math.max(resolveFontSize(t, "caption"), Math.round(size * 0.75));
+    const labelStyle = { fontWeight: 700, color: t.colors.accent };
+    const blocks = parts.map((part) => {
+      const labelDoc = docFromText(part.label);
+      const lh = heightOf(measure, labelDoc, w, "caption", labelSize, 0, labelStyle);
+      const bh = heightOf(measure, part.body, w, "body", size, 0, { lineHeight: leading });
+      return { part, labelDoc, lh, bh, h: lh + SPACE[0] + bh };
+    });
+    const total = blocks.reduce((a, b) => a + b.h, 0);
+    const n = blocks.length;
+    if (withSafety(total + SPACE[3] * (n - 1)) > room) continue;
+    const gap = Math.min(SPACE[5], Math.floor((room - withSafety(total)) / Math.max(1, n - 1)));
+    const used = total + gap * (n - 1);
+    let y = snapY(box.top + Math.max(0, Math.floor((room - withSafety(used)) / 3)));
+    const els: SlideElement[] = [];
+    for (const b of blocks) {
+      els.push(
+        text(
+          ids,
+          { x: box.x, y, w, h: b.lh },
+          b.labelDoc,
+          { preset: "caption", fontSize: labelSize, ...labelStyle },
+          { name: CHUNK_LABEL_NAME },
+        ),
+      );
+      els.push(
+        text(
+          ids,
+          { x: box.x, y: y + b.lh + SPACE[0], w, h: b.bh },
+          b.part.body,
+          { preset: "body", fontSize: size, lineHeight: leading },
+          { name: CHUNK_TEXT_NAME },
+        ),
+      );
+      y += b.h + gap;
+    }
+    return els;
+  }
+  return undefined;
+}
+
 function card(
   ids: Ids,
   t: Theme,
@@ -349,6 +447,7 @@ function placeLine(
   size: number,
   measure: Measure,
   ids: Ids,
+  alone = false,
 ): Placed {
   const els: SlideElement[] = [];
   const chipSize = Math.min(size, resolveFontSize(t, "small"));
@@ -357,7 +456,8 @@ function placeLine(
   const chipW = (label: string) => Math.ceil(label.length * chipSize * 0.62) + CHIP_PAD * 2 + 8;
   const tfW = tf ? chipW("False") : 0;
   const stemW = tf ? SAFE.w - tfW * 2 - SPACE[1] - SPACE[3] : SAFE.w;
-  const stemDoc = numberedDoc(n, line.stem);
+  // A list of one is not a list (UX ruling 153): a lone question carries no number.
+  const stemDoc = alone ? docFromText(line.stem) : numberedDoc(n, line.stem);
   const stemH = heightOf(measure, stemDoc, stemW, "body", size);
   els.push(
     text(
@@ -571,10 +671,11 @@ export function layoutQuiz(
     };
     lines.forEach((line, i) => {
       const n = firstNumber + i;
-      let placed = placeLine(line, n, y, t, size, measure, ids);
+      const alone = lines.length === 1 && firstNumber === 1;
+      let placed = placeLine(line, n, y, t, size, measure, ids, alone);
       if (!fits(placed.bottom) && page.length > 0) {
         close();
-        placed = placeLine(line, n, y, t, size, measure, ids);
+        placed = placeLine(line, n, y, t, size, measure, ids, alone);
       }
       page.push(...placed.elements);
       const shownInPlace = line.options && line.correct !== undefined && line.options.length > 2;
@@ -1430,6 +1531,42 @@ function structureWorked(slide: Slide, t: Theme, ids: Ids, paginate: boolean): S
       mainShare: 0.58,
     });
     if (placed) return [{ ...slide, elements: [...keep, ...placed.elements] }];
+    // One worked-example design (UX ruling 151): a step that needs two lines wraps, its reason
+    // stacked under it when the reason column is too narrow, before any other form is tried.
+    const rowOptions = {
+      minGap: SPACE[1],
+      maxGap: SPACE[3],
+      cardName: STEP_NAME,
+      mainShare: 0.58,
+    };
+    const wrapped = rowCards(rows, top, SAFE_BOTTOM, t, ids, {
+      ...rowOptions,
+      sizes: [resolveFontSize(t, "body"), floorBelow(t, "body")],
+      textName: (i) => `Step ${i + 1}`,
+    });
+    if (wrapped) return [{ ...slide, elements: [...keep, ...wrapped.elements] }];
+    // More steps than one slide holds: the rows continue on the next slide under the question
+    // again, numbered on. The dense working card is never the shipped form.
+    if (paginate && rows.length > 2) {
+      const half = Math.ceil(rows.length / 2);
+      const later = rows.slice(half).map((r, i) => ({ ...r, ...(i > 0 ? { step: i } : {}) }));
+      const a = rowCards(rows.slice(0, half), top, SAFE_BOTTOM, t, ids, {
+        ...rowOptions,
+        textName: (i) => `Step ${i + 1}`,
+      });
+      const b = rowCards(
+        later.map(({ step, ...r }) => (step ? { ...r, step } : r)),
+        top,
+        SAFE_BOTTOM,
+        t,
+        ids,
+        { ...rowOptions, textName: (i) => `Step ${half + i + 1}` },
+      );
+      if (a && b) {
+        const next = continued(slide, [...chromeOf(slide), q], b.elements, ids);
+        return [{ ...slide, elements: [...keep, ...a.elements] }, next];
+      }
+    }
   }
   // The look's fit set the question beside the working card this pass replaces, so the card's
   // lines could step the body preset down for the question too. With the strip in the card's
@@ -1483,8 +1620,20 @@ function structureContent(
       isText(e) && e.style.preset === "body" && (!e.name || e.name === LEAD_CARD),
   );
   if (bodies.length === 0) return plain;
-  // A body in labelled chunks (round D1, `docFromChunks`) is already set out in parts: it stays.
-  if (bodies.length === 1 && isChunked((bodies[0] as TextElement).doc)) return plain;
+  // A body in labelled chunks (round D1, `docFromChunks`) is set as a chunk stack (UX ruling 152):
+  // each label over its text, about 65 characters a line, spread down the slide.
+  if (bodies.length === 1 && isChunked((bodies[0] as TextElement).doc)) {
+    const only = bodies[0] as TextElement;
+    const stack = chunkStack(only.doc, t, ids, {
+      x: only.x,
+      top: only.y,
+      w: SAFE.x + SAFE.w - only.x,
+      bottom: SAFE_BOTTOM,
+    });
+    if (!stack) return plain;
+    const keep = slide.elements.filter((e) => e !== only);
+    return [withTerms({ ...slide, elements: [...keep, ...stack] }, t, hints.terms)];
+  }
   const top = Math.min(...bodies.map((b) => b.y));
   // A content spec's `points` arrive as a bullet list at the end of its body (`bodyWithPoints`):
   // the prose is the words, the list the points.
@@ -2053,6 +2202,13 @@ function composeBesideSlot(
   const x = first.x;
   const w = Math.max(SPACE[7], Math.min(first.w, slot.x - SPACE[5] - x));
   const placedSlot = slotPanel(slot, top, slot.x, slot.w, t);
+  if (chunked) {
+    const stack = chunkStack(first.doc, t, ids, { x, top, w, bottom: SAFE_BOTTOM });
+    if (stack) {
+      const keep = slide.elements.filter((e) => e !== slot && e !== first);
+      return [withTerms({ ...slide, elements: [...keep, ...stack, placedSlot] }, t, hints.terms)];
+    }
+  }
   // With pages the words fill the column beside the slot at the body size, as many points or
   // sentences as fit, and only the rest continues (look/image-slot): a list stays a list.
   const points = hints.points?.length ? hints.points : bodies.flatMap((b) => pointsOf(b.doc));
@@ -2886,7 +3042,8 @@ export function rowCards(
     const mainW = hasSide ? (widest > 0 ? Math.min(share, widest + ONE_LINE_SLACK) : share) : inner;
     const sideW = inner - mainW - SPACE[3];
     let ok = true;
-    const sideSize = options.split ? size : resolveFontSize(t, "small");
+    // The reason is a step under its step, never above it (UX ruling 151).
+    const sideSize = options.split ? size : Math.max(MIN_FONT_SIZE.small, Math.round(size * 0.9));
     const sidePreset: TextPreset = options.split ? "body" : "small";
     const wOf = (r: Row) => (hasSide && r.side ? mainW : inner);
     // A short answer is revealed at the card's right, beside its question; a long one under it.
@@ -3006,6 +3163,8 @@ export function rowCards(
               fontSize: size,
               lineHeight: leading,
               color: t.colors.ink,
+              // A row with a reason beside it: the step is the strong voice (UX ruling 151).
+              ...(r.side && !options.split ? { fontWeight: 600 } : {}),
             },
             { name, ...when },
           ),

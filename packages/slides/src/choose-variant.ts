@@ -82,10 +82,10 @@ function ranked(kind: SlideKind, ctx: VariantContext): VariantName[] {
   const words = ctx.textLength ?? 0;
   switch (kind) {
     case "title":
-      if (!ctx.hasImage) return ["stack"];
-      return words <= SPLIT_MAX_WORDS
-        ? ["split", "photo-band", "photo-band-long", "stack"]
-        : ["photo-band", "photo-band-long", "split", "stack"];
+      // A full-bleed topic photo under a dark band is the title (UX ruling 156); with no photo,
+      // the theme's cover pattern over an accent band, never bare text.
+      if (!ctx.hasImage) return ["cover", "cover-long", "stack"];
+      return ["photo-band", "photo-band-long", "split", "stack"];
     case "content": {
       // A statement has no heading to anchor it, which the deck's first idea needs (and any
       // content slide directly after the objectives); and a body over twenty words runs past

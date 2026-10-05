@@ -52,8 +52,12 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
   );
   const gapX = cols > 1 ? arrowRoom : 0;
   const gapY = fs * 2.6;
-  const bw = Math.min((w - gapX * (cols - 1)) / cols, fs * 14);
-  const bh = Math.min((h - gapY * (rows - 1)) / rows, fs * 4.2);
+  // A node is a label in a box, not a panel (UX ruling 155): at most 2.5 lines of its own text
+  // tall, and only as wide as its longest label asks (with padding), centred in the drawing.
+  const longestLabel = Math.max(...f.steps.map((s) => textWidth(s.label, x, fs, 600)));
+  const bh = Math.min((h - gapY * (rows - 1)) / rows, fs * 1.2 * 2.5);
+  const bwCap = Math.max(fs * 6, longestLabel + fs * 1.6);
+  const bw = Math.min((w - gapX * (cols - 1)) / cols, fs * 14, bwCap);
   const totalW = bw * cols + gapX * (cols - 1);
   const totalH = bh * rows + gapY * (rows - 1);
   const ox = inset + (w - totalW) / 2;

@@ -124,8 +124,24 @@ export type RequestWorksheetInput = Omit<z.input<typeof RequestWorksheetSchema>,
 /** What `POST /lessons/:id/worksheet` answers: the row and the job to follow. */
 export type WorksheetRequested = { worksheetId: string; jobId: string };
 
-/** `Lesson.title` is the topic, cut to this many characters. */
+/** `Lesson.title` is the topic, at most this many characters. */
 export const LESSON_TITLE_MAX = 80;
+
+/**
+ * The lesson's title from the teacher's topic (UX ruling 156): never cut mid-phrase. A topic of
+ * several sentences ("Freud's theories. Consider supporting and contrasting schools of thought.")
+ * is titled by its first sentence; a single long sentence is cut at the last whole word that
+ * fits, with no trailing punctuation.
+ */
+export function lessonTitleFromTopic(topic: string): string {
+  const text = topic.trim().replace(/\s+/g, " ");
+  const first = /^(.+?[.!?])\s+[A-Z]/.exec(text)?.[1];
+  const title = first && first.length >= 8 ? first.replace(/[.!]$/, "") : text;
+  if (title.length <= LESSON_TITLE_MAX) return title.replace(/[.!]$/, "");
+  const cut = title.slice(0, LESSON_TITLE_MAX + 1);
+  const at = cut.lastIndexOf(" ");
+  return (at > 20 ? cut.slice(0, at) : cut.slice(0, LESSON_TITLE_MAX)).replace(/[\s,;:.\-–]+$/, "");
+}
 
 /**
  * The key stage a year-group label implies (England): Reception / Nursery / EYFS → `eyfs`,
@@ -188,7 +204,7 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
   return parseLesson({
     version: 1,
     id: lessonId,
-    title: input.brief.topic.trim().slice(0, LESSON_TITLE_MAX),
+    title: lessonTitleFromTopic(input.brief.topic),
     themeId: input.themeId ?? DEFAULT_THEME_ID,
     slides: [],
     createdAt: at,

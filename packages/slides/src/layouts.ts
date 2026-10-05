@@ -1076,6 +1076,82 @@ function titlePhotoBand(t: Theme, lines = 2): Layout {
   };
 }
 
+/** The pattern over a `cover` title's band (named so a surface can tell it from a photograph). */
+export const COVER_PATTERN_NAME = "Cover pattern";
+
+/**
+ * A theme's cover pattern (UX ruling 156), drawn from its own colours: offset rows of dots in the
+ * accent and second colour, a few larger rings, on the slide's ground. It stands in for the topic
+ * photo on a title that has none, so the first slide is never bare text.
+ */
+export function coverPattern(t: Theme, w: number, h: number): string {
+  const { background, accent, accent2 } = t.colors;
+  const step = 36;
+  const dots: string[] = [];
+  for (let row = 0, y = step / 2; y < h + step; row++, y += step * 0.866) {
+    for (let x = row % 2 ? step / 2 : 0; x < w + step; x += step) {
+      const k = (Math.round(x / step) * 7 + row * 3) % 11;
+      const r = k < 2 ? 5 : k < 6 ? 3.5 : 2.5;
+      dots.push(
+        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${k % 3 === 0 ? accent2 : accent}" fill-opacity="${k < 2 ? 0.28 : 0.16}"/>`,
+      );
+    }
+  }
+  const rings = [
+    [w * 0.82, h * 0.34, h * 0.42],
+    [w * 0.66, h * 0.98, h * 0.3],
+    [w * 0.08, h * 0.12, h * 0.26],
+  ]
+    .map(
+      ([cx, cy, r]) =>
+        `<circle cx="${(cx as number).toFixed(1)}" cy="${(cy as number).toFixed(1)}" r="${(r as number).toFixed(1)}" fill="none" stroke="${accent}" stroke-opacity="0.22" stroke-width="10"/>`,
+    )
+    .join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"><rect width="${w}" height="${h}" fill="${background}"/>${dots.join("")}${rings}</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Title, `cover` (UX ruling 156): the designed title for a lesson with no photograph. The theme's
+ * pattern fills the slide above an accent band carrying the title and the class line, the
+ * photo-band's composition with the theme's own art where the photograph would be.
+ */
+function titleCover(t: Theme, lines = 2): Layout {
+  const titleH = boxH(t, "title", lines);
+  const subH = boxH(t, "small");
+  const stackH = titleH + SPACE[1] + subH;
+  const bandY = Math.min(300, snapY(SAFE_BOTTOM - stackH - SPACE[4]));
+  return {
+    elements: [
+      {
+        ...photo({ x: 0, y: 0, w: SLIDE_W, h: bandY }),
+        src: coverPattern(t, SLIDE_W, bandY),
+        alt: "",
+        name: COVER_PATTERN_NAME,
+      } as ImageElement,
+      shape(
+        "rect",
+        { x: 0, y: bandY, w: SLIDE_W, h: SLIDE_H - bandY },
+        { fill: t.colors.accent, name: "Band" },
+      ),
+      text(
+        "title",
+        "Lesson title",
+        { x: SAFE.x, y: SAFE_BOTTOM - stackH, w: spanWidth(11), h: titleH },
+        { color: t.colors.onAccent, valign: "bottom" },
+        { name: "Title" },
+      ),
+      text(
+        "small",
+        "Year group and class",
+        { x: SAFE.x, y: SAFE_BOTTOM - subH, w: spanWidth(9), h: subH },
+        { color: t.colors.onAccent },
+        { name: "Subtitle" },
+      ),
+    ],
+  };
+}
+
 /**
  * Title, `photo-band-long`: `photo-band` with a band tall enough for a three-line title, for a
  * long title that neither `split` nor `photo-band` sets at the title floor (ruling 134: the title
@@ -1355,6 +1431,8 @@ export const TITLE_VARIANT_NAMES = [
   "split",
   "agenda",
   "photo-band-long",
+  "cover",
+  "cover-long",
 ] as const;
 export const CONTENT_VARIANT_NAMES = ["headed", "statement", "two-column", "callout-row"] as const;
 export const LIST_VARIANT_NAMES = ["numbered", "cards", "stepped"] as const;
@@ -1469,6 +1547,16 @@ export const LAYOUT_CATALOGUE: {
       composition: "photo-band",
       description: "A photograph filling the slide, a long title in a taller band across its foot",
     },
+    {
+      name: "cover",
+      composition: "photo-band",
+      description: "No photograph: the theme's pattern over an accent band carrying the title",
+    },
+    {
+      name: "cover-long",
+      composition: "photo-band",
+      description: "No photograph: the theme's pattern over a taller accent band for a long title",
+    },
   ],
   objectives: LIST_VARIANTS,
   starter: LIST_VARIANTS,
@@ -1570,6 +1658,10 @@ function titleVariant(t: Theme, variant: number | string): Layout {
       return titlePhotoBand(t);
     case "photo-band-long":
       return titlePhotoBandLong(t);
+    case "cover":
+      return titleCover(t);
+    case "cover-long":
+      return titleCover(t, 3);
     case "split":
       return titleSplit(t);
     case "agenda":
