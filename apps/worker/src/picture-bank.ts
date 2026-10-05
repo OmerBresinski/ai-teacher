@@ -20,6 +20,7 @@ import {
   bankLicenceOk,
   countArrayOf,
   countArraySvg,
+  directedImagePrompt,
   EMBED_DIMENSIONS,
   type Embedder,
   expectedImageCostUsd,
@@ -203,7 +204,13 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
     async generate(req, faithful, signal) {
       // PHOTO-BANK round 2: a countable maths quantity is drawn in code (exact count, equal groups),
       // never photographed; free, so no generator or cap is needed.
-      const arr = faithful ? undefined : countArrayOf(req.text);
+      // The director (or the fallback) decided: a count to draw, or null for never. Absent: the text.
+      const arr =
+        req.draw !== undefined
+          ? (req.draw ?? undefined)
+          : faithful
+            ? undefined
+            : countArrayOf(req.text);
       if (arr) {
         const t0 = Date.now();
         const svg = countArraySvg(arr, req.aspect ?? 1);
@@ -245,7 +252,9 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
         emit({ kind: "refused", ms: 0 });
         return undefined;
       }
-      const prompt = imagePrompt(req, faithful);
+      const prompt = req.imagePrompt
+        ? directedImagePrompt(req.imagePrompt, faithful)
+        : imagePrompt(req, faithful);
       const out = await generator.generate({ prompt, size, signal });
       spent += out.costUsd;
       const [w, h] = size.split("x").map(Number) as [number, number];

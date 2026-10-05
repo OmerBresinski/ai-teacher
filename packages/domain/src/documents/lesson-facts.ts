@@ -204,6 +204,8 @@ export const ImageBriefSchema = z.strictObject({
   specific: z.boolean().optional(),
   /** The proper name of the one thing the photo must show (the writer's `named`); searched first. */
   named: z.string().trim().min(1).max(80).optional(),
+  /** Searches the picture director wrote (most specific first); tried before code's own. */
+  queries: z.array(z.string().trim().min(1).max(80)).max(4).optional(),
   /**
    * The picture zone's width over height (ruling 158): a photo is searched for, or generated, at
    * that shape. Absent: the search's own default.

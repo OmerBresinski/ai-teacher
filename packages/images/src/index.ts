@@ -5,6 +5,7 @@ export {
   cosine,
   createOpenAiEmbedder,
   createOpenAiImageGenerator,
+  directedImagePrompt,
   EMBED_DIMENSIONS,
   EMBED_MODEL,
   type Embedder,

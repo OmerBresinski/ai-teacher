@@ -7,11 +7,13 @@
  *    Wikimedia Commons and Pexels (the existing pick, credited); what it places is stored once.
  * 3. A real thing no library had is generated with the "faithful" prompt and flagged for the look
  *    check (ruling 158 item 1).
- * 4. A generic scene is generated (no stock search) at the zone's aspect ratio.
+ * 4. A generic scene searches stock first when the director (or the fallback) says stock can show
+ *    it, then is generated at the zone's aspect ratio; a count is drawn in code.
  *
  * `@tj/generation` sees only the `PictureBank` interface; the worker (or the lab) closes it over
  * the database, storage, embedder and generator.
  */
+import type { CountArray } from "@tj/images";
 import { isSpecificSubject, type PlacedPhoto } from "./illustrate";
 
 /** The code-level switch (default on), so the bank can be A/B tested against the stock ladder. */
@@ -54,6 +56,19 @@ export interface BankRequest {
   route: PictureRoute;
   /** The lesson's title, year and subject: the period and place a real subject is set in. */
   context?: { title?: string; yearGroup?: string; subject?: string };
+  /**
+   * The picture director's image prompt (code appends the frame and text lines). Absent: the
+   * fixed template (`imagePrompt` in @tj/images).
+   */
+  imagePrompt?: string;
+  /** A count drawn in code. null: never draw (a photo was chosen). Absent: read off the text. */
+  draw?: CountArray | null;
+  /**
+   * A generic picture searches stock (Pexels, judged against mustShow) before it is generated
+   * (Greg, 6 Oct: real stock looks real and is free). false: the director judged that no real
+   * photo is likely to show it, so the search is skipped.
+   */
+  stockFirst?: boolean;
 }
 
 export interface PictureBank {
@@ -106,6 +121,8 @@ export async function findPicture(
   // PHOTO-BANK smoke: with the library unreachable nothing could be stored, so nothing is
   // generated (a paid picture would be lost); the stock ladder serves every route.
   if (libraryDown) return done(await fetchReal().catch(rethrowAbort), "fetched");
+  if (req.draw)
+    return done(await bank.generate(req, false, signal).catch(rethrowAbort), "generated");
   if (req.route === "real") {
     const fetched = await fetchReal().catch(rethrowAbort);
     if (fetched) {
@@ -114,6 +131,13 @@ export async function findPicture(
     }
     const made = await bank.generate(req, true, signal).catch(rethrowAbort);
     return done(made, "generated-faithful", true);
+  }
+  if (req.stockFirst) {
+    const fetched = await fetchReal().catch(rethrowAbort);
+    if (fetched) {
+      await bank.remember(req, fetched).catch(rethrowAbort);
+      return done(fetched, "fetched");
+    }
   }
   const made = await bank.generate(req, false, signal).catch(rethrowAbort);
   return done(made, "generated");

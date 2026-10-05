@@ -146,6 +146,20 @@ export function imagePrompt(
   ].join("\n");
 }
 
+/**
+ * The picture director's image prompt with the lines whose meaning never changes, which code owns:
+ * one frame, and no text (a real thing keeps its own text; only added text is ruled out).
+ */
+export function directedImagePrompt(prompt: string, faithful: boolean): string {
+  return [
+    prompt.replace(/\s+/g, " ").trim(),
+    "A single image, not a collage, grid or set of panels.",
+    faithful
+      ? "No added captions, labels or watermarks."
+      : "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
+  ].join("\n");
+}
+
 /** What the library may keep (ruling 139): Pexels, generated, or Commons PD, CC0, CC BY, BY-SA. */
 export function bankLicenceOk(source: { provider: string; licence?: string }): boolean {
   if (source.provider === "pexels" || source.provider === "generated") return true;

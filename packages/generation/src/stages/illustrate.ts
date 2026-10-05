@@ -432,6 +432,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const real = brief.specific ?? isSpecificSubject(brief.subject);
   const queries = [
     ...(brief.named ? [brief.named] : []),
+    ...(brief.queries ?? []),
     ...(real ? anchorQueries(brief.request ?? brief.subject) : []),
     ...(real && args.lesson.title ? queryCandidates({ subject: args.lesson.title }) : []),
     ...factQueryHints(args.lesson, index),

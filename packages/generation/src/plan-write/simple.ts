@@ -60,19 +60,29 @@ import { CODE_MODEL, withAnswersReveal } from "../planner/coded-slides";
 import { audienceBlock } from "../prompts/shared";
 import { withUsage } from "../stages/generate";
 import { pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
-import {
-  type BankRequest,
-  findPicture,
-  mustShowOf,
-  photoBankOn,
-  routePicture,
-} from "../stages/photo-bank";
+import { mustShowOf, photoBankOn } from "../stages/photo-bank";
+import { findDirected, type SlideForPicture } from "../stages/picture-director";
+
 import { audienceOf, planClassFor } from "../stages/shared";
 import type { PipelineDeps, PipelineState, T3Report } from "../types";
 import { DiagramSpecSchema } from "./diagram-spec";
 import { ASKED_FORMS, fitLadder, fitWritten, renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
 import { broadenedBrief, NO_PICTURE_ROW, noPictureOf } from "./slide-check";
+
+/** What the picture director reads of a written slide: its heading, words and notes. */
+function slideForPicture(s: {
+  heading: string;
+  body?: readonly string[] | null;
+  items?: readonly string[] | null;
+  notes?: string | null;
+}): SlideForPicture {
+  return {
+    heading: s.heading,
+    text: [...(s.body ?? []), ...(s.items ?? [])].join(" "),
+    point: s.notes ?? "",
+  };
+}
 
 /*
  * Lab arm ABLATE S/O (lab/ablate, 5 Oct 2026): one plain call for the whole lesson in a light schema,
@@ -1737,6 +1747,7 @@ export async function simpleLessonSlides(
     index: number,
     b: ImageBrief,
     ask?: { subject: string; named?: string | null },
+    slide?: SlideForPicture,
   ) => {
     const at = (x: ImageBrief) =>
       pickPhoto(
@@ -1770,28 +1781,17 @@ export async function simpleLessonSlides(
     // faithful generation; generic scenes generated. Off (`photoBank: false`, PHOTO_BANK=0): stock.
     const bank = deps.images?.bank;
     if (!bank || !ask || !photoBankOn(deps.photoBank)) return stock(b);
-    const req: BankRequest = {
-      text: ask.subject,
-      named: ask.named ?? null,
-      ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
-      route: routePicture({ text: ask.subject, named: ask.named ?? null }),
-      context: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
-    };
-    const out = await findPicture(
-      req,
+    return findDirected({
       bank,
-      () => stock(req.route === "real" ? { ...b, specific: true } : b),
-      deps.signal,
-    );
-    deps.logger.info(
-      {
-        stage: "illustrate",
-        slideIndex: index,
-        bank: { route: out.route, via: out.via, ms: out.ms, lookCheck: out.lookCheck },
-      },
-      "picture library",
-    );
-    return out.photo;
+      ask,
+      brief: b,
+      slide: slide ?? { heading: lesson.title },
+      lesson,
+      country: "England",
+      index,
+      stock,
+      deps,
+    });
   };
   const placeIn = (slide: Slide, photo: Parameters<typeof withPhoto>[1]): Slide =>
     ({
@@ -1902,7 +1902,7 @@ export async function simpleLessonSlides(
       }
       const pic = !placed && r?.photo ? briefOf(r.photo) : undefined;
       if (pic && deps.images) {
-        const photo = await find(index, pic, r?.photo);
+        const photo = await find(index, pic, r?.photo, slideForPicture(s));
         if (photo) {
           slide = placeIn(slide, photo);
           placed = true;
@@ -2080,6 +2080,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     index: number,
     b: ImageBrief,
     ask?: { subject: string; named?: string | null },
+    slide?: SlideForPicture,
   ) => {
     const at = (x: ImageBrief) =>
       pickPhoto(
@@ -2112,28 +2113,17 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     // faithful generation; generic scenes generated. Off (`photoBank: false`, PHOTO_BANK=0): stock.
     const bank = deps.images?.bank;
     if (!bank || !ask || !photoBankOn(deps.photoBank)) return stock(b);
-    const req: BankRequest = {
-      text: ask.subject,
-      named: ask.named ?? null,
-      ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
-      route: routePicture({ text: ask.subject, named: ask.named ?? null }),
-      context: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
-    };
-    const out = await findPicture(
-      req,
+    return findDirected({
       bank,
-      () => stock(req.route === "real" ? { ...b, specific: true } : b),
-      deps.signal,
-    );
-    deps.logger.info(
-      {
-        stage: "illustrate",
-        slideIndex: index,
-        bank: { route: out.route, via: out.via, ms: out.ms, lookCheck: out.lookCheck },
-      },
-      "picture library",
-    );
-    return out.photo;
+      ask,
+      brief: b,
+      slide: slide ?? { heading: lesson.title },
+      lesson,
+      country: "England",
+      index,
+      stock,
+      deps,
+    });
   };
   const placeIn = (slide: Slide, photo: Parameters<typeof withPhoto>[1]): Slide =>
     ({
@@ -2364,7 +2354,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     });
     if (pic)
       photos.push(
-        find(index, pic, photoAsk).then((photo) => {
+        find(index, pic, photoAsk, slideForPicture(s)).then((photo) => {
           if (round[index] !== gen) return; // a re-ask replaced this slide meanwhile
           deck[index] = photo ? placeIn(slide, photo) : drawPlain(plain);
           if (!photo)

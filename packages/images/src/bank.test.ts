@@ -229,3 +229,18 @@ describe("countArrayOf and countArraySvg (PHOTO-BANK round 2)", () => {
     expect(svg.match(/<rect/g)?.length).toBe(5); // background + 4 group plates
   });
 });
+
+describe("directedImagePrompt", () => {
+  test("the director's prompt, then the frame and text lines code owns", async () => {
+    const { directedImagePrompt } = await import("./bank");
+    const generic = directedImagePrompt("  A sheep and its lamb grazing.\n", false).split("\n");
+    expect(generic).toEqual([
+      "A sheep and its lamb grazing.",
+      "A single image, not a collage, grid or set of panels.",
+      "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
+    ]);
+    expect(directedImagePrompt("A 1923 street.", true)).toContain(
+      "No added captions, labels or watermarks.",
+    );
+  });
+});
