@@ -252,7 +252,8 @@ describe("a practise slide drawn as a list (round C1: B1's practice read as a li
         .filter((e) => e.name === name)
         .map((e) => (e.type === "text" ? richDocToPlainText(e.doc) : ""));
     const practise = draw("practise");
-    expect(texts(practise, "Number")).toEqual(["1)", "2)", "3)", "4)"]);
+    // UX ruling 153: the accent disc, never "1)".
+    expect(texts(practise, "Number")).toEqual(["1", "2", "3", "4"]);
     expect(practise.elements.some((e) => e.name === "Bullet")).toBe(false);
     expect(texts(practise, "Point")[0]).toBe("Share 12 in 1:2.");
     // A teaching list keeps its dots; one the writer numbered reads as ordered.

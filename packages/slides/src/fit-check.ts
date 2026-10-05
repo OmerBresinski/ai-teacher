@@ -78,11 +78,16 @@ export function isGeneratedSlide(slide: Slide): boolean {
  * would have with no override (its preset's size, held at the role's projector floor). 0 when
  * every text is at its own size.
  */
+/** `structure.ts` ROW_SIDE_NAME: a row's reason column. */
+const ROW_SIDE = "Row side";
+
 export function stepsTaken(slide: Slide, theme: Theme): number {
   const stops = ladderStops(theme);
   let most = 0;
   for (const el of slide.elements) {
     if (isFrozen(el)) continue;
+    // A worked step's reason is set a step under its step by design (UX ruling 151), not by the fit.
+    if (el.name === ROW_SIDE) continue;
     const parts = textPartsOf(el, slide);
     if (!parts || parts.style?.fontSize === undefined) continue;
     const own = resolveFontSize(theme, parts.preset, undefined, parts.role);

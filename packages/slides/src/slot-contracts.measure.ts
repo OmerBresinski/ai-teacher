@@ -14,7 +14,7 @@ import {
   type TextKind,
   type WriterOutput,
 } from "./slot-contracts";
-import { CHUNK_LABEL_NAME, workingAndReason } from "./structure";
+import { CHUNK_LABEL_NAME, CHUNK_TEXT_NAME, workingAndReason } from "./structure";
 import { countLines, ruledLines } from "./text-measure";
 import { THEMES } from "./themes";
 
@@ -414,9 +414,12 @@ export function chunksOfLines(
     made.variant,
     made.structure,
   );
-  const body = slide.elements.find(
-    (e) => e.type === "text" && e.style.preset === "body" && (e.doc.content?.length ?? 0) >= 2,
-  );
+  // A chunk stack (UX ruling 152) measures its chunks at its own text's width and size.
+  const body =
+    slide.elements.find((e) => e.type === "text" && e.name === CHUNK_TEXT_NAME) ??
+    slide.elements.find(
+      (e) => e.type === "text" && e.style.preset === "body" && (e.doc.content?.length ?? 0) >= 2,
+    );
   if (body?.type !== "text") return undefined;
   const chunks = CHUNK_LABELS.map((l) =>
     chunkOfLines(l, lines, theme, body.w, body.style.fontSize),

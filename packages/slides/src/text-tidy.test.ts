@@ -171,7 +171,7 @@ describe("tidySlide", () => {
   it("draws a numbered point's number where its dot was, and strips the writer's", () => {
     const out = tidySlide(practise(true));
     const numbers = out.elements.filter((e) => e.name === "Number");
-    expect(numbers.map((e) => plainOf((e as { doc: RichDoc }).doc)[0])).toEqual(["1)", "2)", "3)"]);
+    expect(numbers.map((e) => plainOf((e as { doc: RichDoc }).doc)[0])).toEqual(["1", "2", "3"]); // UX ruling 153: the accent disc, never "1)"
     expect(out.elements.some((e) => e.name === "Bullet")).toBe(false);
     const points = out.elements.filter((e) => e.name === "Point");
     expect(points.map((e) => plainOf((e as { doc: RichDoc }).doc)[0])).toEqual([
@@ -181,7 +181,8 @@ describe("tidySlide", () => {
     ]);
     expect(out.notes).toBe("1: x = 4; subtract 3.");
     const first = numbers[0] as SlideElement & { style: { color?: string; fontSize?: number } };
-    expect(first.style.color).toBe("#A94A18");
+    // UX ruling 153: the number sits on an accent disc (the bullet's colour).
+    expect((first.style as { background?: string }).background).toBe("#A94A18");
     expect(first.x).toBe(126 - 26);
   });
 
@@ -201,7 +202,7 @@ describe("tidySlide", () => {
   it("continues numbering from `start` on a continued page", () => {
     const out = tidySlide(practise(true), { ordered: true, start: 4 });
     const numbers = out.elements.filter((e) => e.name === "Number");
-    expect(plainOf((numbers[0] as { doc: RichDoc }).doc)[0]).toBe("4)");
+    expect(plainOf((numbers[0] as { doc: RichDoc }).doc)[0]).toBe("4");
   });
 
   it("gives a slide one list kind and strips items' own markers", () => {

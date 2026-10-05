@@ -261,7 +261,10 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
     expect(lesson.slides.map((s) => s.kind)).toEqual(KINDS);
     // The fixed slides (UX ruling 134): the title with its picture, then the objectives alone.
     // No photo search in these deps: the title stands alone, never beside an empty frame.
-    expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(false);
+    // UX ruling 156: no photo means the theme's cover pattern, never a photograph.
+    expect(
+      lesson.slides[0]?.elements.some((e) => e.type === "image" && e.name !== "Cover pattern"),
+    ).toBe(false);
     expect(JSON.stringify(lesson.slides[0]?.elements)).not.toContain("the Romans built forts");
     expect(JSON.stringify(lesson.slides[1]?.elements)).toContain("the Romans built forts");
     // The title's brief goes to its photo search only; the saved outline passes the domain schema.
@@ -455,7 +458,10 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       expect(close).toContain("Complete it on your worksheet.");
       expect(close).toMatch(/\d questions?, on your own/);
       // No photo search in these deps: the title stands alone, never beside an empty frame.
-      expect(lesson.slides[0]?.elements.some((e) => e.type === "image")).toBe(false);
+      // UX ruling 156: no photo means the theme's cover pattern, never a photograph.
+      expect(
+        lesson.slides[0]?.elements.some((e) => e.type === "image" && e.name !== "Cover pattern"),
+      ).toBe(false);
       // Slide 6's hinge had no options: written again by a writer; slide 5's heading re-written.
       expect(calls.filter((c) => !c.rewrite).map((c) => c.slides.map((s) => s.number))).toEqual([
         [6],
@@ -472,10 +478,12 @@ describe("plan-write (AI_LESSON_PLANNER=plan-write)", () => {
       // Each slide was checked as it closed: Evaluate ran per slide, Repair made no call.
       expect(versions.filter((v) => v.startsWith("repair."))).toEqual([]);
       expect(final.checkedPerSlide).toBe(true);
-      // No image search here: no slide keeps an empty picture frame.
-      expect(lesson.slides.flatMap((sl) => sl.elements).filter((e) => e.type === "image")).toEqual(
-        [],
-      );
+      // No image search here: no slide keeps an empty picture frame (the cover's pattern is art).
+      expect(
+        lesson.slides
+          .flatMap((sl) => sl.elements)
+          .filter((e) => e.type === "image" && e.name !== "Cover pattern"),
+      ).toEqual([]);
       expect(lesson.generation?.promptVersions.planned).toStartWith("stream-lesson.v24+");
       expect(plannerOf(lesson)).toBe("plan-write");
       expect(lesson.facts?.objectives.map((o) => o.text)).toEqual(PLAN.objectives);

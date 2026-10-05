@@ -6,7 +6,11 @@ import type { SlideSpec } from "./specs";
 const meta = { promptVersion: "test", model: "test", at: "2026-09-30T00:00:00.000Z" };
 const hasSlot = (spec: SlideSpec, variant?: string, structure = {}) =>
   materialiseSlide(spec, "chalk", meta, undefined, variant, structure).elements.some(
-    (e) => e.type === "image" || e.name === "Photo slot" || e.name === "Diagram placeholder",
+    // The cover's pattern is theme art, not a picture slot (UX ruling 156).
+    (e) =>
+      (e.type === "image" && e.name !== "Cover pattern") ||
+      e.name === "Photo slot" ||
+      e.name === "Diagram placeholder",
   );
 
 describe("withoutPicture: every picture-bearing slide has a form with no slot", () => {

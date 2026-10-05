@@ -306,7 +306,8 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     const we = weimarFixture.buyingPowerWorkedExample;
     const tooBig = {
       ...we,
-      steps: we.steps.map((s) => `${s} This is what the class should notice first.`),
+      // Steps doubled: the inline step rows (UX ruling 151) now hold the r6 working at full size.
+      steps: we.steps.map((s) => `${s} ${s} This is what the class should notice first.`),
     };
     const refills: string[] = [];
     const ai = labAi({

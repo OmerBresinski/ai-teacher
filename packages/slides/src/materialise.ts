@@ -24,7 +24,7 @@ import {
   drawingHeight,
   parseDiagram,
 } from "./diagrams";
-import { docFromBullets, docFromChunks, docFromText, uid } from "./factories";
+import { docFromBullets, docFromChunks, docFromText, isChunked, uid } from "./factories";
 import { diagramVariantFor, drawFigure, figureGroupOf } from "./figures";
 import { fitSlide } from "./fit-slide";
 import { SAFE, SPACE } from "./grid";
@@ -63,6 +63,7 @@ import {
   CHUNK_LABEL_NAME,
   CHUNK_TEXT_NAME,
   COMPARE_NAME,
+  chunkStack,
   continueParagraph,
   ITEM_NAME,
   LEAD_NAME,
@@ -360,7 +361,25 @@ export function withDiagramDrawn(slide: Slide, theme: Theme, spec: unknown): Sli
   );
   if (drawn === slide || !drawn.elements.some((e) => e.name === DIAGRAM_DRAWN_NAME)) return slide;
   const { diagram: _undrawn, ...rest } = drawn;
-  return fittedDrawing(rest, theme, spec);
+  return fittedDrawing(chunksBeside(rest, theme), theme, spec);
+}
+
+/** A labelled-chunk body beside a drawn figure set as a chunk stack (UX ruling 152). */
+function chunksBeside(slide: Slide, theme: Theme): Slide {
+  const body = slide.elements.find(
+    (e): e is TextElement =>
+      e.type === "text" && e.style.preset === "body" && !e.name && isChunked(e.doc),
+  );
+  if (!body) return slide;
+  let k = 0;
+  const stack = chunkStack(body.doc, theme, () => `${slide.id}~c${++k}`, {
+    x: body.x,
+    top: body.y,
+    w: body.w,
+    bottom: SAFE.y + SAFE.h,
+  });
+  if (!stack) return slide;
+  return { ...slide, elements: slide.elements.flatMap((e) => (e === body ? stack : [e])) };
 }
 
 /**

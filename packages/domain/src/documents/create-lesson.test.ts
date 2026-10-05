@@ -5,6 +5,7 @@ import {
   defaultDurationMin,
   deriveAgeBand,
   lessonFromBrief,
+  lessonTitleFromTopic,
   yearNumberOf,
 } from "./create-lesson";
 import { GUARD_MESSAGE } from "./identifier-guard";
@@ -176,5 +177,20 @@ describe("yearNumberOf", () => {
     expect(yearNumberOf("P5")).toBeUndefined();
     expect(yearNumberOf("")).toBeUndefined();
     expect(yearNumberOf(undefined)).toBeUndefined();
+  });
+});
+
+describe("lessonTitleFromTopic (UX ruling 156)", () => {
+  test("titles a topic of several sentences by its first", () => {
+    expect(
+      lessonTitleFromTopic(
+        "Freud's psychoanalytic theories. Consider supporting and contrasting schools of thought.",
+      ),
+    ).toBe("Freud's psychoanalytic theories");
+  });
+  test("cuts a long sentence at a whole word, never mid-phrase", () => {
+    const t = lessonTitleFromTopic(`The causes ${"and consequences ".repeat(8)}of the war`);
+    expect(t.length).toBeLessThanOrEqual(80);
+    expect(t.endsWith("consequences") || t.endsWith("and")).toBe(true);
   });
 });

@@ -43,7 +43,8 @@ function sizes(slide: Slide, theme: Theme): Map<string, number> {
   const out = new Map<string, number>();
   const note = (key: string, size: number) => out.set(key, Math.min(out.get(key) ?? size, size));
   for (const el of slide.elements) {
-    if (el.type === "text") {
+    // A worked step's reason is a step under its step by design (UX ruling 151), not a fit step.
+    if (el.type === "text" && el.name !== "Row side") {
       note(el.style.preset, el.style.fontSize ?? resolveFontSize(theme, el.style.preset));
     }
     if (el.type === "option" && el.textStyle?.fontSize) note("option", el.textStyle.fontSize);

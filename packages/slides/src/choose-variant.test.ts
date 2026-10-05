@@ -155,9 +155,10 @@ describe("chooseVariant", () => {
   });
 
   it("gives a title a photograph only when it has one", () => {
-    expect(chooseVariant("title", { index: 0, total: 10 })).toBe("stack");
+    // UX ruling 156: no photo means the theme's cover, never the bare stack.
+    expect(chooseVariant("title", { index: 0, total: 10 })).toBe("cover");
     expect(chooseVariant("title", { index: 0, total: 10, hasImage: true, textLength: 3 })).toBe(
-      "split",
+      "photo-band",
     );
     expect(chooseVariant("title", { index: 0, total: 10, hasImage: true, textLength: 7 })).toBe(
       "photo-band",
@@ -233,7 +234,8 @@ describe("the demo lesson through chooseVariant", () => {
       personality: "playful",
       titleImage: true,
     });
-    expect(variants[0]).toBe("split");
+    // UX ruling 156: the full-bleed photo band is the title.
+    expect(variants[0]).toBe("photo-band");
     expect(variants[1]).toBe("cards");
     expect(variants[2]).toBe("stepped");
   });

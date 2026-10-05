@@ -16,7 +16,8 @@ describe("fit ladder (no slide is saved overflowing)", () => {
     expect(r.out).toEqual(out);
   });
   test("an overflowing body moves whole chunks to the notes word for word, never rewording", () => {
-    const body = [long(1), long(2), long(3)];
+    // Doubled: the chunk stack (UX ruling 152) holds three single long chunks on some themes.
+    const body = [`${long(1)} ${long(1)}`, `${long(2)} ${long(2)}`, `${long(3)} ${long(3)}`];
     const out = { heading: "Particles explain states", body, notes: "Say this." };
     expect(fitWritten("explain", "default", out).ok).toBe(false);
     const r = fitLadder("explain", "default", out);

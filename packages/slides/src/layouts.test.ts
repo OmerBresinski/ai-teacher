@@ -277,6 +277,8 @@ describe("layoutSlide", () => {
       "split",
       "agenda",
       "photo-band-long",
+      "cover",
+      "cover-long",
     ]);
     expect(variantsFor("content")).toEqual(["headed", "statement", "two-column", "callout-row"]);
     for (const kind of ["objectives", "starter", "instructions", "exit-ticket", "plenary"] as const)
