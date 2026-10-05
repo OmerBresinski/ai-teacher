@@ -145,3 +145,10 @@ export const StorageKeySchema = z
   .regex(STORAGE_KEY_PATTERN, { error: "Invalid storage key: expected <uuid>/<path>" })
   .refine((key) => parseStorageKey(key).ok, { error: "Invalid storage key segment" });
 export type StorageKey = z.infer<typeof StorageKeySchema>;
+
+/**
+ * The picture library's reserved workspace (TEACH-84, ruling 158): shared pictures live under
+ * `<LIBRARY_WORKSPACE_ID>/bank/…`, a valid object key, so storage needs no new key rule. The file
+ * route serves it to every workspace read-only (it has no write route); only the worker writes it.
+ */
+export const LIBRARY_WORKSPACE_ID = "0b0b0000-0000-4000-8000-00000000ba4c";

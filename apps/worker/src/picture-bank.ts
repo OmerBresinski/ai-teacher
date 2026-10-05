@@ -13,6 +13,7 @@ import {
   touchBankImage,
 } from "@tj/db";
 import type { StorageAdapter } from "@tj/domain";
+import { LIBRARY_WORKSPACE_ID } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
 import type { BankRequest, PictureBank, PlacedPhoto } from "@tj/generation";
 import {
@@ -135,7 +136,7 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
   ) => {
     const id = opts.ids();
     const ext = EXT[mime] ?? "bin";
-    const storageKey = `bank/${id}.${ext}`;
+    const storageKey = `${LIBRARY_WORKSPACE_ID}/bank/${id}.${ext}`;
     await storage.put(storageKey, bytes, { contentType: mime });
     const dims = size ?? imageDimensions(bytes) ?? { width: 1024, height: 1024 };
     return insertBankImage(db, {
