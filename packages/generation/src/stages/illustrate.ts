@@ -644,7 +644,13 @@ async function judge(
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,
-      candidates: pool.map((c) => ({ id: c.id, alt: c.alt, thumbnail: c.src.tiny })),
+      // The source's own record (Commons: title, description, date, categories) goes to the judge as
+      // text: who, where and when cannot be seen, so it decides from the picture and the record.
+      candidates: pool.map((c) => ({
+        id: c.id,
+        alt: (c.about ?? c.alt).slice(0, 400),
+        thumbnail: c.src.tiny,
+      })),
     },
     schema: pickOrRequerySchemaFor(brief),
     maxOutputTokens: MAX_JUDGE_TOKENS,

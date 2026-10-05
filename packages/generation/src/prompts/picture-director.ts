@@ -57,8 +57,13 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  * reads "anything named or dated ... Always commons, even when the request describes a particular
  * moment of it", with generation named as the fallback; library-or-generate is "unnamed". Two to
  * four searches. Code appends the request's year-plus-event and two-name anchors (planPicture).
+ *
+ * v4 (coordinator, 6 Oct): the photo judge rejected the real 1923 Weimar photo; v3's mustShow held
+ * "German children", which no vision judge can see. mustShow is now what a camera records; who,
+ * where and when are read by the judge from the source's own record (title, description, date),
+ * passed to it as text beside the image (Greg, 6 Oct: no code keyword checks for what is right).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v3";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v4";
 
 export const PICTURE_ROUTES = ["commons", "pexels", "library-or-generate", "code", "none"] as const;
 export type PictureDirectorRoute = (typeof PICTURE_ROUTES)[number];
@@ -118,7 +123,7 @@ For commons, pexels and library-or-generate, give one picture, or two or three w
 
 Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
-- mustShow: one to three things pupils must be able to see, each one visible thing in two to four words, most important first. For commons the first is the thing itself.
+- mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record.
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
 - imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 

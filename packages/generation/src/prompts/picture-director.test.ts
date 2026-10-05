@@ -90,6 +90,16 @@ describe("picture director prompt", () => {
   });
 });
 
+describe("who, where and when", () => {
+  test("mustShow is what a camera records; the judge reads identity from the source's record", async () => {
+    const { pickOrRequeryPrompt } = await import("./pick-or-requery-photo");
+    expect(pictureDirectorPrompt(input).system).toContain("one to three things a camera records");
+    expect(pickOrRequeryPrompt.system).toContain(
+      "its source's own record (title, description, date)",
+    );
+  });
+});
+
 describe("director fixtures", () => {
   test("24 slots: the 9 smoke slots plus 15 that cover every route", () => {
     expect(DIRECTOR_FIXTURES).toHaveLength(24);

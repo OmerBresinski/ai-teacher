@@ -98,7 +98,7 @@ describe("Commons licence filter", () => {
       licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
       sourceUrl: "https://commons.wikimedia.org/wiki/File:Hadrian's_Wall_1.jpg",
     });
-    expect(photo?.alt).toBe("A stretch of the wall near Housesteads");
+    expect(photo?.alt).toBe("Hadrian's Wall 1: A stretch of the wall near Housesteads");
     // Only Wikimedia's standard thumbnail widths are served (200 and 640 answer 400).
     expect(photo?.src.tiny).toContain("/250px-Hadrian's_Wall_1.jpg");
     expect(photo?.src.medium).toContain("/500px-");
@@ -174,5 +174,12 @@ describe("Commons coordinates (round J: a caption's place claim is checked again
     ).toBe("taken at 52.5212, -3.4166 (latitude, longitude)");
     expect(coordinatesOf({ ImageDescription: { value: "x" } })).toBe("");
     expect(coordinatesOf(undefined)).toBe("");
+  });
+});
+
+describe("Commons caption", () => {
+  test("a Bundesarchiv boilerplate description is skipped; the title leads the alt", () => {
+    const [p] = commonsPhotosOf({ query: { pages: [page(1, "CC BY-SA 4.0")] } });
+    expect(p?.alt.startsWith("Hadrian's Wall 1")).toBe(true);
   });
 });

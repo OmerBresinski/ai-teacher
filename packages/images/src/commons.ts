@@ -216,12 +216,16 @@ function toPhoto(
   // title carries the caption; a boilerplate description is skipped.
   const rawDescription = metaText(info.extmetadata, "ImageDescription");
   const description = /^For documentary purposes\b/i.test(rawDescription) ? "" : rawDescription;
-  const alt =
-    description.slice(0, 200) || page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, "");
+  // The file title leads: it is the source's own name for the picture, usually English, where the
+  // description may be in any language (the 1923 Weimar photo's is Dutch, and the caption-only
+  // shortlist passed it over in round 3).
+  const title = page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, "");
+  const alt = (description ? `${title}: ${description}` : title).slice(0, 200);
   const about = [
     page.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, ""),
     description.slice(0, 400),
     metaText(info.extmetadata, "ObjectName"),
+    metaText(info.extmetadata, "DateTimeOriginal"),
     coordinatesOf(info.extmetadata),
     ...(page.categories ?? []).map((c) => c.title.replace(/^Category:/i, "")),
   ]
@@ -376,7 +380,7 @@ export function createCommonsClient(
         p.set("iiurlwidth", String(LARGE_WIDTH));
         p.set(
           "iiextmetadatafilter",
-          "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|GPSLatitude|GPSLongitude",
+          "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
         );
         const res = await fetchFn(url.toString(), {
           headers: { "User-Agent": agent, "Api-User-Agent": agent },
