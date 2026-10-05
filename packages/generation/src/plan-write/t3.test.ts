@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { getTheme, materialiseSlide } from "@tj/slides";
 import { fitWritten, renderWritten, type Written } from "./fit";
 import {
+  adapt,
   placeT3Diagram,
   simpleArm,
   TEACHER3_LESSON_VERSION,
@@ -179,5 +180,40 @@ describe("T3 is the plan-write writer by default (lab/t3)", () => {
       facts: { objectives: [{ id: "o1", text: "Explain diffusion" }] },
     } as unknown as Parameters<typeof resumeFromPlanWrite>[0];
     expect(resumeFromPlanWrite(lesson)).toBe("write");
+  });
+});
+
+describe("adapt: no question dropped (lab/t3 fit-fix)", () => {
+  test("an open response written with three questions keeps all three, with their answers", () => {
+    const questions = [
+      { question: "What does a puppy grow into?", answer: "An adult dog." },
+      { question: "Name one thing a puppy and an adult dog both have.", answer: "Four legs." },
+      { question: "How does a mother cat care for her kittens?", answer: "She gives them milk." },
+    ];
+    const a = adapt({
+      form: "open-response",
+      heading: "Your turn",
+      body: ["Work on your own."],
+      items: [],
+      questions,
+      picture: null,
+      notes: "",
+    } as Parameters<typeof adapt>[0]);
+    expect(a.form).toBe("check-set");
+    expect(a.out.questions).toEqual(questions);
+  });
+
+  test("an open response with one question stays an open response", () => {
+    const a = adapt({
+      form: "open-response",
+      heading: "Your turn",
+      body: [],
+      items: [],
+      questions: [{ question: "Explain why.", answer: "Because." }],
+      picture: null,
+      notes: "",
+    } as Parameters<typeof adapt>[0]);
+    expect(a.form).toBe("open-response");
+    expect(a.out.stem).toBe("Explain why.");
   });
 });

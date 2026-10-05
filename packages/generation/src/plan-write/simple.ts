@@ -1007,6 +1007,10 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
     case "sort":
       return { form: "sort", layout: "default", out: { stem: s.heading, steps: s.items, notes } };
     case "open-response":
+      // lab/t3 fit-fix: an open response written with several questions is set as a check of them
+      // all (the form holds one stem); no question is dropped.
+      if (s.questions.length > 1)
+        return { form: "check-set", layout: "default", out: { questions: s.questions, notes } };
       return {
         form: "open-response",
         layout: "default",
