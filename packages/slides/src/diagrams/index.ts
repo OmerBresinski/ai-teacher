@@ -44,6 +44,7 @@ export const DRAW_INSET = 4;
 
 /** The drawn diagram's name in the layers list; present, export and print show it. */
 export const DIAGRAM_DRAWN_NAME = "Diagram";
+export { titleAddsInformation, withoutEchoTitle } from "./echo-title";
 /** A theme font stack as the family an SVG names (the `var(--font-*)` part resolved). */
 export { family as svgFontFamily } from "./svg";
 

@@ -50,6 +50,7 @@ import {
   tableDrawnHeight,
   tableDrawsWhole,
   withLongLabels,
+  withoutEchoTitle,
   zoneShape,
 } from "@tj/slides/diagrams";
 import { z } from "zod";
@@ -1103,6 +1104,17 @@ export function t3Fit(
     moved: [],
     fits: judged(form, layout, out),
   };
+}
+
+/**
+ * lab/cand: the spec a T3 slide draws. Its own title is dropped when the slide's heading, lines and
+ * the drawing's labels already say everything in it (`withoutEchoTitle`).
+ */
+export function t3DiagramSpec(
+  spec: unknown,
+  s: { heading: string; body: string[]; items: string[] },
+): unknown {
+  return withoutEchoTitle(spec, [s.heading, ...s.body, ...s.items]);
 }
 
 /**
@@ -2164,13 +2176,10 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     let photoAsk: { subject: string; named: string | null } | undefined;
     let longLabels = false;
     if (p && p.kind === "diagram") {
+      // lab/cand: a diagram title that only repeats the slide's heading and words is not drawn.
+      const spec = t3DiagramSpec(p.spec, s);
       // lab/t3: long labels are wrapped or set a step smaller before the drawing is given up.
-      const d = placeT3Diagram(
-        t3DiagramBase(slide, p.spec, theme, !!s.full),
-        p.spec,
-        theme,
-        deps.ids,
-      );
+      const d = placeT3Diagram(t3DiagramBase(slide, spec, theme, !!s.full), spec, theme, deps.ids);
       if (d.slide) {
         slide = d.slide;
         drawn = "diagram";
@@ -2182,7 +2191,7 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         // (drawn full width) rather than asking for a photo of a table's title.
         if (o.kind === "table") {
           // lab/t3 fit-fix: a table never vanishes: full width under the words, else logged.
-          const below = t3TableBelow(plain, p.spec, theme, deps.ids, meta());
+          const below = t3TableBelow(plain, spec, theme, deps.ids, meta());
           slide = below?.slide ?? drawPlain(plain);
           if (below) {
             drawn = "diagram";
