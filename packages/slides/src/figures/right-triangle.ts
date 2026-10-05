@@ -10,7 +10,7 @@
  * the registry in `./index` would read `RIGHT_TRIANGLE` before it exists.
  */
 
-import type { PathElement, Theme } from "@tj/domain/documents";
+import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
 import { figureLook, STROKE as LADDER } from "../diagrams/style";
 import { mix } from "../diagrams/svg";
@@ -19,7 +19,7 @@ import { uid } from "../factories";
 import { boxH } from "../layouts";
 import type { FigureDrawing, FigureTemplate, FigureUnknown } from "./index";
 import { type FittedLabel, fitLabel, labelText, notToScaleCaption } from "./labels";
-import { rightAngleMark } from "./marks";
+import { rightAngleMark, segment } from "./marks";
 
 /* ------------------------------------------------------------------ */
 /* Values                                                              */
@@ -38,6 +38,14 @@ const rightTriangleShape = z.object({
   base: sideSchema,
   height: sideSchema,
   hypotenuse: sideSchema,
+  /** Dimension arrows with end ticks beside the sides whose lengths are given. */
+  dimensions: z.boolean().optional(),
+  /**
+   * A flat illustration drawn from the triangle's own geometry, so the lengths stay true: a ladder
+   * against a wall (the hypotenuse is the ladder), or a route across a field (along the base, up
+   * the height; the hypotenuse is the direct path).
+   */
+  scene: z.enum(["ladder", "route"]).optional(),
 });
 
 export type RightTriangleSide = z.infer<typeof sideSchema>;
@@ -150,7 +158,9 @@ export const RIGHT_TRIANGLE_RATIO = { min: 0.4, max: 2.5 } as const;
 const SCHEMATIC_RATIO = 4 / 3;
 const STROKE = LADDER.line;
 /** Between a side and the nearest edge of its label's box. */
-const GAP = 12;
+const BASE_GAP = 12;
+/** Labels stand further off when a dimension line or a scene sits between them and the side. */
+const WIDE_GAP = 34;
 /** Between the drawing and its box, so the round joins of the stroke stay inside. */
 const INSET = 4;
 /** Above the "Not drawn to scale" caption. */
@@ -169,7 +179,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
  * the three label boxes placed outside their sides: base below, height to the left, hypotenuse
  * along its outward normal, each `GAP` clear of its side.
  */
-function placement(w: number, h: number, size: Record<SideName, FittedLabel>) {
+function placement(w: number, h: number, size: Record<SideName, FittedLabel>, GAP = BASE_GAP) {
   const base: Box = { x: w / 2 - size.base.w / 2, y: GAP, w: size.base.w, h: size.base.h };
   const height: Box = {
     x: -GAP - size.height.w,
@@ -214,20 +224,24 @@ function drawRightTriangle(
   const notToScale = !legs?.exact || drawn !== ratio;
 
   const labelH = boxH(t, "small");
+  const gap = v.dimensions || v.scene ? WIDE_GAP : BASE_GAP;
   const labels = {
     base: fitLabel(t, v.base.label, { maxW: LABEL_MAX_W, bold: true }),
     height: fitLabel(t, v.height.label, { maxW: LABEL_MAX_W, bold: true }),
     hypotenuse: fitLabel(t, v.hypotenuse.label, { maxW: LABEL_MAX_W, bold: true }),
   };
+  // A dimension line or scene reaches past the corners (the wall's top, the hypotenuse's ticks):
+  // room is kept for it above and to the right.
+  const pad = v.dimensions || v.scene ? 24 : 0;
   const room = {
-    w: size.w - 2 * INSET,
-    h: size.h - 2 * INSET - (notToScale ? labelH + CAPTION_GAP : 0),
+    w: size.w - 2 * INSET - pad,
+    h: size.h - 2 * INSET - (notToScale ? labelH + CAPTION_GAP : 0) - pad,
   };
 
   // The largest base whose drawing, labels included, fits the room. Every edge of the extent
   // moves monotonically with the base, so halving the interval finds it.
   const fits = (w: number) => {
-    const { extent } = placement(w, w * drawn, labels);
+    const { extent } = placement(w, w * drawn, labels, gap);
     return extent.w <= room.w && extent.h <= room.h;
   };
   let lo = 0;
@@ -239,12 +253,12 @@ function drawRightTriangle(
   }
   const W = Math.max(1, Math.floor(lo));
   const H = Math.max(1, Math.round(W * drawn));
-  const placed = placement(W, H, labels);
+  const placed = placement(W, H, labels, gap);
   const { extent } = placed;
   // The right angle's vertex, placed so the whole drawing is centred in the room.
   const A = {
     x: Math.round(INSET + (room.w - extent.w) / 2 - extent.x),
-    y: Math.round(INSET + (room.h - extent.h) / 2 - extent.y),
+    y: Math.round(INSET + pad + (room.h - extent.h) / 2 - extent.y),
   };
   const at = (b: Box): Box => ({
     x: Math.round(A.x + b.x),
@@ -288,8 +302,24 @@ function drawRightTriangle(
       n === unknownSide ? look.unknown : t.colors.ink,
       { bold: true, italic: n === unknownSide },
     );
+  const extras = [...sceneFor(v.scene, A, W, H, t), ...dimensionsFor(v, A, W, H, t)];
+  if (v.scene) {
+    triangle.fill = "none";
+    if (v.scene === "route") {
+      triangle.points = [
+        { x: 1, y: 1 },
+        { x: 0, y: 0 },
+      ];
+      triangle.closed = false;
+      triangle.dash = "dashed";
+      triangle.strokeWidth = LADDER.line;
+      triangle.name = "Direct path";
+    }
+  }
   const children = [
+    ...extras.filter((e) => e.name !== "Ladder"),
     triangle,
+    ...extras.filter((e) => e.name === "Ladder"),
     mark,
     side("base", "center"),
     side("height", "right"),
@@ -306,3 +336,152 @@ export const RIGHT_TRIANGLE: FigureTemplate<RightTriangleValues> = {
   draw: drawRightTriangle,
   unknown: rightTriangleUnknown,
 };
+
+/* ------------------------------------------------------------------ */
+/* Dimension arrows and scenes (DIAGRAM-AUDIT item 7)                  */
+/* ------------------------------------------------------------------ */
+
+type Pt = { x: number; y: number };
+/** How far a dimension line stands off its side, and its end ticks' half length. */
+const DIM_OFFSET = 14;
+const DIM_TICK = 7;
+
+/** A dimension line beside a→b, `DIM_OFFSET` along the outward unit normal `n`, with end ticks. */
+function dimensionLine(a: Pt, b: Pt, n: Pt, t: Theme): SlideElement[] {
+  const o = (p: Pt, k: number) => ({ x: p.x + n.x * k, y: p.y + n.y * k });
+  const thin = { stroke: t.colors.ink, strokeWidth: LADDER.hair };
+  return [
+    segment(o(a, DIM_OFFSET), o(b, DIM_OFFSET), {
+      ...thin,
+      arrowStart: true,
+      arrowEnd: true,
+      name: "Dimension",
+    }),
+    segment(o(a, DIM_OFFSET - DIM_TICK), o(a, DIM_OFFSET + DIM_TICK), {
+      ...thin,
+      name: "Dimension tick",
+    }),
+    segment(o(b, DIM_OFFSET - DIM_TICK), o(b, DIM_OFFSET + DIM_TICK), {
+      ...thin,
+      name: "Dimension tick",
+    }),
+  ];
+}
+
+/** Dimension lines beside every side whose length is given (an unknown keeps a bare label). */
+function dimensionsFor(
+  v: RightTriangleValues,
+  A: Pt,
+  W: number,
+  H: number,
+  t: Theme,
+): SlideElement[] {
+  if (!v.dimensions) return [];
+  const B = { x: A.x + W, y: A.y };
+  const C = { x: A.x, y: A.y - H };
+  const len = Math.hypot(W, H) || 1;
+  const out: SlideElement[] = [];
+  if (given(v.base) !== undefined) out.push(...dimensionLine(A, B, { x: 0, y: 1 }, t));
+  if (given(v.height) !== undefined) out.push(...dimensionLine(A, C, { x: -1, y: 0 }, t));
+  if (given(v.hypotenuse) !== undefined)
+    out.push(...dimensionLine(B, C, { x: H / len, y: -W / len }, t));
+  return out;
+}
+
+/** A filled, outlined shape at a box. */
+function block(
+  shape: "rect" | "ellipse",
+  box: { x: number; y: number; w: number; h: number },
+  fill: string,
+  t: Theme,
+  name: string,
+): SlideElement {
+  return {
+    id: uid(),
+    type: "shape",
+    shape,
+    ...box,
+    fill,
+    stroke: t.colors.ink,
+    strokeWidth: LADDER.hair,
+    name,
+  } as SlideElement;
+}
+
+/** A scene's flat illustration, drawn from the triangle's corners (A the right angle). */
+function sceneFor(
+  scene: RightTriangleValues["scene"],
+  A: Pt,
+  W: number,
+  H: number,
+  t: Theme,
+): SlideElement[] {
+  if (!scene) return [];
+  const B = { x: A.x + W, y: A.y };
+  const C = { x: A.x, y: A.y - H };
+  const bg = t.colors.background;
+  const out: SlideElement[] = [];
+  if (scene === "ladder") {
+    // The wall up the height (bricks), the ground under the base, the ladder on the hypotenuse.
+    const wallW = 16;
+    const top = C.y - 8;
+    const wall = mix("#b5533c", bg, t.dark ? 0.5 : 0.35);
+    out.push(block("rect", { x: A.x - wallW, y: top, w: wallW, h: A.y - top }, wall, t, "Wall"));
+    for (let y = A.y - 10; y > top; y -= 10)
+      out.push(
+        segment(
+          { x: A.x - wallW, y },
+          { x: A.x, y },
+          {
+            stroke: t.colors.ink,
+            strokeWidth: LADDER.hair,
+            name: "Brick course",
+          },
+        ),
+      );
+    const ground = mix("#8a6a3b", bg, t.dark ? 0.55 : 0.4);
+    out.push(
+      block("rect", { x: A.x - wallW, y: A.y, w: W + wallW + 12, h: 8 }, ground, t, "Ground"),
+    );
+    const len = Math.hypot(W, H) || 1;
+    const n = { x: (H / len) * 5, y: (W / len) * 5 };
+    const rail = (k: number) =>
+      segment(
+        { x: B.x + n.x * k, y: B.y + n.y * k },
+        { x: C.x + n.x * k, y: C.y + n.y * k },
+        { stroke: t.colors.ink, strokeWidth: LADDER.line, name: "Ladder" },
+      );
+    out.push(rail(1), rail(-1));
+    const rungs = Math.max(3, Math.round(len / 22));
+    for (let i = 1; i < rungs; i++) {
+      const p = { x: B.x + ((C.x - B.x) * i) / rungs, y: B.y + ((C.y - B.y) * i) / rungs };
+      out.push(
+        segment(
+          { x: p.x + n.x, y: p.y + n.y },
+          { x: p.x - n.x, y: p.y - n.y },
+          {
+            stroke: t.colors.ink,
+            strokeWidth: LADDER.hair,
+            name: "Ladder",
+          },
+        ),
+      );
+    }
+  } else {
+    // A field, the route along the base then up the height in the accent, a walker at the start.
+    const field = mix("#5f8f4e", bg, t.dark ? 0.3 : 0.18);
+    out.push(block("rect", { x: A.x - 10, y: C.y - 10, w: W + 20, h: H + 20 }, field, t, "Field"));
+    const route = {
+      stroke: t.colors.accent,
+      strokeWidth: LADDER.data,
+      arrowEnd: true,
+      name: "Route",
+    };
+    out.push(segment(B, A, route), segment(A, C, route));
+    out.push(
+      block("ellipse", { x: B.x - 8, y: B.y - 8, w: 16, h: 16 }, t.colors.accent2, t, "Start"),
+    );
+    out.push(block("ellipse", { x: C.x - 7, y: C.y - 7, w: 14, h: 14 }, t.colors.ink, t, "Finish"));
+  }
+  return out;
+}

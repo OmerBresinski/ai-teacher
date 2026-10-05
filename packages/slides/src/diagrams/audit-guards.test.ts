@@ -249,3 +249,51 @@ describe("DIAGRAM-AUDIT leftovers", () => {
     expect(JSON.stringify(d)).toContain('"fontWeight":500');
   });
 });
+
+describe("DIAGRAM-AUDIT figure options", () => {
+  const { drawFigure } = require("../figures/index");
+  const { THEMES } = require("../themes");
+  const tri = {
+    base: { length: 2.5, label: "2.5 m" },
+    height: { label: "h" },
+    hypotenuse: { length: 6.5, label: "6.5 m" },
+  };
+  const rect = { x: 0, y: 0, w: 436, h: 356 };
+  const named = (d: { children: { name?: string }[] }, n: string) =>
+    d.children.filter((k) => k.name === n);
+  const inside = (d: { children: { x: number; y: number; w: number; h: number }[] }) =>
+    d.children.every((k) => k.x >= -1 && k.y >= -1 && k.x + k.w <= 437 && k.y + k.h <= 357);
+  test("dimension arrows with end ticks on the given sides only", () => {
+    const d = drawFigure("right-triangle", { ...tri, dimensions: true }, chalk, rect);
+    expect(named(d, "Dimension")).toHaveLength(2);
+    expect(named(d, "Dimension tick")).toHaveLength(4);
+    for (const t of THEMES)
+      expect(inside(drawFigure("right-triangle", { ...tri, dimensions: true }, t, rect))).toBe(
+        true,
+      );
+  });
+  test("the ladder scene draws a wall, ground and a railed ladder on the hypotenuse", () => {
+    const d = drawFigure("right-triangle", { ...tri, scene: "ladder" }, chalk, rect);
+    expect(named(d, "Wall")).toHaveLength(1);
+    expect(named(d, "Ground")).toHaveLength(1);
+    expect(named(d, "Ladder").length).toBeGreaterThan(3);
+    for (const t of THEMES)
+      expect(inside(drawFigure("right-triangle", { ...tri, scene: "ladder" }, t, rect))).toBe(true);
+  });
+  test("the route scene draws two legs, a start, a finish and a dashed direct path", () => {
+    const d = drawFigure(
+      "right-triangle",
+      {
+        base: { length: 3, label: "3 km" },
+        height: { length: 4, label: "4 km" },
+        hypotenuse: { label: "d" },
+        scene: "route",
+      },
+      chalk,
+      rect,
+    );
+    expect(named(d, "Route")).toHaveLength(2);
+    expect(named(d, "Direct path")[0]).toMatchObject({ dash: "dashed" });
+    expect(named(d, "Start")).toHaveLength(1);
+  });
+});

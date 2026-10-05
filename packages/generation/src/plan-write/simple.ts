@@ -255,7 +255,8 @@ const DRAWN: Record<string, string> = {
   table: "a small table of short entries",
 };
 const FIGURE_DRAWS: Record<string, string> = {
-  "right-triangle": "a right-angled triangle with its sides and angles",
+  "right-triangle":
+    "a right-angled triangle with its sides and angles, optionally as a ladder against a wall or a route across a field",
   triangle: "a triangle with its sides and angles",
   "energy-profile": "a reaction's energy profile",
 };
