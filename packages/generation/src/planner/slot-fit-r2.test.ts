@@ -79,7 +79,7 @@ describe("r2 overflow: nothing lands past the save gate unflagged", () => {
     // Worked steps are row cards now (layout audit); its long step repeated keeps the precondition
     // this test needs: the slot still needs a re-fill.
     const long = r2.steps[1] as string;
-    const we = { ...r2, steps: [r2.steps[0] as string, long, long] };
+    const we = { ...r2, steps: [r2.steps[0] as string, long, long, long] };
     // The re-fill comes back as a sequence that does not fit whole: its own rungs are tried
     // (logged "re-filled") before any step down.
     const fit = await fitSlot(we, {

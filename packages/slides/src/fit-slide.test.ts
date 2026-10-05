@@ -49,7 +49,7 @@ function needed(el: TextElement): number {
 }
 
 describe("fitSlide on the showcase lesson (TEACH-28)", () => {
-  test("a four-line title grows its box, pushes the class line below it and stays centred", () => {
+  test("a four-line title grows its box and stays centred inside the safe area", () => {
     const slide = make({
       kind: "title",
       title:
@@ -58,22 +58,12 @@ describe("fitSlide on the showcase lesson (TEACH-28)", () => {
       factRefs: [],
     });
     const [title] = byPreset(slide, "title");
-    const [subtitle] = byPreset(slide, "subtitle");
-    if (!title || !subtitle) throw new Error("title stack");
+    if (!title) throw new Error("title");
     expect(title.h).toBeGreaterThanOrEqual(needed(title) - 0.5);
-    expect(subtitle.y).toBeGreaterThanOrEqual(bottom(title));
-    expect(bottom(subtitle)).toBeLessThanOrEqual(SAFE_BOTTOM);
-    const accent = slide.elements.find((el) => el.type === "shape");
-    expect(accent?.y ?? -1).toBeGreaterThanOrEqual(SAFE.y);
-  });
-
-  test("a short title keeps the recipe's stack: nothing overlaps, the class line follows the title", () => {
-    const slide = make({ kind: "title", title: "Fractions", subtitle: "Year 4", factRefs: [] });
-    const [title] = byPreset(slide, "title");
-    const [subtitle] = byPreset(slide, "subtitle");
-    if (!title || !subtitle) throw new Error("title stack");
-    expect(overlapY(title, subtitle)).toBe(false);
-    expect(subtitle.y).toBeGreaterThan(title.y);
+    expect(title.y).toBeGreaterThanOrEqual(SAFE.y);
+    expect(bottom(title)).toBeLessThanOrEqual(SAFE_BOTTOM);
+    // The cover is the title alone (ruling 162): no class line under it.
+    expect(byPreset(slide, "subtitle")).toHaveLength(0);
   });
 
   test("a two-line heading keeps its size and pushes the body below it, never through it", () => {

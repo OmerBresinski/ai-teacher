@@ -244,7 +244,7 @@ describe("the demo lesson through chooseVariant", () => {
 function specLines(spec: (typeof DEMO_LESSON_SPECS)[number]): string[] {
   switch (spec.kind) {
     case "title":
-      return [spec.title, spec.subtitle];
+      return [spec.title]; // no class line on the cover (ruling 162)
     case "objectives":
     case "starter":
     case "exit-ticket":

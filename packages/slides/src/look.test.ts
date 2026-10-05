@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
-import { SLIDE_H } from "@tj/domain/documents";
 import { slideBackground } from "./background";
 import { SAFE } from "./grid";
 import { layoutSlide } from "./layouts";
@@ -48,15 +47,15 @@ describe("the lesson look", () => {
     expect(accentTint(chalk)).not.toBe(chalk.colors.accent);
   });
 
-  test("a theme without title art keeps the cover on the accent, its text in the accent's ink", () => {
+  test("a theme without title art keeps the cover on its own ground (ruling 162)", () => {
     const bare = { ...getTheme("studio"), backgrounds: undefined };
     const laid = layoutSlide("title", "studio");
     const slide = applyLook({ id: "t", kind: "title", elements: laid.elements }, bare);
-    expect(slide.background?.color).toBe(bare.colors.accent);
+    expect(slide.background?.color).toBeUndefined();
     const title = slide.elements.find(
       (e): e is TextElement => e.type === "text" && e.style.preset === "title",
     );
-    expect(title?.style.color).toBe(bare.colors.onAccent);
+    expect(title?.style.color).toBeUndefined();
   });
 
   for (const theme of THEMES) {
@@ -82,7 +81,7 @@ describe("the lesson look", () => {
       expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
     });
 
-    test(`${theme.id}: a teaching slide takes no tag, a display heading at the top, the two columns and the bar`, () => {
+    test(`${theme.id}: a teaching slide takes no tag, a display heading at the top and the two columns`, () => {
       const slide = materialiseSlide(
         {
           kind: "content",
@@ -109,8 +108,8 @@ describe("the lesson look", () => {
       expect(rest && plain(rest)).toBe("Waves force air into cracks and squeeze it.");
       expect((rest?.x ?? 0) + (rest?.w ?? 0)).toBeLessThanOrEqual(panel?.x ?? 0);
       expect(named(slide, KEY_IDEA_NAME)).toHaveLength(0);
-      const [bar] = named(slide, ACCENT_BAR_NAME);
-      expect(bar?.y).toBe(SLIDE_H - (bar?.h ?? 0));
+      // No foot bar (Greg, 5 Oct 2026, ruling 159): a slide is its heading and its content.
+      expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
       for (const el of slide.elements) {
         if (el.type === "text") expect(el.y + el.h).toBeLessThanOrEqual(SAFE_BOTTOM);
       }
@@ -143,7 +142,7 @@ describe("the lesson look", () => {
     expect(named(slide, KEY_IDEA_NAME)).toHaveLength(0);
   });
 
-  test("a question slide keeps its composition and takes the bar alone", () => {
+  test("a question slide keeps its composition and takes no chrome", () => {
     const slide = materialiseSlide(
       {
         kind: "true-false",
@@ -157,10 +156,10 @@ describe("the lesson look", () => {
       counter(),
     );
     expect(named(slide, KIND_TAG_NAME)).toHaveLength(0);
-    expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(1);
+    expect(named(slide, ACCENT_BAR_NAME)).toHaveLength(0);
   });
 
-  test("is idempotent: a styled slide is returned as it is", () => {
+  test("is idempotent: a second pass changes nothing", () => {
     const theme = getTheme("chalk");
     const slide = materialiseSlide(
       { kind: "starter", heading: "Do now", items: ["What is sediment?"], factRefs: [] },
@@ -168,7 +167,7 @@ describe("the lesson look", () => {
       META,
       counter(),
     );
-    expect(applyLook(slide, theme)).toBe(slide);
+    expect(applyLook(slide, theme)).toEqual(slide);
   });
 });
 

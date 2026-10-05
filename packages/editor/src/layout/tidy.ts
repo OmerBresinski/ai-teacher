@@ -286,8 +286,8 @@ const isQuestionSlide = (slide: Slide): boolean =>
 export const CONTINUED_LABEL = "Continued label";
 
 /**
- * Mark a continuation slide as a second page (TEACH-248, variant B): the heading keeps its words
- * and its size, and a small "CONTINUED" label in the kind tag's style sits above it. Only the
+ * Mark a continuation slide as a second page (TEACH-248; label dropped by ruling 162): the heading
+ * keeps its words and its size, with no "CONTINUED" label. Only the
  * heading's first line is kept: lines a teacher typed into the heading box stay on the slide they
  * typed them on, and are not repeated over every continuation.
  *
@@ -303,63 +303,8 @@ function markContinued(slide: Slide, theme: Theme): void {
   const text = docToPlainText(first ?? heading.doc).trim();
   if (!text) return;
   heading.doc = docFromText(text);
-  // A continuation of a continuation carries the label (and the lowered heading) in its frame.
-  if (slide.elements.some((e) => e.name === CONTINUED_LABEL)) return;
-  const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME && e.type === "text");
-  if (tag?.type === "text") {
-    slide.elements.push({
-      ...structuredClone(tag),
-      id: uid(),
-      name: CONTINUED_LABEL,
-      x: tag.x + tag.w + 8,
-      w: 150,
-      doc: docFromText("CONTINUED"),
-    });
-    return;
-  }
-  const top = Math.min(heading.y, SAFE.y);
-  const labelH = Math.ceil(theme.sizes.caption * theme.lineHeights.caption);
-  const drop = Math.max(0, snapY(top + labelH + SPACE[2]) - heading.y);
-  if (drop > 0) {
-    const oldFoot = heading.y + heading.h;
-    heading.y += drop;
-    const foot = heading.y + heading.h;
-    const below = slide.elements.filter(
-      (el) => el !== heading && !isBackdrop(el) && el.y >= oldFoot - EPS,
-    );
-    // The body moves only if the heading's new foot reaches into the gap it keeps on an ordinary
-    // slide, and a card keeps its bottom edge. The rule under the heading then takes the middle of
-    // the band between them.
-    const body = below.filter((el) => !isHairline(el));
-    const firstBody = Math.min(...body.map((el) => el.y), Number.POSITIVE_INFINITY);
-    const shift = Number.isFinite(firstBody)
-      ? Math.max(0, snapY(foot + HEADING_GAP) - firstBody)
-      : 0;
-    for (const el of body) {
-      el.y += shift;
-      if (isLayerBelow(el)) el.h = Math.max(1, el.h - shift);
-    }
-    const ruleY = Number.isFinite(firstBody)
-      ? snapY((foot + firstBody + shift) / 2)
-      : snapY(foot + SPACE[1]);
-    for (const el of below) if (isHairline(el) && el.y < ruleY) el.y = ruleY;
-  }
-  slide.elements.push({
-    id: uid(),
-    type: "text",
-    name: CONTINUED_LABEL,
-    x: heading.x,
-    y: top,
-    w: 150,
-    h: labelH,
-    doc: docFromText("CONTINUED"),
-    style: {
-      preset: "caption",
-      fontWeight: 700,
-      color: theme.colors.accent,
-      autoHeight: false,
-    },
-  });
+  // No "CONTINUED" label (ruling 162): the heading's words say which slide this continues.
+  void theme;
 }
 
 /**

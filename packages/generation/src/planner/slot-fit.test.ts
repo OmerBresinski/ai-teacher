@@ -70,9 +70,10 @@ describe("fit ladder", () => {
 
   test("the re-fill rung asks for the next form down once, and takes an answer that fits", async () => {
     // r6 smoke, y9-weimar slide 7: a three-sentence question over three sentences of working.
-    // Steps doubled: the inline step rows (UX ruling 151) now hold the r6 working at full size.
+    // Steps tripled: the inline step rows (UX ruling 151) and the freed tag lane (ruling 159) now
+    // hold the r6 working doubled at full size.
     const we0 = weimar.buyingPowerWorkedExample;
-    const slot = { ...we0, steps: we0.steps.map((s) => `${s} ${s}`) } as unknown as DesignSlot;
+    const slot = { ...we0, steps: we0.steps.map((s) => `${s} ${s} ${s}`) } as unknown as DesignSlot;
     const asked: string[] = [];
     const shown: { slot: DesignSlot; reason: string }[] = [];
     const fit = await fitSlot(slot, {
@@ -102,7 +103,9 @@ describe("fit ladder", () => {
     const we = weimar.buyingPowerWorkedExample;
     const slot = {
       ...we,
-      steps: we.steps.map((s) => `${s} ${s} This is what the class should notice first.`),
+      steps: we.steps.map(
+        (s) => `${s} ${s} ${s} This is what the class should notice first, and why it matters.`,
+      ),
     } as unknown as DesignSlot;
     const fit = await fitSlot(slot, { seed: "x", themeId: "chalk" });
     const last = fit.tried.at(-1);

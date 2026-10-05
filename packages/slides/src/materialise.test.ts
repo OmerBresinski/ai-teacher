@@ -452,11 +452,10 @@ describe("materialiseSlide", () => {
       counter(),
     );
     expect(slide.notes).toBe("Welcome the class.");
-    const [rule, caption, title, subtitle] = slide.elements;
-    expect(rule?.type).toBe("shape");
-    expect(plain(caption)).toBe("LESSON");
+    // The cover is the title alone (ruling 162): no rule, eyebrow or class line.
+    const [title, ...rest] = slide.elements;
     expect(plain(title)).toBe("The water cycle");
-    expect(plain(subtitle)).toBe("Year 4 · Science");
+    expect(rest).toEqual([]);
   });
 
   test("multiple-choice: the correct option is the third card, texts in order", () => {
@@ -1025,11 +1024,10 @@ describe("materialiseSlide with a variant", () => {
     expect(plain(looked)).not.toContain("KEY IDEA");
   });
 
-  test("fills the photo-band class line by name, in small", () => {
+  test("the photo-band cover draws no class line (ruling 162)", () => {
     const slide = materialiseSlide(minimalSpec("title"), "chalk", meta, counter(), "photo-band");
-    const sub = slide.elements.find((el) => el.name === "Subtitle");
-    expect(sub?.type === "text" && sub.style.preset).toBe("small");
-    expect(sub && "doc" in sub && sub.doc && richDocToPlainText(sub.doc)).toContain("Year 4");
+    expect(slide.elements.find((el) => el.name === "Subtitle")).toBeUndefined();
+    expect(JSON.stringify(slide.elements)).not.toContain("Year 4");
     expect(slide.elements[0]?.type).toBe("image");
   });
 });
@@ -1038,7 +1036,8 @@ describe("materialiseSlide with a variant", () => {
 function specText(spec: SlideSpec): string[] {
   switch (spec.kind) {
     case "title":
-      return [spec.title, spec.subtitle];
+      // The class line is not drawn on the cover (ruling 162).
+      return [spec.title];
     case "objectives":
       return spec.items.map((item) => item.toLowerCase());
     case "starter":

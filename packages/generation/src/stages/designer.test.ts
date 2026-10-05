@@ -306,8 +306,11 @@ describe("the lesson designer (AI_LESSON_PLANNER=designer)", () => {
     const we = weimarFixture.buyingPowerWorkedExample;
     const tooBig = {
       ...we,
-      // Steps doubled: the inline step rows (UX ruling 151) now hold the r6 working at full size.
-      steps: we.steps.map((s) => `${s} ${s} This is what the class should notice first.`),
+      // Steps tripled: the inline step rows (UX ruling 151) and the freed tag lane (ruling 159)
+      // now hold the r6 working doubled at full size.
+      steps: we.steps.map(
+        (s) => `${s} ${s} ${s} This is what the class should notice first, and why it matters.`,
+      ),
     };
     const refills: string[] = [];
     const ai = labAi({

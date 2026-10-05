@@ -7,11 +7,10 @@ import type {
   Theme,
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
-import { artOf } from "./art";
 import { type DiagramSpecInput, diagramElement } from "./diagrams";
 import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
-import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
+import { AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
 import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
@@ -103,7 +102,6 @@ export const KIND_TAGS: Partial<Record<SlideKind, string>> = {
 
 /** Height of the accent bar at the foot of the slide (14 at 1440 in the examples). */
 export const ACCENT_BAR_H = 9;
-const TAG_PAD_X = SPACE[2];
 const TAG_PAD_Y = 3;
 /** Between the kind tag and the heading under it. */
 const TAG_GAP = SPACE[2];
@@ -156,51 +154,6 @@ function tagHeight(t: Theme): number {
   return Math.ceil(t.sizes.caption * t.lineHeights.caption) + TAG_PAD_Y * 2;
 }
 
-function kindTag(ids: Ids, t: Theme, label: string): TextElement {
-  // Caption is uppercase and tracked: about 0.78em a letter, plus the pill's inset.
-  const w = Math.ceil(label.length * t.sizes.caption * 0.78) + TAG_PAD_X * 2;
-  const solid = t.ornament?.tag === "solid";
-  return {
-    id: ids(),
-    type: "text",
-    x: SAFE.x,
-    y: SAFE.y,
-    w,
-    h: tagHeight(t),
-    name: KIND_TAG_NAME,
-    doc: docFromText(label),
-    style: {
-      preset: "caption",
-      color: solid ? t.colors.onAccent : t.colors.accent,
-      fontWeight: 700,
-      background: solid ? t.colors.accent : accentTint(t),
-      radius: t.ornament?.tagRadius ?? 99,
-      padding: TAG_PAD_Y,
-      align: "center",
-      autoHeight: false,
-    },
-  };
-}
-
-/** The bar runs from the edge of any picture that bleeds to the foot of the slide, never over it. */
-function accentBar(ids: Ids, t: Theme, els: SlideElement[]): SlideElement {
-  const bleeds = els.filter((e) => e.type === "image" && e.y + e.h >= SLIDE_H - ACCENT_BAR_H);
-  const x = Math.max(0, ...bleeds.filter((e) => e.x <= 0).map((e) => e.x + e.w));
-  const right = Math.min(SLIDE_W, ...bleeds.filter((e) => e.x > 0).map((e) => e.x));
-  return {
-    id: ids(),
-    type: "shape",
-    shape: "rect",
-    x,
-    y: SLIDE_H - ACCENT_BAR_H,
-    w: Math.max(0, right - x),
-    h: ACCENT_BAR_H,
-    fill: t.colors.accent,
-    name: ACCENT_BAR_NAME,
-    locked: true,
-  };
-}
-
 /* ---------------------------------------------------------------- slides */
 
 /** WCAG relative luminance of a `#rrggbb` colour. */
@@ -219,52 +172,17 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 /**
- * The cover's quieter ink (eyebrow, subtitle): `ink` softened toward the accent, but never below
- * 4.5:1 on it, so small caption text stays readable on every theme.
+ * The cover (ruling 162, Greg 5 Oct 2026): the title on the theme's own ground under its title
+ * art. No "LESSON" eyebrow, no year line and no accent rule over them; `fitSlide` centres what is
+ * left. An agenda cover keeps its objectives column.
  */
-function readableSoft(ink: string, accent: string): string {
-  for (let amount = 0.8; amount < 1; amount += 0.02) {
-    const soft = mix(ink, accent, amount);
-    if (contrastRatio(soft, accent) >= 4.5) return soft;
-  }
-  return ink;
-}
-
-function cover(slide: Slide, t: Theme): Slide {
-  // A title set beside a photograph keeps its own composition; the cover is the typographic one.
-  if (slide.elements.some((e) => e.type === "image")) return slide;
-  // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
-  // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
-  if (artOf(t)?.title?.length) {
-    const elements = slide.elements.map((el): SlideElement => {
-      if (el.type === "shape")
-        return el.name === "Accent rule" ? { ...el, fill: t.colors.accent } : el;
-      if (el.type !== "text") return el;
-      if (el.style.preset === "caption")
-        return { ...el, style: { ...el.style, color: t.colors.accent, fontWeight: 700 } };
-      if (el.style.preset === "subtitle")
-        return { ...el, style: { ...el.style, color: t.colors.muted } };
-      return el;
-    });
-    return { ...slide, elements };
-  }
-  const ink = t.colors.onAccent;
-  const soft = readableSoft(ink, t.colors.accent);
-  const elements = slide.elements.map((el): SlideElement => {
-    if (el.type === "shape") {
-      if (el.name === "Accent rule") return { ...el, fill: ink };
-      // The `agenda` title's hairline between the title and the objectives.
-      return el.name === AGENDA_DIVIDER ? { ...el, fill: soft } : el;
-    }
-    if (el.type !== "text") return el;
-    const quiet =
-      el.style.preset === "caption" ||
-      el.style.preset === "subtitle" ||
-      el.name === AGENDA_STEM ||
-      el.name === "Subtitle";
-    return { ...el, style: { ...el.style, color: quiet ? soft : ink } };
-  });
-  return { ...slide, background: { ...slide.background, color: t.colors.accent }, elements };
+function cover(slide: Slide, _t: Theme): Slide {
+  const dropped = (el: SlideElement) =>
+    (el.type === "shape" && el.name === "Accent rule") ||
+    (el.type === "text" &&
+      el.name !== AGENDA_STEM &&
+      (el.style.preset === "caption" || el.style.preset === "subtitle" || el.name === "Subtitle"));
+  return { ...slide, elements: slide.elements.filter((el) => !dropped(el)) };
 }
 
 /**
@@ -520,9 +438,12 @@ export function applyLook(
   const hadRule = !!headRule;
   let els = slide.elements.filter((e) => e !== headRule);
   const flow = els.filter((e) => !isBackdrop(e));
-  if (flow.length === 0) return { ...slide, elements: [...els, accentBar(ids, t, els)] };
+  if (flow.length === 0) return { ...slide, elements: els };
   const top = Math.min(...flow.map((e) => e.y));
+  // An activity is composed as it was under its tag, then the whole block moves up the tag's lane:
+  // no kind tag (Greg, 5 Oct 2026: "simple is best"), so every heading opens the safe area.
   const want = label ? snapY(SAFE.y + tagHeight(t) + TAG_GAP) : SAFE.y;
+  const lift = want - SAFE.y;
 
   // The heading: the first heading-preset text at the top of a slide that is not a question.
   const heading = slide.question
@@ -536,8 +457,10 @@ export function applyLook(
   // a statement already open at the top of the safe area, and pushing them down would take room
   // their cards need, so they keep their composition and take the accent bar alone.
   if (!heading || !(hadRule || heading.name === HEADING_NAME)) {
-    return { ...slide, elements: [...els, accentBar(ids, t, els)] };
+    return { ...slide, elements: els };
   }
+  // Already looked: the heading opens the safe area with no hairline, which only this pass leaves.
+  if (!hadRule && heading.name === HEADING_NAME && heading.y === SAFE.y) return slide;
   {
     // The heading drops into the freed lane under the tag. Whatever sat under the rule moves only
     // if the heading's new foot would reach it.
@@ -597,8 +520,8 @@ export function applyLook(
   if (label && slide.kind !== "worked-example" && slide.kind !== "exit-ticket")
     els = els.map((e) => roomyList(e, t));
 
-  return {
-    ...slide,
-    elements: [...els, ...(label ? [kindTag(ids, t, label)] : []), accentBar(ids, t, els)],
-  };
+  // No kind tag and no foot bar (Greg, 5 Oct 2026): a slide is its heading and its content. An
+  // activity's block takes the lane the tag held; anything already above it (a backdrop) stays.
+  if (lift > 0) els = els.map((e) => (isBackdrop(e) || e.y < want ? e : { ...e, y: e.y - lift }));
+  return { ...slide, elements: els };
 }

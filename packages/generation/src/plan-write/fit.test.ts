@@ -184,7 +184,7 @@ describe("answerKeyFaults", () => {
 });
 
 describe("set slide tags", () => {
-  test("a mid-lesson check is tagged CHECK, the starter keeps STARTER", () => {
+  test("no set slide carries a kind tag (ruling 159: no slide-type labels)", () => {
     const out = { notes: "", questions: [{ question: "When did Rome invade?", answer: "AD 43" }] };
     const tagOf = (form: string) => {
       const r = renderWritten(form, "default", out);
@@ -195,9 +195,8 @@ describe("set slide tags", () => {
       const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
       return tag && tag.type === "text" ? JSON.stringify(tag.doc) : "";
     };
-    expect(tagOf("check-set")).toContain("CHECK");
-    expect(tagOf("check-set")).not.toContain("STARTER");
-    expect(tagOf("starter-set")).toContain("STARTER");
+    expect(tagOf("check-set")).toBe("");
+    expect(tagOf("starter-set")).toBe("");
   });
 });
 
@@ -215,7 +214,7 @@ describe("a check-set given the practise role (smoke pw7: practice read 'Quick c
 });
 
 describe("a practise slide drawn as a list (round C1: B1's practice read as a list)", () => {
-  test("is tagged PRACTICE; a list with any other role keeps its own tag", () => {
+  test("carries no kind tag in any role (ruling 159)", () => {
     const out = {
       heading: "Your turn: share in a ratio",
       body: "Draw a bar model for each one.",
@@ -227,8 +226,8 @@ describe("a practise slide drawn as a list (round C1: B1's practice read as a li
       const tag = slide.elements.find((e) => e.name === KIND_TAG_NAME);
       return tag && tag.type === "text" ? JSON.stringify(tag.doc) : "";
     };
-    expect(tagOf("practise")).toContain("PRACTICE");
-    expect(tagOf("teach")).not.toContain("PRACTICE");
+    expect(tagOf("practise")).toBe("");
+    expect(tagOf("teach")).toBe("");
   });
 
   test("is numbered by the slide: '1)' where the dot was, the writer's own number stripped (spike/fmt)", () => {

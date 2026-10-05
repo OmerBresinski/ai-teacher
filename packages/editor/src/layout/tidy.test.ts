@@ -144,11 +144,11 @@ describe("tidySlide", () => {
     expect(next?.kind).toBe(lesson.slides[0]?.kind);
     const heading = next?.elements.find((e) => e.type === "text" && e.style.preset === "heading");
     expect(docToPlainText((heading as TextElement).doc)).toBe("Learning objectives");
-    expect(out.lesson.slides.at(-1)?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
+    expect(out.lesson.slides.at(-1)?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
     expect(tidyMessage(out.outcome)).toContain("continued on");
   });
 
-  test("TEACH-248: a continuation keeps its heading's words and size under a CONTINUED label", () => {
+  test("TEACH-248: a continuation keeps its heading's words and size, with no CONTINUED label (ruling 162)", () => {
     const items = Array.from(
       { length: 40 },
       (_, i) => `Item number ${i + 1} on this very long list of things`,
@@ -161,34 +161,22 @@ describe("tidySlide", () => {
     const out = tidySlide(lesson, sid, ruler);
     const [head, ...conts] = out.lesson.slides.slice(0, 1 + out.outcome.continued);
     expect(conts.length).toBeGreaterThanOrEqual(2);
-    const headHeading = head?.elements.find((e) => e.name !== CONTINUED_LABEL && isHeading(e));
-    expect(head?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
+    const headHeading = head?.elements.find(isHeading);
     const contHeadingY = new Set<number>();
     for (const cont of conts) {
       const heading = cont.elements.find(isHeading) as TextElement;
-      const label = cont.elements.find((e) => e.name === CONTINUED_LABEL) as TextElement;
+      expect(cont.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
       expect(docToPlainText(heading.doc)).toBe("Learning objectives");
       expect(heading.style.fontSize).toBe((headHeading as TextElement).style.fontSize);
-      expect(docToPlainText(label.doc)).toBe("CONTINUED");
-      // The label takes the top margin a heading has on an ordinary slide; the heading moves down.
-      expect(label.y).toBe(SAFE.y);
-      expect(heading.y).toBeGreaterThanOrEqual(label.y + label.h);
       contHeadingY.add(heading.y);
       // Every continuation carries body text, clear of the heading, and fits.
       const body = cont.elements.filter((e) => e.type === "text" && e.style.preset === "body");
       expect(body.length).toBeGreaterThan(0);
       for (const b of body) expect(b.y).toBeGreaterThanOrEqual(heading.y + heading.h);
-      const rule = cont.elements.find((e) => e.type === "shape" && e.h === 1);
-      if (rule) {
-        expect(rule.y).toBeGreaterThan(heading.y + heading.h);
-        expect(rule.y).toBeLessThan(Math.min(...body.map((b) => b.y)));
-      }
       expect(reflowSlide(cont, theme, ruler).overflow).toEqual([]);
     }
-    // One label, one heading position, down the whole chain.
+    // One heading position down the whole chain.
     expect(contHeadingY.size).toBe(1);
-    for (const cont of conts)
-      expect(cont.elements.filter((e) => e.name === CONTINUED_LABEL)).toHaveLength(1);
   });
 
   test("TEACH-248: tidying a continuation again adds no second label and moves nothing", () => {
@@ -199,7 +187,7 @@ describe("tidySlide", () => {
     ]);
     const first = tidySlide(lesson, lesson.slides[0]?.id ?? "", ruler).lesson;
     const cont = first.slides[1];
-    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
+    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
     const again = tidySlide(first, cont?.id ?? "", ruler);
     expect(again.outcome.changed).toBe(false);
   });
@@ -478,7 +466,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(tail.y).toBe(BODY_Y);
     expect(docToPlainText(tail.doc)).not.toContain("Provisional Government");
     expect(headingOf(cont)).toBe("Why the Bolsheviks gained support");
-    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
+    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
     expect(cont?.elements.some((e) => e.type === "shape" && e.h === 1)).toBe(true);
     expect(cont?.kind).toBe(head?.kind);
     expect(tidyMessage(out.outcome)).toContain("list continued on a new slide");
@@ -802,7 +790,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(`${headText}\n${all.join("\n")}`.replace(/\s+/g, " ")).toBe(
       [aiParagraph, ...teacherLines].join(" "),
     );
-    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
+    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
     expect(headingOf(cont)).toBe("The Bolsheviks gained support as the Government lost it");
   });
 
@@ -896,7 +884,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     if (headText) expect(headText).toMatch(/[.!?]$/);
     expect([headText, tailText].filter(Boolean).join(" ")).toBe(aiParagraph);
     expect(headingOf(cont)).toBe(heading);
-    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
+    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
     // The heading rule sits under the one-line heading on the continuation, above the paragraph.
     const contRule = cont?.elements.find((e) => e.type === "shape" && e.h === 1);
     expect((contRule?.y ?? 0) < (carried[0]?.y ?? 0)).toBe(true);
@@ -978,7 +966,7 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(list?.attrs?.start).toBe(6);
     expect(docLineCount(carried.doc)).toBe(1);
     expect(carried.reveal).toBe("rise");
-    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
+    expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(false);
     expect(reflowSlide(cont, getTheme(freud.themeId), measure).overflow).toEqual([]);
   });
 });
