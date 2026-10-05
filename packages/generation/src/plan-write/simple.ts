@@ -1809,7 +1809,7 @@ export async function simpleLessonSlides(
     | { kind: "figure"; template: FigureTemplateName; values: unknown };
   const resolvePic = (
     p: Pic,
-    heading: string,
+    _heading: string,
   ): { drawing?: Drawing; photo?: { subject: string; named: string | null }; invalid?: string } => {
     if (p.kind === "diagram") {
       const spec = parseDiagram(p.spec);

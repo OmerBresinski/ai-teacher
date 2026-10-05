@@ -83,6 +83,8 @@ function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["
         storage: images.storage,
         workspaceId,
       }),
+    // TEACH-84 / ruling 158: the shared picture library (switch: PipelineDeps.photoBank).
+    ...(images.bank ? { bank: images.bank } : {}),
   };
 }
 

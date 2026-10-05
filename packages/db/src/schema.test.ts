@@ -19,9 +19,10 @@ describe("schema classification", () => {
     expect(tenant.size + nonTenant.size).toBe(Object.keys(ALL_TABLES).length);
   });
 
-  test("non-tenant tables are the tenant root and the better-auth identity tables (ADR 0008)", () => {
+  test("non-tenant tables are the tenant root, the better-auth identity tables (ADR 0008) and the shared picture library (TEACH-84)", () => {
     expect(NON_TENANT_TABLES.map(name).sort()).toEqual([
       "accounts",
+      "bank_images",
       "sessions",
       "users",
       "verifications",

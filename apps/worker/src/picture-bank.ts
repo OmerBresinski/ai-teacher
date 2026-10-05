@@ -12,7 +12,8 @@ import {
   nearestBankImages,
   touchBankImage,
 } from "@tj/db";
-import type { PhotoSource, StorageAdapter } from "@tj/domain";
+import type { StorageAdapter } from "@tj/domain";
+import type { PhotoSource } from "@tj/domain/documents";
 import type { BankRequest, PictureBank, PlacedPhoto } from "@tj/generation";
 import {
   type AspectFamily,
@@ -24,6 +25,7 @@ import {
   IMAGE_TERMS,
   type ImageGenerator,
   imagePrompt,
+  numbersAgree,
   pickReuse,
   REUSE_THRESHOLD,
   requestText,
@@ -155,8 +157,11 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       const t0 = Date.now();
       const vector = await embed(req, signal);
       const near = await nearestBankImages(db, vector, 5);
+      const text = requestText(req);
       const best = pickReuse(
-        near.map((r) => ({ similarity: r.similarity, family: r.family as AspectFamily, row: r })),
+        near
+          .filter((r) => numbersAgree(r.request, text))
+          .map((r) => ({ similarity: r.similarity, family: r.family as AspectFamily, row: r })),
         family(req),
         threshold,
       );

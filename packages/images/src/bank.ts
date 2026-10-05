@@ -107,13 +107,51 @@ export function cosine(a: readonly number[], b: readonly number[]): number {
 
 /**
  * The reuse threshold on cosine between request embeddings (`text-embedding-3-small`). Picked on
- * the labelled set in `bank-calibration.json` (PHOTO-BANK/calibrate.ts): the lowest value with no
- * "different" pair above it, and "near" pairs counted as reusable only when the same picture would
- * serve both slides.
+ * the labelled set `calibration/reuse-pairs.json` (`calibration/calibrate.ts`, `result.txt`): with
+ * `numbersAgree` applied, 0.77 reuses 8 of the 10 "same" pairs and none of the 12 "near" or 10
+ * "different" ones (precision 1.00, recall 0.80). Without the number rule, "24 counters in four
+ * groups of six" and "12 counters in three groups of four" score 0.87: no threshold separates them.
  */
-export const REUSE_THRESHOLD = 0.8;
+export const REUSE_THRESHOLD = 0.77;
 
 export type BankCandidate<T> = { similarity: number; family: AspectFamily; row: T };
+
+const UNITS =
+  "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(
+    " ",
+  );
+const TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split(" ");
+
+/** The numbers a request states, digits or words ("Twenty-four" is 24), as a sorted list. */
+export function numbersIn(text: string): number[] {
+  const out: number[] = [];
+  const s = text.toLowerCase();
+  for (const m of s.matchAll(/\d+(?:\.\d+)?/g)) out.push(Number(m[0]));
+  const words = s.match(/[a-z]+/g) ?? [];
+  for (let i = 0; i < words.length; i++) {
+    const tens = TENS.indexOf(words[i] ?? "");
+    if (tens >= 2) {
+      const unit = UNITS.indexOf(words[i + 1] ?? "");
+      const ones = unit > 0 && unit < 10 ? unit : 0;
+      out.push(tens * 10 + ones);
+      if (ones) i += 1;
+      continue;
+    }
+    const unit = UNITS.indexOf(words[i] ?? "");
+    if (unit >= 2) out.push(unit);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/**
+ * Two requests may share a picture only when they state the same numbers: "24 counters in four
+ * groups of six" is not "12 counters in three groups of four", however alike the words read.
+ */
+export function numbersAgree(a: string, b: string): boolean {
+  const x = numbersIn(a);
+  const y = numbersIn(b);
+  return x.length === y.length && x.every((n, i) => n === y[i]);
+}
 
 /** The best stored picture to reuse: same family, at or above the threshold; else undefined. */
 export function pickReuse<T>(

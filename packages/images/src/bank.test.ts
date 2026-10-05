@@ -6,6 +6,8 @@ import {
   familyOf,
   imageCostUsd,
   imagePrompt,
+  numbersAgree,
+  numbersIn,
   pickReuse,
   REUSE_THRESHOLD,
   requestText,
@@ -131,5 +133,26 @@ describe("cost", () => {
   test("expected cost stays near half a cent", () => {
     expect(expectedImageCostUsd("1024x1024")).toBeLessThan(0.0065);
     expect(expectedImageCostUsd("2048x1152")).toBeLessThan(0.0055);
+  });
+});
+
+describe("numbersAgree (reuse guard)", () => {
+  test("digits and words are the same numbers", () => {
+    expect(numbersIn("Twenty-four counters in four groups of six")).toEqual([4, 6, 24]);
+    expect(
+      numbersAgree(
+        "24 identical counters arranged in four equal groups of six",
+        "Twenty-four counters in four groups of six on a school desk",
+      ),
+    ).toBe(true);
+  });
+  test("different numbers never share a picture", () => {
+    expect(
+      numbersAgree("24 counters in four groups of six", "12 counters in three groups of four"),
+    ).toBe(false);
+    expect(numbersAgree("banknotes in 1923", "banknotes in 1922")).toBe(false);
+  });
+  test("no numbers on either side agree", () => {
+    expect(numbersAgree("a hen beside a chick", "a hen next to her chick")).toBe(true);
   });
 });

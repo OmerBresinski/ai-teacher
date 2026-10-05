@@ -18,6 +18,8 @@ export {
   type ImageSize,
   imageCostUsd,
   imagePrompt,
+  numbersAgree,
+  numbersIn,
   pickReuse,
   REUSE_THRESHOLD,
   requestText,

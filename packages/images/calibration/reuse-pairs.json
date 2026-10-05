@@ -1,0 +1,125 @@
+{
+  "about": "Labelled request pairs for the picture library's reuse threshold (TEACH-84). same = one picture serves both requests; near = the same topic but a different picture is needed (reusing would be wrong); different = unrelated.",
+  "pairs": [
+    [
+      "An adult brown hen beside a very young yellow chick",
+      "A hen standing next to her small yellow chick",
+      "same"
+    ],
+    [
+      "An adult dog and its puppy sitting side by side",
+      "A grown dog beside a puppy, both whole bodies visible",
+      "same"
+    ],
+    [
+      "An ice cube beside a glass of liquid water",
+      "A single ice cube next to a glass of water",
+      "same"
+    ],
+    [
+      "24 identical counters arranged in four equal groups of six on a classroom table",
+      "Twenty-four counters in four groups of six on a school desk",
+      "same"
+    ],
+    [
+      "Marble chips reacting with dilute hydrochloric acid in a conical flask",
+      "A conical flask of hydrochloric acid with marble chips fizzing",
+      "same"
+    ],
+    [
+      "A theatre production of The Tempest showing Prospero holding a staff",
+      "Prospero with his staff on stage in a production of The Tempest",
+      "same"
+    ],
+    [
+      "German children playing with bundles of worthless banknotes in 1923",
+      "Children in 1923 Germany playing with stacks of banknotes during hyperinflation",
+      "same"
+    ],
+    [
+      "A black-and-white cow beside its calf in a field",
+      "An adult cow standing next to a young calf on grass",
+      "same"
+    ],
+    [
+      "The cast-iron arch of the Iron Bridge over the River Severn",
+      "Ironbridge: the iron arch bridge across the Severn",
+      "same"
+    ],
+    ["A frog sitting on a lily pad in a pond", "A green frog resting on a lily pad", "same"],
+    [
+      "An adult dog and its puppy sitting side by side",
+      "An adult cat beside a small kitten",
+      "near"
+    ],
+    [
+      "An adult brown hen beside a very young yellow chick",
+      "A duck with her ducklings on a pond",
+      "near"
+    ],
+    ["An ice cube beside a glass of liquid water", "Steam rising from a boiling kettle", "near"],
+    [
+      "24 identical counters arranged in four equal groups of six",
+      "12 counters arranged in three equal groups of four",
+      "near"
+    ],
+    [
+      "Marble chips reacting with dilute hydrochloric acid in a conical flask",
+      "Magnesium ribbon fizzing in a test tube of acid",
+      "near"
+    ],
+    [
+      "A theatre production of The Tempest showing Prospero",
+      "A theatre production of Macbeth showing the three witches",
+      "near"
+    ],
+    [
+      "German children playing with banknotes during the hyperinflation of 1923",
+      "French soldiers occupying the Ruhr in 1923",
+      "near"
+    ],
+    [
+      "A black-and-white cow beside its calf in a field",
+      "A sheep beside a young lamb in a field",
+      "near"
+    ],
+    [
+      "The cast-iron arch of the Iron Bridge over the River Severn",
+      "The Clifton Suspension Bridge over the Avon Gorge",
+      "near"
+    ],
+    ["A frog sitting on a lily pad in a pond", "Frogspawn floating in a pond", "near"],
+    [
+      "A Year 1 child pouring water between two jugs",
+      "A Year 6 pupil measuring water with a measuring cylinder",
+      "near"
+    ],
+    [
+      "The north gate ruins at Housesteads Roman Fort",
+      "A stretch of Hadrian's Wall on the crags",
+      "near"
+    ],
+    [
+      "An adult dog and its puppy sitting side by side",
+      "Marble chips reacting with acid in a flask",
+      "different"
+    ],
+    [
+      "An ice cube beside a glass of liquid water",
+      "Prospero holding a staff on stage",
+      "different"
+    ],
+    ["24 identical counters on a classroom table", "A volcano erupting at night", "different"],
+    ["A frog sitting on a lily pad", "German banknotes from 1923", "different"],
+    ["A black-and-white cow beside its calf", "The Globe Theatre stage and yard", "different"],
+    ["The Iron Bridge over the River Severn", "A hen beside a chick", "different"],
+    [
+      "A flooded river bursting its banks in a storm",
+      "A market stall weighing apples on scales",
+      "different"
+    ],
+    ["The Colosseum hypogeum in Rome", "A kettle steaming up a kitchen window", "different"],
+    ["A Year 1 child pouring water between two jugs", "Roman soldiers marching", "different"],
+    ["A meander of the River Severn from above", "A cat beside a kitten", "different"]
+  ]
+}
