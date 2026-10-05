@@ -12,7 +12,8 @@
 
 import type { PathElement, Theme } from "@tj/domain/documents";
 import { z } from "zod";
-import { STROKE as LADDER } from "../diagrams/style";
+import { figureLook, STROKE as LADDER } from "../diagrams/style";
+import { mix } from "../diagrams/svg";
 import { editorialIssue } from "../editorial";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
@@ -206,6 +207,7 @@ function drawRightTriangle(
   size: { w: number; h: number },
 ): FigureDrawing {
   const v = values ?? EMPTY;
+  const look = figureLook(t, mix);
   const legs = values ? rightTriangleLegs(values) : undefined;
   const ratio = legs ? legs.height / legs.base : SCHEMATIC_RATIO;
   const drawn = clamp(ratio, RIGHT_TRIANGLE_RATIO.min, RIGHT_TRIANGLE_RATIO.max);
@@ -213,9 +215,9 @@ function drawRightTriangle(
 
   const labelH = boxH(t, "small");
   const labels = {
-    base: fitLabel(t, v.base.label, { maxW: LABEL_MAX_W }),
-    height: fitLabel(t, v.height.label, { maxW: LABEL_MAX_W }),
-    hypotenuse: fitLabel(t, v.hypotenuse.label, { maxW: LABEL_MAX_W }),
+    base: fitLabel(t, v.base.label, { maxW: LABEL_MAX_W, bold: true }),
+    height: fitLabel(t, v.height.label, { maxW: LABEL_MAX_W, bold: true }),
+    hypotenuse: fitLabel(t, v.hypotenuse.label, { maxW: LABEL_MAX_W, bold: true }),
   };
   const room = {
     w: size.w - 2 * INSET,
@@ -265,19 +267,33 @@ function drawRightTriangle(
       { x: 0, y: 0 },
     ],
     closed: true,
+    fill: look.fill,
     stroke: t.colors.ink,
-    strokeWidth: STROKE,
+    strokeWidth: look.outline,
     name: "Triangle",
   };
   const m = Math.round(clamp(Math.min(W, H) * 0.12, 14, 24));
   // Up the height and along the base from the right angle, `m` along each.
-  const mark = rightAngleMark(A, { x: A.x, y: A.y - H }, { x: A.x + W, y: A.y }, m, t);
+  const mark = rightAngleMark(A, { x: A.x, y: A.y - H }, { x: A.x + W, y: A.y }, m, t, {
+    fill: look.mark,
+  });
+  // The unknown side: the one with a label but no length, italic in the accent.
+  const unknownSide = SIDES.find((n) => v[n].label.trim() !== "" && given(v[n]) === undefined);
+  const side = (n: (typeof SIDES)[number], align: "center" | "right") =>
+    labelText(
+      t,
+      labels[n].text,
+      at(placed.labels[n]),
+      align,
+      n === unknownSide ? look.unknown : t.colors.ink,
+      { bold: true, italic: n === unknownSide },
+    );
   const children = [
     triangle,
     mark,
-    labelText(t, labels.base.text, at(placed.labels.base), "center"),
-    labelText(t, labels.height.text, at(placed.labels.height), "right"),
-    labelText(t, labels.hypotenuse.text, at(placed.labels.hypotenuse), "center"),
+    side("base", "center"),
+    side("height", "right"),
+    side("hypotenuse", "center"),
   ];
   if (notToScale) children.push(notToScaleCaption(t, size));
   return { children, alt: rightTriangleAlt(values, notToScale) };

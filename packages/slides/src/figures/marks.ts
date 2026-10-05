@@ -24,7 +24,7 @@ import { fitLabel, labelText } from "./labels";
 export type Point = { x: number; y: number };
 
 /** A mark's colour: the theme's ink unless the template gives another. */
-export type MarkStyle = { color?: string };
+export type MarkStyle = { color?: string; fill?: string };
 
 /** A horizontal or vertical line still gets a box this wide to select it by. */
 const LINE_BOX = 16;
@@ -141,10 +141,19 @@ export function rightAngleMark(
   towardB: Point,
   size: number,
   theme: Theme,
-  { color = theme.colors.ink }: MarkStyle = {},
+  { color = theme.colors.ink, fill }: MarkStyle = {},
 ): PathElement {
   const a = scale(unit(sub(towardA, vertex)), size);
   const b = scale(unit(sub(towardB, vertex)), size);
+  // Filled (the figure look): the whole square from the vertex, closed, in the fill colour.
+  if (fill)
+    return pathThrough([vertex, add(vertex, a), add(add(vertex, a), b), add(vertex, b)], {
+      stroke: color,
+      fill,
+      closed: true,
+      strokeWidth: MARK_STROKE,
+      name: "Right angle",
+    });
   return pathThrough([add(vertex, a), add(add(vertex, a), b), add(vertex, b)], {
     stroke: color,
     strokeWidth: MARK_STROKE,

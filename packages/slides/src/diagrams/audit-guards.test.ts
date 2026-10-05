@@ -228,12 +228,8 @@ describe("DIAGRAM-AUDIT leftovers", () => {
   });
   test("figure labels sit at the label weight", () => {
     const d = drawFigure(
-      "right-triangle",
-      {
-        base: { length: 3, label: "3 cm" },
-        height: { length: 4, label: "4 cm" },
-        hypotenuse: { label: "x" },
-      },
+      "energy-profile",
+      { reactants: "A", products: "B", activationEnergy: 5, energyChange: -2 },
       chalk,
       { x: 0, y: 0, w: 436, h: 356 },
     );

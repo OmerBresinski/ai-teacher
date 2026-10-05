@@ -46,7 +46,7 @@ const labelled = (g: GroupElement, text: string) => {
   if (found.length === 0) throw new Error(`no label "${text}"`);
   return found;
 };
-const triangles = (g: GroupElement) => paths(g).filter((p) => p.closed);
+const triangles = (g: GroupElement) => paths(g).filter((p) => p.closed && p.name !== "Right angle");
 const arcs = (g: GroupElement) => paths(g).filter((p) => p.name === "Angle");
 /** A closed path's corners in the group's space, in the order drawn: A, B, C. */
 const cornersOf = (p: PathElement): Point[] =>
@@ -304,7 +304,7 @@ describe("drawFigure: triangle", () => {
     expect(g.figure).toEqual({ template: "triangle", values: v });
     const [t] = triangles(g);
     if (!t) throw new Error("no triangle");
-    expect([t.strokeWidth, t.stroke, t.smooth]).toEqual([2.5, chalk.colors.ink, undefined]);
+    expect([t.strokeWidth, t.stroke, t.smooth]).toEqual([4, chalk.colors.ink, undefined]);
     const [A, B, C] = cornersOf(t) as [Point, Point, Point];
     // The longest side (c, AB) is the base, horizontal at the bottom, C above it.
     expect(A.y).toBeCloseTo(B.y, 5);
@@ -403,8 +403,8 @@ describe("drawFigure: triangle", () => {
     const square = paths(g).find((p) => p.name === "Right angle");
     if (!square) throw new Error("no right-angle mark");
     const corners = cornersOf(square);
-    // The square's corner at C: its first and last points lie along C's two sides.
-    expect(Math.min(...corners.map((p) => dist(p, C)))).toBeGreaterThan(0);
+    // The filled square (the figure look) has a corner at C itself.
+    expect(Math.min(...corners.map((p) => dist(p, C)))).toBeLessThan(1);
     expect(Math.max(...corners.map((p) => dist(p, C)))).toBeLessThan(40);
     expect(arcs(g)).toHaveLength(0);
     // The unknown shows its letter, never its value.

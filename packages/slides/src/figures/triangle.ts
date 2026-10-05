@@ -13,7 +13,8 @@
  */
 
 import type { PathElement, SlideElement, Theme } from "@tj/domain/documents";
-import { STROKE as LADDER } from "../diagrams/style";
+import { figureLook, STROKE as LADDER } from "../diagrams/style";
+import { mix } from "../diagrams/svg";
 import { uid } from "../factories";
 import { boxH } from "../layouts";
 import type { FigureDrawing, FigureTemplate } from "./index";
@@ -647,7 +648,9 @@ function drawTriangle(
     const one = shown[i] as Shown;
     if (one.right) {
       const [q, r] = VERTICES.filter((w) => w !== one.right) as [Vertex, Vertex];
-      children.push(rightAngleMark(P[one.right], P[q], P[r], p.markSize, t));
+      children.push(
+        rightAngleMark(P[one.right], P[q], P[r], p.markSize, t, { fill: figureLook(t, mix).mark }),
+      );
     }
     for (const w of VERTICES) {
       const count = one.arcs[w];
@@ -684,8 +687,9 @@ function triangleOutline(P: Record<Vertex, Point>, t: Theme, name: string): Path
     h,
     points: VERTICES.map((v) => ({ x: (P[v].x - x) / w, y: (P[v].y - y) / h })),
     closed: true,
+    fill: figureLook(t, mix).fill,
     stroke: t.colors.ink,
-    strokeWidth: STROKE,
+    strokeWidth: figureLook(t, mix).outline,
     name,
   };
 }

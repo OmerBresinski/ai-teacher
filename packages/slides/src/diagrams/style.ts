@@ -38,6 +38,21 @@ export function laddered(svg: string): string {
   );
 }
 
+/**
+ * DIAGRAM-AUDIT item 7, the figure look (after the homepage examples and Chalkie's worksheet): a
+ * pastel tint inside a heavy ink outline, the right angle a filled accent square, side labels bold
+ * and the unknown italic in the accent. Neutral tint on dark themes.
+ */
+export function figureLook(t: Theme, mix: (a: string, b: string, s: number) => string) {
+  const surface = t.colors.panel ?? t.colors.surface;
+  return {
+    fill: t.dark ? mix(t.colors.ink, surface, 0.12) : mix(t.colors.accent, surface, 0.16),
+    outline: STROKE.data,
+    mark: t.colors.accent,
+    unknown: t.colors.accent,
+  };
+}
+
 /** An arrowhead's length for a line of width `stroke`: one head shape, sized from its line. */
 export const headFor = (stroke: number): number => 4.2 * onLadder(stroke);
 
