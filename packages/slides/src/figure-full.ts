@@ -5,19 +5,32 @@
  * cross-section, a process. `asFigureFull` turns a picture slide (image-text) into it, so a drawing
  * that does not fit the half-slide zone can step up before its labels shrink.
  */
-import type { ImageElement, Slide, SlideElement, TextElement, Theme } from "@tj/domain/documents";
+import type {
+  ImageElement,
+  RichDoc,
+  Slide,
+  SlideElement,
+  TextElement,
+  Theme,
+} from "@tj/domain/documents";
 import { SAFE } from "./grid";
 import { boxH, PLACEHOLDER_IMAGE, text } from "./layouts";
 import { countLines } from "./text-measure";
 
 /** The gap between the heading and the drawing, and between the drawing and its caption. */
 const GAP = 14;
-/** The most lines the caption under the drawing may take, measured on the slide's theme. */
-export const FIGURE_FULL_CAPTION_LINES = 1;
+/**
+ * The most lines the words under the drawing may take, measured on the slide's theme. LAYOUT-TEST:
+ * every drawing slide the writer gave came with three teaching lines (77-426 characters), and a
+ * one-line caption meant a drawing too big for the half zone (y7's three particle panels) was
+ * dropped rather than stepped up. Four lines still leave the drawing about 3:1 across the slide.
+ */
+export const FIGURE_FULL_CAPTION_LINES = 4;
 
-/** How many lines `words` take as the caption, across the safe width at body size on `t`. */
-export function figureFullCaptionLines(t: Theme, words: string): number {
-  return words ? countLines(words, "body", t, SAFE.w) : 0;
+/** How many lines the words take under the drawing, one paragraph each, at body size on `t`. */
+export function figureFullCaptionLines(t: Theme, words: string | string[]): number {
+  const paras = (Array.isArray(words) ? words : [words]).filter(Boolean);
+  return paras.reduce((n, p) => n + countLines(p, "body", t, SAFE.w), 0);
 }
 
 /** Ordinary slide words, to measure how many characters a line holds. */
@@ -104,7 +117,7 @@ export function asFigureFull(slide: Slide, t: Theme): Slide | undefined {
     (e): e is TextElement => e.type === "text" && (e as TextElement).style?.preset === "heading",
   );
   if (!image || !heading) return undefined;
-  const words = captionWords(els).join(" ");
+  const words = captionWords(els);
   const lines = figureFullCaptionLines(t, words);
   if (lines > FIGURE_FULL_CAPTION_LINES) return undefined;
   const r = figureFullRects(t, lines);
@@ -112,6 +125,18 @@ export function asFigureFull(slide: Slide, t: Theme): Slide | undefined {
     { ...heading, ...r.heading, style: { ...heading.style, align: "left" } },
     { ...image, ...r.figure, fit: "contain" },
   ];
-  if (words) out.push(text("body", words, r.caption, { align: "center", color: t.colors.muted }));
+  // One line reads as a caption, centred and muted; the slide's teaching lines, one paragraph
+  // each, read as text under the drawing.
+  if (words.length === 1)
+    out.push(
+      text("body", words[0] as string, r.caption, { align: "center", color: t.colors.muted }),
+    );
+  else if (words.length > 1) {
+    const doc = {
+      type: "doc",
+      content: words.map((w) => ({ type: "paragraph", content: [{ type: "text", text: w }] })),
+    } as unknown as RichDoc;
+    out.push(text("body", doc, r.caption, { align: "left" }));
+  }
   return { ...slide, elements: out } as Slide;
 }

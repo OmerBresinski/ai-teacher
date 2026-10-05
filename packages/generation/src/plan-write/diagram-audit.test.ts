@@ -118,8 +118,43 @@ describe("DIAGRAM-AUDIT big diagram", () => {
     expect(zone(s)?.w).toBe(844);
   });
   test("long words keep the half-slide picture slide", () => {
-    const long = ["A".repeat(80), "B".repeat(80)];
+    const long = Array.from({ length: 8 }, (_, i) => `Line ${i} `.repeat(12));
     expect(asFigureFull(photoSlide(long), theme)).toBeUndefined();
+  });
+  // LAYOUT-TEST Z y7 slide 3, as written: three panels with long notes do not fit the half zone,
+  // and its three teaching lines (255 characters) blocked the one-line-caption step-up, so the
+  // drawing was dropped for an icicle photo. The lines now go under the big diagram.
+  test("the y7 particles slide steps up with its three lines under the drawing", () => {
+    const { settleDiagram, withLongLabels } = require("@tj/slides/diagrams");
+    const lines = [
+      "Solid: closely packed in a regular arrangement. Particles vibrate about fixed positions.",
+      "Liquid: close together in an irregular arrangement. Particles move past each other.",
+      "Gas: far apart with no regular arrangement. Particles move freely in all directions.",
+    ];
+    const spec = {
+      kind: "particles",
+      alt: "Three states of matter",
+      title: "Three states of matter",
+      show: "states",
+      states: ["solid", "liquid", "gas"],
+      notes: [
+        "Close, regular; vibrate in place",
+        "Close, irregular; move past each other",
+        "Far apart; move freely",
+      ],
+      arrows: [],
+    };
+    const s = t3DiagramBase(photoSlide(lines), spec, theme, false);
+    const z = zone(s);
+    expect(z?.w).toBe(844);
+    // Clean in the big zone with long labels wrapped, as placeT3Diagram draws it.
+    const settle = () => settleDiagram(spec, { w: z?.w ?? 0, h: z?.h ?? 0 }).clean;
+    expect(withLongLabels(settle)).toBe(true);
+    const words = s.elements
+      .filter((e: { type: string }) => e.type === "text")
+      .map((e: { doc?: unknown }) => JSON.stringify(e.doc ?? ""))
+      .join(" ");
+    for (const l of lines) expect(words).toContain(l);
   });
   test("the big-diagram form maps to a full picture slide", () => {
     const s = withPictureZone({

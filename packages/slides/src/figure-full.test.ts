@@ -50,7 +50,12 @@ describe("big diagram step-up: the caption fits its box and clears the drawing (
         const words = pairs.map(([k, b]) => (k ? `${k}: ${b}` : b)).join(" ");
         if (!big) {
           // Refused only when the words would run past the caption's lines.
-          expect(figureFullCaptionLines(t, words)).toBeGreaterThan(1);
+          expect(
+            figureFullCaptionLines(
+              t,
+              pairs.map(([k, b]) => (k ? `${k}: ${b}` : b)),
+            ),
+          ).toBeGreaterThan(4);
           continue;
         }
         const els = big.elements as SlideElement[];
@@ -68,7 +73,12 @@ describe("big diagram step-up: the caption fits its box and clears the drawing (
         const c = cap as TextElement;
         expect(plain(c)).toBe(words);
         // The caption's words fit the box it was given: no overflow for a refit to move.
-        const lines = countLines(plain(c), "body", t, c.w);
+        const paras = (c.doc?.content ?? []).map((p) =>
+          ((p as { content?: { text?: string }[] }).content ?? [])
+            .map((x) => x.text ?? "")
+            .join(""),
+        );
+        const lines = paras.reduce((n, p) => n + countLines(p, "body", t, c.w), 0);
         expect(boxH(t, "body", lines)).toBeLessThanOrEqual(c.h + 0.5);
       }
     });
