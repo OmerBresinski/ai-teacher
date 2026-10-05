@@ -302,6 +302,364 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
   };
 }
 
+/*
+ * Arm T3 (5 Oct 2026): T2 with the lesson's objectives given (R3's, so the panel is like for like),
+ * an `objectives` index list per slide that code checks for coverage (one targeted re-ask on a gap),
+ * every prompt clause tied to a measured failure (ABLATE/T3-LEDGER.md), and a lean drawing schema:
+ * each kind's wire shape holds only the fields T2 used or the renderer needs, `alt` is composed in
+ * code, and code expands the wire shape into the renderer's spec and validates it with its parse.
+ */
+export const TEACHER3_LESSON_VERSION = "simple-lesson.t3";
+/** Forms that teach (credit every objective they name). */
+const T3_TEACH = new Set([
+  "explain",
+  "explain-callout",
+  "list",
+  "compare",
+  "sequence",
+  "picture",
+  "worked-example",
+  "vocabulary",
+  "discussion",
+]);
+/** Forms pupils answer: a set credits as many objectives as it has questions, any other one. */
+const T3_CHECK = new Set([
+  "hinge",
+  "true-false",
+  "matching",
+  "fill-gap",
+  "sort",
+  "open-response",
+  "check",
+  "exit-ticket",
+]);
+const T3_FORMS: Record<string, string> = {
+  ...T2_FORMS,
+  // The drawn COMMON MISTAKE label is code's (bareCallout strips a written one), so the prompt no longer says it.
+  "explain-callout": "an explanation, then one common mistake pupils make as the last line",
+};
+const phrase = (what: string) => z.string().describe(what);
+/** The lean wire shape of each drawing kind (no alt: code writes it from the title and labels). */
+const T3_DRAW = {
+  timeline: z.object({
+    kind: z.literal("timeline"),
+    title: phrase("one short line"),
+    events: z
+      .array(z.object({ date: phrase("a date"), text: phrase("a short phrase") }))
+      .min(3)
+      .max(7),
+  }),
+  table: z.object({
+    kind: z.literal("table"),
+    title: phrase("one short line"),
+    header: z.array(phrase("1–3 words")).min(1).max(5),
+    rows: z
+      .array(z.array(phrase("a short phrase")).min(1).max(5))
+      .min(1)
+      .max(8),
+  }),
+  flow: z.object({
+    kind: z.literal("flow"),
+    title: phrase("one short line"),
+    steps: z
+      .array(
+        z.object({
+          label: phrase("a short phrase"),
+          arrow: phrase("1–2 words on the arrow to the next step").optional(),
+        }),
+      )
+      .min(2)
+      .max(6),
+  }),
+  cycle: z.object({
+    kind: z.literal("cycle"),
+    title: phrase("one short line"),
+    steps: z.array(phrase("a short phrase")).min(3).max(5),
+  }),
+  "bar-model": z.object({
+    kind: z.literal("bar-model"),
+    title: phrase("one short line"),
+    bars: z
+      .array(
+        z.object({
+          label: phrase("1–2 words"),
+          parts: z
+            .array(
+              z.object({
+                value: z.number().optional(),
+                label: phrase("1–2 words").optional(),
+                shaded: z.boolean().optional(),
+              }),
+            )
+            .min(1)
+            .max(12),
+          total: phrase("1–2 words").optional(),
+        }),
+      )
+      .min(1)
+      .max(4),
+  }),
+  "number-line": z.object({
+    kind: z.literal("number-line"),
+    title: phrase("one short line"),
+    min: z.number(),
+    max: z.number(),
+    step: z.number(),
+    points: z
+      .array(z.object({ value: z.number(), label: phrase("1–2 words").optional() }))
+      .max(6)
+      .optional(),
+    jumps: z
+      .array(z.object({ from: z.number(), to: z.number(), label: phrase("1–2 words").optional() }))
+      .max(6)
+      .optional(),
+  }),
+  "line-graph": z.object({
+    kind: z.literal("line-graph"),
+    title: phrase("one short line"),
+    x: z.object({ label: phrase("a few words with the unit"), min: z.number(), max: z.number() }),
+    y: z.object({ label: phrase("a few words with the unit"), min: z.number(), max: z.number() }),
+    series: z
+      .array(
+        z.object({
+          label: phrase("1–3 words"),
+          points: z.array(z.array(z.number()).length(2)).min(2).max(40),
+          style: z.enum(["line", "bars"]),
+        }),
+      )
+      .min(1)
+      .max(3),
+  }),
+  particles: z.object({
+    kind: z.literal("particles"),
+    title: phrase("one short line"),
+    show: z.enum(["states", "diffusion", "dissolving"]),
+    states: z
+      .array(z.enum(["solid", "liquid", "gas"]))
+      .min(1)
+      .max(3),
+    notes: z.array(phrase("a short phrase under each panel")).max(3).optional(),
+    arrows: z.array(phrase("1–2 words on the arrow between panels")).max(2).optional(),
+  }),
+} as const;
+type T3Kind = keyof typeof T3_DRAW;
+const T3_DRAWS: Record<T3Kind, string> = {
+  timeline: "dated events in order",
+  table: "a small table of short entries",
+  flow: "steps in a chain, joined by arrows",
+  cycle: "a cycle of 3 to 5 steps",
+  "bar-model": "amounts as bars split into equal or labelled parts",
+  "number-line": "a number line with marked points or jumps",
+  "line-graph": "a line or bar graph on labelled axes",
+  particles: "particles in solids, liquids and gases, or diffusion or dissolving",
+};
+/** Drop the empty strings, nulls and empty lists a writer leaves in optional fields. */
+function pruned(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(pruned);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v)) {
+      const p = pruned(x);
+      if (p === null || p === undefined || (typeof p === "string" && !p.trim())) continue;
+      if (Array.isArray(p) && p.length === 0) continue;
+      out[k] = p;
+    }
+    return out;
+  }
+  return v;
+}
+/** The wire shape as the renderer's spec: alt composed, layout fixed, empties dropped. */
+export function expandDrawing(p: Record<string, unknown>): Record<string, unknown> {
+  const w = pruned(p) as Record<string, unknown> & { kind: string; title?: string };
+  const words: string[] = [];
+  const collect = (v: unknown) => {
+    if (typeof v === "string") words.push(v);
+    else if (Array.isArray(v)) v.forEach(collect);
+    else if (v && typeof v === "object") Object.values(v).forEach(collect);
+  };
+  const { kind, title, ...rest } = w;
+  collect(rest);
+  const said = words.filter(
+    (t) => !["states", "diffusion", "dissolving", "line", "bars"].includes(t),
+  );
+  let alt = `${title ?? kind}: ${said.join(", ")}`;
+  if (alt.length > 200) alt = alt.slice(0, alt.lastIndexOf(", ", 199));
+  const spec: Record<string, unknown> = { ...rest, kind, alt };
+  if (title && title.length <= 40) spec.title = title;
+  if (kind === "flow") spec.layout = "chain";
+  return spec;
+}
+/** The picture field: a photo, a drawing of one kind, or a figure the subject offers. */
+function t3Picture(subject?: string) {
+  const figures = figureTemplatesFor(subject).map((t) =>
+    z.object({
+      kind: z.literal("figure"),
+      template: z.literal(t),
+      values: FIGURE_TEMPLATES[t].shape,
+    }),
+  );
+  return z.union([
+    z.object({ kind: z.literal("photo"), subject: z.string(), named: z.string().nullable() }),
+    ...Object.values(T3_DRAW),
+    ...figures,
+  ]);
+}
+const t3Slide = (subject?: string) =>
+  z.object({
+    objectives: z.array(z.number().int()),
+    ...teacherSlide.shape,
+    form: z.enum(Object.keys(T3_FORMS) as [string, ...string[]]),
+    picture: t3Picture(subject).nullable(),
+  });
+export function teacher3LessonSchema(subject?: string) {
+  return z.object({
+    titlePicture: z
+      .object({ kind: z.literal("photo"), subject: z.string(), named: z.string().nullable() })
+      .nullable(),
+    slides: z.array(t3Slide(subject)),
+  });
+}
+type T3Slide = z.infer<ReturnType<typeof t3Slide>>;
+const numbered = (objectives: string[]) => objectives.map((o, i) => `${i + 1}. ${o}`).join("\n");
+const t3FieldsLine = `Per slide: objectives (the numbers of the objectives it teaches or checks), form, heading, content (the lines on the slide), questions (question and answer; only ${QUESTION_FORMS.join(", ")} show them), picture (picture slides only), notes.`;
+
+export function teacher3Prompt(i: Parameters<typeof teacherPrompt>[0] & { objectives: string[] }): {
+  system: string;
+  user: string;
+} {
+  const [lo, hi] = PICTURE_SHARE[(i.ageBand ?? "ks3").toLowerCase()] ?? [0.35, 0.5];
+  const menu = Object.entries(T3_FORMS)
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join("\n");
+  const drawn = [
+    ...Object.entries(T3_DRAWS).map(([k, v]) => `- ${k}: ${v}`),
+    ...figureTemplatesFor(i.subject).map((t) => `- figure ${t}: ${FIGURE_DRAWS[t] ?? t}`),
+  ].join("\n");
+  return {
+    system: "You're an expert teacher in England.",
+    user: `${i.context}
+
+These are the lesson's objectives, and the lesson teaches each one:
+${numbered(i.objectives)}
+
+Exactly ${i.slideCount} slides. Slide 1 (the title) and slide 2 (the objectives) are made from the objectives, so write slides 3 to ${i.slideCount}.
+Teach each objective, then check it with a real question pupils answer. Share the slides by need: a harder objective gets more of them. Stay within the objectives.
+About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture, counting the title. Pictures go on teaching slides, and every check stays. A picture shows exactly what its slide says.
+
+The slide types we can draw:
+${menu}
+
+A picture is a photo (a real photograph found by search) or a drawing we make from your spec:
+${drawn}
+
+${t3FieldsLine} Also give a photo for the title slide.`,
+  };
+}
+
+/** What each objective lacks: a teaching slide, a slide with a question that checks it, or both. */
+export function coverageGaps(
+  slides: Pick<T3Slide, "objectives" | "form" | "questions">[],
+  n: number,
+): { objective: number; teach: boolean; check: boolean }[] {
+  const taught = new Set<number>();
+  const checked = new Set<number>();
+  for (const s of slides) {
+    const own = [...new Set(s.objectives)].filter((o) => o >= 1 && o <= n);
+    if (T3_TEACH.has(s.form)) for (const o of own) taught.add(o);
+    if (T3_CHECK.has(s.form)) {
+      const room = SET_OF[s.form] ? Math.max(1, s.questions.length) : 1;
+      for (const o of own.slice(0, room)) checked.add(o);
+    }
+  }
+  return Array.from({ length: n }, (_, k) => k + 1)
+    .map((o) => ({ objective: o, teach: !taught.has(o), check: !checked.has(o) }))
+    .filter((g) => g.teach || g.check);
+}
+/** Slides (1-based deck numbers) whose loss would open no new gap: the ones a re-ask may replace. */
+export function spareSlides(slides: Parameters<typeof coverageGaps>[0], n: number): number[] {
+  const missing = (g: ReturnType<typeof coverageGaps>) =>
+    g.reduce((a, x) => a + Number(x.teach) + Number(x.check), 0);
+  const base = missing(coverageGaps(slides, n));
+  return slides
+    .map((_, k) => k)
+    .filter((k) => {
+      const without = coverageGaps(
+        slides.filter((_, j) => j !== k),
+        n,
+      );
+      return missing(without) <= base;
+    })
+    .map((k) => k + 3);
+}
+export function teacher3GapPrompt(i: {
+  context: string;
+  objectives: string[];
+  slides: T3Slide[];
+  gaps: ReturnType<typeof coverageGaps>;
+  spares: number[];
+  slideCount: number;
+}): { user: string; count: number } {
+  const list = i.slides
+    .map(
+      (s, k) =>
+        `${k + 3}. ${s.form}: ${s.heading} (objectives ${s.objectives.join(", ") || "none"})`,
+    )
+    .join("\n");
+  const lacks = i.gaps
+    .map(
+      (g) =>
+        `Objective ${g.objective} has no ${[g.teach ? "slide that teaches it" : "", g.check ? "slide with a question that checks it" : ""].filter(Boolean).join(" and no ")}.`,
+    )
+    .join(" ");
+  const count = Math.min(
+    i.spares.length,
+    i.gaps.reduce((a, g) => a + Number(g.teach) + Number(g.check), 0),
+  );
+  return {
+    count,
+    user: `${i.context}
+
+These are the lesson's objectives, and the lesson teaches each one:
+${numbered(i.objectives)}
+
+Your slides 3 to ${i.slideCount}:
+${list}
+
+${lacks} Write ${count} slide${count === 1 ? "" : "s"} that fill${count === 1 ? "s" : ""} this, each replacing one of slides ${i.spares.join(", ")} (replaces: its number), so the lesson keeps ${i.slideCount} slides.
+
+The slide types we can draw:
+${Object.entries(T3_FORMS)
+  .map(([k, v]) => `- ${k}: ${v}`)
+  .join("\n")}
+
+${t3FieldsLine}`,
+  };
+}
+export function teacher3GapSchema(subject: string | undefined, spares: number[]) {
+  return z.object({
+    slides: z.array(
+      t3Slide(subject).extend({
+        replaces: z.enum(spares.map(String) as [string, ...string[]]),
+      }),
+    ),
+  });
+}
+/** T3's slides in T2's shape: a drawing's wire shape becomes the renderer's spec. */
+function fromTeacher3(objectives: string[], t: { titlePicture: unknown; slides: T3Slide[] }) {
+  return fromTeacher({
+    objectives,
+    titlePicture: t.titlePicture as TeacherLesson["titlePicture"],
+    slides: t.slides.map(({ objectives: _o, ...s }) => {
+      const p = s.picture as Record<string, unknown> | null;
+      const picture =
+        p && p.kind !== "photo" && p.kind !== "figure"
+          ? { kind: "diagram", spec: expandDrawing(p) }
+          : p;
+      return { ...s, picture } as unknown as TeacherLesson["slides"][number];
+    }),
+  });
+}
+
 /** A heading as the slide draws it: the slide's number is never part of it. */
 const bareHeading = (h: string) => h.replace(/^\s*(?:slide\s*)?\d+\s*[.):]\s*/i, "");
 /** A callout's text: the slide draws its COMMON MISTAKE label itself. */
@@ -541,11 +899,13 @@ export async function simpleLessonSlides(
   const themeId = base.themeId;
   const theme = getTheme(themeId);
   const armVersion =
-    process.env.SIMPLE_ARM === "T2"
-      ? TEACHER2_LESSON_VERSION
-      : process.env.SIMPLE_ARM === "T"
-        ? TEACHER_LESSON_VERSION
-        : SIMPLE_LESSON_VERSION;
+    process.env.SIMPLE_ARM === "T3"
+      ? TEACHER3_LESSON_VERSION
+      : process.env.SIMPLE_ARM === "T2"
+        ? TEACHER2_LESSON_VERSION
+        : process.env.SIMPLE_ARM === "T"
+          ? TEACHER_LESSON_VERSION
+          : SIMPLE_LESSON_VERSION;
   const meta = (): MaterialiseMeta => ({
     promptVersion: armVersion,
     model: CODE_MODEL,
@@ -571,7 +931,12 @@ export async function simpleLessonSlides(
     ].join("\n");
     const input = { slideCount, topic: brief.topic, context };
     const arm = process.env.SIMPLE_ARM;
-    const armT = arm === "T" || arm === "T2";
+    const armT = arm === "T" || arm === "T2" || arm === "T3";
+    // Lab ABLATE T3: the lesson's objectives are given (R3's, one JSON list per brief).
+    const givenObjectives: string[] =
+      arm === "T3"
+        ? JSON.parse(readFileSync(process.env.SIMPLE_OBJECTIVES_FILE ?? "", "utf8"))
+        : [];
     const teacherInput = {
       ...input,
       yearGroup: base.yearGroup ?? "",
@@ -579,23 +944,29 @@ export async function simpleLessonSlides(
       ageBand: audienceOf(base).ageBand,
     };
     const built =
-      arm === "T2"
-        ? teacher2Prompt(teacherInput)
-        : armT
-          ? teacherPrompt(teacherInput)
-          : simpleLessonPrompt(input);
+      arm === "T3"
+        ? teacher3Prompt({ ...teacherInput, objectives: givenObjectives })
+        : arm === "T2"
+          ? teacher2Prompt(teacherInput)
+          : armT
+            ? teacherPrompt(teacherInput)
+            : simpleLessonPrompt(input);
     const version =
-      arm === "T2"
-        ? TEACHER2_LESSON_VERSION
-        : armT
-          ? TEACHER_LESSON_VERSION
-          : SIMPLE_LESSON_VERSION;
+      arm === "T3"
+        ? TEACHER3_LESSON_VERSION
+        : arm === "T2"
+          ? TEACHER2_LESSON_VERSION
+          : armT
+            ? TEACHER_LESSON_VERSION
+            : SIMPLE_LESSON_VERSION;
     const schema = (
-      arm === "T2"
-        ? teacher2LessonSchema(base.subject)
-        : armT
-          ? teacherLessonSchema
-          : simpleLessonSchema
+      arm === "T3"
+        ? teacher3LessonSchema(base.subject)
+        : arm === "T2"
+          ? teacher2LessonSchema(base.subject)
+          : armT
+            ? teacherLessonSchema
+            : simpleLessonSchema
     ) as z.ZodType<unknown>;
     // Lab ABLATE T2: SIMPLE_REPLAY_FILE redraws a logged call's output (no writing call, no new log line).
     const replay =
@@ -617,27 +988,93 @@ export async function simpleLessonSlides(
           schema,
           maxOutputTokens: 16000,
         });
-    w = armT ? fromTeacher(call.output as TeacherLesson) : (call.output as SimpleLesson);
     // Lab ABLATE: the full request and the response, one line per call.
     const dir = process.env.SIMPLE_CALLS_DIR;
-    if (dir && !replay) {
+    const log = (row: Record<string, unknown>) => {
+      if (!dir || replay) return;
       mkdirSync(dir, { recursive: true });
-      appendFileSync(
-        `${dir}/${deps.context.jobId}.calls.jsonl`,
-        `${JSON.stringify({
-          version,
-          modelId: call.modelId,
-          effort: "low",
-          ms: Date.now() - t0,
-          usage: call.usage,
-          attempts: call.attempts,
+      appendFileSync(`${dir}/${deps.context.jobId}.calls.jsonl`, `${JSON.stringify(row)}\n`);
+    };
+    log({
+      version,
+      modelId: call.modelId,
+      effort: "low",
+      ms: Date.now() - t0,
+      usage: call.usage,
+      attempts: call.attempts,
+      context,
+      system: built.system,
+      user: built.user,
+      schema: z.toJSONSchema(schema),
+      output: call.output,
+    });
+    if (arm === "T3") {
+      // Coverage in code: every objective has a teaching slide and a slide whose question checks it.
+      const t3 = structuredClone(call.output) as { titlePicture: unknown; slides: T3Slide[] };
+      const n = givenObjectives.length;
+      const writable = Math.max(0, slideCount - 2);
+      t3.slides = t3.slides.slice(0, writable);
+      const gaps = coverageGaps(t3.slides, n);
+      const spares = spareSlides(t3.slides, n);
+      const gap: Record<string, unknown> = { gaps, spares };
+      if (gaps.length > 0 && spares.length > 0) {
+        const ask = teacher3GapPrompt({
           context,
+          objectives: givenObjectives,
+          slides: t3.slides,
+          gaps,
+          spares,
+          slideCount,
+        });
+        const gapSchema = teacher3GapSchema(base.subject, spares) as z.ZodType<unknown>;
+        const t1 = Date.now();
+        const re = replay
+          ? (JSON.parse(readFileSync(replay, "utf8").split("\n")[1] ?? "{}") as Awaited<
+              ReturnType<typeof callStructured>
+            >)
+          : await callStructured({
+              deps,
+              stage: "generate",
+              cls: planClassFor(base, deps),
+              effort: "low",
+              prompt: { version: `${version}-gap`, system: built.system, user: () => ask.user },
+              input: { ...input, gaps },
+              schema: gapSchema,
+              maxOutputTokens: 8000,
+            });
+        const used = new Set<number>();
+        for (const r of (
+          (re.output as { slides?: (T3Slide & { replaces: string })[] })?.slides ?? []
+        ).slice(0, ask.count)) {
+          const at = Number(r.replaces);
+          if (used.has(at) || !spares.includes(at)) continue;
+          used.add(at);
+          const { replaces: _r, ...slide } = r;
+          t3.slides[at - 3] = slide;
+        }
+        const after = coverageGaps(t3.slides, n);
+        Object.assign(gap, { reasked: true, replaced: [...used], after });
+        log({
+          version: `${version}-gap`,
+          modelId: re.modelId,
+          effort: "low",
+          ms: Date.now() - t1,
+          usage: re.usage,
+          attempts: re.attempts,
+          gaps,
+          spares,
           system: built.system,
-          user: built.user,
-          schema: z.toJSONSchema(schema),
-          output: call.output,
-        })}\n`,
-      );
+          user: ask.user,
+          schema: z.toJSONSchema(gapSchema),
+          output: re.output,
+          replaced: [...used],
+          after,
+        });
+      }
+      deps.logger.info({ stage: "generate", coverage: gap }, "t3 coverage");
+      w = fromTeacher3(givenObjectives, t3);
+    } else {
+      w = armT ? fromTeacher(call.output as TeacherLesson) : (call.output as SimpleLesson);
     }
   }
   const writeMs = Date.now() - t0;
@@ -783,7 +1220,10 @@ export async function simpleLessonSlides(
   const drawnAll = await Promise.all(
     written.map(async (s0, k) => {
       const index = k + 2;
-      const s = armVersion === TEACHER2_LESSON_VERSION ? withPictureZone(s0) : s0;
+      const s =
+        armVersion === TEACHER2_LESSON_VERSION || armVersion === TEACHER3_LESSON_VERSION
+          ? withPictureZone(s0)
+          : s0;
       const { form, layout, out } = adapt(s);
       const drawOne = (f: string, o: Written): Slide => {
         const r = renderWritten(f, layout, o);
