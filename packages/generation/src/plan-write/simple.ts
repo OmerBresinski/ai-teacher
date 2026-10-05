@@ -12,11 +12,18 @@ import {
   drawFigure,
   FIGURE_TEMPLATES,
   figureTemplatesFor,
+  fitSlide,
   fitsPlanned,
   getTheme,
+  isBackdrop,
+  KIND_TAG_NAME,
   type MaterialiseMeta,
   materialiseSlide,
+  measureHeadless,
   PLACEHOLDER_IMAGE,
+  renderedHeights,
+  SAFE,
+  SAFE_BOTTOM,
   slideFits,
   withoutPicture,
 } from "@tj/slides";
@@ -25,6 +32,7 @@ import {
   fittedDiagramElement,
   parseDiagram,
   settleDiagram,
+  tableDrawnHeight,
   tableDrawsWhole,
 } from "@tj/slides/diagrams";
 import { z } from "zod";
@@ -833,6 +841,54 @@ export function placeT3Diagram(
     stretched: r.stretched,
     reasons: [],
   };
+}
+
+/**
+ * lab/t3 fit-fix: a table too wide for the picture zone steps up to the full width: the words as
+ * one column of points, full width, and the table whole under them, on the lesson's theme.
+ * When the words leave it no room, whole lines of the body move to the notes word for word, from the
+ * end (the ladder's own rung for teaching text), never the first. Undefined when it still does not
+ * fit (the caller logs a hard failure).
+ */
+export function t3TableBelow(
+  out: Written,
+  spec: unknown,
+  theme: ReturnType<typeof getTheme>,
+  ids: () => string = () => Math.random().toString(36).slice(2),
+  meta: MaterialiseMeta = { promptVersion: "fit", model: "code", at: "1970-01-01T00:00:00.000Z" },
+): { slide: Slide; out: Written; moved: string[] } | undefined {
+  const body = Array.isArray(out.body) ? (out.body as string[]) : [];
+  for (let k = 0; k < Math.max(1, body.length); k++) {
+    const moved = body.slice(body.length - k);
+    const notes = [typeof out.notes === "string" ? out.notes.trim() : "", ...moved]
+      .filter(Boolean)
+      .join("\n");
+    const o: Written = { ...out, body: body.slice(0, body.length - k), notes };
+    // The words as one column of points (explain's look sets a line in a side panel to the foot).
+    const { body: lines, ...rest } = o;
+    const r = renderWritten("list", "default", { ...rest, body: [], points: lines });
+    const plain = materialiseSlide(r.spec, theme.id, meta, ids, r.variant, r.structure);
+    const fitted = fitSlide(plain, theme).slide;
+    // Each box at the height its words take (a body box may run to the foot of the slide).
+    const drawn = renderedHeights(fitted, measureHeadless(theme));
+    // Everything drawn on the slide's face (words and the cards they sit on), not its chrome.
+    const words = drawn.elements.filter(
+      (e) =>
+        e.name !== KIND_TAG_NAME &&
+        e.name !== "Accent bar" &&
+        !isBackdrop(e) &&
+        !(e.revealStep ?? 0) &&
+        e.y < SAFE_BOTTOM,
+    );
+    const top = Math.ceil(Math.max(0, ...words.map((e) => e.y + e.h))) + 16;
+    const h = tableDrawnHeight(spec, theme, SAFE.w, SAFE_BOTTOM - top);
+    if (h === undefined) continue;
+    const el = diagramElement(spec, theme, { x: SAFE.x, y: top, w: SAFE.w, h }, ids);
+    if (!el) continue;
+    const slide = { ...fitted, elements: [...fitted.elements, el] } as Slide;
+    if (slideFits(slide, theme, 0).ok) return { slide, out: o, moved };
+  }
+  return undefined;
 }
 
 /**
@@ -1779,8 +1835,19 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         invalid = `diagram ${o.kind ?? "?"}`;
         // A table that will not draw whole is words, not a scene: the slide loses the picture
         // (drawn full width) rather than asking for a photo of a table's title.
-        if (o.kind === "table") slide = drawPlain(plain);
-        else photoAsk = { subject: o.title || s.heading, named: null };
+        if (o.kind === "table") {
+          // lab/t3 fit-fix: a table never vanishes: full width under the words, else logged.
+          const below = t3TableBelow(plain, p.spec, theme, deps.ids, meta());
+          slide = below?.slide ?? drawPlain(plain);
+          if (below) {
+            drawn = "diagram";
+            invalid = undefined;
+          } else
+            deps.logger.warn(
+              { stage: "generate", slide: index + 1, kind: "table", hardFailure: true },
+              "t3 table does not fit",
+            );
+        } else photoAsk = { subject: o.title || s.heading, named: null };
         deps.logger.warn(
           { stage: "generate", slide: index + 1, kind: o.kind, reasons: d.reasons.slice(0, 6) },
           "t3 drawing not drawn",

@@ -4,7 +4,14 @@ import { getTheme, materialiseSlide, slideFits } from "@tj/slides";
 import { withAnswersReveal } from "../planner/coded-slides";
 import { ASKED_FORMS, renderWritten, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
-import { adapt, fromTeacher3, placeT3Diagram, t3Fit, withPictureZone } from "./simple";
+import {
+  adapt,
+  fromTeacher3,
+  placeT3Diagram,
+  t3Fit,
+  t3TableBelow,
+  withPictureZone,
+} from "./simple";
 
 /* lab/t3 fit-fix: the T3-CAND decks' slides as written, re-run through the fit stage offline. */
 const CALLS = `${import.meta.dir}/../../../../../quality-prd/lab/rounds/T3-CAND/calls`;
@@ -64,20 +71,31 @@ describe.skipIf(!existsSync(CALLS))("T3-CAND decks through the fit stage", () =>
     });
   }
 
-  test("y11 s7's table is not drawn cut: it is refused, and the slide loses the picture", () => {
-    const raw = JSON.parse(
-      readFileSync(`${CALLS}/T3C-${DECKS[5]}-generate.calls.jsonl`, "utf8").split(
-        "\n",
-      )[0] as string,
-    ).output.slides[4];
-    const [light] = fromTeacher3([], { titlePicture: null, slides: [raw] }).slides;
-    const s = withPictureZone(light as NonNullable<typeof light>);
-    const a = adapt(s);
-    const f = t3Fit(a.form, a.layout, a.out);
-    const r = renderWritten(f.form, f.layout, f.out);
-    const slide = materialiseSlide(r.spec, "chalk", META, undefined, r.variant, r.structure);
-    const d = placeT3Diagram(slide, (s.picture as { spec: unknown }).spec, getTheme("chalk"));
-    expect(d.slide).toBeUndefined();
-    expect(d.reasons).toEqual(["the table is cut at its smallest size"]);
+  test("y11 s5 and s7: a table too wide for the zone steps up to full width under the words", () => {
+    for (const n of [5, 7]) {
+      const raw = JSON.parse(
+        readFileSync(`${CALLS}/T3C-${DECKS[5]}-generate.calls.jsonl`, "utf8").split(
+          "\n",
+        )[0] as string,
+      ).output.slides[n - 3];
+      const [light] = fromTeacher3([], { titlePicture: null, slides: [raw] }).slides;
+      const s = withPictureZone(light as NonNullable<typeof light>);
+      const a = adapt(s);
+      const f = t3Fit(a.form, a.layout, a.out);
+      const theme = getTheme("chalk");
+      const r = renderWritten(f.form, f.layout, f.out);
+      const slide = materialiseSlide(r.spec, "chalk", META, undefined, r.variant, r.structure);
+      const spec = (s.picture as { spec: unknown }).spec;
+      expect(placeT3Diagram(slide, spec, theme).slide).toBeUndefined();
+      const { imageBrief: _i, ...plain } = f.out;
+      const res = t3TableBelow(plain, spec, theme);
+      const below = res?.slide;
+      // Every body line is kept, on the slide or in the notes word for word.
+      for (const line of plain.body as string[])
+        expect(JSON.stringify(res?.out)).toContain(line.slice(0, 40));
+      expect(below, `s${n}`).toBeDefined();
+      expect(slideFits(below as NonNullable<typeof below>, theme, 0).ok).toBe(true);
+      expect(below?.elements.some((e) => e.type === "image")).toBe(true);
+    }
   });
 });

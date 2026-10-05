@@ -127,6 +127,26 @@ export function tableDrawsWhole(spec: unknown, theme: Theme, w: number, h: numbe
   return tableWhole(s, context(theme, Math.round(w), Math.round(h)), w, h);
 }
 
+/**
+ * lab/t3 fit-fix: the height a table spec takes drawn whole `w` wide on `theme` (its title's lines
+ * included), or undefined when it cannot draw whole at that width within `h`.
+ */
+export function tableDrawnHeight(
+  spec: unknown,
+  theme: Theme,
+  w: number,
+  h: number,
+): number | undefined {
+  const s = parseDiagram(spec);
+  if (s?.kind !== "table") return undefined;
+  const x = context(theme, Math.round(w), Math.round(h));
+  const title = s.title ? Math.ceil(x.fs * 1.1 * 1.7 + x.fs * 1.2) : 0;
+  const ih = h - title;
+  if (ih <= 0 || !tableWhole(s, x, w, ih)) return undefined;
+  const need = title + tableHeight(s, x, w, ih);
+  return need <= h ? need : undefined;
+}
+
 export function fittedDiagramElement(
   spec: unknown,
   theme: Theme,
