@@ -1134,8 +1134,11 @@ function fillOpenResponse(
   const head = textOf(laid, "heading");
   const els: SlideElement[] = [];
   let y: number = SAFE.y;
-  if (split.lead) {
-    setText(head, split.lead);
+  // The writer's heading heads the parts; a lead written before them then opens the body.
+  const title = spec.heading?.trim() || split.lead;
+  const lead = spec.heading?.trim() ? split.lead : "";
+  if (title) {
+    setText(head, title);
     const h = measure({
       doc: head.doc,
       width: head.w,
@@ -1150,23 +1153,35 @@ function fillOpenResponse(
   }
   const size = Math.round(resolveFontSize(t, "body") * 1.15);
   const marksW = 96;
+  if (lead) {
+    const doc = docFromText(lead);
+    const style = { preset: "body" as const, fontSize: size };
+    const h = Math.ceil(
+      measure({ doc, width: SAFE.w, style, preset: "body", inset: 0, chrome: 0 }),
+    );
+    els.push({ id: ids(), type: "text", name: "Lead", x: SAFE.x, y, w: SAFE.w, h, doc, style });
+    y = snapY(y + h + SPACE[4]);
+  }
+  // A fixed label column, so every part's words start at the same x whatever its label's width.
+  const labelW = Math.round(size * 2.4);
   for (const part of split.parts) {
-    const doc: RichDoc = {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            { type: "text", text: `(${part.label})`, marks: [{ type: "bold" }] },
-            { type: "text", text: `\u2003${part.text}` },
-          ],
-        },
-      ],
-    };
-    const w = SAFE.w - (part.marks ? marksW + SPACE[3] : 0);
+    const doc = docFromText(part.text);
+    const x = SAFE.x + labelW;
+    const w = SAFE.w - labelW - (part.marks ? marksW + SPACE[3] : 0);
     const style = { preset: "body" as const, fontSize: size };
     const h = Math.ceil(measure({ doc, width: w, style, preset: "body", inset: 0, chrome: 0 }));
-    els.push({ id: ids(), type: "text", name: "Part", x: SAFE.x, y, w, h, doc, style });
+    els.push({
+      id: ids(),
+      type: "text",
+      name: "Part label",
+      x: SAFE.x,
+      y,
+      w: labelW,
+      h,
+      doc: docFromText(`(${part.label})`),
+      style: { ...style, fontWeight: 700 },
+    });
+    els.push({ id: ids(), type: "text", name: "Part", x, y, w, h, doc, style });
     if (part.marks)
       els.push({
         id: ids(),

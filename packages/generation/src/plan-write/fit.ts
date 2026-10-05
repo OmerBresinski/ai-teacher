@@ -127,10 +127,22 @@ export function renderWritten(form: string, layout: string, out: Written, role?:
       ...(SET_VARIANTS.has(layout) ? { variant: layout } : {}),
       structure: {},
     };
-  const { notes, ...fields } = out;
+  const { notes, ...all } = out;
+  // An open response's heading is the slide's, not a slot the writer fills (y9 s9).
+  const { heading, ...rest } = all;
+  const fields = form === "open-response" ? rest : all;
   const made = specOfWriter(form as PaletteFormId, drawable(form, fields), layout);
   if (!made) throw new Error(`plan-write: ${form} is not drawn on a slide`);
-  const spec = { ...made.spec, notes: notesOf((made.spec as { notes?: string }).notes, notes) };
+  const spec = {
+    ...made.spec,
+    ...(form === "open-response" &&
+    typeof heading === "string" &&
+    heading.trim() &&
+    heading.length <= 80
+      ? { heading: heading.trim() }
+      : {}),
+    notes: notesOf((made.spec as { notes?: string }).notes, notes),
+  };
   return {
     spec: spec as SlideSpec,
     ...(made.variant ? { variant: made.variant } : {}),

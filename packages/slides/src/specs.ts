@@ -506,6 +506,8 @@ function buildSpecs(soft: boolean) {
     z.object({
       kind: z.literal("open-response"),
       ...specBase,
+      /** The writer's heading: heads a question set in parts (y9 s9); unused for one question. */
+      heading: line(SPEC_LIMITS.heading).optional(),
       stem: line(SPEC_LIMITS.stem),
       modelAnswer: line(SPEC_LIMITS.body).optional(),
     }),

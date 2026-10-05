@@ -1485,7 +1485,13 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
       return {
         form: "open-response",
         layout: "default",
-        out: { stem: q.question || s.heading, modelAnswer: q.answer ? [q.answer] : [], notes },
+        out: {
+          stem: q.question || s.heading,
+          modelAnswer: q.answer ? [q.answer] : [],
+          // A question set in parts is headed by the writer's heading (y9 s9).
+          ...(q.question && s.heading ? { heading: s.heading } : {}),
+          notes,
+        },
       };
     case "discussion":
       return {

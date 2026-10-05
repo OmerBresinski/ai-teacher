@@ -233,12 +233,36 @@ describe("simple: the open response is a question at the top, its parts on their
     );
     const parts = slide.elements.filter((e) => e.name === "Part");
     expect(parts.map((p) => (p.type === "text" ? plain(p) : ""))).toEqual([
-      "(a)\u2003How did Germany's hyperinflation develop?",
-      "(b)\u2003Why did its effects differ?",
-      "(c)\u2003How was it brought under control?",
+      "How did Germany's hyperinflation develop?",
+      "Why did its effects differ?",
+      "How was it brought under control?",
     ]);
+    const labels = slide.elements.filter((e): e is TextElement => e.name === "Part label");
+    expect(labels.map(plain)).toEqual(["(a)", "(b)", "(c)"]);
+    // A fixed label column: every part's words start at the same x, whatever its label's width.
+    expect(new Set(parts.map((p) => p.x)).size).toBe(1);
     for (let i = 1; i < parts.length; i++)
       expect((parts[i] as TextElement).y).toBeGreaterThan((parts[i - 1] as TextElement).y);
+  });
+  test("the writer's heading heads the parts (y9 s9)", () => {
+    const slide = materialiseSlide(
+      {
+        kind: "open-response",
+        heading: "Independent practice: explain the crisis",
+        stem: "How did Germany's hyperinflation develop, why did its effects differ, and how was it brought under control?",
+        factRefs: [],
+      } as SlideSpec,
+      "studio",
+      META,
+      counter(),
+    );
+    const head = slide.elements.find(
+      (e): e is TextElement => e.type === "text" && e.style.preset === "heading",
+    );
+    expect(head && plain(head)).toBe("Independent practice: explain the crisis");
+    const parts = slide.elements.filter((e): e is TextElement => e.name === "Part");
+    expect(parts).toHaveLength(3);
+    for (const p of parts) expect(p.y).toBeGreaterThanOrEqual((head?.y ?? 0) + (head?.h ?? 0));
   });
   test("written parts keep their marks, right-aligned on the part's line", () => {
     const slide = or("Answer in full. (a) Name the gas. [1] (b) Explain why it rises. [3]");
