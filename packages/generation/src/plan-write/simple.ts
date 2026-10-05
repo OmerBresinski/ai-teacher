@@ -13,8 +13,8 @@ import {
   asFigureFull,
   drawFigure,
   EXTRA_FIGURES,
-  FIGURE_FULL_CAPTION_MAX,
   FIGURE_TEMPLATES,
+  figureFullCaptionChars,
   figureTemplatesFor,
   fitSlide,
   fitsPlanned,
@@ -555,7 +555,7 @@ function t3ZoneLines(): Record<string, string> {
   const chars = Math.floor(g.text.w / BODY_CHAR);
   return {
     picture: `2–3 lines in a column on the right (about ${chars} characters wide, room for ${lines} lines), the picture on the left (${zoneShape(g.picture.w, g.picture.h)})`,
-    "big-diagram": `a heading and one drawing filling the slide (full width under the heading, ${zoneShape(g.big.w, g.big.h)}), with an optional one-line caption of up to ${FIGURE_FULL_CAPTION_MAX} characters`,
+    "big-diagram": `a heading and one drawing filling the slide (full width under the heading, ${zoneShape(g.big.w, g.big.h)}), with an optional one-line caption of up to ${figureFullCaptionChars(getTheme("chalk"))} characters`,
   };
 }
 
