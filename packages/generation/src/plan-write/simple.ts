@@ -351,6 +351,17 @@ const labelled = (s: string, sep: string) => {
   return at < 0 ? [s.trim(), ""] : [s.slice(0, at).trim(), s.slice(at + sep.length).trim()];
 };
 
+/**
+ * Arm T2: a teaching slide given a picture is drawn as the photo form, the only one with a picture
+ * zone, when its words fit that form's slots (explain; explain-callout with its mistake as a line).
+ */
+export function withPictureZone(s: LightSlide): LightSlide {
+  if (!s.picture || (s.form !== "explain" && s.form !== "explain-callout")) return s;
+  const body =
+    s.form === "explain" ? s.body : [...s.body, ...s.items.map((t) => `Common mistake: ${t}`)];
+  return { ...s, form: "photo", body, items: [] };
+}
+
 /** The thin adapter: a light slide as the candidate's form, layout and writer fields. */
 export function adapt(s: LightSlide): { form: string; layout: string; out: Written } {
   const q = s.questions[0] ?? { question: "", answer: "" };
@@ -582,20 +593,26 @@ export async function simpleLessonSlides(
           ? teacherLessonSchema
           : simpleLessonSchema
     ) as z.ZodType<unknown>;
-    const call = await callStructured({
-      deps,
-      stage: "generate",
-      cls: planClassFor(base, deps),
-      effort: "low",
-      prompt: { version, system: built.system, user: () => built.user },
-      input,
-      schema,
-      maxOutputTokens: 16000,
-    });
+    // Lab ABLATE T2: SIMPLE_REPLAY_FILE redraws a logged call's output (no writing call, no new log line).
+    const replay = process.env.SIMPLE_REPLAY_FILE;
+    const call = replay
+      ? (JSON.parse(readFileSync(replay, "utf8").split("\n")[0] ?? "{}") as Awaited<
+          ReturnType<typeof callStructured>
+        >)
+      : await callStructured({
+          deps,
+          stage: "generate",
+          cls: planClassFor(base, deps),
+          effort: "low",
+          prompt: { version, system: built.system, user: () => built.user },
+          input,
+          schema,
+          maxOutputTokens: 16000,
+        });
     w = armT ? fromTeacher(call.output as TeacherLesson) : (call.output as SimpleLesson);
     // Lab ABLATE: the full request and the response, one line per call.
     const dir = process.env.SIMPLE_CALLS_DIR;
-    if (dir) {
+    if (dir && !replay) {
       mkdirSync(dir, { recursive: true });
       appendFileSync(
         `${dir}/${deps.context.jobId}.calls.jsonl`,
@@ -756,8 +773,9 @@ export async function simpleLessonSlides(
   const report: Record<string, unknown>[] = [];
   const written = w.slides.slice(0, Math.max(0, slideCount - 2));
   const drawnAll = await Promise.all(
-    written.map(async (s, k) => {
+    written.map(async (s0, k) => {
       const index = k + 2;
+      const s = armVersion === TEACHER2_LESSON_VERSION ? withPictureZone(s0) : s0;
       const { form, layout, out } = adapt(s);
       const drawOne = (f: string, o: Written): Slide => {
         const r = renderWritten(f, layout, o);
