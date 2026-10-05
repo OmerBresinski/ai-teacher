@@ -605,7 +605,7 @@ describe("illustrate", () => {
     // Round 3: each query's first result is always shown, so the judge sees the top hit even when
     // the caption shortlist names nothing.
     expect(ai2.calls[1]?.imageParts ?? 0).toBe(1);
-    expect(ai2.calls[1]?.promptText).toContain("Candidates: none.");
+    expect(ai2.calls[1]?.promptText).toContain("id p0");
     expect(emptied.stores).toEqual([]);
     expect(imageOf(state2.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
     const counts = lines.map((l) => JSON.parse(l)).find((r) => r.pool !== undefined);

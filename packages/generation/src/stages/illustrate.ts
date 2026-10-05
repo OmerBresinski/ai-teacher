@@ -509,7 +509,8 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
       stage: "illustrate",
       slideIndex: index,
       pool: pool.length,
-      shortlisted: shortlisted.length,
+      shortlisted: listed.length,
+      topHits: shortlisted.length - listed.length,
     });
     // No caption names the subject: nothing to pick. The old fallback sent the first few to the
     // judge anyway and placed off-topic stock (fix3: syringes on red for the particle model); no
@@ -736,7 +737,9 @@ export function cropToAspect(width: number, height: number, aspect: number) {
   return { x: (width - w) / 2, y: (height - h) / 2, w, h, kept: (w * h) / (width * height) };
 }
 /** A Commons photo is kept when its crop to the zone keeps at least this share of it. */
-const COMMONS_MIN_KEPT = 0.55;
+// 0.45, not 0.55 (round 3): the real 1923 Weimar photo (1280x1517) keeps 47% of itself in a 16:9
+// zone and was dropped before any judge saw it; its subject sits in the centre band.
+const COMMONS_MIN_KEPT = 0.45;
 
 async function searchPortraits(
   images: PhotoPlacer,
