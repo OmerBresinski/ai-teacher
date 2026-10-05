@@ -181,11 +181,30 @@ describe("findPicture ladder", () => {
     expect(searched).toBe(false);
     expect(calls).toEqual(["lookup", "generate"]);
   });
-  test("a failing library or generator is a miss, never a throw", async () => {
+  test("a library that is down never generates: the stock ladder serves", async () => {
+    let generated = false;
     const bank: PictureBank = {
       lookup: async () => {
         throw new Error("db down");
       },
+      remember: async () => {},
+      generate: async () => {
+        generated = true;
+        return photo("/files/bank/x.png");
+      },
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => photo("/files/ws/p.jpg"),
+      signal,
+    );
+    expect(generated).toBe(false);
+    expect(out.via).toBe("fetched");
+  });
+  test("a failing generator is a miss, never a throw", async () => {
+    const bank: PictureBank = {
+      lookup: async () => undefined,
       remember: async () => {},
       generate: async () => {
         throw new Error("500");

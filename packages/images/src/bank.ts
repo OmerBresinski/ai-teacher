@@ -78,7 +78,13 @@ export function imagePrompt(request: { text: string; named?: string | null }, fa
           `It shows the real ${request.named ? request.named : "thing"} faithfully, as it really looks (or looked): nothing invented, nothing reconstructed, nothing added.`,
         ]
       : []),
-    "Set it in the United Kingdom where a setting shows: British people, places, money (pounds) and everyday objects (an electric kettle, a plug with three pins).",
+    // PHOTO-BANK smoke: on a real (often historical or foreign) thing the UK line put modern
+    // British children and pound notes into 1923 Germany, so it goes on generic scenes only.
+    ...(faithful
+      ? []
+      : [
+          "Set it in the United Kingdom where a setting shows: British people, places, money (pounds) and everyday objects (an electric kettle, a plug with three pins).",
+        ]),
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ];
   return lines.join("\n");

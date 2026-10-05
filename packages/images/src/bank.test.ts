@@ -64,6 +64,8 @@ describe("imagePrompt (ruling 158 items 4 and 5)", () => {
     expect(real).toMatch(/nothing invented/);
     expect(real).toContain("Housesteads Roman Fort");
     expect(real).toMatch(/No text anywhere/);
+    // A real thing is shown where and when it is: no UK setting forced onto 1923 Germany.
+    expect(real).not.toMatch(/United Kingdom/);
   });
 });
 

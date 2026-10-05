@@ -94,8 +94,16 @@ export async function findPicture(
     lookCheck: photo ? lookCheck : false,
     ms: now() - t0,
   });
-  const hit = await bank.lookup(req, signal).catch(rethrowAbort);
+  let libraryDown = false;
+  const hit = await bank.lookup(req, signal).catch((error) => {
+    rethrowAbort(error);
+    libraryDown = true;
+    return undefined;
+  });
   if (hit) return done(hit, "library");
+  // PHOTO-BANK smoke: with the library unreachable nothing could be stored, so nothing is
+  // generated (a paid picture would be lost); the stock ladder serves every route.
+  if (libraryDown) return done(await fetchReal().catch(rethrowAbort), "fetched");
   if (req.route === "real") {
     const fetched = await fetchReal().catch(rethrowAbort);
     if (fetched) {
