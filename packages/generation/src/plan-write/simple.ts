@@ -409,7 +409,8 @@ Per slide: form, heading, content (the lines on the slide), questions (question 
  */
 // t4 (5 Oct): + closing independent practice before the exit ticket (T3-LEDGER U4b).
 // t8 (6 Oct): + "Everything a slide refers to is on that slide." (T3-LEDGER U9b).
-export const TEACHER3_LESSON_VERSION = "simple-lesson.t8";
+// t9 (6 Oct): + "Each question carries everything pupils work from to answer it." (T3-LEDGER U9c).
+export const TEACHER3_LESSON_VERSION = "simple-lesson.t9";
 /**
  * lab/t3 (Greg, 5 Oct 2026: T3 is the candidate): the plan-write planner writes with T3 by default.
  * `PLAN_WRITE_MODE=stream` or `plan-write` runs R3 instead.
@@ -894,7 +895,7 @@ ${numbered(i.objectives)}
 
 Exactly ${i.slideCount} slides. Slide 1 (the title) and slide 2 (the objectives) are made from the objectives, so write slides 3 to ${i.slideCount}.
 Teach each objective, then check it with a real question pupils answer. Share the slides by need: a harder objective gets more of them. Stay within the objectives. Where the slide count allows, the lesson ends with practice pupils do on their own, before the exit ticket.
-About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture, counting the title. Pictures go on teaching slides, and every check stays. A picture shows exactly what its slide says. Everything a slide refers to is on that slide.
+About ${Math.round(i.slideCount * lo)}–${Math.round(i.slideCount * hi)} of your ${i.slideCount} slides show a picture, counting the title. Pictures go on teaching slides, and every check stays. A picture shows exactly what its slide says. Everything a slide refers to is on that slide. Each question carries everything pupils work from to answer it.
 
 The slide types we can draw:
 ${menu}
