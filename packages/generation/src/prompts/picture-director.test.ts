@@ -101,7 +101,7 @@ describe("picture director prompt", () => {
   });
 
   test("v8: the lesson's picture style is a user line, photo when the lesson has none", () => {
-    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v9");
+    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v10");
     expect(pictureDirectorPrompt(input).user).toContain("Picture style for this lesson: photo");
     expect(pictureDirectorPrompt({ ...input, style: "illustration" }).user).toContain(
       "Picture style for this lesson: illustration",

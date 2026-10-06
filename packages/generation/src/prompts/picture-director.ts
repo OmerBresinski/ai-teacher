@@ -40,8 +40,10 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  *   for the judge; pupils up to Year 6 get one frame-filling subject on a plain background
  *   (BAKEOFF round 2 y1: a ginger kitten beside a black cat, a heap of kittens in leaves, a hen's
  *   head cut off at the edge) (v9).
+ * - stages of one thing: each says what is visibly true at its stage and what is not there yet
+ *   (round 3: a bean "seed" panel came back already sprouting) (v10).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v9";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v10";
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -107,7 +109,7 @@ Choose one route:
 - code: a drawing shows the idea better than a photograph, including an array of plain identical marks, or one of these: ${DIAGRAM_KINDS.join(", ")}.
 - none: nothing pupils could see explains the slide's point better than its words, so a picture would only decorate.
 
-For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. For code and none, pictures is empty.
+For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. When they show stages of one thing, each describes what is visibly true at its stage and what is not there yet that the next stage brings. For code and none, pictures is empty.
 
 Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
