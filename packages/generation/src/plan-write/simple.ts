@@ -2327,16 +2327,20 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     // lab/t3: no slide saved overflowing (cand-fix's fit ladder; units move to the notes whole).
     const fitted = t3Fit(adapted.form, adapted.layout, adapted.out, s.questions);
     const { form, layout, out } = fitted;
-    const drawOne = (f: string, o: Written, l: string = layout): Slide => {
+    const drawOne = (f: string, o: Written, l: string = layout, plain = false): Slide => {
       const r = renderWritten(f, l, o);
-      const slide = materialiseSlide(r.spec, themeId, meta(), deps.ids, r.variant, r.structure);
+      const structure = plain ? { ...r.structure, noPanel: true } : r.structure;
+      const slide = materialiseSlide(r.spec, themeId, meta(), deps.ids, r.variant, structure);
       return isSetForm(f) ? withSetTag(withAnswersReveal(slide, themeId), f) : slide;
     };
-    /** The no-picture explain form, laddered the same way. */
+    /**
+     * The no-picture explain form, laddered the same way. FIX1: it stands in for a picture slide,
+     * so its words are set alone in their own style; no key-idea card is made up for the slot.
+     */
     const drawPlain = (o: Written): Slide => {
       const q = t3Fit("explain", "default", o);
       if (!q.fits) report.push({ slide: index + 1, form: "explain", fits: false, ladder: q.rung });
-      return drawOne(q.form, q.out, q.layout);
+      return drawOne(q.form, q.out, q.layout, true);
     };
     const { imageBrief: _i, ...plain } = out;
     let slide: Slide;
@@ -2509,6 +2513,12 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
         find(index, pic, photoAsk, slideForPicture(s)).then((photo) => {
           if (round[index] !== gen) return; // a re-ask replaced this slide meanwhile
           deck[index] = photo ? placeIn(slide, photo) : drawPlain(plain);
+          // FIX1: an empty picture slot is recorded as unfilled, not hidden behind a card.
+          if (!photo)
+            deps.logger.warn(
+              { stage: "illustrate", slide: index + 1, slot: "unfilled" },
+              "picture slot unfilled",
+            );
           if (!photo)
             outline[index] = {
               id: `s${index + 1}`,

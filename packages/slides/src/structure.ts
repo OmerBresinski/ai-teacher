@@ -119,6 +119,11 @@ export type SlideStructure = {
   photo?: PhotoBrief;
   /** The vocabulary's definitions: a term a teaching slide uses can fill its side panel. */
   glossary?: { term: string; definition: string }[];
+  /**
+   * FIX1: the slide stands in for a picture slide whose picture never came. Its words are set
+   * alone in their own style: no "Key idea" card or side panel is made up to fill the slot.
+   */
+  noPanel?: boolean;
 };
 
 /* ---------------------------------------------------------------- text helpers */
@@ -2716,6 +2721,7 @@ function splitContent(
   /** With pages: a panel is never kept by stepping the words down beside it. */
   floorless = false,
 ): Slide | undefined {
+  if (hints.noPanel) return undefined;
   if (top > SAFE.y + SAFE.h * 0.45) return undefined;
   // A sentence that only repeats the heading is not said twice on the slide.
   const bare = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
