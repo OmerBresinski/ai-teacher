@@ -8,7 +8,8 @@ import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { armT } from "./arm-t";
 import { checkSlide } from "./checks";
 import type { MaterialiseCtx, VisualState } from "./harness";
-import { guardedGenerator, type PickerLessonInfo, pickerLesson } from "./services";
+import { applyRepair, dropEchoTitle, repeatedPictures } from "./harness";
+import { guardedGenerator, Ledger, type PickerLessonInfo, pickerLesson } from "./services";
 
 const PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
@@ -410,5 +411,58 @@ describe("design object, placeholders, templates (decisions a and b)", () => {
     );
     await g.generate({ prompt: "a hen" } as never);
     expect(seen).toEqual(["a hen"]);
+  });
+});
+
+describe("shared fixes from K's y1 smoke", () => {
+  test("a repair stores its slide and adds to_notes to the notes", () => {
+    const slides: Record<string, unknown>[] = [{ heading: "old" }];
+    const notes = new Map([[0, { notes: "Say hello.", answers: ["a"] }]]);
+    applyRepair(slides, notes, 0, {
+      fix: "shorter",
+      slide: { heading: "new" },
+      to_notes: "Moved detail.",
+    });
+    expect(slides[0]).toEqual({ heading: "new" });
+    expect(notes.get(0)).toEqual({ notes: "Say hello.\n\nMoved detail.", answers: ["a"] });
+    applyRepair(slides, notes, 0, { fix: "x" });
+    expect(slides[0]).toEqual({ heading: "new" });
+  });
+  test("a picture shows at most once per lesson unless the same request asks", () => {
+    const ph = (src: string, request: string) =>
+      ({ status: "photo", photo: { src, request, alt: "", aspect: 1.5 } }) as VisualState;
+    const v = new Map<string, VisualState>([
+      ["4:p", ph("/files/hen.jpg", "a hen")],
+      ["0:title", ph("/files/hen.jpg", "farm animals")],
+      ["6:p", ph("/files/hen.jpg", "farm animals")],
+      ["2:p", ph("/files/cow.jpg", "a cow")],
+    ]);
+    expect(repeatedPictures(v)).toEqual(["4:p"]);
+  });
+  test("a diagram title that repeats the heading is dropped", () => {
+    expect(dropEchoTitle({ kind: "cycle", title: "The Water Cycle!" }, "the water cycle")).toEqual({
+      kind: "cycle",
+    });
+    expect(dropEchoTitle({ kind: "cycle", title: "Evaporation" }, "The water cycle")).toEqual({
+      kind: "cycle",
+      title: "Evaporation",
+    });
+  });
+});
+
+describe("run cap held before spend (arm C's rule)", () => {
+  test("a step whose worst case would pass the cap does not start; parallel holds add up", () => {
+    const l = new Ledger(0.1);
+    l.add("main", 0.05);
+    const a = l.guard("picture 1", 0.025);
+    const b = l.guard("picture 2", 0.025);
+    expect(() => l.guard("picture 3", 0.025)).toThrow(/cap/);
+    a();
+    a();
+    l.add("pictures", 0.01);
+    expect(() => l.guard("notes", 0.01)).not.toThrow();
+    b();
+    l.outside = () => 0.03;
+    expect(() => l.guard("repair", 0.02)).toThrow(/cap/);
   });
 });

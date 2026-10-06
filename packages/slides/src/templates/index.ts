@@ -287,6 +287,7 @@ function heading(c: Ctx, value: string) {
   );
   if (el.y + el.h > G.band.y - 6)
     c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
+  return el;
 }
 
 export type SubjectBox = { name: string; x: number; y: number; w: number; h: number };
@@ -668,40 +669,83 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         break;
       }
       case "compare": {
-        heading(c, input.heading);
+        const head = heading(c, input.heading);
         const cols = input.columns ?? [];
         const gap = 24;
-        const w = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
+        const colW = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
+        const pics = cols.some((col) => col.figure);
+        if (pics) {
+          // Picture first (Greg 6 Oct): equal columns across the content width from the heading's
+          // left edge; each card is a 4:3 picture band at the card's full inner width, then the label
+          // and a short line. Words wrap inside the card and never change its width; words too long
+          // for the full 4:3 band are a fault (the band shrinks only to keep the card on the slide).
+          const pad = 10;
+          const top = Math.max(G.band.y - 48, Math.round(head.y + head.h + 12));
+          const bottom = G.band.y + G.band.h + 32;
+          const iw = colW - 2 * pad;
+          const words = Math.max(
+            ...cols.map(
+              (col) =>
+                measure(c, col.label, "lead", iw, 700) +
+                (col.text ? 4 + measure(c, col.text, "body", iw) : 0),
+            ),
+            0,
+          );
+          const full = Math.round(iw * 0.75);
+          const picH = Math.min(full, bottom - top - 2 * pad - 8 - words);
+          if (picH < Math.floor(full * 0.96))
+            c.over.push(`compare picture ${picH}/${full}pt (under 4:3)`);
+          const bh = Math.max(picH, 60);
+          const h = bh + 2 * pad + 8 + words;
+          const y = Math.max(top, Math.round((top + bottom) / 2 - h / 2));
+          cols.forEach((col, k) => {
+            const x = G.margin + k * (colW + gap);
+            box(c, { x, y, w: colW, h }, theme.colors.surface, {
+              stroke: theme.colors.line,
+              strokeWidth: 1,
+              radius: Math.min(theme.radius, 16),
+            });
+            const band = { x: x + pad, y: y + pad, w: iw, h: bh };
+            if (col.figure && "photo" in col.figure) photoBox(c, col.figure, band);
+            else if (col.figure) figurePanel(c, col.figure, band);
+            const lab = text(
+              c,
+              col.label,
+              "lead",
+              { x: x + pad, y: band.y + band.h + 8, w: iw },
+              { color: theme.colors.accent, weight: 700, name: "Label" },
+            );
+            if (col.text)
+              text(
+                c,
+                col.text,
+                "body",
+                { x: x + pad, y: lab.y + lab.h + 4, w: iw },
+                { color: theme.colors.ink, name: "Text" },
+              );
+          });
+          break;
+        }
         const pad = 22;
         const textH = (col: { label: string; text: string }) =>
-          measure(c, col.label, "lead", w - 2 * pad, 700) +
+          measure(c, col.label, "lead", colW - 2 * pad, 700) +
           10 +
-          (col.text ? measure(c, col.text, "body", w - 2 * pad) : 0);
-        // A column photo sits over its label, the same height in every column, taking what the
-        // tallest words leave of the band (at least 96 pt, else it is a fault).
-        const pics = cols.some((col) => col.figure);
-        const words = Math.max(...cols.map(textH), 0);
-        const picH = pics ? Math.min(200, G.band.h - 2 * pad - words - 14) : 0;
-        if (pics && picH < 96) c.over.push(`compare photos ${picH}pt tall`);
-        const h = words + 2 * pad + (pics ? Math.max(96, picH) + 14 : 0);
+          (col.text ? measure(c, col.text, "body", colW - 2 * pad) : 0);
+        const h = Math.max(...cols.map(textH), 0) + 2 * pad;
         if (h > G.band.h) c.over.push(`compare ${h}/${G.band.h}pt`);
         const y = Math.max(G.band.y, Math.round(bandMid - h / 2 - 4));
         cols.forEach((col, k) => {
-          const x = G.margin + k * (w + gap);
-          box(c, { x, y, w, h }, theme.colors.surface, {
+          const x = G.margin + k * (colW + gap);
+          box(c, { x, y, w: colW, h }, theme.colors.surface, {
             stroke: theme.colors.line,
             strokeWidth: 1,
             radius: Math.min(theme.radius, 16),
           });
-          const ph = pics ? Math.max(96, picH) : 0;
-          if (col.figure && "photo" in col.figure)
-            photoBox(c, col.figure, { x: x + pad, y: y + pad, w: w - 2 * pad, h: ph });
-          const top = y + pad + (pics ? ph + 14 : 0);
           const lab = text(
             c,
             col.label,
             "lead",
-            { x: x + pad, y: top, w: w - 2 * pad },
+            { x: x + pad, y: y + pad, w: colW - 2 * pad },
             { color: theme.colors.accent, weight: 700, name: "Label" },
           );
           if (col.text)
@@ -709,7 +753,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
               c,
               col.text,
               "body",
-              { x: x + pad, y: lab.y + lab.h + 10, w: w - 2 * pad },
+              { x: x + pad, y: lab.y + lab.h + 10, w: colW - 2 * pad },
               { color: theme.colors.ink, name: "Text" },
             );
         });
@@ -796,16 +840,25 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const opts = input.options ?? [];
         const stem = input.stem;
         const gap = 18;
-        const w = Math.floor((G.width - gap) / 2);
         const pad = 20;
         const d = Math.round(c.s.body * 1.25);
-        const iw = w - 2 * pad - d - 14;
-        const rowH = Math.max(...opts.map((o) => measure(c, o, "body", iw)), d) + 2 * pad;
-        const rows = Math.ceil(opts.length / 2);
         const sH = stem ? measure(c, stem, "lead", G.width) + 22 : 0;
-        const total = sH + rows * rowH + (rows - 1) * gap;
-        if (total > G.band.h) c.over.push(`hinge ${total}/${G.band.h}pt`);
-        let y = Math.max(G.band.y, Math.round(bandMid - total / 2 - 4));
+        // Options never leave a hole: 2 in a row, 4 as 2x2, 3 as a row of 3 when they fit it,
+        // else one column (fit2: three options as 2 + 1 left a gap).
+        const grid = (perRow: number) => {
+          const w = Math.floor((G.width - gap * (perRow - 1)) / perRow);
+          const iw = w - 2 * pad - d - 14;
+          const rowH = Math.max(...opts.map((o) => measure(c, o, "body", iw)), d) + 2 * pad;
+          const rows = Math.ceil(opts.length / perRow);
+          return { perRow, w, iw, rowH, rows, total: sH + rows * rowH + (rows - 1) * gap };
+        };
+        let g = grid(opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
+        if (opts.length === 3) {
+          const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
+          if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
+        }
+        if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
+        let y = Math.max(G.band.y, Math.round(bandMid - g.total / 2 - 4));
         if (stem) {
           text(
             c,
@@ -817,21 +870,21 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           y += sH;
         }
         opts.forEach((o, k) => {
-          const x = G.margin + (k % 2) * (w + gap);
-          const yy = y + Math.floor(k / 2) * (rowH + gap);
-          box(c, { x, y: yy, w, h: rowH }, theme.colors.surface, {
+          const x = G.margin + (k % g.perRow) * (g.w + gap);
+          const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
+          box(c, { x, y: yy, w: g.w, h: g.rowH }, theme.colors.surface, {
             stroke: theme.colors.line,
             strokeWidth: 1,
             radius: Math.min(theme.radius, 16),
             name: "Option",
           });
-          disc(c, String.fromCharCode(65 + k), x + pad, yy + rowH / 2 - d / 2, d);
-          const th = measure(c, o, "body", iw);
+          disc(c, String.fromCharCode(65 + k), x + pad, yy + g.rowH / 2 - d / 2, d);
+          const th = measure(c, o, "body", g.iw);
           text(
             c,
             o,
             "body",
-            { x: x + pad + d + 14, y: yy + rowH / 2 - th / 2, w: iw },
+            { x: x + pad + d + 14, y: yy + g.rowH / 2 - th / 2, w: g.iw },
             { color: theme.colors.ink, name: "Option text" },
           );
         });
