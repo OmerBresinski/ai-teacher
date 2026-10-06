@@ -10,6 +10,7 @@ import type { Theme } from "@tj/domain/documents";
 import { countLines } from "../text-measure";
 import { withKeyStage } from "../themes";
 import {
+  atFullSize,
   G,
   layoutTemplate,
   type Stage,
@@ -31,7 +32,13 @@ export type TemplateDoc = {
   use: string;
   slots: SlotDoc[];
   /** The fills measured: item counts per list slot (others at their minimum). */
-  variants: { label: string; counts: Record<string, number>; figure?: "photo" | "diagram" }[];
+  variants: {
+    label: string;
+    counts: Record<string, number>;
+    figure?: "photo" | "diagram";
+    /** Every point carries a short label (KEY_LABEL chars), so the points are key cards. */
+    keyCards?: boolean;
+  }[];
 };
 
 const HEADING: SlotDoc = { name: "heading", holds: "the slide heading", kind: "text" };
@@ -46,6 +53,18 @@ const DIAGRAM: SlotDoc = {
   holds: "a diagram request: its kind and what it must show",
   kind: "diagram",
 };
+
+/** A key card's label as measured: a short name, one line in the column ("Freezing", "One part"). */
+export const KEY_LABEL = 16;
+const POINTS_HOLDS =
+  "support points; one or two may each carry a short label, set as key cards (label over its line)";
+const KEY_VARIANTS = (figure?: "photo" | "diagram") =>
+  [1, 2].map((n) => ({
+    label: `lead + ${n} key card${n > 1 ? "s" : ""}`,
+    counts: { points: n },
+    keyCards: true,
+    ...(figure ? { figure } : {}),
+  }));
 
 export const TEMPLATE_DOCS: TemplateDoc[] = [
   {
@@ -73,9 +92,12 @@ export const TEMPLATE_DOCS: TemplateDoc[] = [
     slots: [
       HEADING,
       { name: "lead", holds: "the one key sentence", kind: "text" },
-      { name: "points", holds: "support points", kind: "list", items: [0, 3] },
+      { name: "points", holds: POINTS_HOLDS, kind: "list", items: [0, 3] },
     ],
-    variants: [0, 2, 3].map((n) => ({ label: `lead + ${n} points`, counts: { points: n } })),
+    variants: [
+      ...[0, 2, 3].map((n) => ({ label: `lead + ${n} points`, counts: { points: n } })),
+      ...KEY_VARIANTS(),
+    ],
   },
   {
     id: "picture-text",
@@ -83,14 +105,17 @@ export const TEMPLATE_DOCS: TemplateDoc[] = [
     slots: [
       HEADING,
       { name: "lead", holds: "the one key sentence", kind: "text", optional: true },
-      { name: "points", holds: "support points", kind: "list", items: [0, 3] },
+      { name: "points", holds: POINTS_HOLDS, kind: "list", items: [0, 3] },
       PHOTO(),
     ],
-    variants: [0, 2, 3].map((n) => ({
-      label: `lead + ${n} points`,
-      counts: { points: n },
-      figure: "photo" as const,
-    })),
+    variants: [
+      ...[0, 2, 3].map((n) => ({
+        label: `lead + ${n} points`,
+        counts: { points: n },
+        figure: "photo" as const,
+      })),
+      ...KEY_VARIANTS("photo"),
+    ],
   },
   {
     id: "diagram-text",
@@ -98,14 +123,17 @@ export const TEMPLATE_DOCS: TemplateDoc[] = [
     slots: [
       HEADING,
       { name: "lead", holds: "the one key sentence", kind: "text", optional: true },
-      { name: "points", holds: "support points", kind: "list", items: [0, 3] },
+      { name: "points", holds: POINTS_HOLDS, kind: "list", items: [0, 3] },
       DIAGRAM,
     ],
-    variants: [0, 2, 3].map((n) => ({
-      label: `lead + ${n} points`,
-      counts: { points: n },
-      figure: "diagram" as const,
-    })),
+    variants: [
+      ...[0, 2, 3].map((n) => ({
+        label: `lead + ${n} points`,
+        counts: { points: n },
+        figure: "diagram" as const,
+      })),
+      ...KEY_VARIANTS("diagram"),
+    ],
   },
   {
     id: "big-picture",
@@ -270,7 +298,17 @@ function inputFor(
     case "explain":
     case "picture-text":
     case "diagram-text":
-      return { ...base, lead: sample(n), points: items(v.counts.points ?? 0), figure: fig };
+      return {
+        ...base,
+        lead: sample(n),
+        points: v.keyCards
+          ? items(v.counts.points ?? 1).map((text, i) => ({
+              label: sample(KEY_LABEL, i * 5),
+              text,
+            }))
+          : items(v.counts.points ?? 0),
+        figure: fig,
+      };
     case "big-picture":
     case "big-diagram":
     case "discussion":
@@ -335,7 +373,9 @@ function perLine(
 }
 
 export function measureTemplate(doc: TemplateDoc, theme: Theme, stage: Stage): Capacity {
-  const clean = (input: TemplateInput) => layoutTemplate(input, theme, stage).over.length === 0;
+  // Fit-first: measured at full size, ladder off (the ladder is a net, not capacity).
+  const clean = (input: TemplateInput) =>
+    atFullSize(() => layoutTemplate(input, theme, stage).over.length === 0);
   const headingMax = largest((n) =>
     clean({ ...inputFor(doc, doc.variants[0] as never, 10), heading: sample(n) }),
   );

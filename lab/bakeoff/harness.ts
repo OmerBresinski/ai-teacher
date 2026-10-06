@@ -300,6 +300,11 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   // ── visuals ──
   const reused = o.reuseVisuals ? reusedPhotos(o.reuseVisuals) : undefined;
   const reusedDia = o.reuseVisuals ? reusedDiagrams(o.reuseVisuals) : undefined;
+  const specsFile = `${o.outDir}/diagram-specs.json`;
+  const reusedSpecs =
+    o.reuseVisuals && existsSync(specsFile)
+      ? (JSON.parse(readFileSync(specsFile, "utf8")) as Record<string, unknown>)
+      : undefined;
   const pics =
     o.noVisuals || reused
       ? undefined
@@ -392,8 +397,19 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const k = `${i}:${a.key}`;
     if (reusedDia) {
       // Offline re-layout: the drawing the earlier run placed on this slide (no spec call).
+      // Round 1: a recorded spec (`<outDir>/diagram-specs.json`, slide index -> spec) is drawn
+      // again through drawDiagram instead of reusing the old SVG, so the offline re-layout
+      // exercises the live diagram path (a spec that cannot draw readably falls back to words).
+      const spec = reusedSpecs?.[String(i)];
       const d = reusedDia.get(i);
-      visuals.set(k, d ? { status: "diagram", spec: { drawn: d } } : { status: "failed" });
+      visuals.set(
+        k,
+        spec
+          ? { status: "diagram", spec }
+          : d
+            ? { status: "diagram", spec: { drawn: d } }
+            : { status: "failed" },
+      );
       log({ ev: "diagram-done", key: k, ok: !!d, reused: true });
       relay(i, "diagram");
       return;

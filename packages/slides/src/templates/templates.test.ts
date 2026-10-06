@@ -125,15 +125,67 @@ describe("round 1: text fit and fallbacks", () => {
         template: "picture-text",
         heading: "Solids",
         lead: "Particles in a solid are closely packed.",
-        points: ["Movement: Particles vibrate about fixed positions."],
+        points: [{ label: "Movement", text: "Particles vibrate about fixed positions." }],
         figure: { photo: "/x.jpg", aspect: 1.2 },
       },
       studio,
       "ks3",
     );
     expect(r.slide.elements.some((e) => e.name === "Key card")).toBe(true);
+    expect(r.slide.elements.some((e) => e.name === "Key edge")).toBe(true);
     expect(
       plainText((r.slide.elements.find((e) => e.name === "Key label") as { doc: unknown }).doc),
     ).toBe("Movement");
+  });
+  test("key cards come from the label field, not a 'Label:' text convention", () => {
+    const lay = (points: Parameters<typeof layoutTemplate>[0]["points"]) =>
+      layoutTemplate(
+        { template: "explain", heading: "Solids", lead: "Packed.", points },
+        studio,
+        "ks3",
+      ).slide.elements;
+    const cards = (els: ReturnType<typeof lay>) => els.filter((e) => e.name === "Key card").length;
+    // A "Movement: ..." string is a bulleted point, not a card.
+    expect(cards(lay(["Movement: Particles vibrate.", "Shape: Fixed."]))).toBe(0);
+    // One labelled point among plain ones: one card, the plain point keeps its bullet.
+    const mixed = lay([{ label: "Movement", text: "Particles vibrate." }, "They do not flow."]);
+    expect(cards(mixed)).toBe(1);
+    expect(mixed.filter((e) => e.name === "Bullet").length).toBe(1);
+    // Three labelled points are too many cards: bullets with the label in the line.
+    const three = lay([
+      { label: "A", text: "One." },
+      { label: "B", text: "Two." },
+      { label: "C", text: "Three." },
+    ]);
+    expect(cards(three)).toBe(0);
+    expect(three.filter((e) => e.name === "Bullet").length).toBe(3);
+    // A blank label is no label.
+    expect(cards(lay([{ label: " ", text: "Particles vibrate." }]))).toBe(0);
+  });
+  test("drawDiagram failure: no panel, no wash, words-only sibling; a readable spec keeps its panel", () => {
+    const flow = (labels: string[]) => ({
+      kind: "flow",
+      alt: "steps",
+      steps: labels.map((label) => ({ label })),
+    });
+    const lay = (labels: string[]) =>
+      layoutTemplate(
+        {
+          template: "diagram-text",
+          heading: "The process",
+          lead: "Each stage follows the last.",
+          points: ["It runs in order."],
+          figure: { diagram: flow(labels) },
+        },
+        getTheme("splash"),
+        "ks2",
+      ).slide.elements;
+    // KS2 caps a flow at 4 steps: 8 long steps cannot draw readably in the half panel.
+    const failed = lay(Array.from({ length: 8 }, (_, i) => `Stage number ${i + 1} of the process`));
+    expect(failed.some((e) => e.name === "Diagram" || e.type === "image")).toBe(false);
+    expect(failed.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(false);
+    const ok = lay(["Egg", "Chick", "Hen"]);
+    expect(ok.some((e) => e.type === "image")).toBe(true);
+    expect(ok.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(true);
   });
 });

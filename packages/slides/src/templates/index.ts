@@ -18,7 +18,7 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { diagramElement, diagramFaults, fittedDiagramElement, withLongLabels } from "../diagrams";
+import { drawDiagram } from "../diagrams";
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
 import { typeScale, withKeyStage } from "../themes";
@@ -104,8 +104,11 @@ export type TemplateInput = {
   heading: string;
   /** Title slide: the enquiry line under the title. Others: the one lead sentence. */
   lead?: string;
-  /** Support lines (explain, picture/diagram + text), steps, objectives. */
-  points?: string[];
+  /**
+   * Support lines (explain, picture/diagram + text), steps, objectives. A support point may carry a
+   * short `label`: one or two labelled points in a lead + points column are set as key cards.
+   */
+  points?: TemplatePoint[];
   /** Questions (question set, practice, exit ticket). */
   questions?: string[];
   /** Hinge: the stem and its 2-4 options. */
@@ -119,6 +122,12 @@ export type TemplateInput = {
   instruction?: string;
   figure?: Figure;
 };
+
+/** A point: plain words, or words with a short label (a key card in a lead + points column). */
+export type TemplatePoint = string | { text: string; label?: string };
+export const pointText = (p: TemplatePoint): string => (typeof p === "string" ? p : p.text);
+export const pointLabel = (p: TemplatePoint): string | undefined =>
+  typeof p === "string" ? undefined : p.label?.trim() || undefined;
 
 export type TemplateResult = {
   slide: Pick<Slide, "kind" | "elements" | "background">;
@@ -476,18 +485,13 @@ function figurePanel(
   if (diagramFailed(f.diagram)) return false;
   const i = G.inset;
   const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
+  // drawDiagram (round 1, DIAGRAMS.md) tries the spec, then each simpler form, from the stage's
+  // small size down to its floor, and answers ok only for a drawing with no readability fault.
+  // Anything else is a failure: no panel, no wash, and the caller takes the words-only sibling.
   const draw = (): { el: SlideElement; note?: string } | undefined => {
-    // Labels at reading size: the largest type (from the stage's small size down) that draws clean.
-    for (let fs = c.s.small; fs >= 15; fs -= 1) {
-      const size = { w: inner.w, h: inner.h, fs };
-      const clean = withLongLabels(() => diagramFaults(f.diagram, c.t, size).length === 0);
-      const el = clean
-        ? withLongLabels(() => diagramElement(f.diagram, c.t, { ...inner, fs }))
-        : undefined;
-      if (el) return { el, ...(fs < c.s.small ? { note: `diagram labels ${fs}pt` } : {}) };
-    }
-    const r = fittedDiagramElement(f.diagram, c.t, inner);
-    return r.ok ? { el: r.element, note: "diagram labels below 15pt" } : undefined;
+    const r = drawDiagram(f.diagram, c.t, { ...inner, fs: c.s.small });
+    if (!r.ok) return undefined;
+    return { el: r.element, ...(r.fs < c.s.small ? { note: `diagram labels ${r.fs}pt` } : {}) };
   };
   const d = draw();
   if (!d || !elementDrawsSomething(d.el)) return false;
@@ -547,6 +551,20 @@ const RUNGS = [
   { space: 0.6, small: true },
 ] as const;
 type Rung = (typeof RUNGS)[number];
+let fullSizeOnly = false;
+/**
+ * Lay out with the ladder off: a column fits only at full size. The catalogue's capacities are
+ * measured this way (fit-first: the model plans to fit at full size; the ladder is a net).
+ */
+export function atFullSize<T>(f: () => T): T {
+  const was = fullSizeOnly;
+  fullSizeOnly = true;
+  try {
+    return f();
+  } finally {
+    fullSizeOnly = was;
+  }
+}
 function ladder(
   c: Ctx,
   build: (r: Rung) => { blocks: Block[]; gap: number },
@@ -554,11 +572,12 @@ function ladder(
 ) {
   const limit = where.limit ?? G.band.h;
   const full = c.s;
-  for (const [k, r] of RUNGS.entries()) {
+  const rungs = fullSizeOnly ? RUNGS.slice(0, 1) : RUNGS;
+  for (const [k, r] of rungs.entries()) {
     c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
     const { blocks, gap } = build(r);
     const total = blocks.reduce((a, b) => a + b.h, 0) + gap * Math.max(0, blocks.length - 1);
-    if (total <= limit || k === RUNGS.length - 1) {
+    if (total <= limit || k === rungs.length - 1) {
       if (total > limit) c.over.push(`${where.what} ${total}/${limit}pt`);
       // Optical centre: a little above the band's middle, so a short column sits with its heading.
       let y = where.top ?? Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
@@ -573,22 +592,22 @@ function ladder(
   c.s = full;
 }
 
-const LABELLED = /^([^:]{2,32}):\s+/;
 /**
- * Lead + support points in a column `w` wide at `x`. One or two points that each carry a label
- * ("Movement: ...") are set as key cards, the label over its line on a washed card with an accent
- * edge (arm K's y5/y7 callouts, which Greg ranked first); other points are bulleted.
+ * Lead + support points in a column `w` wide at `x`. When one or two points carry a `label`, those
+ * points are set as key cards, the label over its line on a washed card with an accent edge (arm
+ * K's y5/y7 callouts, which Greg ranked first); unlabelled points stay bulleted. Three or more
+ * labelled points are too many cards for a column: they are bulleted with the label in bold.
  */
 function leadAndPoints(
   c: Ctx,
   lead: string | undefined,
-  points: string[],
+  points: TemplatePoint[],
   x: number,
   w: number,
   what: string,
 ) {
-  const cards =
-    points.length > 0 && points.length <= 2 && points.every((p) => LABELLED.test(plain(p)));
+  const labelled = points.filter((p) => pointLabel(p)).length;
+  const cards = labelled >= 1 && labelled <= 2;
   ladder(
     c,
     (r) => {
@@ -601,14 +620,15 @@ function leadAndPoints(
           draw: (y) => text(c, lead, "lead", { x, y, w }, { color: c.t.colors.ink, name: "Lead" }),
         });
       }
-      if (cards) {
-        const pad = Math.round(c.s.body * 0.7);
-        const bar = 5;
-        const iw = w - 2 * pad - bar;
-        for (const p of points) {
-          const m = plain(p).match(LABELLED);
-          const label = m?.[1] ?? "";
-          const body = plain(p).slice(m?.[0].length ?? 0);
+      const pad = Math.round(c.s.body * 0.7);
+      const bar = 5;
+      const iw = w - 2 * pad - bar;
+      const d = Math.round(c.s.body * 0.36);
+      const indent = Math.round(c.s.body * 1.0);
+      for (const p of points) {
+        const label = pointLabel(p);
+        if (cards && label) {
+          const body = pointText(p);
           const lh = measure(c, label, "lead", iw, 700);
           const bh = measure(c, body, "body", iw);
           const h = 2 * pad + lh + 4 + bh;
@@ -640,13 +660,10 @@ function leadAndPoints(
               );
             },
           });
+          continue;
         }
-        return { blocks, gap: Math.round(c.s.body * 0.8 * r.space) };
-      }
-      const d = Math.round(c.s.body * 0.36);
-      const indent = Math.round(c.s.body * 1.0);
-      for (const p of points) {
-        const h = measure(c, p, "body", w - indent);
+        const words = label ? `${label}: ${pointText(p)}` : pointText(p);
+        const h = measure(c, words, "body", w - indent);
         blocks.push({
           h,
           draw: (y) => {
@@ -663,7 +680,7 @@ function leadAndPoints(
             });
             text(
               c,
-              p,
+              words,
               "body",
               { x: x + indent, y, w: w - indent },
               { color: c.t.colors.ink, boldLabel: true, name: "Point" },
@@ -671,7 +688,7 @@ function leadAndPoints(
           },
         });
       }
-      return { blocks, gap };
+      return { blocks, gap: cards ? Math.round(c.s.body * 0.8 * r.space) : gap };
     },
     { what },
   );
@@ -787,7 +804,8 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
     input = withoutFailedFigures(c, input);
     const tpl = input.template;
     let background: Slide["background"];
-    const pts = input.points ?? [];
+    const raw = input.points ?? [];
+    const pts = raw.map(pointText);
     switch (tpl) {
       case "title": {
         // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
@@ -839,12 +857,12 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         break;
       case "explain":
         heading(c, input.heading);
-        leadAndPoints(c, input.lead, pts, G.margin, 680, "explain");
+        leadAndPoints(c, input.lead, raw, G.margin, 680, "explain");
         break;
       case "picture-text":
       case "diagram-text":
         heading(c, input.heading);
-        leadAndPoints(c, input.lead, pts, G.left.x, G.left.w, "text column");
+        leadAndPoints(c, input.lead, raw, G.left.x, G.left.w, "text column");
         figurePanel(c, input.figure);
         break;
       case "big-diagram": {
@@ -1121,7 +1139,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         heading(c, input.heading);
         const prompt = input.lead ?? "";
         if (input.figure) {
-          leadAndPoints(c, prompt, pts, G.left.x, G.left.w, "discussion");
+          leadAndPoints(c, prompt, raw, G.left.x, G.left.w, "discussion");
           figurePanel(c, input.figure);
         } else {
           // No figure: the prompt is the focal element, large, on the wash panel.

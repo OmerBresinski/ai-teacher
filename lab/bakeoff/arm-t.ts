@@ -7,6 +7,7 @@ import {
   type Figure,
   layoutTemplate,
   type TemplateInput,
+  type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
 import { BAKEOFF, ROUNDS } from "./services";
@@ -18,6 +19,16 @@ const band = (b: Brief) => (b.keyStage === "ks1" ? "KS1" : b.keyStage === "ks2" 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const strs = (v: unknown) =>
   Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : str((x as S)?.question))) : [];
+/** Support points: a string, or `{label, text}` (a key card; round 1). A blank label is no label. */
+const pts = (v: unknown): TemplatePoint[] =>
+  Array.isArray(v)
+    ? v.map((x) => {
+        if (typeof x === "string") return x;
+        const o = (x ?? {}) as S;
+        const label = str(o.label).trim();
+        return label ? { label, text: str(o.text) } : str(o.text);
+      })
+    : [];
 const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" in (f as object);
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
@@ -134,7 +145,7 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
         points: (ctx.plan.objectives ?? []).map((o) => o.pupil),
       };
     case "explain":
-      return { template, heading, lead, points: strs(s.points) };
+      return { template, heading, lead, points: pts(s.points) };
     case "picture-text":
     case "diagram-text": {
       const f = fig(template === "picture-text" ? "picture" : "diagram");
@@ -143,7 +154,7 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
         template: f ? template : "explain",
         heading,
         lead,
-        points: strs(s.points),
+        points: pts(s.points),
         figure: f,
       };
     }
@@ -312,7 +323,7 @@ export const armT: ArmPlugin = {
       str(s.lead),
       str(s.stem),
       str(s.instruction),
-      ...strs(s.points),
+      ...pts(s.points).map((p) => (typeof p === "string" ? p : `${p.label}: ${p.text}`)),
       ...strs(s.questions),
       ...strs(s.options),
     ];
