@@ -322,3 +322,45 @@ describe("simple: the two-sided contrast (item 6)", () => {
       expect([t.colors.incorrect, t.colors.correct]).not.toContain(l.style.color);
   });
 });
+
+describe("simple: a one-question open response keeps the writer's heading and task (y1 s9)", () => {
+  const spec = {
+    kind: "open-response",
+    heading: "Try it on your own",
+    stem: "How does a chick change as it grows into a hen?",
+    task: [
+      "Draw a chick and an adult hen.",
+      "Label them: chick, hen.",
+      "Tell or write what changes.",
+    ],
+    modelAnswer: "It gets bigger and grows feathers.",
+    factRefs: [],
+  } as SlideSpec;
+  for (const theme of THEMES) {
+    test(`${theme.id}: heading, then the question, then the task lines, all on the slide`, () => {
+      const slide = materialiseSlide(spec, theme.id, META, counter());
+      const texts = slide.elements.filter((e) => e.type === "text") as TextElement[];
+      const at = (words: string) => {
+        const e = texts.find((x) => JSON.stringify(x.doc).includes(words));
+        expect(e).toBeDefined();
+        return e as TextElement;
+      };
+      const head = at("Try it on your own");
+      const stem = at("How does a chick change");
+      const task = ["Draw a chick", "Label them", "Tell or write"].map(at);
+      expect(stem.y).toBeGreaterThanOrEqual(head.y + head.h);
+      for (const e of task) expect(e.y).toBeGreaterThanOrEqual(stem.y + stem.h);
+      for (const e of texts) expect(e.y + e.h).toBeLessThanOrEqual(810);
+    });
+  }
+  test("without a task or heading the question is the heading, as before", () => {
+    const slide = materialiseSlide(
+      { kind: "open-response", stem: "Why do leaves fall?", factRefs: [] } as SlideSpec,
+      "studio",
+      META,
+      counter(),
+    );
+    const texts = slide.elements.filter((e) => e.type === "text") as TextElement[];
+    expect(texts).toHaveLength(1);
+  });
+});

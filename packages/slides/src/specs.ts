@@ -509,6 +509,8 @@ function buildSpecs(soft: boolean) {
       /** The writer's heading: heads a question set in parts (y9 s9); unused for one question. */
       heading: line(SPEC_LIMITS.heading).optional(),
       stem: line(SPEC_LIMITS.stem),
+      /** The writer's task lines (what pupils do), set under a one-part question (y1 s9). */
+      task: z.array(line(SPEC_LIMITS.item)).max(4).optional(),
       modelAnswer: line(SPEC_LIMITS.body).optional(),
     }),
     rule(

@@ -1123,10 +1123,14 @@ function fillOpenResponse(
   const question: QuestionData = { type: "open-response" };
   if (spec.modelAnswer) question.modelAnswer = spec.modelAnswer;
   const split = questionParts(spec.stem);
-  if (!split) {
+  const task = (spec.task ?? []).map((x) => x.trim()).filter(Boolean);
+  const own = spec.heading?.trim();
+  if (!split && task.length === 0 && (!own || own === spec.stem.trim())) {
     setText(textOf(laid, "heading"), spec.stem);
     return { ...laid, question };
   }
+  if (!split)
+    return { ...laid, ...oneQuestion(spec.stem, own, task, themeId, laid, ids), question };
   // A question in parts: its lead (if any) as the heading, then (a), (b), (c) each on its own
   // line in the body, any marks right-aligned on the part's line (item 4, simple slide).
   const t = getTheme(themeId);
@@ -1197,6 +1201,73 @@ function fillOpenResponse(
     y = snapY(y + h + SPACE[4]);
   }
   return { ...laid, elements: els, question };
+}
+
+/**
+ * One question with the writer's heading and task lines (y1 s9): the heading, the question as the
+ * slide's focus a step above body, then what pupils do, one line each, in the muted ink.
+ */
+function oneQuestion(
+  stem: string,
+  own: string | undefined,
+  task: string[],
+  themeId: string,
+  laid: Layout,
+  ids: IdSupplier,
+): { elements: SlideElement[] } {
+  const t = getTheme(themeId);
+  const measure = measureHeadless(t);
+  const head = textOf(laid, "heading");
+  const els: SlideElement[] = [];
+  const size = Math.round(resolveFontSize(t, "body") * 1.15);
+  const block = (name: string, words: string, y: number, style: TextElement["style"]) => {
+    const doc = docFromText(words);
+    const h = Math.ceil(
+      measure({ doc, width: SAFE.w, style, preset: "body", inset: 0, chrome: 0 }),
+    );
+    els.push({ id: ids(), type: "text", name, x: SAFE.x, y, w: SAFE.w, h, doc, style });
+    return snapY(y + h + SPACE[4]);
+  };
+  let y: number = SAFE.y;
+  if (own) {
+    setText(head, own);
+    head.h = Math.ceil(
+      measure({
+        doc: head.doc,
+        width: head.w,
+        style: head.style,
+        preset: "heading",
+        inset: 0,
+        chrome: 0,
+      }),
+    );
+    els.push(head);
+    y = snapY(SAFE.y + head.h + SPACE[4]);
+    y = block("Lead", stem, y, { preset: "body", fontSize: size });
+  } else {
+    setText(head, stem);
+    head.h = Math.ceil(
+      measure({
+        doc: head.doc,
+        width: head.w,
+        style: head.style,
+        preset: "heading",
+        inset: 0,
+        chrome: 0,
+      }),
+    );
+    els.push(head);
+    y = snapY(SAFE.y + head.h + SPACE[4]);
+  }
+  if (task.length > 0) {
+    const doc = docFromText(task.join("\n"));
+    const style = { preset: "body" as const, color: t.colors.muted };
+    const h = Math.ceil(
+      measure({ doc, width: SAFE.w, style, preset: "body", inset: 0, chrome: 0 }),
+    );
+    els.push({ id: ids(), type: "text", name: "Task", x: SAFE.x, y, w: SAFE.w, h, doc, style });
+  }
+  return { elements: els };
 }
 
 /**

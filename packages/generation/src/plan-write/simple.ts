@@ -1493,6 +1493,8 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
         out: {
           stem: q.question || s.heading,
           modelAnswer: q.answer ? [q.answer] : [],
+          // What pupils do (draw, label, tell) stays on the slide under the question (y1 s9).
+          ...(q.question && (s.body ?? []).length > 0 ? { task: (s.body ?? []).slice(0, 4) } : {}),
           // A question set in parts is headed by the writer's heading (y9 s9).
           ...(q.question && s.heading ? { heading: s.heading } : {}),
           notes,

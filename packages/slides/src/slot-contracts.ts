@@ -720,6 +720,7 @@ export function specOfWriter(
           kind: "open-response",
           ...base,
           stem: o.stem,
+          ...(Array.isArray(o.task) && o.task.length > 0 ? { task: o.task } : {}),
           modelAnswer: sentencesOf(o.modelAnswer),
         } as unknown as SlideSpec,
         structure: {},
