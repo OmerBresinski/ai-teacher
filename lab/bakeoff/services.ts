@@ -461,6 +461,24 @@ export function pictureService(opts: {
     ask: PhotoAsk,
     lesson: Parameters<typeof find>[1],
   ): Promise<PhotoResult | undefined> {
+    // The stock candidates this ask was shown, so a refused pool can be kept for review.
+    const pool: { id: string; url: string }[] = [];
+    const note = (ps: unknown) => {
+      for (const p of (Array.isArray(ps) ? ps : []) as {
+        id?: unknown;
+        src?: { medium?: string; large?: string };
+        url?: string;
+      }[]) {
+        const url = p.src?.medium ?? p.src?.large ?? p.url;
+        if (url) pool.push({ id: String(p.id ?? pool.length), url });
+      }
+      return ps;
+    };
+    const poolImages = {
+      ...images,
+      search: (q: string, o: object) => images.search(q, o).then(note),
+      searchCommons: (q: string, o: object) => images.searchCommons(q, o).then(note),
+    };
     const deps = {
       ai,
       budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
@@ -469,7 +487,7 @@ export function pictureService(opts: {
       logger,
       now: () => new Date(),
       ids: () => newId(),
-      images,
+      images: poolImages,
       context: { lessonId: lesson.id, jobId: `bakeoff-${lesson.id}` },
     };
     const request = [ask.shows, ...ask.mustSee].join(". ");
@@ -498,7 +516,26 @@ export function pictureService(opts: {
     const stock = async (first: unknown) => {
       if (illustrated && !(first as { specific?: boolean }).specific) return undefined;
       const r = (await at(first)) as { outcome: string; photo?: { src: string; boxes?: Box4[] } };
-      if (r.outcome !== "placed" || !r.photo) return undefined;
+      if (r.outcome !== "placed" || !r.photo) {
+        // The judge refused the whole stock pool: keep its first candidates for review.
+        const files: string[] = [];
+        for (const [n, c] of pool.slice(0, 4).entries()) {
+          try {
+            const res = await fetch(c.url);
+            if (!res.ok) continue;
+            const f = `${opts.runDir}/rejected/${ask.key.replace(/[^\w.+-]/g, "_")}-stock-${n}.jpg`;
+            mkdirSync(dirname(f), { recursive: true });
+            writeFileSync(f, new Uint8Array(await res.arrayBuffer()));
+            files.push(f);
+          } catch {}
+        }
+        appendFileSync(
+          `${opts.runDir}/log.jsonl`,
+          `${JSON.stringify({ t: Date.now(), ev: "rejected", key: ask.key, request, check: "stock judge", outcome: r.outcome, files, pool: pool.length })}\n`,
+        );
+        pool.length = 0;
+        return undefined;
+      }
       // A generic stock photo that this slot could only show shrunk on a panel is refused, so the
       // director generates one at the slot's shape instead (named real things keep their photo).
       if (!ask.named && ask.fixedShape && ask.aspect) {
@@ -522,20 +559,30 @@ export function pictureService(opts: {
       country: "England",
       index: ask.index,
       stock: stock as never,
-      judgeMade: (brief: unknown, made: { dataUrl?: string }, reuse?: boolean) =>
-        made.dataUrl
-          ? judgeMade({
-              lesson: pickerLesson(lesson, ask.index) as never,
-              index: ask.index,
-              ...(reuse ? { reuse } : {}),
-              brief: brief as never,
-              deps: deps as never,
-              dataUrl: made.dataUrl,
-              onVerdict: (v: { boxes?: Box4[] }) => {
-                madeBoxes = v.boxes;
-              },
-            })
-          : Promise.resolve(true),
+      judgeMade: (brief: unknown, made: { dataUrl?: string; src?: string }, reuse?: boolean) => {
+        if (!made.dataUrl) return Promise.resolve(true);
+        let seen: { why?: string; fits?: boolean } | undefined;
+        return judgeMade({
+          lesson: pickerLesson(lesson, ask.index) as never,
+          index: ask.index,
+          brief: brief as never,
+          deps: deps as never,
+          dataUrl: made.dataUrl,
+          ...(reuse ? { reuse } : {}),
+          onVerdict: (v: { boxes?: Box4[]; why?: string; fits?: boolean }) => {
+            madeBoxes = v.boxes;
+            seen = v;
+          },
+        }).then((ok) => {
+          // A refused generated (or library) picture stays in the store; log it for review.
+          if (!ok)
+            appendFileSync(
+              `${opts.runDir}/log.jsonl`,
+              `${JSON.stringify({ t: Date.now(), ev: "rejected", key: ask.key, request: request, src: made.src, check: reuse ? "reuse judge" : "picture judge", fits: seen?.fits, why: seen?.why })}\n`,
+            );
+          return ok;
+        });
+      },
       deps: deps as never,
       ...(look ? { look } : {}),
       onOutcome: (o: object) =>
@@ -662,6 +709,7 @@ export function pictureService(opts: {
       }
       const urls = panels.map((p) => `data:image/png;base64,${Buffer.from(p).toString("base64")}`);
       const boxes: (Box4[] | undefined)[] = [];
+      const panelWhy: (string | undefined)[] = [];
       const judged = await Promise.all(
         asks.map((a, k) => {
           const request = [a.shows, ...a.mustSee].join(". ");
@@ -682,8 +730,9 @@ export function pictureService(opts: {
             brief: brief as never,
             deps: deps as never,
             dataUrl: urls[k] ?? "",
-            onVerdict: (v: { boxes?: Box4[] }) => {
+            onVerdict: (v: { boxes?: Box4[]; why?: string }) => {
               boxes[k] = v.boxes;
+              panelWhy[k] = v.why;
             },
           }).catch(() => false);
         }),
@@ -699,7 +748,23 @@ export function pictureService(opts: {
         panels: judged,
         same: same ? same.same : "skipped",
         odd: [...odd],
+        ...(same?.why ? { why: same.why } : {}),
       });
+      // Every rejected panel is kept for review (round2/pics3/ab "Rejected by the checker").
+      for (const [k, ok] of pass.entries()) {
+        if (ok) continue;
+        const f = `${opts.runDir}/rejected/${setKey.replace(/[^\w.+-]/g, "_")}-a${attempt}-p${k}.png`;
+        mkdirSync(dirname(f), { recursive: true });
+        writeFileSync(f, panels[k] ?? new Uint8Array());
+        runLog({
+          ev: "rejected",
+          key: asks[k]?.key,
+          request: asks[k]?.shows,
+          file: f,
+          check: judged[k] !== true ? "panel judge" : "set judge",
+          why: judged[k] !== true ? panelWhy[k] : same?.why,
+        });
+      }
       const results = setPanelResults(asks, panels, pass, boxes, {
         model: gen.model,
         style:
@@ -734,7 +799,7 @@ export function pictureService(opts: {
   async function judgeSet(
     shows: string[],
     urls: string[],
-  ): Promise<{ same: boolean; odd: number[] } | undefined> {
+  ): Promise<{ same: boolean; odd: number[]; why?: string } | undefined> {
     const dir = `${BAKEOFF}/prompts/shared`;
     if (!existsSync(`${dir}/set-judge.txt`) || !existsSync(`${dir}/set-judge-schema.json`))
       return undefined;
@@ -750,8 +815,10 @@ export function pictureService(opts: {
         maxTokens: 2000,
       });
       opts.ledger.add("pictures", r.usd);
-      const o = r.out as { same?: boolean; odd?: number[] } | undefined;
-      return typeof o?.same === "boolean" ? { same: o.same, odd: o.odd ?? [] } : undefined;
+      const o = r.out as { same?: boolean; odd?: number[]; why?: string } | undefined;
+      return typeof o?.same === "boolean"
+        ? { same: o.same, odd: o.odd ?? [], ...(o.why ? { why: o.why } : {}) }
+        : undefined;
     } catch {
       return undefined;
     }
