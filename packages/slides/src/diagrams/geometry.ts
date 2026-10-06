@@ -117,6 +117,9 @@ function topOf(p: PathElement): Pt {
 }
 
 /** Every geometry fault in a drawn figure (its elements in the figure's points). */
+/** The least share of a figure's height its plot keeps. */
+export const PLOT_MIN = 0.4;
+
 export function figureGeometryFaults(children: SlideElement[], theme: Theme): string[] {
   const out: string[] = [];
   const named = (n: string) => children.find((c) => c.name === n);
@@ -150,6 +153,13 @@ export function figureGeometryFaults(children: SlideElement[], theme: Theme): st
       const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
       if (ox > 2 && oy > 2) out.push("two figure labels overlap");
     }
+  // FIX1 (y11 s7, render2): a plot squeezed to a strip by the rows under it. The energy axis runs
+  // the plot's height; under PLOT_MIN of the figure's, the figure needs a taller or wider zone.
+  const axis = named("Energy axis");
+  if (axis) {
+    const figH = Math.max(...children.map((c) => c.y + c.h));
+    if (axis.h < figH * PLOT_MIN) out.push("the plot is squeezed to a strip");
+  }
   // FIX1 (y11 s7): a label laid on a profile curve (the legend once landed on the hump). The curve
   // is sampled as the renderer draws it (a smooth path: cubic segments through its knots, control
   // points a sixth of the neighbours' span along); a label's ink (its box less 2 pt a side and the top and bottom quarters of its line box) holds no sample.

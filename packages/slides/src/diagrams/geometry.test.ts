@@ -133,6 +133,11 @@ describe("DIAGRAM-MODERN geometry checks", () => {
               for (const l of legend)
                 expect(l.y).toBeGreaterThan((axis?.y ?? 0) + (axis?.h ?? 0) - 8);
           }
+          // The half zone squeezes this plot to a strip, so generation moves it to the full width.
+          const half = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, { w: 363, h: 378 });
+          expect(figureGeometryFaults(half.children, t)).toContain(
+            "the plot is squeezed to a strip",
+          );
           const full = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, DIAGRAM_ZONES.full);
           expect(figureGeometryFaults(full.children, t)).toEqual([]);
         }
