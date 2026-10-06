@@ -1,0 +1,9 @@
+{
+  "_system": "PROMPT-AGENT: the probe model's instructions",
+  "picture_matches_text": "PROMPT-AGENT: the yes/no question (yes = good)",
+  "diagram_matches_text": "PROMPT-AGENT: the yes/no question (yes = good)",
+  "one_focal_point": "PROMPT-AGENT: the yes/no question (yes = good)",
+  "not_too_blank": "PROMPT-AGENT: the yes/no question (yes = good)",
+  "readable_at_distance": "PROMPT-AGENT: the yes/no question (yes = good)",
+  "nothing_dangling": "PROMPT-AGENT: the yes/no question (yes = good)"
+}

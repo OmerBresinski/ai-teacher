@@ -1,0 +1,2 @@
+Write the diagram spec for one slide's diagram. You get the diagram's kind, the request saying what it must show, and the slide it sits on. Write a spec of exactly that kind that shows what the request asks for, with the slide's own words and values.
+
