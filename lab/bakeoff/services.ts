@@ -363,37 +363,10 @@ export function pictureService(opts: {
       purpose: "context",
       specific: ask.named,
     };
-    const full = {
-      ...lesson.base,
-      id: lesson.id,
-      title: lesson.title,
-      yearGroup: lesson.yearGroup,
-      subject: lesson.subject,
-    } as Record<string, unknown>;
-    // Every facts field the picture code reads (illustrate.ts: objectives, vocabulary, keyIdeas, outline).
-    const facts = {
-      objectives: [],
-      vocabulary: [],
-      keyIdeas: [],
-      outline: [],
-      ...((full.facts ?? {}) as object),
-    } as { outline?: unknown[] };
     const at = (x: unknown) =>
-      pickPhoto(
-        {
-          ...full,
-          facts: {
-            ...facts,
-            outline: Array.from({ length: ask.index + 1 }, (_, i) =>
-              i === ask.index
-                ? { id: `s${i + 1}`, kind: "image-text", factRefs: [], imageBrief: x }
-                : { id: `s${i + 1}`, kind: "content", factRefs: [] },
-            ),
-          },
-        } as never,
-        ask.index,
-        deps as never,
-      ).catch(() => ({ outcome: "empty" }));
+      pickPhoto(pickerLesson(lesson, ask.index, x) as never, ask.index, deps as never).catch(
+        () => ({ outcome: "empty" }),
+      );
     const stock = async (first: unknown) => {
       const r = (await at(first)) as { outcome: string; photo?: unknown };
       return r.outcome === "placed" ? r.photo : undefined;
@@ -410,7 +383,7 @@ export function pictureService(opts: {
       judgeMade: (brief: unknown, made: { dataUrl?: string }) =>
         made.dataUrl
           ? judgeMade({
-              lesson: full as never,
+              lesson: pickerLesson(lesson, ask.index) as never,
               index: ask.index,
               brief: brief as never,
               deps: deps as never,
@@ -437,6 +410,49 @@ export function pictureService(opts: {
     };
   }
   return { find, aiSpend };
+}
+
+export type PickerLessonInfo = {
+  id: string;
+  title: string;
+  yearGroup: string;
+  subject: string;
+  base: Record<string, unknown>;
+};
+/**
+ * The lesson the production picture code (`pickPhoto`, `judgeMade`) reads: every `facts` field it
+ * touches (objectives, vocabulary, keyIdeas, outline) present, the brief's topic, and an outline
+ * entry for slide `index` carrying `imageBrief`. Smoke 2/3: a missing field threw inside the
+ * judge, so every stock pick failed and every generated picture was rejected.
+ */
+export function pickerLesson(l: PickerLessonInfo, index: number, imageBrief?: unknown) {
+  const facts = {
+    objectives: [],
+    vocabulary: [],
+    keyIdeas: [],
+    ...((l.base.facts ?? {}) as object),
+  };
+  return {
+    ...l.base,
+    id: l.id,
+    title: l.title,
+    yearGroup: l.yearGroup,
+    subject: l.subject,
+    brief: { topic: l.title },
+    facts: {
+      ...facts,
+      outline: Array.from({ length: index + 1 }, (_, i) =>
+        i === index
+          ? {
+              id: `s${i + 1}`,
+              kind: "image-text",
+              factRefs: [],
+              ...(imageBrief ? { imageBrief } : {}),
+            }
+          : { id: `s${i + 1}`, kind: "content", factRefs: [] },
+      ),
+    },
+  };
 }
 
 /**
