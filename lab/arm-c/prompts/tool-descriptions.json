@@ -1,7 +1,7 @@
 {
   "set_plan": "Set the lesson plan before any slide: the title, the objectives in pairs and the flow. Call it once, first.",
   "set_plan.title": "The lesson title.",
-  "set_plan.objectives": "The objectives, each worded for the teacher and for the pupils.",
+  "set_plan.objectives": "The approved objectives from the context, copied as given.",
   "set_plan.flow": "One entry per slide, numbered from 1, as many as the slides you chose within the context's range.",
   "find_picture": "Find a picture for a slide: a real photo, a library picture, or a painted illustration where the subject allows. It returns the picture's src, size and aspect, and what it shows, or no picture when none fits. Several calls in one turn run at once.",
   "find_picture.slide": "The slide the picture is for.",

@@ -25,7 +25,9 @@ const opt = (f: string) => {
 };
 const STUB = flag("--stub"),
   CHECK = flag("--check-real");
-const briefArg = argv.find((a, i) => !a.startsWith("--") && argv[i - 1] !== "--out");
+const briefArg = argv.find(
+  (a, i) => !a.startsWith("--") && argv[i - 1] !== "--out" && argv[i - 1] !== "--objectives",
+);
 if (!briefArg) {
   console.error("brief required");
   process.exit(2);
@@ -88,22 +90,37 @@ if (!STUB) {
     process.exit(3);
   }
 }
+// Objectives are an approved input (BAKEOFF prompts: objectives call first). --objectives <file>,
+// else BAKEOFF/arm-c/objectives/<brief>.json: [{teacher, pupil}].
+const objFile = opt("--objectives") ?? `${BAKE}/arm-c/objectives/${name}.json`;
+const objectives: { teacher: string; pupil: string }[] = existsSync(objFile)
+  ? JSON.parse(readFileSync(objFile, "utf8"))
+  : [];
+if (!STUB && !objectives.length) {
+  console.error(`no approved objectives at ${objFile}`);
+  process.exit(2);
+}
+const objectivesText = objectives
+  .map((o, i) => `${i + 1}. Teacher: ${o.teacher} | Pupils: ${o.pupil}`)
+  .join("\n");
 const user = read("user.md").replace(/\{\{(\w+)\}\}/g, (_, k) =>
   k === "tokens"
     ? tokenTable(tk)
-    : k === "slideCount"
-      ? brief.slidesMin === brief.slidesMax
-        ? String(brief.slidesMin)
-        : `${brief.slidesMin} to ${brief.slidesMax}`
-      : k === "keyStage"
-        ? tk.ks.toUpperCase()
-        : k === "theme"
-          ? tk.themeId
-          : k === "extra"
-            ? JSON.stringify(
-                Object.fromEntries(Object.entries(B).filter(([x]) => !BRIEF_KEYS.includes(x))),
-              )
-            : String((brief as any)[k] ?? ""),
+    : k === "objectives"
+      ? objectivesText
+      : k === "slideCount"
+        ? brief.slidesMin === brief.slidesMax
+          ? String(brief.slidesMin)
+          : `${brief.slidesMin} to ${brief.slidesMax}`
+        : k === "keyStage"
+          ? tk.ks.toUpperCase()
+          : k === "theme"
+            ? tk.themeId
+            : k === "extra"
+              ? JSON.stringify(
+                  Object.fromEntries(Object.entries(B).filter(([x]) => !BRIEF_KEYS.includes(x))),
+                )
+              : String((brief as any)[k] ?? ""),
 );
 const tools = toolDefs(JSON.parse(read("tool-descriptions.json")));
 const lessonCtx = {
@@ -152,7 +169,7 @@ const lesson = new Lesson({
   probe,
 });
 const total = () => Object.values(costs).reduce((a, b) => a + b, 0);
-log({ kind: "start", brief, runDir, stub: STUB, theme: tk.themeId, ks: tk.ks });
+log({ kind: "start", user, brief, runDir, stub: STUB, theme: tk.themeId, ks: tk.ks });
 let results: { call_id: string; output: string }[] = [];
 let turns = 0,
   stop = "finish";
