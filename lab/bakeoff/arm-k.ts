@@ -133,6 +133,25 @@ export const armK: ArmPlugin = {
     };
   },
   visuals: (s) => asksOf(s),
+  promptStage: (brief) => band(brief),
+  codeObjectives(ctx) {
+    const r = layoutBlocks(
+      {
+        recipe: "stack",
+        blocks: [
+          { type: "heading", text: "Today we are learning to" },
+          {
+            type: "points",
+            numbered: true,
+            items: (ctx.plan.objectives ?? []).map((o) => o.pupil),
+          },
+        ],
+      },
+      ctx.theme,
+      ctx.stage,
+    );
+    return { slide: r.slide, over: r.over };
+  },
   materialise(s, ctx) {
     let { recipe, blocks } = toBlocks(s, ctx);
     // The objectives recipe carries nothing: code makes it a stack of the plan's pupil objectives.
