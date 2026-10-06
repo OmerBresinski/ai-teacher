@@ -120,13 +120,14 @@ describeDb("picture bank (TEACH-84) on Postgres + pgvector", () => {
     named: null,
     aspect,
     route,
+    imagePrompt: text,
   });
 
   test("a generated picture is stored once and the same request reuses it", async () => {
     const { bank, storage, generator } = setup();
     expect(await bank.lookup(req("an adult hen beside a yellow chick"), signal)).toBeUndefined();
     const made = await bank.generate(req("an adult hen beside a yellow chick"), false, signal);
-    expect(made?.src).toMatch(/^\/files\/bank\/.+\.png$/);
+    expect(made?.src).toMatch(/^\/files\/[0-9a-f-]+\/bank\/.+\.png$/);
     expect(made?.source.provider).toBe("generated");
     expect(generator.sizes).toEqual(["1024x1024"]);
     expect(storage.objects.size).toBe(1);
@@ -177,7 +178,7 @@ describeDb("picture bank (TEACH-84) on Postgres + pgvector", () => {
     const reused = await bank.lookup(req("Housesteads north gate", 1, "real"), signal);
     expect(reused?.source.author).toBe("Jane Doe");
     expect(reused?.source.licence).toBe("CC BY-SA 4.0");
-    expect(reused?.src).toMatch(/^\/files\/bank\//);
+    expect(reused?.src).toMatch(/^\/files\/[0-9a-f-]+\/bank\//);
   });
 
   test("the spend cap stops generation", async () => {
@@ -189,7 +190,7 @@ describeDb("picture bank (TEACH-84) on Postgres + pgvector", () => {
   test("a faithful generation is flagged for the look check", async () => {
     const { bank, generator } = setup();
     await bank.generate(req("German children with banknotes in 1923", 1, "real"), true, signal);
-    expect(generator.prompts[0]).toMatch(/faithfully/);
+    expect(generator.prompts[0]).toMatch(/No added captions/);
     const [row] = await listBankImages(unsafeDb);
     expect(row?.flags).toMatchObject({ lookCheck: true });
   });

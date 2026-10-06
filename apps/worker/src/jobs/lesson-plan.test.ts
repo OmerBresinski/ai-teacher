@@ -239,6 +239,7 @@ describeDb("lesson.plan job", () => {
           pick: "p1",
           onSubject: true,
           clear: true,
+          fits: true,
           visible: ["ice cubes", "meltwater"],
           count: "one",
           query: null,
