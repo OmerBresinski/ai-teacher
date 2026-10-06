@@ -76,7 +76,10 @@ function figureNow(
       request: v.photo.request,
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
     };
-  if (v.status === "diagram") return { diagram: v.spec };
+  if (v.status === "diagram") {
+    const d = (v.spec as { drawn?: { src: string; aspect: number; alt?: string } })?.drawn;
+    return d ? { drawn: d } : { diagram: v.spec };
+  }
   if (v.status === "failed") return undefined;
   return isDia(f)
     ? { photo: PLACEHOLDER_IMAGE, alt: `Diagram: ${f.shows}` }

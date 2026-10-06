@@ -50,3 +50,90 @@ describe("BAKEOFF template set", () => {
     expect(layoutTemplate(input(n * 2), t, "ks2").over.length).toBeGreaterThan(0);
   });
 });
+
+describe("round 1: text fit and fallbacks", () => {
+  const studio = getTheme("studio");
+  const plainText = (d: unknown): string => {
+    const n = d as { text?: string; content?: unknown[] };
+    return n?.text ?? (n?.content ?? []).map(plainText).join("");
+  };
+  test("a long title steps down so no word breaks, and the subtitle sits under it", () => {
+    const r = layoutTemplate(
+      {
+        template: "title",
+        heading: "Weimar Germany: hyperinflation in 1923",
+        lead: "What happens when money loses its value?",
+        figure: { photo: "/x.jpg", aspect: 0.9 },
+      },
+      studio,
+      "ks3",
+    );
+    const t = r.slide.elements.find((e) => e.name === "Title");
+    const s = r.slide.elements.find((e) => e.name === "Subtitle");
+    expect(r.over).toEqual([]);
+    expect(t && s && s.y >= t.y + t.h).toBe(true);
+  });
+  test("a diagram that fails leaves no panel: the slide is words only", () => {
+    const r = layoutTemplate(
+      {
+        template: "diagram-text",
+        heading: "Heating",
+        lead: "Heating transfers energy.",
+        points: ["Particles move faster."],
+        figure: { diagram: { ok: false } },
+      },
+      studio,
+      "ks3",
+    );
+    expect(r.slide.elements.some((e) => e.name === "Panel")).toBe(false);
+    expect(r.slide.kind).toBe("content");
+  });
+  test("an empty drawing (title only) is a failed diagram", () => {
+    const svg = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg><title>x</title><text>Energy</text><g transform="t"><g></g></g></svg>')}`;
+    const r = layoutTemplate(
+      {
+        template: "diagram-text",
+        heading: "H",
+        points: ["A."],
+        figure: { drawn: { src: svg, aspect: 1.2 } },
+      },
+      studio,
+      "ks3",
+    );
+    expect(r.slide.elements.some((e) => e.name === "Panel" || e.name === "Diagram")).toBe(false);
+  });
+  test("a column one line over the band closes up or steps down instead of running off", () => {
+    const q =
+      "A worker's pay rises, but prices rise faster. A pensioner relies on savings in marks. Explain how each is affected.";
+    const r = layoutTemplate(
+      {
+        template: "practice",
+        heading: "Explain the crisis",
+        questions: [q, q, q],
+        instruction:
+          "Write in full sentences. Link causes and consequences using because and therefore.",
+      },
+      studio,
+      "ks3",
+    );
+    expect(r.over).toEqual([]);
+    for (const e of r.slide.elements) expect(e.y + e.h).toBeLessThanOrEqual(540);
+  });
+  test("one or two labelled points beside a figure are key cards", () => {
+    const r = layoutTemplate(
+      {
+        template: "picture-text",
+        heading: "Solids",
+        lead: "Particles in a solid are closely packed.",
+        points: ["Movement: Particles vibrate about fixed positions."],
+        figure: { photo: "/x.jpg", aspect: 1.2 },
+      },
+      studio,
+      "ks3",
+    );
+    expect(r.slide.elements.some((e) => e.name === "Key card")).toBe(true);
+    expect(
+      plainText((r.slide.elements.find((e) => e.name === "Key label") as { doc: unknown }).doc),
+    ).toBe("Movement");
+  });
+});

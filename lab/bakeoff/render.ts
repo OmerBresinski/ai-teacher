@@ -78,6 +78,12 @@ export async function renderLesson(file: string, out = `${dirname(file)}/render`
     return json({});
   });
   const clips: { slide: number; label: string; px: number; detail: string }[] = [];
+  // The ruler measures what is drawn: text in the rendered present view (round 1: the model-side
+  // ruler re-fitted template slides and flagged clean picture cards).
+  const dom = { offCanvas: [], overflow: [], overlaps: [] } as Record<
+    "offCanvas" | "overflow" | "overlaps",
+    { slide: number; detail: string }[]
+  >;
   for (let n = 1; n <= body.slides.length; n++) {
     await page.goto(`${WEB}/l/${body.id}/present?slide=${n}`);
     await page
@@ -111,6 +117,9 @@ export async function renderLesson(file: string, out = `${dirname(file)}/render`
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${out}/slide-${String(n).padStart(2, "0")}.png` });
     for (const c of await page.evaluate(svgTextClips)) clips.push({ slide: n, ...c });
+    const t = await page.evaluate(renderedTextFaults);
+    for (const k of ["offCanvas", "overflow", "overlaps"] as const)
+      for (const d of t[k]) dom[k].push({ slide: n, detail: d });
   }
   await browser.close();
   // Diagram labels cut by their SVG's edge (ported from arm C 426bb30f geometry.ts): the slide-model
@@ -118,18 +127,99 @@ export async function renderLesson(file: string, out = `${dirname(file)}/render`
   // checks.json (gates.py reads geom.json in the same summary shape as arm C's).
   writeFileSync(
     `${dirname(file)}/geom.json`,
-    `${JSON.stringify({ summary: { overflow: [], overlaps: [], offCanvas: [], clipping: clips.map((c) => `s${c.slide} diagram label "${c.label}" cut ${c.px}px`) }, clips }, null, 1)}\n`,
+    `${JSON.stringify(
+      {
+        source: "rendered DOM (render.ts)",
+        summary: {
+          overflow: [...new Set(dom.overflow.map((d) => d.slide))],
+          overlaps: [...new Set(dom.overlaps.map((d) => d.slide))],
+          offCanvas: [...new Set(dom.offCanvas.map((d) => d.slide))],
+          clipping: clips.map((c) => `s${c.slide} diagram label "${c.label}" cut ${c.px}px`),
+        },
+        dom,
+        clips,
+      },
+      null,
+      1,
+    )}\n`,
   );
   const cf = `${dirname(file)}/checks.json`;
-  if (existsSync(cf) && clips.length) {
+  const domFaults = (["offCanvas", "overflow", "overlaps"] as const).flatMap((k) =>
+    dom[k].map((d) => ({ slide: d.slide, detail: `rendered: ${d.detail}` })),
+  );
+  if (existsSync(cf) && (clips.length || domFaults.length)) {
     const ch = JSON.parse(readFileSync(cf, "utf8")) as {
       slides: { slide: number; faults: string[] }[];
     };
     for (const c of clips)
       ch.slides.find((x) => x.slide === c.slide)?.faults.push(`clipped: ${c.detail}`);
+    for (const d of domFaults) ch.slides.find((x) => x.slide === d.slide)?.faults.push(d.detail);
     writeFileSync(cf, `${JSON.stringify(ch, null, 1)}\n`);
   }
   return body.slides.length as number;
+}
+
+/**
+ * In the page: the rendered slide's text against the slide's own edges, its own box when that box
+ * clips, and every other text block. Measured on the glyph line boxes (Range rects), not on the
+ * stored element boxes, so only ink that is really cut, off the slide, or overprinted counts.
+ */
+function renderedTextFaults() {
+  const TOL = 2;
+  const roots = Array.from(document.querySelectorAll("[data-slide-root]")) as HTMLElement[];
+  const root = roots
+    .map((r) => ({ r, b: r.getBoundingClientRect() }))
+    .filter(({ b }) => b.width > 200)
+    .sort((a, z) => z.b.width * z.b.height - a.b.width * a.b.height)[0];
+  const out = { offCanvas: [] as string[], overflow: [] as string[], overlaps: [] as string[] };
+  if (!root) return out;
+  const R = root.b;
+  const els = Array.from(root.r.querySelectorAll("[data-element-id]")) as HTMLElement[];
+  const blocks: { id: string; text: string; rects: DOMRect[] }[] = [];
+  for (const el of els) {
+    if (el.closest("svg")) continue;
+    const text = (el.innerText ?? "").trim().replace(/\s+/g, " ");
+    if (!text) continue;
+    const rg = document.createRange();
+    rg.selectNodeContents(el);
+    const rects = Array.from(rg.getClientRects()).filter((q) => q.width > 1 && q.height > 1);
+    const label = text.slice(0, 40);
+    if (
+      rects.some(
+        (q) =>
+          q.bottom > R.bottom + TOL ||
+          q.right > R.right + TOL ||
+          q.top < R.top - TOL ||
+          q.left < R.left - TOL,
+      )
+    )
+      out.offCanvas.push(`"${label}" runs off the slide`);
+    // Ink cut by a clipping ancestor inside the slide (a fixed box with overflow hidden).
+    for (let a = el.parentElement as HTMLElement | null; a && a !== root.r; a = a.parentElement) {
+      if (!/hidden|clip/.test(getComputedStyle(a).overflow)) continue;
+      const b = a.getBoundingClientRect();
+      if (rects.some((q) => q.bottom > b.bottom + TOL || q.right > b.right + TOL)) {
+        out.overflow.push(`"${label}" is cut by its box`);
+        break;
+      }
+    }
+    blocks.push({ id: el.dataset.elementId ?? "", text: label, rects });
+  }
+  for (let i = 0; i < blocks.length; i++)
+    for (let j = i + 1; j < blocks.length; j++) {
+      const A = blocks[i] as (typeof blocks)[number];
+      const B = blocks[j] as (typeof blocks)[number];
+      const hit = A.rects.some((p) =>
+        B.rects.some(
+          (q) =>
+            Math.max(0, Math.min(p.right, q.right) - Math.max(p.left, q.left)) *
+              Math.max(0, Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top)) >
+            4 * (R.width / 960) ** 2,
+        ),
+      );
+      if (hit) out.overlaps.push(`"${A.text.slice(0, 25)}" overprints "${B.text.slice(0, 25)}"`);
+    }
+  return out;
 }
 
 /** In the page: each visible SVG <text> against every enclosing SVG viewport that clips (arm C's rule). */

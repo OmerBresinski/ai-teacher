@@ -79,7 +79,9 @@ export type Figure =
       /** The must-see subjects' boxes in the picture (fractions 0..1), from the vision judge. */
       subjects?: SubjectBox[];
     }
-  | { diagram: unknown };
+  | { diagram: unknown }
+  /** A diagram already drawn (an SVG `src` at its own `aspect`): offline re-layouts reuse it. */
+  | { drawn: { src: string; aspect: number; alt?: string } };
 export type TemplateId =
   | "title"
   | "objectives"
@@ -277,7 +279,22 @@ function rule(c: Ctx, x: number, y: number, w: number) {
   });
 }
 
+/** Every word of `text` fits on one line `w` wide at `size`: no word is ever broken inside itself. */
+function wordsFit(c: Ctx, text: string, role: Role, w: number, size: number, weight?: number) {
+  return plain(text)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every(
+      (word) => countLines(word, presetOf(role), c.t, w, weight ?? weightOf(role, c.t), size) === 1,
+    );
+}
+
 function heading(c: Ctx, value: string) {
+  // A word too long for the line steps the heading down (never split mid-word).
+  const full = c.s.heading;
+  let size = full;
+  while (size > c.s.body && !wordsFit(c, value, "heading", G.width, size)) size -= 2;
+  c.s = { ...c.s, heading: size };
   const el = text(
     c,
     value,
@@ -287,6 +304,7 @@ function heading(c: Ctx, value: string) {
   );
   if (el.y + el.h > G.band.y - 6)
     c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
+  c.s = { ...c.s, heading: full };
   return el;
 }
 
@@ -409,8 +427,30 @@ function figurePanel(
     w: G.panel.w,
     h: G.band.h,
   },
-) {
-  if (!f) return;
+): boolean {
+  if (!f) return false;
+  if ("drawn" in f) {
+    if (!svgDrawsSomething(f.drawn.src)) return false;
+    box(c, rect, wash(c.t));
+    const i = G.inset;
+    const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
+    const a = f.drawn.aspect || inner.w / inner.h;
+    const w = Math.min(inner.w, Math.round(inner.h * a));
+    const h = Math.min(inner.h, Math.round(w / a));
+    c.els.push({
+      id: uid(),
+      type: "image",
+      name: "Diagram",
+      x: Math.round(inner.x + (inner.w - w) / 2),
+      y: Math.round(inner.y + (inner.h - h) / 2),
+      w,
+      h,
+      src: f.drawn.src,
+      alt: f.drawn.alt ?? "",
+      fit: "contain",
+    } as ImageElement);
+    return true;
+  }
   if ("photo" in f) {
     // The photo keeps its own shape inside the panel box (right-aligned, centred on the band), so
     // nothing is cropped; a photo the box's shape fills it exactly.
@@ -429,50 +469,116 @@ function figurePanel(
       fit: "cover",
       radius: c.t.radius,
     } as ImageElement);
-    return;
+    return true;
   }
-  box(c, rect, wash(c.t));
+  // A diagram the drawer (or the spec call) reports as failed, or one that draws nothing but its
+  // title, is no diagram: the caller lays the slide out without the panel (no empty panels ever).
+  if (diagramFailed(f.diagram)) return false;
   const i = G.inset;
   const inner = { x: rect.x + i, y: rect.y + i, w: rect.w - 2 * i, h: rect.h - 2 * i };
-  // Labels at reading size: the largest type (from the stage's small size down) that draws clean.
-  for (let fs = c.s.small; fs >= 15; fs -= 1) {
-    const size = { w: inner.w, h: inner.h, fs };
-    const clean = withLongLabels(() => diagramFaults(f.diagram, c.t, size).length === 0);
-    const el = clean
-      ? withLongLabels(() => diagramElement(f.diagram, c.t, { ...inner, fs }))
-      : undefined;
-    if (el) {
-      if (fs < c.s.small) c.over.push(`diagram labels ${fs}pt`);
-      c.els.push(el);
-      return;
+  const draw = (): { el: SlideElement; note?: string } | undefined => {
+    // Labels at reading size: the largest type (from the stage's small size down) that draws clean.
+    for (let fs = c.s.small; fs >= 15; fs -= 1) {
+      const size = { w: inner.w, h: inner.h, fs };
+      const clean = withLongLabels(() => diagramFaults(f.diagram, c.t, size).length === 0);
+      const el = clean
+        ? withLongLabels(() => diagramElement(f.diagram, c.t, { ...inner, fs }))
+        : undefined;
+      if (el) return { el, ...(fs < c.s.small ? { note: `diagram labels ${fs}pt` } : {}) };
     }
-  }
-  const r = fittedDiagramElement(f.diagram, c.t, inner);
-  if (r.ok) {
-    c.over.push(`diagram labels below 15pt`);
-    c.els.push(r.element);
-  } else c.over.push(`diagram did not draw (${r.reasons.slice(0, 2).join("; ")})`);
+    const r = fittedDiagramElement(f.diagram, c.t, inner);
+    return r.ok ? { el: r.element, note: "diagram labels below 15pt" } : undefined;
+  };
+  const d = draw();
+  if (!d || !elementDrawsSomething(d.el)) return false;
+  box(c, rect, wash(c.t));
+  if (d.note) c.over.push(d.note);
+  c.els.push(d.el);
+  return true;
+}
+
+/**
+ * DIAGRAM FALLBACK contract (BAKEOFF round 1, `round1/DIAGRAMS.md`): a diagram spec or drawer result
+ * carrying `ok: false` is a failed diagram. The template never draws its panel.
+ */
+export function diagramFailed(spec: unknown): boolean {
+  return !spec || (typeof spec === "object" && (spec as { ok?: unknown }).ok === false);
+}
+
+/** An SVG that draws at least one mark besides its title (the y7 s8/s9 empty panels drew none). */
+export function svgDrawsSomething(src: string): boolean {
+  let svg = src;
+  try {
+    const body = src.slice(src.indexOf(",") + 1);
+    svg = /;base64,/.test(src.slice(0, 60)) ? atob(body) : decodeURIComponent(body);
+  } catch {}
+  // Drop the accessible <title> and any text before the first group (the diagram's own title).
+  const g = svg.replace(/<title>[\s\S]*?<\/title>/g, "").indexOf("<g");
+  if (g < 0) return false;
+  const inner = svg.replace(/<title>[\s\S]*?<\/title>/g, "").slice(g);
+  return /<(rect|circle|ellipse|path|line|polyline|polygon|image|text|foreignObject)\b/.test(inner);
+}
+
+function elementDrawsSomething(el: SlideElement): boolean {
+  const src = (el as { src?: unknown }).src;
+  return typeof src === "string" && src.startsWith("data:image/svg")
+    ? svgDrawsSomething(src)
+    : true;
+}
+
+/** Would this figure draw in `rect`? (A dry run: nothing is added to the slide.) */
+function figureDraws(c: Ctx, f: Figure | undefined, rect?: Parameters<typeof figurePanel>[2]) {
+  if (!f) return false;
+  if ("photo" in f) return true;
+  return figurePanel({ ...c, els: [], over: [] }, f, rect);
 }
 
 /** A column of blocks, centred on the band (or top-aligned at `top`), each measured first. */
 type Block = { h: number; draw: (y: number) => void };
-function stack(
+/**
+ * The fit ladder (round 1: T y5 s12, y9 s9, y10 s8 cut their last line). A column is built at full
+ * size first; when it does not fit the band, the gaps close up, then the body type takes one step
+ * down to the stage's small size. Words never move or go: only spacing and one type step. A column
+ * that still does not fit is reported in `over` (the repair's job).
+ */
+const RUNGS = [
+  { space: 1, small: false },
+  { space: 0.6, small: false },
+  { space: 0.6, small: true },
+] as const;
+type Rung = (typeof RUNGS)[number];
+function ladder(
   c: Ctx,
-  blocks: Block[],
-  gap: number,
+  build: (r: Rung) => { blocks: Block[]; gap: number },
   where: { top?: number; limit?: number; what: string },
 ) {
-  const total = blocks.reduce((a, b) => a + b.h, 0) + gap * Math.max(0, blocks.length - 1);
   const limit = where.limit ?? G.band.h;
-  if (total > limit) c.over.push(`${where.what} ${total}/${limit}pt`);
-  let y = where.top ?? Math.max(G.band.y, Math.round(bandMid - total / 2 - 4));
-  for (const b of blocks) {
-    b.draw(y);
-    y += b.h + gap;
+  const full = c.s;
+  for (const [k, r] of RUNGS.entries()) {
+    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+    const { blocks, gap } = build(r);
+    const total = blocks.reduce((a, b) => a + b.h, 0) + gap * Math.max(0, blocks.length - 1);
+    if (total <= limit || k === RUNGS.length - 1) {
+      if (total > limit) c.over.push(`${where.what} ${total}/${limit}pt`);
+      // Optical centre: a little above the band's middle, so a short column sits with its heading.
+      let y = where.top ?? Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+      for (const b of blocks) {
+        b.draw(y);
+        y += b.h + gap;
+      }
+      c.s = full;
+      return;
+    }
   }
+  c.s = full;
 }
 
-/** Lead + support points in a column `w` wide at `x`. */
+const LABELLED = /^([^:]{2,32}):\s+/;
+/**
+ * Lead + support points in a column `w` wide at `x`. One or two points that each carry a label
+ * ("Movement: ...") are set as key cards, the label over its line on a washed card with an accent
+ * edge (arm K's y5/y7 callouts, which Greg ranked first); other points are bulleted.
+ */
 function leadAndPoints(
   c: Ctx,
   lead: string | undefined,
@@ -481,43 +587,94 @@ function leadAndPoints(
   w: number,
   what: string,
 ) {
-  const blocks: Block[] = [];
-  if (lead) {
-    const h = measure(c, lead, "lead", w);
-    blocks.push({
-      h: h + 6,
-      draw: (y) => text(c, lead, "lead", { x, y, w }, { color: c.t.colors.ink, name: "Lead" }),
-    });
-  }
-  const d = Math.round(c.s.body * 0.36);
-  const indent = Math.round(c.s.body * 1.0);
-  for (const p of points) {
-    const h = measure(c, p, "body", w - indent);
-    blocks.push({
-      h,
-      draw: (y) => {
-        c.els.push({
-          id: uid(),
-          type: "shape",
-          shape: "ellipse",
-          x: x + 2,
-          y: Math.round(y + (c.s.body * LH.body) / 2 - d / 2),
-          w: d,
-          h: d,
-          fill: c.t.colors.accent,
-          name: "Bullet",
+  const cards =
+    points.length > 0 && points.length <= 2 && points.every((p) => LABELLED.test(plain(p)));
+  ladder(
+    c,
+    (r) => {
+      const blocks: Block[] = [];
+      const gap = Math.round(c.s.body * 0.55 * r.space);
+      if (lead) {
+        const h = measure(c, lead, "lead", w);
+        blocks.push({
+          h: h + Math.round(6 * r.space),
+          draw: (y) => text(c, lead, "lead", { x, y, w }, { color: c.t.colors.ink, name: "Lead" }),
         });
-        text(
-          c,
-          p,
-          "body",
-          { x: x + indent, y, w: w - indent },
-          { color: c.t.colors.ink, boldLabel: true, name: "Point" },
-        );
-      },
-    });
-  }
-  stack(c, blocks, Math.round(c.s.body * 0.55), { what });
+      }
+      if (cards) {
+        const pad = Math.round(c.s.body * 0.7);
+        const bar = 5;
+        const iw = w - 2 * pad - bar;
+        for (const p of points) {
+          const m = plain(p).match(LABELLED);
+          const label = m?.[1] ?? "";
+          const body = plain(p).slice(m?.[0].length ?? 0);
+          const lh = measure(c, label, "lead", iw, 700);
+          const bh = measure(c, body, "body", iw);
+          const h = 2 * pad + lh + 4 + bh;
+          blocks.push({
+            h,
+            draw: (y) => {
+              box(c, { x, y, w, h }, wash(c.t), {
+                name: "Key card",
+                radius: Math.min(c.t.radius, 12),
+              });
+              box(c, { x, y, w: bar, h }, c.t.colors.accent, {
+                name: "Key edge",
+                shape: "rect",
+                radius: 0,
+              });
+              const l = text(
+                c,
+                label,
+                "lead",
+                { x: x + bar + pad, y: y + pad, w: iw },
+                { color: c.t.colors.accent, weight: 700, name: "Key label" },
+              );
+              text(
+                c,
+                body,
+                "body",
+                { x: x + bar + pad, y: l.y + l.h + 4, w: iw },
+                { color: c.t.colors.ink, name: "Point" },
+              );
+            },
+          });
+        }
+        return { blocks, gap: Math.round(c.s.body * 0.8 * r.space) };
+      }
+      const d = Math.round(c.s.body * 0.36);
+      const indent = Math.round(c.s.body * 1.0);
+      for (const p of points) {
+        const h = measure(c, p, "body", w - indent);
+        blocks.push({
+          h,
+          draw: (y) => {
+            c.els.push({
+              id: uid(),
+              type: "shape",
+              shape: "ellipse",
+              x: x + 2,
+              y: Math.round(y + (c.s.body * LH.body) / 2 - d / 2),
+              w: d,
+              h: d,
+              fill: c.t.colors.accent,
+              name: "Bullet",
+            });
+            text(
+              c,
+              p,
+              "body",
+              { x: x + indent, y, w: w - indent },
+              { color: c.t.colors.ink, boldLabel: true, name: "Point" },
+            );
+          },
+        });
+      }
+      return { blocks, gap };
+    },
+    { what },
+  );
 }
 
 /** Numbered disc rows, full width or in a column; hairlines between when `ruled`. */
@@ -529,43 +686,50 @@ function numbered(
   what: string,
   opts: { ruled?: boolean; after?: string; top?: number } = {},
 ) {
-  const d = Math.round(c.s.body * 1.25);
-  const indent = d + Math.round(c.s.body * 0.7);
-  const pad = opts.ruled ? Math.round(c.s.body * 0.6) : Math.round(c.s.body * 0.35);
-  const blocks: Block[] = items.map((q, k) => {
-    const h = Math.max(d, measure(c, q, "body", w - indent));
-    return {
-      h: h + 2 * pad,
-      draw: (y) => {
-        if (opts.ruled && k > 0) rule(c, x, y, w);
-        const top = y + pad;
-        disc(c, String(k + 1), x, top + Math.max(0, (c.s.body * LH.body - d) / 2), d);
-        text(
-          c,
-          q,
-          "body",
-          { x: x + indent, y: top, w: w - indent },
-          { color: c.t.colors.ink, name: "Item" },
-        );
-      },
-    };
-  });
-  if (opts.after) {
-    const after = opts.after;
-    const h = measure(c, after, "small", w - indent);
-    blocks.push({
-      h: h + 8,
-      draw: (y) =>
-        text(
-          c,
-          after,
-          "small",
-          { x: x + indent, y: y + 8, w: w - indent },
-          { color: c.t.colors.muted, name: "Instruction" },
-        ),
-    });
-  }
-  stack(c, blocks, 0, { what, ...(opts.top ? { top: opts.top } : {}) });
+  ladder(
+    c,
+    (r) => {
+      const d = Math.round(c.s.body * 1.25);
+      const indent = d + Math.round(c.s.body * 0.7);
+      const pad = Math.round(c.s.body * (opts.ruled ? 0.6 : 0.35) * r.space);
+      const blocks: Block[] = items.map((q, k) => {
+        const h = Math.max(d, measure(c, q, "body", w - indent));
+        return {
+          h: h + 2 * pad,
+          draw: (y) => {
+            if (opts.ruled && k > 0) rule(c, x, y, w);
+            const top = y + pad;
+            disc(c, String(k + 1), x, top + Math.max(0, (c.s.body * LH.body - d) / 2), d);
+            text(
+              c,
+              q,
+              "body",
+              { x: x + indent, y: top, w: w - indent },
+              { color: c.t.colors.ink, name: "Item" },
+            );
+          },
+        };
+      });
+      if (opts.after) {
+        const after = opts.after;
+        const h = measure(c, after, "small", w - indent);
+        const gapAbove = Math.round(8 * r.space);
+        blocks.push({
+          h: h + gapAbove,
+          draw: (y) =>
+            text(
+              c,
+              after,
+              "small",
+              { x: x + indent, y: y + gapAbove, w: w - indent },
+              { color: c.t.colors.muted, name: "Instruction" },
+            ),
+        });
+      }
+      return { blocks, gap: 0 };
+    },
+    { what, ...(opts.top ? { top: opts.top } : {}) },
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -590,9 +754,37 @@ const KIND: Record<TemplateId, SlideKind> = {
   "exit-ticket": "exit-ticket",
 };
 
+/**
+ * No empty panels ever: a figure that cannot draw (a failed diagram, an empty drawing) is dropped
+ * and the slide takes its words-only sibling, as a failed picture already does in the arm.
+ */
+function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
+  const f = input.figure;
+  let out = input;
+  if (f && !("photo" in f) && !figureDraws(c, f)) {
+    const { figure: _, ...rest } = input;
+    out =
+      input.template === "picture-text" || input.template === "diagram-text"
+        ? { ...rest, template: "explain" }
+        : input.template === "big-picture" || input.template === "big-diagram"
+          ? { ...rest, template: "explain", lead: input.lead ?? "" }
+          : rest;
+  }
+  if (
+    out.columns?.some(
+      (col) => col.figure && !("photo" in col.figure) && !figureDraws(c, col.figure),
+    )
+  )
+    out = { ...out, columns: out.columns.map(({ figure: _, ...col }) => col) };
+  if (out.sequence?.some((x) => x.figure && !("photo" in x.figure) && !figureDraws(c, x.figure)))
+    out = { template: "steps", heading: out.heading, points: out.sequence.map((x) => x.caption) };
+  return out;
+}
+
 export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage): TemplateResult {
   return withKeyStage(stage, () => {
     const c: Ctx = { t: theme, s: templateScale(theme, stage), over: [], els: [] };
+    input = withoutFailedFigures(c, input);
     const tpl = input.template;
     let background: Slide["background"];
     const pts = input.points ?? [];
@@ -615,11 +807,15 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const w = f ? Math.max(300, px - G.margin - 44) : 640;
         // The title steps down from the stage's title size until its words fit the column (6 lines max).
         let size = c.s.title;
+        // ...and until every word fits its line whole: a title never breaks inside a word (y9
+        // "hyperinfla/tion"). Stepping down is the design, not a fault.
         const fits = () =>
-          countLines(input.heading, "title", theme, w, theme.weights.heading, size) <= (f ? 6 : 3);
-        while (size > c.s.heading && !fits()) size -= 2;
+          countLines(input.heading, "title", theme, w, theme.weights.heading, size) <=
+            (f ? 6 : 3) && wordsFit(c, input.heading, "title", w, size);
+        const floor = Math.round(c.s.heading * 0.8);
+        while (size > floor && !fits()) size -= 2;
         c.s = { ...c.s, title: size };
-        if (size < templateScale(theme, stage).title) c.over.push(`title stepped to ${size}pt`);
+        if (!fits()) c.over.push(`title does not fit at ${size}pt`);
         const tH = measure(c, input.heading, "title", w);
         const lH = input.lead ? measure(c, input.lead, "lead", w, 400) : 0;
         const total = tH + (lH ? 20 + lH : 0);
@@ -657,13 +853,27 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
         if (line && lh > Math.ceil(c.s.body * LH.body * 2) + 14)
           c.over.push("caption over 2 lines");
-        figurePanel(c, input.figure, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h - lh });
+        // A graph or chart stretched across the full width reads squashed (T y11 s10): a plot's panel
+        // is at most 1.7 times as wide as it is tall, centred, as arm R's readable y11 graphs were.
+        const f = input.figure;
+        const kind =
+          f && "diagram" in f ? String((f.diagram as { kind?: unknown })?.kind ?? "") : "";
+        const plot = /graph|chart|profile|plot|axes/.test(kind);
+        const pw = plot ? Math.min(G.width, Math.round((G.band.h - lh) * 1.7)) : G.width;
+        const lh2 = line ? measure(c, line, "body", pw) + 14 : 0;
+        const ph = G.band.h - lh2;
+        figurePanel(c, input.figure, {
+          x: G.margin + Math.round((G.width - pw) / 2),
+          y: G.band.y,
+          w: pw,
+          h: ph,
+        });
         if (line)
           text(
             c,
             line,
             "body",
-            { x: G.margin, y: bandBottom - lh + 14, w: G.width },
+            { x: G.margin + Math.round((G.width - pw) / 2), y: bandBottom - lh2 + 14, w: pw },
             { color: theme.colors.muted, name: "Caption" },
           );
         break;
