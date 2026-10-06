@@ -3,6 +3,7 @@
 // The layout step is an `ArmPlugin` (arm T: templates; K: blocks + recipes; R: reference slides).
 // See BAKEOFF/HARNESS.md.
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { dirname } from "node:path";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
@@ -297,6 +298,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
 
   // ── visuals ──
   const reused = o.reuseVisuals ? reusedPhotos(o.reuseVisuals) : undefined;
+  const reusedDia = o.reuseVisuals ? reusedDiagrams(o.reuseVisuals) : undefined;
   const pics =
     o.noVisuals || reused
       ? undefined
@@ -332,7 +334,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     words: { heading: string; text: string },
   ) => {
     const k = `${i}:${a.key}`;
-    if (reused) return Promise.resolve(reused.get(k));
+    if (reused) {
+      // The flow's early job stands for the slide's first picture (it takes the job over).
+      const first = [...reused.keys()].find(
+        (x) => x.startsWith(`${i}:`) && !x.includes("seq.") && !x.includes("col."),
+      );
+      return Promise.resolve(reused.get(a.key === "early" && first ? first : k));
+    }
     if (!pics) return;
     visuals.set(k, { status: "pending" });
     const ask: PhotoAsk = {
@@ -379,6 +387,14 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     heading = "",
   ) => {
     const k = `${i}:${a.key}`;
+    if (reusedDia) {
+      // Offline re-layout: the drawing the earlier run placed on this slide (no spec call).
+      const d = reusedDia.get(i);
+      visuals.set(k, d ? { status: "diagram", spec: { drawn: d } } : { status: "failed" });
+      log({ ev: "diagram-done", key: k, ok: !!d, reused: true });
+      relay(i, "diagram");
+      return;
+    }
     visuals.set(k, { status: "pending" });
     const ask: DiagramAsk = {
       key: k,
@@ -521,6 +537,14 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     existsSync(`${shared0}/objectives.txt`) &&
     existsSync(`${shared0}/objectives-schema.json`);
   let signOffMs = 0;
+  // A replay re-lays a recorded run: its signed-off objectives sit beside the recorded stream.
+  if (o.replay && !plan.objectives) {
+    const f = `${dirname(o.replay)}/objectives.json`;
+    if (existsSync(f)) {
+      const j = JSON.parse(readFileSync(f, "utf8")) as { objectives?: Plan["objectives"] };
+      if (Array.isArray(j.objectives)) plan.objectives = j.objectives;
+    }
+  }
   let user = contextBlock(brief, plan.objectives);
   if (twoPhase) {
     const cfgFile = `${shared0}/objectives.json`;
@@ -790,11 +814,35 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
             });
             ledger.add("repair", r.usd);
             held();
+            appendFileSync(
+              `${o.outDir}/repair.jsonl`,
+              `${JSON.stringify({ slide: i + 1, faults: c.faults, out: r.out })}\n`,
+            );
+            let kept = false;
             if (r.out) {
+              const before = { slide: plan.slides[i], notes: notes.get(i) };
               applyRepair(plan.slides, notes, i, r.out);
               relay(i, "repair");
+              // HARNESS (repair prompt): if the same check still fails, keep the original slide.
+              const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
+              const now = check()[i]?.faults ?? [];
+              const was = kinds(c.faults);
+              if ([...kinds(now)].some((k) => was.has(k))) {
+                plan.slides[i] = before.slide;
+                if (before.notes) notes.set(i, before.notes);
+                else notes.delete(i);
+                relay(i, "repair-reverted");
+                kept = true;
+              }
             }
-            log({ ev: "repair", slide: i + 1, usd: r.usd, ok: !!r.out });
+            log({
+              ev: "repair",
+              slide: i + 1,
+              usd: r.usd,
+              ok: !!r.out,
+              fix: (r.out as { fix?: string })?.fix,
+              reverted: kept,
+            });
           } catch (e) {
             log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
           }
@@ -880,14 +928,36 @@ export function applyRepair(
   i: number,
   out: unknown,
 ) {
-  const o = out as { slide?: Record<string, unknown>; to_notes?: string };
+  // The repair schema's to_notes is an array of strings (every run's repair crashed on `.trim()`
+  // of an array, so no repair was ever applied); a plain string is accepted too.
+  const o = out as { slide?: Record<string, unknown>; to_notes?: string | string[] };
   if (!o.slide || typeof o.slide !== "object") return;
   slides[i] = o.slide;
-  const extra = (o.to_notes ?? "").trim();
+  const moved = Array.isArray(o.to_notes) ? o.to_notes : [o.to_notes ?? ""];
+  const extra = moved
+    .map((x) => String(x).trim())
+    .filter((x) => x && !/^none\.?$/i.test(x))
+    .join("\n");
   if (extra) {
     const n = notes.get(i) ?? { notes: "", answers: [] };
     notes.set(i, { ...n, notes: n.notes ? `${n.notes}\n\n${extra}` : extra });
   }
+}
+
+/** The diagram drawings an earlier run placed, by slide index (offline re-layout). */
+export function reusedDiagrams(
+  runDir: string,
+): Map<number, { src: string; aspect: number; alt: string }> {
+  const out = new Map<number, { src: string; aspect: number; alt: string }>();
+  const lesson = JSON.parse(readFileSync(`${runDir}/lesson.json`, "utf8")) as
+    | Slide[]
+    | { slides: Slide[] };
+  (Array.isArray(lesson) ? lesson : lesson.slides).forEach((sl, i) => {
+    for (const e of sl.elements as unknown as Record<string, unknown>[])
+      if (e.type === "image" && e.name === "Diagram" && typeof e.src === "string")
+        out.set(i, { src: e.src, aspect: Number(e.w) / Number(e.h), alt: String(e.alt ?? "") });
+  });
+  return out;
 }
 
 /** Keys of photos that repeat a picture an earlier slide already shows for a different request. */
