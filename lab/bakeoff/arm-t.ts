@@ -233,7 +233,7 @@ export const armT: ArmPlugin = {
     if (s.template === "hinge") return [str(s.stem)];
     if (["question-set", "practice", "exit-ticket"].includes(str(s.template)))
       return strs(s.questions);
-    if (s.template === "discussion") return [str(s.lead ?? s.question)];
+    // A discussion question has no one answer: it is not checked for one (rerun s6 false positive).
     return [];
   },
   words(raw) {
