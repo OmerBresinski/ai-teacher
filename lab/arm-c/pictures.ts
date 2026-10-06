@@ -18,6 +18,7 @@ export interface PictureLesson {
   yearGroup: string;
   subject: string;
   slideCount: number;
+  objectives?: { teacher: string }[];
 }
 export interface Picture {
   ok: true;
@@ -175,7 +176,15 @@ export async function realPictures(
     title: lesson.title,
     yearGroup: lesson.yearGroup,
     subject: lesson.subject,
-    facts: { outline: [] as any[] },
+    // Every facts field the production picture code reads (as onecall services.ts pickerLesson): a
+    // missing one threw inside the judge (C smoke 1: every stock pick failed, every generation refused).
+    brief: { topic: lesson.title },
+    facts: {
+      objectives: (lesson.objectives ?? []).map((o, k) => ({ id: `o${k + 1}`, text: o.teacher })),
+      vocabulary: [] as unknown[],
+      keyIdeas: [] as unknown[],
+      outline: [] as any[],
+    },
   };
   return async (ask, id, slide) => {
     // The agent's period is binding (ruling 163): the bank sees every request for this slot as historical.
@@ -224,7 +233,10 @@ export async function realPictures(
       pickPhoto(
         {
           ...base,
-          facts: { outline: outline.map((o, i) => (i === index ? { ...o, imageBrief: x } : o)) },
+          facts: {
+            ...base.facts,
+            outline: outline.map((o, i) => (i === index ? { ...o, imageBrief: x } : o)),
+          },
         },
         index,
         deps,

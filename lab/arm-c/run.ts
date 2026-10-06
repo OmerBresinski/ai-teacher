@@ -128,6 +128,7 @@ const lessonCtx = {
   yearGroup: brief.yearGroup,
   subject: brief.subject,
   slideCount: brief.slidesMax,
+  objectives,
 };
 const findPicture = STUB ? stubPictures(runDir) : await realPictures(runDir, lessonCtx, costs, PG);
 const drawDiagram = STUB
