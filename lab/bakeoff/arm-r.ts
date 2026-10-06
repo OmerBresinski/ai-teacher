@@ -30,6 +30,13 @@ const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
 const isVis = (f: unknown): f is Pic | Dia => isPic(f) || isDia(f);
 
+/**
+ * The harness's repair step stores the whole repair output `{fix, slide, to_notes}` as the slide
+ * (harness.ts, step e); read the slide inside it.
+ */
+const unwrap = (s: S): S =>
+  s && typeof s.fix === "string" && s.slide && typeof s.slide === "object" ? (s.slide as S) : s;
+
 /** Every visual a slide asks for, keyed: `picture` for the slide's own, `frames.N` for a sequence. */
 function figures(s: S): { key: string; f: Pic | Dia }[] {
   const out: { key: string; f: Pic | Dia }[] = [];
@@ -44,12 +51,48 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
 }
 
 /** The figure now: landed photo or drawing, an open slot while pending, nothing when it failed. */
-function figureNow(key: string, f: Pic | Dia, ctx: MaterialiseCtx): Figure | undefined {
+function figureNow(
+  key: string,
+  f: Pic | Dia,
+  ctx: MaterialiseCtx,
+  mark = false,
+): Figure | undefined {
   const v = ctx.visual(key);
-  if (v.status === "photo") return { photo: v.photo.src, alt: v.photo.alt, aspect: v.photo.aspect };
+  if (v.status === "photo")
+    return {
+      photo: v.photo.src,
+      alt: v.photo.alt,
+      aspect: v.photo.aspect,
+      request: v.photo.request,
+      ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
+    };
   if (v.status === "diagram") return { diagram: v.spec };
   if (v.status === "failed") return undefined;
-  return { photo: PLACEHOLDER_IMAGE, alt: isDia(f) ? `Diagram: ${f.shows}` : f.shows };
+  return {
+    photo: PLACEHOLDER_IMAGE,
+    alt: isDia(f) ? `Diagram: ${f.shows}` : f.shows,
+    ...(isDia(f)
+      ? {}
+      : { request: mark ? `slot:${key}` : [f.shows, ...(f.must_see ?? [])].join(". ") }),
+  };
+}
+
+/** Each photo slot's box shape, read off the slide laid out with every visual pending and marked. */
+function slotShapes(s: S, vctx: Omit<MaterialiseCtx, "visual">): Record<string, number> {
+  const ctx: MaterialiseCtx = { ...vctx, visual: () => ({ status: "pending" }) };
+  const out: Record<string, number> = {};
+  try {
+    const els = editReference(resolve(s, ctx, true), vctx.theme, vctx.stage, { ruler: false }).slide
+      .elements;
+    for (const e of els) {
+      const r = (e as { request?: string }).request;
+      if (e.type === "image" && r?.startsWith("slot:"))
+        out[r.slice(5)] = Math.round((e.w / e.h) * 100) / 100;
+    }
+  } catch {
+    // unknown entry: no shapes
+  }
+  return out;
 }
 
 /** Prompt entry + its slots -> the reference that draws it and its slot values (pictures resolved). */
@@ -64,14 +107,19 @@ const ALIAS: Record<string, string> = {
   "question-figure": "question-set",
 };
 
-export function resolve(s: S, ctx: MaterialiseCtx): { reference: string; slots: S } {
+export function resolve(
+  raw: S,
+  ctx: MaterialiseCtx,
+  mark = false,
+): { reference: string; slots: S } {
+  const s = unwrap(raw);
   const entry = ALIAS[str(s.reference)] ?? str(s.reference);
   const slots: S = { ...s };
   delete slots.reference;
   delete slots.correct;
   delete slots.notes;
   const ask = s.picture;
-  const pic = isVis(ask) ? figureNow("picture", ask, ctx) : undefined;
+  const pic = isVis(ask) ? figureNow("picture", ask, ctx, mark) : undefined;
   if (pic) slots.picture = pic;
   else delete slots.picture;
   const isDiagramAsk = isDia(ask);
@@ -115,17 +163,23 @@ export function resolve(s: S, ctx: MaterialiseCtx): { reference: string; slots: 
         reference: "picture-sequence",
         slots: {
           ...slots,
-          frames: objs(s.frames).map((x, n) => ({
-            caption: x.caption,
-            picture: isVis(x.picture) ? figureNow(`frames.${n}`, x.picture, ctx) : undefined,
-          })),
+          // A frame whose picture could not be made is dropped while two or more remain.
+          frames: ((fr) =>
+            fr.filter((x) => x.picture).length >= 2 ? fr.filter((x) => x.picture) : fr)(
+            objs(s.frames).map((x, n) => ({
+              caption: x.caption,
+              picture: isVis(x.picture)
+                ? figureNow(`frames.${n}`, x.picture, ctx, mark)
+                : undefined,
+            })),
+          ),
         },
       };
     case "compare": {
       // A column picture that failed drops every column's picture: the cards stay alike.
       const cols = objs(s.columns).map((x, n) => ({
         ...x,
-        picture: isVis(x.picture) ? figureNow(`columns.${n}`, x.picture, ctx) : undefined,
+        picture: isVis(x.picture) ? figureNow(`columns.${n}`, x.picture, ctx, mark) : undefined,
       }));
       const all = cols.length > 0 && cols.every((x) => x.picture);
       return {
@@ -150,7 +204,10 @@ export const armR: ArmPlugin = {
       effort: "low",
     };
   },
-  visuals(s) {
+  promptStage: band,
+  visuals(raw, index, vctx) {
+    const s = unwrap(raw);
+    const shapes = slotShapes(s, { ...vctx, index });
     return figures(s).map(
       ({ key, f }): VisualAsk =>
         isDia(f)
@@ -161,6 +218,8 @@ export const armR: ArmPlugin = {
               shows: f.shows,
               mustSee: f.must_see ?? [],
               named: f.subject === "named",
+              // Sequence frames and compare cards are fixed; the slide panel crops round subjects or contains.
+              ...(shapes[key] ? { aspect: shapes[key], fixedShape: key !== "picture" } : {}),
             },
     );
   },
@@ -190,7 +249,8 @@ export const armR: ArmPlugin = {
     );
     return { slide: r.slide, over: r.over };
   },
-  questions(s) {
+  questions(raw) {
+    const s = unwrap(raw);
     switch (ALIAS[str(s.reference)] ?? str(s.reference)) {
       case "hinge":
         return [[str(s.heading), str(s.stem)].filter(Boolean).join(" ")];
@@ -207,7 +267,8 @@ export const armR: ArmPlugin = {
         return [];
     }
   },
-  words(s) {
+  words(raw) {
+    const s = unwrap(raw);
     const parts: string[] = [];
     for (const [k, v] of Object.entries(s)) {
       if (k === "reference" || k === "picture" || k === "correct") continue;

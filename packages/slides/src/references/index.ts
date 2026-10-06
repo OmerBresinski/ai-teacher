@@ -24,13 +24,23 @@ import type {
 import { diagramElement, diagramFaults, fittedDiagramElement, withLongLabels } from "../diagrams";
 import { uid } from "../factories";
 import { slideFits } from "../fit-check";
-import { G, mix, type Scale, type Stage, templateScale } from "../templates";
+import {
+  G,
+  mix,
+  placePhoto,
+  type Scale,
+  type Stage,
+  type SubjectBox,
+  templateScale,
+} from "../templates";
 import { countLines, measureHeadless } from "../text-measure";
 import { getTheme, KEY_STAGE_TYPE, typeScale, withKeyStage } from "../themes";
 
 export type { Stage };
 /** A resolved picture: a photo (its own aspect, if known) or a diagram spec for the drawer. */
-export type Figure = { photo: string; alt?: string; aspect?: number } | { diagram: unknown };
+export type Figure =
+  | { photo: string; alt?: string; aspect?: number; request?: string; subjects?: SubjectBox[] }
+  | { diagram: unknown };
 type Role = keyof Scale;
 const LH: Record<Role, number> = { title: 1.06, heading: 1.12, lead: 1.3, body: 1.38, small: 1.35 };
 /** One type step down per role (UX ruling 91: one step, then flag). */
@@ -445,13 +455,35 @@ function figureBox(
 ) {
   if (!f) return;
   if ("photo" in f) {
+    // PICTURE-FIT: the box never changes; the photo is cropped round its must-see subjects, or
+    // shown whole on a soft panel the box's size when a crop would cut them.
+    let r = rect;
+    let crop: { x: number; y: number; w: number; h: number } | undefined;
+    if (f.photo && f.aspect) {
+      const p = placePhoto(f.aspect, rect.w / rect.h, f.subjects);
+      if (p.mode === "contain") {
+        box(c, rect, o.ground ?? wash(c.t), {
+          radius: o.radius ?? c.t.radius,
+          name: "Photo panel",
+        });
+        const w = Math.min(rect.w, Math.round(rect.h * f.aspect));
+        const h = Math.min(rect.h, Math.round(w / f.aspect));
+        r = { x: rect.x + (rect.w - w) / 2, y: rect.y + (rect.h - h) / 2, w, h };
+      } else crop = p.crop;
+    }
     c.els.push({
       id: uid(),
       type: "image",
       name: "Photo",
-      ...rect,
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+      w: Math.round(r.w),
+      h: Math.round(r.h),
       src: f.photo,
       alt: f.alt ?? "",
+      ...(f.request ? { request: f.request } : {}),
+      ...(f.subjects ? { subjects: f.subjects } : {}),
+      ...(crop ? { crop } : {}),
       fit: "cover",
       radius: o.radius ?? c.t.radius,
     } as ImageElement);
