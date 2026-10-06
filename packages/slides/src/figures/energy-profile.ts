@@ -627,11 +627,18 @@ function drawEnergyProfile(
     const grid: Box[] = [];
     for (let y = 0; y + legend.h <= axisY; y += 8)
       for (let x = right; x >= PLOT_LEFT; x -= 12) grid.push({ x, y, ...legend });
-    const inPlot = clearSpot(grid, taken);
-    if (!legendBelow && !isClear(inPlot, taken)) legendCrowded = true;
-    const spot = legendBelow
-      ? { x: KEY_INSET, y: keyTop, w: legendOneRow ? size.w - 2 * KEY_INSET : legend.w, h: legendH }
-      : inPlot;
+    // A plot too short for the legend leaves no candidate at all: the legend goes under it.
+    const inPlot = grid.length > 0 ? clearSpot(grid, taken) : undefined;
+    if (!legendBelow && (!inPlot || !isClear(inPlot, taken))) legendCrowded = true;
+    const spot: Box =
+      legendBelow || !inPlot
+        ? {
+            x: KEY_INSET,
+            y: keyTop,
+            w: legendOneRow ? size.w - 2 * KEY_INSET : legend.w,
+            h: legendH,
+          }
+        : inPlot;
     taken.push(spot);
     legendBox = spot;
     if (!catCurve || !catTop) return [];

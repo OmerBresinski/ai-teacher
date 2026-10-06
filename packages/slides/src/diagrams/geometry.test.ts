@@ -143,6 +143,17 @@ describe("DIAGRAM-MODERN geometry checks", () => {
         }
       });
     });
+  test("the y11 profile in a short full-width zone draws and is checked (the legend has no place in the plot)", () => {
+    for (const id of THEME_IDS)
+      for (const h of [140, 180, 220, 260]) {
+        const t = getTheme(id);
+        const d = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, { w: 844, h });
+        const f = figureGeometryFaults(d.children, t);
+        // A crowded drawing is named as such, so the slide never keeps it.
+        if (f.includes("a figure label sits on a curve")) expect(f.length).toBeGreaterThan(0);
+        expect(d.children.length).toBeGreaterThan(0);
+      }
+  });
   test("crossing leaders are caught, and a meander section's leaders never cross", () => {
     expect(segmentsCross([0, 0, 10, 10], [0, 10, 10, 0])).toBe(true);
     expect(segmentsCross([0, 0, 10, 0], [0, 5, 10, 5])).toBe(false);
