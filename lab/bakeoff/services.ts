@@ -54,9 +54,14 @@ export function usd(model: string, u: Usage): number {
   );
 }
 
-/** Spend per part of a run ("main", "notes", "diagrams", "pictures", "repair"), and a hard cap. */
+/** Spend per part of a run ("main", "notes", "diagrams", "pictures", "repair"), and a hard cap.
+ * The cap is held before money is spent (as arm C, 6 Oct): each paid step reserves its worst case
+ * first and does not start when that would pass the cap; parallel steps see each other's holds. */
 export class Ledger {
   parts: Record<string, number> = {};
+  private held = 0;
+  /** Spend booked outside the parts (the picture director's AI log), counted against the cap. */
+  outside: () => number = () => 0;
   constructor(public capUsd: number) {}
   add(part: string, v: number) {
     this.parts[part] = (this.parts[part] ?? 0) + v;
@@ -64,11 +69,32 @@ export class Ledger {
   get total() {
     return Object.values(this.parts).reduce((a, b) => a + b, 0);
   }
-  /** Throws when the run has spent its cap (checked before each new call). */
-  guard(what: string) {
-    if (this.total >= this.capUsd) throw new Error(`cap $${this.capUsd} reached before ${what}`);
+  /** Spent, booked elsewhere and still held. */
+  get committed() {
+    return this.total + this.outside() + this.held;
+  }
+  /** Reserves `est` (the step's worst case) or throws when it would pass the cap; returns the release. */
+  guard(what: string, est: number): () => void {
+    if (this.committed + est > this.capUsd + 1e-9)
+      throw new Error(`cap $${this.capUsd} would be passed by ${what} (held $${est})`);
+    this.held += est;
+    let open = true;
+    return () => {
+      if (open) this.held = Math.max(0, this.held - est);
+      open = false;
+    };
   }
 }
+
+/** Worst-case cost of one paid step (USD), reserved before it starts. */
+export const STEP_EST = {
+  main: 0.12, // sol, the whole streamed plan at its output cap
+  objectives: 0.01,
+  notes: 0.003, // luna, one slide
+  repair: 0.004, // luna, one slide
+  diagram: 0.004, // luna spec, two attempts (observed $0.0013 each)
+  picture: 0.025, // director + up to 3 generations + judges (generation also under the bank cap)
+};
 
 /* ------------------------------------------------------------------ */
 /* OpenAI                                                              */
@@ -357,7 +383,17 @@ export function pictureService(opts: {
       base: Record<string, unknown>;
     },
   ): Promise<PhotoResult | undefined> {
-    opts.ledger.guard(`picture ${ask.key}`);
+    const held = opts.ledger.guard(`picture ${ask.key}`, STEP_EST.picture);
+    try {
+      return await findOne(ask, lesson);
+    } finally {
+      held();
+    }
+  }
+  async function findOne(
+    ask: PhotoAsk,
+    lesson: Parameters<typeof find>[1],
+  ): Promise<PhotoResult | undefined> {
     const deps = {
       ai,
       budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
@@ -612,7 +648,7 @@ export async function diagramSpec(
     (o) => o.shape.kind.value === ask.kind,
   );
   if (!kindSchema) return undefined;
-  ledger.guard(`diagram ${ask.key}`);
+  const held = ledger.guard(`diagram ${ask.key}`, STEP_EST.diagram);
   const schema = z.toJSONSchema(kindSchema as never, { target: "draft-7" });
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -627,8 +663,12 @@ export async function diagramSpec(
     });
     ledger.add("diagrams", r.usd);
     log({ ev: "diagram-call", key: ask.key, ms: r.ms, usd: r.usd, attempt });
-    if (r.out && parseDiagram(r.out)) return r.out;
+    if (r.out && parseDiagram(r.out)) {
+      held();
+      return r.out;
+    }
   }
+  held();
   return undefined;
 }
 

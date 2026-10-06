@@ -9,6 +9,7 @@ import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/t
 import { type CheckResult, checkSlide } from "./checks";
 import { PartialJson, type Path } from "./partial";
 import {
+  aspectOf,
   BAKEOFF,
   chat,
   chatStream,
@@ -19,6 +20,7 @@ import {
   type PhotoResult,
   pictureService,
   replayStream,
+  STEP_EST,
   writeJson,
 } from "./services";
 
@@ -198,6 +200,8 @@ export type RunOpts = {
   replay?: string;
   /** Skip pictures and diagrams (layout-only dry run). */
   noVisuals?: boolean;
+  /** Reuse the pictures of an earlier run dir of the same replayed stream (offline re-layout; no spend). */
+  reuseVisuals?: string;
   /** Skip the notes calls. */
   noNotes?: boolean;
   /** Skip the repair pass. */
@@ -292,23 +296,26 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   }
 
   // ── visuals ──
-  const pics = o.noVisuals
-    ? undefined
-    : pictureService({
-        runDir: o.outDir,
-        pgPort: o.pgPort,
-        ledger,
-        bankCapUsd: o.bankCapUsd ?? 0.06,
-        styleOf: () => ({
-          style: plan.design?.picture_style,
-          palette: [
-            base.theme.colors.accent,
-            base.theme.colors.accent2,
-            base.theme.colors.background,
-            base.theme.colors.ink,
-          ],
-        }),
-      });
+  const reused = o.reuseVisuals ? reusedPhotos(o.reuseVisuals) : undefined;
+  const pics =
+    o.noVisuals || reused
+      ? undefined
+      : pictureService({
+          runDir: o.outDir,
+          pgPort: o.pgPort,
+          ledger,
+          bankCapUsd: o.bankCapUsd ?? 0.06,
+          styleOf: () => ({
+            style: plan.design?.picture_style,
+            palette: [
+              base.theme.colors.accent,
+              base.theme.colors.accent2,
+              base.theme.colors.background,
+              base.theme.colors.ink,
+            ],
+          }),
+        });
+  if (pics) ledger.outside = pics.aiSpend;
   const jobs: Promise<void>[] = [];
   const lessonInfo = {
     id: lessonId,
@@ -324,8 +331,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     a: Extract<VisualAsk, { type: "photo" }>,
     words: { heading: string; text: string },
   ) => {
-    if (!pics) return;
     const k = `${i}:${a.key}`;
+    if (reused) return Promise.resolve(reused.get(k));
+    if (!pics) return;
     visuals.set(k, { status: "pending" });
     const ask: PhotoAsk = {
       key: k,
@@ -345,6 +353,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     jobs.push(
       p.then((r) => {
         visuals.set(`${i}:${key}`, r ? { status: "photo", photo: r } : { status: "failed" });
+        // One picture at most once per lesson unless the same request asks for it (K's y1 smoke:
+        // the title photo came back on another slide). The later slide loses it and falls back.
+        for (const k of repeatedPictures(visuals)) {
+          visuals.set(k, { status: "failed" });
+          log({ ev: "picture-duplicate", key: k });
+          relay(Number(k.split(":")[0]), "picture");
+        }
         log({
           ev: "picture-done",
           key: `${i}:${key}`,
@@ -357,7 +372,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         relay(i, "picture");
       }),
     );
-  const startDiagram = (i: number, a: Extract<VisualAsk, { type: "diagram" }>, words: string) => {
+  const startDiagram = (
+    i: number,
+    a: Extract<VisualAsk, { type: "diagram" }>,
+    words: string,
+    heading = "",
+  ) => {
     const k = `${i}:${a.key}`;
     visuals.set(k, { status: "pending" });
     const ask: DiagramAsk = {
@@ -375,7 +395,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           log({ ev: "diagram-error", key: k, err: String(e).slice(0, 200) });
           return undefined;
         })
-        .then((spec) => {
+        .then((raw) => {
+          const spec = raw && dropEchoTitle(raw, heading);
           visuals.set(k, spec ? { status: "diagram", spec } : { status: "failed" });
           log({ ev: "diagram-done", key: k, ok: !!spec });
           timings.lastDiagram = ms();
@@ -457,7 +478,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         if (p) landPhoto(idx, a.key, p);
       });
       if (!o.noVisuals)
-        for (const a of as) if (a.type === "diagram") startDiagram(idx, a, `${heading}\n${words}`);
+        for (const a of as)
+          if (a.type === "diagram") startDiagram(idx, a, `${heading}\n${words}`, heading);
       relay(idx, "slide");
       if (idx === 1) mark("objectivesSlide");
       if (idx >= 2) mark("firstTeachingSlide");
@@ -513,7 +535,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         mark("objectiveFirst");
       }
     });
-    ledger.guard("objectives call");
+    const heldObj = ledger.guard("objectives call", STEP_EST.objectives);
     const oc = await chatStream(
       {
         model: cfg.model ?? "gpt-6.1-sol",
@@ -529,6 +551,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       (d) => op.push(d),
     );
     ledger.add("objectives", oc.usd);
+    heldObj();
     mark("objectivesAll");
     plan.objectives = objectives;
     lessonInfo.base = {
@@ -576,7 +599,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     user,
     systemChars: p.system.length,
   });
-  ledger.guard("main call");
+  const heldMain = ledger.guard("main call", o.replay ? 0 : STEP_EST.main);
   const main = o.replay
     ? await replayStream(o.replay, (d) => parser.push(d))
     : await chatStream(
@@ -597,6 +620,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         // No usage on a failed stream: book an estimate (input + what arrived, 4 chars a token).
         const est = ((p.system.length + user.length) / 4) * 2e-6 + (parser.text.length / 4) * 10e-6;
         ledger.add("mainFailedEstimate", est);
+        heldMain();
         log({
           ev: "main-error",
           err: String(e).slice(0, 300),
@@ -610,6 +634,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         throw e;
       });
   ledger.add("main", main.usd);
+  heldMain();
   writeJson(`${o.outDir}/main.json`, {
     text: main.text,
     usage: main.usage,
@@ -643,7 +668,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const u = `${user}\n\nLesson:\n${main.text}\n\nSlide: ${i + 1}`;
     notesJobs.push(
       (async () => {
-        ledger.guard(`notes s${i + 1}`);
+        const held = ledger.guard(`notes s${i + 1}`, STEP_EST.notes);
         const r = await chat({
           model: "gpt-6-luna",
           effort: "low",
@@ -653,6 +678,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           name: "notes",
         });
         ledger.add("notes", r.usd);
+        held();
         const out = r.out as { notes: string; answers: string[] } | undefined;
         if (out) notes.set(i, out);
         log({ ev: "notes", slide: i + 1, ms: r.ms, usd: r.usd });
@@ -753,7 +779,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
               })
             : `${user}\n\nSlide ${i + 1}:\n${JSON.stringify(plan.slides[i])}\n\nWhat the check found:\n${[...c.faults, ...found].map((f) => `- ${f}`).join("\n")}`;
           try {
-            ledger.guard(`repair s${i + 1}`);
+            const held = ledger.guard(`repair s${i + 1}`, STEP_EST.repair);
             const r = await chat({
               model: "gpt-6-luna",
               effort: "low",
@@ -763,8 +789,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
               name: "slide",
             });
             ledger.add("repair", r.usd);
+            held();
             if (r.out) {
-              plan.slides[i] = r.out as Record<string, unknown>;
+              applyRepair(plan.slides, notes, i, r.out);
               relay(i, "repair");
             }
             log({ ev: "repair", slide: i + 1, usd: r.usd, ok: !!r.out });
@@ -845,3 +872,80 @@ export const drawDiagram = (
   stage: Stage,
   size: { w: number; h: number },
 ) => withKeyStage(stage, () => renderDiagram(spec, theme, size));
+
+/** A repair answer is {fix, slide, to_notes}: the slide replaces the old one, to_notes is added to its notes. */
+export function applyRepair(
+  slides: (Record<string, unknown> | undefined)[],
+  notes: Map<number, { notes: string; answers: string[] }>,
+  i: number,
+  out: unknown,
+) {
+  const o = out as { slide?: Record<string, unknown>; to_notes?: string };
+  if (!o.slide || typeof o.slide !== "object") return;
+  slides[i] = o.slide;
+  const extra = (o.to_notes ?? "").trim();
+  if (extra) {
+    const n = notes.get(i) ?? { notes: "", answers: [] };
+    notes.set(i, { ...n, notes: n.notes ? `${n.notes}\n\n${extra}` : extra });
+  }
+}
+
+/** Keys of photos that repeat a picture an earlier slide already shows for a different request. */
+export function repeatedPictures(visuals: Map<string, VisualState>): string[] {
+  const first = new Map<string, { slide: number; request?: string }>();
+  const shown = [...visuals]
+    .filter(([, v]) => v.status === "photo")
+    .map(([k, v]) => ({
+      k,
+      slide: Number(k.split(":")[0]),
+      photo: (v as { photo: PhotoResult }).photo,
+    }))
+    .sort((a, b) => a.slide - b.slide || a.k.localeCompare(b.k));
+  const drop: string[] = [];
+  for (const p of shown) {
+    const f = first.get(p.photo.src);
+    if (!f) first.set(p.photo.src, { slide: p.slide, request: p.photo.request });
+    else if (f.request !== p.photo.request) drop.push(p.k);
+  }
+  return drop;
+}
+
+/** A diagram's own title is dropped when it only repeats the slide heading. */
+export function dropEchoTitle<T>(spec: T, heading: string): T {
+  const t = (spec as { title?: unknown }).title;
+  const norm = (x: string) =>
+    x
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  if (typeof t !== "string" || !heading || norm(t) !== norm(heading)) return spec;
+  const { title: _, ...rest } = spec as Record<string, unknown>;
+  return rest as T;
+}
+
+/** The photos an earlier run placed, by visual key, with the request, subjects and alt its slides carried. */
+export function reusedPhotos(runDir: string): Map<string, PhotoResult> {
+  const byKey = new Map<string, PhotoResult>();
+  const els = new Map<string, Record<string, unknown>>();
+  const lesson = JSON.parse(readFileSync(`${runDir}/lesson.json`, "utf8")) as
+    | Slide[]
+    | { slides: Slide[] };
+  for (const sl of Array.isArray(lesson) ? lesson : lesson.slides)
+    for (const e of sl.elements as unknown as Record<string, unknown>[])
+      if (e.type === "image" && typeof e.src === "string") els.set(e.src, e);
+  for (const line of readFileSync(`${runDir}/log.jsonl`, "utf8").split("\n")) {
+    if (!line.includes('"picture-done"')) continue;
+    const r = JSON.parse(line) as { key: string; ok: boolean; src?: string; provider?: string };
+    if (!r.ok || !r.src) continue;
+    const e = els.get(r.src) ?? {};
+    byKey.set(r.key, {
+      src: r.src,
+      alt: String(e.alt ?? ""),
+      request: String(e.request ?? ""),
+      provider: r.provider,
+      ...(e.subjects ? { subjects: e.subjects as PhotoResult["subjects"] } : {}),
+      aspect: aspectOf(r.src),
+    } as PhotoResult);
+  }
+  return byKey;
+}
