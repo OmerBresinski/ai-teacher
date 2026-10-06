@@ -2,6 +2,7 @@
 // Prompt and schema: BAKEOFF/prompts/T/{system,schema}.<KS1|KS2|KS3-5>.{txt,json} (the prompt agent's),
 // else SOL-SIMPLE's arm T as a stand-in.
 import { existsSync, readFileSync } from "node:fs";
+import { isSameSubjectSet } from "../../packages/generation/src/stages/picture-set";
 import { drawDiagram } from "../../packages/slides/src/diagrams";
 import { PLACEHOLDER_IMAGE } from "../../packages/slides/src/layouts";
 import {
@@ -262,7 +263,17 @@ export const armT: ArmPlugin = {
   visuals(raw, index, vctx) {
     const s = normalise(raw);
     const slots = slotShapes(s, { ...vctx, index });
-    return figures(s).map(
+    // Same-subject sets (round 3): a sequence's panels always; compare cards when they show one
+    // thing at different stages. Made as one strip so the subject is the same in every panel.
+    const figs = figures(s);
+    const shows = (pre: string) =>
+      figs.filter(({ key, f }) => key.startsWith(pre) && !isDia(f)).map(({ f }) => f.shows);
+    const setOf = (key: string): string | undefined => {
+      if (key.startsWith("seq.")) return shows("seq.").length >= 2 ? "seq" : undefined;
+      if (key.startsWith("col.")) return isSameSubjectSet(shows("col.")) ? "col" : undefined;
+      return undefined;
+    };
+    return figs.map(
       ({ key, f }): VisualAsk =>
         isDia(f)
           ? { key, type: "diagram", kind: f.kind, shows: f.shows, labels: f.labels ?? [] }
@@ -273,6 +284,7 @@ export const armT: ArmPlugin = {
               mustSee: f.must_see ?? [],
               named: f.subject === "named",
               ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
+              ...(setOf(key) ? { set: setOf(key) } : {}),
             },
     );
   },

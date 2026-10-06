@@ -24,6 +24,7 @@ import {
   findDirected,
   type LessonLook,
 } from "../../packages/generation/src/stages/picture-director";
+import { setImagePrompt, setSize } from "../../packages/generation/src/stages/picture-set";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
 import { placePhoto } from "../../packages/slides/src/templates/index";
@@ -135,7 +136,8 @@ export const STEP_EST = {
   notes: 0.003, // luna, one slide
   repair: 0.004, // luna, one slide
   diagram: 0.004, // luna spec, two attempts (observed $0.0013 each)
-  picture: 0.025, // director + up to 3 generations + judges (generation also under the bank cap)
+  picture: 0.025,
+  pictureSet: 0.02, // up to 2 strips + a judge per panel + a set judge // director + up to 3 generations + judges (generation also under the bank cap)
 };
 
 /* ------------------------------------------------------------------ */
@@ -152,13 +154,23 @@ export type ChatReq = {
   strict?: boolean;
   /** Output cap (reasoning included): bounds the cost of a runaway call. */
   maxTokens?: number;
+  /** Pictures (data URLs) sent after the user text, in order. */
+  images?: string[];
 };
 const body = (r: ChatReq, stream: boolean) => ({
   model: r.model,
   ...(r.effort ? { reasoning_effort: r.effort } : {}),
   messages: [
     { role: "system", content: r.system },
-    { role: "user", content: r.user },
+    {
+      role: "user",
+      content: r.images?.length
+        ? [
+            { type: "text", text: r.user },
+            ...r.images.map((url) => ({ type: "image_url", image_url: { url, detail: "low" } })),
+          ]
+        : r.user,
+    },
   ],
   response_format: {
     type: "json_schema",
@@ -326,6 +338,8 @@ export type PhotoResult = {
   style?: "photo" | "illustration" | "drawn";
   /** The period the request belongs to, when the director gave one (ruling 163 gate). */
   period?: string;
+  /** The same-subject set this picture was made in (one strip, cut apart). */
+  set?: string;
 };
 
 /** The picture services for one run; `costs` collects bank and director spend. */
@@ -362,6 +376,11 @@ export function pictureService(opts: {
       return { key: k };
     },
   };
+  const gen = guardedGenerator(
+    im.createOpenAiImageGenerator({ apiKey: okey }),
+    () => opts.ledger.parts.pictures ?? 0,
+    opts.bankCapUsd,
+  );
   const pex = im.createPexelsClient({ apiKey: key(".dayback-pexels-key") });
   const commons = im.createCommonsClient();
   const images = {
@@ -380,11 +399,7 @@ export function pictureService(opts: {
       storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
       embedder: im.createOpenAiEmbedder({ apiKey: okey }),
       // The lesson's look travels on each request (LessonLook), not as a string appended here.
-      generator: guardedGenerator(
-        im.createOpenAiImageGenerator({ apiKey: okey }),
-        () => opts.ledger.parts.pictures ?? 0,
-        opts.bankCapUsd,
-      ),
+      generator: gen,
       capUsd: opts.bankCapUsd,
       ids: () => newId(),
       onEvent: (e: { costUsd?: number }) => {
@@ -551,7 +566,174 @@ export function pictureService(opts: {
       aspect: aspectOf(photo.src),
     };
   }
-  return { find, aiSpend };
+  const runLog = (e: object) =>
+    appendFileSync(`${opts.runDir}/log.jsonl`, `${JSON.stringify({ t: Date.now(), ...e })}\n`);
+
+  /**
+   * A same-subject set (a sequence's panels, or compare cards of one thing at different stages):
+   * one generated strip of N panels, cut apart, each panel judged by the same photo judge against
+   * its own request, then the set judged for sameness in one call (when the prompt agent's
+   * `set-judge` files exist). A failing panel or set regenerates the whole strip once (a lone
+   * panel regenerated would not be the same animal). Named real things and history lessons keep
+   * the per-picture ladder (Commons first, ruling 163).
+   */
+  async function findSet(
+    asks: PhotoAsk[],
+    lesson: Parameters<typeof find>[1],
+  ): Promise<(PhotoResult | undefined)[]> {
+    if (asks.some((a) => a.named) || /^hist/i.test(lesson.subject))
+      return Promise.all(asks.map((a) => find(a, lesson)));
+    const setKey = asks.map((a) => a.key).join("+");
+    return guarded(opts.ledger, `picture set ${setKey}`, STEP_EST.pictureSet, () =>
+      findSetOne(asks, lesson, setKey),
+    );
+  }
+  async function findSetOne(
+    asks: PhotoAsk[],
+    lesson: Parameters<typeof find>[1],
+    setKey: string,
+  ): Promise<(PhotoResult | undefined)[]> {
+    const deps = {
+      ai,
+      budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
+      effortFor: () => "low",
+      signal: new AbortController().signal,
+      logger,
+      now: () => new Date(),
+      ids: () => newId(),
+      images,
+      context: { lessonId: lesson.id, jobId: `bakeoff-${lesson.id}` },
+    };
+    const look = lessonLook(opts.styleOf?.(), asks[0]?.style);
+    const shows = asks.map((a) => a.shows);
+    const prompt = setImagePrompt(shows, look);
+    const aspect = asks[0]?.aspect ?? 4 / 3;
+    runLog({ ev: "set-start", set: setKey, n: asks.length, aspect });
+    let best: { results: (PhotoResult | undefined)[]; ok: number } | undefined;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let made: Awaited<ReturnType<typeof gen.generate>>;
+      try {
+        made = await gen.generate({ prompt, size: setSize(asks.length) } as never);
+      } catch (e) {
+        runLog({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
+        break;
+      }
+      opts.ledger.add("pictures", made.costUsd);
+      let panels: Uint8Array[];
+      try {
+        panels = im.splitPanels(made.bytes, asks.length, aspect);
+      } catch (e) {
+        runLog({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
+        break;
+      }
+      const urls = panels.map((p) => `data:image/png;base64,${Buffer.from(p).toString("base64")}`);
+      const boxes: (Box4[] | undefined)[] = [];
+      const judged = await Promise.all(
+        asks.map((a, k) => {
+          const request = [a.shows, ...a.mustSee].join(". ");
+          const brief = {
+            subject: plainSubject(a.shows).slice(0, 60),
+            request: request.slice(0, 400),
+            // A set panel must show its subject; the stage details ("developing feathers") are
+            // the strip's job and the set judge's, not a per-panel must (y1 chick: the growing
+            // chicken failed twice on "developing feathers" while the judge said it fit).
+            mustShow: a.mustSee.length ? a.mustSee : mustShowOf(request).slice(0, 1),
+            purpose: "context",
+            specific: false,
+            aspect: Math.round(aspect * 100) / 100,
+          };
+          return judgeMade({
+            lesson: pickerLesson(lesson, a.index) as never,
+            index: a.index,
+            brief: brief as never,
+            deps: deps as never,
+            dataUrl: urls[k] ?? "",
+            onVerdict: (v: { boxes?: Box4[] }) => {
+              boxes[k] = v.boxes;
+            },
+          }).catch(() => false);
+        }),
+      );
+      const same = await judgeSet(shows, urls);
+      const odd = new Set(same?.odd ?? []);
+      const pass = judged.map((j, k) => j === true && (!same || same.same || !odd.has(k)));
+      runLog({
+        ev: "set-attempt",
+        set: setKey,
+        attempt,
+        usd: made.costUsd,
+        panels: judged,
+        same: same ? same.same : "skipped",
+        odd: [...odd],
+      });
+      const results = panels.map((bytes, k) => {
+        if (!pass[k]) return undefined;
+        const id = newId();
+        const k2 = `${WS}/sets/${id}.png`;
+        mkdirSync(resolve(STORE, k2, ".."), { recursive: true });
+        writeFileSync(resolve(STORE, k2), bytes);
+        const a = asks[k] as PhotoAsk;
+        const source = {
+          provider: "generated",
+          id,
+          pageUrl: "https://openai.com/policies/",
+          photographer: `AI-generated (${gen.model})`,
+          photographerUrl: "https://openai.com/policies/",
+          licence: `generated (${im.IMAGE_TERMS})`,
+        };
+        const subjects = subjectsOf(boxes[k]);
+        return {
+          request: [a.shows, ...a.mustSee].join(". "),
+          src: `/files/${k2}`,
+          alt: a.shows,
+          provider: "generated",
+          source,
+          style: look?.style === "illustration" ? "illustration" : "photo",
+          aspect: aspectOf(`/files/${k2}`),
+          set: setKey,
+          ...(subjects ? { subjects } : {}),
+        } as PhotoResult;
+      });
+      const ok = results.filter(Boolean).length;
+      if (!best || ok > best.ok) best = { results, ok };
+      if (ok === asks.length) break;
+    }
+    const out = best?.results ?? asks.map(() => undefined);
+    runLog({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
+    return out;
+  }
+
+  /**
+   * One call over all of a set's panels: is it the same subject in every panel? Needs the prompt
+   * agent's `prompts/shared/set-judge.txt` and `set-judge-schema.json` ({same, odd[]}, odd as
+   * 0-based panel indexes); without them the set is not judged for sameness (logged "skipped").
+   */
+  async function judgeSet(
+    shows: string[],
+    urls: string[],
+  ): Promise<{ same: boolean; odd: number[] } | undefined> {
+    const dir = `${BAKEOFF}/prompts/shared`;
+    if (!existsSync(`${dir}/set-judge.txt`) || !existsSync(`${dir}/set-judge-schema.json`))
+      return undefined;
+    try {
+      const r = await chat({
+        model: "gpt-6-luna",
+        effort: "low",
+        system: readFileSync(`${dir}/set-judge.txt`, "utf8"),
+        user: shows.map((s, i) => `Panel ${i + 1}: ${s}`).join("\n"),
+        images: urls,
+        schema: JSON.parse(readFileSync(`${dir}/set-judge-schema.json`, "utf8")),
+        name: "set_judge",
+        maxTokens: 2000,
+      });
+      opts.ledger.add("pictures", r.usd);
+      const o = r.out as { same?: boolean; odd?: number[] } | undefined;
+      return typeof o?.same === "boolean" ? { same: o.same, odd: o.odd ?? [] } : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return { find, findSet, aiSpend };
 }
 
 type Box4 = { item: string; left: number; top: number; right: number; bottom: number };

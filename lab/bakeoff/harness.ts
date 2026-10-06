@@ -62,6 +62,8 @@ export type VisualAsk =
       aspect?: number;
       /** The slot crops to its own box (compare cards, sequences): the flow's early job (no aspect) does not take it. */
       fixedShape?: boolean;
+      /** Panels of one same-subject set (a sequence, or compare cards of one thing) share an id: made together. */
+      set?: string;
     }
   | { key: string; type: "diagram"; kind: string; shows: string; labels: string[] };
 
@@ -211,6 +213,8 @@ export type RunOpts = {
   noVisuals?: boolean;
   /** Reuse the pictures of an earlier run dir of the same replayed stream (offline re-layout; no spend). */
   reuseVisuals?: string;
+  /** With reuseVisuals: these slides (1-based) fetch their pictures afresh; the rest reuse. */
+  freshSlides?: number[];
   /** Skip the notes calls. */
   noNotes?: boolean;
   /** Skip the repair pass. */
@@ -314,7 +318,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       ? (JSON.parse(readFileSync(specsFile, "utf8")) as Record<string, unknown>)
       : undefined;
   const pics =
-    o.noVisuals || reused
+    o.noVisuals || (reused && !o.freshSlides?.length)
       ? undefined
       : pictureService({
           runDir: o.outDir,
@@ -348,7 +352,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     words: { heading: string; text: string },
   ) => {
     const k = `${i}:${a.key}`;
-    if (reused) {
+    const fresh = o.freshSlides?.includes(i + 1);
+    if (reused && !fresh) {
       // The flow's early job stands for the slide's first picture (it takes the job over).
       const first = [...reused.keys()].find(
         (x) => x.startsWith(`${i}:`) && !x.includes("seq.") && !x.includes("col."),
@@ -370,6 +375,32 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     };
     log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect });
     return pics.find(ask, lessonInfo);
+  };
+  const startSet = (
+    i: number,
+    group: Extract<VisualAsk, { type: "photo" }>[],
+    words: { heading: string; text: string },
+  ) => {
+    if (reused && !o.freshSlides?.includes(i + 1))
+      return Promise.resolve(group.map((a) => reused.get(`${i}:${a.key}`)));
+    if (!pics) return;
+    const asks: PhotoAsk[] = group.map((a) => {
+      const k = `${i}:${a.key}`;
+      visuals.set(k, { status: "pending" });
+      log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect, set: a.set });
+      return {
+        key: k,
+        shows: a.shows,
+        mustSee: a.mustSee,
+        named: a.named,
+        ...(a.aspect ? { aspect: a.aspect } : {}),
+        ...(a.fixedShape ? { fixedShape: true } : {}),
+        ...(plan.design?.picture_style ? { style: plan.design.picture_style } : {}),
+        slide: { heading: words.heading, text: words.text, point: "" },
+        index: i,
+      };
+    });
+    return pics.findSet(asks, lessonInfo);
   };
   const landPhoto = (i: number, key: string, p: Promise<PhotoResult | undefined>) =>
     jobs.push(
@@ -516,7 +547,22 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         (a): a is Extract<VisualAsk, { type: "photo" }> => a.type === "photo",
       );
       const e = early.get(idx);
+      // Same-subject sets are made together (one strip, one subject); the rest one by one.
+      const sets = new Map<string, Extract<VisualAsk, { type: "photo" }>[]>();
+      for (const a of photos) if (a.set) sets.set(a.set, [...(sets.get(a.set) ?? []), a]);
+      for (const group of sets.values()) {
+        if (group.length < 2) continue;
+        const all = startSet(idx, group, { heading, text: words });
+        if (all)
+          for (const [n, a] of group.entries())
+            landPhoto(
+              idx,
+              a.key,
+              all.then((r) => r[n]),
+            );
+      }
       photos.forEach((a, n) => {
+        if (a.set && (sets.get(a.set)?.length ?? 0) >= 2 && (pics || reused)) return;
         // The slide's first picture takes over the flow's early job (already running).
         if (n === 0 && e && !a.fixedShape) {
           visuals.set(`${idx}:${a.key}`, { status: "pending" });
