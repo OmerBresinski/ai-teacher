@@ -1043,9 +1043,9 @@ export const REFERENCES: RefDef[] = [
           const iw = w - 28;
           const ty = CMP.y + pad + ph + 10;
           const lh = heightOf(c, "columns", lab, "lead", iw, 700);
-          const th = heightOf(c, "columns", txt, "body", iw);
-          if (ty + lh + 4 + th > CMP.y + CMP.h - 8)
-            flag(c, "columns", `card text ${lh + 4 + th}/${CMP.y + CMP.h - 8 - ty}pt`);
+          const th = txt ? heightOf(c, "columns", txt, "body", iw) + 4 : 0;
+          if (ty + lh + th > CMP.y + CMP.h - 8)
+            flag(c, "columns", `card text ${lh + th}/${CMP.y + CMP.h - 8 - ty}pt`);
           put(
             c,
             "columns",
@@ -1058,17 +1058,18 @@ export const REFERENCES: RefDef[] = [
               name: "Label",
             },
           );
-          put(
-            c,
-            "columns",
-            txt,
-            "body",
-            { x: x + 14, y: ty + lh + 4, w: iw },
-            {
-              color: c.t.colors.ink,
-              name: "Text",
-            },
-          );
+          if (txt)
+            put(
+              c,
+              "columns",
+              txt,
+              "body",
+              { x: x + 14, y: ty + lh + 4, w: iw },
+              {
+                color: c.t.colors.ink,
+                name: "Text",
+              },
+            );
         });
         return;
       }
