@@ -3,13 +3,14 @@
 //        [--no-visuals] [--no-notes] [--no-repair] [--no-render] <brief-id> [...]
 // Keys are read from ~/.dayback-openai-key and ~/.dayback-pexels-key (never printed).
 import { existsSync, readFileSync } from "node:fs";
+import { armR } from "./arm-r";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
 import { renderLesson } from "./render";
 import { BAKEOFF } from "./services";
 
 /** Arms register here; K and R add theirs on their branches. */
-export const ARMS: Record<string, ArmPlugin> = { T: armT };
+export const ARMS: Record<string, ArmPlugin> = { T: armT, R: armR };
 
 const args = process.argv.slice(2);
 const flag = (k: string) => args.includes(k);

@@ -24,7 +24,7 @@ import type {
 import { diagramElement, diagramFaults, fittedDiagramElement, withLongLabels } from "../diagrams";
 import { uid } from "../factories";
 import { slideFits } from "../fit-check";
-import { G, mix, type Scale, type Stage } from "../templates";
+import { G, mix, type Scale, type Stage, templateScale } from "../templates";
 import { countLines, measureHeadless } from "../text-measure";
 import { getTheme, KEY_STAGE_TYPE, typeScale, withKeyStage } from "../themes";
 
@@ -43,20 +43,12 @@ const DOWN: Record<Role, (s: Scale) => number> = {
 };
 
 /**
- * The type scale at a key stage, from the theme's own ladder (lab/fix-type `typeScale`): title,
- * heading and body are its stops; lead is body x 1.08 (the homepage's lead step, set 600);
- * small is bodySmall, which is also the stage's reading floor, so nothing steps below it.
+ * The type scale at a key stage: the same tokens as arm T (`templateScale`, lab/fix-type): title,
+ * display heading, lead = body set 600, body, small = bodySmall (the stage's reading floor, so
+ * nothing steps below it).
  */
 export function scaleFor(t: Theme, st: Stage): Scale {
-  const ts = withKeyStage(st, () => typeScale(t));
-  const body = KEY_STAGE_TYPE[st].body;
-  return {
-    title: ts?.title ?? 60,
-    heading: ts?.heading ?? 40,
-    lead: Math.round(body * 1.08),
-    body,
-    small: ts?.bodySmall ?? Math.round(body * 0.85),
-  };
+  return templateScale(t, st);
 }
 const themeFor = (st: Stage) => getTheme(st === "ks1" || st === "ks2" ? "splash" : "studio", st);
 
@@ -565,6 +557,7 @@ function columnText(
 
 const TITLE_PANEL = { x: 496, y: 48, w: 400, h: 444 };
 const BLEED = { x: 504, y: 0, w: 456, h: 540 };
+const COMPARE_PH = 140;
 const BIG = { x: FULL.x, y: BAND.y, w: FULL.w, h: 262 };
 const BIG_CAP = { y: BIG.y + BIG.h + 14, h: 488 - (BIG.y + BIG.h + 14) };
 
@@ -809,7 +802,13 @@ export const REFERENCES: RefDef[] = [
     ],
     draw: (c, v) => {
       heading(c, v);
-      columnText(c, v, FULL.x, PROSE, { y: BAND.y, h: BAR.y - 12 - BAND.y });
+      columnText(
+        c,
+        v,
+        FULL.x,
+        PROSE,
+        str(v.keypoint) ? { y: BAND.y, h: BAR.y - 12 - BAND.y } : BAND,
+      );
       keyBar(c, "keypoint", str(v.keypoint));
     },
   },
@@ -962,10 +961,11 @@ export const REFERENCES: RefDef[] = [
         min: 2,
         max: 3,
         fields: {
+          picture: { picture: "photo", aspect: 404 / COMPARE_PH },
           label: { role: "lead", w: 360, lines: 1, weight: 700 },
           text: { role: "body", w: 360, lines: linesIn(st, 300 - 2 * 26 - 40) },
         },
-        note: "Label 1-3 words. With 3 columns each text is about 60% as wide (cap the text at ~2/3 of the 2-column figure).",
+        note: `Label 1-3 words. picture is optional per column (all columns or none): a photo across the top of each card, which leaves the text about ${linesIn(st, 324 - COMPARE_PH - 2 * 22 - 12) - 1} lines. With 3 columns each text is about 60% as wide.`,
       },
     ],
     draw: (c, v) => {
@@ -974,24 +974,36 @@ export const REFERENCES: RefDef[] = [
       const n = Math.max(1, cols.length);
       const gap = 24;
       const w = Math.floor((FULL.w - gap * (n - 1)) / n);
-      const pad = 26;
-      const y = 172;
-      const h = 300;
+      const withPics = cols.some((col) => fig(col.picture));
+      const pad = withPics ? 22 : 26;
+      const y = withPics ? 162 : 172;
+      const h = withPics ? 324 : 300;
+      const top = withPics ? COMPARE_PH : 0;
       cols.forEach((col, k) => {
         const x = FULL.x + k * (w + gap);
         card(c, { x, y, w, h });
+        const pf = fig(col.picture);
+        if (pf)
+          figureBox(
+            c,
+            "columns",
+            pf,
+            { x, y, w, h: COMPARE_PH },
+            { radius: Math.min(c.t.radius, 16) },
+          );
         const lab = str(col.label) ?? "";
         const txt = str(col.text) ?? "";
         const iw = w - 2 * pad;
         const lh = heightOf(c, "columns", lab, "lead", iw, 700);
         const th = heightOf(c, "columns", txt, "body", iw);
-        if (lh + 12 + th > h - 2 * pad) flag(c, "columns", `card ${lh + 12 + th}/${h - 2 * pad}pt`);
+        if (lh + 12 + th > h - top - 2 * pad)
+          flag(c, "columns", `card ${lh + 12 + th}/${h - top - 2 * pad}pt`);
         put(
           c,
           "columns",
           lab,
           "lead",
-          { x: x + pad, y: y + pad, w: iw },
+          { x: x + pad, y: y + top + pad, w: iw },
           { color: c.t.colors.accent, weight: 700, name: "Label" },
         );
         put(
@@ -999,7 +1011,7 @@ export const REFERENCES: RefDef[] = [
           "columns",
           txt,
           "body",
-          { x: x + pad, y: y + pad + lh + 12, w: iw },
+          { x: x + pad, y: y + top + pad + lh + 12, w: iw },
           { color: c.t.colors.ink, name: "Text" },
         );
       });
@@ -1163,7 +1175,8 @@ export const REFERENCES: RefDef[] = [
       const y0 = Math.max(BAND.y, Math.round(BAND.y + (BAND.h - total) / 2 - 4));
       if (total > BAND.h) flag(c, "terms", `cards ${total}/${BAND.h}pt`);
       terms.forEach((t, k) => {
-        const x = FULL.x + (k % 2) * (w + gap);
+        const lone = terms.length % 2 === 1 && k === terms.length - 1;
+        const x = lone ? FULL.x + Math.round((FULL.w - w) / 2) : FULL.x + (k % 2) * (w + gap);
         const y = y0 + Math.floor(k / 2) * (h + gap);
         card(c, { x, y, w, h });
         const term = str(t.term) ?? "";
