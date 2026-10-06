@@ -214,6 +214,9 @@ export async function guarded<T>(
   }
 }
 
+/** The batched picture director is on unless DIRECTOR_BATCH=0 (round 3 default). */
+export const DIRECTOR_BATCH_ON = () => process.env.DIRECTOR_BATCH !== "0";
+
 /** Worst-case cost of one paid step (USD), reserved before it starts. */
 export const STEP_EST = {
   main: 0.12, // sol, the whole streamed plan at its output cap
@@ -537,12 +540,13 @@ export function pictureService(opts: {
     }),
   );
   /**
-   * DIRECTOR_BATCH=1 with the prompt agent's `prompts/shared/director-batch.txt`: picture slots
-   * asked within DIRECTOR_BATCH_WINDOW_MS (default 400) share one director call (round 3 COST.md).
+   * With the prompt agent's `prompts/shared/director-batch.txt`, picture slots asked within
+   * DIRECTOR_BATCH_WINDOW_MS (default 400) share one director call (round 3 COST.md). On by default
+   * (round 3 ship config in code); DIRECTOR_BATCH=0 turns it off for an ablation.
    */
   const batchFile = `${BAKEOFF}/prompts/shared/director-batch.txt`;
   const direct =
-    process.env.DIRECTOR_BATCH === "1" && existsSync(batchFile)
+    DIRECTOR_BATCH_ON() && existsSync(batchFile)
       ? createDirectorBatcher(
           {
             ai,
@@ -694,9 +698,9 @@ export function pictureService(opts: {
           deps: deps as never,
           dataUrl: made.dataUrl,
           ...(reuse ? { reuse } : {}),
-          onVerdict: (v: { boxes?: Box4[]; why?: string; fits?: boolean }) => {
+          onVerdict: (v: { boxes?: Box4[]; why?: string | null; fits?: boolean }) => {
             madeBoxes = v.boxes;
-            seen = v;
+            seen = { why: v.why ?? undefined, fits: v.fits };
           },
         }).then((ok) => {
           // A refused generated (or library) picture stays in the store; log it for review.
@@ -855,9 +859,9 @@ export function pictureService(opts: {
             brief: brief as never,
             deps: deps as never,
             dataUrl: urls[k] ?? "",
-            onVerdict: (v: { boxes?: Box4[]; why?: string }) => {
+            onVerdict: (v: { boxes?: Box4[]; why?: string | null }) => {
               boxes[k] = v.boxes;
-              panelWhy[k] = v.why;
+              panelWhy[k] = v.why ?? undefined;
             },
           }).catch(() => false);
         }),
@@ -1182,7 +1186,7 @@ export function setPanelResults(
   boxes: (Box4[] | undefined)[],
   o: {
     model: string;
-    style: "photo" | "illustration";
+    style: "photo" | "illustration" | "house";
     setKey: string;
     save: (bytes: Uint8Array) => { id: string; src: string; aspect: number };
   },

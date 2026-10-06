@@ -263,7 +263,11 @@ export function createOpenAiImageGenerator(opts: {
       form.append("quality", IMAGE_QUALITY);
       form.append("n", "1");
       for (const [i, r] of references.entries())
-        form.append("image[]", new Blob([r.bytes], { type: r.mime }), `ref-${i}.png`);
+        form.append(
+          "image[]",
+          new Blob([new Uint8Array(r.bytes)], { type: r.mime }),
+          `ref-${i}.png`,
+        );
       const res = await fetchFn("https://api.openai.com/v1/images/edits", {
         method: "POST",
         headers: { Authorization: `Bearer ${opts.apiKey}` },
