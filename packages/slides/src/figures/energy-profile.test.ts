@@ -100,20 +100,21 @@ describe("drawFigure: energy-profile", () => {
 
     // The axes: the energy axis at x = 12 up to just under its name, the arrow at the top.
     const [energyFoot, energyTip] = endsOf(named(g, "Energy axis"));
-    expect([energyFoot.x, energyTip.x, energyTip.y]).toEqual([12, 12, labelH + 4]);
+    // FIX-ENERGY: a short name stands beside the arrow's tip, and the axis runs to the top.
+    expect([energyFoot.x, energyTip.x, energyTip.y]).toEqual([12, 12, 2]);
     expect(named(g, "Energy axis").arrowEnd).toBe(true);
     const [progressFoot, progressTip] = endsOf(named(g, "Progress axis"));
     expect(progressFoot).toEqual(energyFoot);
     expect(progressTip.y).toBe(energyFoot.y);
     expect(progressTip.x).toBeGreaterThan(progressFoot.x);
-    expect(energyFoot.y).toBe(RECT.h - labelH - 16);
+    expect(energyFoot.y).toBe(RECT.h - labelH - 12);
     expect(named(g, "Progress axis").arrowEnd).toBe(true);
     expect(left).toBe(12 + 16);
-    expect(peak).toBe(labelH + 20);
+    expect(peak).toBe(20); // the name beside the tip, so the peak rises to 20 under the top
 
-    // The energy axis's name is horizontal, in a row of its own at the top left.
+    // The energy axis's name is horizontal, at the top left beside the arrow's tip (FIX-ENERGY).
     const energy = labelled(g, "Energy");
-    expect([energy.x, energy.y, energy.h, energy.style.align]).toEqual([0, 0, labelH, "left"]);
+    expect([energy.x, energy.y, energy.h, energy.style.align]).toEqual([20, 0, labelH, "left"]);
     const progress = labelled(g, "Progress of reaction");
     expect(progress.y).toBeGreaterThan(energyFoot.y);
     expect(progress.x + progress.w / 2).toBeCloseTo((12 + RECT.w) / 2, 5);
@@ -191,7 +192,8 @@ describe("drawFigure: energy-profile", () => {
     expect(g.alt?.endsWith(" Not drawn to scale.")).toBe(true);
     // The caption's row comes out of the plot.
     const labelH = boxH(chalk, "small");
-    expect(endsOf(named(g, "Progress axis"))[0].y).toBe(RECT.h - labelH - 16 - (labelH + 8));
+    // FIX-ENERGY: the progress axis's name 10 under it and 2 off the bottom (was 16 in all).
+    expect(endsOf(named(g, "Progress axis"))[0].y).toBe(RECT.h - labelH - 12 - (labelH + 8));
   });
 
   it("clamps a very exothermic profile's peak to at least 25 % of the span", () => {
