@@ -1,0 +1,471 @@
+// BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
+// with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, resolve } from "node:path";
+import { Writable } from "node:stream";
+import pino from "../../apps/worker/node_modules/pino/pino.js";
+import { createPictureBank } from "../../apps/worker/src/picture-bank";
+import { createAi, createBudget } from "../../packages/ai/src/index";
+import { createDb } from "../../packages/db/src/index";
+import { newId } from "../../packages/domain/src/index";
+import { z } from "../../packages/generation/node_modules/zod";
+import {
+  DIAGRAM_CONTRACT,
+  DiagramSpecSchema,
+} from "../../packages/generation/src/plan-write/diagram-spec";
+import {
+  judgeMade,
+  pickPhoto,
+  plainSubject,
+} from "../../packages/generation/src/stages/illustrate";
+import { mustShowOf } from "../../packages/generation/src/stages/photo-bank";
+import { findDirected } from "../../packages/generation/src/stages/picture-director";
+import * as im from "../../packages/images/src/index";
+import { parseDiagram } from "../../packages/slides/src/diagrams/index";
+import { createStorage } from "../../packages/storage/src/index";
+
+export const ROUNDS =
+  "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds";
+export const BAKEOFF = `${ROUNDS}/BAKEOFF`;
+const key = (f: string) => readFileSync(`${homedir()}/${f}`, "utf8").trim();
+
+/* ------------------------------------------------------------------ */
+/* Cost                                                                */
+/* ------------------------------------------------------------------ */
+
+export const PRICES: Record<string, { in: number; cached: number; out: number }> = {
+  "gpt-6.1-sol": { in: 2, cached: 0.1, out: 10 },
+  "gpt-6-luna": { in: 0.1, cached: 0.01, out: 0.5 },
+};
+export type Usage = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+  completion_tokens_details?: { reasoning_tokens?: number };
+};
+export function usd(model: string, u: Usage): number {
+  const p = PRICES[model];
+  if (!p) throw new Error(`no price for ${model}`);
+  const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
+  return (
+    ((u.prompt_tokens - cached) * p.in + cached * p.cached + u.completion_tokens * p.out) / 1e6
+  );
+}
+
+/** Spend per part of a run ("main", "notes", "diagrams", "pictures", "repair"), and a hard cap. */
+export class Ledger {
+  parts: Record<string, number> = {};
+  constructor(public capUsd: number) {}
+  add(part: string, v: number) {
+    this.parts[part] = (this.parts[part] ?? 0) + v;
+  }
+  get total() {
+    return Object.values(this.parts).reduce((a, b) => a + b, 0);
+  }
+  /** Throws when the run has spent its cap (checked before each new call). */
+  guard(what: string) {
+    if (this.total >= this.capUsd) throw new Error(`cap $${this.capUsd} reached before ${what}`);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* OpenAI                                                              */
+/* ------------------------------------------------------------------ */
+
+export type ChatReq = {
+  model: string;
+  effort?: "minimal" | "low" | "medium" | "high";
+  system: string;
+  user: string;
+  schema: object;
+  name?: string;
+  strict?: boolean;
+};
+const body = (r: ChatReq, stream: boolean) => ({
+  model: r.model,
+  ...(r.effort ? { reasoning_effort: r.effort } : {}),
+  messages: [
+    { role: "system", content: r.system },
+    { role: "user", content: r.user },
+  ],
+  response_format: {
+    type: "json_schema",
+    json_schema: { name: r.name ?? "out", strict: r.strict ?? true, schema: r.schema },
+  },
+  ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
+});
+
+/** One structured call; returns the parsed output, usage and cost. */
+export async function chat(
+  r: ChatReq,
+): Promise<{ out: unknown; text: string; usage: Usage; usd: number; ms: number }> {
+  const t0 = performance.now();
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key(".dayback-openai-key")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body(r, false)),
+  });
+  const j = (await res.json()) as {
+    choices?: { message: { content: string } }[];
+    usage: Usage;
+    error?: unknown;
+  };
+  if (!res.ok || !j.choices)
+    throw new Error(`openai ${res.status}: ${JSON.stringify(j.error ?? j).slice(0, 300)}`);
+  const text = j.choices[0]?.message.content ?? "";
+  let out: unknown;
+  try {
+    out = JSON.parse(text);
+  } catch {
+    out = undefined;
+  }
+  return {
+    out,
+    text,
+    usage: j.usage,
+    usd: usd(r.model, j.usage),
+    ms: Math.round(performance.now() - t0),
+  };
+}
+
+/** One streamed structured call: `onText` gets each content delta as it arrives. */
+export async function chatStream(
+  r: ChatReq,
+  onText: (delta: string) => void,
+): Promise<{ text: string; usage: Usage; usd: number; ms: number; firstTokenMs: number }> {
+  const t0 = performance.now();
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key(".dayback-openai-key")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body(r, true)),
+  });
+  if (!res.ok || !res.body)
+    throw new Error(`openai ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let pending = "";
+  let text = "";
+  let usage: Usage | undefined;
+  let first = -1;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    pending += dec.decode(value, { stream: true });
+    const lines = pending.split("\n");
+    pending = lines.pop() ?? "";
+    for (const line of lines) {
+      const l = line.trim();
+      if (!l.startsWith("data:")) continue;
+      const data = l.slice(5).trim();
+      if (data === "[DONE]") continue;
+      const j = JSON.parse(data) as { choices?: { delta?: { content?: string } }[]; usage?: Usage };
+      if (j.usage) usage = j.usage;
+      const d = j.choices?.[0]?.delta?.content;
+      if (d) {
+        if (first < 0) first = Math.round(performance.now() - t0);
+        text += d;
+        onText(d);
+      }
+    }
+  }
+  if (!usage) throw new Error("stream ended without usage");
+  return {
+    text,
+    usage,
+    usd: usd(r.model, usage),
+    ms: Math.round(performance.now() - t0),
+    firstTokenMs: first,
+  };
+}
+
+/** A recorded stream played back at its recorded pace (or instantly): no spend, for dry runs. */
+export async function replayStream(file: string, onText: (d: string) => void, msPerKChar = 0) {
+  const text = readFileSync(file, "utf8");
+  for (let i = 0; i < text.length; i += 40) {
+    onText(text.slice(i, i + 40));
+    if (msPerKChar) await new Promise((r) => setTimeout(r, (msPerKChar * 40) / 1000));
+  }
+  return {
+    text,
+    usage: { prompt_tokens: 0, completion_tokens: 0 } as Usage,
+    usd: 0,
+    ms: 0,
+    firstTokenMs: 0,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Pictures: picture director + bank (production code, lab/cand)       */
+/* ------------------------------------------------------------------ */
+
+export const STORE = `${BAKEOFF}/base-pg/store`;
+const WS = "0e7a1000-0000-4000-8000-000000000e7a";
+export type PhotoAsk = {
+  key: string;
+  shows: string;
+  mustSee: string[];
+  named: boolean;
+  slide: { heading: string; text: string; point: string };
+  index: number;
+};
+export type PhotoResult = {
+  src: string;
+  alt: string;
+  aspect: number;
+  about?: string;
+  provider?: string;
+  source?: unknown;
+};
+
+/** The picture services for one run; `costs` collects bank and director spend. */
+export function pictureService(opts: {
+  runDir: string;
+  pgPort: number;
+  ledger: Ledger;
+  bankCapUsd: number;
+}) {
+  mkdirSync(opts.runDir, { recursive: true });
+  const okey = key(".dayback-openai-key");
+  const aiLog = `${opts.runDir}/pictures.ai.jsonl`;
+  const AI_LOGGER = pino({ level: "info" }, pino.destination({ dest: aiLog, sync: true }));
+  const MODEL = "openai/gpt-6-luna";
+  const ai = createAi(
+    {
+      OPENAI_API_KEY: okey,
+      AI_MODEL_FRONTIER: MODEL,
+      AI_MODEL_STANDARD: MODEL,
+      AI_MODEL_SMALL: MODEL,
+    },
+    { logger: AI_LOGGER },
+  );
+  const storage = {
+    put: async (k: string, b: unknown) => {
+      const bytes =
+        b instanceof ReadableStream
+          ? new Uint8Array(await new Response(b).arrayBuffer())
+          : (b as Uint8Array);
+      mkdirSync(resolve(STORE, k, ".."), { recursive: true });
+      writeFileSync(resolve(STORE, k), bytes);
+      return { key: k };
+    },
+  };
+  const pex = im.createPexelsClient({ apiKey: key(".dayback-pexels-key") });
+  const commons = im.createCommonsClient();
+  const images = {
+    search: (q: string, o: object) =>
+      pex.search({ query: q, ...o, locale: "en-GB" }).then((p: { photos: unknown }) => p.photos),
+    store: (photo: unknown, target: string) =>
+      im.storePhoto({ photo, target, storage, workspaceId: WS } as never),
+    searchCommons: (q: string, o: object) => commons.search({ query: q, ...o }),
+    bank: createPictureBank({
+      db: (() => {
+        const d = createDb(
+          `postgres://postgres:postgres@localhost:${opts.pgPort}/teaching_journey`,
+        ) as { unsafeDb?: unknown; db?: unknown };
+        return (d.unsafeDb ?? d.db) as never;
+      })(),
+      storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
+      embedder: im.createOpenAiEmbedder({ apiKey: okey }),
+      generator: im.createOpenAiImageGenerator({ apiKey: okey }),
+      capUsd: opts.bankCapUsd,
+      ids: () => newId(),
+      onEvent: (e: { costUsd?: number }) => {
+        opts.ledger.add("pictures", e.costUsd ?? 0);
+        appendFileSync(
+          `${opts.runDir}/pictures.bank.jsonl`,
+          `${JSON.stringify({ t: Date.now(), ...e })}\n`,
+        );
+      },
+    } as never),
+  };
+  const logger = pino(
+    { level: "info" },
+    new Writable({
+      write(c, _e, cb) {
+        appendFileSync(`${opts.runDir}/pictures.log.jsonl`, c.toString());
+        cb();
+      },
+    }),
+  );
+  /** The director's AI spend so far (from its call log). */
+  const aiSpend = () => {
+    try {
+      return readFileSync(aiLog, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l) as { ai?: { costUsd?: number } })
+        .reduce((a, r) => a + (r.ai?.costUsd ?? 0), 0);
+    } catch {
+      return 0;
+    }
+  };
+  async function find(
+    ask: PhotoAsk,
+    lesson: {
+      id: string;
+      title: string;
+      yearGroup: string;
+      subject: string;
+      base: Record<string, unknown>;
+    },
+  ): Promise<PhotoResult | undefined> {
+    opts.ledger.guard(`picture ${ask.key}`);
+    const deps = {
+      ai,
+      budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
+      effortFor: () => "low",
+      signal: new AbortController().signal,
+      logger,
+      now: () => new Date(),
+      ids: () => newId(),
+      images,
+      context: { lessonId: lesson.id, jobId: `bakeoff-${lesson.id}` },
+    };
+    const request = [ask.shows, ...ask.mustSee].join(". ");
+    const b = {
+      subject: plainSubject(ask.shows).slice(0, 60),
+      request: request.slice(0, 400),
+      mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
+      purpose: "context",
+      specific: ask.named,
+    };
+    const full = {
+      ...lesson.base,
+      id: lesson.id,
+      title: lesson.title,
+      yearGroup: lesson.yearGroup,
+      subject: lesson.subject,
+    } as Record<string, unknown>;
+    const facts = (full.facts ?? { outline: [] }) as { outline?: unknown[] };
+    const at = (x: unknown) =>
+      pickPhoto(
+        {
+          ...full,
+          facts: {
+            ...facts,
+            outline: Array.from({ length: ask.index + 1 }, (_, i) =>
+              i === ask.index
+                ? { id: `s${i + 1}`, kind: "image-text", factRefs: [], imageBrief: x }
+                : { id: `s${i + 1}`, kind: "content", factRefs: [] },
+            ),
+          },
+        } as never,
+        ask.index,
+        deps as never,
+      ).catch(() => ({ outcome: "empty" }));
+    const stock = async (first: unknown) => {
+      const r = (await at(first)) as { outcome: string; photo?: unknown };
+      return r.outcome === "placed" ? r.photo : undefined;
+    };
+    const photo = (await findDirected({
+      bank: images.bank as never,
+      ask: { subject: request, named: ask.named ? plainSubject(ask.shows).slice(0, 60) : null },
+      brief: b as never,
+      slide: ask.slide,
+      lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+      country: "England",
+      index: ask.index,
+      stock: stock as never,
+      judgeMade: (brief: unknown, made: { dataUrl?: string }) =>
+        made.dataUrl
+          ? judgeMade({
+              lesson: full as never,
+              index: ask.index,
+              brief: brief as never,
+              deps: deps as never,
+              dataUrl: made.dataUrl,
+            })
+          : Promise.resolve(true),
+      deps: deps as never,
+    }).catch((e: unknown) => {
+      appendFileSync(
+        `${opts.runDir}/log.jsonl`,
+        `${JSON.stringify({ t: Date.now(), ev: "picture-error", key: ask.key, err: String(e).slice(0, 300) })}\n`,
+      );
+      return undefined;
+    })) as { src: string; alt: string; about?: string; source?: { provider?: string } } | undefined;
+    if (!photo) return undefined;
+    return {
+      src: photo.src,
+      alt: photo.alt,
+      about: photo.about,
+      provider: photo.source?.provider,
+      source: photo.source,
+      aspect: aspectOf(photo.src),
+    };
+  }
+  return { find, aiSpend };
+}
+
+/** A stored photo's own width / height (sips, macOS); 4:3 when it cannot be read. */
+export function aspectOf(src: string): number {
+  const f = `${STORE}/${decodeURIComponent(src.replace(/^\/files\//, ""))}`;
+  const o = Bun.spawnSync(["sips", "-g", "pixelWidth", "-g", "pixelHeight", f]).stdout.toString();
+  const w = Number(o.match(/pixelWidth: (\d+)/)?.[1]);
+  const h = Number(o.match(/pixelHeight: (\d+)/)?.[1]);
+  return w && h ? w / h : 4 / 3;
+}
+
+/* ------------------------------------------------------------------ */
+/* Diagrams: spec call (gpt-6-luna) + the repo's drawer                */
+/* ------------------------------------------------------------------ */
+
+export type DiagramAsk = {
+  key: string;
+  kind: string;
+  shows: string;
+  labels: string[];
+  words: string;
+  yearGroup: string;
+};
+/** The diagram spec prompt: BAKEOFF/prompts/shared/diagram-spec.txt when the prompt agent has written it, else SOL-SIMPLE's. */
+function diagramSystem(): string {
+  for (const f of [
+    `${BAKEOFF}/prompts/shared/diagram-spec.txt`,
+    `${ROUNDS}/SOL-SIMPLE/prompts/diagram-spec.txt`,
+  ])
+    try {
+      return `${readFileSync(f, "utf8").trim()}\n\n${DIAGRAM_CONTRACT}`;
+    } catch {}
+  throw new Error("no diagram spec prompt");
+}
+export async function diagramSpec(
+  ask: DiagramAsk,
+  ledger: Ledger,
+  log: (e: object) => void,
+): Promise<unknown | undefined> {
+  const kindSchema = (DiagramSpecSchema.options as { shape: { kind: { value: string } } }[]).find(
+    (o) => o.shape.kind.value === ask.kind,
+  );
+  if (!kindSchema) return undefined;
+  ledger.guard(`diagram ${ask.key}`);
+  const schema = z.toJSONSchema(kindSchema as never, { target: "draft-7" });
+  const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await chat({
+      model: "gpt-6-luna",
+      effort: "low",
+      system: diagramSystem(),
+      user,
+      schema,
+      name: "diagram",
+      strict: false,
+    });
+    ledger.add("diagrams", r.usd);
+    log({ ev: "diagram-call", key: ask.key, ms: r.ms, usd: r.usd, attempt });
+    if (r.out && parseDiagram(r.out)) return r.out;
+  }
+  return undefined;
+}
+
+export function writeJson(f: string, v: unknown) {
+  mkdirSync(dirname(f), { recursive: true });
+  writeFileSync(f, `${JSON.stringify(v, null, 1)}\n`);
+}
