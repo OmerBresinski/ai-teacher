@@ -82,6 +82,9 @@ const WORDS =
   );
 const inWords = (n: number) => (WORDS[n] ? `${WORDS[n]} (${n})` : String(n));
 
+/** The fewest things a photo is framed as a count for (`countImagePrompt`). */
+const COUNT_PHOTO_MIN = 3;
+
 /** A count slot code can use: whole, at most 120, spaces = total + empty. */
 function countOk(c: PictureDirection["count"]): c is NonNullable<PictureDirection["count"]> {
   if (!c || !c.things.trim()) return false;
@@ -138,6 +141,9 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
   if (!d || d.route === "none") return { kind: "none" };
   const base = { named: ask.named, ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}) };
   const counted = countOk(d.count) ? d.count : undefined;
+  // FIX1: a photo framed as a count only when there is something to count. A pair (an adult and
+  // its young) is a picture of what it shows; framed as "exactly two animals" it lost the cow.
+  const countedPhoto = counted && counted.total >= COUNT_PHOTO_MIN ? counted : undefined;
   if (d.route === "code") {
     // Only a plain array is drawn; a diagram kind the bank cannot draw leaves the text layout.
     if (!counted || counted.empty > 0) return { kind: "none" };
@@ -163,11 +169,14 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
   const fallback = real
     ? REAL_FALLBACK[period ? historyPolicy() : "present"][d.named ?? "object"]
     : undefined;
-  const mustShow = counted
-    ? uniq([`exactly ${counted.total} ${counted.things.trim()}`, ...first.mustShow]).slice(0, 3)
+  const mustShow = countedPhoto
+    ? uniq([
+        `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
+        ...first.mustShow,
+      ]).slice(0, 3)
     : first.mustShow;
   const imagePrompt =
-    (counted && countImagePrompt(counted)) ||
+    (countedPhoto && countImagePrompt(countedPhoto)) ||
     (fallback === "illustration" && period
       ? illustrationPrompt(first.imagePrompt, period)
       : first.imagePrompt);
@@ -179,7 +188,7 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       route: real ? "real" : "generic",
       imagePrompt,
       draw: null,
-      stockFirst: d.route === "pexels" && !counted,
+      stockFirst: d.route === "pexels" && !countedPhoto,
       ...(fallback ? { realFallback: fallback } : {}),
       ...(period ? { period } : {}),
     },

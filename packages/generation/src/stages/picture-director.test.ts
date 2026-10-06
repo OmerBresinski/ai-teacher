@@ -38,6 +38,21 @@ const photoPlan = (d: PictureDirection, a: typeof ask | { text: string; named: n
 };
 
 describe("planPicture", () => {
+  // FIX1 (FULL-RUN y1 s5, refill): "an adult cow beside a calf" came back as a count of 2 "animals";
+  // the counting frame replaced the director's prompt and the generator drew cats and dogs.
+  test("a pair is a picture of what it shows, not a count", () => {
+    const pair = {
+      things: "animals",
+      total: 2,
+      groups: 1,
+      perGroup: 2,
+      arrangement: "rows" as const,
+      empty: 0,
+    };
+    const p = photoPlan(dir({ count: pair }));
+    expect(p.request.imagePrompt).toBe(pic().imagePrompt);
+    expect(p.request.imagePrompt).not.toContain("directly above");
+  });
   test("commons: real ladder, the request's year-plus-event anchor leads the searches, period kept", () => {
     const p = photoPlan(
       dir({
