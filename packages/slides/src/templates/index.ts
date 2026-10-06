@@ -832,9 +832,21 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         let size = c.s.title;
         // ...and until every word fits its line whole: a title never breaks inside a word (y9
         // "hyperinfla/tion"). Stepping down is the design, not a fault.
+        // Round 2 (y10 title 521/444): the title and subtitle together must fit the 444pt column,
+        // so a long title keeps stepping down (words whole) to the floor; only past it is it flagged.
+        const height = () => {
+          const t = Math.ceil(
+            countLines(input.heading, "title", theme, w, theme.weights.heading, size) *
+              size *
+              LH.title,
+          );
+          return t + (input.lead ? 20 + measure(c, input.lead, "lead", w, 400) : 0);
+        };
         const fits = () =>
           countLines(input.heading, "title", theme, w, theme.weights.heading, size) <=
-            (f ? 6 : 3) && wordsFit(c, input.heading, "title", w, size);
+            (f ? 6 : 3) &&
+          wordsFit(c, input.heading, "title", w, size) &&
+          height() <= 444;
         const floor = Math.round(c.s.heading * 0.8);
         while (size > floor && !fits()) size -= 2;
         c.s = { ...c.s, title: size };
@@ -843,7 +855,16 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const lH = input.lead ? measure(c, input.lead, "lead", w, 400) : 0;
         const total = tH + (lH ? 20 + lH : 0);
         const y = Math.round(270 - total / 2);
-        text(c, input.heading, "title", { x: G.margin, y, w }, { color: on, name: "Title" });
+        const titleEl = text(
+          c,
+          input.heading,
+          "title",
+          { x: G.margin, y, w },
+          { color: on, name: "Title" },
+        );
+        // The ruler measures a line or so more than the browser may draw: the title sits on the
+        // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
+        if (input.lead) titleEl.style = { ...titleEl.style, valign: "bottom", autoHeight: false };
         if (input.lead)
           text(
             c,
@@ -902,6 +923,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         break;
       }
       case "compare": {
+        const s0 = c.s;
         const head = heading(c, input.heading);
         const cols = input.columns ?? [];
         const gap = 24;
@@ -916,15 +938,22 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           const top = Math.max(G.band.y - 48, Math.round(head.y + head.h + 12));
           const bottom = G.band.y + G.band.h + 32;
           const iw = colW - 2 * pad;
-          const words = Math.max(
-            ...cols.map(
-              (col) =>
-                measure(c, col.label, "lead", iw, 700) +
-                (col.text ? 4 + measure(c, col.text, "body", iw) : 0),
-            ),
-            0,
-          );
+          const wordsH = () =>
+            Math.max(
+              ...cols.map(
+                (col) =>
+                  measure(c, col.label, "lead", iw, 700) +
+                  (col.text ? 4 + measure(c, col.text, "body", iw) : 0),
+              ),
+              0,
+            );
           const full = Math.round(iw * 0.75);
+          // Round 2: on the fit ladder. Words too long for the full 4:3 band set one step down first.
+          let words = wordsH();
+          if (bottom - top - 2 * pad - 8 - words < Math.floor(full * 0.96)) {
+            c.s = { ...s0, body: s0.small, lead: s0.small };
+            words = wordsH();
+          }
           const picH = Math.min(full, bottom - top - 2 * pad - 8 - words);
           if (picH < Math.floor(full * 0.96))
             c.over.push(`compare picture ${picH}/${full}pt (under 4:3)`);
@@ -957,14 +986,22 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
                 { color: theme.colors.ink, name: "Text" },
               );
           });
+          c.s = s0;
           break;
         }
-        const pad = 22;
+        // Round 2: text cards on the fit ladder (padding closes up, then body one step down).
+        let pad = 22;
         const textH = (col: { label: string; text: string }) =>
           measure(c, col.label, "lead", colW - 2 * pad, 700) +
           10 +
           (col.text ? measure(c, col.text, "body", colW - 2 * pad) : 0);
-        const h = Math.max(...cols.map(textH), 0) + 2 * pad;
+        let h = 0;
+        for (const [k, r] of RUNGS.entries()) {
+          c.s = r.small ? { ...s0, body: s0.small, lead: s0.small } : s0;
+          pad = Math.max(14, Math.round(22 * r.space));
+          h = Math.max(...cols.map(textH), 0) + 2 * pad;
+          if (h <= G.band.h || k === RUNGS.length - 1) break;
+        }
         if (h > G.band.h) c.over.push(`compare ${h}/${G.band.h}pt`);
         const y = Math.max(G.band.y, Math.round(bandMid - h / 2 - 4));
         cols.forEach((col, k) => {
@@ -990,6 +1027,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
               { color: theme.colors.ink, name: "Text" },
             );
         });
+        c.s = s0;
         break;
       }
       case "big-picture": {
@@ -1072,10 +1110,13 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         heading(c, input.heading);
         const opts = input.options ?? [];
         const stem = input.stem;
-        const gap = 18;
-        const pad = 20;
-        const d = Math.round(c.s.body * 1.25);
-        const sH = stem ? measure(c, stem, "lead", G.width) + 22 : 0;
+        // Round 2 (y11 s11 ran to the foot): the hinge is on the fit ladder. Full size first, then
+        // closer gaps and padding, then body (stem and options) one step down; flagged only past that.
+        const full = c.s;
+        let gap = 18;
+        let pad = 20;
+        let d = 0;
+        let sH = 0;
         // Options never leave a hole: 2 in a row, 4 as 2x2, 3 as a row of 3 when they fit it,
         // else one column (fit2: three options as 2 + 1 left a gap).
         const grid = (perRow: number) => {
@@ -1085,10 +1126,21 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           const rows = Math.ceil(opts.length / perRow);
           return { perRow, w, iw, rowH, rows, total: sH + rows * rowH + (rows - 1) * gap };
         };
-        let g = grid(opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
-        if (opts.length === 3) {
-          const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
-          if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
+        let g = grid(1);
+        for (const [k, r] of RUNGS.entries()) {
+          c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+          gap = Math.round(18 * r.space);
+          pad = Math.max(10, Math.round(20 * r.space));
+          d = Math.round(c.s.body * 1.25);
+          sH = stem ? measure(c, stem, "lead", G.width) + Math.round(22 * r.space) : 0;
+          g = grid(opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
+          if (opts.length === 3) {
+            const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
+            if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
+            // Three options in one column that do not fit may fit as a row of three.
+            if (g.total > G.band.h && grid(3).total < g.total) g = grid(3);
+          }
+          if (g.total <= G.band.h || k === RUNGS.length - 1) break;
         }
         if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
         let y = Math.max(G.band.y, Math.round(bandMid - g.total / 2 - 4));
@@ -1121,6 +1173,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             { color: theme.colors.ink, name: "Option text" },
           );
         });
+        c.s = full;
         break;
       }
       case "question-set":

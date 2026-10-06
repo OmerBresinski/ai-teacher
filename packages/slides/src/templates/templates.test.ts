@@ -189,3 +189,36 @@ describe("round 1: text fit and fallbacks", () => {
     expect(ok.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(true);
   });
 });
+
+describe("round 2: title, hinge and compare fit", () => {
+  const studio = getTheme("studio");
+  test("a long title with a subtitle steps down until both fit (y10)", () => {
+    const r = layoutTemplate(
+      {
+        template: "title",
+        heading: "The Tempest: Prospero and the mechanics of power",
+        lead: "When does protection become control?",
+        figure: { photo: "/x.jpg", aspect: 1 },
+      },
+      studio,
+      "ks4",
+    );
+    expect(r.over).toEqual([]);
+    for (const e of r.slide.elements) expect(e.y).toBeGreaterThanOrEqual(40);
+  });
+  test("a hinge with long options closes up or steps down instead of running to the foot (y11 s11)", () => {
+    const o = "Collisions are more frequent, and more of them exceed the activation energy needed.";
+    const r = layoutTemplate(
+      {
+        template: "hinge",
+        heading: "Check: why does heating help?",
+        stem: "A reaction is faster at 40°C than at 20°C. Which explanation is correct?",
+        options: [o, o, o, o],
+      },
+      studio,
+      "ks4",
+    );
+    expect(r.over).toEqual([]);
+    for (const e of r.slide.elements) expect(e.y + e.h).toBeLessThanOrEqual(500);
+  });
+});
