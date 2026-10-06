@@ -8,6 +8,7 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type CheckResult, checkSlide } from "./checks";
+import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
 import { PartialJson, type Path } from "./partial";
 import { concrete, judgeRepair, repairable, sameFigure, teaching } from "./repair";
 import {
@@ -166,7 +167,7 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     if (expr.startsWith("count:") && expr.includes("objectiveCount")) return objectiveCount(b);
     if (expr.startsWith("for each objective"))
       return (x.objectives ?? [])
-        .map((o, k) => `${k + 1}. Teacher: ${o.teacher} | Pupils: ${o.pupil}`)
+        .map((o, k) => `${k + 1}. Teacher: ${o.teacher}${o.pupil ? ` | Pupils: ${o.pupil}` : ""}`)
         .join("\n");
     if (expr.startsWith("context block")) return x.context ?? "";
     if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] }, null, 1);
@@ -507,6 +508,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       mark("flow");
       log({ ev: "flow", n: plan.flow?.length });
     }
+    // Slide 2 belongs to code in the two-phase flow (pupil wording call); a streamed one is ignored.
+    if (idx === 1 && twoPhase && arm.codeObjectives) return;
     if (idx !== undefined) {
       const s = v as Record<string, unknown>;
       plan.slides[idx] = s;
@@ -590,24 +593,25 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     }
   }
   let user = contextBlock(brief, plan.objectives);
+  /** Slide 2 from code, with the pupil lines that have arrived (the model never writes slide 2). */
+  const laySlide2 = (why: string) => {
+    if (!arm.codeObjectives) return;
+    const shown = { ...plan, objectives: (plan.objectives ?? []).filter((x) => x.pupil.trim()) };
+    laid.set(
+      1,
+      withKeyStage(
+        brief.keyStage,
+        () => arm.codeObjectives?.({ ...base, index: 1, plan: shown }) as Materialised,
+      ),
+    );
+    save(why);
+  };
+  let pupilJob: Promise<void> = Promise.resolve();
   if (twoPhase) {
-    const cfgFile = `${shared0}/objectives.json`;
-    const cfg = (existsSync(cfgFile) ? JSON.parse(readFileSync(cfgFile, "utf8")) : {}) as {
-      model?: string;
-      effort?: "minimal" | "low" | "medium" | "high";
-    };
-    const objectives: { teacher: string; pupil: string }[] = [];
-    const op = new PartialJson((path, v) => {
-      if (path[0] === "objectives" && path.length === 2) {
-        objectives.push(v as { teacher: string; pupil: string });
-        mark("objectiveFirst");
-      }
-    });
-    const heldObj = ledger.guard("objectives call", STEP_EST.objectives);
-    const oc = await chatStream(
+    // (1) Teacher objectives: Sol, Luna when no first objective has streamed by 8 s (code defaults).
+    const heldObj = ledger.guard("objectives call", STEP_EST.objectives * 2);
+    const run = await objectivesCall(
       {
-        model: cfg.model ?? "gpt-6.1-sol",
-        effort: cfg.effort ?? "low",
         system: readFileSync(`${shared0}/objectives.txt`, "utf8"),
         user: existsSync(`${shared0}/objectives-user.txt`)
           ? fillTemplate(readFileSync(`${shared0}/objectives-user.txt`, "utf8"), brief)
@@ -616,11 +620,14 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         name: "objectives",
         maxTokens: 3000,
       },
-      (d) => op.push(d),
+      chatStream,
+      () => mark("objectiveFirst"),
     );
-    ledger.add("objectives", oc.usd);
+    // An abandoned primary call's usage never arrives: its reserve is booked as spent.
+    ledger.add("objectives", run.result.usd + (run.abandoned ? STEP_EST.objectives : 0));
     heldObj();
     mark("objectivesAll");
+    const objectives = run.teacher.map((teacher) => ({ teacher, pupil: "" }));
     plan.objectives = objectives;
     lessonInfo.base = {
       facts: {
@@ -628,36 +635,90 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         outline: [],
       },
     };
-    writeJson(`${o.outDir}/objectives.json`, {
-      objectives,
-      usage: oc.usage,
-      usd: oc.usd,
-      ms: oc.ms,
-      firstTokenMs: oc.firstTokenMs,
-    });
     log({
       ev: "objectives",
       n: objectives.length,
       phase: "objectives call",
+      ran: run.ran,
+      model: run.model,
+      ...(run.abandoned ? { abandoned: run.abandoned } : {}),
       gate10s: (timings.objectivesAll ?? 0) <= 10_000,
+    });
+    writeJson(`${o.outDir}/objectives.json`, {
+      objectives,
+      ran: run.ran,
+      model: run.model,
+      ...(run.abandoned ? { abandoned: run.abandoned } : {}),
+      usage: run.result.usage,
+      usd: run.result.usd,
+      ms: run.result.ms,
+      firstTokenMs: run.result.firstTokenMs,
     });
     // The teacher signs off: auto-approved at once in the bake-off.
     signOffMs = ms();
     timings.signOff = signOffMs;
     log({ ev: "sign-off", auto: true, objectives: objectives.length });
-    if (arm.codeObjectives) {
-      laid.set(
-        1,
-        withKeyStage(
-          brief.keyStage,
-          () => arm.codeObjectives?.({ ...base, index: 1, plan }) as Materialised,
-        ),
-      );
-      save("objectives slide (approved)");
+    // (2) At sign-off, the pupil wording runs beside the design call and fills slide 2 directly.
+    const pupilSys = `${shared0}/pupil-objectives.txt`;
+    if (existsSync(pupilSys)) {
+      const schemaFile = `${shared0}/pupil-objectives-schema.json`;
+      const userFile = `${shared0}/pupil-objectives-user.txt`;
+      const teacherLines = objectives.map((x, k) => `${k + 1}. ${x.teacher}`).join("\n");
+      const held = ledger.tryHold("pupil objectives", STEP_EST.objectives);
+      pupilJob = (
+        held
+          ? pupilCall(
+              {
+                system: readFileSync(pupilSys, "utf8"),
+                user: existsSync(userFile)
+                  ? fillTemplate(readFileSync(userFile, "utf8"), brief, { objectives })
+                  : `${brief.yearGroup} ${brief.subject}: ${brief.topic}\n\nTeacher objectives:\n${teacherLines}`,
+                schema: existsSync(schemaFile)
+                  ? JSON.parse(readFileSync(schemaFile, "utf8"))
+                  : pupilSchema(objectives.length),
+                name: "pupil_objectives",
+                maxTokens: 1500,
+              },
+              chatStream,
+              (line, k) => {
+                const x = objectives[k];
+                if (!x) return;
+                x.pupil = line;
+                if (k === 0) mark("slide2First");
+                laySlide2(`pupil objective ${k + 1}`);
+              },
+            ).then((r) => {
+              ledger.add("objectives", r.result.usd);
+              log({
+                ev: "pupil-objectives",
+                n: r.pupil.length,
+                model: OBJECTIVES_CONFIG.pupil.model,
+                usd: r.result.usd,
+              });
+            })
+          : Promise.reject(new Error("cap refused the pupil call"))
+      )
+        .catch((e) => log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) }))
+        .finally(() => {
+          held?.();
+          // Any line still missing shows the teacher wording, so slide 2 is never short.
+          for (const x of objectives) if (!x.pupil.trim()) x.pupil = x.teacher;
+          laySlide2("objectives slide (pupil wording)");
+          mark("slide2");
+          mark("objectivesSlide");
+        });
+    } else {
+      log({ ev: "pupil-objectives-skipped", why: "no shared/pupil-objectives.txt yet" });
+      for (const x of objectives) x.pupil = x.teacher;
+      laySlide2("objectives slide (teacher wording)");
+      mark("slide2");
       mark("objectivesSlide");
     }
-    // The design call's user turn: shared/user.txt with the approved objectives filled in.
-    user = contextBlock(brief, objectives);
+    // The design call's user turn: shared/user.txt with the approved teacher objectives.
+    user = contextBlock(
+      brief,
+      objectives.map((x) => ({ teacher: x.teacher, pupil: "" })),
+    );
   }
   const parser = new PartialJson(onValue);
   const p = arm.prompt(brief);
@@ -753,6 +814,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       })().catch((e) => log({ ev: "notes-error", slide: i + 1, err: String(e).slice(0, 200) })),
     );
   }
+  await pupilJob;
   await Promise.all(notesJobs);
   if (notesJobs.length) mark("notes");
   // Visual jobs may add more jobs as they land: wait until none are left.
@@ -1042,6 +1104,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     "design",
     "firstPlaceholder",
     "objectivesSlide",
+    "slide2First",
+    "slide2",
     "firstTeachingSlide",
     "editable",
     "lastPicture",
@@ -1059,6 +1123,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           fromSignOff: Object.fromEntries(
             [
               "design",
+              "slide2",
               "firstPlaceholder",
               "firstTeachingSlide",
               "editable",

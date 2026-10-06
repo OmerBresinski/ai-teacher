@@ -154,6 +154,8 @@ export type ChatReq = {
   maxTokens?: number;
   /** Deadline for one attempt (non-streamed calls), default CHAT_TIMEOUT_MS. */
   timeoutMs?: number;
+  /** Caller's abort (the objectives fallback aborts a slow primary stream). */
+  signal?: AbortSignal;
 };
 const body = (r: ChatReq, stream: boolean) => ({
   model: r.model,
@@ -229,6 +231,10 @@ export async function chatStream(
     stall = setTimeout(() => ac.abort(new Error("stream stalled 90 s")), 90_000);
   };
   arm();
+  if (r.signal) {
+    if (r.signal.aborted) ac.abort(r.signal.reason);
+    else r.signal.addEventListener("abort", () => ac.abort(r.signal?.reason), { once: true });
+  }
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     signal: ac.signal,
