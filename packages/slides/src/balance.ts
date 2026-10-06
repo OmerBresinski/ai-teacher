@@ -6,20 +6,16 @@
  * - A speech bubble holds its prompt: the bubble is sized to the prompt (its tail kept clear of
  *   the talk line under it), the prompt stepped down a stop only when it cannot fit at its size.
  * - A card behind text (the key-idea side panel) hugs its words instead of running to the foot.
- * - A column of text with no picture in it is centred down the room under the heading.
+ * - Lists are not centred: a list starts under the heading at its normal spacing on every slide,
+ *   so a short one sits at the same top as a long one (coordinator ruling, FIX1 round 2).
  */
 import type { Slide, SlideElement, TextElement, Theme } from "@tj/domain/documents";
 import { SAFE, SPACE } from "./grid";
-import { KIND_TAG_NAME } from "./look";
-import { HEADING_NAME, isBackdrop, isFootBand } from "./reflow";
+import { HEADING_NAME } from "./reflow";
 import { measureHeadless } from "./text-measure";
 
 type Box = { x: number; y: number; w: number; h: number };
 const BOTTOM = SAFE.y + SAFE.h;
-/** Less free room than this under a column is already balanced. */
-const SLACK = 24;
-/** Columns closer than this are one column (a bullet and its point). */
-const COLUMN_GAP = 24;
 const overlaps = (a: Box, b: Box) =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (a: Box, b: Box) =>
@@ -100,50 +96,11 @@ function hugPanels(els: SlideElement[]): SlideElement[] {
   return out;
 }
 
-function centreColumns(els: SlideElement[]): SlideElement[] {
-  const heading = els.find((e) => e.name === HEADING_NAME);
-  const fixed = (e: SlideElement) =>
-    e.name === HEADING_NAME ||
-    e.name === KIND_TAG_NAME ||
-    isBackdrop(e) ||
-    isFootBand(e) ||
-    e.y + e.h >= BOTTOM - 2 ||
-    e.y >= BOTTOM;
-  const flow = els.filter((e) => !fixed(e));
-  if (flow.length === 0) return els;
-  // Columns: x-intervals merged when they touch or sit within COLUMN_GAP of each other.
-  const cols: SlideElement[][] = [];
-  for (const e of [...flow].sort((a, b) => a.x - b.x)) {
-    const last = cols[cols.length - 1];
-    const right = last ? Math.max(...last.map((x) => x.x + x.w)) : -1;
-    if (last && e.x <= right + COLUMN_GAP) last.push(e);
-    else cols.push([e]);
-  }
-  const top = Math.min(...flow.map((e) => e.y));
-  const floor = Math.min(
-    BOTTOM,
-    ...els
-      .filter((e) => fixed(e) && e !== heading && e.y > top && !isBackdrop(e) && !isFootBand(e))
-      .map((e) => e.y - SPACE[3]),
-  );
-  const moved = new Map<SlideElement, number>();
-  for (const col of cols) {
-    if (col.some((e) => e.type === "image" || e.type === "group" || e.type === "option")) continue;
-    const y0 = Math.min(...col.map((e) => e.y));
-    const y1 = Math.max(...col.map((e) => e.y + e.h));
-    const free = floor - top - (y1 - y0);
-    if (free < SLACK || y0 > top + 1) continue;
-    const dy = Math.round(top + free / 2 - y0);
-    for (const e of col) moved.set(e, dy);
-  }
-  return els.map((e) => (moved.has(e) ? { ...e, y: e.y + (moved.get(e) as number) } : e));
-}
-
-/** The slide with its bubble fitted, its cards hugging their words and its text columns centred. */
+/** The slide with its bubble fitted and its cards hugging their words. */
 export function balanceSlide(slide: Slide, theme: Theme): Slide {
   if (slide.kind === "title") return slide;
   const b = bubble(slide, theme);
   if (b !== slide) return b;
   if (slide.kind !== "content" && slide.kind !== "objectives") return slide;
-  return { ...slide, elements: centreColumns(hugPanels(slide.elements)) };
+  return { ...slide, elements: hugPanels(slide.elements) };
 }

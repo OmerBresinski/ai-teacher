@@ -23,7 +23,7 @@ describe("balance", () => {
     expect(slideFits(s, theme, 0).ok).toBe(true);
   });
 
-  test("the key-idea card hugs its words and the slide's columns sit centred", () => {
+  test("the key-idea card hugs its words and starts at the list's top", () => {
     const s = balanceSlide(keyIdea as Slide, theme);
     const panel = s.elements.find((e) => e.name === SIDE_PANEL_NAME)!;
     const before = (keyIdea as Slide).elements.find((e) => e.name === SIDE_PANEL_NAME)!;
@@ -31,12 +31,12 @@ describe("balance", () => {
     const top = Math.min(
       ...(keyIdea as Slide).elements.filter((e) => e.name !== "Heading").map((e) => e.y),
     );
-    // The card's room above and below is even.
-    expect(Math.abs(panel.y - top - (BOTTOM - panel.y - panel.h))).toBeLessThan(8);
+    // The card starts where the list does, under the heading: no centring.
+    expect(panel.y).toBe(top);
     expect(slideFits(s, theme, 0).ok).toBe(true);
   });
 
-  test("objectives rows sit centred in the room under the heading", () => {
+  test("objectives rows start under the heading at their normal spacing (lists are not centred)", () => {
     const s = balanceSlide(objectives as Slide, theme);
     const rows = s.elements.filter((e) => e.name !== "Heading");
     const y0 = Math.min(...rows.map((e) => e.y));
@@ -44,7 +44,8 @@ describe("balance", () => {
     const top0 = Math.min(
       ...(objectives as Slide).elements.filter((e) => e.name !== "Heading").map((e) => e.y),
     );
-    expect(Math.abs(y0 - top0 - (BOTTOM - y1))).toBeLessThan(8);
+    expect(y0).toBe(top0);
+    expect(y1).toBeLessThan(BOTTOM);
     expect(slideFits(s, theme, 0).ok).toBe(true);
   });
 });
