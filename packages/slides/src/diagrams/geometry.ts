@@ -150,5 +150,37 @@ export function figureGeometryFaults(children: SlideElement[], theme: Theme): st
       const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
       if (ox > 2 && oy > 2) out.push("two figure labels overlap");
     }
+  // FIX1 (y11 s7): a label laid on a profile curve (the legend once landed on the hump). The curve
+  // is sampled as the renderer draws it (a smooth path: cubic segments through its knots, control
+  // points a sixth of the neighbours' span along); a label's ink (its box less 2 pt a side and the top and bottom quarters of its line box) holds no sample.
+  for (const c of children)
+    if (c.type === "path" && /profile/i.test(c.name ?? "")) {
+      const ps = (c as PathElement).points;
+      for (let i = 0; i < ps.length - 1; i++) {
+        const p1 = ps[i] as Pt;
+        const p2 = ps[i + 1] as Pt;
+        const p0 = (ps[i - 1] ?? p1) as Pt;
+        const p3 = (ps[i + 2] ?? p2) as Pt;
+        const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+        const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+        for (let k = 0; k <= 16; k++) {
+          const u = k / 16;
+          const m = 1 - u;
+          const bx =
+            m * m * m * p1.x + 3 * m * m * u * c1.x + 3 * m * u * u * c2.x + u * u * u * p2.x;
+          const by =
+            m * m * m * p1.y + 3 * m * m * u * c1.y + 3 * m * u * u * c2.y + u * u * u * p2.y;
+          const x = c.x + bx * c.w;
+          const y = c.y + by * c.h;
+          if (
+            texts.some(
+              (t) =>
+                x > t.x + 2 && x < t.x + t.w - 2 && y > t.y + t.h * 0.25 && y < t.y + t.h * 0.75,
+            )
+          )
+            out.push("a figure label sits on a curve");
+        }
+      }
+    }
   return [...new Set(out)];
 }

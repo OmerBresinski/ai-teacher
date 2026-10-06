@@ -638,3 +638,4 @@ export function sparseDrawing(
   const f = drawnFill(spec, theme, size);
   return f !== undefined && f < min;
 }
+export { figureGeometryFaults } from "./geometry";

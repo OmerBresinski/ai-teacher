@@ -47,6 +47,7 @@ import {
   diagramElement,
   diagramFs,
   energyProfileOf,
+  figureGeometryFaults,
   fittedDiagramElement,
   itemCount,
   parseDiagram,
@@ -2388,9 +2389,35 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
             const f = e
               ? drawFigure(name, p.values, theme, { x: e.x, y: e.y, w: e.w, h: e.h })
               : undefined;
-            return f
+            const half = f
               ? ({ ...slide, elements: slide.elements.map((x, i) => (i === at ? f : x)) } as Slide)
               : undefined;
+            // FIX1 (y11 s7): a figure whose labels collide in the half zone takes the full-width
+            // figure composition when it draws clean there; else the half zone as before (logged).
+            if (!f || figureGeometryFaults(f.children, theme).length === 0) return half;
+            const big = asFigureFull(slide, theme, { spill: true });
+            const bigAt = big?.elements.findIndex(
+              (x) => x.type === "image" && x.src === PLACEHOLDER_IMAGE,
+            );
+            const z = big && bigAt !== undefined && bigAt >= 0 ? big.elements[bigAt] : undefined;
+            const g = z
+              ? drawFigure(name, p.values, theme, { x: z.x, y: z.y, w: z.w, h: z.h })
+              : undefined;
+            if (big && g && figureGeometryFaults(g.children, theme).length === 0)
+              return {
+                ...big,
+                elements: big.elements.map((x, i) => (i === bigAt ? g : x)),
+              } as Slide;
+            deps.logger.warn(
+              {
+                stage: "generate",
+                slide: index + 1,
+                figure: name,
+                faults: figureGeometryFaults(f.children, theme),
+              },
+              "t3 figure labels collide",
+            );
+            return half;
           })()
         : undefined;
       if (el) {

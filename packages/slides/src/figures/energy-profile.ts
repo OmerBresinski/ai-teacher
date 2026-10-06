@@ -208,6 +208,9 @@ type Labels = Record<LabelKey, FittedLabel>;
 
 /** A key row's lines, and its inset from the figure's sides. */
 const KEY_LINES = 2;
+/** A legend row's line sample, and the gap between the names of a one-row legend. */
+const LEGEND_SAMPLE = 30;
+const LEGEND_GAP = 16;
 const KEY_INSET = 4;
 /** The arrows' symbols, drawn on an arrow whose label is in the key. */
 const ARROW_SYMBOL = { activation: "Ea", change: "ΔH" } as const;
@@ -231,6 +234,11 @@ function drawEnergyProfile(
   values: EnergyProfileValues | undefined,
   t: Theme,
   size: { w: number; h: number },
+  /**
+   * FIX1 (y11 s7): the legend in rows under the plot. Set on the second pass, when no place inside
+   * the plot clears the curves (a short plot put the legend on the hump and "Ea" into the legend).
+   */
+  legendBelow = false,
 ): FigureDrawing {
   const valid = values !== undefined && peakAboveLevels(values);
   const { activationEnergy, energyChange } = valid ? values : FALLBACK;
@@ -244,11 +252,38 @@ function drawEnergyProfile(
       : [];
   });
   const isKeyed = (key: ArrowKey) => keyed.some((k) => k.key === key);
+  // Under the plot, the legend's two names: on one row when they fit across, else a row each. It
+  // says which curve is which, so the activation label's own key row is not said twice.
+  const legendRows = legendBelow
+    ? [
+        { text: "No catalyst", color: t.colors.accent, dash: undefined },
+        {
+          text: (values?.catalysedLabel ?? "With catalyst").trim() || "With catalyst",
+          color: t.colors.accent2,
+          dash: "dashed" as const,
+        },
+      ].map((r) => ({
+        ...r,
+        l: fitLabel(t, r.text, {
+          maxW: size.w - 2 * KEY_INSET - LEGEND_SAMPLE - 8,
+          slack: ARROW_LABEL_SLACK,
+          minW: 0,
+          maxLines: 1,
+        }),
+      }))
+    : [];
+  const legendItemW = (r: (typeof legendRows)[number]) => LEGEND_SAMPLE + 8 + r.l.w;
+  const legendOneRow =
+    legendRows.reduce((w, r) => w + legendItemW(r), 0) + LEGEND_GAP <= size.w - 2 * KEY_INSET;
+  const legendH = legendOneRow
+    ? Math.max(0, ...legendRows.map((r) => r.l.h))
+    : legendRows.reduce((h, r) => h + r.l.h, 0);
   // Each key row across the figure, wrapping to a second line when it must.
-  const keyRows = keyed.map((k) =>
-    fitLabel(t, k.text, { maxW: size.w - 2 * KEY_INSET, maxLines: KEY_LINES }),
-  );
-  const keyH = keyRows.length ? keyRows.reduce((h, l) => h + l.h, 0) + CAPTION_GAP : 0;
+  const keyRows = keyed
+    .filter((k) => !(legendBelow && k.key === "activation"))
+    .map((k) => fitLabel(t, k.text, { maxW: size.w - 2 * KEY_INSET, maxLines: KEY_LINES }));
+  const keyRowsH = keyRows.reduce((h, l) => h + l.h, 0) + legendH;
+  const keyH = keyRowsH > 0 ? keyRowsH + CAPTION_GAP : 0;
 
   // Across: the plot, and where the plateaus, the peak and the ΔH arrow are on it.
   const plotRight = size.w - PLOT_RIGHT_INSET;
@@ -514,6 +549,9 @@ function drawEnergyProfile(
   const MARGIN = 4;
   const inRoom = (b: Box) =>
     b.x >= MARGIN && b.y >= 0 && b.x + b.w <= size.w - MARGIN && b.y + b.h <= size.h;
+  let lastHits: ((b: Box) => boolean) | undefined;
+  /** Whether `b` clears the curves, arrows and labels `clearSpot` last looked at. */
+  const isClear = (b: Box, _taken: Box[]) => inRoom(b) && !(lastHits?.(b) ?? true);
   function clearSpot(candidates: Box[], taken: Box[]): Box {
     const lines = strokes();
     const hits = (b: Box) => {
@@ -527,6 +565,7 @@ function drawEnergyProfile(
         (o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h,
       );
     };
+    lastHits = hits;
     const clear = candidates.find((b) => inRoom(b) && !hits(b));
     if (clear) return clear;
     // None clears everything: the one in the room that covers the least of the labels set.
@@ -555,7 +594,9 @@ function drawEnergyProfile(
    * The catalysed profile: the same levels, a lower peak, dashed in the second colour, with its own
    * Ea arrow beside the main one, and a legend with line samples naming both curves.
    */
+  const keyTop = size.h - keyH + CAPTION_GAP - (notToScale ? labelH + CAPTION_GAP : 0);
   let legendBox: Box | undefined;
+  let legendCrowded = false;
   function catalysed(): SlideElement[] {
     if (catPeak === undefined) return [];
     const name = (values?.catalysedLabel ?? "With catalyst").trim() || "With catalyst";
@@ -586,7 +627,11 @@ function drawEnergyProfile(
     const grid: Box[] = [];
     for (let y = 0; y + legend.h <= axisY; y += 8)
       for (let x = right; x >= PLOT_LEFT; x -= 12) grid.push({ x, y, ...legend });
-    const spot = clearSpot(grid, taken);
+    const inPlot = clearSpot(grid, taken);
+    if (!legendBelow && !isClear(inPlot, taken)) legendCrowded = true;
+    const spot = legendBelow
+      ? { x: KEY_INSET, y: keyTop, w: legendOneRow ? size.w - 2 * KEY_INSET : legend.w, h: legendH }
+      : inPlot;
     taken.push(spot);
     legendBox = spot;
     if (!catCurve || !catTop) return [];
@@ -599,12 +644,21 @@ function drawEnergyProfile(
         name: "Catalysed activation energy",
       }),
     ];
-    rows.forEach((r, i) => {
-      const cy = spot.y + rowH * (i + 0.5);
+    let rowX = spot.x;
+    let rowY = spot.y;
+    (legendBelow ? legendRows : rows).forEach((r, i) => {
+      const cy = !legendBelow
+        ? spot.y + rowH * (i + 0.5)
+        : legendOneRow
+          ? spot.y + legendH / 2
+          : rowY + r.l.h / 2;
+      const x0 = legendBelow ? rowX : spot.x;
+      if (legendBelow && legendOneRow) rowX += legendItemW(r) + LEGEND_GAP;
+      else if (legendBelow) rowY += r.l.h;
       out.push(
         segment(
-          { x: spot.x, y: cy },
-          { x: spot.x + SAMPLE, y: cy },
+          { x: x0, y: cy },
+          { x: x0 + SAMPLE, y: cy },
           {
             stroke: r.color,
             strokeWidth: LADDER.data,
@@ -615,7 +669,7 @@ function drawEnergyProfile(
         labelText(
           t,
           r.l.text,
-          { x: spot.x + SAMPLE + 8, y: cy - r.l.h / 2, w: r.l.w, h: r.l.h },
+          { x: x0 + SAMPLE + 8, y: cy - r.l.h / 2, w: r.l.w, h: r.l.h },
           "left",
         ),
       );
@@ -659,7 +713,8 @@ function drawEnergyProfile(
         for (const y of [mid - d, mid + d])
           cands.push({ x: catTop.x + ARROW_LABEL_GAP, y: y - a.h / 2, w: a.w, h: a.h });
     }
-    return clearSpot(cands, taken);
+    // A plot too short for any place beside the arrows: its own place.
+    return cands.length ? clearSpot(cands, taken) : placed.activation;
   };
   // Modern looks: the axes recede (muted hairlines) so the curves lead.
   const axis =
@@ -699,9 +754,10 @@ function drawEnergyProfile(
     labelText(t, labels.activation.text, inside(eaBox()), "right"),
     labelText(t, labels.change.text, inside(placed.change), "right"),
   ];
-  // The key rows, under the axis's name and above the not-to-scale caption, each one line.
-  const keyTop = size.h - keyH + CAPTION_GAP - (notToScale ? labelH + CAPTION_GAP : 0);
-  let keyY = keyTop;
+  // No place in the plot clears the curves: drawn again with the legend under the plot.
+  if (legendCrowded) return drawEnergyProfile(values, t, size, true);
+  // The key rows, under the axis's name (and the legend) and above the not-to-scale caption.
+  let keyY = keyTop + legendH;
   for (const l of keyRows) {
     children.push(labelText(t, l.text, { x: KEY_INSET, y: keyY, w: l.w, h: l.h }, "left"));
     keyY += l.h;

@@ -98,6 +98,46 @@ describe("DIAGRAM-MODERN geometry checks", () => {
             }
         });
       });
+  // FIX1 (y11 s7, FULL-RUN): a catalysed profile with long arrow labels in a 363 x 378 half zone
+  // put its legend on the hump and "Ea" into the legend; the checks above never drew this spec.
+  const Y11 = {
+    reactants: "Reactants",
+    products: "Products",
+    activationEnergy: 80,
+    energyChange: -30,
+    activationLabel: "Ea without catalyst",
+    changeLabel: "Energy change",
+    energyAxis: "Energy / kJ/mol",
+    progressAxis: "Reaction progress",
+    catalysedActivationEnergy: 40,
+    catalysedLabel: "Ea with catalyst",
+  };
+  for (const p of PRESETS)
+    test(`the y11 catalysed profile: legend off the curves in the half zone, clean full width (${p})`, () => {
+      withDiagramPreset(p, () => {
+        for (const id of THEME_IDS) {
+          const t = getTheme(id);
+          for (const size of [
+            { w: 363, h: 378 },
+            { w: 436, h: 356 },
+          ]) {
+            const d = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, size);
+            // The legend's names stand under the plot when the plot has no clear place for them;
+            // the crowded half zone itself is caught (the slide then takes the full-width figure).
+            const axis = d.children.find((c) => c.name === "Progress axis");
+            const legend = d.children.filter(
+              (c) => c.type === "text" && /catalyst/.test(JSON.stringify(c.doc)),
+            );
+            expect(legend.length).toBe(2);
+            if (figureGeometryFaults(d.children, t).length > 0)
+              for (const l of legend)
+                expect(l.y).toBeGreaterThan((axis?.y ?? 0) + (axis?.h ?? 0) - 8);
+          }
+          const full = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, DIAGRAM_ZONES.full);
+          expect(figureGeometryFaults(full.children, t)).toEqual([]);
+        }
+      });
+    });
   test("crossing leaders are caught, and a meander section's leaders never cross", () => {
     expect(segmentsCross([0, 0, 10, 10], [0, 10, 10, 0])).toBe(true);
     expect(segmentsCross([0, 0, 10, 0], [0, 5, 10, 5])).toBe(false);
