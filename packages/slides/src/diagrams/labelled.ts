@@ -460,11 +460,13 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     return { k, X, Y, placed, captions, need };
   };
 
-  // Particle boxes whose words all sit in their columns under them may give those words more of
-  // the height: nothing is drawn over, so a short slot keeps every caption whole.
+  // Particle boxes whose words sit in their columns under them may give those words more of the
+  // height: nothing is drawn over, so a short slot keeps every caption whole. This holds when other
+  // labels sit elsewhere too (a container wall named at the side): capped at 40 %, the words under
+  // a box were pushed back up over its caption at KS1 sizes.
   const wordsUnder =
-    s.shapes.some((sh) => sh.type === "particles") &&
-    labels.every((l) => s.shapes[l.target]?.type === "particles");
+    s.shapes.some((sh) => sh.type === "particles" && sh.caption) ||
+    labels.some((l) => s.shapes[l.target]?.type === "particles");
   // Fit: margins grow to what the labels need, a few rounds, never shrinking back.
   const m = { l: 4, r: 4, t: 4, b: 4 };
   let L = layout(m);
