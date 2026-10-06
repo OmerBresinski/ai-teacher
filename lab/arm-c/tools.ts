@@ -10,6 +10,9 @@ import type { Renderer } from "./renderer.ts";
 import type { Tokens } from "./tokens.ts";
 
 export const MAX_RENDERS = 3; // the first render plus 2 repair rounds
+/** The hard gate's families (coordinator, 6 Oct): a submit needs zero of these. */
+export const HARD = ["overflow", "clipping", "off_canvas", "min_font"] as const;
+export const hardCount = (g: Geometry) => HARD.reduce((a, k) => a + (g.counts[k] ?? 0), 0);
 const KINDS = [
   "particles",
   "hydrograph",
@@ -119,7 +122,7 @@ interface Render {
 }
 interface SlideState {
   renders: Render[];
-  submitted?: { render: number; notes: string; at: number };
+  submitted?: { render: number; notes: string; at: number; flagged: boolean };
   pictures: string[];
   diagrams: string[];
 }
@@ -292,7 +295,8 @@ export class Lesson {
       counts: geometry.counts,
       violations: geometry.violations,
       boxes: geometry.boxes,
-      submittable: geometry.total <= first,
+      hard: hardCount(geometry),
+      submittable: hardCount(geometry) === 0 || n >= MAX_RENDERS,
     };
   }
 
@@ -319,19 +323,23 @@ export class Lesson {
     const st = this.slide(a.slide);
     const last = st.renders.at(-1);
     if (!last) return { ok: false, error: `render slide ${a.slide} first` };
-    const first = st.renders[0].geometry.total;
-    if (last.geometry.total > first)
+    // Hard gate: zero overflow, clipping, off-canvas and min-font. With renders left, refuse; with
+    // none left, accept it flagged (the eval counts a flagged slide as a gate failure).
+    const hard = hardCount(last.geometry);
+    if (hard > 0 && last.n < MAX_RENDERS)
       return {
         ok: false,
-        error: `render ${last.n} has ${last.geometry.total} violations, first render had ${first}: fix it${last.n < MAX_RENDERS ? " and render again" : "; no renders left, so it cannot be submitted"}`,
+        error: `render ${last.n} has ${hard} hard violations (overflow, clipping, off_canvas, min_font); fix them and render again (${MAX_RENDERS - last.n} renders left)`,
       };
-    st.submitted = { render: last.n, notes: String(a.notes ?? ""), at: this.ms() };
+    const flagged = hard > 0;
+    st.submitted = { render: last.n, notes: String(a.notes ?? ""), at: this.ms(), flagged };
     if (a.slide >= 2 && this.timings.first_teaching_slide === null)
       this.timings.first_teaching_slide = this.ms();
     if (this.submittedCount() === this.o.slideCount) this.timings.editable = this.ms();
     return {
       ok: true,
       slide: a.slide,
+      flagged,
       submitted: this.submittedCount(),
       of: this.o.slideCount,
       turns_left: this.turnsLeft,
@@ -350,13 +358,18 @@ export class Lesson {
     return { ok: false, missing };
   }
 
-  /** At the turn cap or end: submit each unsubmitted slide whose last render passes the gate. */
+  /** At the turn cap or end: submit each unsubmitted rendered slide, flagged if its last render fails the gate. */
   autoSubmit(): number[] {
     const auto: number[] = [];
     for (const [n, st] of this.slides) {
       const last = st.renders.at(-1);
-      if (st.submitted || !last || last.geometry.total > st.renders[0].geometry.total) continue;
-      st.submitted = { render: last.n, notes: "", at: this.ms() };
+      if (st.submitted || !last) continue;
+      st.submitted = {
+        render: last.n,
+        notes: "",
+        at: this.ms(),
+        flagged: hardCount(last.geometry) > 0,
+      };
       auto.push(n);
     }
     if (this.timings.editable === null) this.timings.editable = this.ms();
@@ -380,6 +393,7 @@ export class Lesson {
         slide: n,
         flow: this.plan?.flow.find((f) => f.slide === n) ?? null,
         status: r ? "submitted" : "missing",
+        flagged: sub?.flagged ?? false,
         html: r?.html ?? null,
         notes: sub?.notes ?? "",
         submittedAtMs: sub?.at ?? null,
