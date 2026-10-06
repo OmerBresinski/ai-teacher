@@ -199,6 +199,26 @@ for (const kind of [...Object.keys(MAIN), "hydrograph"]) {
       };
     }
 }
+// r4: cubes (surface area): the largest split that draws, and the longest caption and note at split 2.
+if (SAMPLE.cubes)
+  for (const ks of STAGES)
+    for (const slot of Object.keys(SLOTS) as (keyof typeof SLOTS)[]) {
+      kinds.cubes ??= {};
+      const base = SAMPLE.cubes as Record<string, unknown>;
+      kinds.cubes[`${ks}.${slot}`] = {
+        maxSplit: most(2, 4, (k) => draws({ ...base, split: k }, ks, slot)),
+        maxCaptionChars: most(3, 24, (c) => {
+          const t = words(c).slice(0, c);
+          return draws({ ...base, captions: [t, t] }, ks, slot);
+        }),
+        maxNoteChars: most(3, 28, (c) => {
+          const t = words(c).slice(0, c);
+          return draws({ ...base, notes: [t, t] }, ks, slot);
+        }),
+      };
+    }
+(out.required as Record<string, string>).cubes =
+  "split 2-4: one cube beside the same volume cut into split³ cubes; areas counts exposed squares";
 (out.required as Record<string, string>)["number-line"] =
   "min < max with at most 40 ticks; points and jumps on the line";
 (out.required as Record<string, string>).pie =

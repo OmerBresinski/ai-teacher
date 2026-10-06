@@ -113,6 +113,7 @@ type Panel = {
   /** dd-diagrams2 compare: the container's side as a share of the panel (a compressed gas). */
   room?: number;
   speed?: "slow" | "fast";
+  energy?: number;
   /** dd-diagrams2 collision: what happens after the two particles meet. */
   outcome?: "bounces" | "reacts";
 };
@@ -162,6 +163,7 @@ function panels(s: Particles): Panel[] {
       state: q.state,
       room: q.room === "small" ? 0.62 : 1,
       speed: q.speed,
+      energy: q.energy,
       // The second kind is spread through the first (a solution), not stacked on top of it.
       dots: scatter(q.state, q.count + q.extra).map((at, i, all) => ({
         at,
@@ -210,7 +212,13 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         : i === 0
           ? "Before"
           : "After");
-  const note = (i: number) => s.notes?.[i];
+  const note = (i: number) =>
+    s.notes?.[i] ??
+    (s.show === "collision"
+      ? ps[i]?.outcome === "reacts"
+        ? "Product forms"
+        : "Bounce apart, no product"
+      : undefined);
   const arrowWord = (i: number) =>
     s.arrows?.[i] ??
     (s.show === "states" || s.show === "compare" || s.show === "collision" || s.captions?.length
@@ -225,7 +233,12 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
       !s.captions?.length) ||
     (s.arrows?.length ?? 0) > 0;
   const key =
-    s.key ?? (s.show === "dissolving" ? (["Solvent", "Solute"] as [string, string]) : undefined);
+    s.key ??
+    (s.show === "dissolving"
+      ? (["Solvent", "Solute"] as [string, string])
+      : s.show === "collision"
+        ? (["Particle A", "Particle B"] as [string, string])
+        : undefined);
 
   let layout:
     | {
@@ -362,6 +375,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
             ((1 - 2.6 * R) / Math.ceil(Math.sqrt(q.dots.length))) * side * (q.room ?? 1) * 0.33,
         ),
     );
+    const dotStart = out.length;
     for (const d of p.dots) {
       out.push(
         `<circle cx="${n(ix + d.at[0] * ib)}" cy="${n(iy + d.at[1] * ib)}" r="${n(rc)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
@@ -384,7 +398,12 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         arrow(cx, cy1 + rr * 1.4, cx, cy2 - rr * 1.6, x.c.muted, 2, a),
       );
       if (p.outcome === "reacts")
-        out.push(dot(cx - rr * 0.9, cy2, false), dot(cx + rr * 0.9, cy2, true));
+        // The product: the two particles joined by a bond, ringed as one new particle.
+        out.push(
+          `<ellipse cx="${n(cx)}" cy="${n(cy2)}" rx="${n(rr * 2.5)}" ry="${n(rr * 1.6)}" fill="none" stroke="${x.c.ink}" stroke-width="1.5" stroke-dasharray="4 3"/>`,
+          dot(cx - rr * 0.95, cy2, false),
+          dot(cx + rr * 0.95, cy2, true),
+        );
       else
         out.push(
           dot(cx - side * 0.18, cy2, false),
@@ -393,22 +412,47 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
           arrow(cx + side * 0.18 + rr * 1.2, cy2, cx + side * 0.42, cy2, x.c.ink, 2, a),
         );
     }
-    const moving = p.speed ?? (s.show === "compare" && s.motion ? "slow" : undefined);
-    if (moving && p.state !== "solid") {
-      // compare: movement arrows, long on most particles when fast and short on a few when slow,
-      // so a temperature pair reads apart at a glance (y11 r2 s4 looked the same).
-      const len = moving === "fast" ? 3.4 : 0.9;
-      const every = moving === "fast" ? 2 : 4;
+    // r4: how fast this panel's particles move, 0 to 1: its energy (temperature) against the
+    // hottest panel's, else fast 1 and slow 0.3, else (motion only) 0.3. Every particle carries a
+    // trail behind it and an arrow ahead, both as long as its speed, so a hotter panel visibly
+    // moves faster with the same particles in the same box.
+    const energies = ps.map((q) => q.energy).filter((e): e is number => e !== undefined);
+    const hottest = Math.max(...energies, 0);
+    const rel =
+      p.energy !== undefined && hottest > 0
+        ? Math.max(0.15, p.energy / hottest)
+        : p.speed === "fast"
+          ? 1
+          : p.speed === "slow"
+            ? 0.3
+            : s.show === "compare" && s.motion
+              ? 0.3
+              : undefined;
+    if (rel !== undefined && p.state !== "solid") {
+      const L = rc * (0.5 + 3.4 * rel);
+      const trails: string[] = [];
       p.dots.forEach((d, j) => {
-        if (j % every !== 0) return;
         const ang = (j * 137.5 * Math.PI) / 180;
         const [dx, dy] = [Math.cos(ang), Math.sin(ang)];
-        const sx = ix + d.at[0] * ib + dx * r * 1.1;
-        const sy = iy + d.at[1] * ib + dy * r * 1.1;
-        const ex = Math.max(ix + 3, Math.min(ix + ib - 3, sx + dx * r * len));
-        const ey = Math.max(iy + 3, Math.min(iy + ib - 3, sy + dy * r * len));
-        out.push(arrow(sx, sy, ex, ey, x.c.ink, 1.75, Math.max(6, r * 0.7)));
+        const cx0 = ix + d.at[0] * ib;
+        const cy0 = iy + d.at[1] * ib;
+        const clampX = (v: number) => Math.max(ix + rc, Math.min(ix + ib - rc, v));
+        const clampY = (v: number) => Math.max(iy + rc, Math.min(iy + ib - rc, v));
+        for (const [k, op] of [
+          [0.55, 0.35],
+          [1, 0.16],
+        ] as const)
+          trails.push(
+            `<circle cx="${n(clampX(cx0 - dx * L * k))}" cy="${n(clampY(cy0 - dy * L * k))}" r="${n(rc * 0.85)}" fill="${d.second ? x.c.accent2 : x.c.accent}" fill-opacity="${op}"/>`,
+          );
+        const sx = cx0 + dx * rc * 1.1;
+        const sy = cy0 + dy * rc * 1.1;
+        const ex = clampX(sx + dx * L);
+        const ey = clampY(sy + dy * L);
+        if (Math.hypot(ex - sx, ey - sy) > rc * 0.4)
+          out.push(arrow(sx, sy, ex, ey, x.c.ink, 1.5, Math.max(5, rc * 0.6)));
       });
+      out.splice(dotStart, 0, ...trails);
     }
     if (s.motion && p.state && s.show !== "compare") {
       if (p.state === "solid") {

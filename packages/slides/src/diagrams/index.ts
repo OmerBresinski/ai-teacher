@@ -11,6 +11,7 @@ import { uid } from "../factories";
 import { THEMES } from "../themes";
 import { drawBarModel } from "./bar-model";
 import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
+import { drawCubes } from "./cubes";
 import { drawFlow } from "./flow";
 import { drawLabelled } from "./labelled";
 import { drawLineGraph } from "./line-graph";
@@ -306,6 +307,8 @@ function body(
         return drawVenn(s, ix, wi, ih);
       case "carroll":
         return drawCarroll(s, ix, wi, ih);
+      case "cubes":
+        return drawCubes(s, ix, wi, ih);
     }
   })();
   if (inset && probe && marks) {
@@ -564,7 +567,14 @@ function samePanels(s: DiagramSpec): string[] {
   // difference) show no difference, whatever their captions say.
   if (s.kind === "particles" && s.show === "compare" && s.panels) {
     const keyOf = (q: NonNullable<typeof s.panels>[number]) =>
-      JSON.stringify([q.state, q.count, q.extra, q.room, q.speed ?? (s.motion ? "slow" : "")]);
+      JSON.stringify([
+        q.state,
+        q.count,
+        q.extra,
+        q.room,
+        q.speed ?? (s.motion ? "slow" : ""),
+        q.energy,
+      ]);
     if (new Set(s.panels.map(keyOf)).size === 1)
       out.push("the compare panels draw exactly the same, so the picture shows no difference");
   }
@@ -624,6 +634,7 @@ const FILLS_BOX = new Set([
   "hydrograph",
   "labelled-diagram",
   "river",
+  "cubes",
   "cycle",
   "layers",
   "particles",

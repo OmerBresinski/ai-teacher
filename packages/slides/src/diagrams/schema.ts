@@ -365,6 +365,8 @@ export const ParticlesSchema = z
           count: z.number().int().min(2).max(20).default(10),
           extra: z.number().int().min(0).max(12).default(0),
           speed: z.enum(["slow", "fast"]).optional(),
+          /** r4: the panel's temperature or energy, any one unit across panels; motion scales with it. */
+          energy: z.number().min(0).max(100000).optional(),
           room: z.enum(["small", "large"]).default("large"),
         }),
       )
@@ -519,6 +521,22 @@ export const RiverSchema = z
     });
   });
 
+// ─── cubes (r4) ─────────────────────────────────────────────────────────────────────────────
+
+/** Surface area: one large cube beside the same volume cut into `split`³ small cubes. */
+export const CubesSchema = z.object({
+  kind: z.literal("cubes"),
+  ...common,
+  /** Small cubes along each edge of the large one (2 gives 8 small cubes). */
+  split: z.number().int().min(2).max(4).default(2),
+  /** Over each side (default "One cube" and "8 small cubes"). */
+  captions: z.array(label(24)).max(2).optional(),
+  /** Under each side. */
+  notes: z.array(label(28)).max(2).optional(),
+  /** Count the exposed squares under each side ("24 squares exposed"). */
+  areas: z.boolean().default(false),
+});
+
 // ─── the union ──────────────────────────────────────────────────────────────────────────────
 
 export const DiagramSpecSchema = z.discriminatedUnion("kind", [
@@ -538,6 +556,7 @@ export const DiagramSpecSchema = z.discriminatedUnion("kind", [
   PieSchema,
   VennSchema,
   CarrollSchema,
+  CubesSchema,
 ]);
 
 export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
@@ -555,6 +574,7 @@ export type Timeline = z.infer<typeof TimelineSchema>;
 export type Layers = z.infer<typeof LayersSchema>;
 export type Cycle = z.infer<typeof CycleSchema>;
 export type River = z.infer<typeof RiverSchema>;
+export type Cubes = z.infer<typeof CubesSchema>;
 export type { BarChart, Carroll, Pie, Venn } from "./charts";
 
 /** The hand-built templates (round I): code owns their geometry; the picture ladder tries them first. */
@@ -567,6 +587,7 @@ export const TEMPLATE_KINDS = [
   "river",
   "bar-model",
   "number-line",
+  "cubes",
 ] as const;
 
 export const DIAGRAM_KINDS: DiagramKind[] = [
