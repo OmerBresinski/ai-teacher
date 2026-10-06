@@ -25,7 +25,7 @@ import {
   type LessonLook,
 } from "../../packages/generation/src/stages/picture-director";
 import * as im from "../../packages/images/src/index";
-import { parseDiagram } from "../../packages/slides/src/diagrams/index";
+import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
 import { placePhoto } from "../../packages/slides/src/templates/index";
 import { createStorage } from "../../packages/storage/src/index";
 
@@ -706,7 +706,8 @@ export async function diagramSpec(
     });
     ledger.add("diagrams", r.usd);
     log({ ev: "diagram-call", key: ask.key, ms: r.ms, usd: r.usd, attempt });
-    if (r.out && parseDiagram(r.out)) {
+    // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).
+    if (r.out && withLongLabels(() => parseDiagram(r.out))) {
       held();
       return r.out;
     }

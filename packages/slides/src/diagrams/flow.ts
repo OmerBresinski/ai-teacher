@@ -54,7 +54,7 @@ export function drawFlow(f: Flow, x: Ctx, w: number, h: number): string {
 }
 
 /** dd-diagrams: the most steps a chain shows at each key stage; past it the flow does not draw. */
-export const FLOW_STEP_CAP: Record<KeyStage, number> = { ks1: 4, ks2: 4, ks3: 5, ks4: 6, ks5: 6 };
+export const FLOW_STEP_CAP: Record<KeyStage, number> = { ks1: 5, ks2: 6, ks3: 8, ks4: 8, ks5: 8 };
 
 type ChainPlan = {
   fs: number;
@@ -78,90 +78,109 @@ type ChainPlan = {
  */
 function planChain(f: Flow, x: Ctx, w: number, h: number): ChainPlan | undefined {
   const k = f.steps.length;
-  const sizes = [...new Set([x.fs, Math.max(sub(x.fs), x.minFs)])].filter((v) => v >= x.minFs);
-  const shapes: [number, number][] =
-    w / h >= 1.6
-      ? [
+  // dd-diagrams2: every size from the label size down to the stage floor, before giving up.
+  const sizes: number[] = [];
+  for (let v = x.fs; v >= x.minFs; v -= 1) sizes.push(v);
+  // dd-diagrams2: the shapes that suit the zone are tried at every size first (a row or a snake
+  // across a wide zone, a column or a snake down a tall one); the others only after.
+  const wideZone = w / h >= 1.6;
+  const passes: [number, number][][] = wideZone
+    ? [
+        [
           [k, 1],
           [Math.ceil(k / 2), 2],
+        ],
+        [
           [1, k],
-        ]
-      : [
+          [2, Math.ceil(k / 2)],
+        ],
+      ]
+    : [
+        [
           [1, k],
           [Math.ceil(k / 2), 2],
+        ],
+        [
+          [2, Math.ceil(k / 2)],
           [k, 1],
-        ];
-  for (const fs of sizes) {
-    const noteFs = Math.max(sub(fs), x.minFs);
-    for (const [cols, rows] of shapes) {
-      if (rows > 2 && cols > 1) continue;
-      // Words on arrows within a row sit above the arrow in the gap between the boxes.
-      const rowArrow = (i: number) =>
-        cols > 1 && Math.floor(i / cols) === Math.floor((i + 1) / cols);
-      const hWords = f.steps.flatMap((s, i) =>
-        i < k - 1 && rowArrow(i) && s.arrow ? [s.arrow] : [],
-      );
-      const longestWord = Math.max(
-        0,
-        ...hWords.flatMap((t) =>
-          t.split(/\s+/).map((wd) => textWidth(wd, x, noteFs, WEIGHT.label)),
-        ),
-      );
-      const gapX = cols > 1 ? Math.max(fs * 2.2, longestWord + 16) : 0;
-      const bw = Math.min((w - gapX * (cols - 1)) / cols, fs * 14);
-      if (bw < fs * 3.5) continue;
-      const lines = f.steps.map((s) => {
-        const l = wrap(s.label, x, bw - fs * 0.9, 3, fs, WEIGHT.name);
-        return l[l.length - 1]?.endsWith("…") ||
-          l.some((t) => textWidth(t, x, fs, WEIGHT.name) > bw - fs * 0.9 + 0.5)
-          ? undefined
-          : l;
-      });
-      if (lines.some((l) => !l)) continue;
-      const most = Math.max(...lines.map((l) => (l as string[]).length));
-      const bh = most * fs * 1.2 + fs * 0.9;
-      // Arrow words: horizontal ones wrapped to their gap (two lines at most), vertical ones beside
-      // their arrow, inside the drawing.
-      const vRoom = cols === 1 ? w / 2 - fs * 0.6 - 8 : w - bw / 2 - 16;
-      const notes = f.steps.map((s, i) => {
-        if (!s.arrow || i >= k - 1) return undefined;
-        const room = rowArrow(i) ? gapX - 8 : vRoom;
-        const l = wrap(s.arrow, x, room, 2, noteFs, WEIGHT.label);
-        return l[l.length - 1]?.endsWith("…") ||
-          l.some((t) => textWidth(t, x, noteFs, WEIGHT.label) > room + 0.5)
-          ? null
-          : l;
-      });
-      if (notes.some((l) => l === null)) continue;
-      const vNoteH = Math.max(
-        0,
-        ...notes.flatMap((l, i) => (l && !rowArrow(i) ? [l.length * noteFs * 1.2] : [])),
-      );
-      const gapY = rows > 1 ? Math.max(fs * 2.2, vNoteH + 12) : 0;
-      // A word above a row arrow needs room over the arrow, inside the box band.
-      const hNoteH = Math.max(
-        0,
-        ...notes.flatMap((l, i) => (l && rowArrow(i) ? [l.length * noteFs * 1.2 + 8] : [])),
-      );
-      if (hNoteH > bh / 2 + (rows > 1 ? gapY / 2 : (h - bh) / 2)) continue;
-      const totalH =
-        rows * bh + (rows - 1) * gapY + (rows === 1 ? Math.max(0, hNoteH * 2 - bh) : 0);
-      const totalW = cols * bw + (cols - 1) * gapX;
-      if (totalH > h || totalW > w + 0.5) continue;
-      return {
-        fs,
-        noteFs,
-        cols,
-        rows,
-        bw,
-        bh,
-        gapX,
-        gapY,
-        lines: lines as string[][],
-        notes: notes as (string[] | undefined)[],
-      };
+        ],
+      ];
+  for (const shapes of passes)
+    for (const fs of sizes) {
+      const noteFs = Math.max(sub(fs), x.minFs);
+      for (const [cols, rows] of shapes) {
+        // A row, a column, a two-row snake, or (dd-diagrams2) a two-column zigzag in a tall zone.
+        if (rows > 2 && cols > 2) continue;
+        // Words on arrows within a row sit above the arrow in the gap between the boxes.
+        const rowArrow = (i: number) =>
+          cols > 1 && Math.floor(i / cols) === Math.floor((i + 1) / cols);
+        const hWords = f.steps.flatMap((s, i) =>
+          i < k - 1 && rowArrow(i) && s.arrow ? [s.arrow] : [],
+        );
+        const longestWord = Math.max(
+          0,
+          ...hWords.flatMap((t) =>
+            t.split(/\s+/).map((wd) => textWidth(wd, x, noteFs, WEIGHT.label)),
+          ),
+        );
+        const gapX = cols > 1 ? Math.max(fs * 1.8, longestWord + 16) : 0;
+        const bw = Math.min((w - gapX * (cols - 1)) / cols, fs * 14);
+        if (bw < fs * 3.5) continue;
+        const lines = f.steps.map((s) => {
+          const l = wrap(s.label, x, bw - fs * 0.9, 3, fs, WEIGHT.name);
+          return l[l.length - 1]?.endsWith("…") ||
+            l.some((t) => textWidth(t, x, fs, WEIGHT.name) > bw - fs * 0.9 + 0.5)
+            ? undefined
+            : l;
+        });
+        if (lines.some((l) => !l)) continue;
+        const most = Math.max(...lines.map((l) => (l as string[]).length));
+        const bh = most * fs * 1.2 + fs * 0.7;
+        // Arrow words: horizontal ones wrapped to their gap (two lines at most), vertical ones beside
+        // their arrow, inside the drawing.
+        const vRoom = cols === 1 ? w / 2 - fs * 0.6 - 8 : w - bw / 2 - 16;
+        const notes = f.steps.map((s, i) => {
+          if (!s.arrow || i >= k - 1) return undefined;
+          const room = rowArrow(i) ? gapX - 8 : vRoom;
+          const l = wrap(s.arrow, x, room, 2, noteFs, WEIGHT.label);
+          return l[l.length - 1]?.endsWith("…") ||
+            l.some((t) => textWidth(t, x, noteFs, WEIGHT.label) > room + 0.5)
+            ? null
+            : l;
+        });
+        if (notes.some((l) => l === null)) continue;
+        const vNoteH = Math.max(
+          0,
+          ...notes.flatMap((l, i) => (l && !rowArrow(i) ? [l.length * noteFs * 1.2] : [])),
+        );
+
+        // A word above a row arrow needs room over the arrow, inside the box band.
+        const hNoteH = Math.max(
+          0,
+          ...notes.flatMap((l, i) => (l && rowArrow(i) ? [l.length * noteFs * 1.2 + 8] : [])),
+        );
+        // A word over a row arrow rises out of the box band into the gap above (or the margin over
+        // the first row): the gap grows to hold it.
+        const rise = Math.max(0, hNoteH - bh / 2);
+        const gapY = rows > 1 ? Math.max(fs * 1.5, vNoteH + 10, rise + 4) : 0;
+        const totalH = rows * bh + (rows - 1) * gapY + 2 * rise;
+
+        const totalW = cols * bw + (cols - 1) * gapX;
+        if (totalH > h || totalW > w + 0.5) continue;
+        return {
+          fs,
+          noteFs,
+          cols,
+          rows,
+          bw,
+          bh,
+          gapX,
+          gapY,
+          lines: lines as string[][],
+          notes: notes as (string[] | undefined)[],
+        };
+      }
     }
-  }
   return undefined;
 }
 

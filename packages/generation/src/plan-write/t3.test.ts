@@ -118,7 +118,7 @@ describe("placeT3Diagram: long labels fitted before a drawing is given up (lab/t
     expect(r.stretched).toBe(true);
   });
 
-  test("a flow too long for its zone at a readable size is refused, so the slide falls back", () => {
+  test("a four-step flow with arrow words adapts to its zone before it is refused (dd-diagrams2)", () => {
     const spec = {
       kind: "flow",
       alt: "a",
@@ -132,8 +132,8 @@ describe("placeT3Diagram: long labels fitted before a drawing is given up (lab/t
       ],
     };
     const r = placeT3Diagram(photoSlide(), spec, theme);
-    expect(r.reasons.join(" ")).toContain("readable size");
-    expect(r.slide).toBeUndefined();
+    expect(r.reasons).toEqual([]);
+    expect(r.slide).toBeDefined();
   });
 
   test("a label far past its limit is rejected with a reason for the log", () => {

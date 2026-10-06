@@ -107,10 +107,72 @@ const MOVES: Record<string, [number, number, number][]> = {
   ],
 };
 
-type Panel = { dots: { at: Pt; second?: boolean }[]; state?: "solid" | "liquid" | "gas" };
+type Panel = {
+  dots: { at: Pt; second?: boolean }[];
+  state?: "solid" | "liquid" | "gas";
+  /** dd-diagrams2 compare: the container's side as a share of the panel (a compressed gas). */
+  room?: number;
+  speed?: "slow" | "fast";
+  /** dd-diagrams2 collision: what happens after the two particles meet. */
+  outcome?: "bounces" | "reacts";
+};
+
+/** `k` particle centres for a state in a unit box, deterministic (dd-diagrams2 compare). */
+function scatter(state: "solid" | "liquid" | "gas", k: number): Pt[] {
+  if (state !== "gas") {
+    const cols = state === "liquid" ? 4 : k > 9 ? 5 : Math.max(3, Math.ceil(Math.sqrt(k * 1.4)));
+    const out: Pt[] = [];
+    for (let i = 0; i < k; i++) {
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      // A liquid: alternate rows shifted half a particle, a little play, never overlapping.
+      const jx = state === "liquid" ? (((i * 37) % 7) / 7 - 0.5) * 0.15 : 0;
+      const shift = state === "liquid" && row % 2 ? R * 0.9 : 0;
+      out.push([
+        Math.min(
+          1 - R * 1.1,
+          Math.max(R * 1.1, 0.5 + (col - (cols - 1) / 2) * 2.05 * R + jx * R + shift),
+        ),
+        0.95 - R - row * 2 * R,
+      ]);
+    }
+    return out;
+  }
+  // A gas: a jittered grid over the whole box, every particle well apart.
+  const cols = Math.ceil(Math.sqrt(k));
+  const rows = Math.ceil(k / cols);
+  const out: Pt[] = [];
+  for (let i = 0; i < k; i++) {
+    const c = i % cols;
+    const r = Math.floor(i / cols);
+    const jx = (((i * 7919) % 13) / 13 - 0.5) * 0.15;
+    const jy = (((i * 104729) % 11) / 11 - 0.5) * 0.15;
+    out.push([
+      R * 1.3 + ((c + 0.5 + jx) / cols) * (1 - 2.6 * R),
+      R * 1.3 + ((r + 0.5 + jy) / rows) * (1 - 2.6 * R),
+    ]);
+  }
+  return out;
+}
 
 function panels(s: Particles): Panel[] {
   const one = (p: Pt) => ({ at: p });
+  if (s.show === "compare" && s.panels) {
+    return s.panels.map((q) => ({
+      state: q.state,
+      room: q.room === "small" ? 0.62 : 1,
+      speed: q.speed,
+      // The second kind is spread through the first (a solution), not stacked on top of it.
+      dots: scatter(q.state, q.count + q.extra).map((at, i, all) => ({
+        at,
+        second:
+          Math.floor(((i + 1) * q.extra) / all.length) > Math.floor((i * q.extra) / all.length),
+      })),
+    }));
+  }
+  if (s.show === "collision" && s.outcomes) {
+    return s.outcomes.map((o) => ({ outcome: o, dots: [] }));
+  }
   if (s.show === "states") {
     return s.states.map((st) => ({
       state: st,
@@ -139,16 +201,26 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
   const k = ps.length;
   const cap = (i: number) =>
     s.captions?.[i] ??
-    (s.show === "states"
-      ? (ps[i]?.state ?? "").replace(/^./, (c) => c.toUpperCase())
-      : i === 0
-        ? "Before"
-        : "After");
+    (s.show === "collision"
+      ? ps[i]?.outcome === "reacts"
+        ? "Reaction"
+        : "No reaction"
+      : s.show === "states" || s.show === "compare"
+        ? (ps[i]?.state ?? "").replace(/^./, (c) => c.toUpperCase())
+        : i === 0
+          ? "Before"
+          : "After");
   const note = (i: number) => s.notes?.[i];
   const arrowWord = (i: number) =>
     s.arrows?.[i] ??
-    (s.show === "states" ? undefined : s.show === "diffusion" ? "spreads" : "dissolves");
-  const hasArrows = s.show !== "states" || (s.arrows?.length ?? 0) > 0;
+    (s.show === "states" || s.show === "compare" || s.show === "collision"
+      ? undefined
+      : s.show === "diffusion"
+        ? "spreads"
+        : "dissolves");
+  const hasArrows =
+    (s.show !== "states" && s.show !== "compare" && s.show !== "collision") ||
+    (s.arrows?.length ?? 0) > 0;
   const key =
     s.key ?? (s.show === "dissolving" ? (["Solvent", "Solute"] as [string, string]) : undefined);
 
@@ -258,12 +330,73 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
       [bx, boxY + side, bx + side, boxY + side],
       [bx + side, boxY, bx + side, boxY + side],
     );
+    // compare: a smaller container (a compressed gas) stands on the same floor, the same particles
+    // inside it; particles keep their size.
+    const room = p.room ?? 1;
+    const ib = room < 1 ? side * room : side;
+    const ix = bx + (side - ib) / 2;
+    const iy = boxY + side - ib;
+    if (room < 1)
+      out.push(
+        `<path d="M${n(ix)},${n(iy)} L${n(ix + ib)},${n(iy)}" stroke="${x.c.ink}" stroke-width="3" stroke-linecap="round"/>`,
+      );
+    // Every panel's particles are one size: the smallest container's.
+    // A gas's grid cell bounds its particles too, so a crowded or compressed panel never overlaps.
+    const rc = Math.min(
+      r * Math.min(1, ...ps.map((q) => q.room ?? 1)),
+      ...ps
+        .filter((q) => q.room !== undefined && q.state === "gas")
+        .map(
+          (q) =>
+            ((1 - 2.6 * R) / Math.ceil(Math.sqrt(q.dots.length))) * side * (q.room ?? 1) * 0.33,
+        ),
+    );
     for (const d of p.dots) {
       out.push(
-        `<circle cx="${n(bx + d.at[0] * side)}" cy="${n(boxY + d.at[1] * side)}" r="${n(r)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
+        `<circle cx="${n(ix + d.at[0] * ib)}" cy="${n(iy + d.at[1] * ib)}" r="${n(rc)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
       );
     }
-    if (s.motion && p.state) {
+    if (p.outcome) {
+      // Two particles meet (top), then bounce apart or join as a product (bottom).
+      const cy1 = boxY + side * 0.3;
+      const cy2 = boxY + side * 0.75;
+      const cx = bx + side / 2;
+      const rr = r * 1.15;
+      const dot = (px: number, py: number, second: boolean) =>
+        `<circle cx="${n(px)}" cy="${n(py)}" r="${n(rr)}" fill="${second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`;
+      const a = Math.max(6, rr * 0.7);
+      out.push(
+        dot(cx - side * 0.3, cy1, false),
+        dot(cx + side * 0.3, cy1, true),
+        arrow(cx - side * 0.3 + rr * 1.2, cy1, cx - rr * 0.6, cy1, x.c.ink, 2, a),
+        arrow(cx + side * 0.3 - rr * 1.2, cy1, cx + rr * 0.6, cy1, x.c.ink, 2, a),
+        arrow(cx, cy1 + rr * 1.4, cx, cy2 - rr * 1.6, x.c.muted, 2, a),
+      );
+      if (p.outcome === "reacts")
+        out.push(dot(cx - rr * 0.9, cy2, false), dot(cx + rr * 0.9, cy2, true));
+      else
+        out.push(
+          dot(cx - side * 0.18, cy2, false),
+          dot(cx + side * 0.18, cy2, true),
+          arrow(cx - side * 0.18 - rr * 1.2, cy2, cx - side * 0.42, cy2, x.c.ink, 2, a),
+          arrow(cx + side * 0.18 + rr * 1.2, cy2, cx + side * 0.42, cy2, x.c.ink, 2, a),
+        );
+    }
+    if (p.speed && p.state !== "solid") {
+      // compare: movement arrows on every third particle, long when fast and short when slow.
+      const len = p.speed === "fast" ? 2.6 : 1.1;
+      p.dots.forEach((d, j) => {
+        if (j % 3 !== 0) return;
+        const ang = (j * 137.5 * Math.PI) / 180;
+        const [dx, dy] = [Math.cos(ang), Math.sin(ang)];
+        const sx = ix + d.at[0] * ib + dx * r * 1.1;
+        const sy = iy + d.at[1] * ib + dy * r * 1.1;
+        const ex = Math.max(ix + 3, Math.min(ix + ib - 3, sx + dx * r * len));
+        const ey = Math.max(iy + 3, Math.min(iy + ib - 3, sy + dy * r * len));
+        out.push(arrow(sx, sy, ex, ey, x.c.ink, 1.75, Math.max(6, r * 0.7)));
+      });
+    }
+    if (s.motion && p.state && s.show !== "compare") {
       if (p.state === "solid") {
         // Vibration: two short arcs over three particles of the top row.
         for (const j of [8, 9, 11]) {

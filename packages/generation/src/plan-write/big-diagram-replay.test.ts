@@ -49,11 +49,9 @@ describe("LAYOUT-FIX big diagrams replayed from the smoke", () => {
         if (f.heading === "A chick grows") expect(zone?.w ?? 844).toBeLessThan(844);
         else expect(zone?.w).toBe(844);
         const d = placeT3Diagram(base, spec, theme, () => `g${n++}`);
-        // dd-diagrams: y9's six steps with two-word arrow notes cannot be set at a readable size
-        // even full width, so the drawing reports it cannot draw and the slide falls back to its
-        // words (never a flow at small type).
-        const steps = (f.picture as { steps?: unknown[] }).steps;
-        if (f.picture.kind === "flow" && (steps?.length ?? 0) >= 6) {
+        // dd-diagrams2: y9's six steps with two-word arrow notes adapt (snake, smaller labels) where
+        // the zone allows; where even that is not readable they refuse and the slide keeps its words.
+        if (d.reasons.length) {
           expect(d.reasons.join(" ")).toContain("readable size");
           expect(d.slide).toBeUndefined();
           return;
