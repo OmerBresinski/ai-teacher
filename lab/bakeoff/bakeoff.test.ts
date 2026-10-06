@@ -203,3 +203,120 @@ describe("arm T: a picture that could not be made leaves no hole", () => {
     expect(m.slide.elements.filter((e) => e.name === "Arrow")).toHaveLength(2);
   });
 });
+
+describe("PICTURE-FIT: pictures fit their slots without cutting the subject", () => {
+  const {
+    placePhoto,
+    cutSubjects,
+    layoutTemplate,
+  } = require("../../packages/slides/src/templates/index");
+  const { slotShapes } = require("./arm-t");
+  const theme = withKeyStage("ks1", () => getTheme("splash", "ks1"));
+  const pic = (shows: string) => ({ shows, must_see: [shows], subject: "generic" });
+  test("same shape: covers, no crop", () => {
+    expect(placePhoto(1.5, 1.52)).toEqual({ mode: "cover" });
+  });
+  test("a landscape photo in a wide card, subjects known: the window follows them and cuts none", () => {
+    const sheep = [
+      { name: "sheep", x: 0.05, y: 0.2, w: 0.3, h: 0.6 },
+      { name: "lamb", x: 0.3, y: 0.4, w: 0.15, h: 0.4 },
+    ];
+    const p = placePhoto(1.5, 2.1, undefined);
+    expect(p.mode).toBe("contain"); // blind: too much to cut without boxes
+    const q = placePhoto(1.5, 1.2, sheep);
+    expect(q.mode).toBe("cover");
+    expect(cutSubjects(q.crop, sheep)).toEqual([]);
+    expect(q.crop.x).toBeLessThan(0.06);
+  });
+  test("subjects too far apart for the slot's shape: contained, never cut", () => {
+    const apart = [
+      { name: "cow", x: 0.02, y: 0.3, w: 0.2, h: 0.4 },
+      { name: "calf", x: 0.8, y: 0.4, w: 0.18, h: 0.3 },
+    ];
+    expect(placePhoto(1.78, 1, apart)).toEqual({ mode: "contain" });
+  });
+  test("a mild mismatch with no boxes: a small centred crop", () => {
+    const p = placePhoto(1.5, 1.4);
+    expect(p.mode).toBe("cover");
+    expect(p.crop.w).toBeGreaterThan(0.9);
+  });
+  test("the gate names a cut subject", () => {
+    expect(
+      cutSubjects({ x: 0.3, y: 0, w: 0.5, h: 1 }, [
+        { name: "hen", x: 0.1, y: 0.2, w: 0.3, h: 0.5 },
+      ]),
+    ).toEqual(["hen"]);
+  });
+  test("compare cards: a photo of the wrong shape is contained on a panel with the slot's box, nothing cropped", () => {
+    const r = layoutTemplate(
+      {
+        template: "compare",
+        heading: "A cow and its young",
+        columns: [
+          { label: "cow", text: "An adult cow.", figure: { photo: "/files/a.jpg", aspect: 0.75 } },
+          { label: "calf", text: "A baby cow.", figure: { photo: "/files/b.jpg", aspect: 2.0 } },
+        ],
+      },
+      theme,
+      "ks1",
+    );
+    const imgs = r.slide.elements.filter((e: { type: string }) => e.type === "image");
+    // The portrait cow is contained on a panel; the wide calf may lose at most a sliver (blind crop limit).
+    expect(
+      r.slide.elements.filter((e: { name?: string }) => e.name === "Photo panel").length,
+    ).toBeGreaterThanOrEqual(1);
+    for (const e of imgs as { crop?: { w: number; h: number } }[])
+      if (e.crop) expect(Math.min(e.crop.w, e.crop.h)).toBeGreaterThanOrEqual(0.85);
+  });
+  test("arm T measures each photo slot's shape: compare and sequence slots are fixed, picture-text is not", () => {
+    const ctx = {
+      brief: {} as never,
+      theme,
+      stage: "ks1" as const,
+      index: 4,
+      plan: { slides: [] },
+    };
+    const cmp = slotShapes(
+      {
+        template: "compare",
+        heading: "h",
+        columns: [
+          { label: "a", text: "b", picture: pic("a dog") },
+          { label: "c", text: "d", picture: pic("a puppy") },
+        ],
+      },
+      ctx,
+    );
+    expect(Object.keys(cmp)).toEqual(["col.0", "col.1"]);
+    expect(cmp["col.0"].fixed).toBe(true);
+    expect(cmp["col.0"].aspect).toBeGreaterThan(1.3);
+    const seq = slotShapes(
+      {
+        template: "picture-sequence",
+        heading: "h",
+        sequence: ["a", "b", "c"].map((c) => ({ ...pic(c), caption: c })),
+      },
+      ctx,
+    );
+    expect(Object.keys(seq)).toHaveLength(3);
+    const pt = slotShapes(
+      { template: "visual-text", heading: "h", lead: "l", points: [], figure: pic("a hen") },
+      ctx,
+    );
+    expect(pt.picture.fixed).toBe(false);
+    expect(
+      armT.visuals(
+        {
+          template: "compare",
+          heading: "h",
+          columns: [
+            { label: "a", text: "b", picture: pic("x") },
+            { label: "c", text: "d", picture: pic("y") },
+          ],
+        },
+        4,
+        ctx,
+      )[0],
+    ).toMatchObject({ fixedShape: true });
+  });
+});

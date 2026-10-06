@@ -61,7 +61,12 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
 }
 
 /** The figure a slot shows now: the photo or drawing when it has landed, an open slot while pending, nothing when it failed. */
-function figureNow(key: string, f: Pic | Dia, ctx: MaterialiseCtx): Figure | undefined {
+function figureNow(
+  key: string,
+  f: Pic | Dia,
+  ctx: MaterialiseCtx,
+  mark = false,
+): Figure | undefined {
   const v = ctx.visual(key);
   if (v.status === "photo")
     return {
@@ -69,6 +74,7 @@ function figureNow(key: string, f: Pic | Dia, ctx: MaterialiseCtx): Figure | und
       alt: v.photo.alt,
       aspect: v.photo.aspect,
       request: v.photo.request,
+      ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
     };
   if (v.status === "diagram") return { diagram: v.spec };
   if (v.status === "failed") return undefined;
@@ -77,17 +83,42 @@ function figureNow(key: string, f: Pic | Dia, ctx: MaterialiseCtx): Figure | und
     : {
         photo: PLACEHOLDER_IMAGE,
         alt: f.shows,
-        request: [f.shows, ...(f.must_see ?? [])].join(". "),
+        request: mark ? `slot:${key}` : [f.shows, ...(f.must_see ?? [])].join(". "),
       };
 }
 
-export function toInput(raw: S, ctx: MaterialiseCtx): TemplateInput {
+/** Templates whose photo slots crop to their own box (the rest show a photo at its own shape). */
+const FIXED_SHAPE = new Set(["compare", "picture-sequence"]);
+/**
+ * Each photo slot's shape on this slide, read off the laid-out slide itself: the slide is laid out
+ * with every visual pending, each open slot marked with its key, and the slot's box measured.
+ */
+export function slotShapes(
+  s: S,
+  vctx: Omit<MaterialiseCtx, "visual">,
+): Record<string, { aspect: number; fixed: boolean }> {
+  const ctx: MaterialiseCtx = { ...vctx, visual: () => ({ status: "pending" }) };
+  const input = toInput(s, ctx, true);
+  const els = layoutTemplate(input, vctx.theme, vctx.stage).slide.elements;
+  const out: Record<string, { aspect: number; fixed: boolean }> = {};
+  for (const e of els) {
+    const r = (e as { request?: string }).request;
+    if (e.type === "image" && r?.startsWith("slot:"))
+      out[r.slice(5)] = {
+        aspect: Math.round((e.w / e.h) * 100) / 100,
+        fixed: FIXED_SHAPE.has(input.template),
+      };
+  }
+  return out;
+}
+
+export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInput {
   const s = normalise(raw);
   const template = str(s.template) as TemplateInput["template"];
   const heading = str(s.heading);
   const fig = (k: string) => {
     const f = s[k];
-    return isPic(f) || isDia(f) ? figureNow(k, f, ctx) : undefined;
+    return isPic(f) || isDia(f) ? figureNow(k, f, ctx, mark) : undefined;
   };
   const lead = s.lead == null ? undefined : str(s.lead);
   switch (template) {
@@ -131,7 +162,7 @@ export function toInput(raw: S, ctx: MaterialiseCtx): TemplateInput {
         heading,
         sequence: seq.map((x, n) => ({
           caption: str(x.caption),
-          figure: figureNow(`seq.${n}`, x, ctx),
+          figure: figureNow(`seq.${n}`, x, ctx, mark),
         })),
       };
     }
@@ -146,7 +177,7 @@ export function toInput(raw: S, ctx: MaterialiseCtx): TemplateInput {
         heading,
         columns: cols.map((c, n) => {
           const p = c.picture;
-          const f = isPic(p) && !anyFailed ? figureNow(`col.${n}`, p, ctx) : undefined;
+          const f = isPic(p) && !anyFailed ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
           return { label: str(c.label), text: str(c.text), ...(f ? { figure: f } : {}) };
         }),
       };
@@ -201,8 +232,9 @@ export const armT: ArmPlugin = {
       effort: "low",
     };
   },
-  visuals(raw) {
+  visuals(raw, index, vctx) {
     const s = normalise(raw);
+    const slots = slotShapes(s, { ...vctx, index });
     return figures(s).map(
       ({ key, f }): VisualAsk =>
         isDia(f)
@@ -213,6 +245,7 @@ export const armT: ArmPlugin = {
               shows: f.shows,
               mustSee: f.must_see ?? [],
               named: f.subject === "named",
+              ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
             },
     );
   },

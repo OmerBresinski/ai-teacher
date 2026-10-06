@@ -233,12 +233,16 @@ export type PhotoAsk = {
   shows: string;
   mustSee: string[];
   named: boolean;
+  /** The slot's width / height: stock search prefers it, the director and generation frame for it. */
+  aspect?: number;
   slide: { heading: string; text: string; point: string };
   index: number;
 };
 export type PhotoResult = {
   /** The request text the picture director was given. */
   request: string;
+  /** The must-see subjects' boxes in the picture (fractions 0..1), when the judge returned them. */
+  subjects?: { name: string; x: number; y: number; w: number; h: number }[];
   src: string;
   alt: string;
   aspect: number;
@@ -362,6 +366,7 @@ export function pictureService(opts: {
       mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
       purpose: "context",
       specific: ask.named,
+      ...(ask.aspect ? { aspect: Math.round(ask.aspect * 100) / 100 } : {}),
     };
     const at = (x: unknown) =>
       pickPhoto(pickerLesson(lesson, ask.index, x) as never, ask.index, deps as never).catch(
@@ -406,6 +411,13 @@ export function pictureService(opts: {
       about: photo.about,
       provider: photo.source?.provider,
       source: photo.source,
+      // The judge's boxes for the must-see subjects, once its prompt returns them (PICTURE-FIT, prompt agent).
+      ...((photo as { evidence?: { subjects?: PhotoResult["subjects"] } }).evidence?.subjects
+        ? {
+            subjects: (photo as { evidence: { subjects: PhotoResult["subjects"] } }).evidence
+              .subjects,
+          }
+        : {}),
       aspect: aspectOf(photo.src),
     };
   }

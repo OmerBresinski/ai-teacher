@@ -76,6 +76,8 @@ export type Figure =
       aspect?: number;
       /** The picture director's request text, kept on the image element for the eval. */
       request?: string;
+      /** The must-see subjects' boxes in the picture (fractions 0..1), from the vision judge. */
+      subjects?: SubjectBox[];
     }
   | { diagram: unknown };
 export type TemplateId =
@@ -287,21 +289,96 @@ function heading(c: Ctx, value: string) {
     c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
 }
 
+export type SubjectBox = { name: string; x: number; y: number; w: number; h: number };
+export type Placement =
+  | { mode: "cover"; crop?: { x: number; y: number; w: number; h: number } }
+  | { mode: "contain" };
+/** A centred crop may lose at most this share of the picture's width or height when no subject boxes are known. */
+export const BLIND_CROP_KEEP = 0.85;
+
 /**
- * A photo in a fixed box: covering it (cropped round the centre) when `cover`, else at its own
- * shape inside the box. An open slot ("" src) takes the whole box.
+ * PICTURE-FIT (Greg, 6 Oct: animals cropped out of compare cards). How a photo of `photoAspect`
+ * fills a box of `slotAspect`: covering it, with a crop window (fractions of the picture) placed
+ * round the must-see subjects so none is cut; or, when no window of the box's shape keeps them all,
+ * the whole picture contained on a soft panel. With no boxes known, only a mild centred crop (at
+ * most 15 % off one dimension) is taken; anything more is contained, so no subject is ever cut blind.
+ */
+export function placePhoto(
+  photoAspect: number,
+  slotAspect: number,
+  subjects?: SubjectBox[],
+): Placement {
+  const k = photoAspect / slotAspect;
+  if (Math.abs(k - 1) < 0.03) return { mode: "cover" };
+  // The window: full height and part of the width (a wider picture), or the reverse.
+  const wide = k > 1;
+  const span = wide ? 1 / k : k;
+  if (!subjects?.length) {
+    if (span < BLIND_CROP_KEEP) return { mode: "contain" };
+    const off = (1 - span) / 2;
+    return {
+      mode: "cover",
+      crop: wide ? { x: off, y: 0, w: span, h: 1 } : { x: 0, y: off, w: 1, h: span },
+    };
+  }
+  const lo = Math.min(...subjects.map((b) => (wide ? b.x : b.y)));
+  const hi = Math.max(...subjects.map((b) => (wide ? b.x + b.w : b.y + b.h)));
+  if (hi - lo > span + 1e-6) return { mode: "contain" };
+  // Centred on the subjects, clamped to the picture.
+  const start = Math.min(1 - span, Math.max(0, (lo + hi) / 2 - span / 2));
+  return {
+    mode: "cover",
+    crop: wide ? { x: start, y: 0, w: span, h: 1 } : { x: 0, y: start, w: 1, h: span },
+  };
+}
+
+/** The subjects a crop window cuts (any part of a box outside it): the PICTURE-FIT gate. */
+export function cutSubjects(
+  crop: { x: number; y: number; w: number; h: number } | undefined,
+  subjects: SubjectBox[] | undefined,
+): string[] {
+  if (!crop || !subjects) return [];
+  const e = 1e-3;
+  return subjects
+    .filter(
+      (b) =>
+        b.x < crop.x - e ||
+        b.y < crop.y - e ||
+        b.x + b.w > crop.x + crop.w + e ||
+        b.y + b.h > crop.y + crop.h + e,
+    )
+    .map((b) => b.name);
+}
+
+/**
+ * A photo in a fixed box. `cover`: it fills the box, cropped only as `placePhoto` allows (round the
+ * must-see subjects), else the whole picture is contained on a soft panel. Not `cover`: at its own
+ * shape inside the box. An open slot (placeholder src, no aspect yet) takes the whole box.
  */
 function photoBox(
   c: Ctx,
-  f: { photo: string; alt?: string; aspect?: number; request?: string },
+  f: { photo: string; alt?: string; aspect?: number; request?: string; subjects?: SubjectBox[] },
   rect: { x: number; y: number; w: number; h: number },
   cover = true,
 ) {
   let r = rect;
-  if (!cover && f.photo && f.aspect) {
-    const w = Math.min(rect.w, Math.round(rect.h * f.aspect));
-    const h = Math.min(rect.h, Math.round(w / f.aspect));
-    r = { x: rect.x + (rect.w - w) / 2, y: rect.y + (rect.h - h) / 2, w, h };
+  let crop: { x: number; y: number; w: number; h: number } | undefined;
+  const contain = (inner: typeof rect) => {
+    const a = f.aspect ?? inner.w / inner.h;
+    const w = Math.min(inner.w, Math.round(inner.h * a));
+    const h = Math.min(inner.h, Math.round(w / a));
+    return { x: inner.x + (inner.w - w) / 2, y: inner.y + (inner.h - h) / 2, w, h };
+  };
+  if (f.photo && f.aspect) {
+    if (!cover) r = contain(rect);
+    else {
+      const p = placePhoto(f.aspect, rect.w / rect.h, f.subjects);
+      if (p.mode === "contain") {
+        // The whole picture on a soft panel the box's size, so a row of cards stays even.
+        box(c, rect, wash(c.t), { name: "Photo panel" });
+        r = contain(rect);
+      } else crop = p.crop;
+    }
   }
   c.els.push({
     id: uid(),
@@ -314,6 +391,8 @@ function photoBox(
     src: f.photo,
     alt: f.alt ?? "",
     ...(f.request ? { request: f.request } : {}),
+    ...(f.subjects ? { subjects: f.subjects } : {}),
+    ...(crop ? { crop } : {}),
     fit: "cover",
     radius: c.t.radius,
   } as ImageElement);

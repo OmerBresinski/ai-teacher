@@ -45,7 +45,17 @@ export type Brief = {
 
 /** A visual a slide asks for, as the plugin reads it off the slide JSON. */
 export type VisualAsk =
-  | { key: string; type: "photo"; shows: string; mustSee: string[]; named: boolean }
+  | {
+      key: string;
+      type: "photo";
+      shows: string;
+      mustSee: string[];
+      named: boolean;
+      /** The slot's width / height, so search prefers that shape and generation renders at it. */
+      aspect?: number;
+      /** The slot crops to its own box (compare cards, sequences): the flow's early job (no aspect) does not take it. */
+      fixedShape?: boolean;
+    }
   | { key: string; type: "diagram"; kind: string; shows: string; labels: string[] };
 
 /** What the harness knows about one visual when it materialises a slide. */
@@ -87,7 +97,11 @@ export interface ArmPlugin {
     effort?: "minimal" | "low" | "medium" | "high";
   };
   /** The visuals one finished slide asks for (keys unique within the slide, e.g. "picture", "seq.2"). */
-  visuals(slide: Record<string, unknown>, index: number): VisualAsk[];
+  visuals(
+    slide: Record<string, unknown>,
+    index: number,
+    ctx: Omit<MaterialiseCtx, "index" | "visual">,
+  ): VisualAsk[];
   /** Lay one slide out from its JSON and the visuals' current states. Called again whenever a visual lands. */
   materialise(slide: Record<string, unknown>, ctx: MaterialiseCtx): Materialised;
   /** The questions on a slide (for the answerable check and the notes' answers). */
@@ -255,10 +269,11 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       shows: a.shows,
       mustSee: a.mustSee,
       named: a.named,
+      ...(a.aspect ? { aspect: a.aspect } : {}),
       slide: { heading: words.heading, text: words.text, point: "" },
       index: i,
     };
-    log({ ev: "picture-start", key: k, shows: a.shows });
+    log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect });
     return pics.find(ask, lessonInfo);
   };
   const landPhoto = (i: number, key: string, p: Promise<PhotoResult | undefined>) =>
@@ -341,7 +356,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     if (top === "slides" && path.length === 2 && typeof idx === "number") {
       const s = v as Record<string, unknown>;
       plan.slides[idx] = s;
-      const as = arm.visuals(s, idx);
+      const as = withKeyStage(brief.keyStage, () => arm.visuals(s, idx, { ...base, plan }));
       asks.set(idx, as);
       const words = arm.words(s);
       const heading = String(s.heading ?? "");
@@ -351,7 +366,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       const e = early.get(idx);
       photos.forEach((a, n) => {
         // The slide's first picture takes over the flow's early job (already running).
-        if (n === 0 && e) {
+        if (n === 0 && e && !a.fixedShape) {
           visuals.set(`${idx}:${a.key}`, { status: "pending" });
           landPhoto(idx, a.key, e);
           return;
