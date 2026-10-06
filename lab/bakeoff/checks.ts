@@ -32,6 +32,8 @@ export function checkSlide(a: {
   index: number;
   slide: Pick<Slide, "elements"> | undefined;
   over: string[];
+  /** drawDiagram's reasons for a diagram that could not draw: fault kind `diagram`. */
+  diagram?: string[];
   questions: string[];
   answers: string[] | undefined;
   notesChecked: boolean;
@@ -41,6 +43,8 @@ export function checkSlide(a: {
   const s = a.slide;
   if (!s) return { slide: a.index + 1, faults: ["slide not laid out"] };
   for (const o of a.over) faults.push(`overflow: ${o}`);
+  if (a.diagram?.length)
+    faults.push(`diagram: figure could not be drawn: ${a.diagram.slice(0, 3).join("; ")}`);
   // Clipping: anything past the slide's edge.
   for (const e of s.elements)
     if (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1)

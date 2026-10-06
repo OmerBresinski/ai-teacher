@@ -265,7 +265,28 @@ export const armT: ArmPlugin = {
   },
   materialise(s, ctx) {
     const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
-    return { slide: r.slide, over: r.over };
+    return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
+  },
+  asPicture(raw) {
+    // Round 2: a diagram of a real thing that could not draw becomes a picture of the same thing.
+    const s = { ...raw };
+    const swap: Record<string, [string, string]> = {
+      "diagram-text": ["picture-text", "picture"],
+      "big-diagram": ["big-picture", "picture"],
+    };
+    for (const k of ["figure", "diagram", "picture"]) {
+      const f = s[k];
+      if (!isDia(f)) continue;
+      const pic = { shows: f.shows, must_see: [], subject: "generic" };
+      const to = swap[str(s.template)];
+      delete s[k];
+      if (to) {
+        s.template = to[0];
+        s[to[1]] = pic;
+      } else s[k === "diagram" ? "picture" : k] = pic;
+      return s;
+    }
+    return undefined;
   },
   placeholder(f, ctx) {
     // Provisional from the flow entry alone: its job as the heading, the layout shape its

@@ -76,6 +76,19 @@ export class Ledger {
   get committed() {
     return this.total + this.outside() + this.held;
   }
+  /** Refusals (round 2): steps the cap kept from starting, for the run log. */
+  refused: string[] = [];
+  /**
+   * Reserves `est` before a step starts, or refuses it (undefined) when spend plus holds plus `est`
+   * would pass the cap. Never throws: a refused picture or diagram falls back, the run goes on.
+   */
+  tryHold(what: string, est: number): (() => void) | undefined {
+    if (this.committed + est > this.capUsd + 1e-9) {
+      this.refused.push(what);
+      return undefined;
+    }
+    return this.guard(what, est);
+  }
   /** Reserves `est` (the step's worst case) or throws when it would pass the cap; returns the release. */
   guard(what: string, est: number): () => void {
     if (this.committed + est > this.capUsd + 1e-9)
@@ -86,6 +99,32 @@ export class Ledger {
       if (open) this.held = Math.max(0, this.held - est);
       open = false;
     };
+  }
+}
+
+/**
+ * Round 2 cap guard: run a paid job only if its reserve fits under the cap, checked before the
+ * job starts. Refused, failed or thrown jobs resolve to undefined; the hold is always released.
+ */
+export async function guarded<T>(
+  ledger: Ledger,
+  what: string,
+  est: number,
+  job: () => Promise<T | undefined>,
+  log?: (e: object) => void,
+): Promise<T | undefined> {
+  const held = ledger.tryHold(what, est);
+  if (!held) {
+    log?.({ ev: "cap-refused", what, est, committed: Number(ledger.committed.toFixed(4)) });
+    return undefined;
+  }
+  try {
+    return await job();
+  } catch (e) {
+    log?.({ ev: "job-error", what, err: String(e).slice(0, 200) });
+    return undefined;
+  } finally {
+    held();
   }
 }
 
@@ -388,12 +427,7 @@ export function pictureService(opts: {
       base: Record<string, unknown>;
     },
   ): Promise<PhotoResult | undefined> {
-    const held = opts.ledger.guard(`picture ${ask.key}`, STEP_EST.picture);
-    try {
-      return await findOne(ask, lesson);
-    } finally {
-      held();
-    }
+    return guarded(opts.ledger, `picture ${ask.key}`, STEP_EST.picture, () => findOne(ask, lesson));
   }
   async function findOne(
     ask: PhotoAsk,
@@ -691,7 +725,20 @@ export async function diagramSpec(
     (o) => o.shape.kind.value === ask.kind,
   );
   if (!kindSchema) return undefined;
-  const held = ledger.guard(`diagram ${ask.key}`, STEP_EST.diagram);
+  return guarded(
+    ledger,
+    `diagram ${ask.key}`,
+    STEP_EST.diagram,
+    () => specCalls(ask, ledger, log, kindSchema),
+    log,
+  );
+}
+async function specCalls(
+  ask: DiagramAsk,
+  ledger: Ledger,
+  log: (e: object) => void,
+  kindSchema: unknown,
+): Promise<unknown | undefined> {
   const schema = z.toJSONSchema(kindSchema as never, { target: "draft-7" });
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -706,12 +753,8 @@ export async function diagramSpec(
     });
     ledger.add("diagrams", r.usd);
     log({ ev: "diagram-call", key: ask.key, ms: r.ms, usd: r.usd, attempt });
-    if (r.out && parseDiagram(r.out)) {
-      held();
-      return r.out;
-    }
+    if (r.out && parseDiagram(r.out)) return r.out;
   }
-  held();
   return undefined;
 }
 

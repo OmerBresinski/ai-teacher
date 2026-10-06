@@ -9,6 +9,7 @@ import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type CheckResult, checkSlide } from "./checks";
 import { PartialJson, type Path } from "./partial";
+import { concrete, judgeRepair, repairable, sameFigure, teaching } from "./repair";
 import {
   aspectOf,
   BAKEOFF,
@@ -16,6 +17,7 @@ import {
   chatStream,
   type DiagramAsk,
   diagramSpec,
+  guarded,
   Ledger,
   type PhotoAsk,
   type PhotoResult,
@@ -84,6 +86,8 @@ export type Materialised = {
   slide: Pick<Slide, "kind" | "elements" | "background">;
   /** Over-capacity marks from the layout (text over its zone, a diagram that would not draw). */
   over: string[];
+  /** Round 2: why a diagram on the slide could not draw (the slide was laid out words only). */
+  diagram?: string[];
 };
 
 export type Design = { theme?: string; picture_style?: "photo" | "illustration" };
@@ -120,6 +124,8 @@ export interface ArmPlugin {
   questions(slide: Record<string, unknown>): string[];
   /** The slide's own words (for checks, the picture director and the diagram spec call). */
   words(slide: Record<string, unknown>): string;
+  /** Round 2: the slide with its failed diagram turned into a picture request of the same thing (or undefined). */
+  asPicture?(slide: Record<string, unknown>): Record<string, unknown> | undefined;
   /** Optional: a provisional slide from its flow entry alone (Greg 6 Oct, decision a), replaced when its content arrives. */
   placeholder?(flow: FlowEntry, ctx: Omit<MaterialiseCtx, "visual">): Materialised;
   /** Optional: the objectives slide from approved objectives (two-phase runs), before the design call answers. */
@@ -199,6 +205,8 @@ export type RunOpts = {
   pgPort: number;
   /** Play a recorded main output back instead of calling the model (no spend on the main call). */
   replay?: string;
+  /** Round 2: answer the repair from a recorded repair.jsonl (slide -> out) instead of calling it. */
+  replayRepair?: string;
   /** Skip pictures and diagrams (layout-only dry run). */
   noVisuals?: boolean;
   /** Reuse the pictures of an earlier run dir of the same replayed stream (offline re-layout; no spend). */
@@ -365,28 +373,34 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   };
   const landPhoto = (i: number, key: string, p: Promise<PhotoResult | undefined>) =>
     jobs.push(
-      p.then((r) => {
-        visuals.set(`${i}:${key}`, r ? { status: "photo", photo: r } : { status: "failed" });
-        // One picture at most once per lesson unless the same request asks for it (K's y1 smoke:
-        // the title photo came back on another slide). The later slide loses it and falls back.
-        for (const k of repeatedPictures(visuals)) {
-          visuals.set(k, { status: "failed" });
-          log({ ev: "picture-duplicate", key: k });
-          relay(Number(k.split(":")[0]), "picture");
-        }
-        log({
-          ev: "picture-done",
-          key: `${i}:${key}`,
-          ok: !!r,
-          src: r?.src,
-          provider: r?.provider,
-          ...(r ? { id: pictureId(r), style: r.style ?? "photo" } : {}),
-          ...(r?.period ? { period: r.period } : {}),
-        });
-        mark("lastPicture");
-        timings.lastPicture = ms();
-        relay(i, "picture");
-      }),
+      // A picture job never throws into the run (round 2): a failure is a failed picture.
+      p
+        .catch((e) => {
+          log({ ev: "picture-error", key: `${i}:${key}`, err: String(e).slice(0, 200) });
+          return undefined;
+        })
+        .then((r) => {
+          visuals.set(`${i}:${key}`, r ? { status: "photo", photo: r } : { status: "failed" });
+          // One picture at most once per lesson unless the same request asks for it (K's y1 smoke:
+          // the title photo came back on another slide). The later slide loses it and falls back.
+          for (const k of repeatedPictures(visuals)) {
+            visuals.set(k, { status: "failed" });
+            log({ ev: "picture-duplicate", key: k });
+            relay(Number(k.split(":")[0]), "picture");
+          }
+          log({
+            ev: "picture-done",
+            key: `${i}:${key}`,
+            ok: !!r,
+            src: r?.src,
+            provider: r?.provider,
+            ...(r ? { id: pictureId(r), style: r.style ?? "photo" } : {}),
+            ...(r?.period ? { period: r.period } : {}),
+          });
+          mark("lastPicture");
+          timings.lastPicture = ms();
+          relay(i, "picture");
+        }),
     );
   const startDiagram = (
     i: number,
@@ -751,6 +765,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         index: i,
         slide: laid.get(i)?.slide,
         over: laid.get(i)?.over ?? [],
+        ...(laid.get(i)?.diagram ? { diagram: laid.get(i)?.diagram } : {}),
         questions: plan.slides[i] ? arm.questions(plan.slides[i] as Record<string, unknown>) : [],
         answers: notes.get(i)?.answers,
         notesChecked: notes.has(i),
@@ -783,7 +798,80 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     ? `${armDir}/repair-schema.${stageKey}.json`
     : `${armDir}/repair-schema.json`;
   const repairUser = `${shared}/repair-user.txt`;
-  const failing = checks.filter((c) => c.faults.length);
+  // Round 2 guards (repair.ts): never the title or objectives slide; a repaired slide that drops a
+  // figure, leaves a slot empty, splits a sentence across cards or loses words is rejected and the
+  // original kept with its flag; a new figure the repaired slide asks for is fetched like any other.
+  const failing = checks.filter((c) => {
+    const i = c.slide - 1;
+    const ok = c.faults.length > 0 && repairable(plan.slides[i] as Record<string, unknown>, i);
+    if (c.faults.length && !ok) log({ ev: "repair-not-allowed", slide: c.slide, faults: c.faults });
+    return ok;
+  });
+  const recorded = new Map<number, unknown>();
+  if (o.replayRepair && existsSync(o.replayRepair))
+    for (const l of readFileSync(o.replayRepair, "utf8").split("\n").filter(Boolean)) {
+      const r = JSON.parse(l) as { slide: number; out?: unknown };
+      if (r.out) recorded.set(r.slide, r.out);
+    }
+  /** Wait for every visual job, including any a landed job started. */
+  const settle = async () => {
+    for (let k = 0; k < jobs.length; k = jobs.length) await Promise.all(jobs.slice(k));
+  };
+  /** Swap slide i to `next`, carry visuals its figures keep, fetch the new ones, re-lay it. */
+  const swapSlide = async (i: number, next: Record<string, unknown>) => {
+    const oldAsks = asks.get(i) ?? [];
+    const newAsks = withKeyStage(brief.keyStage, () => arm.visuals(next, i, { ...base, plan }));
+    const state = new Map(oldAsks.map((a) => [a.key, visuals.get(`${i}:${a.key}`)]));
+    plan.slides[i] = next;
+    asks.set(i, newAsks);
+    const words = arm.words(next);
+    const heading = String(next.heading ?? "");
+    for (const a of newAsks) {
+      const k = `${i}:${a.key}`;
+      const was = oldAsks.find((b) =>
+        sameFigure({ type: b.type, shows: b.shows }, { type: a.type, shows: a.shows }),
+      );
+      const v = was ? state.get(was.key) : undefined;
+      if (v && v.status !== "pending") {
+        visuals.set(k, v);
+        continue;
+      }
+      // A figure the repaired slide newly asks for: fetched the same way, never left as a slot.
+      if (a.type === "photo") {
+        const p = startPhoto(i, a, { heading, text: words });
+        if (p) landPhoto(i, a.key, p);
+        else visuals.set(k, { status: "failed" });
+      } else if (!o.noVisuals) startDiagram(i, a, `${heading}\n${words}`, heading);
+      else visuals.set(k, { status: "failed" });
+    }
+    await settle();
+    relay(i, "repair");
+    return { oldAsks, state };
+  };
+  const restore = (
+    i: number,
+    slide: Record<string, unknown> | undefined,
+    n0: { notes: string; answers: string[] } | undefined,
+    saved: { oldAsks: VisualAsk[]; state: Map<string, VisualState | undefined> },
+  ) => {
+    plan.slides[i] = slide;
+    if (n0) notes.set(i, n0);
+    else notes.delete(i);
+    asks.set(i, saved.oldAsks);
+    for (const [k, v] of saved.state) if (v) visuals.set(`${i}:${k}`, v);
+    relay(i, "repair-reverted");
+  };
+  /** The "Diagram kinds:" block of shared/base-visuals.<stage>.txt (the repair's menu of kinds). */
+  const diagramKinds = () => {
+    for (const f of [`${shared}/base-visuals.${stageKey}.txt`, `${shared}/base-visuals.txt`])
+      if (existsSync(f)) {
+        const m = readFileSync(f, "utf8").match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/);
+        if (m) return m[0].trim();
+      }
+    return "";
+  };
+  const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
+  const path = new Map<number, string>();
   if (!o.noRepair && failing.length) {
     if (!existsSync(repairSys) || !existsSync(repairSchema))
       log({ ev: "repair-skipped", why: "no repair prompt yet", failing: failing.length });
@@ -806,10 +894,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
             const v = visuals.get(`${i}:${a.key}`);
             return v?.status === "photo" ? [`${a.key}: ${v.photo.about ?? v.photo.alt}`] : [];
           });
-          const u = existsSync(repairUser)
-            ? fillTemplate(readFileSync(repairUser, "utf8"), brief, {
+          const tpl = existsSync(repairUser) ? readFileSync(repairUser, "utf8") : "";
+          const u = tpl
+            ? fillTemplate(tpl, brief, {
                 context: user,
                 N: i + 1,
+                [String(tpl.match(/\{\{(the diagram kinds[^}]*)\}\}/)?.[1] ?? "-")]: diagramKinds(),
                 "the arm's layouts menu for this key stage: <arm>/layouts.<stage>.txt": existsSync(
                   `${armDir}/layouts.${stageKey}.txt`,
                 )
@@ -818,68 +908,121 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
                 "the slide's JSON exactly as the main call wrote it": JSON.stringify(
                   plan.slides[i],
                 ),
-                [String(
-                  readFileSync(repairUser, "utf8").match(
-                    /\{\{(one line per placed picture[^}]*)\}\}/,
-                  )?.[1] ?? "-",
-                )]: placed.length ? placed.join("\n") : "none",
-                [String(
-                  readFileSync(repairUser, "utf8").match(
-                    /\{\{(one line per fault[^}]*)\}\}/,
-                  )?.[1] ?? "-",
-                )]: [...c.faults, ...found].sort().join("\n"),
+                [String(tpl.match(/\{\{(one line per placed picture[^}]*)\}\}/)?.[1] ?? "-")]:
+                  placed.length ? placed.join("\n") : "none",
+                [String(tpl.match(/\{\{(one line per fault[^}]*)\}\}/)?.[1] ?? "-")]: [
+                  ...c.faults,
+                  ...found,
+                ]
+                  .sort()
+                  .join("\n"),
               })
             : `${user}\n\nSlide ${i + 1}:\n${JSON.stringify(plan.slides[i])}\n\nWhat the check found:\n${[...c.faults, ...found].map((f) => `- ${f}`).join("\n")}`;
-          try {
-            const held = ledger.guard(`repair s${i + 1}`, STEP_EST.repair);
-            const r = await chat({
-              model: "gpt-6-luna",
-              effort: "low",
-              system,
-              user: u,
-              schema: JSON.parse(readFileSync(repairSchema, "utf8")),
-              name: "slide",
-            });
-            ledger.add("repair", r.usd);
-            held();
-            appendFileSync(
-              `${o.outDir}/repair.jsonl`,
-              `${JSON.stringify({ slide: i + 1, faults: c.faults, out: r.out })}\n`,
+          let out: unknown;
+          let usd = 0;
+          if (o.replayRepair) out = recorded.get(i + 1);
+          else {
+            const r = await guarded(
+              ledger,
+              `repair s${i + 1}`,
+              STEP_EST.repair,
+              () =>
+                chat({
+                  model: "gpt-6-luna",
+                  effort: "low",
+                  system,
+                  user: u,
+                  schema: JSON.parse(readFileSync(repairSchema, "utf8")),
+                  name: "slide",
+                }),
+              log,
             );
-            let kept = false;
-            if (r.out) {
-              const before = { slide: plan.slides[i], notes: notes.get(i) };
-              applyRepair(plan.slides, notes, i, r.out);
-              relay(i, "repair");
-              // HARNESS (repair prompt): if the same check still fails, keep the original slide.
-              const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
-              const now = check()[i]?.faults ?? [];
-              const was = kinds(c.faults);
-              if ([...kinds(now)].some((k) => was.has(k))) {
-                plan.slides[i] = before.slide;
-                if (before.notes) notes.set(i, before.notes);
-                else notes.delete(i);
-                relay(i, "repair-reverted");
-                kept = true;
-              }
-            }
-            log({
-              ev: "repair",
-              slide: i + 1,
-              usd: r.usd,
-              ok: !!r.out,
-              fix: (r.out as { fix?: string })?.fix,
-              reverted: kept,
-            });
-          } catch (e) {
-            log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
+            if (r) ledger.add("repair", r.usd);
+            out = r?.out;
+            usd = r?.usd ?? 0;
           }
+          appendFileSync(
+            `${o.outDir}/repair.jsonl`,
+            `${JSON.stringify({ slide: i + 1, faults: c.faults, input: plan.slides[i], out })}\n`,
+          );
+          const o2 = out as { slide?: Record<string, unknown>; to_notes?: unknown; fix?: string };
+          if (!o2?.slide || typeof o2.slide !== "object") {
+            log({ ev: "repair", slide: i + 1, usd, ok: false });
+            return;
+          }
+          const before = plan.slides[i] as Record<string, unknown>;
+          const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(
+            String,
+          );
+          const verdict = judgeRepair(before, o2.slide, moved);
+          if (!verdict.ok) {
+            log({
+              ev: "repair-rejected",
+              slide: i + 1,
+              fix: o2.fix,
+              why: verdict.why,
+              faults: c.faults,
+            });
+            return;
+          }
+          const n0 = notes.get(i);
+          const saved = await swapSlide(i, o2.slide);
+          applyRepair(plan.slides, notes, i, out);
+          // The same fault kind still there, or a new one: keep the original slide (and its flag).
+          // A slide the notes call never reached has no answers to check (offline replays, a failed
+          // notes call): to_notes alone must not raise an "unanswered" fault and revert the repair.
+          const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
+          const was = kinds(c.faults);
+          const worse = [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
+          if (worse) restore(i, before, n0, saved);
+          else if (c.faults.some((f) => f.startsWith("diagram:"))) path.set(i, "diagram-repaired");
+          log({ ev: "repair", slide: i + 1, usd, ok: true, fix: o2.fix, reverted: worse, now });
         }),
       );
-      checks = check();
       mark("repaired");
     }
   }
+  // A diagram that still cannot draw: a picture of the same thing when it is a real, concrete
+  // thing (the picture director, the diagram's `shows` as the request); else words only.
+  for (let i = 0; i < n; i++) {
+    const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
+      | Extract<VisualAsk, { type: "diagram" }>
+      | undefined;
+    if (!dAsk || path.has(i)) continue;
+    if (!laid.get(i)?.diagram?.length && visuals.get(`${i}:${dAsk.key}`)?.status === "diagram") {
+      path.set(i, "diagram");
+      continue;
+    }
+    const s = plan.slides[i] as Record<string, unknown>;
+    const pic = concrete(dAsk.kind, dAsk.shows) ? arm.asPicture?.(s) : undefined;
+    if (pic) {
+      const n0 = notes.get(i);
+      const saved = await swapSlide(i, pic);
+      const got = (asks.get(i) ?? []).some((a) => visuals.get(`${i}:${a.key}`)?.status === "photo");
+      if (got) {
+        path.set(i, "picture");
+        continue;
+      }
+      restore(i, s, n0, saved);
+    }
+    path.set(i, "words");
+  }
+  for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
+  checks = check();
+  // Teaching slides left with no picture or diagram (round 2 summary).
+  const textOnlyTeach = Array.from({ length: n }, (_, i) => i).filter(
+    (i) =>
+      i > 1 &&
+      teaching(plan.slides[i] as Record<string, unknown>) &&
+      !(laid.get(i)?.slide.elements ?? []).some((e) => e.type === "image"),
+  );
+  const summary = {
+    textOnlyTeach: textOnlyTeach.length,
+    textOnlySlides: textOnlyTeach.map((i) => i + 1),
+    visualPaths: Object.fromEntries([...path].map(([i, p]) => [i + 1, p])),
+    capRefused: ledger.refused,
+  };
+  log({ ev: "summary", ...summary });
   save("done");
   mark("done");
   const cost = { ...ledger.parts, picturesDirector: pics?.aiSpend() ?? 0 };
@@ -935,9 +1078,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   writeJson(`${o.outDir}/cost.json`, {
     ...cost,
     total: Number(total.toFixed(5)),
-    main: cost.main ?? 0,
+    main: (cost as Record<string, number>).main ?? 0,
   });
-  writeJson(`${o.outDir}/checks.json`, { count, slides: checks });
+  writeJson(`${o.outDir}/checks.json`, { count, summary, slides: checks });
   return { lessonFile, timings, cost: { ...cost, total }, checks };
 }
 

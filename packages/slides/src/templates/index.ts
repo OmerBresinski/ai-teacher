@@ -132,6 +132,8 @@ export const pointLabel = (p: TemplatePoint): string | undefined =>
 export type TemplateResult = {
   slide: Pick<Slide, "kind" | "elements" | "background">;
   over: string[];
+  /** Round 2: why a diagram on this slide could not draw (drawDiagram's reasons); the slide was laid out without it. */
+  diagram?: string[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -139,7 +141,7 @@ export type TemplateResult = {
 /* ------------------------------------------------------------------ */
 
 type Role = keyof Scale;
-type Ctx = { t: Theme; s: Scale; over: string[]; els: SlideElement[] };
+type Ctx = { t: Theme; s: Scale; over: string[]; els: SlideElement[]; fails?: string[] };
 
 const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
 /** `a` over `b` at `k` (0..1): the wash of a hue on the ground. */
@@ -490,7 +492,10 @@ function figurePanel(
   // Anything else is a failure: no panel, no wash, and the caller takes the words-only sibling.
   const draw = (): { el: SlideElement; note?: string } | undefined => {
     const r = drawDiagram(f.diagram, c.t, { ...inner, fs: c.s.small });
-    if (!r.ok) return undefined;
+    if (!r.ok) {
+      c.fails?.push(...r.reasons);
+      return undefined;
+    }
     return { el: r.element, ...(r.fs < c.s.small ? { note: `diagram labels ${r.fs}pt` } : {}) };
   };
   const d = draw();
@@ -800,7 +805,7 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
 
 export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage): TemplateResult {
   return withKeyStage(stage, () => {
-    const c: Ctx = { t: theme, s: templateScale(theme, stage), over: [], els: [] };
+    const c: Ctx = { t: theme, s: templateScale(theme, stage), over: [], els: [], fails: [] };
     input = withoutFailedFigures(c, input);
     const tpl = input.template;
     let background: Slide["background"];
@@ -1161,6 +1166,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
     return {
       slide: { kind: KIND[tpl], elements: c.els, ...(background ? { background } : {}) },
       over: c.over,
+      ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
     };
   });
 }
