@@ -134,9 +134,16 @@ export const armK: ArmPlugin = {
   },
   visuals: (s) => asksOf(s),
   materialise(s, ctx) {
-    const { recipe, blocks } = toBlocks(s, ctx);
-    // Slide 2 is the objectives: the plan's pupil objectives, numbered, when the slide holds no list.
-    if (ctx.index === 1 && !blocks.some((b) => b.type === "points") && ctx.plan.objectives?.length)
+    let { recipe, blocks } = toBlocks(s, ctx);
+    // The objectives recipe carries nothing: code makes it a stack of the plan's pupil objectives.
+    const objectives = s.recipe === "objectives" || ctx.index === 1;
+    if (s.recipe === "objectives") {
+      recipe = "stack";
+      blocks = blocks.filter((b) => b.type === "heading");
+    }
+    const head = blocks[0] as { type: "heading"; text: string } | undefined;
+    if (objectives && head && !head.text) head.text = "Today we are learning to";
+    if (objectives && !blocks.some((b) => b.type === "points") && ctx.plan.objectives?.length)
       blocks.push({
         type: "points",
         numbered: true,

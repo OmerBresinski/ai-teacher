@@ -753,25 +753,35 @@ function cardsPiece(
   picH: number,
 ): Piece {
   const n = Math.max(1, cards.length);
-  const gap = 24;
-  const w = Math.floor((G.width - gap * (n - 1)) / n);
-  const pad = Math.round(c.z.body * 0.75);
+  // Four cards at KS1 type (body 32pt and up) are too narrow in a row: they go 2 x 2, the disc beside the label.
+  const cols = n === 4 && c.z.body >= 32 ? 2 : n;
+  const rows = Math.ceil(n / cols);
+  const grid = rows > 1;
+  const gap = grid ? 16 : 24;
+  const w = Math.floor((G.width - gap * (cols - 1)) / cols);
+  const pad = Math.round(c.z.body * (grid ? 0.5 : 0.75));
   const iw = w - 2 * pad;
   const d = Math.round(c.z.body * 1.25);
   const anyPic = cards.some((k) => k.picture);
   const ph = anyPic ? picH : 0;
   // A numbered card puts its disc on a row of its own, so the label has the card's full width.
-  const labelW = iw;
-  const discRow = numbered ? d + 10 : 0;
+  const beside = numbered && grid;
+  const labelW = beside ? iw - d - 12 : iw;
+  const discRow = numbered && !grid ? d + 10 : 0;
   const hs = cards.map(
-    (k) => discRow + measure(c, k.label, "lead", labelW) + 10 + measure(c, k.text, "body", iw),
+    (k) =>
+      discRow +
+      Math.max(beside ? d : 0, measure(c, k.label, "lead", labelW)) +
+      10 +
+      measure(c, k.text, "body", iw),
   );
   const h = Math.max(...hs, 0) + 2 * pad + ph;
   return {
-    h,
-    draw: (y) => {
+    h: rows * h + (rows - 1) * gap,
+    draw: (y0) => {
       cards.forEach((k, i) => {
-        const x = G.margin + i * (w + gap);
+        const x = G.margin + (i % cols) * (w + gap);
+        const y = y0 + Math.floor(i / cols) * (h + gap);
         card(c, { x, y, w, h });
         if (k.picture) photo(c, k.picture, { x, y, w, h: ph }, true, "center");
         let ty = y + ph + pad;
@@ -782,8 +792,8 @@ function cardsPiece(
           k.label,
           "lead",
           {
-            x: x + pad,
-            y: ty,
+            x: x + pad + (beside ? d + 12 : 0),
+            y: ty + (beside ? Math.max(0, (d - c.z.lead * LH.lead) / 2) : 0),
             w: labelW,
           },
           {
@@ -791,7 +801,7 @@ function cardsPiece(
             name: "Card label",
           },
         );
-        ty = lab.y + lab.h + 10;
+        ty = Math.max(lab.y + lab.h, beside ? ty + d : 0) + 10;
         text(
           c,
           k.text,
