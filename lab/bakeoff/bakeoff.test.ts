@@ -466,3 +466,62 @@ describe("run cap held before spend (arm C's rule)", () => {
     expect(() => l.guard("repair", 0.02)).toThrow(/cap/);
   });
 });
+
+describe("ruling 163 gate fields (dd-pics)", () => {
+  const { stampPictureSources } = require("./harness");
+  test("placed pictures carry source.provider, style and period; open slots and diagrams do not", () => {
+    const slides = [
+      {
+        id: "s1",
+        elements: [
+          { id: "a", type: "image", src: "/files/w/bank/gen1.png" },
+          { id: "b", type: "image", src: "/files/w/images/pex.jpg" },
+          { id: "c", type: "image", src: "data:image/svg+xml,diagram" },
+        ],
+      },
+    ];
+    const visuals = new Map<string, unknown>([
+      [
+        "0:picture",
+        {
+          status: "photo",
+          photo: {
+            src: "/files/w/bank/gen1.png",
+            request: "r",
+            alt: "",
+            aspect: 1,
+            provider: "generated",
+            source: { provider: "generated", id: "gen1" },
+            style: "illustration",
+            period: "Germany, 1923",
+          },
+        },
+      ],
+      [
+        "1:picture",
+        {
+          status: "photo",
+          photo: {
+            src: "/files/w/images/pex.jpg",
+            request: "r",
+            alt: "",
+            aspect: 1,
+            provider: "pexels",
+            source: { provider: "pexels", id: "9" },
+            style: "photo",
+          },
+        },
+      ],
+    ]);
+    stampPictureSources(slides as never, visuals as never);
+    const [a, b, c] = slides[0]!.elements as Record<string, unknown>[];
+    expect(a).toMatchObject({
+      source: { provider: "generated", id: "gen1" },
+      style: "illustration",
+      period: "Germany, 1923",
+    });
+    expect(b).toMatchObject({ source: { provider: "pexels" }, style: "photo" });
+    expect(b!.period).toBeUndefined();
+    expect(c!.source).toBeUndefined();
+  });
+});

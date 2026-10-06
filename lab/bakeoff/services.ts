@@ -20,7 +20,10 @@ import {
   plainSubject,
 } from "../../packages/generation/src/stages/illustrate";
 import { mustShowOf } from "../../packages/generation/src/stages/photo-bank";
-import { findDirected } from "../../packages/generation/src/stages/picture-director";
+import {
+  findDirected,
+  type LessonLook,
+} from "../../packages/generation/src/stages/picture-director";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram } from "../../packages/slides/src/diagrams/index";
 import { placePhoto } from "../../packages/slides/src/templates/index";
@@ -280,6 +283,10 @@ export type PhotoResult = {
   about?: string;
   provider?: string;
   source?: unknown;
+  /** How the picture looks: stock is a photo; generated is photo, illustration or drawn (ruling 163 gate). */
+  style?: "photo" | "illustration" | "drawn";
+  /** The period the request belongs to, when the director gave one (ruling 163 gate). */
+  period?: string;
 };
 
 /** The picture services for one run; `costs` collects bank and director spend. */
@@ -333,13 +340,11 @@ export function pictureService(opts: {
       })(),
       storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
       embedder: im.createOpenAiEmbedder({ apiKey: okey }),
-      generator: styledGenerator(
-        guardedGenerator(
-          im.createOpenAiImageGenerator({ apiKey: okey }),
-          () => opts.ledger.parts.pictures ?? 0,
-          opts.bankCapUsd,
-        ),
-        opts.styleOf,
+      // The lesson's look travels on each request (LessonLook), not as a string appended here.
+      generator: guardedGenerator(
+        im.createOpenAiImageGenerator({ apiKey: okey }),
+        () => opts.ledger.parts.pictures ?? 0,
+        opts.bankCapUsd,
       ),
       capUsd: opts.bankCapUsd,
       ids: () => newId(),
@@ -420,10 +425,13 @@ export function pictureService(opts: {
       );
     // Illustration lessons: generic pictures are generated in the lesson's style (no stock photos);
     // named real things still come from Commons and Pexels (ruling 163 unchanged).
-    const illustrated = ask.style === "illustration" && !ask.named;
+    // The director's route decides what is a real thing (brief.specific), not the arm's flag: the
+    // y10 bake-off asks for Prospero were routed to Commons and then never searched.
+    const illustrated = ask.style === "illustration";
+    const look = lessonLook(opts.styleOf?.(), ask.style);
     let madeBoxes: Box4[] | undefined;
     const stock = async (first: unknown) => {
-      if (illustrated) return undefined;
+      if (illustrated && !(first as { specific?: boolean }).specific) return undefined;
       const r = (await at(first)) as { outcome: string; photo?: { src: string; boxes?: Box4[] } };
       if (r.outcome !== "placed" || !r.photo) return undefined;
       // A generic stock photo that this slot could only show shrunk on a panel is refused, so the
@@ -463,6 +471,12 @@ export function pictureService(opts: {
             })
           : Promise.resolve(true),
       deps: deps as never,
+      ...(look ? { look } : {}),
+      onOutcome: (o: object) =>
+        appendFileSync(
+          `${opts.runDir}/log.jsonl`,
+          `${JSON.stringify({ t: Date.now(), ev: "picture-outcome", key: ask.key, ...o })}\n`,
+        ),
     }).catch((e: unknown) => {
       appendFileSync(
         `${opts.runDir}/log.jsonl`,
@@ -470,7 +484,15 @@ export function pictureService(opts: {
       );
       return undefined;
     })) as
-      | { src: string; alt: string; about?: string; source?: { provider?: string }; boxes?: Box4[] }
+      | {
+          src: string;
+          alt: string;
+          about?: string;
+          source?: { provider?: string };
+          boxes?: Box4[];
+          look?: PhotoResult["style"];
+          period?: string;
+        }
       | undefined;
     if (!photo) return undefined;
     return {
@@ -480,6 +502,8 @@ export function pictureService(opts: {
       about: photo.about,
       provider: photo.source?.provider,
       source: photo.source,
+      style: photo.look ?? "photo",
+      ...(photo.period ? { period: photo.period } : {}),
       // The judge's boxes for the must-see items (judge v15): the stock pick's own, else the
       // made-picture judge's last verdict for this ask.
       ...(subjectsOf(
@@ -555,7 +579,26 @@ export function pickerLesson(l: PickerLessonInfo, index: number, imageBrief?: un
 }
 
 /**
- * One locked illustration style per lesson (Greg 6 Oct): when the lesson's picture style is
+ * The lesson's picture look for the director: the style, the theme's palette, and the prompt
+ * agent's style line when its file exists (else the director's default painted line).
+ */
+export function lessonLook(
+  st: { style?: "photo" | "illustration"; palette?: string[] } | undefined,
+  style?: "photo" | "illustration",
+): LessonLook | undefined {
+  const s = style ?? st?.style;
+  if (!s) return undefined;
+  const file = `${BAKEOFF}/prompts/shared/illustration-style.txt`;
+  const line = s === "illustration" && existsSync(file) ? readFileSync(file, "utf8").trim() : "";
+  return {
+    style: s,
+    ...(st?.palette?.length ? { palette: st.palette } : {}),
+    ...(line ? { line } : {}),
+  };
+}
+
+/**
+ * Superseded by `lessonLook` (the look now travels on the bank request). One locked illustration style per lesson (Greg 6 Oct): when the lesson's picture style is
  * "illustration", every generation's prompt gets the prompt agent's style line
  * (prompts/shared/illustration-style.txt, {{palette}} = the theme's colours), the same on every
  * call. No file yet: prompts pass through unchanged and the run logs it. A reference image per

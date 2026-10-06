@@ -3,6 +3,7 @@
 // The layout step is an `ArmPlugin` (arm T: templates; K: blocks + recipes; R: reference slides).
 // See BAKEOFF/HARNESS.md.
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { dirname } from "node:path";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
@@ -257,6 +258,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       if (!m) continue;
       slides.push({ id: `s${i + 1}`, ...m.slide, notes: notes.get(i)?.notes ?? "" } as Slide);
     }
+    stampPictureSources(slides, visuals);
     writeJson(lessonFile, {
       version: 1,
       id: lessonId,
@@ -366,6 +368,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           ok: !!r,
           src: r?.src,
           provider: r?.provider,
+          ...(r ? { id: pictureId(r), style: r.style ?? "photo" } : {}),
+          ...(r?.period ? { period: r.period } : {}),
         });
         mark("lastPicture");
         timings.lastPicture = ms();
@@ -521,6 +525,23 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     existsSync(`${shared0}/objectives.txt`) &&
     existsSync(`${shared0}/objectives-schema.json`);
   let signOffMs = 0;
+  // A replay (pictures-only re-run) takes the recorded run's approved objectives, so the objectives
+  // slide and the picture judge's lesson facts match the original run.
+  const recordedObj = o.replay ? `${dirname(o.replay)}/objectives.json` : "";
+  if (recordedObj && existsSync(recordedObj)) {
+    const rec = JSON.parse(readFileSync(recordedObj, "utf8")) as {
+      objectives?: { teacher: string; pupil: string }[];
+    };
+    if (rec.objectives?.length) {
+      plan.objectives = rec.objectives;
+      lessonInfo.base = {
+        facts: {
+          objectives: rec.objectives.map((x, k) => ({ id: `o${k + 1}`, text: x.teacher })),
+          outline: [],
+        },
+      };
+    }
+  }
   let user = contextBlock(brief, plan.objectives);
   if (twoPhase) {
     const cfgFile = `${shared0}/objectives.json`;
@@ -948,4 +969,36 @@ export function reusedPhotos(runDir: string): Map<string, PhotoResult> {
     } as PhotoResult);
   }
   return byKey;
+}
+
+/** The bank's id for a placed picture (its source id), else its storage file name. */
+export function pictureId(p: PhotoResult): string {
+  const id = (p.source as { id?: string } | undefined)?.id;
+  return id || (p.src.split("/").pop() ?? p.src).replace(/\.[a-z0-9]+$/i, "");
+}
+
+/**
+ * Ruling 163 gate (eval `gates.py ruling163`): every placed picture's image element carries its
+ * `source` (PhotoSource: `provider` commons, pexels or generated, and `id`), plus `style` (photo,
+ * illustration or drawn) and `period` (the request's period, when it has one) on the element.
+ * Matched by src against the landed pictures; diagrams and open slots are left alone.
+ */
+export function stampPictureSources(slides: Slide[], visuals: Map<string, VisualState>) {
+  const bySrc = new Map<string, PhotoResult>();
+  for (const v of visuals.values()) if (v.status === "photo") bySrc.set(v.photo.src, v.photo);
+  for (const s of slides)
+    for (const e of (s as { elements?: Record<string, unknown>[] }).elements ?? []) {
+      if (e.type !== "image") continue;
+      const p = bySrc.get(String(e.src));
+      if (!p) continue;
+      const src = (p.source ?? {}) as Record<string, unknown>;
+      e.source = {
+        ...src,
+        provider: (src.provider as string) ?? p.provider ?? "generated",
+        id: (src.id as string) ?? pictureId(p),
+      };
+      e.style = p.style ?? "photo";
+      if (p.period) e.period = p.period;
+      else delete e.period;
+    }
 }

@@ -202,11 +202,17 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       await touchBankImage(db, best.row.id);
       // The bytes go with the hit so the judge checks it against this request before it is used.
       const style = styleOf(best.row);
+      const palette = ((best.row.flags ?? {}) as { palette?: string }).palette;
       const dataUrl =
         style === "drawn"
           ? undefined
           : await readDataUrl(best.row.storageKey).catch(() => undefined);
-      return { ...photoOf(best.row), ...(style ? { style } : {}), ...(dataUrl ? { dataUrl } : {}) };
+      return {
+        ...photoOf(best.row),
+        ...(style ? { style } : {}),
+        ...(palette ? { palette } : {}),
+        ...(dataUrl ? { dataUrl } : {}),
+      };
     },
     async reject(photo) {
       // FIX1: a generated picture the judge refused never comes back from the library.
@@ -310,7 +316,12 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
           generatorTerms: IMAGE_TERMS,
           prompt,
           costUsd: out.costUsd.toFixed(6),
-          flags: { lookCheck: faithful, faithful, style: req.style ?? "photo" },
+          flags: {
+            lookCheck: faithful,
+            faithful,
+            style: req.style ?? "photo",
+            ...(req.palette ? { palette: req.palette } : {}),
+          },
         },
         { width: w, height: h },
       );
@@ -318,6 +329,7 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       return {
         ...photoOf(row),
         style: req.style ?? "photo",
+        ...(req.palette ? { palette: req.palette } : {}),
         dataUrl: `data:${out.mime};base64,${Buffer.from(out.bytes).toString("base64")}`,
       };
     },

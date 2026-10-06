@@ -130,10 +130,44 @@ export function illustrationPrompt(prompt: string, period: string): string {
   ].join("\n");
 }
 
+/**
+ * The lesson's one picture look (design.picture_style, Greg 6 Oct), passed on every picture call.
+ * `illustration`: every generic picture is generated in one locked style and palette; named real
+ * things still come from Commons and Pexels, and history keeps ruling 163.
+ */
+export interface LessonLook {
+  style: "photo" | "illustration";
+  /** The theme's colours, in order (accent, accent2, background, ink). */
+  palette?: string[];
+  /** The style line (prompt agent's `illustration-style.txt`, `{{palette}}` filled by code). */
+  line?: string;
+}
+
+/** The default style line until the prompt agent's file lands: the ruling 163 painted look. */
+export const ILLUSTRATION_LINE =
+  "A hand-painted educational illustration, clearly a painting and not a photograph.";
+
+/** The palette key a look's pictures are stored and reused under. */
+export function paletteKey(look?: LessonLook): string | undefined {
+  return look?.style === "illustration" && look.palette?.length
+    ? look.palette.map((c) => c.trim().toLowerCase()).join(" ")
+    : undefined;
+}
+
+/** A generic picture in the lesson's locked illustration style: the same line on every call. */
+export function lessonIllustrationPrompt(prompt: string, look: LessonLook): string {
+  const palette = (look.palette ?? []).join(", ");
+  const line = (look.line ?? ILLUSTRATION_LINE).replace("{{palette}}", palette);
+  const withPalette =
+    look.line?.includes("{{palette}}") || !palette ? line : `${line}\nColour palette: ${palette}.`;
+  return [withPalette, prompt].join("\n");
+}
+
 interface Ask {
   text: string;
   named: string | null;
   aspect?: number;
+  look?: LessonLook;
 }
 
 /** The slot's plan from the director's answer; none when there is no usable answer. */
@@ -179,9 +213,16 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
     : first.mustShow;
   const counting = countedPhoto && countImagePrompt(countedPhoto);
   const illustrated = !counting && fallback === "illustration" && !!period;
+  // The lesson's locked look: a generic picture (not a real thing, not a count) is generated in it.
+  const looked = !counting && !real && ask.look?.style === "illustration";
+  const palette = looked ? paletteKey(ask.look) : undefined;
   const imagePrompt =
     counting ||
-    (illustrated && period ? illustrationPrompt(first.imagePrompt, period) : first.imagePrompt);
+    (illustrated && period
+      ? illustrationPrompt(first.imagePrompt, period)
+      : looked && ask.look
+        ? lessonIllustrationPrompt(first.imagePrompt, ask.look)
+        : first.imagePrompt);
   return {
     kind: "photo",
     request: {
@@ -190,10 +231,11 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       route: real ? "real" : "generic",
       imagePrompt,
       draw: null,
-      stockFirst: d.route === "pexels" && !countedPhoto,
+      stockFirst: d.route === "pexels" && !countedPhoto && !looked,
       ...(fallback ? { realFallback: fallback } : {}),
       ...(period ? { period } : {}),
-      ...(illustrated ? { style: "illustration" as const } : {}),
+      ...(illustrated || looked ? { style: "illustration" as const } : {}),
+      ...(palette ? { palette } : {}),
     },
     brief: {
       request: first.shows,
@@ -228,7 +270,11 @@ export async function findDirected(args: {
   stock: (brief: ImageBrief) => Promise<PlacedPhoto | undefined>;
   judgeMade: (brief: ImageBrief, picture: MadePicture) => Promise<boolean>;
   deps: DirectorDeps;
-}): Promise<PlacedPhoto | undefined> {
+  /** The lesson's picture look, the same on every call of the lesson. */
+  look?: LessonLook;
+  /** How the slot ended: the director's route, the ladder's step, and why it is empty when it is. */
+  onOutcome?: (o: PictureOutcome) => void;
+}): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await directPicture(
     {
@@ -249,6 +295,7 @@ export async function findDirected(args: {
     text: ask.subject,
     named: ask.named ?? null,
     ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
+    ...(args.look ? { look: args.look } : {}),
   });
   const log = (extra: Record<string, unknown>) =>
     deps.logger.info(
@@ -262,6 +309,11 @@ export async function findDirected(args: {
     );
   if (plan.kind === "none") {
     log({ plan: "none" });
+    args.onOutcome?.({
+      director: direction?.route ?? "failed",
+      via: "none",
+      reason: direction ? "director-none" : "director-failed",
+    });
     return undefined;
   }
   const req = plan.request;
@@ -277,5 +329,51 @@ export async function findDirected(args: {
     (made) => args.judgeMade(brief, made),
   );
   log({ via: out.via, ms: out.ms });
-  return out.photo;
+  const style = (out.photo as MadePicture | undefined)?.style;
+  args.onOutcome?.({
+    director: direction?.route ?? "failed",
+    via: out.via,
+    route: req.route,
+    ...(req.period ? { period: req.period } : {}),
+    ...(out.photo
+      ? {}
+      : {
+          reason:
+            req.route === "real" && (req.realFallback ?? "none") === "none"
+              ? "real-miss-no-fallback"
+              : "generation-refused-or-failed",
+        }),
+  });
+  if (!out.photo) return undefined;
+  // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
+  // and the period the request belongs to.
+  return {
+    ...out.photo,
+    look:
+      out.photo.source.provider === "generated"
+        ? style === "drawn"
+          ? "drawn"
+          : (style ?? "photo")
+        : "photo",
+    ...(req.period ? { period: req.period } : {}),
+  };
+}
+
+/** A placed picture with how it looks and the period it belongs to. */
+export type DirectedPhoto = PlacedPhoto & {
+  look: "photo" | "illustration" | "drawn";
+  period?: string;
+};
+
+export interface PictureOutcome {
+  director: string;
+  via: string;
+  route?: string;
+  period?: string;
+  /** Why the slot is empty: the director gave nothing, a real thing missed with no fallback, or generation was refused (cap, judge, or error). */
+  reason?:
+    | "director-none"
+    | "director-failed"
+    | "real-miss-no-fallback"
+    | "generation-refused-or-failed";
 }

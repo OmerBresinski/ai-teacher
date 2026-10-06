@@ -67,8 +67,13 @@ export interface BankRequest {
   realFallback?: RealFallback;
   /** The time and place a historical subject belongs to: the judge's context. */
   period?: string;
-  /** How a generation for this request looks: `illustration` is the painted one (ruling 163). */
+  /**
+   * How a generation for this request looks: `illustration` is the painted one (ruling 163) or the
+   * lesson's locked illustration style; absent is a photo.
+   */
   style?: "illustration";
+  /** The lesson's locked illustration palette (theme colours): a library row is reused only in it. */
+  palette?: string;
 }
 
 /**
@@ -78,7 +83,21 @@ export interface BankRequest {
 export type MadePicture = PlacedPhoto & {
   dataUrl?: string;
   style?: "photo" | "illustration" | "drawn";
+  /** The palette a generated illustration was made in (`BankRequest.palette`). */
+  palette?: string;
 };
+
+/**
+ * One locked look per lesson: a generated library row is reused only when it looks the way this
+ * request would be generated (photo or illustration, and an illustration in the same palette).
+ * Stock rows and drawn counts have no look to clash with.
+ */
+export function lookMatches(req: BankRequest, hit: MadePicture): boolean {
+  if (hit.source.provider !== "generated" || hit.style === "drawn") return true;
+  const want = req.style ?? "photo";
+  if ((hit.style ?? "photo") !== want) return false;
+  return want !== "illustration" || !req.palette || hit.palette === req.palette;
+}
 
 /**
  * Ruling 163: a historical request (one with a period) never places a photo-style generated
@@ -155,7 +174,7 @@ export async function findPicture(
   // A library hit is judged against this request's mustShow exactly like a fresh picture; one the
   // judge refuses is marked and never reused (SOL-SIMPLE: rows from the old counting prompt).
   const usable = async (hit: MadePicture): Promise<boolean> => {
-    if (!styleAllowed(req, hit)) return false;
+    if (!styleAllowed(req, hit) || !lookMatches(req, hit)) return false;
     if (req.draw || hit.style === "drawn" || !judgeMade) return true;
     if (!hit.dataUrl) return false;
     const verdict = await judgeMade(hit).catch(rethrowAbort);

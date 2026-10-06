@@ -323,3 +323,58 @@ describe("findPicture", () => {
     expect(ill.via).toBe("generated");
   });
 });
+
+describe("lesson look (dd-pics, 6 Oct)", () => {
+  const look = {
+    style: "illustration" as const,
+    palette: ["#E4572E", "#17BEBB", "#FFFDF7", "#1D1D1F"],
+  };
+  test("a generic picture in an illustration lesson is generated in the locked style and palette", () => {
+    const p = photoPlan(dir({ route: "pexels" }), { ...ask, look } as never);
+    expect(p.request.route).toBe("generic");
+    expect(p.request.style).toBe("illustration");
+    expect(p.request.stockFirst).toBe(false);
+    expect(p.request.palette).toBe("#e4572e #17bebb #fffdf7 #1d1d1f");
+    expect(p.request.imagePrompt?.split("\n")[0]).toContain("illustration");
+    expect(p.request.imagePrompt).toContain("#E4572E, #17BEBB, #FFFDF7, #1D1D1F");
+  });
+  test("every call of the lesson carries the same style line", () => {
+    const a = photoPlan(dir({}), { ...ask, look } as never).request.imagePrompt ?? "";
+    const b =
+      photoPlan(dir({ pictures: [pic({ imagePrompt: "A ship in a storm." })] }), {
+        ...ask,
+        look,
+      } as never).request.imagePrompt ?? "";
+    expect(a.split("\n").slice(0, 2)).toEqual(b.split("\n").slice(0, 2));
+  });
+  test("the prompt agent's line fills {{palette}}", () => {
+    const p = photoPlan(dir({}), {
+      ...ask,
+      look: { ...look, line: "Flat illustration in {{palette}} only." },
+    } as never);
+    expect(p.request.imagePrompt?.split("\n")[0]).toBe(
+      "Flat illustration in #E4572E, #17BEBB, #FFFDF7, #1D1D1F only.",
+    );
+  });
+  test("a named real thing still takes the real ladder (Commons), unstyled", () => {
+    const p = photoPlan(dir({ route: "commons", named: "work" }), { ...ask, look } as never);
+    expect(p.request.route).toBe("real");
+    expect(p.request.style).toBeUndefined();
+    expect(p.request.palette).toBeUndefined();
+  });
+  test("ruling 163 unchanged: a historical event keeps the painted period prompt", () => {
+    const p = photoPlan(dir({ route: "pexels", period: "Germany, 1923" }), {
+      ...ask,
+      look,
+    } as never);
+    expect(p.request.route).toBe("real");
+    expect(p.request.style).toBe("illustration");
+    expect(p.request.imagePrompt).toContain("Germany, 1923");
+    expect(p.request.palette).toBeUndefined();
+  });
+  test("a photo lesson is unchanged", () => {
+    const p = photoPlan(dir({}), { ...ask, look: { style: "photo" } } as never);
+    expect(p.request.style).toBeUndefined();
+    expect(p.request.imagePrompt).toBe(pic().imagePrompt);
+  });
+});

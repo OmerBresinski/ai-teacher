@@ -459,3 +459,27 @@ describe("ruling 163: no photo-style generated picture for a historical request"
     expect(out.via).toBe("generated");
   });
 });
+
+describe("lookMatches (one locked look per lesson)", () => {
+  const { lookMatches } = require("./photo-bank") as typeof import("./photo-bank");
+  const made = (
+    style?: "photo" | "illustration" | "drawn",
+    palette?: string,
+    provider = "generated",
+  ) => ({ src: "/files/x", alt: "", source: { provider }, style, palette }) as never;
+  const req = (style?: "illustration", palette?: string) =>
+    ({ text: "a ship", named: null, route: "generic", style, palette }) as never;
+  test("an illustration lesson never reuses a generated photo, nor another palette", () => {
+    expect(lookMatches(req("illustration", "a b"), made("photo"))).toBe(false);
+    expect(lookMatches(req("illustration", "a b"), made("illustration", "c d"))).toBe(false);
+    expect(lookMatches(req("illustration", "a b"), made("illustration", "a b"))).toBe(true);
+  });
+  test("a photo request never reuses a generated illustration; stock and drawn always fit", () => {
+    expect(lookMatches(req(), made("illustration", "a b"))).toBe(false);
+    expect(lookMatches(req(), made())).toBe(true);
+    expect(lookMatches(req("illustration", "a b"), made(undefined, undefined, "pexels"))).toBe(
+      true,
+    );
+    expect(lookMatches(req("illustration", "a b"), made("drawn"))).toBe(true);
+  });
+});
