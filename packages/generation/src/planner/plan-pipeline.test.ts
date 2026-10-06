@@ -205,9 +205,12 @@ describe("the retrieval starter (lab r2)", () => {
       expect(text(at)).toContain(r.question);
       expect(text(at)).toContain(r.answer);
     }
-    // Each answer is revealed inside its question's card (layout audit row cards), never shown up front.
+    // Each answer is revealed beside its question, or (ruling 159: too long to sit beside) all in
+    // one panel on one step; never shown up front.
     const reveals = lesson.slides[at]?.elements.filter((e) => e.name === "Row reveal") ?? [];
-    expect(reveals).toHaveLength(RETRIEVAL.length);
+    const panel = lesson.slides[at]?.elements.find((e) => e.name === "Answers");
+    if (reveals.length === 0) expect(panel?.revealStep).toBeGreaterThanOrEqual(1);
+    else expect(reveals).toHaveLength(RETRIEVAL.length);
     for (const r of reveals) expect(r.revealStep).toBeGreaterThanOrEqual(1);
     // Nowhere else: not a check, not the exit quiz.
     lesson.slides.forEach((_, i) => {

@@ -1406,7 +1406,19 @@ export function adapt(s: LightSlide): { form: string; layout: string; out: Writt
       return {
         form: "worked-example",
         layout: "default",
-        out: { heading: s.heading, question: q.question, steps: s.items, notes },
+        out: {
+          heading: s.heading,
+          question: q.question,
+          // A your-turn question after the worked one stays on the slide as the last step; its
+          // answer goes to the notes (FULL-RUN y5 s6: it was dropped while the notes asked for it).
+          steps: [...s.items, ...s.questions.slice(1).map((x) => x.question)],
+          notes: [
+            notes,
+            ...s.questions.slice(1).map((x) => (x.answer ? `Answer: ${x.answer}` : "")),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        },
       };
     case "hinge": {
       const letter = /^\s*[A-Da-d]\s*[).:]\s*/;

@@ -91,7 +91,8 @@ function setSpec(form: SetForm, out: Written, role?: string): SlideSpec {
   const qs = (out.questions ?? []) as SetQuestion[];
   const { kind } = SET_KIND[form];
   const heading = isPractice(form, role) ? "Practice" : SET_KIND[form].heading;
-  const items = qs.map((q) => q.question);
+  // The list numbers its items; a number the writer wrote in front is not shown twice.
+  const items = qs.map((q) => q.question.replace(/^\s*\d{1,2}[.)]\s+/, ""));
   const answers = qs.map((q) => q.answer);
   const footnote = `Answers: ${answers.map((a, i) => `${i + 1} ${a}`).join("  ·  ")}`;
   const listed = `Answers: ${answers.map((a, i) => `${i + 1}. ${a}`).join(" ")}`;

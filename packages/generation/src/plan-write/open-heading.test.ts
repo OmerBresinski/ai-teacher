@@ -68,3 +68,47 @@ test("a one-question open response carries the writer's heading and task lines (
     "Tell or write what changes.",
   ]);
 });
+
+// FULL-RUN y5 s9/s10: the writer numbered its questions ("1. Find ⅙ of 54 stickers."), and the
+// plain list numbered them again ("1  1. Find …").
+test("a set's questions lose a number the writer wrote, so the list numbers them once", () => {
+  const r = renderWritten("check-set", "default", {
+    questions: [
+      { question: "1. Find ⅙ of 54 stickers.", answer: "9" },
+      { question: "2) What is ⅝ of 48 kg?", answer: "30 kg" },
+      { question: "10 sweets are shared. How many each?", answer: "5" },
+    ],
+    notes: "",
+  });
+  expect((r.spec as { items?: string[] }).items).toEqual([
+    "Find ⅙ of 54 stickers.",
+    "What is ⅝ of 48 kg?",
+    "10 sweets are shared. How many each?",
+  ]);
+});
+
+// FULL-RUN y5 s6/s8: a worked example's "Your turn" question was dropped by code while the notes
+// told pupils to answer it.
+test("a worked example keeps its your-turn question on the slide, its answer in the notes", () => {
+  const [light] = fromTeacher3([], {
+    titlePicture: null,
+    slides: [
+      {
+        objectives: [1],
+        form: "worked-example",
+        heading: "Fractions of measures",
+        content: ["One eighth: 40 ÷ 8 = 5 cm.", "Three eighths: 5 × 3 = 15 cm."],
+        questions: [
+          { question: "What is ⅜ of a 40 cm ribbon?", answer: "15 cm." },
+          { question: "Your turn: A jug holds 35 litres. What is ⅖ of it?", answer: "14 litres." },
+        ],
+        picture: null,
+        notes: "Pupils answer the jug question.",
+      },
+    ],
+  } as never).slides;
+  const a = adapt(light as never);
+  const steps = (a.out as { steps?: string[] }).steps ?? [];
+  expect(steps[steps.length - 1]).toBe("Your turn: A jug holds 35 litres. What is ⅖ of it?");
+  expect(String((a.out as { notes?: string }).notes)).toContain("14 litres.");
+});

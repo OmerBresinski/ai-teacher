@@ -1331,7 +1331,7 @@ function structureSet(
       foot ? SAFE_BOTTOM - footH - SPACE[3] : SAFE_BOTTOM,
       t,
       ids,
-      { plain: true, besideOnly: slide.kind === "exit-ticket" },
+      { plain: true, besideOnly: true },
     );
     if (placed) {
       const moved = rest.map((e) =>

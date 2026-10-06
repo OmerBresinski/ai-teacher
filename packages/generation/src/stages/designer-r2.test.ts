@@ -47,11 +47,18 @@ describe("r2 leaks", () => {
   });
 
   test("a set that fails the save gate gets a reason naming its themes", () => {
-    const long = "A very long answer that keeps going and going ".repeat(6).trim();
-    const coded = codedSetSpec(starter, starterFacts([long, long, long]), "x");
-    if (!coded) throw new Error("no starter");
-    expect(setFits(coded.spec)).toBe(false);
-    expect(setFitReason(coded.spec)).toMatch(/^fails on \d+ of 10 themes \(/);
+    // Ruling 159: long answers no longer take room under their questions, so the set is crowded
+    // by its questions: five at the item limit.
+    const q = "A very long question that keeps going and going ".repeat(4).trim().slice(0, 158);
+    const spec = {
+      kind: "starter",
+      factRefs: [],
+      heading: "Quick check",
+      items: [1, 2, 3, 4, 5].map((n) => `${q}${n}?`),
+      footnote: "Answers: 1 a  ·  2 b  ·  3 c  ·  4 d  ·  5 e",
+    } as unknown as Parameters<typeof setFits>[0];
+    expect(setFits(spec)).toBe(false);
+    expect(setFitReason(spec)).toMatch(/^fails on \d+ of 10 themes \(/);
   });
 });
 
