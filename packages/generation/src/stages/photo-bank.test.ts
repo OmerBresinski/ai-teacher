@@ -3,6 +3,7 @@ import { pickOrRequerySchemaFor } from "../prompts/pick-or-requery-photo";
 import { gatePasses, type PlacedPhoto } from "./illustrate";
 import {
   type BankRequest,
+  createVerdictCache,
   findPicture,
   type MadePicture,
   mustShowOf,
@@ -154,6 +155,64 @@ describe("findPicture ladder", () => {
     expect(out.photo).toBeUndefined();
     expect(rejected.length).toBe(calls.filter((c) => c === "generate").length);
     expect(rejected.length).toBeGreaterThan(0);
+  });
+
+  test("a library pair already judged is not judged again; a different request is", async () => {
+    const hit = { ...photo("/files/bank/old.png"), dataUrl: "data:image/png;base64,AA==" };
+    const cache = createVerdictCache();
+    let judged = 0;
+    const judge = async () => {
+      judged++;
+      return true;
+    };
+    for (let i = 0; i < 2; i++) {
+      const { bank } = fakeBank(hit);
+      const out = await findPicture(
+        req("generic"),
+        bank,
+        async () => undefined,
+        signal,
+        judge,
+        Date.now,
+        cache,
+      );
+      expect(out.via).toBe("library");
+    }
+    expect(judged).toBe(1);
+    const { bank } = fakeBank(hit);
+    await findPicture(
+      { ...req("generic"), text: "something else" },
+      bank,
+      async () => undefined,
+      signal,
+      judge,
+      Date.now,
+      cache,
+    );
+    expect(judged).toBe(2);
+  });
+
+  test("a failed judge call is not cached", async () => {
+    const hit = { ...photo("/files/bank/old2.png"), dataUrl: "data:image/png;base64,AA==" };
+    const cache = createVerdictCache();
+    let judged = 0;
+    const judge = async () => {
+      judged++;
+      throw new Error("provider down");
+    };
+    for (let i = 0; i < 2; i++) {
+      const { bank } = fakeBank(hit);
+      await findPicture(
+        req("generic"),
+        bank,
+        async () => undefined,
+        signal,
+        judge,
+        Date.now,
+        cache,
+      );
+    }
+    expect(judged).toBe(2);
   });
 
   test("a library hit is reused: no search, no generation", async () => {

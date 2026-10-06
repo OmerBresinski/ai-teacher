@@ -28,6 +28,7 @@ import {
 } from "../../packages/generation/src/stages/illustrate";
 import { mustShowOf } from "../../packages/generation/src/stages/photo-bank";
 import {
+  createDirectorBatcher,
   findDirected,
   type LessonLook,
 } from "../../packages/generation/src/stages/picture-director";
@@ -519,6 +520,28 @@ export function pictureService(opts: {
       },
     }),
   );
+  /**
+   * DIRECTOR_BATCH=1 with the prompt agent's `prompts/shared/director-batch.txt`: picture slots
+   * asked within DIRECTOR_BATCH_WINDOW_MS (default 400) share one director call (round 3 COST.md).
+   */
+  const batchFile = `${BAKEOFF}/prompts/shared/director-batch.txt`;
+  const direct =
+    process.env.DIRECTOR_BATCH === "1" && existsSync(batchFile)
+      ? createDirectorBatcher(
+          {
+            ai,
+            budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
+            effortFor: () => "low",
+            signal: new AbortController().signal,
+            logger,
+            now: () => new Date(),
+            ids: () => newId(),
+            context: { lessonId: "bakeoff-director-batch", jobId: "bakeoff-director-batch" },
+          } as never,
+          readFileSync(batchFile, "utf8"),
+          Number(process.env.DIRECTOR_BATCH_WINDOW_MS ?? "400"),
+        )
+      : undefined;
   /** The director's AI spend so far (from its call log). */
   const aiSpend = () => {
     try {
@@ -671,6 +694,7 @@ export function pictureService(opts: {
       },
       deps: deps as never,
       ...(look ? { look } : {}),
+      ...(direct ? { direct } : {}),
       onOutcome: (o: object) =>
         appendFileSync(
           `${opts.runDir}/log.jsonl`,

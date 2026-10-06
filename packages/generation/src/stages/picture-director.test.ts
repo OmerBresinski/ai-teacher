@@ -11,7 +11,12 @@ import {
   type PictureBank,
   REAL_FALLBACK,
 } from "./photo-bank";
-import { countImagePrompt, directPicture, planPicture } from "./picture-director";
+import {
+  countImagePrompt,
+  createDirectorBatcher,
+  directPicture,
+  planPicture,
+} from "./picture-director";
 import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
 
 const pic = (over: Partial<PictureDirection["pictures"][number]> = {}) => ({
@@ -205,6 +210,23 @@ describe("directPicture", () => {
     expect(ai.calls).toHaveLength(1);
     const bad = createFakeAi({ script: ["not json", "still not json", "nope"] });
     expect(await directPicture(input, recordingDeps(bad))).toBeUndefined();
+  });
+});
+
+describe("createDirectorBatcher", () => {
+  test("slots asked together share one call; a slot the batch missed gets its own", async () => {
+    const a = dir({ route: "commons" });
+    const b = dir({ route: "none" });
+    const ai = createFakeAi({
+      script: [JSON.stringify({ slots: [{ id: "p1", ...a }] }), JSON.stringify(b)],
+      usage: { inputTokens: 900, outputTokens: 300 },
+    });
+    const input = DIRECTOR_FIXTURES[0]?.input as PictureDirectorInput;
+    const direct = createDirectorBatcher(recordingDeps(ai), "batched system", 5);
+    const [x, y] = await Promise.all([direct(input), direct(input)]);
+    expect(x).toEqual(a);
+    expect(y).toEqual(b);
+    expect(ai.calls).toHaveLength(2);
   });
 });
 

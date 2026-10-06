@@ -5,6 +5,7 @@
  * in code. `@tj/generation` sees only the `PictureBank` interface; the worker closes it over the
  * database, storage, embedder and generator.
  */
+import { createHash } from "node:crypto";
 import type { CountArray } from "@tj/images";
 import type { PlacedPhoto } from "./illustrate";
 
@@ -129,6 +130,37 @@ export interface PictureBank {
   reject?(photo: PlacedPhoto): Promise<void>;
 }
 
+/**
+ * The judge's verdicts on library reuse, by (stored picture, request): a pair already judged is
+ * not judged again (BAKEOFF round 3 COST.md). Only real verdicts are kept, never a failed call.
+ */
+export interface VerdictCache {
+  get(key: string): boolean | undefined;
+  set(key: string, verdict: boolean): void;
+}
+
+/** An in-process cache holding the newest `max` verdicts. */
+export function createVerdictCache(max = 2000): VerdictCache {
+  const m = new Map<string, boolean>();
+  return {
+    get: (k) => m.get(k),
+    set: (k, v) => {
+      m.delete(k);
+      m.set(k, v);
+      if (m.size > max) m.delete(m.keys().next().value as string);
+    },
+  };
+}
+
+/** The worker's shared cache: library rows are reused across lessons in one process. */
+export const sharedVerdictCache = createVerdictCache();
+
+/** The cache key: the stored picture and a hash of what the request asks it to show. */
+export function verdictKey(req: BankRequest, picture: PlacedPhoto): string {
+  const ask = JSON.stringify([req.text, req.named, req.period ?? "", req.style ?? "", req.route]);
+  return `${picture.src}#${createHash("sha256").update(ask).digest("hex").slice(0, 16)}`;
+}
+
 export type BankVia = "library" | "fetched" | "generated" | "generated-faithful" | "none";
 
 export interface BankOutcome {
@@ -151,6 +183,7 @@ export async function findPicture(
   signal: AbortSignal,
   judgeMade?: (picture: MadePicture, reuse?: boolean) => Promise<boolean>,
   now: () => number = Date.now,
+  verdicts?: VerdictCache,
 ): Promise<BankOutcome> {
   const t0 = now();
   const done = (photo: PlacedPhoto | undefined, via: BankVia): BankOutcome => ({
@@ -179,7 +212,11 @@ export async function findPicture(
     if (!styleAllowed(req, hit) || !lookMatches(req, hit)) return false;
     if (req.draw || hit.style === "drawn" || !judgeMade) return true;
     if (!hit.dataUrl) return false;
+    const key = verdictKey(req, hit);
+    const known = verdicts?.get(key);
+    if (known !== undefined) return known;
     const verdict = await judgeMade(hit, true).catch(rethrowAbort);
+    if (verdict === true || verdict === false) verdicts?.set(key, verdict);
     if (verdict) return true;
     // A judge that failed says nothing about the row: skip it, but only a refusal marks it.
     if (verdict === false) await bank.reject?.(hit).catch(rethrowAbort);

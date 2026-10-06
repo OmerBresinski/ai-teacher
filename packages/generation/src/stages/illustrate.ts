@@ -697,6 +697,17 @@ export async function judgeMade(args: {
   return verdict.pick === "made" && gatePasses(args.brief, verdict);
 }
 
+/**
+ * The picture judge's OpenAI image detail (BAKEOFF round 3 COST.md). JUDGE_IMAGE_DETAIL overrides it
+ * for the lab ("" or "auto" sends none).
+ */
+export const JUDGE_IMAGE_DETAIL: "low" | "high" | undefined = "low";
+export function judgeImageDetail(env = process.env.JUDGE_IMAGE_DETAIL): "low" | "high" | undefined {
+  if (env === undefined) return JUDGE_IMAGE_DETAIL;
+  const v = env.trim().toLowerCase();
+  return v === "low" || v === "high" ? v : undefined;
+}
+
 async function judge(
   args: PlaceArgs,
   pool: PhotoResult[],
@@ -740,6 +751,7 @@ async function judge(
     schema: pickOrRequerySchemaFor(brief),
     maxOutputTokens: MAX_JUDGE_TOKENS,
     images: pool.map((c) => ({ id: c.id, url: c.src.tiny })),
+    ...(judgeImageDetail() ? { imageDetail: judgeImageDetail() } : {}),
   });
   return call.output;
 }

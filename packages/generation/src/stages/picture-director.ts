@@ -4,8 +4,10 @@
  * image prompt, a count and a period. Code checks the answer and runs the library ladder. A slot
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
+
 import type { ImageBrief } from "@tj/domain/documents";
 import { anchorQueries, type CountArray } from "@tj/images";
+import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
 import {
   PICTURE_DIRECTOR_VERSION,
@@ -22,6 +24,7 @@ import {
   type MadePicture,
   type PictureBank,
   REAL_FALLBACK,
+  sharedVerdictCache,
 } from "./photo-bank";
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
@@ -48,6 +51,90 @@ export async function directPicture(
     if ((error instanceof Error && error.name === "AbortError") || deps.signal.aborted) throw error;
     return undefined;
   }
+}
+
+/** The batched answer: one direction per slot, by the slot's id. */
+export const PictureDirectorBatchSchema = z.object({
+  slots: z.array(PictureDirectorSchema.extend({ id: z.string() })),
+});
+
+/** The batched user turn: the lesson once, then each slot's slide and request under its id. */
+export function pictureDirectorBatchUser(
+  slots: { id: string; input: PictureDirectorInput }[],
+): string {
+  const first = slots[0]?.input;
+  if (!first) return "";
+  const head = [
+    `Lesson: ${first.yearGroup} ${first.subject}, "${first.title}", taught in ${first.country}.`,
+    `Picture style for this lesson: ${first.style ?? "photo"}`,
+  ];
+  const blocks = slots.map(({ id, input }) => {
+    // The per-slot lines are the single prompt's, minus the lesson and style lines given once.
+    const lines = pictureDirectorPrompt(input)
+      .user.split("\n")
+      .filter((l) => !l.startsWith("Lesson: ") && !l.startsWith("Picture style for this lesson:"));
+    return [`Slot ${id}`, ...lines].join("\n");
+  });
+  return [head.join("\n"), ...blocks].join("\n\n");
+}
+
+/**
+ * Every slot's direction in one call (BAKEOFF round 3 COST.md), with the batched system prompt the
+ * caller supplies. A missing slot, or a failed call, is undefined for that slot; an abort throws.
+ */
+export async function directPictures(
+  slots: { id: string; input: PictureDirectorInput }[],
+  deps: DirectorDeps,
+  system: string,
+): Promise<Map<string, PictureDirection>> {
+  const out = new Map<string, PictureDirection>();
+  if (slots.length === 0) return out;
+  const user = pictureDirectorBatchUser(slots);
+  try {
+    const call = await callStructured({
+      deps,
+      stage: "illustrate",
+      cls: "small",
+      effort: "low",
+      prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
+      input: slots,
+      schema: PictureDirectorBatchSchema,
+      maxOutputTokens: 3000 * Math.min(slots.length, 6),
+    });
+    for (const { id, ...direction } of call.output.slots) out.set(id, direction);
+  } catch (error) {
+    if ((error instanceof Error && error.name === "AbortError") || deps.signal.aborted) throw error;
+  }
+  return out;
+}
+
+/**
+ * Slots asked within `windowMs` of the first share one batched call; a slot the batch missed falls
+ * back to its own call. With the window as long as the plan's stream, a lesson makes one call.
+ */
+export function createDirectorBatcher(
+  deps: DirectorDeps,
+  system: string,
+  windowMs = 400,
+): (input: PictureDirectorInput) => Promise<PictureDirection | undefined> {
+  let queue: {
+    id: string;
+    input: PictureDirectorInput;
+    done: (d: Promise<PictureDirection | undefined>) => void;
+  }[] = [];
+  let n = 0;
+  const flush = () => {
+    const batch = queue;
+    queue = [];
+    const answers = directPictures(batch, deps, system);
+    for (const slot of batch)
+      slot.done(answers.then((m) => m.get(slot.id) ?? directPicture(slot.input, deps)));
+  };
+  return (input) =>
+    new Promise((resolve) => {
+      if (queue.length === 0) setTimeout(flush, windowMs);
+      queue.push({ id: `p${++n}`, input, done: resolve });
+    });
 }
 
 export interface DirectedPicture {
@@ -297,26 +384,25 @@ export async function findDirected(args: {
   deps: DirectorDeps;
   /** The lesson's picture look, the same on every call of the lesson. */
   look?: LessonLook;
+  /** How the director is asked (a batcher); absent, one call for this slot. */
+  direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
   /** How the slot ended: the director's route, the ladder's step, and why it is empty when it is. */
   onOutcome?: (o: PictureOutcome) => void;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
-  const direction = await directPicture(
-    {
-      yearGroup: lesson.yearGroup ?? "",
-      subject: lesson.subject ?? "",
-      title: lesson.title,
-      country: args.country,
-      heading: args.slide.heading,
-      text: args.slide.text ?? "",
-      point: (args.slide.point ?? "").slice(0, 400),
-      request: ask.subject,
-      mustShow: b.mustShow ?? [],
-      aspect: b.aspect ?? 1.6,
-      ...(args.look ? { style: args.look.style } : {}),
-    },
-    deps,
-  );
+  const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
+    yearGroup: lesson.yearGroup ?? "",
+    subject: lesson.subject ?? "",
+    title: lesson.title,
+    country: args.country,
+    heading: args.slide.heading,
+    text: args.slide.text ?? "",
+    point: (args.slide.point ?? "").slice(0, 400),
+    request: ask.subject,
+    mustShow: b.mustShow ?? [],
+    aspect: b.aspect ?? 1.6,
+    ...(args.look ? { style: args.look.style } : {}),
+  });
   const plan = planPicture(direction, {
     text: ask.subject,
     named: ask.named ?? null,
@@ -353,6 +439,8 @@ export async function findDirected(args: {
     () => args.stock(brief),
     deps.signal,
     (made, reuse) => args.judgeMade(brief, made, reuse),
+    Date.now,
+    sharedVerdictCache,
   );
   log({ via: out.via, ms: out.ms });
   const style = (out.photo as MadePicture | undefined)?.style;

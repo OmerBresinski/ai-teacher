@@ -102,6 +102,8 @@ export interface CallStructuredOptions<I, T> {
   images?: { id: string; url: string }[] | undefined;
   /** Put the images before the text, so a fixed image is part of a cacheable prefix. */
   imagesFirst?: boolean | undefined;
+  /** OpenAI image detail for every image part; absent sends none (the provider's `auto`). */
+  imageDetail?: "low" | "high" | "auto" | undefined;
   /**
    * Stream the answer (the lesson designer's design cycles): called with each partial object as it
    * parses, so a caller can act on a slot once the next one has started. The complete answer is
@@ -400,6 +402,7 @@ export async function callStructured<I, T>(
 ): Promise<CallResult<T>> {
   const { deps, stage, cls, prompt, input, schema, soft, maxOutputTokens, images, imagesFirst } =
     options;
+  const imageDetail = options.imageDetail;
   // The stage's effort unless the host overrides it (the lab's effort bench).
   const effort =
     deps.effortFor?.(stage, prompt.version.replace(/\.v\d+$/, ""), options.effort) ??
@@ -439,7 +442,7 @@ export async function callStructured<I, T>(
           const streamed = streamText({
             model,
             system: prompt.system,
-            ...userTurn(text, images, imagesFirst),
+            ...userTurn(text, images, imagesFirst, imageDetail),
             output,
             abortSignal,
             maxOutputTokens,
@@ -460,7 +463,7 @@ export async function callStructured<I, T>(
         generateText({
           model,
           system: prompt.system,
-          ...userTurn(text, images, imagesFirst),
+          ...userTurn(text, images, imagesFirst, imageDetail),
           output,
           abortSignal,
           maxOutputTokens,
@@ -647,12 +650,14 @@ function userTurn(
   text: string,
   images: { id: string; url: string }[] | undefined,
   imagesFirst = false,
+  imageDetail?: "low" | "high" | "auto",
 ): { prompt: string } | { messages: ModelMessage[] } {
   if (!images || images.length === 0) return { prompt: text };
   const files = images.map((image) => ({
     type: "file" as const,
     data: new URL(image.url),
     mediaType: imageMediaType(image.url),
+    ...(imageDetail ? { providerOptions: { openai: { imageDetail } } } : {}),
   }));
   const words = { type: "text" as const, text };
   return {
