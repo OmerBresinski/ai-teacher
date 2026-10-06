@@ -218,8 +218,8 @@ export const armR: ArmPlugin = {
               shows: f.shows,
               mustSee: f.must_see ?? [],
               named: f.subject === "named",
-              // Sequence frames and compare cards are fixed; the slide panel crops round subjects or contains.
-              ...(shapes[key] ? { aspect: shapes[key], fixedShape: key !== "picture" } : {}),
+              // Every R photo box is fixed (the reference never resizes), so every ask is fixed-shape.
+              ...(shapes[key] ? { aspect: shapes[key], fixedShape: true } : {}),
             },
     );
   },
