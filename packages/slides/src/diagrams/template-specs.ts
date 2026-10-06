@@ -6,6 +6,42 @@
 import type { DiagramSpecInput } from "./schema";
 
 export const TEMPLATE_SPECS: Record<string, DiagramSpecInput> = {
+  // r4 (external review of y11): temperature, collision outcome, concentration, surface area.
+  "particles-temperature": {
+    kind: "particles",
+    alt: "Gas particles at 20 °C and 80 °C",
+    show: "compare",
+    panels: [
+      { state: "gas", count: 10, energy: 20 },
+      { state: "gas", count: 10, energy: 80 },
+    ],
+    captions: ["20 °C", "80 °C"],
+    notes: ["Slower", "Faster"],
+  },
+  "particles-collision": {
+    kind: "particles",
+    alt: "Collisions with and without enough energy",
+    show: "collision",
+    outcomes: ["bounces", "reacts"],
+    captions: ["Low energy", "High energy"],
+  },
+  "particles-concentration": {
+    kind: "particles",
+    alt: "Lower and higher concentration",
+    show: "compare",
+    panels: [
+      { state: "liquid", count: 9, extra: 3 },
+      { state: "liquid", count: 9, extra: 9 },
+    ],
+    captions: ["Dilute", "Concentrated"],
+    key: ["Water", "Acid"],
+  },
+  "cubes-surface-area": {
+    kind: "cubes",
+    alt: "One cube beside the same volume cut into eight small cubes",
+    split: 2,
+    areas: true,
+  },
   "particles-three": {
     kind: "particles",
     alt: "Particles in a solid, a liquid and a gas.",
