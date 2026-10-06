@@ -589,7 +589,15 @@ function columnText(
 
 const TITLE_PANEL = { x: 496, y: 48, w: 400, h: 444 };
 const BLEED = { x: 504, y: 0, w: 456, h: 540 };
-const COMPARE_PH = 140;
+/** Compare with pictures: one card from under a one-line heading to the slide's foot. */
+const CMP = { y: 108, h: 389 }; // to the safe-area foot (497)
+const comparePicW = (n: number) => Math.floor((G.width - 24 * (n - 1)) / n);
+function comparePicLines(st: Stage, n: number) {
+  const s = scaleFor(themeFor(st), st);
+  const ph = Math.round((comparePicW(n) - 20) * 0.75);
+  const room = CMP.h - 10 - ph - 10 - s.lead * LH.lead - 4 - 8;
+  return Math.max(0, Math.floor(room / (s.body * LH.body)));
+}
 const BIG = { x: FULL.x, y: BAND.y, w: FULL.w, h: 262 };
 const BIG_CAP = { y: BIG.y + BIG.h + 14, h: 488 - (BIG.y + BIG.h + 14) };
 
@@ -993,11 +1001,11 @@ export const REFERENCES: RefDef[] = [
         min: 2,
         max: 3,
         fields: {
-          picture: { picture: "photo", aspect: 404 / COMPARE_PH },
+          picture: { picture: "photo", aspect: 4 / 3 },
           label: { role: "lead", w: 360, lines: 1, weight: 700 },
           text: { role: "body", w: 360, lines: linesIn(st, 300 - 2 * 26 - 40) },
         },
-        note: `Label 1-3 words. picture is optional per column (all columns or none): a photo across the top of each card, which leaves the text about ${linesIn(st, 324 - COMPARE_PH - 2 * 22 - 12) - 1} lines. With 3 columns each text is about 60% as wide.`,
+        note: `Label 1-3 words. picture is optional per column (all columns or none). With pictures each card is a full-width 4:3 photo band over its label and text: the heading must fit 1 line, and the text holds about ${comparePicLines(st, 2)} line(s) of ${charsPerLine(themeFor(st), st, "body", comparePicW(2) - 28)} characters with 2 columns, ${comparePicLines(st, 3)} lines of ${charsPerLine(themeFor(st), st, "body", comparePicW(3) - 28)} with 3. Without pictures, with 3 columns each text is about 60% as wide.`,
       },
     ],
     draw: (c, v) => {
@@ -1007,22 +1015,70 @@ export const REFERENCES: RefDef[] = [
       const gap = 24;
       const w = Math.floor((FULL.w - gap * (n - 1)) / n);
       const withPics = cols.some((col) => fig(col.picture));
-      const pad = withPics ? 22 : 26;
-      const y = withPics ? 162 : 172;
-      const h = withPics ? 324 : 300;
-      const top = withPics ? COMPARE_PH : 0;
+      if (withPics) {
+        // T's rule (HARNESS Update 5): equal full-width cards, each a full 4:3 photo band at the
+        // card's inner width, then the label and text. The card runs from under a one-line heading
+        // to the foot of the slide.
+        const hd = str(v.heading);
+        if (hd && linesOf(c, "heading", hd, "heading", G.width) > 1)
+          flag(c, "heading", "compare with pictures: heading over 1 line");
+        const pad = 10;
+        const ph = Math.round((w - 2 * pad) * 0.75);
+        cols.forEach((col, k) => {
+          const x = FULL.x + k * (w + gap);
+          card(c, { x, y: CMP.y, w, h: CMP.h });
+          const pf = fig(col.picture);
+          if (pf)
+            figureBox(
+              c,
+              "columns",
+              pf,
+              { x: x + pad, y: CMP.y + pad, w: w - 2 * pad, h: ph },
+              {
+                radius: Math.max(4, Math.min(c.t.radius, 16) - 4),
+              },
+            );
+          const lab = str(col.label) ?? "";
+          const txt = str(col.text) ?? "";
+          const iw = w - 28;
+          const ty = CMP.y + pad + ph + 10;
+          const lh = heightOf(c, "columns", lab, "lead", iw, 700);
+          const th = heightOf(c, "columns", txt, "body", iw);
+          if (ty + lh + 4 + th > CMP.y + CMP.h - 8)
+            flag(c, "columns", `card text ${lh + 4 + th}/${CMP.y + CMP.h - 8 - ty}pt`);
+          put(
+            c,
+            "columns",
+            lab,
+            "lead",
+            { x: x + 14, y: ty, w: iw },
+            {
+              color: c.t.colors.accent,
+              weight: 700,
+              name: "Label",
+            },
+          );
+          put(
+            c,
+            "columns",
+            txt,
+            "body",
+            { x: x + 14, y: ty + lh + 4, w: iw },
+            {
+              color: c.t.colors.ink,
+              name: "Text",
+            },
+          );
+        });
+        return;
+      }
+      const pad = 26;
+      const y = 172;
+      const h = 300;
+      const top = 0;
       cols.forEach((col, k) => {
         const x = FULL.x + k * (w + gap);
         card(c, { x, y, w, h });
-        const pf = fig(col.picture);
-        if (pf)
-          figureBox(
-            c,
-            "columns",
-            pf,
-            { x, y, w, h: COMPARE_PH },
-            { radius: Math.min(c.t.radius, 16) },
-          );
         const lab = str(col.label) ?? "";
         const txt = str(col.text) ?? "";
         const iw = w - 2 * pad;
