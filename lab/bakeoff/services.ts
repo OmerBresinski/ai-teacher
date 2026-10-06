@@ -322,6 +322,8 @@ export type PhotoAsk = {
   aspect?: number;
   /** The slot crops to its own box: a generic stock photo that would only fit shrunk is refused (generation renders at the slot's shape). */
   fixedShape?: boolean;
+  /** A set member: false when the set's panels are different things compared (still made together). */
+  sameSubject?: boolean;
   /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
   style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
@@ -339,7 +341,7 @@ export type PhotoResult = {
   provider?: string;
   source?: unknown;
   /** How the picture looks: stock is a photo; generated is photo, illustration or drawn (ruling 163 gate). */
-  style?: "photo" | "illustration" | "drawn";
+  style?: "photo" | "illustration" | "drawn" | "house";
   /** The period the request belongs to, when the director gave one (ruling 163 gate). */
   period?: string;
   /** The same-subject set this picture was made in (one strip, cut apart). */
@@ -350,6 +352,8 @@ export type PhotoResult = {
 export function pictureService(opts: {
   /** The lesson's picture style and theme palette, read when each generation starts. */
   styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] };
+  /** `generate`: every generic picture is made in the house photo look (no stock, no other looks). */
+  generic?: "stock-first" | "generate";
   runDir: string;
   pgPort: number;
   ledger: Ledger;
@@ -481,7 +485,10 @@ export function pictureService(opts: {
     // The director's route decides what is a real thing (brief.specific), not the arm's flag: the
     // y10 bake-off asks for Prospero were routed to Commons and then never searched.
     const illustrated = ask.style === "illustration";
-    const look = lessonLook(opts.styleOf?.(), ask.style);
+    const look = lessonLook(
+      { ...opts.styleOf?.(), ...(opts.generic ? { generic: opts.generic } : {}) },
+      ask.style,
+    );
     let madeBoxes: Box4[] | undefined;
     const stock = async (first: unknown) => {
       if (illustrated && !(first as { specific?: boolean }).specific) return undefined;
@@ -510,11 +517,12 @@ export function pictureService(opts: {
       country: "England",
       index: ask.index,
       stock: stock as never,
-      judgeMade: (brief: unknown, made: { dataUrl?: string }) =>
+      judgeMade: (brief: unknown, made: { dataUrl?: string }, reuse?: boolean) =>
         made.dataUrl
           ? judgeMade({
               lesson: pickerLesson(lesson, ask.index) as never,
               index: ask.index,
+              ...(reuse ? { reuse } : {}),
               brief: brief as never,
               deps: deps as never,
               dataUrl: made.dataUrl,
@@ -614,9 +622,18 @@ export function pictureService(opts: {
       images,
       context: { lessonId: lesson.id, jobId: `bakeoff-${lesson.id}` },
     };
-    const look = lessonLook(opts.styleOf?.(), asks[0]?.style);
+    const look = lessonLook(
+      { ...opts.styleOf?.(), ...(opts.generic ? { generic: opts.generic } : {}) },
+      asks[0]?.style,
+    );
     const shows = asks.map((a) => a.shows);
-    const prompt = setImagePrompt(shows, look);
+    // Compare cards of different things are still one set (one look, one scale), framed as a
+    // matched set rather than one individual.
+    const prompt = setImagePrompt(
+      shows,
+      look,
+      asks.every((a) => a.sameSubject !== false),
+    );
     const aspect = asks[0]?.aspect ?? 4 / 3;
     runLog({ ev: "set-start", set: setKey, n: asks.length, aspect });
     let best: { results: (PhotoResult | undefined)[]; ok: number } | undefined;
@@ -678,7 +695,12 @@ export function pictureService(opts: {
       });
       const results = setPanelResults(asks, panels, pass, boxes, {
         model: gen.model,
-        style: look?.style === "illustration" ? "illustration" : "photo",
+        style:
+          look?.style === "illustration"
+            ? "illustration"
+            : look?.generic === "generate"
+              ? "house"
+              : "photo",
         save: (bytes) => {
           const id = newId();
           const k2 = `${WS}/sets/${id}.png`;
@@ -793,17 +815,27 @@ export function pickerLesson(l: PickerLessonInfo, index: number, imageBrief?: un
  * agent's style line when its file exists (else the director's default painted line).
  */
 export function lessonLook(
-  st: { style?: "photo" | "illustration"; palette?: string[] } | undefined,
+  st:
+    | { style?: "photo" | "illustration"; palette?: string[]; generic?: "stock-first" | "generate" }
+    | undefined,
   style?: "photo" | "illustration",
 ): LessonLook | undefined {
-  const s = style ?? st?.style;
+  const generic = st?.generic;
+  const s = style ?? st?.style ?? (generic === "generate" ? "photo" : undefined);
   if (!s) return undefined;
   const file = `${BAKEOFF}/prompts/shared/illustration-style.txt`;
   const line = s === "illustration" && existsSync(file) ? readFileSync(file, "utf8").trim() : "";
+  const houseFile = `${BAKEOFF}/prompts/shared/house-photo.txt`;
+  const houseLine =
+    s === "photo" && generic === "generate" && existsSync(houseFile)
+      ? readFileSync(houseFile, "utf8").trim()
+      : "";
   return {
     style: s,
     ...(st?.palette?.length ? { palette: st.palette } : {}),
     ...(line ? { line } : {}),
+    ...(generic ? { generic } : {}),
+    ...(houseLine ? { houseLine } : {}),
   };
 }
 

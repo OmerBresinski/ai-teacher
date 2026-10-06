@@ -606,3 +606,54 @@ describe("same-subject sets never cross-wire or render a failed panel", () => {
     expect(one.slide.elements.filter((e) => e.type === "image")).toHaveLength(0);
   });
 });
+
+describe("pictures meant to be compared are one set (never part library, part fresh)", () => {
+  const vctx = {
+    brief: { keyStage: "ks1" },
+    theme: getTheme("splash"),
+    stage: "ks1",
+    plan: { objectives: [], flow: [], slides: [] },
+  } as never;
+  const pic = (shows: string) => ({ shows, must_see: [shows], subject: "generic" });
+  test("every compare card's picture is in set col; different things are framed as a matched set", () => {
+    const asks = withKeyStage("ks1", () =>
+      armT.visuals(
+        {
+          template: "compare",
+          heading: "Young animals",
+          columns: [
+            {
+              label: "lamb",
+              text: "A young sheep.",
+              picture: pic("An adult sheep beside a young lamb"),
+            },
+            {
+              label: "calf",
+              text: "A young cow.",
+              picture: pic("An adult cow beside a young calf"),
+            },
+          ],
+        },
+        3,
+        vctx,
+      ),
+    ) as { set?: string; sameSubject?: boolean }[];
+    expect(asks.map((a) => a.set)).toEqual(["col", "col"]);
+    expect(asks.every((a) => a.sameSubject === false)).toBe(true);
+  });
+  test("a sequence's panels are one same-subject set; a lone picture is not a set", () => {
+    const seq = withKeyStage("ks1", () =>
+      armT.visuals(
+        {
+          template: "picture-sequence",
+          heading: "A candle burns",
+          sequence: ["tall", "half", "stub"].map((c) => ({ ...pic(`a ${c} candle`), caption: c })),
+        },
+        4,
+        vctx,
+      ),
+    ) as { set?: string; sameSubject?: boolean }[];
+    expect(seq.map((a) => a.set)).toEqual(["seq", "seq", "seq"]);
+    expect(seq.some((a) => a.sameSubject === false)).toBe(false);
+  });
+});

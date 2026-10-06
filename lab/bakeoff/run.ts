@@ -26,6 +26,7 @@ const VALUED = new Set([
   "--bank-cap",
   "--reuse-visuals",
   "--fresh-slides",
+  "--generic",
   "--replay-repair",
 ]);
 const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i - 1] ?? ""));
@@ -51,6 +52,7 @@ for (const id of briefs) {
     replay: opt("--replay"),
     noVisuals: flag("--no-visuals"),
     ...(opt("--reuse-visuals") ? { reuseVisuals: opt("--reuse-visuals") } : {}),
+    ...(opt("--generic") === "generate" ? { generic: "generate" as const } : {}),
     ...(opt("--fresh-slides")
       ? { freshSlides: String(opt("--fresh-slides")).split(",").map(Number) }
       : {}),

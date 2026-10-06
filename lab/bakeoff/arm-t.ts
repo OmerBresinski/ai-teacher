@@ -263,14 +263,15 @@ export const armT: ArmPlugin = {
   visuals(raw, index, vctx) {
     const s = normalise(raw);
     const slots = slotShapes(s, { ...vctx, index });
-    // Same-subject sets (round 3): a sequence's panels always; compare cards when they show one
-    // thing at different stages. Made as one strip so the subject is the same in every panel.
+    // Pictures meant to be compared on one slide are always made together as one set (Greg, round
+    // 3): a sequence's panels, and every compare card's picture. Never part library, part fresh;
+    // library reuse is for stand-alone pictures only. `sameSubject` frames the strip.
     const figs = figures(s);
     const shows = (pre: string) =>
       figs.filter(({ key, f }) => key.startsWith(pre) && !isDia(f)).map(({ f }) => f.shows);
     const setOf = (key: string): string | undefined => {
       if (key.startsWith("seq.")) return shows("seq.").length >= 2 ? "seq" : undefined;
-      if (key.startsWith("col.")) return isSameSubjectSet(shows("col.")) ? "col" : undefined;
+      if (key.startsWith("col.")) return shows("col.").length >= 2 ? "col" : undefined;
       return undefined;
     };
     return figs.map(
@@ -285,6 +286,9 @@ export const armT: ArmPlugin = {
               named: f.subject === "named",
               ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
               ...(setOf(key) ? { set: setOf(key) } : {}),
+              ...(key.startsWith("col.") && setOf(key) && !isSameSubjectSet(shows("col."))
+                ? { sameSubject: false }
+                : {}),
             },
     );
   },

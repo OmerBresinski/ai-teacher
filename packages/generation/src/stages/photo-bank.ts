@@ -71,7 +71,7 @@ export interface BankRequest {
    * How a generation for this request looks: `illustration` is the painted one (ruling 163) or the
    * lesson's locked illustration style; absent is a photo.
    */
-  style?: "illustration";
+  style?: "illustration" | "house";
   /** The lesson's locked illustration palette (theme colours): a library row is reused only in it. */
   palette?: string;
 }
@@ -82,7 +82,7 @@ export interface BankRequest {
  */
 export type MadePicture = PlacedPhoto & {
   dataUrl?: string;
-  style?: "photo" | "illustration" | "drawn";
+  style?: "photo" | "illustration" | "drawn" | "house";
   /** The palette a generated illustration was made in (`BankRequest.palette`). */
   palette?: string;
 };
@@ -93,6 +93,8 @@ export type MadePicture = PlacedPhoto & {
  * Stock rows and drawn counts have no look to clash with.
  */
 export function lookMatches(req: BankRequest, hit: MadePicture): boolean {
+  // `generic: generate`: only a picture made in the house photo look, never a stock row.
+  if (req.style === "house") return hit.source.provider === "generated" && hit.style === "house";
   if (hit.source.provider !== "generated" || hit.style === "drawn") return true;
   const want = req.style ?? "photo";
   if ((hit.style ?? "photo") !== want) return false;
@@ -147,7 +149,7 @@ export async function findPicture(
   bank: PictureBank,
   fetchStock: () => Promise<PlacedPhoto | undefined>,
   signal: AbortSignal,
-  judgeMade?: (picture: MadePicture) => Promise<boolean>,
+  judgeMade?: (picture: MadePicture, reuse?: boolean) => Promise<boolean>,
   now: () => number = Date.now,
 ): Promise<BankOutcome> {
   const t0 = now();
@@ -177,7 +179,7 @@ export async function findPicture(
     if (!styleAllowed(req, hit) || !lookMatches(req, hit)) return false;
     if (req.draw || hit.style === "drawn" || !judgeMade) return true;
     if (!hit.dataUrl) return false;
-    const verdict = await judgeMade(hit).catch(rethrowAbort);
+    const verdict = await judgeMade(hit, true).catch(rethrowAbort);
     if (verdict) return true;
     // A judge that failed says nothing about the row: skip it, but only a refusal marks it.
     if (verdict === false) await bank.reject?.(hit).catch(rethrowAbort);

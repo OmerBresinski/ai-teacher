@@ -9,7 +9,12 @@
  * The frame lines below are code's until the prompt agent owns them (round2/PICTURES3.md).
  */
 import type { ImageSize } from "@tj/images";
-import { type LessonLook, lessonIllustrationPrompt } from "./picture-director";
+import {
+  housePhoto,
+  housePhotoPrompt,
+  type LessonLook,
+  lessonIllustrationPrompt,
+} from "./picture-director";
 
 /** Words that say which stage, size or age a panel is at, not what the subject is. */
 const STAGE =
@@ -63,14 +68,17 @@ export function setSize(n: number): ImageSize {
  * same scale and view on one plain background, no text. An illustration lesson's locked look
  * leads it, as on every other generation.
  */
-export function setImagePrompt(shows: string[], look?: LessonLook): string {
+export function setImagePrompt(shows: string[], look?: LessonLook, same = true): string {
   const n = shows.length;
   const body = [
     `One image divided into ${n} equal side-by-side panels separated by thin pure white gaps. Left to right: ${shows
       .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
       .join("; ")}.`,
-    "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint, whole, at the same scale, on the same plain light background.",
+    same
+      ? "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint, whole, at the same scale, on the same plain light background."
+      : "The panels are a matched set to compare side by side: each subject whole, seen from the same viewpoint, at the same scale, in the same light, on the same plain light background.",
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ].join("\n");
-  return look?.style === "illustration" ? lessonIllustrationPrompt(body, look) : body;
+  if (look?.style === "illustration") return lessonIllustrationPrompt(body, look);
+  return housePhoto(look) ? housePhotoPrompt(body, look) : body;
 }

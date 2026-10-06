@@ -62,8 +62,10 @@ export type VisualAsk =
       aspect?: number;
       /** The slot crops to its own box (compare cards, sequences): the flow's early job (no aspect) does not take it. */
       fixedShape?: boolean;
-      /** Panels of one same-subject set (a sequence, or compare cards of one thing) share an id: made together. */
+      /** Pictures meant to be compared on one slide (a sequence, compare cards) share an id: made together. */
       set?: string;
+      /** The set shows one subject at stages (false: different things compared). */
+      sameSubject?: boolean;
     }
   | { key: string; type: "diagram"; kind: string; shows: string; labels: string[] };
 
@@ -215,6 +217,8 @@ export type RunOpts = {
   reuseVisuals?: string;
   /** With reuseVisuals: these slides (1-based) fetch their pictures afresh; the rest reuse. */
   freshSlides?: number[];
+  /** `generate`: every generic picture made in the house photo look (side-by-side B). */
+  generic?: "stock-first" | "generate";
   /** Skip the notes calls. */
   noNotes?: boolean;
   /** Skip the repair pass. */
@@ -325,6 +329,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           pgPort: o.pgPort,
           ledger,
           bankCapUsd: o.bankCapUsd ?? 0.06,
+          ...(o.generic ? { generic: o.generic } : {}),
           styleOf: () => ({
             style: plan.design?.picture_style,
             palette: [
@@ -395,6 +400,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         named: a.named,
         ...(a.aspect ? { aspect: a.aspect } : {}),
         ...(a.fixedShape ? { fixedShape: true } : {}),
+        ...(a.sameSubject === false ? { sameSubject: false } : {}),
         ...(plan.design?.picture_style ? { style: plan.design.picture_style } : {}),
         slide: { heading: words.heading, text: words.text, point: "" },
         index: i,

@@ -483,3 +483,16 @@ describe("lookMatches (one locked look per lesson)", () => {
     expect(lookMatches(req("illustration", "a b"), made("drawn"))).toBe(true);
   });
 });
+
+describe("library keys: one look per lesson", () => {
+  const { lookMatches } = require("./photo-bank") as typeof import("./photo-bank");
+  const hit = (provider: string, style?: string, palette?: string) =>
+    ({ src: "/files/x", alt: "", source: { provider }, style, palette }) as never;
+  test("house look reuses only house-look generated rows, never stock or other looks", () => {
+    const req = { text: "t", named: null, route: "generic", style: "house" } as never;
+    expect(lookMatches(req, hit("generated", "house"))).toBe(true);
+    expect(lookMatches(req, hit("pexels"))).toBe(false);
+    expect(lookMatches(req, hit("generated", "photo"))).toBe(false);
+    expect(lookMatches(req, hit("generated", "illustration", "a"))).toBe(false);
+  });
+});

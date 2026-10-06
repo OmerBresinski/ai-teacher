@@ -378,3 +378,26 @@ describe("lesson look (dd-pics, 6 Oct)", () => {
     expect(p.request.imagePrompt).toBe(pic().imagePrompt);
   });
 });
+
+describe("generic: generate (house photo look)", () => {
+  const house = { style: "photo" as const, generic: "generate" as const };
+  test("a generic picture is generated in the house look, never stock first", () => {
+    const p = photoPlan(dir({ route: "pexels" }), { ...ask, look: house } as never);
+    expect(p.request.style).toBe("house");
+    expect(p.request.stockFirst).toBe(false);
+    expect(p.request.imagePrompt?.split("\n")[0]).toContain("natural-light photograph");
+  });
+  test("named real things and history are unchanged", () => {
+    const real = photoPlan(dir({ route: "commons", named: "place" }), {
+      ...ask,
+      look: house,
+    } as never);
+    expect(real.request.route).toBe("real");
+    expect(real.request.style).toBeUndefined();
+    const hist = photoPlan(dir({ route: "pexels", period: "Germany, 1923" }), {
+      ...ask,
+      look: house,
+    } as never);
+    expect(hist.request.style).toBe("illustration");
+  });
+});
