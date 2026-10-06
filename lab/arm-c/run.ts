@@ -7,6 +7,7 @@
 //      PG_URL (postgres://postgres:postgres@localhost:5619/teaching_journey), PICTURE_STORE.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { Budget, SOL, TOOL_EST } from "./budget.ts";
 import { realDiagrams, stubDiagrams } from "./diagrams.ts";
 import { type Model, responsesModel, stubModel } from "./model.ts";
 import { slideText, writeNotes } from "./notes.ts";
@@ -79,7 +80,7 @@ const logFile = join(runDir, "log.jsonl");
 const t0 = performance.now();
 const log = (r: Record<string, unknown>) =>
   appendFileSync(logFile, `${JSON.stringify({ ms: Math.round(performance.now() - t0), ...r })}\n`);
-const costs = { model: 0, ai: 0, bank: 0, diagrams: 0, probes: 0, notes: 0 };
+const costs = { model: 0, pictures: 0, diagrams: 0, probes: 0, notes: 0 };
 
 if (!STUB) {
   const marked = ["system.md", "user.md", "tool-descriptions.json", "probes.json"].filter((f) =>
@@ -130,7 +131,10 @@ const lessonCtx = {
   slideCount: brief.slidesMax,
   objectives,
 };
-const findPicture = STUB ? stubPictures(runDir) : await realPictures(runDir, lessonCtx, costs, PG);
+const pics = STUB
+  ? { find: stubPictures(runDir), spent: () => 0 }
+  : await realPictures(runDir, lessonCtx, Number(/:(\d+)\//.exec(PG)?.[1] ?? 5619));
+const findPicture = pics.find;
 const drawDiagram = STUB
   ? stubDiagrams(tk, runDir)
   : realDiagrams(tk, runDir, brief.yearGroup, costs, (r) => log({ kind: "diagram", r }));
@@ -169,7 +173,15 @@ const lesson = new Lesson({
   drawDiagram,
   probe,
 });
-const total = () => Object.values(costs).reduce((a, b) => a + b, 0);
+const total = () => {
+  costs.pictures = pics.spent();
+  return costs.model + costs.diagrams + costs.probes + costs.notes + costs.pictures;
+};
+// Hard run cap: every paid step reserves its worst case first (budget.ts); the notes are kept back.
+const budget = new Budget(CAP, total, 0.0008 * brief.slidesMax);
+let lastInput = 0;
+let lastOutput = 0;
+let resultChars = 0;
 log({ kind: "start", user, brief, runDir, stub: STUB, theme: tk.themeId, ks: tk.ks });
 let results: { call_id: string; output: string }[] = [];
 let turns = 0,
@@ -179,14 +191,28 @@ while (!lesson.done) {
     stop = "turn cap";
     break;
   }
-  if (total() > CAP) {
+  // The next turn's worst case: all input uncached (previous input + output + tool results, or the
+  // first prompt), plus the output cap. The output cap is what the room left allows, at most 6000.
+  const inputEst =
+    turns === 0
+      ? Math.ceil((user.length + read("system.md").length + JSON.stringify(tools).length) / 3)
+      : lastInput + lastOutput + Math.ceil(resultChars / 3);
+  const inCost = (inputEst * SOL.in) / 1e6;
+  const maxOut = Math.min(6000, Math.floor(((budget.room() - inCost) * 1e6) / SOL.out));
+  if (!STUB && maxOut < 1200) {
     stop = "cost cap";
     break;
   }
+  const turnEst = STUB ? 0 : inCost + (maxOut * SOL.out) / 1e6;
+  budget.take(turnEst);
   lesson.turnsLeft = MAX_TURNS - turns - 1;
-  const turn = await model.next(results);
+  const turn = await model
+    .next(results, STUB ? undefined : maxOut)
+    .finally(() => budget.release(turnEst));
   turns++;
   costs.model += turn.usd;
+  lastInput = turn.usage.input;
+  lastOutput = turn.usage.output;
   log({
     kind: "turn",
     turn: turns,
@@ -213,12 +239,17 @@ while (!lesson.done) {
   const out = new Map<string, unknown>();
   const run1 = async ({ c, a }: { c: (typeof parsed)[number]["c"]; a: any }) => {
     const ts = performance.now();
+    const est = TOOL_EST[c.name] ?? 0;
+    const room = est === 0 || budget.take(est);
     const r =
       a === undefined
         ? { ok: false, error: "arguments were not valid JSON" }
-        : await lesson
-            .call(c.name, a)
-            .catch((e) => ({ ok: false, error: `tool failed: ${String(e).slice(0, 200)}` }));
+        : !room
+          ? { ok: false, error: "the lesson's budget is spent: submit the slides you have" }
+          : await lesson
+              .call(c.name, a)
+              .catch((e) => ({ ok: false, error: `tool failed: ${String(e).slice(0, 200)}` }))
+              .finally(() => budget.release(est));
     out.set(c.call_id, r);
     log({
       kind: "tool",
@@ -245,6 +276,7 @@ while (!lesson.done) {
     call_id: c.call_id,
     output: JSON.stringify(out.get(c.call_id)),
   }));
+  resultChars = results.reduce((n, r) => n + r.output.length, 0);
 }
 const auto = lesson.autoSubmit();
 const slides = await lesson.output();

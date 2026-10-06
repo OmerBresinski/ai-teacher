@@ -17,7 +17,8 @@ export interface Turn {
   id?: string;
 }
 export interface Model {
-  next(results: { call_id: string; output: string }[]): Promise<Turn>;
+  /** `maxOut`: the output cap (reasoning included) the run budget allows this turn. */
+  next(results: { call_id: string; output: string }[], maxOut?: number): Promise<Turn>;
 }
 
 const SOL = { in: 2, cached: 0.1, out: 10 }; // openai/gpt-6.1-sol per MTok (packages/ai/src/prices.ts)
@@ -32,7 +33,7 @@ export function responsesModel(o: {
   const KEY = readFileSync(`${homedir()}/.dayback-openai-key`, "utf8").trim();
   let prev: string | undefined;
   return {
-    async next(results) {
+    async next(results, maxOut) {
       const input = prev
         ? results.map((r) => ({
             type: "function_call_output",
@@ -51,6 +52,7 @@ export function responsesModel(o: {
           tools: o.tools,
           parallel_tool_calls: true,
           reasoning: { effort: o.effort },
+          ...(maxOut ? { max_output_tokens: maxOut } : {}),
           ...(prev ? { previous_response_id: prev } : {}),
         }),
       });

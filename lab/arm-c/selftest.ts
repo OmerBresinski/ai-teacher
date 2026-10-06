@@ -46,6 +46,16 @@ const cases: [string, string, Record<string, number>][] = [
     { off_canvas: 1, broken_image: 1 },
   ],
   [
+    "svg label cut at the diagram's edge",
+    `<div id="dg" data-diagram="x" style="position:absolute;left:200px;top:200px;width:600px;height:400px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="100%" height="100%"><text x="-20" y="100" font-size="24">sheep</text><text x="150" y="150" font-size="24">fine</text></svg></div>`,
+    { clipping: 1 },
+  ],
+  [
+    "svg labels inside",
+    `<div id="dg2" data-diagram="x" style="position:absolute;left:200px;top:200px;width:600px;height:400px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="100%" height="100%"><text x="10" y="30" font-size="24">Title at the top</text><text x="150" y="190" font-size="24">base</text></svg></div>`,
+    {},
+  ],
+  [
     "fixed-height box text spill",
     `<div id="card" style="position:absolute;left:100px;top:100px;width:500px;height:100px;background:var(--surface)"><p id="t2" style="margin:0">Line one of text that wraps onto line two and three and four</p></div>`,
     { overflow: 1 },

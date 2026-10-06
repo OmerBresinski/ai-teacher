@@ -207,6 +207,55 @@ export function check(args: { minFont: number }): Geometry {
         detail: `${name(a.el)} and ${name(b.el)} overlap by ${Math.round(w)}x${Math.round(h)}px`,
       });
     }
+  // SVG text (tool diagrams and any inline SVG): the item loop above skips diagram internals, so a
+  // label cut by its SVG's edge passed the gate (C y1, 6 Oct: "sheep", "lamb"). Each <text> is
+  // checked against every enclosing SVG viewport (SVG clips at its box), the canvas, and the floor.
+  for (const t of root.querySelectorAll("svg text")) {
+    if (!visible(t)) continue;
+    const q = t.getBoundingClientRect();
+    const tb: R = { l: q.left, t: q.top, r: q.right, b: q.bottom };
+    const label = (t.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
+    if (!label) continue;
+    const host = t.closest("[data-diagram]") ?? t.closest("svg")!;
+    const who = `${name(host)} label "${label}"`;
+    const ctm = (t as SVGGraphicsElement).getScreenCTM();
+    const scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1;
+    const fs = parseFloat(getComputedStyle(t).fontSize) * scale;
+    // A <text> box includes the font's full ascent and descent; only ink past that slack is cut.
+    const vs = 0.3 * fs;
+    const past = (a: R, b: R) => Math.max(b.l - a.l, a.r - b.r, b.t - a.t - vs, a.b - b.b - vs);
+    const off = Math.max(-tb.l, tb.r - W, -tb.t - vs, tb.b - H - vs);
+    if (off > TOL) {
+      push({
+        type: "off_canvas",
+        element: who,
+        px: off,
+        detail: `diagram label reaches outside the canvas by ${Math.round(off)}px`,
+      });
+      continue;
+    }
+    for (let s = t.parentElement?.closest("svg"); s; s = s.parentElement?.closest("svg") ?? null) {
+      if (getComputedStyle(s).overflow === "visible") continue;
+      const d = past(tb, rectOf(s));
+      if (d > TOL) {
+        push({
+          type: "clipping",
+          element: who,
+          other: name(host),
+          px: d,
+          detail: `${Math.round(d)}px of the label is cut off by the diagram's edge; give the diagram more room or redraw it larger`,
+        });
+        break;
+      }
+    }
+    if (fs < args.minFont - 0.5)
+      push({
+        type: "min_font",
+        element: who,
+        px: Math.round(fs),
+        detail: `diagram label drawn at ${Math.round(fs)}px; the smallest allowed is ${args.minFont}px; draw the diagram larger`,
+      });
+  }
   // broken images
   for (const img of root.querySelectorAll("img")) {
     const src = img.getAttribute("src") ?? "";
