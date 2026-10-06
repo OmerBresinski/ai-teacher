@@ -1,0 +1,1796 @@
+{
+  "version": 1,
+  "id": "fit-REGEN-y10-english-tempest-prospero-muwkcafn",
+  "title": "The Tempest: Prospero and the mechanics of power",
+  "themeId": "studio",
+  "slides": [
+    {
+      "id": "f5muwkcbzy",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "fimuwkchhx",
+          "type": "text",
+          "x": 58,
+          "y": 154,
+          "w": 773,
+          "h": 215,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The Tempest: Prospero and the mechanics of power"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "title",
+            "autoHeight": true
+          },
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "simple-lesson.t8",
+            "model": "code",
+            "at": "2026-10-06T10:56:12.693Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f9muwkchhj",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "p81",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 48,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "By the end of this lesson I can"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p85",
+          "type": "text",
+          "x": 58,
+          "y": 126,
+          "w": 40,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p86",
+          "type": "text",
+          "x": 98,
+          "y": 126,
+          "w": 804,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "analyse how Prospero uses magic, threats and promises to control Ariel and Caliban in Act 1, Scene 2, exploring the unequal power of master and servant."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Objective 1",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p87",
+          "type": "text",
+          "x": 58,
+          "y": 250,
+          "w": 40,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p88",
+          "type": "text",
+          "x": 98,
+          "y": 250,
+          "w": 804,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "explain how Prospero controls events through the staged tempest and Ferdinand’s trials, using dramatic irony and manipulation to secure Miranda’s marriage and recover his dukedom."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Objective 2",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p89",
+          "type": "text",
+          "x": 58,
+          "y": 374,
+          "w": 40,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p90",
+          "type": "text",
+          "x": 98,
+          "y": 374,
+          "w": 804,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "evaluate how Prospero’s decision to forgive his enemies and renounce magic in Act 5, Scene 1 changes his exercise of power, supporting interpretations with precise quotations."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Objective 3",
+          "generatedFrom": {
+            "factRefs": ["o1", "o2", "o3"],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "f4amuwkejll",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p0",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 48,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Act 1, Scene 2: obedience has a price"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p5",
+          "type": "text",
+          "x": 459,
+          "y": 119,
+          "w": 443,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Prospero commands Ariel, a spirit, and Caliban, the island’s inhabitant."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "fontWeight": 600,
+            "lineHeight": 1.4
+          },
+          "name": "Lead",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p6",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 466,
+          "y": 222,
+          "w": 11,
+          "h": 11,
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p7",
+          "type": "text",
+          "x": 492,
+          "y": 210,
+          "w": 410,
+          "h": 105,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "His magic makes threats credible; promised rewards make obedience attractive."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p8",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 466,
+          "y": 341,
+          "w": 11,
+          "h": 11,
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p9",
+          "type": "text",
+          "x": 492,
+          "y": 329,
+          "w": 410,
+          "h": 70,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Both servants resist, but Prospero controls punishment and release."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4
+          },
+          "name": "Point",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p4",
+          "type": "image",
+          "x": 58,
+          "y": 119,
+          "w": 363,
+          "h": 378,
+          "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+          "alt": "Act 1, Scene 2: obedience has a price",
+          "fit": "cover",
+          "radius": 14,
+          "name": "Photo slot",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Read the quotations aloud. Explain that Ariel asks for the freedom Prospero previously promised. Prospero recalls rescuing Ariel from imprisonment by Sycorax, then threatens another imprisonment: gratitude becomes a demand for obedience. 'Discharge' means release from service. Caliban contests Prospero’s authority over the island; magical bodily punishment suppresses that resistance. Ask pupils to notice the commanding certainty of 'I will' and 'thou shalt'. Avoid presenting the relationships as identical: Ariel is offered freedom, whereas the selected exchange with Caliban foregrounds coercion."
+    },
+    {
+      "id": "f2cmuwkcv7y",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "p10",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 43,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Quick check"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p15",
+          "type": "text",
+          "x": 58,
+          "y": 98,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p16",
+          "type": "text",
+          "x": 111,
+          "y": 98,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How do these threats and promises reveal the unequal power between Prospero and his servants?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p17",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 58,
+          "y": 316,
+          "w": 844,
+          "h": 181,
+          "fill": "#FFFFFF",
+          "stroke": "#0B6E86",
+          "strokeWidth": 2,
+          "radius": 12,
+          "name": "Answers",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1 ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0B6E86"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "Prospero controls Ariel through both fear and hope: imprisonment threatens suffering, while 'I will discharge thee' offers freedom for obedience. The repeated 'I will' makes Prospero the person who decides Ariel’s future. With Caliban, 'thou shalt have cramps' threatens bodily pain enforced by magic. Both relationships are unequal because Prospero determines the consequences of resistance."
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "small",
+            "fontSize": 21,
+            "align": "left",
+            "valign": "top",
+            "padding": 14,
+            "color": "#0F172A"
+          },
+          "revealStep": 1,
+          "reveal": "fade",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Allow two minutes of individual writing, then sample responses. Look for comparison rather than two separate summaries. If pupils say Ariel is already free, return to the future promise 'will discharge'. If they identify magic without explaining its function, ask how it makes resistance dangerous.\nAnswers: 1. Prospero controls Ariel through both fear and hope: imprisonment threatens suffering, while 'I will discharge thee' offers freedom for obedience. The repeated 'I will' makes Prospero the person who decides Ariel’s future. With Caliban, 'thou shalt have cramps' threatens bodily pain enforced by magic. Both relationships are unequal because Prospero determines the consequences of resistance."
+    },
+    {
+      "id": "f4lmuwkejo8",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p18",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 47.52,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Prospero directs the action"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08,
+            "align": "left"
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p28",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 104.52000000000001,
+          "w": 844,
+          "h": 215.98,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20767%20196%22%20width%3D%22844%22%20height%3D%22216%22%20role%3D%22img%22%20aria-label%3D%22A%20controlled%20route%20towards%20restoration%3A%20Prospero%20orders%20Ariel%E2%80%99s%20tempest%2C%20separates%2C%20Ship%E2%80%99s%20company%20is%20safely%20dispersed%2C%20enables%2C%20Ariel%20leads%20Ferdinand%20to%20Miranda%2C%20attracts%22%3E%3Ctitle%3EA%20controlled%20route%20towards%20restoration%3A%20Prospero%20orders%20Ariel%E2%80%99s%20tempest%2C%20separates%2C%20Ship%E2%80%99s%20company%20is%20safely%20dispersed%2C%20enables%2C%20Ariel%20leads%20Ferdinand%20to%20Miranda%2C%20attracts%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2223%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22383.5%22%20y%3D%2218.4%22%3EA%20controlled%20route%20towards%20restoration%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C39.1)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%22193.94%22%20y1%3D%2226.58%22%20x2%3D%22276.49%22%20y2%3D%2226.58%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22281.53%2C26.58%20275.23%2C30.36%20276.18%2C26.58%20275.23%2C22.8%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22237.73%22%20y%3D%2215.33%22%3Eseparates%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22477.47%22%20y1%3D%2226.58%22%20x2%3D%22560.02%22%20y2%3D%2226.58%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22565.06%2C26.58%20558.76%2C30.36%20559.71%2C26.58%20558.76%2C22.8%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22521.27%22%20y%3D%2215.33%22%3Eenables%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22663.03%22%20y1%3D%2255.15%22%20x2%3D%22663.03%22%20y2%3D%2296.71%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22663.03%2C101.75%20659.25%2C95.45%20663.03%2C96.39%20666.81%2C95.45%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22end%22%3E%3Ctspan%20x%3D%22653.03%22%20y%3D%2285.8%22%3Eattracts%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22565.06%22%20y1%3D%22130.32%22%20x2%3D%22482.51%22%20y2%3D%22130.32%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22477.47%2C130.32%20483.77%2C126.54%20482.82%2C130.32%20483.77%2C134.1%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22521.27%22%20y%3D%22119.07%22%3Etests%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%22281.53%22%20y1%3D%22130.32%22%20x2%3D%22198.98%22%20y2%3D%22130.32%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22193.94%2C130.32%20200.24%2C126.54%20199.29%2C130.32%20200.24%2C134.1%22%20fill%3D%22%230F172A%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22237.73%22%20y%3D%22119.07%22%3Esupports%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%22187.94%22%20height%3D%2249.15%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2295.97%22%20y%3D%2222.58%22%3EProspero%20orders%20Ariel%E2%80%99s%3C%2Ftspan%3E%3Ctspan%20x%3D%2295.97%22%20y%3D%2241.78%22%3Etempest%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22285.53%22%20y%3D%222%22%20width%3D%22187.94%22%20height%3D%2249.15%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22379.5%22%20y%3D%2222.58%22%3EShip%E2%80%99s%20company%20is%3C%2Ftspan%3E%3Ctspan%20x%3D%22379.5%22%20y%3D%2241.78%22%3Esafely%20dispersed%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22569.06%22%20y%3D%222%22%20width%3D%22187.94%22%20height%3D%2249.15%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22663.03%22%20y%3D%2222.58%22%3EAriel%20leads%20Ferdinand%20to%3C%2Ftspan%3E%3Ctspan%20x%3D%22663.03%22%20y%3D%2241.78%22%3EMiranda%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22569.06%22%20y%3D%22105.75%22%20width%3D%22187.94%22%20height%3D%2249.15%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22663.03%22%20y%3D%22126.32%22%3EMiranda%20and%20Ferdinand%3C%2Ftspan%3E%3Ctspan%20x%3D%22663.03%22%20y%3D%22145.52%22%3Efall%20in%20love%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22285.53%22%20y%3D%22105.75%22%20width%3D%22187.94%22%20height%3D%2249.15%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22379.5%22%20y%3D%22126.32%22%3EProspero%20imposes%3C%2Ftspan%3E%3Ctspan%20x%3D%22379.5%22%20y%3D%22145.52%22%3Ecaptivity%20and%20labour%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%222%22%20y%3D%22105.75%22%20width%3D%22187.94%22%20height%3D%2249.15%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2295.97%22%20y%3D%22126.32%22%3EMarriage%20alliance%20and%3C%2Ftspan%3E%3Ctspan%20x%3D%2295.97%22%20y%3D%22145.52%22%3Erestored%20dukedom%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A controlled route towards restoration: Prospero orders Ariel’s tempest, separates, Ship’s company is safely dispersed, enables, Ariel leads Ferdinand to Miranda, attracts",
+          "fit": "contain"
+        },
+        {
+          "id": "LCqdwzrhKq",
+          "type": "text",
+          "x": 58,
+          "y": 334.5,
+          "w": 844,
+          "h": 162.5,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Dramatic irony: the audience knows Prospero’s plan while others do not."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "“They are both in either’s powers”: he recognises Miranda and Ferdinand’s love."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "“this swift business / I must uneasy make”: he deliberately obstructs it."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "align": "left"
+          }
+        }
+      ],
+      "notes": "Explain that the tempest is engineered, not an accidental disaster: Ariel reports that everyone is safe. Ferdinand is Alonso’s son, the prince of Naples; Miranda is Prospero’s daughter. Prospero was displaced as Duke of Milan. Their marriage creates a political connection between Milan and Naples, supporting reconciliation and his recovery of authority, though marriage alone does not restore his title. The quotations are from Act 1, Scene 2: Prospero’s asides reveal his intentions to the audience. He accuses Ferdinand of spying and uses magic to restrain him; Ferdinand’s later log-carrying extends these trials. 'Uneasy' means difficult here. Distinguish genuine love from Prospero’s manipulation of the circumstances."
+    },
+    {
+      "id": "f2wmuwkd4jr",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "p29",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 90,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Prospero says, “this swift business / I must uneasy make”. The audience hears his plan, but Ferdinand does not. Which explanation best connects his trials, dramatic irony and political power?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 25
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p30",
+          "type": "option",
+          "x": 58,
+          "y": 147,
+          "w": 844,
+          "h": 51,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "He wants Miranda never to marry."
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "A",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "padding": 10
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p31",
+          "type": "option",
+          "x": 58,
+          "y": 217,
+          "w": 844,
+          "h": 51,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Trials strengthen love and his alliance."
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "B",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "padding": 10
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p32",
+          "type": "option",
+          "x": 58,
+          "y": 287,
+          "w": 844,
+          "h": 51,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "He cannot control Ferdinand with magic."
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "C",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "padding": 10
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p33",
+          "type": "option",
+          "x": 58,
+          "y": 357,
+          "w": 844,
+          "h": 51,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The storm has ruined his political plan."
+                  }
+                ]
+              }
+            ]
+          },
+          "label": "D",
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "padding": 10
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          {
+            "id": "p30",
+            "correct": false
+          },
+          {
+            "id": "p31",
+            "correct": true
+          },
+          {
+            "id": "p32",
+            "correct": false
+          },
+          {
+            "id": "p33",
+            "correct": false
+          }
+        ]
+      },
+      "notes": "B. Trials strengthen love and his alliance.\nCollect simultaneous answers before discussing. B connects the deliberate obstacles with Prospero’s intention to make the relationship valued and secure a useful marriage alliance. Ask pupils to explain the knowledge gap: the audience understands the trials as planned manipulation, while Ferdinand experiences them as hostility. A misses Prospero’s support for the match; C ignores magical restraint; D mistakes the staged storm for an uncontrolled event."
+    },
+    {
+      "id": "f4vmuwkejpu",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "p35",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 95.04,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Act 5, Scene 1: surrender or a new kind of power?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 44,
+            "lineHeight": 1.08,
+            "align": "left"
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p54",
+          "type": "image",
+          "name": "Diagram",
+          "x": 58,
+          "y": 152.04000000000002,
+          "w": 844,
+          "h": 168.45999999999998,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20844%20168%22%20width%3D%22844%22%20height%3D%22168%22%20role%3D%22img%22%20aria-label%3D%22What%20changes%E2%80%94and%20what%20remains%3F%3A%20Decision%2C%20Change%2C%20Power%20retained%2C%20Forgive%20enemies%2C%20Reject%20vengeance%2C%20Sets%20reconciliation%E2%80%99s%20terms%2C%20Abjure%20magic%2C%20Reject%20magical%20coercion%2C%20Claims%20moral%20authority%22%3E%3Ctitle%3EWhat%20changes%E2%80%94and%20what%20remains%3F%3A%20Decision%2C%20Change%2C%20Power%20retained%2C%20Forgive%20enemies%2C%20Reject%20vengeance%2C%20Sets%20reconciliation%E2%80%99s%20terms%2C%20Abjure%20magic%2C%20Reject%20magical%20coercion%2C%20Claims%20moral%20authority%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2223%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22422%22%20y%3D%2218.4%22%3EWhat%20changes%E2%80%94and%20what%20remains%3F%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C39.1)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22836%22%20height%3D%22128.9%22%20fill%3D%22%23F7F9FB%22%20rx%3D%226%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2225.5%22%3EDecision%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22239.74%22%20y%3D%2225.5%22%3EChange%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22525.77%22%20y%3D%2225.5%22%3EPower%20retained%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2237%22%20x2%3D%22836%22%20y2%3D%2237%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2262.5%22%3EForgive%20enemies%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22239.74%22%20y%3D%2262.5%22%3EReject%20vengeance%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22525.77%22%20y%3D%2262.5%22%3ESets%20reconciliation%E2%80%99s%20terms%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%2274%22%20x2%3D%22836%22%20y2%3D%2274%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%2299.5%22%3EAbjure%20magic%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22239.74%22%20y%3D%2299.5%22%3EReject%20magical%20coercion%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22525.77%22%20y%3D%2299.5%22%3EClaims%20moral%20authority%3C%2Ftspan%3E%3C%2Ftext%3E%3Cline%20x1%3D%220%22%20y1%3D%22111%22%20x2%3D%22836%22%20y2%3D%22111%22%20stroke%3D%22%23bdc1c7%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22600%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%2210%22%20y%3D%22136.5%22%3EDemand%20dukedom%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22239.74%22%20y%3D%22136.5%22%3EReturn%20to%20civic%20rule%3C%2Ftspan%3E%3C%2Ftext%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22525.77%22%20y%3D%22136.5%22%3ERestores%20political%20rank%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "What changes—and what remains?: Decision, Change, Power retained, Forgive enemies, Reject vengeance, Sets reconciliation’s terms, Abjure magic, Reject magical coercion, Claims moral authority",
+          "fit": "contain"
+        },
+        {
+          "id": "q8_z74VFLM",
+          "type": "text",
+          "x": 58,
+          "y": 334.5,
+          "w": 844,
+          "h": 162.5,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "“The rarer action is / In virtue than in vengeance”: restraint replaces revenge."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "“this rough magic / I here abjure”: he promises to give up magical control."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Yet “my dukedom …"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "align": "left"
+          }
+        }
+      ],
+      "notes": "Explain 'abjure' as solemnly renounce, and 'virtue' as morally good action. Ariel’s account of the captives’ suffering helps prompt Prospero’s compassion. 'Rarer' presents forgiveness as the more exceptional action, not simply the easiest. Distinguish announcing renunciation from instantly ceasing magic: Prospero still uses it to complete his plan before its promised abandonment. The shortened dukedom quotation uses an ellipsis; the full wording is 'my dukedom of thee, which perforce, I know, / Thou must restore'. Forgiveness does not erase hierarchy or require Prospero to abandon legitimate political claims. Invite both a generous reading, ethical self-restraint, and a qualified reading, mercy offered from a position of success.\nthou must restore” insists on political authority."
+    },
+    {
+      "id": "f3lmuwkddzm",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "p55",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 43,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Quick check"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p60",
+          "type": "text",
+          "x": 58,
+          "y": 98,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p61",
+          "type": "text",
+          "x": 111,
+          "y": 98,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What contrast in the first quotation presents forgiveness as a deliberate choice?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p62",
+          "type": "text",
+          "x": 58,
+          "y": 210,
+          "w": 53,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p63",
+          "type": "text",
+          "x": 111,
+          "y": 210,
+          "w": 791,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why is 'Prospero gives up all power' an incomplete interpretation? Use two quotations."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Give pupils time to answer both questions in writing. Check that they distinguish magical power, political authority and power over their own desire for revenge. Accept interpretations that emphasise moral growth or continuing control if supported by the displayed language.\nAnswers: 1. The contrast between 'virtue' and 'vengeance' presents moral restraint as a chosen alternative to revenge. 2. Although 'this rough magic / I here abjure' announces the surrender of magical power, 'my dukedom … thou must restore' demands the return of political authority. His methods change, but he does not abandon all power."
+    },
+    {
+      "id": "f3umuwkdiyr",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "p65",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 46,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Independent practice: evaluate the change"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p66",
+          "type": "text",
+          "name": "Lead",
+          "x": 58,
+          "y": 119,
+          "w": 844,
+          "h": 73,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "‘By Act 5, Prospero changes his methods of power more than his desire for authority.’ How far do you agree?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p67",
+          "type": "text",
+          "name": "Task",
+          "x": 58,
+          "y": 224,
+          "w": 844,
+          "h": 235,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Earlier control: “thou shalt have cramps”; “this swift business / I must uneasy make”."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Later choices: “The rarer action is / In virtue than in vengeance”; “this rough magic / I here abjure”; “my dukedom … thou must restore”."
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write one developed paragraph: make a judgement, analyse precise language and consider a different interpretation."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "color": "#4F5D6E"
+          },
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "I largely agree. Earlier, 'thou shalt have cramps' uses the certainty of 'shalt' to threaten Caliban with magical punishment, while 'I must uneasy make' reveals deliberate manipulation of Ferdinand’s courtship. In Act 5, the contrast between 'virtue' and 'vengeance' suggests genuine moral growth: Prospero chooses restraint over retaliation. Moreover, 'abjure' is a solemn rejection of magic. However, 'thou must restore' remains commanding, showing that he still expects his dukedom back. He therefore relinquishes coercive magical methods without surrendering political authority, although his willingness to forgive suggests more than a merely tactical change."
+      },
+      "notes": "Allow six to eight minutes of independent writing. Keep the model answer hidden until pupils finish. No additional textual recall is required: all evidence is supplied. Encourage pupils to use at least one earlier and two later quotations, integrating short phrases rather than copying the whole bank. Assess judgement, language analysis and the distinction between changing methods and abandoning authority."
+    },
+    {
+      "id": "f3zmuwkdndx",
+      "kind": "exit-ticket",
+      "elements": [
+        {
+          "id": "p69",
+          "type": "text",
+          "x": 58,
+          "y": 43,
+          "w": 844,
+          "h": 43,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Exit ticket"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "lineHeight": 1.12
+          },
+          "name": "Heading",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p74",
+          "type": "text",
+          "x": 58,
+          "y": 98,
+          "w": 46,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p75",
+          "type": "text",
+          "x": 104,
+          "y": 98,
+          "w": 798,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How can “I will discharge thee” control Ariel even though it promises freedom?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p76",
+          "type": "text",
+          "x": 58,
+          "y": 199,
+          "w": 46,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p77",
+          "type": "text",
+          "x": 104,
+          "y": 199,
+          "w": 798,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The audience hears “I must uneasy make”, but Ferdinand does not. How does this create dramatic irony?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p78",
+          "type": "text",
+          "x": 58,
+          "y": 300,
+          "w": 46,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#4F5D6E",
+            "fontWeight": 700
+          },
+          "name": "Row badge",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "id": "p79",
+          "type": "text",
+          "x": 104,
+          "y": 300,
+          "w": 798,
+          "h": 82,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Use the two Act 5 quotations to explain what Prospero gives up and what he retains."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "autoHeight": true,
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "color": "#0F172A"
+          },
+          "name": "Row text",
+          "generatedFrom": {
+            "factRefs": [],
+            "promptVersion": "replay2",
+            "model": "code",
+            "at": "2026-10-06T11:33:24.058Z"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "notes": "Collect individual responses. Use question 1 to diagnose confusion between a reward and freedom already granted; question 2 to diagnose confusion between dramatic irony and ordinary surprise; question 3 to check whether pupils can make a qualified judgement about Prospero’s change.\nAnswers: 1. Prospero controls when Ariel is released. The promise encourages continued obedience because Ariel depends on his master for freedom. 2. The audience knows Prospero deliberately creates obstacles to the relationship, while Ferdinand does not understand that his apparent hostility is part of a plan. 3. 'This rough magic / I here abjure' renounces magical power, but 'my dukedom … thou must restore' demands restored political authority. He changes how he exercises power rather than abandoning it altogether."
+    }
+  ],
+  "createdAt": "2026-10-06T10:56:03.539Z",
+  "updatedAt": "2026-10-06T11:08:50.584Z",
+  "fitVersion": 3,
+  "subject": "English",
+  "ageBand": "ks4",
+  "yearGroup": "Year 10",
+  "language": "en-GB",
+  "brief": {
+    "topic": "The Tempest: Prospero and the mechanics of power",
+    "durationMin": 60,
+    "slideCount": 10
+  },
+  "facts": {
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Analyse how Prospero uses magic, threats and promises to control Ariel and Caliban in Act 1, Scene 2, exploring the unequal power of master and servant."
+      },
+      {
+        "id": "o2",
+        "text": "Explain how Prospero controls events through the staged tempest and Ferdinand’s trials, using dramatic irony and manipulation to secure Miranda’s marriage and recover his dukedom."
+      },
+      {
+        "id": "o3",
+        "text": "Evaluate how Prospero’s decision to forgive his enemies and renounce magic in Act 5, Scene 1 changes his exercise of power, supporting interpretations with precise quotations."
+      }
+    ],
+    "vocabulary": [],
+    "workedExamples": [],
+    "questions": [],
+    "misconceptions": [],
+    "outline": [
+      {
+        "id": "s1",
+        "kind": "title",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s2",
+        "kind": "objectives",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s3",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s4",
+        "kind": "starter",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s5",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s6",
+        "kind": "multiple-choice",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s7",
+        "kind": "content",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s8",
+        "kind": "starter",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s9",
+        "kind": "open-response",
+        "factRefs": ["o1", "o2", "o3"]
+      },
+      {
+        "id": "s10",
+        "kind": "exit-ticket",
+        "factRefs": ["o1", "o2", "o3"]
+      }
+    ],
+    "durationMin": 60
+  },
+  "generation": {
+    "jobId": "REGEN-y10-english-tempest-prospero-generate",
+    "stage": "repaired",
+    "startedAt": "2026-10-06T10:56:05.569Z",
+    "promptVersions": {
+      "planned": "simple-lesson.t8",
+      "generated": "simple-lesson.t8",
+      "evaluated": "evaluate.v10",
+      "repaired": "repair.v18"
+    },
+    "usage": {
+      "calls": 12,
+      "inputTokens": 21478,
+      "outputTokens": 6452,
+      "costUsd": 0.05344669999999999
+    },
+    "findings": [],
+    "completedAt": "2026-10-06T10:57:48.894Z"
+  }
+}

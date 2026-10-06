@@ -1,5 +1,5 @@
 import type { FactId, Finding, Lesson, LessonFacts, Slide } from "@tj/domain/documents";
-import { type MaterialiseMeta, materialiseSlide } from "@tj/slides";
+import { type MaterialiseMeta, materialiseSlide, withKeyStage } from "@tj/slides";
 import { callStructured, MAX_OUTPUT_TOKENS, specRuleFinding } from "../call";
 import { planFactsPrompt, planSkeletonPrompt, verifyFactsPrompt } from "../prompts";
 import {
@@ -378,6 +378,11 @@ export function existingTitle(lesson: Lesson): Slide | undefined {
 }
 
 export function materialiseTitle(lesson: Lesson, deps: PipelineDeps): Slide {
+  // Laid out at the lesson's key-stage type, like every slide after it (FIX-TYPE).
+  return withKeyStage(audienceOf(lesson).ageBand, () => titleSlide(lesson, deps));
+}
+
+function titleSlide(lesson: Lesson, deps: PipelineDeps): Slide {
   return materialiseSlide(
     {
       kind: "title",
@@ -397,6 +402,16 @@ export function materialiseTitle(lesson: Lesson, deps: PipelineDeps): Slide {
  * slide from objectives the teacher edited on the plan screen (ADR 0029 item 8).
  */
 export function materialiseObjectives(
+  lesson: Lesson,
+  facts: LessonFacts,
+  deps: PipelineDeps,
+  meta: MaterialiseMeta,
+): Slide {
+  // The objectives slide reads at the lesson's key-stage type, like the teaching slides (FIX-TYPE).
+  return withKeyStage(audienceOf(lesson).ageBand, () => objectivesSlide(lesson, facts, deps, meta));
+}
+
+function objectivesSlide(
   lesson: Lesson,
   facts: LessonFacts,
   deps: PipelineDeps,

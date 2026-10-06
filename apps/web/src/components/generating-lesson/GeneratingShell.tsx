@@ -98,7 +98,7 @@ export function GeneratingShell({
   const state = stageOf(events, lesson.plan?.state === "proposed");
   const stopped = state.terminal === "failed" || state.terminal === "cancelled";
   const running = state.terminal === null;
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   // The editor's persisted navigator preference, so the column is the width the editor will
   // mount at and nothing reflows at Ready.
   const [preferredNavigatorMode] = useState(readNavigatorMode);

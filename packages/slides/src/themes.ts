@@ -364,38 +364,50 @@ const BASE: Theme[] = [
   },
 ];
 
-const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
-  BASE.map((t) => [t.id, RAW_BODY.get(t.sizes)]),
-);
-
 /**
- * FIX1 (6 Oct 2026): one type size per key stage, fixed across the deck, read from the back of a
- * classroom. Each stage multiplies the theme's own stops (so every theme keeps its ratios); the
- * deck's stage is set for the whole of its generation (`withKeyStage`) and, in the app, from the
- * lesson's age band. No stage set: the theme's own sizes (the tests' and old lessons' ruler).
- * Studio body 20 at 960 wide becomes KS1 30 (60 px at 1920), KS2 26, KS3 to KS5 24.
+ * One type scale per key stage (FIX1, made the single source of truth by FIX-TYPE, 6 Oct 2026).
+ * A lesson carries its key stage (`ageBand`); every text role on every slide reads its size from
+ * that stage's scale through `typeScale`, so a deck has one body size from the first teaching slide
+ * to the exit ticket, read from the back of a classroom:
+ *
+ *   body       KS1 33, KS2 29, KS3-5 25 (every theme: the reading size, options, rows, cards)
+ *   bodySmall  one fixed step under body (0.85): footnotes, task lines, diagram labels' floor,
+ *              and the one step a fit may take (UX ruling 91)
+ *   heading    the theme's heading stop at the stage (question stems); headingDisplay the slide
+ *              heading (x1.15); title, subtitle the theme's display stops at the stage; caption
+ *              the theme's eyebrow stop at the stage
+ *
+ * The stage is bound to a theme with `getTheme(id, ageBand)` (`lessonTheme(lesson)` in the apps),
+ * or set process-wide for a generation job (`setKeyStage` / `withKeyStage`). No stage: the themes'
+ * own sizes (old lessons and most tests).
  */
 export type KeyStage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
-type StageScale = { body: number; small: number; heading: number; caption: number };
+type StageScale = { body: number; heading: number; caption: number };
+/** Body in slide points (960 wide); display stops multiply the theme's own. */
 export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
-  ks1: { body: 1.5, small: 1.25, heading: 1.15, caption: 1.1 },
-  ks2: { body: 1.3, small: 1.15, heading: 1.1, caption: 1.05 },
-  ks3: { body: 1.2, small: 1.1, heading: 1.05, caption: 1 },
-  ks4: { body: 1.2, small: 1.1, heading: 1.05, caption: 1 },
-  ks5: { body: 1.2, small: 1.1, heading: 1.05, caption: 1 },
+  ks1: { body: 33, heading: 1.15, caption: 1.1 },
+  ks2: { body: 29, heading: 1.1, caption: 1.05 },
+  ks3: { body: 25, heading: 1.05, caption: 1 },
+  ks4: { body: 25, heading: 1.05, caption: 1 },
+  ks5: { body: 25, heading: 1.05, caption: 1 },
 };
+/** bodySmall = body x this: the one step under body. */
+export const BODY_SMALL = 0.85;
+/** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
+const DISPLAY_HEADING = 1.15;
+
 let stage: KeyStage | undefined;
 const asStage = (band: string | undefined | null): KeyStage | undefined => {
   const k = (band ?? "").toLowerCase();
   return k in KEY_STAGE_TYPE ? (k as KeyStage) : undefined;
 };
-/** The key stage every theme's sizes are read at now (undefined: the themes' own sizes). */
+/** The key stage every unbound theme's sizes are read at now (undefined: the themes' own sizes). */
 export const keyStage = (): KeyStage | undefined => stage;
-/** Set the key stage the themes' sizes are read at; an unknown band clears it. */
+/** Set the key stage the unbound themes' sizes are read at; an unknown band clears it. */
 export function setKeyStage(band: string | undefined | null): void {
   stage = asStage(band);
 }
-/** `f` with the themes' sizes read at `band`'s key stage; the stage before is restored after. */
+/** `f` with the unbound themes' sizes read at `band`'s key stage; the stage before is restored. */
 export function withKeyStage<T>(band: string | undefined | null, f: () => T): T {
   const was = stage;
   stage = asStage(band);
@@ -405,40 +417,97 @@ export function withKeyStage<T>(band: string | undefined | null, f: () => T): T 
     stage = was;
   }
 }
-const stageFactor = (preset: TextPreset): number => {
-  if (!stage) return 1;
-  const k = KEY_STAGE_TYPE[stage];
-  if (preset === "body") return k.body;
-  if (preset === "small") return k.small;
-  if (preset === "caption") return k.caption;
-  return k.heading;
+
+/**
+ * A staged theme's own stops (no stage) and its bound stage ("global": the process-wide one), keyed
+ * by its `sizes` proxy so a spread copy of the theme (`{ ...theme, colors }`) keeps both.
+ */
+const OWN = new WeakMap<object, Record<TextPreset, number>>();
+const BOUND = new WeakMap<object, KeyStage | "global">();
+
+/** The key stage a theme's sizes are read at: its bound stage, else the process-wide one. */
+export function themeStage(t: Theme): KeyStage | undefined {
+  const b = BOUND.get(t.sizes);
+  return b === undefined || b === "global" ? stage : b;
+}
+
+export type TypeStep =
+  | "title"
+  | "subtitle"
+  | "headingDisplay"
+  | "heading"
+  | "body"
+  | "bodySmall"
+  | "caption";
+export type TypeScale = Record<TypeStep, number>;
+
+function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
+  const k = KEY_STAGE_TYPE[ks];
+  const heading = Math.round(own.heading * k.heading);
+  return {
+    title: Math.round(own.title * k.heading),
+    subtitle: Math.round(own.subtitle * k.heading),
+    headingDisplay: Math.round(heading * DISPLAY_HEADING),
+    heading,
+    body: k.body,
+    bodySmall: Math.round(k.body * BODY_SMALL),
+    caption: Math.round(own.caption * k.caption),
+  };
+}
+
+/**
+ * THE type scale: every text size on a slide at a key stage is one of these steps. Undefined when
+ * the theme is read at no stage (its own ladder applies, `text-style.ts`).
+ */
+export function typeScale(t: Theme): TypeScale | undefined {
+  const ks = themeStage(t);
+  const own = OWN.get(t.sizes) ?? t.sizes;
+  return ks ? scaleAt(own, ks) : undefined;
+}
+
+/** The scale step a preset reads at by default. */
+const PRESET_STEP: Record<TextPreset, TypeStep> = {
+  title: "title",
+  subtitle: "subtitle",
+  heading: "heading",
+  body: "body",
+  small: "bodySmall",
+  caption: "caption",
 };
-/** A theme whose `sizes` are read at the current key stage (the stops themselves never change). */
-function staged(t: Theme): Theme {
+
+/** A theme whose `sizes` are read off the stage's scale (the theme's own stops never change). */
+function staged(t: Theme, bound: KeyStage | "global"): Theme {
   const own = t.sizes;
+  const out: Theme = { ...t };
   const sizes = new Proxy(own, {
     get: (o, key) => {
       const v = Reflect.get(o, key);
-      return typeof v === "number" && typeof key === "string"
-        ? Math.round(v * stageFactor(key as TextPreset))
-        : v;
+      if (typeof v !== "number" || typeof key !== "string") return v;
+      const ks = bound === "global" ? stage : bound;
+      return ks ? scaleAt(own, ks)[PRESET_STEP[key as TextPreset] ?? "body"] : v;
     },
   });
-  return { ...t, sizes };
+  out.sizes = sizes;
+  OWN.set(sizes, own);
+  BOUND.set(sizes, bound);
+  return out;
 }
 
 /** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
-export const THEMES: Theme[] = BASE.map(staged);
+export const THEMES: Theme[] = BASE.map((t) => staged(t, "global"));
+
+const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
+  BASE.map((t) => [t.id, RAW_BODY.get(t.sizes)]),
+);
 
 /**
  * The theme's display body stop, which the teaching cut took off `sizes.body`. It stays a stop of
  * the step-down ladder, so an option card or a question stem still steps one display stop under
- * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`.
+ * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`. At a key stage
+ * there is no display body: options read at the stage's body like everything else.
  */
-export const displayBodyStop = (theme: Theme): number | undefined => {
-  const raw = DISPLAY_BODY[theme.id];
-  return raw === undefined ? undefined : Math.round(raw * stageFactor("body"));
-};
+export const displayBodyStop = (theme: Theme): number | undefined =>
+  typeScale(theme) ? undefined : DISPLAY_BODY[theme.id];
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
@@ -531,9 +600,28 @@ export function isThemeId(id: string): boolean {
   return THEMES.some((t) => t.id === id);
 }
 
-export function getTheme(id: string | undefined | null): Theme {
-  return THEMES.find((t) => t.id === id) ?? (THEMES[0] as Theme);
+const BOUND_THEMES = new Map<string, Theme>();
+/**
+ * The theme `id`; with `ageBand`, bound to that key stage's type scale whatever the process-wide
+ * stage (the editor, the presenter, a re-theme and the export all read a lesson this way).
+ */
+export function getTheme(id: string | undefined | null, ageBand?: string | null): Theme {
+  const t = THEMES.find((x) => x.id === id) ?? (THEMES[0] as Theme);
+  const ks = asStage(ageBand);
+  if (!ks) return t;
+  const key = `${t.id}@${ks}`;
+  let b = BOUND_THEMES.get(key);
+  if (!b) {
+    const base = BASE.find((x) => x.id === t.id) as Theme;
+    b = staged(base, ks);
+    BOUND_THEMES.set(key, b);
+  }
+  return b;
 }
+
+/** A lesson's theme at the lesson's own key stage: the one way the apps read a lesson's type. */
+export const lessonTheme = (lesson: { themeId?: string | null; ageBand?: string | null }): Theme =>
+  getTheme(lesson.themeId, lesson.ageBand);
 
 /**
  * What a piece of text is doing on the slide. The legibility floor is a property
@@ -625,8 +713,13 @@ export const textRole = (preset: TextPreset, role?: TextRole): TextRole =>
   role ?? PRESET_ROLE[preset];
 
 /** The smallest size this text may render at. */
-export const fontFloor = (preset: TextPreset, role?: TextRole): number =>
-  MIN_FONT_SIZE[textRole(preset, role)];
+export const fontFloor = (preset: TextPreset, role?: TextRole): number => {
+  const r = textRole(preset, role);
+  // At a key stage the reading roles' floor is the stage's one step under body (`typeScale`).
+  if (stage && (r === "body" || r === "option" || r === "small"))
+    return Math.round(KEY_STAGE_TYPE[stage].body * BODY_SMALL);
+  return MIN_FONT_SIZE[r];
+};
 
 export const THEME_TAG_LABELS: Record<Theme["tags"][number], string> = {
   "early-learners": "Early learners",

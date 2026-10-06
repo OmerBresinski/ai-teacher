@@ -38,7 +38,7 @@ export function fitLessonToTheme(
   lesson: Lesson,
   measure: Measurer,
 ): { lesson: Lesson; outcome: RethemeOutcome } {
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   let out = lesson;
   const tidied: Id[] = [];
   const overflow: Id[] = [];
@@ -86,8 +86,8 @@ export function rethemeLesson(
   measure: Measurer,
 ): { lesson: Lesson; outcome: RethemeOutcome } {
   if (lesson.themeId === themeId) return { lesson, outcome: { tidied: [], overflow: [] } };
-  const from = getTheme(lesson.themeId);
-  const to = getTheme(themeId);
+  const from = getTheme(lesson.themeId, lesson.ageBand);
+  const to = getTheme(themeId, lesson.ageBand);
   const themed = reducers.setTheme(lesson, themeId);
   const recoloured = { ...themed, slides: themed.slides.map((s) => recolourSlide(s, from, to)) };
   return fitLessonToTheme(recoloured, measure);

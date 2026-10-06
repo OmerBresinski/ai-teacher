@@ -54,7 +54,7 @@ function chunk(items: Page[], size: number): Page[][] {
 
 export function LessonPrint({ lesson, options = {} }: LessonPrintProps) {
   const { auto = false, answers = false, notes = false, handout3 = false, slides = "" } = options;
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   const printed = useRef(false);
   const root = useRef<HTMLDivElement>(null);
 

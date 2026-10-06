@@ -26,7 +26,7 @@ export type RefitDeps = {
 export function refitStaleLesson(lesson: Lesson, deps: RefitDeps = {}): Lesson {
   if (!isFitStale(lesson)) return lesson;
   const { measurer = createMeasurer, warm = warmMeasurer } = deps;
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   const measure = measurer(theme);
   warm(
     lesson.slides.flatMap((slide) => measureInputsOf(slide)),

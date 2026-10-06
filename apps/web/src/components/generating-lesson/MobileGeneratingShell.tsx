@@ -27,7 +27,7 @@ export function MobileGeneratingShell({
   className,
   onViewSlide,
 }: Props) {
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   const running = state.terminal === null;
   const count = lesson.slides.length;
   return (

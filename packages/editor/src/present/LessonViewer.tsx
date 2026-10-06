@@ -60,7 +60,7 @@ export function LessonViewer({
   exportSlot,
   pending,
 }: LessonViewerProps) {
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   const [index, setIndex] = useState(0);
   const [step, setStep] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);

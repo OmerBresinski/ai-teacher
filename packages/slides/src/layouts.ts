@@ -20,8 +20,8 @@ import { figureFullRects } from "./figure-full";
 import { drawFigure } from "./figures";
 import { BASELINE, GUTTER, HALF, lastColLeft, SAFE, SPACE, snapY, spanWidth, THIRD } from "./grid";
 import { OPTION } from "./metrics";
-import { readingLeading } from "./text-style";
-import { fontFloor, getTheme, type TextRole } from "./themes";
+import { readingLeading, resolveFontSize } from "./text-style";
+import { getTheme, type TextRole } from "./themes";
 
 /** Local placeholder for new image blocks: no third-party requests (SPEC §0.6). */
 export const PLACEHOLDER_IMAGE =
@@ -66,7 +66,7 @@ export type Layout = { elements: SlideElement[]; question?: QuestionData };
  * stem is set in the `heading` stop but sits on the 38pt question floor.
  */
 const lineHeight = (t: Theme, p: TextPreset, role?: TextRole) =>
-  Math.max(t.sizes[p], fontFloor(p, role)) * t.lineHeights[p];
+  resolveFontSize(t, p, undefined, role) * t.lineHeights[p];
 /**
  * Height of a text box holding `lines` lines of a preset. Exported because the demo
  * lesson in `components/slide/demo.ts` is hand-placed and has to be placed against
@@ -83,7 +83,7 @@ export const boxH = (t: Theme, p: TextPreset, lines = 1, role?: TextRole) =>
  * is why four cards in a column do not fit under a stem and the sort recipe is a grid.
  */
 const optionCardH = (t: Theme, lines = 1) =>
-  Math.ceil(Math.max(t.sizes.small, fontFloor("small", "option")) * OPTION.line * lines) +
+  Math.ceil(resolveFontSize(t, "small", undefined, "option") * OPTION.line * lines) +
   OPTION.pad * 2 +
   OPTION.border * 2;
 

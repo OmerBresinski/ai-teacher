@@ -31,7 +31,7 @@ import { curlyQuotes } from "./quote";
 import { ANSWERS_NAME, HEADING_NAME, isBackdrop, textPartsOf } from "./reflow";
 import { joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
-import { floorBelow, readingLeading, readingSize, resolveFontSize } from "./text-style";
+import { floorBelow, onScale, readingLeading, readingSize, resolveFontSize } from "./text-style";
 import { MIN_FONT_SIZE } from "./themes";
 
 /*
@@ -349,9 +349,12 @@ export function chunkStack(
   const measure = measureHeadless(t);
   const body = readingSize(t);
   const leading = readingLeading(t);
-  const sizes = [
-    ...new Set([Math.round(body * 1.2), Math.round(body * 1.1), body, floorBelow(t, "body")]),
-  ];
+  const sizes = onScale(t, "body", [
+    Math.round(body * 1.2),
+    Math.round(body * 1.1),
+    body,
+    floorBelow(t, "body"),
+  ]);
   const room = box.bottom - box.top;
   // The measure is kept before the size: about 65 characters, then 78, then the whole column.
   const tries = [MEASURE_CHARS, 78, 400].flatMap((chars) => sizes.map((size) => ({ size, chars })));
@@ -3011,11 +3014,12 @@ function sidePanel(
   const inner = w - pad * 2;
   const labelH = Math.ceil(t.sizes.caption * t.lineHeights.caption);
   const h = SAFE_BOTTOM - top;
-  for (const size of [
+  // A key-idea card's words are body text: at a key stage, the body step (then the one under it).
+  for (const size of onScale(t, "body", [
     Math.round(t.sizes.heading * 0.9),
     resolveFontSize(t, "body"),
     floorBelow(t, "body"),
-  ]) {
+  ])) {
     const style = { preset: "body" as const, fontSize: size, fontWeight: weight, lineHeight: 1.3 };
     const sh = heightOf(measure, statement, inner, "body", size, 0, style);
     const block = labelH + SPACE[2] + sh;
