@@ -1,5 +1,5 @@
 // Arm C: the tool set, its state machine and the limits (C-tools.md is the contract).
-import { writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DrawDiagram } from "./diagrams.ts";
 import type { Geometry } from "./geometry.ts";
@@ -217,6 +217,22 @@ export class Lesson {
     return { ok: true, slides: this.o.slideCount, turns_left: this.turnsLeft };
   }
 
+  /** The bank log line the eval's ruling 163 gate reads: every placed picture's style, source, period and request. */
+  private placed(e: {
+    id: string;
+    slide: number;
+    request: string;
+    kind: string;
+    period: string | null;
+    r: any;
+  }) {
+    if (!e.r?.ok) return;
+    appendFileSync(
+      join(this.o.runDir, "pictures.bank.jsonl"),
+      `${JSON.stringify({ t: Date.now(), event: "placed", id: e.id, slide: e.slide, request: e.request, kind: e.kind, period: e.period, style: e.r.style, source: e.r.source, src: e.r.src })}\n`,
+    );
+  }
+
   private visual() {
     this.timings.last_visual = this.ms();
   }
@@ -235,7 +251,15 @@ export class Lesson {
       ...(a.aspect > 0 ? { aspect: Number(a.aspect) } : {}),
     };
     const r = await this.o.findPicture(ask, id, this.context(a.slide));
-    this.pictures[id] = { ask, result: r };
+    this.pictures[id] = { request: ask.request, ask, result: r };
+    this.placed({
+      id,
+      slide: a.slide,
+      request: ask.request,
+      kind: ask.kind,
+      period: ask.period ?? null,
+      r,
+    });
     this.visual();
     return r;
   }
@@ -253,7 +277,15 @@ export class Lesson {
     };
     const c = this.context(a.slide);
     const r = await this.o.drawDiagram(ask, id, `${c.heading}\n${c.text}`);
-    this.diagrams[id] = { ask, result: r };
+    this.diagrams[id] = { request: ask.request, ask, result: r };
+    this.placed({
+      id,
+      slide: a.slide,
+      request: ask.request,
+      kind: ask.kind,
+      period: null,
+      r: r.ok ? { ...r, style: "diagram", source: "drawer" } : r,
+    });
     if (r.ok) this.visual();
     return r;
   }
@@ -395,7 +427,8 @@ export class Lesson {
         status: r ? "submitted" : "missing",
         flagged: sub?.flagged ?? false,
         html: r?.html ?? null,
-        notes: sub?.notes ?? "",
+        notes: "",
+        agentNotes: sub?.notes ?? "",
         submittedAtMs: sub?.at ?? null,
         renders: st?.renders.length ?? 0,
         violationsFirst: st?.renders[0]?.geometry ?? null,

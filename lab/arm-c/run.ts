@@ -9,6 +9,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { basename, join, resolve } from "node:path";
 import { realDiagrams, stubDiagrams } from "./diagrams.ts";
 import { type Model, responsesModel, stubModel } from "./model.ts";
+import { slideText, writeNotes } from "./notes.ts";
 import { realPictures, stubPictures } from "./pictures.ts";
 import { realProbe, stubProbe } from "./probes.ts";
 import { Renderer } from "./renderer.ts";
@@ -76,7 +77,7 @@ const logFile = join(runDir, "log.jsonl");
 const t0 = performance.now();
 const log = (r: Record<string, unknown>) =>
   appendFileSync(logFile, `${JSON.stringify({ ms: Math.round(performance.now() - t0), ...r })}\n`);
-const costs = { model: 0, ai: 0, bank: 0, diagrams: 0, probes: 0 };
+const costs = { model: 0, ai: 0, bank: 0, diagrams: 0, probes: 0, notes: 0 };
 
 if (!STUB) {
   const marked = ["system.md", "user.md", "tool-descriptions.json", "probes.json"].filter((f) =>
@@ -90,15 +91,19 @@ if (!STUB) {
 const user = read("user.md").replace(/\{\{(\w+)\}\}/g, (_, k) =>
   k === "tokens"
     ? tokenTable(tk)
-    : k === "keyStage"
-      ? tk.ks.toUpperCase()
-      : k === "theme"
-        ? tk.themeId
-        : k === "extra"
-          ? JSON.stringify(
-              Object.fromEntries(Object.entries(B).filter(([x]) => !BRIEF_KEYS.includes(x))),
-            )
-          : String((brief as any)[k] ?? ""),
+    : k === "slideCount"
+      ? brief.slidesMin === brief.slidesMax
+        ? String(brief.slidesMin)
+        : `${brief.slidesMin} to ${brief.slidesMax}`
+      : k === "keyStage"
+        ? tk.ks.toUpperCase()
+        : k === "theme"
+          ? tk.themeId
+          : k === "extra"
+            ? JSON.stringify(
+                Object.fromEntries(Object.entries(B).filter(([x]) => !BRIEF_KEYS.includes(x))),
+              )
+            : String((brief as any)[k] ?? ""),
 );
 const tools = toolDefs(JSON.parse(read("tool-descriptions.json")));
 const lessonCtx = {
@@ -226,6 +231,30 @@ while (!lesson.done) {
 const auto = lesson.autoSubmit();
 const slides = await lesson.output();
 await renderer.stop();
+const slidesSubmittedMs = lesson.timings.editable;
+// Speaker notes: the shared notes call per slide (not the agent), so time to editable matches T, K and R.
+const lessonJson = JSON.stringify({
+  title: lesson.plan?.title ?? brief.topic,
+  objectives: lesson.plan?.objectives ?? [],
+  flow: lesson.plan?.flow ?? [],
+  slides: slides.map((s) => ({ slide: s.slide, text: s.html ? slideText(s.html) : null })),
+});
+const notes = await writeNotes({
+  stub: STUB,
+  user,
+  lessonJson,
+  count: slides.length,
+  costs,
+  log: (r) => log(r),
+});
+for (const s of slides) {
+  const n = notes.get(s.slide);
+  s.notes = n?.notes ?? "";
+  (s as Record<string, unknown>).answers = n?.answers ?? [];
+}
+lesson.timings.slides_submitted = slidesSubmittedMs;
+lesson.timings.notes = Math.round(performance.now() - t0);
+lesson.timings.editable = lesson.timings.notes;
 const ms = Math.round(performance.now() - t0);
 log({ kind: "end", stop, turns, auto, ms });
 writeFileSync(

@@ -1,9 +1,9 @@
 {
-  "_system": "PROMPT-AGENT: the probe model's instructions",
-  "picture_matches_text": "PROMPT-AGENT: the yes/no question (yes = good)",
-  "diagram_matches_text": "PROMPT-AGENT: the yes/no question (yes = good)",
-  "one_focal_point": "PROMPT-AGENT: the yes/no question (yes = good)",
-  "not_too_blank": "PROMPT-AGENT: the yes/no question (yes = good)",
-  "readable_at_distance": "PROMPT-AGENT: the yes/no question (yes = good)",
-  "nothing_dangling": "PROMPT-AGENT: the yes/no question (yes = good)"
+  "_system": "You see one rendered classroom slide. Answer each question yes or no about what is visible on the slide, with one sentence of reason. Yes means the slide is good on that point.",
+  "picture_matches_text": "Does the picture show what the slide's words say it shows?",
+  "diagram_matches_text": "Does the diagram show what the slide's words say, with labels that agree with the text?",
+  "one_focal_point": "Is there one clear thing that draws the eye first?",
+  "not_too_blank": "Does the slide use its space, with no large empty area?",
+  "readable_at_distance": "Could every word be read from the back of a classroom, by its size and its contrast with the background?",
+  "nothing_dangling": "Is everything the words point to (a picture, a table, a source, a diagram) on the slide?"
 }

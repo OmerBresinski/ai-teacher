@@ -1,1 +1,10 @@
-PROMPT-AGENT: write the per-lesson user message here. Placeholders: {{yearGroup}} {{subject}} {{topic}} {{durationMin}} {{slidesMin}} {{slidesMax}} {{keyStage}} {{theme}} {{tokens}} {{extra}}
+Topic: {{topic}}
+Subject: {{subject}}
+Year group: {{yearGroup}} ({{keyStage}})
+Lesson length: {{durationMin}} minutes
+Slides: {{slideCount}}
+Theme: {{theme}}
+Other context: {{extra}}
+
+Theme tokens for this lesson:
+{{tokens}}
