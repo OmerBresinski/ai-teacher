@@ -525,3 +525,84 @@ describe("ruling 163 gate fields (dd-pics)", () => {
     expect(c!.source).toBeUndefined();
   });
 });
+
+describe("same-subject sets never cross-wire or render a failed panel", () => {
+  const { setPanelResults } = require("./services");
+  const ask = (k: number, shows: string) => ({
+    key: `7:seq.${k}`,
+    shows,
+    mustSee: [],
+    named: false,
+    slide: { heading: "h", text: "", point: "" },
+    index: 7,
+  });
+  const asks = [ask(0, "A tall candle"), ask(1, "The candle half burnt"), ask(2, "A candle stub")];
+  const panels = [new Uint8Array([1]), new Uint8Array([2]), new Uint8Array([3])];
+  let n = 0;
+  const saved: number[] = [];
+  const save = (b: Uint8Array) => {
+    saved.push(b[0] ?? 0);
+    n++;
+    return { id: `id${n}`, src: `/files/sets/${b[0]}.png`, aspect: 1.1 };
+  };
+  test("panel k carries only ask k's request and alt; a failed panel is not stored or placed", () => {
+    const r = setPanelResults(asks, panels, [true, false, true], [], {
+      model: "m",
+      style: "illustration",
+      setKey: "s",
+      save,
+    });
+    expect(r[1]).toBeUndefined();
+    expect(saved).toEqual([1, 3]);
+    expect(r[0]).toMatchObject({
+      alt: "A tall candle",
+      request: "A tall candle",
+      src: "/files/sets/1.png",
+    });
+    expect(r[2]).toMatchObject({
+      alt: "A candle stub",
+      request: "A candle stub",
+      src: "/files/sets/3.png",
+    });
+  });
+  test("laid out, each image shows its own panel; one failed panel lays the set out as words", () => {
+    const own = (k: string): VisualState => ({
+      status: "photo",
+      photo: { src: `/files/${k}.png`, alt: `alt ${k}`, aspect: 1.1, request: `req ${k}` },
+    });
+    const seq = {
+      template: "picture-sequence",
+      heading: "A candle burns down",
+      sequence: ["tall", "burning", "short"].map((c) => ({
+        shows: c,
+        caption: c,
+        subject: "generic",
+      })),
+    };
+    const base = {
+      brief: { keyStage: "ks1" },
+      theme: getTheme("splash"),
+      stage: "ks1",
+      index: 7,
+      plan: { objectives: [], flow: [], slides: [] },
+    } as unknown as Omit<MaterialiseCtx, "visual">;
+    const all = withKeyStage("ks1", () =>
+      armT.materialise(seq, { ...base, visual: (k: string) => own(k) } as MaterialiseCtx),
+    );
+    const im = all.slide.elements.filter((e) => e.type === "image") as unknown as {
+      src: string;
+      alt: string;
+      request: string;
+    }[];
+    expect(im.map((e) => [e.src, e.alt, e.request])).toEqual(
+      ["seq.0", "seq.1", "seq.2"].map((k) => [`/files/${k}.png`, `alt ${k}`, `req ${k}`]),
+    );
+    const one = withKeyStage("ks1", () =>
+      armT.materialise(seq, {
+        ...base,
+        visual: (k: string) => (k === "seq.1" ? { status: "failed" } : own(k)),
+      } as MaterialiseCtx),
+    );
+    expect(one.slide.elements.filter((e) => e.type === "image")).toHaveLength(0);
+  });
+});

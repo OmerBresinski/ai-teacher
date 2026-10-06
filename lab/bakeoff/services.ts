@@ -676,33 +676,17 @@ export function pictureService(opts: {
         same: same ? same.same : "skipped",
         odd: [...odd],
       });
-      const results = panels.map((bytes, k) => {
-        if (!pass[k]) return undefined;
-        const id = newId();
-        const k2 = `${WS}/sets/${id}.png`;
-        mkdirSync(resolve(STORE, k2, ".."), { recursive: true });
-        writeFileSync(resolve(STORE, k2), bytes);
-        const a = asks[k] as PhotoAsk;
-        const source = {
-          provider: "generated",
-          id,
-          pageUrl: "https://openai.com/policies/",
-          photographer: `AI-generated (${gen.model})`,
-          photographerUrl: "https://openai.com/policies/",
-          licence: `generated (${im.IMAGE_TERMS})`,
-        };
-        const subjects = subjectsOf(boxes[k]);
-        return {
-          request: [a.shows, ...a.mustSee].join(". "),
-          src: `/files/${k2}`,
-          alt: a.shows,
-          provider: "generated",
-          source,
-          style: look?.style === "illustration" ? "illustration" : "photo",
-          aspect: aspectOf(`/files/${k2}`),
-          set: setKey,
-          ...(subjects ? { subjects } : {}),
-        } as PhotoResult;
+      const results = setPanelResults(asks, panels, pass, boxes, {
+        model: gen.model,
+        style: look?.style === "illustration" ? "illustration" : "photo",
+        save: (bytes) => {
+          const id = newId();
+          const k2 = `${WS}/sets/${id}.png`;
+          mkdirSync(resolve(STORE, k2, ".."), { recursive: true });
+          writeFileSync(resolve(STORE, k2), bytes);
+          return { id, src: `/files/${k2}`, aspect: aspectOf(`/files/${k2}`) };
+        },
+        setKey,
       });
       const ok = results.filter(Boolean).length;
       if (!best || ok > best.ok) best = { results, ok };
@@ -954,4 +938,46 @@ async function specCalls(
 export function writeJson(f: string, v: unknown) {
   mkdirSync(dirname(f), { recursive: true });
   writeFileSync(f, `${JSON.stringify(v, null, 1)}\n`);
+}
+
+/**
+ * A set's panels as picture results, panel k for ask k only: its own request, alt and key-order
+ * position; a panel that failed its judge (or the set) is undefined, never stored or placed.
+ */
+export function setPanelResults(
+  asks: PhotoAsk[],
+  panels: Uint8Array[],
+  pass: boolean[],
+  boxes: (Box4[] | undefined)[],
+  o: {
+    model: string;
+    style: "photo" | "illustration";
+    setKey: string;
+    save: (bytes: Uint8Array) => { id: string; src: string; aspect: number };
+  },
+): (PhotoResult | undefined)[] {
+  return asks.map((a, k) => {
+    const bytes = panels[k];
+    if (!pass[k] || !bytes) return undefined;
+    const saved = o.save(bytes);
+    const subjects = subjectsOf(boxes[k]);
+    return {
+      request: [a.shows, ...a.mustSee].join(". "),
+      src: saved.src,
+      alt: a.shows,
+      provider: "generated",
+      source: {
+        provider: "generated",
+        id: saved.id,
+        pageUrl: "https://openai.com/policies/",
+        photographer: `AI-generated (${o.model})`,
+        photographerUrl: "https://openai.com/policies/",
+        licence: `generated (${im.IMAGE_TERMS})`,
+      },
+      style: o.style,
+      aspect: saved.aspect,
+      set: o.setKey,
+      ...(subjects ? { subjects } : {}),
+    } as PhotoResult;
+  });
 }
