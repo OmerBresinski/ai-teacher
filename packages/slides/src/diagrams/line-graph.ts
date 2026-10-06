@@ -13,6 +13,17 @@ import { arrowHead, type Ctx, n, num, text, textWidth, ticks, wrap } from "./svg
 type Axis = { label: string; min: number; max: number; step?: number };
 type Box = { x0: number; y0: number; x1: number; y1: number };
 
+/** The widest a plot is drawn against its height (dd-diagrams: no squashed strips). */
+export const ASPECT_MAX = 2.4;
+
+/** The next round step above `s` (1, 2, 2.5, 5, 10 and their powers of ten). */
+function nextNice(s: number): number {
+  const p = 10 ** Math.floor(Math.log10(s) + 1e-9);
+  const f = s / p;
+  const up = [1, 2, 5, 10].find((v) => v > f + 1e-9) ?? 10;
+  return up * p;
+}
+
 export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
   const small = sub(fs);
@@ -47,16 +58,55 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
     w + fs,
     0,
   ).flatMap((r, row) => r.items.map(({ i, x: lx }) => ({ i: keyIdx[i] as number, lx, row })));
-  const legendH = legend ? fs * 1.8 + Math.max(0, ...legendAt.map((k) => k.row)) * fs * 1.3 : 0;
+  // dd-diagrams: in a wide, short box the legend stands in a column right of the plot, so the
+  // plot keeps its height (K y11 s11: a top legend and label row left a 48-point plot).
+  const sideLegend = legend && w > 2 * h;
+  const sideKeyW = sideLegend ? Math.max(...keyIdx.map((i) => keyW(g.series[i]?.label ?? ""))) : 0;
+  if (sideLegend) for (const [row, k] of legendAt.entries()) Object.assign(k, { lx: 0, row });
+  const legendH =
+    legend && !sideLegend ? fs * 1.8 + Math.max(0, ...legendAt.map((k) => k.row)) * fs * 1.3 : 0;
   // Intervals with no `y` get a band of their own under the legend, one row each.
   const banded = g.intervals.filter((v) => v.y === undefined);
   const bandRow = small * 1.2 + fs * 0.9;
-  const left = fs * 1.4 + tickW(yt) + 10;
-  const right = g.y2
-    ? fs * 1.4 + tickW(y2t) + 10
-    : Math.max(12, textWidth(num(g.x.max), x, small) / 2);
   const bottom = small * 1.3 + fs * 1.5 + 6;
-  const pw = w - left - right;
+  // The y axis title runs along the plot: one line at the label size, else a step smaller, else
+  // two lines; a title longer than that is a fault, never clipped (K y11 s11's "Gas volume / cm³").
+  const loose0 = g.annotations.length;
+  const top0 = legendH + fs * 0.8 + (loose0 > 0 ? fs * 1.2 : 0) + banded.length * bandRow;
+  // The rotated title is centred on the plot and may run into the empty left margin above and
+  // below it, but not into the legend row or off the drawing.
+  const mid0 = top0 + (h - top0 - bottom) / 2;
+  const along = Math.max(1, 2 * Math.min(mid0 - legendH, h - mid0) - 8);
+  const yTitleForm = (label: string) => {
+    for (const [f, k] of [
+      [fs, 1],
+      [small, 1],
+      [small, 2],
+    ] as const) {
+      const lines = k === 1 ? [label] : wrap(label, x, along, 2, f, 600);
+      if (lines.every((l) => !l.endsWith("…") && textWidth(l, x, f, 600) <= along))
+        return { lines, f };
+    }
+    x.faults?.push(`the axis title "${label}" is longer than its axis`);
+    return { lines: [label], f: small };
+  };
+  const yForm = yTitleForm(g.y.label);
+  const y2Form = g.y2 ? yTitleForm(g.y2.label) : undefined;
+  const titleW = (t: { lines: string[]; f: number }) => t.f * 1.2 * t.lines.length + t.f * 0.2;
+  let left = titleW(yForm) + tickW(yt) + 10;
+  const right =
+    (g.y2 && y2Form
+      ? titleW(y2Form) + tickW(y2t) + 10
+      : Math.max(12, textWidth(num(g.x.max), x, small) / 2)) + (sideLegend ? sideKeyW + fs : 0);
+  // dd-diagrams: a plot keeps a sane aspect (at most ASPECT_MAX as wide as tall): in a wide band
+  // it is drawn narrower and centred, never stretched into a strip.
+  let pw = w - left - right;
+  const phGuess = h - top0 - bottom;
+  if (phGuess > 0 && pw > ASPECT_MAX * phGuess) {
+    const cut = pw - ASPECT_MAX * phGuess;
+    left += cut / 2;
+    pw -= cut;
+  }
   const Xp = (v: number) => left + ((v - g.x.min) / (g.x.max - g.x.min)) * pw;
   // A hydrograph's two peaks named at the ends of its lag arrow, on a row above it, each leaning
   // outward (the textbook figure): one interval in the band whose ends are two annotated points.
@@ -85,18 +135,49 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   const top = legendH + fs * 0.8 + (loose > 0 ? fs * 1.2 : 0) + band;
   const ph = h - top - bottom;
   // A plot squeezed under its own labels shows no shape (round H: 78 of 300 points).
-  if (ph < 0.42 * h)
+  if (ph < 0.42 * h || ph < small * 4.5)
     x.faults?.push("the graph is squashed under its labels, so the curve is too small to read");
-  // A short plot keeps every other tick until the tick labels have room (a 245-high slot).
-  const thin = (vals: number[]) => {
+  if (pw < small * 8 || pw > ASPECT_MAX * 1.25 * ph)
+    x.faults?.push("the plot is too narrow or too flat to read its shape");
+  // dd-diagrams: a short plot takes a rounder, larger step until its tick labels have room, and
+  // its range runs out to whole steps, so the top of the axis is always labelled (T y11 s10
+  // showed only "40" on a 0-60 axis after every other tick was dropped).
+  const fitAxis = (a: Axis, vals: number[]): { axis: Axis; vals: number[] } => {
     let v = vals;
-    while (v.length > 3 && ph / (v.length - 1) < small * 1.35) v = v.filter((_, i) => i % 2 === 0);
-    return v;
+    let step = v.length > 1 ? (v[1] as number) - (v[0] as number) : a.max - a.min;
+    while (v.length > 3 && ph / (v.length - 1) < small * 1.6) {
+      step = nextNice(step);
+      const lo = Math.floor(a.min / step + 1e-9) * step;
+      const hi = Math.ceil(a.max / step - 1e-9) * step;
+      v = ticks(lo, hi, step);
+    }
+    const lo = Math.min(a.min, v[0] ?? a.min);
+    const s = v.length > 1 ? (v[1] as number) - (v[0] as number) : a.max - a.min;
+    const last = v[v.length - 1] ?? a.max;
+    // The axis's own top when it is not a tick: the next tick above it, labelled.
+    const hi = last < a.max - 1e-9 ? last + s : Math.max(a.max, last);
+    if (last < a.max - 1e-9) v = [...v, Math.round((last + s) * 1e6) / 1e6];
+    return { axis: { ...a, min: lo, max: hi }, vals: v };
   };
-  yt.splice(0, yt.length, ...thin(yt));
-  y2t.splice(0, y2t.length, ...thin(y2t));
+  const fy = fitAxis(g.y, yt);
+  const fy2 = g.y2 ? fitAxis(g.y2, y2t) : undefined;
+  yt.splice(0, yt.length, ...fy.vals);
+  if (fy2) y2t.splice(0, y2t.length, ...fy2.vals);
+  // x tick labels keep a gap between them (the widest label and a little air apart).
+  const xLabelW = Math.max(...xt.map((v) => textWidth(num(v), x, small)));
+  while (xt.length > 3 && pw / (xt.length - 1) < xLabelW + small * 0.8) {
+    const kept = xt.filter((_, i) => i % 2 === 0);
+    xt.splice(0, xt.length, ...kept);
+  }
+  const shown = new Map<Axis | undefined, Axis>([
+    [g.y, fy.axis],
+    [g.y2, fy2?.axis ?? (g.y2 as Axis)],
+  ]);
   const X = (v: number) => left + ((v - g.x.min) / (g.x.max - g.x.min)) * pw;
-  const Yof = (a: Axis) => (v: number) => top + ph - ((v - a.min) / (a.max - a.min)) * ph;
+  const Yof = (a0: Axis) => {
+    const a = shown.get(a0) ?? a0;
+    return (v: number) => top + ph - ((v - a.min) / (a.max - a.min)) * ph;
+  };
   const Y = Yof(g.y);
   const out: string[] = [];
 
@@ -147,10 +228,25 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   }
   // Axis titles.
   out.push(text(x, left + pw / 2, h - 2, [g.x.label], { v: "bottom", weight: 600 }));
-  const yTitle = (label: string, cx: number, rot: number) =>
-    `<g transform="translate(${n(cx)},${n(top + ph / 2)}) rotate(${rot})">${text({ ...x, rec: undefined }, 0, 0, [label], { weight: 600 })}</g>`;
-  out.push(yTitle(g.y.label, fs * 0.7, -90));
-  if (g.y2) out.push(yTitle(g.y2.label, w - fs * 0.7, 90));
+  // The rotated title is recorded as its upright box, so the checks see it run off or collide.
+  const yTitle = (t: { lines: string[]; f: number }, cx: number, rot: number) => {
+    const len = Math.max(...t.lines.map((l) => textWidth(l, x, t.f, 600)));
+    const thick = t.f * 1.2 * t.lines.length;
+    x.rec?.push({
+      text: t.lines.join(" "),
+      x0: cx - thick / 2,
+      x1: cx + thick / 2,
+      y0: top + ph / 2 - len / 2,
+      y1: top + ph / 2 + len / 2,
+      fs: t.f,
+      cut: false,
+    });
+    return `<g transform="translate(${n(cx)},${n(top + ph / 2)}) rotate(${rot})">${text({ ...x, rec: undefined }, 0, -((t.lines.length - 1) * t.f * 1.2) / 2, t.lines, { weight: 600, fs: t.f })}</g>`;
+  };
+  const yCx = left - tickW(yt) - 10 - titleW(yForm) / 2;
+  out.push(yTitle(yForm, Math.max(titleW(yForm) / 2, yCx), -90));
+  if (g.y2 && y2Form)
+    out.push(yTitle(y2Form, left + pw + tickW(y2t) + 10 + titleW(y2Form) / 2, 90));
 
   // Series: bars first, so lines draw over them.
   const flatLabels: { label: string; y: number }[] = [];
@@ -222,6 +318,62 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   }
 
   out.splice(firstData, 0, ...tangents);
+
+  // dd-diagrams: an energy profile shows each activation energy as what it is, the climb from the
+  // reactants' level to its own peak: a dashed reactant level and a double arrow per curve, named
+  // by the label the writer put on that peak (K y11 s7 pointed "Higher" and "Lower" at the wrong
+  // places). Two peaks at one x stand side by side, each with a short guide to its own peak.
+  const eaMarks: {
+    a: { x: number; y: number; label: string };
+    ax: number;
+    ay: number;
+    ea: true;
+  }[] = [];
+  const eaUsed = new Set<number>();
+  const humps = energyHumps(g);
+  const humpColour = (pk: number) => {
+    const i = g.series.findIndex((s) => Math.max(...s.points.map((p) => p[1])) === pk);
+    return colours[i] ?? c.ink;
+  };
+  if (humps.length) {
+    const ySpan = g.y.max - g.y.min || 1;
+    const xSpan = g.x.max - g.x.min || 1;
+    const shared = humps.length === 2 && Math.abs(X(humps[0]!.px) - X(humps[1]!.px)) < fs * 1.6;
+    const head = Math.max(8, fs * 0.45);
+    humps.forEach((hp, j) => {
+      const off = shared ? (j === 0 ? -1 : 1) * fs * 0.7 : 0;
+      const axp = X(hp.px) + off;
+      const y0 = Y(hp.start);
+      const y1 = Y(hp.peak);
+      out.push(
+        `<line x1="${n(X(hp.x0))}" y1="${n(y0)}" x2="${n(axp + fs * 0.4)}" y2="${n(y0)}" stroke="${c.muted}" stroke-width="1.5" stroke-dasharray="${n(fs * 0.35)} ${n(fs * 0.3)}"/>`,
+        `<line x1="${n(axp)}" y1="${n(y0 - head * 0.8)}" x2="${n(axp)}" y2="${n(y1 + head * 0.8)}" stroke="${humpColour(hp.peak)}" stroke-width="2.5"/>`,
+        arrowHead(axp, y0, axp, y1, head, humpColour(hp.peak)),
+        arrowHead(axp, y1, axp, y0, head, humpColour(hp.peak)),
+      );
+      if (off)
+        out.push(
+          `<line x1="${n(X(hp.px))}" y1="${n(y1)}" x2="${n(axp)}" y2="${n(y1)}" stroke="${c.muted}" stroke-width="1.5"/>`,
+        );
+      curves.push([axp, y0, axp, y1]);
+      const ai = g.annotations.findIndex(
+        (a, k) =>
+          !eaUsed.has(k) &&
+          Math.abs(a.x - hp.px) <= 0.15 * xSpan &&
+          Math.abs(a.y - hp.peak) <= 0.12 * ySpan,
+      );
+      if (ai >= 0) eaUsed.add(ai);
+      const label =
+        ai >= 0
+          ? (g.annotations[ai]?.label ?? "Ea")
+          : humps.length === 1
+            ? "Ea"
+            : j === 0
+              ? "Higher Ea"
+              : "Lower Ea";
+      eaMarks.push({ a: { x: hp.px, y: hp.peak, label }, ax: axp, ay: (y0 + y1) / 2, ea: true });
+    });
+  }
   out.push(...touchDots);
   x.strokes?.push(...curves);
   const crossesCurve = (b: Box) =>
@@ -334,16 +486,25 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   // rainfall peak is on the right axis). Labels spread outward in x order, so two leaders never
   // cross, and each takes the first place clear of the plot's edges, the interval labels and the
   // labels already set.
-  const dots = g.annotations.map((a) => {
-    let best: { ay: number; d: number } | undefined;
-    for (const s of g.series) {
-      const axis = s.axis === "right" && g.y2 ? g.y2 : g.y;
-      const range = axis.max - axis.min || 1;
-      const d = Math.abs(at(s.points, a.x) - a.y) / range;
-      if (d <= 0.15 && (!best || d < best.d)) best = { ay: Yof(axis)(at(s.points, a.x)), d };
-    }
-    return { a, ax: X(a.x), ay: best ? best.ay : Y(a.y) };
-  });
+  const dots: { a: { x: number; y: number; label: string }; ax: number; ay: number; ea?: true }[] =
+    g.annotations.flatMap((a, k) =>
+      eaUsed.has(k)
+        ? []
+        : [
+            (() => {
+              let best: { ay: number; d: number } | undefined;
+              for (const s of g.series) {
+                const axis = s.axis === "right" && g.y2 ? g.y2 : g.y;
+                const range = axis.max - axis.min || 1;
+                const d = Math.abs(at(s.points, a.x) - a.y) / range;
+                if (d <= 0.15 && (!best || d < best.d))
+                  best = { ay: Yof(axis)(at(s.points, a.x)), d };
+              }
+              return { a, ax: X(a.x), ay: best ? best.ay : Y(a.y) };
+            })(),
+          ],
+    );
+  dots.push(...eaMarks);
   const byX = [...dots].sort((p, q) => p.ax - q.ax);
   const topLimit = legendH + band;
   for (const d of dots) {
@@ -379,7 +540,8 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   const loosePlaced = byX.filter((d) => !peakRow?.skip.has(g.annotations.indexOf(d.a)));
   for (const [i, d] of loosePlaced.entries()) {
     const { a, ax, ay } = d;
-    const lw = textWidth(a.label, x, small, 600);
+    let lab = a.label;
+    let lw = textWidth(lab, x, small, 600);
     const lh = small * 1.25;
     const off = fs * 1.6;
     const edgeLeft = ax > left + pw * 0.6;
@@ -428,17 +590,62 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       spot(near, false, 2.6),
       spot(far, false, 2.6),
     ];
+    const grid = (): Spot[] => {
+      const g2: Spot[] = [];
+      for (let fx = 0.05; fx <= 0.96; fx += 0.075)
+        for (let fy = 0.04; fy <= 0.97; fy += 0.08)
+          for (const anchor of ["start", "end", "middle"] as const)
+            g2.push({ lx: left + fx * pw, ly: top + fy * ph, anchor, down: true });
+      return g2.sort((p, q) => Math.hypot(p.lx - ax, p.ly - ay) - Math.hypot(q.lx - ax, q.ly - ay));
+    };
+    // dd-diagrams: an activation-energy label stands right beside its own arrow, on the side away
+    // from the other arrow, with no leader, wherever that side is clear.
+    const eaSide: Spot[] = d.ea
+      ? (eaMarks.length === 2 &&
+        eaMarks[0]?.ax !== undefined &&
+        ax < Math.max(...eaMarks.map((m) => m.ax))
+          ? [-1, 1]
+          : [1, -1]
+        ).flatMap((side) =>
+          [0, -0.9, 0.9, -1.8, 1.8].map((dy) => ({
+            lx: ax + side * fs * 0.35,
+            ly: ay + dy * fs - lh / 2,
+            anchor: side < 0 ? ("end" as const) : ("start" as const),
+            down: true,
+          })),
+        )
+      : [];
+    // When the writer's name for it does not fit beside the arrow, the textbook "Ea" does; each
+    // arrow is drawn in its own curve's colour, so the two read apart.
+    let side: Spot | undefined;
+    for (const name of d.ea ? [a.label, "Ea"] : []) {
+      lab = name;
+      lw = textWidth(name, x, small, 600);
+      side = eaSide.find((p) => inside(boxOf(p)) && clear(boxOf(p)));
+      if (side) break;
+    }
+    if (!side) {
+      lab = a.label;
+      lw = textWidth(lab, x, small, 600);
+    }
     const pick =
+      side ??
       tries.find((p) => inside(boxOf(p)) && clear(boxOf(p))) ??
+      // dd-diagrams: else the nearest clear space anywhere in the plot, reached by a leader line.
+      grid().find((p) => inside(boxOf(p)) && clear(boxOf(p))) ??
       tries.find((p) => inside(boxOf(p))) ??
       spot(0, ay - fs * 2.6 < topLimit);
     const box = boxOf(pick);
     taken.push(box);
     const tx = pick.anchor === "middle" ? pick.lx : pick.lx + (pick.anchor === "end" ? -4 : 4);
     out.push(
-      `<line x1="${n(ax)}" y1="${n(ay)}" x2="${n(pick.lx)}" y2="${n(pick.ly)}" stroke="${c.ink}" stroke-width="1.5"/>`,
-      `<circle cx="${n(ax)}" cy="${n(ay)}" r="${n(fs * 0.3)}" fill="${c.ink}" stroke="${c.bg}" stroke-width="2"/>`,
-      text(x, tx, pick.ly, [a.label], {
+      side
+        ? ""
+        : `<line x1="${n(ax)}" y1="${n(ay)}" x2="${n(pick.lx)}" y2="${n(pick.ly)}" stroke="${c.ink}" stroke-width="1.5"/>`,
+      d.ea
+        ? ""
+        : `<circle cx="${n(ax)}" cy="${n(ay)}" r="${n(fs * 0.3)}" fill="${c.ink}" stroke="${c.bg}" stroke-width="2"/>`,
+      text(x, tx, pick.ly, [lab], {
         anchor: pick.anchor,
         fs: small,
         weight: 600,
@@ -465,11 +672,12 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   }
 
   // Legend.
-  for (const { i, lx, row } of legendAt) {
+  for (let { i, lx, row } of legendAt) {
     const sr = g.series[i];
     if (!sr?.label) continue;
     const colour = colours[i] ?? c.accent;
-    const ly = row * fs * 1.3;
+    const ly = sideLegend ? top + row * fs * 1.5 : row * fs * 1.3;
+    if (sideLegend) lx = w - sideKeyW;
     const sw =
       sr.style === "tangent"
         ? `<line x1="${n(lx)}" y1="${n(ly + fs * 0.7)}" x2="${n(lx + fs)}" y2="${n(ly + fs * 0.7)}" stroke="${c.accent2}" stroke-width="2" stroke-dasharray="${n(fs * 0.3)} ${n(fs * 0.2)}"/>`
@@ -564,4 +772,25 @@ export function monotonePath(p: [number, number][]): string {
     d += ` C${n(x0 + h)},${n(y0 + t[i]! * h)} ${n(x1 - h)},${n(y1 - t[i + 1]! * h)} ${n(x1)},${n(y1)}`;
   }
   return d;
+}
+
+/** dd-diagrams: an energy profile's humps (reaction progress against energy), highest first. */
+function energyHumps(g: LineGraph): { x0: number; start: number; px: number; peak: number }[] {
+  if (!/progress|reaction|pathway/i.test(g.x.label) || !/energy/i.test(g.y.label)) return [];
+  const lines = g.series.filter((s) => s.style === "line" && s.points.length >= 3);
+  if (lines.length < 1 || lines.length > 2) return [];
+  const out = lines.map((s) => {
+    const ys = s.points.map((p) => p[1]);
+    const peak = Math.max(...ys);
+    const k = ys.indexOf(peak);
+    const [x0, start] = s.points[0] as [number, number];
+    const end = ys[ys.length - 1] as number;
+    return k > 0 && k < ys.length - 1 && peak > Math.max(start, end)
+      ? { x0, start, px: (s.points[k] as [number, number])[0], peak }
+      : undefined;
+  });
+  if (out.some((o) => !o)) return [];
+  return (out as { x0: number; start: number; px: number; peak: number }[]).sort(
+    (a, b) => b.peak - a.peak,
+  );
 }

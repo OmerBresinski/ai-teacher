@@ -104,6 +104,26 @@ describe("placeT3Diagram: long labels fitted before a drawing is given up (lab/t
       alt: "a",
       title: "The crisis worsens",
       layout: "chain",
+      // dd-diagrams: three steps, so the chain fits the half zone at a readable size (a fourth step
+      // with arrow notes there now reports it cannot draw, and the slide falls back to words).
+      steps: [
+        { label: "Passive resistance reduces production" },
+        { label: "Government pays resisting workers" },
+        { label: "Mark loses value; prices soar" },
+      ],
+    };
+    const r = placeT3Diagram(photoSlide(), spec, theme);
+    expect(r.reasons).toEqual([]);
+    expect(r.slide).toBeDefined();
+    expect(r.stretched).toBe(true);
+  });
+
+  test("a flow too long for its zone at a readable size is refused, so the slide falls back", () => {
+    const spec = {
+      kind: "flow",
+      alt: "a",
+      title: "The crisis worsens",
+      layout: "chain",
       steps: [
         { label: "Passive resistance reduces production", arrow: "while" },
         { label: "Government pays resisting workers", arrow: "funded by" },
@@ -112,9 +132,8 @@ describe("placeT3Diagram: long labels fitted before a drawing is given up (lab/t
       ],
     };
     const r = placeT3Diagram(photoSlide(), spec, theme);
-    expect(r.reasons).toEqual([]);
-    expect(r.slide).toBeDefined();
-    expect(r.stretched).toBe(true);
+    expect(r.reasons.join(" ")).toContain("readable size");
+    expect(r.slide).toBeUndefined();
   });
 
   test("a label far past its limit is rejected with a reason for the log", () => {

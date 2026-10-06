@@ -371,6 +371,16 @@ export function simplerDiagrams(spec: unknown): unknown[] {
     const { title: _t2, ...e } = c;
     out.push(a, d as LineGraph, b, c, e as LineGraph);
   }
+  // dd-diagrams: an energy profile's long peak labels shorten to the textbook "Ea".
+  if (s.kind === "line-graph" && s.annotations.some((a) => /activation energy/i.test(a.label))) {
+    out.push({
+      ...s,
+      annotations: s.annotations.map((a) => ({
+        ...a,
+        label: a.label.replace(/activation energy/i, "Ea"),
+      })),
+    });
+  }
   if (s.kind === "labelled-diagram" && isParticleRow(s)) {
     const { title: _t, ...bare } = s;
     out.push(
@@ -378,6 +388,16 @@ export function simplerDiagrams(spec: unknown): unknown[] {
       bare as LabelledDiagram,
       { ...s, labels: [] },
     );
+  }
+  // dd-diagrams: an energy profile's long peak labels shorten to the textbook "Ea".
+  if (s.kind === "line-graph" && s.annotations.some((a) => /activation energy/i.test(a.label))) {
+    out.push({
+      ...s,
+      annotations: s.annotations.map((a) => ({
+        ...a,
+        label: a.label.replace(/activation energy/i, "Ea"),
+      })),
+    });
   }
   if (s.kind === "particles") {
     const { title: _t, ...bare } = s;

@@ -49,6 +49,15 @@ describe("LAYOUT-FIX big diagrams replayed from the smoke", () => {
         if (f.heading === "A chick grows") expect(zone?.w ?? 844).toBeLessThan(844);
         else expect(zone?.w).toBe(844);
         const d = placeT3Diagram(base, spec, theme, () => `g${n++}`);
+        // dd-diagrams: y9's six steps with two-word arrow notes cannot be set at a readable size
+        // even full width, so the drawing reports it cannot draw and the slide falls back to its
+        // words (never a flow at small type).
+        const steps = (f.picture as { steps?: unknown[] }).steps;
+        if (f.picture.kind === "flow" && (steps?.length ?? 0) >= 6) {
+          expect(d.reasons.join(" ")).toContain("readable size");
+          expect(d.slide).toBeUndefined();
+          return;
+        }
         expect(d.reasons).toEqual([]);
         expect(d.slide).toBeDefined();
         // No overflow or overlap as the fit check measures it (paragraph gaps, a two-line heading).
