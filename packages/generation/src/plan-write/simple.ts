@@ -51,6 +51,7 @@ import {
   diagramCapacities,
   diagramElement,
   diagramFs,
+  drawsAtBodySize,
   energyProfileOf,
   figureGeometryFaults,
   fittedDiagramElement,
@@ -1247,9 +1248,14 @@ export function t3TableBelow(
 export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: boolean): Slide {
   const zone = (sl: Slide) =>
     sl.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
-  const clean = (sl: Slide) => {
+  const settles = (sl: Slide) => {
     const e = zone(sl);
     return !!e && withLongLabels(() => settleDiagram(spec, { w: e.w, h: e.h }).clean);
+  };
+  const clean = (sl: Slide) => {
+    const e = zone(sl);
+    // fix-bars: a bar model whose numbers cannot stand at body size here takes the full width.
+    return !!e && settles(sl) && drawsAtBodySize(spec, theme, { w: e.w, h: e.h });
   };
   // The renderer-derived capacity routes an over-full spec straight to the big diagram.
   const kind = (spec as { kind?: string } | null)?.kind ?? "";
@@ -1268,7 +1274,10 @@ export function t3DiagramBase(slide: Slide, spec: unknown, theme: Theme, full: b
   // down to the half zone with its words beside it, when it draws clean there.
   const bigZone = zone(big);
   if (full && bigZone && at && sparseDrawing(spec, theme, bigZone) && clean(slide)) return slide;
-  return full || clean(big) ? big : slide;
+  if (full || clean(big)) return big;
+  // fix-bars: at body size nowhere, the zone where every label still draws (y5's eight parts of
+  // "5 cm" lose their numbers in the half zone and keep them across the slide).
+  return settles(big) && !settles(slide) ? big : slide;
 }
 
 /**

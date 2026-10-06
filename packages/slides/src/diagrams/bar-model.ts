@@ -14,12 +14,20 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
   const labelW = Math.max(0, ...s.bars.map((b) => (b.label ? textWidth(b.label, x, fs, 600) : 0)));
   // FIX1: a row name wider than a fifth of the drawing stands over its bar, so the bars keep the
   // drawing's width (y5's "Counters" took a third of a half zone and the bars were a narrow strip).
-  const above = labelW > w * LABEL_SIDE_MAX;
+  // fix-bars: a single bar's name stands over it too (it names the whole, like a caption), so the
+  // bar spans the zone; names beside their bars are kept for rows compared side by side.
+  // It stays beside when the drawing is too short for a name line over the bar (a wide, short zone).
+  const braceH0 = fs * 2.8;
+  const rowsH = (named: number) =>
+    s.bars.reduce((a, b) => a + (b.total ? braceH0 : 0) + (b.label ? named : 0) + fs * 1.8, 0) +
+    fs * 0.9 * (s.bars.length - 1);
+  const above =
+    labelW > w * LABEL_SIDE_MAX || (labelW > 0 && s.bars.length === 1 && rowsH(fs * 1.5) <= h);
   const left = labelW > 0 && !above ? labelW + gap : 0;
   const nameH = above ? fs * 1.5 : 0;
   const right = s.combined ? fs * 1.2 + gap + textWidth(s.combined, x, fs, 600) : 0;
   const barW = w - left - right - 4;
-  const braceH = fs * 2.8;
+  const braceH = braceH0;
   const rowGap = fs * 0.9;
   const tops = s.bars.map((b) => (b.total ? braceH : 0) + (b.label ? nameH : 0));
   const room = h - tops.reduce((a, b) => a + b, 0) - rowGap * (s.bars.length - 1);
@@ -30,6 +38,8 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
   const scale = Math.max(...s.bars.map((b) => b.parts.reduce((a, p) => a + p.value, 0)));
   const unit = barW / scale;
   const out: string[] = [];
+  // fix-bars: rows that do not fit the drawing's height are a fault (they ran off its foot unseen).
+  if (used > h + 2) x.faults?.push("the bars run off the foot of the drawing");
   let y = Math.max(0, (h - used) / 2);
   const x0 = left + 2;
   let firstTop = 0;
@@ -58,7 +68,12 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
       out.push(
         `<rect x="${n(px + cut / 2)}" y="${n(y)}" width="${n(pw - cut)}" height="${n(barH)}" fill="${p.shaded ? c.accent : c.tint}"/>`,
       );
-      if (p.label && textWidth(p.label, x, fs, 600) <= pw - 6) {
+      // Clear of both sides of its part by a quarter label height, so "6 m" never touches its edges.
+      const fits = !p.label || textWidth(p.label, x, fs, 600) <= pw - cut - fs * 0.5;
+      // fix-bars: a part whose label does not fit is a fault, not a silent drop, so the drawing
+      // takes a wider zone (or a smaller zoom) instead of losing the numbers it is there to show.
+      if (!fits) x.faults?.push(`the part label "${p.label}" does not fit its part`);
+      if (p.label && fits) {
         out.push(
           text(x, px + pw / 2, y + barH / 2, [p.label], {
             weight: 600,
