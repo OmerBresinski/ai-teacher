@@ -1,6 +1,13 @@
 // BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
 // with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Writable } from "node:stream";
@@ -24,6 +31,11 @@ import {
   findDirected,
   type LessonLook,
 } from "../../packages/generation/src/stages/picture-director";
+import {
+  isHistoricalSet,
+  setImagePrompt,
+  setSize,
+} from "../../packages/generation/src/stages/picture-set";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
 import { placePhoto } from "../../packages/slides/src/templates/index";
@@ -72,8 +84,17 @@ export class Ledger {
   get total() {
     return Object.values(this.parts).reduce((a, b) => a + b, 0);
   }
-  /** Spent, booked elsewhere and still held. */
+  /**
+   * Other runs sharing one budget (`shareBudget`): their committed spend, counted against this
+   * cap too, so two arms run side by side can't each spend the whole cap.
+   */
+  peers: () => number = () => 0;
+  /** Spent, booked elsewhere, still held, and what the runs sharing this budget have committed. */
   get committed() {
+    return this.total + this.outside() + this.held + this.peers();
+  }
+  /** This run's own committed spend (what it publishes to the shared budget). */
+  get own() {
     return this.total + this.outside() + this.held;
   }
   /** Refusals (round 2): steps the cap kept from starting, for the run log. */
@@ -94,12 +115,76 @@ export class Ledger {
     if (this.committed + est > this.capUsd + 1e-9)
       throw new Error(`cap $${this.capUsd} would be passed by ${what} (held $${est})`);
     this.held += est;
+    this.publish();
     let open = true;
     return () => {
       if (open) this.held = Math.max(0, this.held - est);
       open = false;
+      this.publish();
     };
   }
+  /** Set by `shareBudget`: writes this run's committed spend for the runs it shares with. */
+  publish: () => void = () => {};
+}
+
+/**
+ * One hard cap across several runs at once (an A/B run side by side): each run writes its
+ * committed spend to `<dir>/<id>.json` on every hold and release, and counts the others' against
+ * the shared cap. Picture run 5 (6 Oct) overshot because each arm had its own cap.
+ */
+export function shareBudget(ledger: Ledger, dir: string, id: string) {
+  mkdirSync(dir, { recursive: true });
+  const mine = `${dir}/${id}.json`;
+  ledger.publish = () => writeFileSync(mine, JSON.stringify({ committed: ledger.own }));
+  ledger.peers = () => {
+    let sum = 0;
+    for (const f of readdirSync(dir))
+      if (f.endsWith(".json") && `${dir}/${f}` !== mine)
+        try {
+          sum += Number(JSON.parse(readFileSync(`${dir}/${f}`, "utf8")).committed) || 0;
+        } catch {}
+    return sum;
+  };
+  ledger.publish();
+}
+
+/**
+ * Every image generation (or edit) reserves its own worst case on the run's ledger before it
+ * starts and is refused (throws, so the ladder treats it as a miss) past the run cap; its real
+ * cost is booked as part "pictures" before the hold is released. This is the run-level hard cap
+ * for pictures: no separate bank cap can add spend past it.
+ */
+export function ledgerGenerator<
+  G extends {
+    model: string;
+    generate: (a: never) => Promise<{ costUsd: number }>;
+    edit?: (a: never) => Promise<{ costUsd: number }>;
+  },
+>(g: G, ledger: Ledger, est: (size: string, edit: boolean) => number): G {
+  const wrap =
+    (call: (a: never) => Promise<{ costUsd: number }>, isEdit: boolean) =>
+    async (a: { size: string }) => {
+      const held = ledger.tryHold(isEdit ? "image edit" : "image generation", est(a.size, isEdit));
+      if (!held) throw new Error(`run cap $${ledger.capUsd} reached`);
+      try {
+        const out = await call(a as never);
+        ledger.add("pictures", out.costUsd);
+        return out;
+      } finally {
+        held();
+      }
+    };
+  return {
+    ...g,
+    generate: wrap(g.generate.bind(g), false),
+    ...(g.edit ? { edit: wrap(g.edit.bind(g), true) } : {}),
+  } as G;
+}
+
+/** A generation's worst case: low-quality output tokens at the size, plus a prompt, plus 25%. */
+export function imageEstimate(size: string, edit: boolean): number {
+  const base = im.expectedImageCostUsd(size as never);
+  return (edit ? base + 1200 * (10 / 1e6) : base) * 1.25;
 }
 
 /**
@@ -135,7 +220,9 @@ export const STEP_EST = {
   notes: 0.003, // luna, one slide
   repair: 0.004, // luna, one slide
   diagram: 0.004, // luna spec, two attempts (observed $0.0013 each)
-  picture: 0.025, // director + up to 3 generations + judges (generation also under the bank cap)
+  // Generations reserve themselves (ledgerGenerator); these holds cover the director and judges.
+  picture: 0.006,
+  pictureSet: 0.006, // up to 2 strips + a judge per panel + a set judge // director + up to 3 generations + judges (generation also under the bank cap)
 };
 
 /* ------------------------------------------------------------------ */
@@ -156,13 +243,23 @@ export type ChatReq = {
   timeoutMs?: number;
   /** Caller's abort (the objectives fallback aborts a slow primary stream). */
   signal?: AbortSignal;
+  /** Pictures (data URLs) sent after the user text, in order. */
+  images?: string[];
 };
 const body = (r: ChatReq, stream: boolean) => ({
   model: r.model,
   ...(r.effort ? { reasoning_effort: r.effort } : {}),
   messages: [
     { role: "system", content: r.system },
-    { role: "user", content: r.user },
+    {
+      role: "user",
+      content: r.images?.length
+        ? [
+            { type: "text", text: r.user },
+            ...r.images.map((url) => ({ type: "image_url", image_url: { url, detail: "low" } })),
+          ]
+        : r.user,
+    },
   ],
   response_format: {
     type: "json_schema",
@@ -322,6 +419,8 @@ export type PhotoAsk = {
   aspect?: number;
   /** The slot crops to its own box: a generic stock photo that would only fit shrunk is refused (generation renders at the slot's shape). */
   fixedShape?: boolean;
+  /** A set member: false when the set's panels are different things compared (still made together). */
+  sameSubject?: boolean;
   /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
   style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
@@ -339,15 +438,21 @@ export type PhotoResult = {
   provider?: string;
   source?: unknown;
   /** How the picture looks: stock is a photo; generated is photo, illustration or drawn (ruling 163 gate). */
-  style?: "photo" | "illustration" | "drawn";
+  style?: "photo" | "illustration" | "drawn" | "house";
   /** The period the request belongs to, when the director gave one (ruling 163 gate). */
   period?: string;
+  /** The same-subject set this picture was made in (one strip, cut apart). */
+  set?: string;
 };
 
 /** The picture services for one run; `costs` collects bank and director spend. */
 export function pictureService(opts: {
   /** The lesson's picture style and theme palette, read when each generation starts. */
   styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] };
+  /** No library lookups (a clean A/B: every picture fetched or made for this run). */
+  noLibrary?: boolean;
+  /** `generate`: every generic picture is made in the house photo look (no stock, no other looks). */
+  generic?: "stock-first" | "generate";
   runDir: string;
   pgPort: number;
   ledger: Ledger;
@@ -378,6 +483,15 @@ export function pictureService(opts: {
       return { key: k };
     },
   };
+  const gen = ledgerGenerator(
+    guardedGenerator(
+      im.createOpenAiImageGenerator({ apiKey: okey }),
+      () => opts.ledger.parts.pictures ?? 0,
+      opts.bankCapUsd,
+    ),
+    opts.ledger,
+    imageEstimate,
+  );
   const pex = im.createPexelsClient({ apiKey: key(".dayback-pexels-key") });
   const commons = im.createCommonsClient();
   const images = {
@@ -386,31 +500,31 @@ export function pictureService(opts: {
     store: (photo: unknown, target: string) =>
       im.storePhoto({ photo, target, storage, workspaceId: WS } as never),
     searchCommons: (q: string, o: object) => commons.search({ query: q, ...o }),
-    bank: createPictureBank({
-      db: (() => {
-        const d = createDb(
-          `postgres://postgres:postgres@localhost:${opts.pgPort}/teaching_journey`,
-        ) as { unsafeDb?: unknown; db?: unknown };
-        return (d.unsafeDb ?? d.db) as never;
-      })(),
-      storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
-      embedder: im.createOpenAiEmbedder({ apiKey: okey }),
-      // The lesson's look travels on each request (LessonLook), not as a string appended here.
-      generator: guardedGenerator(
-        im.createOpenAiImageGenerator({ apiKey: okey }),
-        () => opts.ledger.parts.pictures ?? 0,
-        opts.bankCapUsd,
-      ),
-      capUsd: opts.bankCapUsd,
-      ids: () => newId(),
-      onEvent: (e: { costUsd?: number }) => {
-        opts.ledger.add("pictures", e.costUsd ?? 0);
-        appendFileSync(
-          `${opts.runDir}/pictures.bank.jsonl`,
-          `${JSON.stringify({ t: Date.now(), ...e })}\n`,
-        );
-      },
-    } as never),
+    bank: withoutLibrary(
+      createPictureBank({
+        db: (() => {
+          const d = createDb(
+            `postgres://postgres:postgres@localhost:${opts.pgPort}/teaching_journey`,
+          ) as { unsafeDb?: unknown; db?: unknown };
+          return (d.unsafeDb ?? d.db) as never;
+        })(),
+        storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
+        embedder: im.createOpenAiEmbedder({ apiKey: okey }),
+        // The lesson's look travels on each request (LessonLook), not as a string appended here.
+        generator: gen,
+        capUsd: opts.bankCapUsd,
+        ids: () => newId(),
+        onEvent: (e: { kind?: string; costUsd?: number }) => {
+          // Generations are booked by ledgerGenerator; the bank books only its embeddings here.
+          if (e.kind !== "generate") opts.ledger.add("pictures", e.costUsd ?? 0);
+          appendFileSync(
+            `${opts.runDir}/pictures.bank.jsonl`,
+            `${JSON.stringify({ t: Date.now(), ...e })}\n`,
+          );
+        },
+      } as never),
+      opts.noLibrary,
+    ),
   };
   const logger = pino(
     { level: "info" },
@@ -449,6 +563,24 @@ export function pictureService(opts: {
     ask: PhotoAsk,
     lesson: Parameters<typeof find>[1],
   ): Promise<PhotoResult | undefined> {
+    // The stock candidates this ask was shown, so a refused pool can be kept for review.
+    const pool: { id: string; url: string }[] = [];
+    const note = (ps: unknown) => {
+      for (const p of (Array.isArray(ps) ? ps : []) as {
+        id?: unknown;
+        src?: { medium?: string; large?: string };
+        url?: string;
+      }[]) {
+        const url = p.src?.medium ?? p.src?.large ?? p.url;
+        if (url) pool.push({ id: String(p.id ?? pool.length), url });
+      }
+      return ps;
+    };
+    const poolImages = {
+      ...images,
+      search: (q: string, o: object) => images.search(q, o).then(note),
+      searchCommons: (q: string, o: object) => images.searchCommons(q, o).then(note),
+    };
     const deps = {
       ai,
       budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
@@ -457,7 +589,7 @@ export function pictureService(opts: {
       logger,
       now: () => new Date(),
       ids: () => newId(),
-      images,
+      images: poolImages,
       context: { lessonId: lesson.id, jobId: `bakeoff-${lesson.id}` },
     };
     const request = [ask.shows, ...ask.mustSee].join(". ");
@@ -478,12 +610,34 @@ export function pictureService(opts: {
     // The director's route decides what is a real thing (brief.specific), not the arm's flag: the
     // y10 bake-off asks for Prospero were routed to Commons and then never searched.
     const illustrated = ask.style === "illustration";
-    const look = lessonLook(opts.styleOf?.(), ask.style);
+    const look = lessonLook(
+      { ...opts.styleOf?.(), ...(opts.generic ? { generic: opts.generic } : {}) },
+      ask.style,
+    );
     let madeBoxes: Box4[] | undefined;
     const stock = async (first: unknown) => {
       if (illustrated && !(first as { specific?: boolean }).specific) return undefined;
       const r = (await at(first)) as { outcome: string; photo?: { src: string; boxes?: Box4[] } };
-      if (r.outcome !== "placed" || !r.photo) return undefined;
+      if (r.outcome !== "placed" || !r.photo) {
+        // The judge refused the whole stock pool: keep its first candidates for review.
+        const files: string[] = [];
+        for (const [n, c] of pool.slice(0, 4).entries()) {
+          try {
+            const res = await fetch(c.url);
+            if (!res.ok) continue;
+            const f = `${opts.runDir}/rejected/${ask.key.replace(/[^\w.+-]/g, "_")}-stock-${n}.jpg`;
+            mkdirSync(dirname(f), { recursive: true });
+            writeFileSync(f, new Uint8Array(await res.arrayBuffer()));
+            files.push(f);
+          } catch {}
+        }
+        appendFileSync(
+          `${opts.runDir}/log.jsonl`,
+          `${JSON.stringify({ t: Date.now(), ev: "rejected", key: ask.key, request, check: "stock judge", outcome: r.outcome, files, pool: pool.length })}\n`,
+        );
+        pool.length = 0;
+        return undefined;
+      }
       // A generic stock photo that this slot could only show shrunk on a panel is refused, so the
       // director generates one at the slot's shape instead (named real things keep their photo).
       if (!ask.named && ask.fixedShape && ask.aspect) {
@@ -507,19 +661,30 @@ export function pictureService(opts: {
       country: "England",
       index: ask.index,
       stock: stock as never,
-      judgeMade: (brief: unknown, made: { dataUrl?: string }) =>
-        made.dataUrl
-          ? judgeMade({
-              lesson: pickerLesson(lesson, ask.index) as never,
-              index: ask.index,
-              brief: brief as never,
-              deps: deps as never,
-              dataUrl: made.dataUrl,
-              onVerdict: (v: { boxes?: Box4[] }) => {
-                madeBoxes = v.boxes;
-              },
-            })
-          : Promise.resolve(true),
+      judgeMade: (brief: unknown, made: { dataUrl?: string; src?: string }, reuse?: boolean) => {
+        if (!made.dataUrl) return Promise.resolve(true);
+        let seen: { why?: string; fits?: boolean } | undefined;
+        return judgeMade({
+          lesson: pickerLesson(lesson, ask.index) as never,
+          index: ask.index,
+          brief: brief as never,
+          deps: deps as never,
+          dataUrl: made.dataUrl,
+          ...(reuse ? { reuse } : {}),
+          onVerdict: (v: { boxes?: Box4[]; why?: string; fits?: boolean }) => {
+            madeBoxes = v.boxes;
+            seen = v;
+          },
+        }).then((ok) => {
+          // A refused generated (or library) picture stays in the store; log it for review.
+          if (!ok)
+            appendFileSync(
+              `${opts.runDir}/log.jsonl`,
+              `${JSON.stringify({ t: Date.now(), ev: "rejected", key: ask.key, request: request, src: made.src, check: reuse ? "reuse judge" : "picture judge", fits: seen?.fits, why: seen?.why })}\n`,
+            );
+          return ok;
+        });
+      },
       deps: deps as never,
       ...(look ? { look } : {}),
       onOutcome: (o: object) =>
@@ -567,7 +732,199 @@ export function pictureService(opts: {
       aspect: aspectOf(photo.src),
     };
   }
-  return { find, aiSpend };
+  const runLog = (e: object) =>
+    appendFileSync(`${opts.runDir}/log.jsonl`, `${JSON.stringify({ t: Date.now(), ...e })}\n`);
+
+  /**
+   * A same-subject set (a sequence's panels, or compare cards of one thing at different stages):
+   * one generated strip of N panels, cut apart, each panel judged by the same photo judge against
+   * its own request, then the set judged for sameness in one call (when the prompt agent's
+   * `set-judge` files exist). A failing panel or set regenerates the whole strip once (a lone
+   * panel regenerated would not be the same animal). Named real things and history lessons keep
+   * the per-picture ladder (Commons first, ruling 163).
+   */
+  async function findSet(
+    asks: PhotoAsk[],
+    lesson: Parameters<typeof find>[1],
+  ): Promise<(PhotoResult | undefined)[]> {
+    // Not generated as a set: named real things, history lessons, and change across real time
+    // (a street in 1900 and 2000): each picture takes the director's ladder (ruling 163).
+    if (
+      asks.some((a) => a.named) ||
+      /^hist/i.test(lesson.subject) ||
+      isHistoricalSet(asks.map((a) => a.shows))
+    )
+      return Promise.all(asks.map((a) => find(a, lesson)));
+    const setKey = asks.map((a) => a.key).join("+");
+    // A refused hold (run cap) is a failed set: every panel undefined, never a missing array.
+    const out = await guarded(opts.ledger, `picture set ${setKey}`, STEP_EST.pictureSet, () =>
+      findSetOne(asks, lesson, setKey),
+    );
+    return Array.isArray(out) ? out : asks.map(() => undefined);
+  }
+  async function findSetOne(
+    asks: PhotoAsk[],
+    lesson: Parameters<typeof find>[1],
+    setKey: string,
+  ): Promise<(PhotoResult | undefined)[]> {
+    const deps = {
+      ai,
+      budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
+      effortFor: () => "low",
+      signal: new AbortController().signal,
+      logger,
+      now: () => new Date(),
+      ids: () => newId(),
+      images,
+      context: { lessonId: lesson.id, jobId: `bakeoff-${lesson.id}` },
+    };
+    const look = lessonLook(
+      { ...opts.styleOf?.(), ...(opts.generic ? { generic: opts.generic } : {}) },
+      asks[0]?.style,
+    );
+    const shows = asks.map((a) => a.shows);
+    // Compare cards of different things are still one set (one look, one scale), framed as a
+    // matched set rather than one individual.
+    const prompt = setImagePrompt(
+      shows,
+      look,
+      asks.every((a) => a.sameSubject !== false),
+    );
+    const aspect = asks[0]?.aspect ?? 4 / 3;
+    runLog({ ev: "set-start", set: setKey, n: asks.length, aspect });
+    let best: { results: (PhotoResult | undefined)[]; ok: number } | undefined;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let made: Awaited<ReturnType<typeof gen.generate>>;
+      try {
+        made = await gen.generate({ prompt, size: setSize(asks.length) } as never);
+      } catch (e) {
+        runLog({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
+        break;
+      }
+      let panels: Uint8Array[];
+      try {
+        panels = im.splitPanels(made.bytes, asks.length, aspect);
+      } catch (e) {
+        runLog({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
+        break;
+      }
+      const urls = panels.map((p) => `data:image/png;base64,${Buffer.from(p).toString("base64")}`);
+      const boxes: (Box4[] | undefined)[] = [];
+      const panelWhy: (string | undefined)[] = [];
+      const judged = await Promise.all(
+        asks.map((a, k) => {
+          const request = [a.shows, ...a.mustSee].join(". ");
+          const brief = {
+            subject: plainSubject(a.shows).slice(0, 60),
+            request: request.slice(0, 400),
+            // A set panel must show its subject; the stage details ("developing feathers") are
+            // the strip's job and the set judge's, not a per-panel must (y1 chick: the growing
+            // chicken failed twice on "developing feathers" while the judge said it fit).
+            mustShow: a.mustSee.length ? a.mustSee : mustShowOf(request).slice(0, 1),
+            purpose: "context",
+            specific: false,
+            aspect: Math.round(aspect * 100) / 100,
+          };
+          return judgeMade({
+            lesson: pickerLesson(lesson, a.index) as never,
+            index: a.index,
+            brief: brief as never,
+            deps: deps as never,
+            dataUrl: urls[k] ?? "",
+            onVerdict: (v: { boxes?: Box4[]; why?: string }) => {
+              boxes[k] = v.boxes;
+              panelWhy[k] = v.why;
+            },
+          }).catch(() => false);
+        }),
+      );
+      const same = await judgeSet(shows, urls);
+      const odd = new Set(same?.odd ?? []);
+      const pass = judged.map((j, k) => j === true && (!same || same.same || !odd.has(k)));
+      runLog({
+        ev: "set-attempt",
+        set: setKey,
+        attempt,
+        usd: made.costUsd,
+        panels: judged,
+        same: same ? same.same : "skipped",
+        odd: [...odd],
+        ...(same?.why ? { why: same.why } : {}),
+      });
+      // Every rejected panel is kept for review (round2/pics3/ab "Rejected by the checker").
+      for (const [k, ok] of pass.entries()) {
+        if (ok) continue;
+        const f = `${opts.runDir}/rejected/${setKey.replace(/[^\w.+-]/g, "_")}-a${attempt}-p${k}.png`;
+        mkdirSync(dirname(f), { recursive: true });
+        writeFileSync(f, panels[k] ?? new Uint8Array());
+        runLog({
+          ev: "rejected",
+          key: asks[k]?.key,
+          request: asks[k]?.shows,
+          file: f,
+          check: judged[k] !== true ? "panel judge" : "set judge",
+          why: judged[k] !== true ? panelWhy[k] : same?.why,
+        });
+      }
+      const results = setPanelResults(asks, panels, pass, boxes, {
+        model: gen.model,
+        style:
+          look?.style === "illustration"
+            ? "illustration"
+            : look?.generic === "generate"
+              ? "house"
+              : "photo",
+        save: (bytes) => {
+          const id = newId();
+          const k2 = `${WS}/sets/${id}.png`;
+          mkdirSync(resolve(STORE, k2, ".."), { recursive: true });
+          writeFileSync(resolve(STORE, k2), bytes);
+          return { id, src: `/files/${k2}`, aspect: aspectOf(`/files/${k2}`) };
+        },
+        setKey,
+      });
+      const ok = results.filter(Boolean).length;
+      if (!best || ok > best.ok) best = { results, ok };
+      if (ok === asks.length) break;
+    }
+    const out = best?.results ?? asks.map(() => undefined);
+    runLog({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
+    return out;
+  }
+
+  /**
+   * One call over all of a set's panels: is it the same subject in every panel? Needs the prompt
+   * agent's `prompts/shared/set-judge.txt` and `set-judge-schema.json` ({same, odd[]}, odd as
+   * 0-based panel indexes); without them the set is not judged for sameness (logged "skipped").
+   */
+  async function judgeSet(
+    shows: string[],
+    urls: string[],
+  ): Promise<{ same: boolean; odd: number[]; why?: string } | undefined> {
+    const dir = `${BAKEOFF}/prompts/shared`;
+    if (!existsSync(`${dir}/set-judge.txt`) || !existsSync(`${dir}/set-judge-schema.json`))
+      return undefined;
+    try {
+      const r = await chat({
+        model: "gpt-6-luna",
+        effort: "low",
+        system: readFileSync(`${dir}/set-judge.txt`, "utf8"),
+        user: shows.map((s, i) => `Panel ${i + 1}: ${s}`).join("\n"),
+        images: urls,
+        schema: JSON.parse(readFileSync(`${dir}/set-judge-schema.json`, "utf8")),
+        name: "set_judge",
+        maxTokens: 2000,
+      });
+      opts.ledger.add("pictures", r.usd);
+      const o = r.out as { same?: boolean; odd?: number[]; why?: string } | undefined;
+      return typeof o?.same === "boolean"
+        ? { same: o.same, odd: o.odd ?? [], ...(o.why ? { why: o.why } : {}) }
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return { find, findSet, aiSpend };
 }
 
 type Box4 = { item: string; left: number; top: number; right: number; bottom: number };
@@ -633,17 +990,27 @@ export function pickerLesson(l: PickerLessonInfo, index: number, imageBrief?: un
  * agent's style line when its file exists (else the director's default painted line).
  */
 export function lessonLook(
-  st: { style?: "photo" | "illustration"; palette?: string[] } | undefined,
+  st:
+    | { style?: "photo" | "illustration"; palette?: string[]; generic?: "stock-first" | "generate" }
+    | undefined,
   style?: "photo" | "illustration",
 ): LessonLook | undefined {
-  const s = style ?? st?.style;
+  const generic = st?.generic;
+  const s = style ?? st?.style ?? (generic === "generate" ? "photo" : undefined);
   if (!s) return undefined;
   const file = `${BAKEOFF}/prompts/shared/illustration-style.txt`;
   const line = s === "illustration" && existsSync(file) ? readFileSync(file, "utf8").trim() : "";
+  const houseFile = `${BAKEOFF}/prompts/shared/house-photo.txt`;
+  const houseLine =
+    s === "photo" && generic === "generate" && existsSync(houseFile)
+      ? readFileSync(houseFile, "utf8").trim()
+      : "";
   return {
     style: s,
     ...(st?.palette?.length ? { palette: st.palette } : {}),
     ...(line ? { line } : {}),
+    ...(generic ? { generic } : {}),
+    ...(houseLine ? { houseLine } : {}),
   };
 }
 
@@ -778,4 +1145,54 @@ async function specCalls(
 export function writeJson(f: string, v: unknown) {
   mkdirSync(dirname(f), { recursive: true });
   writeFileSync(f, `${JSON.stringify(v, null, 1)}\n`);
+}
+
+/**
+ * A set's panels as picture results, panel k for ask k only: its own request, alt and key-order
+ * position; a panel that failed its judge (or the set) is undefined, never stored or placed.
+ */
+export function setPanelResults(
+  asks: PhotoAsk[],
+  panels: Uint8Array[],
+  pass: boolean[],
+  boxes: (Box4[] | undefined)[],
+  o: {
+    model: string;
+    style: "photo" | "illustration";
+    setKey: string;
+    save: (bytes: Uint8Array) => { id: string; src: string; aspect: number };
+  },
+): (PhotoResult | undefined)[] {
+  return asks.map((a, k) => {
+    const bytes = panels[k];
+    if (!pass[k] || !bytes) return undefined;
+    const saved = o.save(bytes);
+    const subjects = subjectsOf(boxes[k]);
+    return {
+      request: [a.shows, ...a.mustSee].join(". "),
+      src: saved.src,
+      alt: a.shows,
+      provider: "generated",
+      source: {
+        provider: "generated",
+        id: saved.id,
+        pageUrl: "https://openai.com/policies/",
+        photographer: `AI-generated (${o.model})`,
+        photographerUrl: "https://openai.com/policies/",
+        licence: `generated (${im.IMAGE_TERMS})`,
+      },
+      style: o.style,
+      aspect: saved.aspect,
+      set: o.setKey,
+      ...(subjects ? { subjects } : {}),
+    } as PhotoResult;
+  });
+}
+
+/** The bank with lookups switched off (`noLibrary`): every request misses the library. */
+function withoutLibrary<B extends { lookup: (...a: never[]) => Promise<unknown> }>(
+  b: B,
+  off?: boolean,
+): B {
+  return off ? { ...b, lookup: async () => undefined } : b;
 }

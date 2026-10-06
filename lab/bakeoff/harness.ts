@@ -25,6 +25,7 @@ import {
   pictureService,
   replayStream,
   STEP_EST,
+  shareBudget,
   writeJson,
 } from "./services";
 
@@ -63,6 +64,10 @@ export type VisualAsk =
       aspect?: number;
       /** The slot crops to its own box (compare cards, sequences): the flow's early job (no aspect) does not take it. */
       fixedShape?: boolean;
+      /** Pictures meant to be compared on one slide (a sequence, compare cards) share an id: made together. */
+      set?: string;
+      /** The set shows one subject at stages (false: different things compared). */
+      sameSubject?: boolean;
     }
   | { key: string; type: "diagram"; kind: string; shows: string; labels: string[] };
 
@@ -212,6 +217,14 @@ export type RunOpts = {
   noVisuals?: boolean;
   /** Reuse the pictures of an earlier run dir of the same replayed stream (offline re-layout; no spend). */
   reuseVisuals?: string;
+  /** With reuseVisuals: these slides (1-based) fetch their pictures afresh; the rest reuse. */
+  freshSlides?: number[];
+  /** `generate`: every generic picture made in the house photo look (side-by-side B). */
+  generic?: "stock-first" | "generate";
+  /** No picture-library lookups. */
+  noLibrary?: boolean;
+  /** A directory shared by runs launched together: the cap holds across all of them. */
+  budgetDir?: string;
   /** Skip the notes calls. */
   noNotes?: boolean;
   /** Skip the repair pass. */
@@ -241,6 +254,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   writeJson(`${o.outDir}/brief.json`, brief);
   const log = (e: object) => appendFileSync(logFile, `${JSON.stringify({ ms: ms(), ...e })}\n`);
   const ledger = new Ledger(o.capUsd);
+  // One hard cap shared by runs launched side by side (--budget-dir): each counts the others.
+  if (o.budgetDir) shareBudget(ledger, o.budgetDir, `${arm.id}-${brief.id}-${process.pid}`);
   let themeId: string = brief.teacherTheme ?? brief.theme;
   const base = {
     brief,
@@ -315,13 +330,17 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       ? (JSON.parse(readFileSync(specsFile, "utf8")) as Record<string, unknown>)
       : undefined;
   const pics =
-    o.noVisuals || reused
+    o.noVisuals || (reused && !o.freshSlides?.length)
       ? undefined
       : pictureService({
           runDir: o.outDir,
           pgPort: o.pgPort,
           ledger,
-          bankCapUsd: o.bankCapUsd ?? 0.06,
+          // Room for every picture plus its one regeneration, with parallel reservations (y1 run4: at
+          // $0.02-0.035 the guard refused 5 slots before any judge saw them).
+          bankCapUsd: o.bankCapUsd ?? 0.15,
+          ...(o.generic ? { generic: o.generic } : {}),
+          ...(o.noLibrary ? { noLibrary: true } : {}),
           styleOf: () => ({
             style: plan.design?.picture_style,
             palette: [
@@ -349,7 +368,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     words: { heading: string; text: string },
   ) => {
     const k = `${i}:${a.key}`;
-    if (reused) {
+    const fresh = o.freshSlides?.includes(i + 1);
+    if (reused && !fresh) {
       // The flow's early job stands for the slide's first picture (it takes the job over).
       const first = [...reused.keys()].find(
         (x) => x.startsWith(`${i}:`) && !x.includes("seq.") && !x.includes("col."),
@@ -371,6 +391,33 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     };
     log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect });
     return pics.find(ask, lessonInfo);
+  };
+  const startSet = (
+    i: number,
+    group: Extract<VisualAsk, { type: "photo" }>[],
+    words: { heading: string; text: string },
+  ) => {
+    if (reused && !o.freshSlides?.includes(i + 1))
+      return Promise.resolve(group.map((a) => reused.get(`${i}:${a.key}`)));
+    if (!pics) return;
+    const asks: PhotoAsk[] = group.map((a) => {
+      const k = `${i}:${a.key}`;
+      visuals.set(k, { status: "pending" });
+      log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect, set: a.set });
+      return {
+        key: k,
+        shows: a.shows,
+        mustSee: a.mustSee,
+        named: a.named,
+        ...(a.aspect ? { aspect: a.aspect } : {}),
+        ...(a.fixedShape ? { fixedShape: true } : {}),
+        ...(a.sameSubject === false ? { sameSubject: false } : {}),
+        ...(plan.design?.picture_style ? { style: plan.design.picture_style } : {}),
+        slide: { heading: words.heading, text: words.text, point: "" },
+        index: i,
+      };
+    });
+    return pics.findSet(asks, lessonInfo);
   };
   const landPhoto = (i: number, key: string, p: Promise<PhotoResult | undefined>) =>
     jobs.push(
@@ -521,7 +568,22 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         (a): a is Extract<VisualAsk, { type: "photo" }> => a.type === "photo",
       );
       const e = early.get(idx);
+      // Same-subject sets are made together (one strip, one subject); the rest one by one.
+      const sets = new Map<string, Extract<VisualAsk, { type: "photo" }>[]>();
+      for (const a of photos) if (a.set) sets.set(a.set, [...(sets.get(a.set) ?? []), a]);
+      for (const group of sets.values()) {
+        if (group.length < 2) continue;
+        const all = startSet(idx, group, { heading, text: words });
+        if (all)
+          for (const [n, a] of group.entries())
+            landPhoto(
+              idx,
+              a.key,
+              all.then((r) => r[n]),
+            );
+      }
       photos.forEach((a, n) => {
+        if (a.set && (sets.get(a.set)?.length ?? 0) >= 2 && (pics || reused)) return;
         // The slide's first picture takes over the flow's early job (already running).
         if (n === 0 && e && !a.fixedShape) {
           visuals.set(`${idx}:${a.key}`, { status: "pending" });

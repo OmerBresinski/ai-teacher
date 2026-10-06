@@ -525,3 +525,175 @@ describe("ruling 163 gate fields (dd-pics)", () => {
     expect(c!.source).toBeUndefined();
   });
 });
+
+describe("same-subject sets never cross-wire or render a failed panel", () => {
+  const { setPanelResults } = require("./services");
+  const ask = (k: number, shows: string) => ({
+    key: `7:seq.${k}`,
+    shows,
+    mustSee: [],
+    named: false,
+    slide: { heading: "h", text: "", point: "" },
+    index: 7,
+  });
+  const asks = [ask(0, "A tall candle"), ask(1, "The candle half burnt"), ask(2, "A candle stub")];
+  const panels = [new Uint8Array([1]), new Uint8Array([2]), new Uint8Array([3])];
+  let n = 0;
+  const saved: number[] = [];
+  const save = (b: Uint8Array) => {
+    saved.push(b[0] ?? 0);
+    n++;
+    return { id: `id${n}`, src: `/files/sets/${b[0]}.png`, aspect: 1.1 };
+  };
+  test("panel k carries only ask k's request and alt; a failed panel is not stored or placed", () => {
+    const r = setPanelResults(asks, panels, [true, false, true], [], {
+      model: "m",
+      style: "illustration",
+      setKey: "s",
+      save,
+    });
+    expect(r[1]).toBeUndefined();
+    expect(saved).toEqual([1, 3]);
+    expect(r[0]).toMatchObject({
+      alt: "A tall candle",
+      request: "A tall candle",
+      src: "/files/sets/1.png",
+    });
+    expect(r[2]).toMatchObject({
+      alt: "A candle stub",
+      request: "A candle stub",
+      src: "/files/sets/3.png",
+    });
+  });
+  test("laid out, each image shows its own panel; one failed panel lays the set out as words", () => {
+    const own = (k: string): VisualState => ({
+      status: "photo",
+      photo: { src: `/files/${k}.png`, alt: `alt ${k}`, aspect: 1.1, request: `req ${k}` },
+    });
+    const seq = {
+      template: "picture-sequence",
+      heading: "A candle burns down",
+      sequence: ["tall", "burning", "short"].map((c) => ({
+        shows: c,
+        caption: c,
+        subject: "generic",
+      })),
+    };
+    const base = {
+      brief: { keyStage: "ks1" },
+      theme: getTheme("splash"),
+      stage: "ks1",
+      index: 7,
+      plan: { objectives: [], flow: [], slides: [] },
+    } as unknown as Omit<MaterialiseCtx, "visual">;
+    const all = withKeyStage("ks1", () =>
+      armT.materialise(seq, { ...base, visual: (k: string) => own(k) } as MaterialiseCtx),
+    );
+    const im = all.slide.elements.filter((e) => e.type === "image") as unknown as {
+      src: string;
+      alt: string;
+      request: string;
+    }[];
+    expect(im.map((e) => [e.src, e.alt, e.request])).toEqual(
+      ["seq.0", "seq.1", "seq.2"].map((k) => [`/files/${k}.png`, `alt ${k}`, `req ${k}`]),
+    );
+    const one = withKeyStage("ks1", () =>
+      armT.materialise(seq, {
+        ...base,
+        visual: (k: string) => (k === "seq.1" ? { status: "failed" } : own(k)),
+      } as MaterialiseCtx),
+    );
+    expect(one.slide.elements.filter((e) => e.type === "image")).toHaveLength(0);
+  });
+});
+
+describe("pictures meant to be compared are one set (never part library, part fresh)", () => {
+  const vctx = {
+    brief: { keyStage: "ks1" },
+    theme: getTheme("splash"),
+    stage: "ks1",
+    plan: { objectives: [], flow: [], slides: [] },
+  } as never;
+  const pic = (shows: string) => ({ shows, must_see: [shows], subject: "generic" });
+  test("every compare card's picture is in set col; different things are framed as a matched set", () => {
+    const asks = withKeyStage("ks1", () =>
+      armT.visuals(
+        {
+          template: "compare",
+          heading: "Young animals",
+          columns: [
+            {
+              label: "lamb",
+              text: "A young sheep.",
+              picture: pic("An adult sheep beside a young lamb"),
+            },
+            {
+              label: "calf",
+              text: "A young cow.",
+              picture: pic("An adult cow beside a young calf"),
+            },
+          ],
+        },
+        3,
+        vctx,
+      ),
+    ) as { set?: string; sameSubject?: boolean }[];
+    expect(asks.map((a) => a.set)).toEqual(["col", "col"]);
+    expect(asks.every((a) => a.sameSubject === false)).toBe(true);
+  });
+  test("a sequence's panels are one same-subject set; a lone picture is not a set", () => {
+    const seq = withKeyStage("ks1", () =>
+      armT.visuals(
+        {
+          template: "picture-sequence",
+          heading: "A candle burns",
+          sequence: ["tall", "half", "stub"].map((c) => ({ ...pic(`a ${c} candle`), caption: c })),
+        },
+        4,
+        vctx,
+      ),
+    ) as { set?: string; sameSubject?: boolean }[];
+    expect(seq.map((a) => a.set)).toEqual(["seq", "seq", "seq"]);
+    expect(seq.some((a) => a.sameSubject === false)).toBe(false);
+  });
+});
+
+describe("run-level hard cap (picture runs overshot three times)", () => {
+  const { Ledger, ledgerGenerator, shareBudget, imageEstimate } = require("./services");
+  const fakeGen = (cost: number, calls: { n: number }) => ({
+    model: "fake",
+    generate: async () => {
+      calls.n++;
+      await new Promise((r) => setTimeout(r, 5));
+      return { costUsd: cost, bytes: new Uint8Array(), mime: "image/png", ms: 1 };
+    },
+  });
+  test("every generation reserves before it starts; parallel calls never pass the cap", async () => {
+    const ledger = new Ledger(0.02);
+    const calls = { n: 0 };
+    const g = ledgerGenerator(fakeGen(0.0059, calls), ledger, imageEstimate);
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => g.generate({ size: "1024x1024", prompt: "p" })),
+    );
+    expect(results.filter((r) => r.status === "rejected").length).toBeGreaterThan(0);
+    expect(ledger.total).toBeLessThanOrEqual(0.02);
+    expect(calls.n).toBe(results.filter((r) => r.status === "fulfilled").length);
+  });
+  test("a shared budget counts the other run: two arms can't each spend the whole cap", async () => {
+    const dir = `${require("node:os").tmpdir()}/budget-${Date.now()}-${Math.random()}`;
+    const a = new Ledger(0.02);
+    const b = new Ledger(0.02);
+    shareBudget(a, dir, "A");
+    shareBudget(b, dir, "B");
+    const ca = { n: 0 };
+    const cb = { n: 0 };
+    const ga = ledgerGenerator(fakeGen(0.0059, ca), a, imageEstimate);
+    const gb = ledgerGenerator(fakeGen(0.0059, cb), b, imageEstimate);
+    for (let i = 0; i < 4; i++) {
+      await ga.generate({ size: "1024x1024" }).catch(() => undefined);
+      await gb.generate({ size: "1024x1024" }).catch(() => undefined);
+    }
+    expect(a.total + b.total).toBeLessThanOrEqual(0.02);
+    expect(ca.n + cb.n).toBeLessThan(8);
+  });
+});

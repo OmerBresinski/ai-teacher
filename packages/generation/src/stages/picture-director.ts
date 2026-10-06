@@ -137,6 +137,13 @@ export function illustrationPrompt(prompt: string, period: string): string {
  */
 export interface LessonLook {
   style: "photo" | "illustration";
+  /**
+   * How generic pictures are found in a photo lesson: `stock-first` (default, the director's
+   * route) or `generate` (every generic picture made in the one house photo look).
+   */
+  generic?: "stock-first" | "generate";
+  /** The house photo line (prompt agent's `house-photo.txt` when it exists). */
+  houseLine?: string;
   /** The theme's colours, in order (accent, accent2, background, ink). */
   palette?: string[];
   /** The style line (prompt agent's `illustration-style.txt`, `{{palette}}` filled by code). */
@@ -146,6 +153,20 @@ export interface LessonLook {
 /** The default style line until the prompt agent's file lands: the ruling 163 painted look. */
 export const ILLUSTRATION_LINE =
   "A hand-painted educational illustration, clearly a painting and not a photograph.";
+
+/** The house photo look (code's default until the prompt agent's file lands). */
+export const HOUSE_PHOTO_LINE =
+  "A natural-light photograph taken at eye level: the subject sharp and filling the frame, in a simple, slightly soft setting that suits it; a plain background only when the subject is a small object. Uncluttered.";
+
+/** True when generic pictures of this look are generated in the house photo look. */
+export function housePhoto(look?: LessonLook): boolean {
+  return look?.style === "photo" && look.generic === "generate";
+}
+
+/** A generic picture in the house photo look: the same line first on every call. */
+export function housePhotoPrompt(prompt: string, look?: LessonLook): string {
+  return [look?.houseLine ?? HOUSE_PHOTO_LINE, prompt].join("\n");
+}
 
 /** The palette key a look's pictures are stored and reused under. */
 export function paletteKey(look?: LessonLook): string | undefined {
@@ -216,13 +237,16 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
   // The lesson's locked look: a generic picture (not a real thing, not a count) is generated in it.
   const looked = !counting && !real && ask.look?.style === "illustration";
   const palette = looked ? paletteKey(ask.look) : undefined;
+  const housed = !counting && !real && !looked && housePhoto(ask.look);
   const imagePrompt =
     counting ||
     (illustrated && period
       ? illustrationPrompt(first.imagePrompt, period)
       : looked && ask.look
         ? lessonIllustrationPrompt(first.imagePrompt, ask.look)
-        : first.imagePrompt);
+        : housed
+          ? housePhotoPrompt(first.imagePrompt, ask.look)
+          : first.imagePrompt);
   return {
     kind: "photo",
     request: {
@@ -231,10 +255,11 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       route: real ? "real" : "generic",
       imagePrompt,
       draw: null,
-      stockFirst: d.route === "pexels" && !countedPhoto && !looked,
+      stockFirst: d.route === "pexels" && !countedPhoto && !looked && !housed,
       ...(fallback ? { realFallback: fallback } : {}),
       ...(period ? { period } : {}),
       ...(illustrated || looked ? { style: "illustration" as const } : {}),
+      ...(housed ? { style: "house" as const } : {}),
       ...(palette ? { palette } : {}),
     },
     brief: {
@@ -268,7 +293,7 @@ export async function findDirected(args: {
   country: string;
   index: number;
   stock: (brief: ImageBrief) => Promise<PlacedPhoto | undefined>;
-  judgeMade: (brief: ImageBrief, picture: MadePicture) => Promise<boolean>;
+  judgeMade: (brief: ImageBrief, picture: MadePicture, reuse?: boolean) => Promise<boolean>;
   deps: DirectorDeps;
   /** The lesson's picture look, the same on every call of the lesson. */
   look?: LessonLook;
@@ -327,7 +352,7 @@ export async function findDirected(args: {
     args.bank,
     () => args.stock(brief),
     deps.signal,
-    (made) => args.judgeMade(brief, made),
+    (made, reuse) => args.judgeMade(brief, made, reuse),
   );
   log({ via: out.via, ms: out.ms });
   const style = (out.photo as MadePicture | undefined)?.style;
@@ -362,7 +387,7 @@ export async function findDirected(args: {
 
 /** A placed picture with how it looks and the period it belongs to. */
 export type DirectedPhoto = PlacedPhoto & {
-  look: "photo" | "illustration" | "drawn";
+  look: "photo" | "illustration" | "drawn" | "house";
   period?: string;
 };
 

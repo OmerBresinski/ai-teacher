@@ -36,8 +36,14 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  *   subject without photographic words (code adds the locked style line); a fictional character
  *   or an imagined staging of a story is library-or-generate, not commons (BAKEOFF round 1: every
  *   y10 Prospero went to commons and came back empty) (v8).
+ * - a young one with its adult must look related, so mustShow carries "same kind and colouring"
+ *   for the judge; pupils up to Year 6 get one frame-filling subject on a plain background
+ *   (BAKEOFF round 2 y1: a ginger kitten beside a black cat, a heap of kittens in leaves, a hen's
+ *   head cut off at the edge) (v9).
+ * - stages of one thing: each says what is visibly true at its stage and what is not there yet
+ *   (round 3: a bean "seed" panel came back already sprouting) (v10).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v8";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v10";
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -103,13 +109,15 @@ Choose one route:
 - code: a drawing shows the idea better than a photograph, including an array of plain identical marks, or one of these: ${DIAGRAM_KINDS.join(", ")}.
 - none: nothing pupils could see explains the slide's point better than its words, so a picture would only decorate.
 
-For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. For code and none, pictures is empty.
+For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. When they show stages of one thing, each describes what is visibly true at its stage and what is not there yet that the next stage brings. For code and none, pictures is empty.
 
 Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
-- mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record.
+- mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record. When a picture shows a young one with its adult, or one of a set showing one subject growing, one item is "same kind and colouring", so the judge checks that they look related.
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
-- imagePrompt: what an image model is told if no stored or library photo fits: one subject in a simple setting that suits it. In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph. In an illustration lesson it describes only what is in the picture, since code adds the lesson's illustration style. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
+- imagePrompt: what an image model is told if no stored or library photo fits: one subject in a simple setting that suits it. In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph. In an illustration lesson it describes only what is in the picture, since code adds the lesson's illustration style. A young one with its adult are the same breed or variety with the same colouring, both whole and neither crowding the other out. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
+
+For pupils up to Year 6, choose a picture a young pupil takes in at a glance: one subject, or the few the slide needs, filling the frame on a plain, uncluttered background rather than a busy scene; the queries ask for that view and the imagePrompt describes it.
 
 When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 

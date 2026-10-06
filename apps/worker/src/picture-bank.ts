@@ -107,6 +107,7 @@ export function styleOf(row: BankImageRow): MadePicture["style"] {
   if (flags.drawn) return "drawn";
   if (row.provider !== "generated") return undefined;
   if (flags.style === "illustration" || row.prompt?.startsWith(PAINTED)) return "illustration";
+  if (flags.style === "house") return "house";
   return "photo";
 }
 

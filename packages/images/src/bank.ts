@@ -19,6 +19,8 @@ export const EMBED_DIMENSIONS = 1536;
 /** Standard-tier rates (IMG-BAKEOFF RESULT.md, verified): per token, USD. */
 const IMAGE_OUT_USD = 30 / 1e6;
 const TEXT_IN_USD = 5 / 1e6;
+/** Image input tokens (an edit's reference picture): priced high (unverified) so guards stay safe. */
+const IMAGE_IN_USD = 10 / 1e6;
 const EMBED_USD = 0.02 / 1e6;
 
 export type AspectFamily = "landscape" | "square" | "portrait";
@@ -51,8 +53,17 @@ const LOW_OUTPUT_TOKENS: Record<ImageSize, number> = {
   "2048x1152": 157,
 };
 
-export function imageCostUsd(usage: { inputTokens: number; outputTokens: number }): number {
-  return usage.outputTokens * IMAGE_OUT_USD + usage.inputTokens * TEXT_IN_USD;
+export function imageCostUsd(usage: {
+  inputTokens: number;
+  outputTokens: number;
+  imageInputTokens?: number;
+}): number {
+  const img = usage.imageInputTokens ?? 0;
+  return (
+    usage.outputTokens * IMAGE_OUT_USD +
+    (usage.inputTokens - img) * TEXT_IN_USD +
+    img * IMAGE_IN_USD
+  );
 }
 
 /** What a generation costs before it runs, for a budget guard (prompt ~100 tokens). */
@@ -178,6 +189,22 @@ export interface ImageGenerator {
     costUsd: number;
     ms: number;
   }>;
+  /**
+   * The same, drawn from reference pictures (`/v1/images/edits`): a set's later panels keep the
+   * first panel's subject (the same animal, object or person). Absent: the generator cannot.
+   */
+  edit?(input: {
+    prompt: string;
+    size: ImageSize;
+    references: { bytes: Uint8Array; mime: string }[];
+    signal?: AbortSignal;
+  }): Promise<{
+    bytes: Uint8Array;
+    mime: string;
+    usage: { inputTokens: number; outputTokens: number; imageInputTokens?: number };
+    costUsd: number;
+    ms: number;
+  }>;
 }
 
 export interface Embedder {
@@ -218,6 +245,46 @@ export function createOpenAiImageGenerator(opts: {
       const usage = {
         inputTokens: body.usage?.input_tokens ?? 0,
         outputTokens: body.usage?.output_tokens ?? 0,
+      };
+      return {
+        bytes: new Uint8Array(Buffer.from(b64, "base64")),
+        mime: "image/png",
+        usage,
+        costUsd: imageCostUsd(usage),
+        ms: Date.now() - t0,
+      };
+    },
+    async edit({ prompt, size, references, signal }) {
+      const t0 = Date.now();
+      const form = new FormData();
+      form.append("model", model);
+      form.append("prompt", prompt);
+      form.append("size", size);
+      form.append("quality", IMAGE_QUALITY);
+      form.append("n", "1");
+      for (const [i, r] of references.entries())
+        form.append("image[]", new Blob([r.bytes], { type: r.mime }), `ref-${i}.png`);
+      const res = await fetchFn("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${opts.apiKey}` },
+        body: form,
+        signal: signal ?? AbortSignal.timeout(120_000),
+      });
+      if (!res.ok) throw new Error(`image edit failed (${res.status})`);
+      const body = (await res.json()) as {
+        data?: { b64_json?: string }[];
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          input_tokens_details?: { image_tokens?: number };
+        };
+      };
+      const b64 = body.data?.[0]?.b64_json;
+      if (!b64) throw new Error("image edit returned no image");
+      const usage = {
+        inputTokens: body.usage?.input_tokens ?? 0,
+        outputTokens: body.usage?.output_tokens ?? 0,
+        imageInputTokens: body.usage?.input_tokens_details?.image_tokens ?? 0,
       };
       return {
         bytes: new Uint8Array(Buffer.from(b64, "base64")),
