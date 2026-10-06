@@ -602,9 +602,11 @@ export function pictureService(opts: {
     )
       return Promise.all(asks.map((a) => find(a, lesson)));
     const setKey = asks.map((a) => a.key).join("+");
-    return guarded(opts.ledger, `picture set ${setKey}`, STEP_EST.pictureSet, () =>
+    // A refused hold (run cap) is a failed set: every panel undefined, never a missing array.
+    const out = await guarded(opts.ledger, `picture set ${setKey}`, STEP_EST.pictureSet, () =>
       findSetOne(asks, lesson, setKey),
     );
+    return Array.isArray(out) ? out : asks.map(() => undefined);
   }
   async function findSetOne(
     asks: PhotoAsk[],
