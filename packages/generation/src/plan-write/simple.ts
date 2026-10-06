@@ -26,6 +26,7 @@ import {
   getTheme,
   isBackdrop,
   KIND_TAG_NAME,
+  keyStage,
   layoutsOf,
   type MaterialiseMeta,
   materialiseSlide,
@@ -37,6 +38,7 @@ import {
   SAFE,
   SAFE_BOTTOM,
   SPACE,
+  setKeyStage,
   slideFits,
   withoutPicture,
 } from "@tj/slides";
@@ -503,7 +505,8 @@ const capacities = new Map<string, number>();
 export function optionCapacity(form: string): number | undefined {
   const spec = CAPACITY_FORMS[form];
   if (!spec) return undefined;
-  const known = capacities.get(form);
+  const memo = `${form}@${keyStage() ?? "-"}`;
+  const known = capacities.get(memo);
   if (known !== undefined) return known;
   let lo = 8;
   let hi = 160;
@@ -513,7 +516,7 @@ export function optionCapacity(form: string): number | undefined {
     if (holdsOptions(form, spec.count, mid)) lo = mid;
     else hi = mid;
   }
-  capacities.set(form, lo);
+  capacities.set(memo, lo);
   return lo;
 }
 /** T3's menu lines: the form list, with each option capacity read from the layout code. */
@@ -555,7 +558,8 @@ export function t3ZoneGeometry(themeId = T3_DEFAULT_THEME): {
   text: Rect;
   big: Rect;
 } {
-  const known = zoneGeometries.get(themeId);
+  const memo = `${themeId}@${keyStage() ?? "-"}`;
+  const known = zoneGeometries.get(memo);
   if (known) return known;
   const meta = { promptVersion: "zones", model: "code", at: "1970-01-01T00:00:00.000Z" };
   let n = 0;
@@ -605,7 +609,7 @@ export function t3ZoneGeometry(themeId = T3_DEFAULT_THEME): {
     text: { ...rect(body), h: SAFE_BOTTOM - body.y },
     big: rect(big),
   };
-  zoneGeometries.set(themeId, geometry);
+  zoneGeometries.set(memo, geometry);
   return geometry;
 }
 /** The drawing zones a capacity is measured in, from the layout on `themeId`. */
@@ -1639,6 +1643,21 @@ async function t3Gate(i: {
 export const laidOut = <T extends Lesson>(lesson: T): T => ({ ...lesson, fitVersion: FIT_VERSION });
 
 export async function simpleLessonSlides(
+  state: PipelineState,
+  deps: PipelineDeps,
+): Promise<PipelineState> {
+  // FIX1: the deck is laid out, fitted and measured at its key stage's type (one size per key
+  // stage, fixed across the deck). Process-wide while the job runs: one lesson per worker at a time.
+  const was = keyStage();
+  setKeyStage(audienceOf(state.lesson).ageBand);
+  try {
+    return await simpleLessonSlidesAtStage(state, deps);
+  } finally {
+    setKeyStage(was);
+  }
+}
+
+async function simpleLessonSlidesAtStage(
   state: PipelineState,
   deps: PipelineDeps,
 ): Promise<PipelineState> {

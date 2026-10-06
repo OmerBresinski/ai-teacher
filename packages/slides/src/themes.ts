@@ -364,19 +364,81 @@ const BASE: Theme[] = [
   },
 ];
 
-/** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
-export const THEMES: Theme[] = BASE;
-
 const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
   BASE.map((t) => [t.id, RAW_BODY.get(t.sizes)]),
 );
+
+/**
+ * FIX1 (6 Oct 2026): one type size per key stage, fixed across the deck, read from the back of a
+ * classroom. Each stage multiplies the theme's own stops (so every theme keeps its ratios); the
+ * deck's stage is set for the whole of its generation (`withKeyStage`) and, in the app, from the
+ * lesson's age band. No stage set: the theme's own sizes (the tests' and old lessons' ruler).
+ * Studio body 20 at 960 wide becomes KS1 30 (60 px at 1920), KS2 26, KS3 to KS5 24.
+ */
+export type KeyStage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
+type StageScale = { body: number; small: number; heading: number; caption: number };
+export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
+  ks1: { body: 1.5, small: 1.25, heading: 1.15, caption: 1.1 },
+  ks2: { body: 1.3, small: 1.15, heading: 1.1, caption: 1.05 },
+  ks3: { body: 1.2, small: 1.1, heading: 1.05, caption: 1 },
+  ks4: { body: 1.2, small: 1.1, heading: 1.05, caption: 1 },
+  ks5: { body: 1.2, small: 1.1, heading: 1.05, caption: 1 },
+};
+let stage: KeyStage | undefined;
+const asStage = (band: string | undefined | null): KeyStage | undefined => {
+  const k = (band ?? "").toLowerCase();
+  return k in KEY_STAGE_TYPE ? (k as KeyStage) : undefined;
+};
+/** The key stage every theme's sizes are read at now (undefined: the themes' own sizes). */
+export const keyStage = (): KeyStage | undefined => stage;
+/** Set the key stage the themes' sizes are read at; an unknown band clears it. */
+export function setKeyStage(band: string | undefined | null): void {
+  stage = asStage(band);
+}
+/** `f` with the themes' sizes read at `band`'s key stage; the stage before is restored after. */
+export function withKeyStage<T>(band: string | undefined | null, f: () => T): T {
+  const was = stage;
+  stage = asStage(band);
+  try {
+    return f();
+  } finally {
+    stage = was;
+  }
+}
+const stageFactor = (preset: TextPreset): number => {
+  if (!stage) return 1;
+  const k = KEY_STAGE_TYPE[stage];
+  if (preset === "body") return k.body;
+  if (preset === "small") return k.small;
+  if (preset === "caption") return k.caption;
+  return k.heading;
+};
+/** A theme whose `sizes` are read at the current key stage (the stops themselves never change). */
+function staged(t: Theme): Theme {
+  const own = t.sizes;
+  const sizes = new Proxy(own, {
+    get: (o, key) => {
+      const v = Reflect.get(o, key);
+      return typeof v === "number" && typeof key === "string"
+        ? Math.round(v * stageFactor(key as TextPreset))
+        : v;
+    },
+  });
+  return { ...t, sizes };
+}
+
+/** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
+export const THEMES: Theme[] = BASE.map(staged);
 
 /**
  * The theme's display body stop, which the teaching cut took off `sizes.body`. It stays a stop of
  * the step-down ladder, so an option card or a question stem still steps one display stop under
  * its floor (UX ruling 91; chalk: an option card 31 → 29), not past it to `small`.
  */
-export const displayBodyStop = (theme: Theme): number | undefined => DISPLAY_BODY[theme.id];
+export const displayBodyStop = (theme: Theme): number | undefined => {
+  const raw = DISPLAY_BODY[theme.id];
+  return raw === undefined ? undefined : Math.round(raw * stageFactor("body"));
+};
 
 export { DEFAULT_THEME_ID } from "@tj/domain/documents";
 
