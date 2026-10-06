@@ -288,6 +288,7 @@ export async function findDirected(args: {
       request: ask.subject,
       mustShow: b.mustShow ?? [],
       aspect: b.aspect ?? 1.6,
+      ...(args.look ? { style: args.look.style } : {}),
     },
     deps,
   );

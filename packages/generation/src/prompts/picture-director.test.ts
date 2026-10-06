@@ -99,6 +99,24 @@ describe("picture director prompt", () => {
     expect(user).toContain("Picture zone: square, 0.89 wide to 1 high.");
     expect(pictureDirectorPrompt({ ...f, aspect: 1.78 }).user).toContain("landscape");
   });
+
+  test("v8: the lesson's picture style is a user line, photo when the lesson has none", () => {
+    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v8");
+    expect(pictureDirectorPrompt(input).user).toContain("Picture style for this lesson: photo");
+    expect(pictureDirectorPrompt({ ...input, style: "illustration" }).user).toContain(
+      "Picture style for this lesson: illustration",
+    );
+  });
+
+  test("v8: an illustration lesson's image prompt has no photographic words; fiction is not commons", () => {
+    const { system } = pictureDirectorPrompt(input);
+    expect(system).toContain("In a photo lesson it is one realistic photograph");
+    expect(system).toContain("In an illustration lesson it describes only what is in the picture");
+    expect(system).toContain(
+      "or a fictional character or scene from a story, play or novel as it might be imagined or staged",
+    );
+    expect(system).toContain("anything real and named or dated");
+  });
 });
 
 describe("who, where and when", () => {

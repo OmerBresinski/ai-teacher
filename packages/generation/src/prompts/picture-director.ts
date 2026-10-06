@@ -32,8 +32,12 @@ import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
  *   "describe what is there" keeps negative lists away from the image model.
  * - count slot with empty spaces; code writes COUNT-TEST arm B's prompt (16 of 16 exact) (v6).
  * - named and period, for ruling 163's table; a historical event is a painted illustration (v7).
+ * - the lesson's picture style is an input; in an illustration lesson the image prompt describes the
+ *   subject without photographic words (code adds the locked style line); a fictional character
+ *   or an imagined staging of a story is library-or-generate, not commons (BAKEOFF round 1: every
+ *   y10 Prospero went to commons and came back empty) (v8).
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v7";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v8";
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -59,6 +63,8 @@ export type PictureDirectorInput = {
   mustShow: string[];
   /** The zone's width over height. */
   aspect: number;
+  /** The lesson's picture style (design.picture_style); photo when the lesson has none. */
+  style?: "photo" | "illustration";
 };
 
 const Picture = z.object({
@@ -91,9 +97,9 @@ export type PictureDirection = z.infer<typeof PictureDirectorSchema>;
 const SYSTEM = `You choose the picture for one slide of a school lesson. The slide's writer described the picture it wants in a sentence; you decide where the picture comes from and write what that source needs. A picture earns its place when pupils can see in it what the slide teaches.
 
 Choose one route:
-- commons: anything named or dated: a named work or a production of it, an artwork, a person, a place, a building, a document, an object, or an event or scene tied to a date. Always commons, even when the request describes a particular moment of it: a real photograph or reproduction is searched first, and a generated one is only the fallback.
+- commons: anything real and named or dated: a named work or a recorded production of it, an artwork, a person, a place, a building, a document, an object, or an event or scene tied to a date. Always commons, even when the request describes a particular moment of it: a real photograph or reproduction is searched first, and a generated one is only the fallback.
 - pexels: a real subject that ordinary stock photographs show: a single common subject, or a simple everyday scene, that a photo library very likely holds.
-- library-or-generate: an unnamed picture no real photograph is likely to show: an unusual combination of subjects, or a staged comparison.
+- library-or-generate: an unnamed picture no real photograph is likely to show: an unusual combination of subjects, a staged comparison, or a fictional character or scene from a story, play or novel as it might be imagined or staged.
 - code: a drawing shows the idea better than a photograph, including an array of plain identical marks, or one of these: ${DIAGRAM_KINDS.join(", ")}.
 - none: nothing pupils could see explains the slide's point better than its words, so a picture would only decorate.
 
@@ -103,7 +109,7 @@ Each picture has:
 - shows: one sentence naming the subject and what pupils must see in it.
 - mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record.
 - queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
-- imagePrompt: what an image model is told if no stored or library photo fits: one realistic photograph of one subject in a simple setting that suits it. Living subjects look natural and unposed, as in a real photograph. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
+- imagePrompt: what an image model is told if no stored or library photo fits: one subject in a simple setting that suits it. In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph. In an illustration lesson it describes only what is in the picture, since code adds the lesson's illustration style. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
 When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 
@@ -128,6 +134,7 @@ export function pictureDirectorPrompt(input: PictureDirectorInput): {
       `Requested picture: ${input.request}`,
       `Requested to show: ${input.mustShow.length ? input.mustShow.join("; ") : "(none)"}`,
       `Picture zone: ${shapeOf(input.aspect)}, ${ratio} wide to 1 high.`,
+      `Picture style for this lesson: ${input.style ?? "photo"}`,
     ].join("\n"),
   };
 }
