@@ -18,7 +18,15 @@ const opt = (k: string, d?: string) => {
   const i = args.indexOf(k);
   return i >= 0 ? args[i + 1] : d;
 };
-const VALUED = new Set(["--arm", "--cap", "--pg", "--out", "--replay", "--bank-cap"]);
+const VALUED = new Set([
+  "--arm",
+  "--cap",
+  "--pg",
+  "--out",
+  "--replay",
+  "--bank-cap",
+  "--reuse-visuals",
+]);
 const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i - 1] ?? ""));
 const arm = ARMS[opt("--arm", "T") as string];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
@@ -41,6 +49,7 @@ for (const id of briefs) {
     pgPort: Number(opt("--pg", "5616")),
     replay: opt("--replay"),
     noVisuals: flag("--no-visuals"),
+    ...(opt("--reuse-visuals") ? { reuseVisuals: opt("--reuse-visuals") } : {}),
     noNotes: flag("--no-notes"),
     noRepair: flag("--no-repair"),
     modelTheme: flag("--model-theme"),
