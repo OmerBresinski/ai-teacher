@@ -356,6 +356,34 @@ export function renderDiagram(
 export const svgDataUrl = (svg: string) =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
+/** The most a drawing is enlarged to fill its zone. */
+export const MAX_DIAGRAM_ZOOM = 1.8;
+/**
+ * FIX1: how much a drawing is enlarged to fill its zone. A bar model, a flow or a table draws at
+ * its own type size and leaves most of a big zone empty; drawn in a smaller box with the zone's
+ * shape and scaled up, it fills the zone, keeping its aspect. The largest zoom (to
+ * `MAX_DIAGRAM_ZOOM`, in tenths) at which it still draws with no fault; 1 when none does, and for
+ * kinds that already fill whatever box they get (`FILLS_BOX`).
+ */
+export function diagramZoom(
+  spec: unknown,
+  theme: Theme,
+  rect: { w: number; h: number; fs?: number },
+): number {
+  const s = parseDiagram(spec);
+  if (!s || FILLS_BOX.has(s.kind)) return 1;
+  for (let z = MAX_DIAGRAM_ZOOM; z > 1.05; z = Math.round((z - 0.1) * 10) / 10) {
+    const size = { w: rect.w / z, h: rect.h / z, fs: rect.fs };
+    if (size.w < 80 || size.h < 60) continue;
+    if (
+      diagramFaults(spec, theme, size).length === 0 &&
+      (drawnFill(spec, theme, size) ?? 0) <= 0.92
+    )
+      return z;
+  }
+  return 1;
+}
+
 /**
  * The spec as an image element filling `rect`, or `undefined` when it does not draw. The element
  * is named `Diagram` (not the placeholder's name), so every surface shows it.
@@ -366,8 +394,15 @@ export function diagramElement(
   rect: { x: number; y: number; w: number; h: number; fs?: number },
   ids: () => string = uid,
 ): ImageElement | undefined {
-  const svg = renderDiagram(spec, theme, rect);
   const s = parseDiagram(spec);
+  const zoom = s ? diagramZoom(spec, theme, rect) : 1;
+  const svg =
+    zoom > 1
+      ? renderDiagram(spec, theme, { w: rect.w / zoom, h: rect.h / zoom, fs: rect.fs })?.replace(
+          /width="[\d.]+" height="[\d.]+"/,
+          `width="${Math.round(rect.w)}" height="${Math.round(rect.h)}"`,
+        )
+      : renderDiagram(spec, theme, rect);
   if (!svg || !s) return undefined;
   return {
     id: ids(),
