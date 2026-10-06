@@ -372,8 +372,20 @@ export function diagramZoom(
 ): number {
   const s = parseDiagram(spec);
   if (!s || FILLS_BOX.has(s.kind)) return 1;
-  return cleanZooms(spec, theme, rect)[0] ?? 1;
+  const up = cleanZooms(spec, theme, rect)[0];
+  if (up) return up;
+  // A bar model is read by its numbers: when its part labels do not fit even at its own size (the
+  // larger key-stage type scale), it draws a step smaller (the largest zoom below 1 at
+  // which every label fits) rather than dropping them.
+  if (s.kind !== "bar-model" || diagramFaults(spec, theme, rect).length === 0) return 1;
+  for (let z = 0.95; z >= MIN_BAR_ZOOM - 0.01; z = Math.round((z - 0.05) * 100) / 100) {
+    const size = { w: rect.w / z, h: rect.h / z, fs: rect.fs };
+    if (diagramFaults(spec, theme, size).length === 0) return z;
+  }
+  return 1;
 }
+/** The smallest step a bar model takes to keep every label (labels at 60 % of their own size). */
+const MIN_BAR_ZOOM = 0.6;
 
 /** The zooms (largest first, to `MAX_DIAGRAM_ZOOM`, in tenths) at which the drawing fills its zone with no fault. */
 function cleanZooms(
@@ -443,7 +455,7 @@ export function diagramElement(
   const s = parseDiagram(spec);
   const zoom = s ? diagramZoom(spec, theme, rect) : 1;
   const svg =
-    zoom > 1
+    zoom !== 1
       ? renderDiagram(spec, theme, { w: rect.w / zoom, h: rect.h / zoom, fs: rect.fs })?.replace(
           /width="[\d.]+" height="[\d.]+"/,
           `width="${Math.round(rect.w)}" height="${Math.round(rect.h)}"`,

@@ -1,5 +1,5 @@
 /**
- * TEMPLATE-SPIKE (6 Oct 2026): the homepage layout set. Thirteen templates with fixed geometry on
+ * TEMPLATE-SPIKE (6 Oct 2026): the homepage layout set. Fifteen templates with fixed geometry on
  * the 960x540 grid, taken from the homepage example slides (`homepage/assets/examples`, measured in
  * `TEMPLATE-SPIKE/STUDY.md`), one type scale per key stage, and a stated capacity per zone.
  *
@@ -21,7 +21,7 @@ import type {
 import { diagramElement, diagramFaults, fittedDiagramElement, withLongLabels } from "../diagrams";
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
-import { withKeyStage } from "../themes";
+import { typeScale, withKeyStage } from "../themes";
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -41,18 +41,26 @@ const bandBottom = G.band.y + G.band.h;
 const bandMid = G.band.y + G.band.h / 2;
 
 /* ------------------------------------------------------------------ */
-/* Type scale per key stage (homepage ratios: heading 1.75x, lead 1.08x) */
+/* Type: the one key-stage scale (FIX-TYPE, `themes.ts` `typeScale`)   */
 /* ------------------------------------------------------------------ */
 
 export type Stage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
 export type Scale = { title: number; heading: number; lead: number; body: number; small: number };
-export const SCALE: Record<Stage, Scale> = {
-  ks1: { title: 64, heading: 50, lead: 32, body: 30, small: 24 },
-  ks2: { title: 60, heading: 44, lead: 28, body: 26, small: 22 },
-  ks3: { title: 56, heading: 40, lead: 26, body: 24, small: 20 },
-  ks4: { title: 56, heading: 40, lead: 26, body: 24, small: 20 },
-  ks5: { title: 52, heading: 38, lead: 24, body: 22, small: 19 },
-};
+/**
+ * The template roles on the deck's one type scale: the slide heading is the scale's display
+ * heading, the lead is body set bold (no size of its own), small is the one step under body.
+ */
+export function templateScale(theme: Theme, stage: Stage): Scale {
+  const s = withKeyStage(stage, () => typeScale(theme));
+  if (!s) throw new Error(`no type scale for ${stage}`);
+  return {
+    title: s.title,
+    heading: s.headingDisplay,
+    lead: s.body,
+    body: s.body,
+    small: s.bodySmall,
+  };
+}
 const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
 
 /* ------------------------------------------------------------------ */
@@ -60,6 +68,7 @@ const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
 /* ------------------------------------------------------------------ */
 
 /** `aspect`: the photo's own width / height, so a panel can take its shape and crop nothing. */
+/** A photo whose `photo` is "" is an open slot (the picture is still being found): the image view draws its placeholder. */
 export type Figure = { photo: string; alt?: string; aspect?: number } | { diagram: unknown };
 export type TemplateId =
   | "title"
@@ -68,6 +77,8 @@ export type TemplateId =
   | "picture-text"
   | "diagram-text"
   | "big-diagram"
+  | "big-picture"
+  | "picture-sequence"
   | "compare"
   | "steps"
   | "hinge"
@@ -88,8 +99,10 @@ export type TemplateInput = {
   /** Hinge: the stem and its 2-4 options. */
   stem?: string;
   options?: string[];
-  /** Compare: 2-3 columns. */
-  columns?: { label: string; text: string }[];
+  /** Compare: 2-3 columns, each with an optional photo over its text. */
+  columns?: { label: string; text: string; figure?: Figure }[];
+  /** Picture sequence: 2-4 pictures in a row, a short caption under each, arrows between. */
+  sequence?: { caption: string; figure?: Figure }[];
   /** The one quiet line under a question list. */
   instruction?: string;
   figure?: Figure;
@@ -266,6 +279,37 @@ function heading(c: Ctx, value: string) {
     c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
 }
 
+/**
+ * A photo in a fixed box: covering it (cropped round the centre) when `cover`, else at its own
+ * shape inside the box. An open slot ("" src) takes the whole box.
+ */
+function photoBox(
+  c: Ctx,
+  f: { photo: string; alt?: string; aspect?: number },
+  rect: { x: number; y: number; w: number; h: number },
+  cover = true,
+) {
+  let r = rect;
+  if (!cover && f.photo && f.aspect) {
+    const w = Math.min(rect.w, Math.round(rect.h * f.aspect));
+    const h = Math.min(rect.h, Math.round(w / f.aspect));
+    r = { x: rect.x + (rect.w - w) / 2, y: rect.y + (rect.h - h) / 2, w, h };
+  }
+  c.els.push({
+    id: uid(),
+    type: "image",
+    name: "Photo",
+    x: Math.round(r.x),
+    y: Math.round(r.y),
+    w: Math.round(r.w),
+    h: Math.round(r.h),
+    src: f.photo,
+    alt: f.alt ?? "",
+    fit: "cover",
+    radius: c.t.radius,
+  } as ImageElement);
+}
+
 /** The right-hand figure panel: a photo fills it; a diagram sits on the wash with air round it. */
 function figurePanel(
   c: Ctx,
@@ -435,7 +479,7 @@ function numbered(
 }
 
 /* ------------------------------------------------------------------ */
-/* The thirteen templates                                              */
+/* The templates                                              */
 /* ------------------------------------------------------------------ */
 
 const KIND: Record<TemplateId, SlideKind> = {
@@ -445,6 +489,8 @@ const KIND: Record<TemplateId, SlideKind> = {
   "picture-text": "image-text",
   "diagram-text": "diagram",
   "big-diagram": "diagram",
+  "big-picture": "image-text",
+  "picture-sequence": "image-text",
   compare: "content",
   steps: "worked-example",
   hinge: "multiple-choice",
@@ -456,7 +502,7 @@ const KIND: Record<TemplateId, SlideKind> = {
 
 export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage): TemplateResult {
   return withKeyStage(stage, () => {
-    const c: Ctx = { t: theme, s: SCALE[stage], over: [], els: [] };
+    const c: Ctx = { t: theme, s: templateScale(theme, stage), over: [], els: [] };
     const tpl = input.template;
     let background: Slide["background"];
     const pts = input.points ?? [];
@@ -483,7 +529,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           countLines(input.heading, "title", theme, w, theme.weights.heading, size) <= (f ? 6 : 3);
         while (size > c.s.heading && !fits()) size -= 2;
         c.s = { ...c.s, title: size };
-        if (size < SCALE[stage].title) c.over.push(`title stepped to ${size}pt`);
+        if (size < templateScale(theme, stage).title) c.over.push(`title stepped to ${size}pt`);
         const tH = measure(c, input.heading, "title", w);
         const lH = input.lead ? measure(c, input.lead, "lead", w, 400) : 0;
         const total = tH + (lH ? 20 + lH : 0);
@@ -519,7 +565,8 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         heading(c, input.heading);
         const line = input.lead;
         const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
-        if (line && lh > c.s.body * LH.body * 2 + 14) c.over.push("caption over 2 lines");
+        if (line && lh > Math.ceil(c.s.body * LH.body * 2) + 14)
+          c.over.push("caption over 2 lines");
         figurePanel(c, input.figure, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h - lh });
         if (line)
           text(
@@ -537,13 +584,17 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const gap = 24;
         const w = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
         const pad = 22;
-        const hs = cols.map(
-          (col) =>
-            measure(c, col.label, "lead", w - 2 * pad, 700) +
-            10 +
-            measure(c, col.text, "body", w - 2 * pad),
-        );
-        const h = Math.max(...hs, 0) + 2 * pad;
+        const textH = (col: { label: string; text: string }) =>
+          measure(c, col.label, "lead", w - 2 * pad, 700) +
+          10 +
+          (col.text ? measure(c, col.text, "body", w - 2 * pad) : 0);
+        // A column photo sits over its label, the same height in every column, taking what the
+        // tallest words leave of the band (at least 96 pt, else it is a fault).
+        const pics = cols.some((col) => col.figure);
+        const words = Math.max(...cols.map(textH), 0);
+        const picH = pics ? Math.min(200, G.band.h - 2 * pad - words - 14) : 0;
+        if (pics && picH < 96) c.over.push(`compare photos ${picH}pt tall`);
+        const h = words + 2 * pad + (pics ? Math.max(96, picH) + 14 : 0);
         if (h > G.band.h) c.over.push(`compare ${h}/${G.band.h}pt`);
         const y = Math.max(G.band.y, Math.round(bandMid - h / 2 - 4));
         cols.forEach((col, k) => {
@@ -553,20 +604,94 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             strokeWidth: 1,
             radius: Math.min(theme.radius, 16),
           });
+          const ph = pics ? Math.max(96, picH) : 0;
+          if (col.figure && "photo" in col.figure)
+            photoBox(c, col.figure, { x: x + pad, y: y + pad, w: w - 2 * pad, h: ph });
+          const top = y + pad + (pics ? ph + 14 : 0);
           const lab = text(
             c,
             col.label,
             "lead",
-            { x: x + pad, y: y + pad, w: w - 2 * pad },
+            { x: x + pad, y: top, w: w - 2 * pad },
             { color: theme.colors.accent, weight: 700, name: "Label" },
           );
+          if (col.text)
+            text(
+              c,
+              col.text,
+              "body",
+              { x: x + pad, y: lab.y + lab.h + 10, w: w - 2 * pad },
+              { color: theme.colors.ink, name: "Text" },
+            );
+        });
+        break;
+      }
+      case "big-picture": {
+        // One photo across the band at its own shape, centred; an optional one-line caption under.
+        heading(c, input.heading);
+        const line = input.lead;
+        const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
+        if (line && lh > Math.ceil(c.s.body * LH.body * 2) + 14)
+          c.over.push("caption over 2 lines");
+        const f = input.figure;
+        if (f && "photo" in f) {
+          const room = { w: G.width, h: G.band.h - lh };
+          const a = f.aspect ?? 4 / 3;
+          const w = Math.min(room.w, Math.round(room.h * a));
+          const h = Math.min(room.h, Math.round(w / a));
+          photoBox(c, f, { x: Math.round(G.margin + (G.width - w) / 2), y: G.band.y, w, h });
+          if (line)
+            text(
+              c,
+              line,
+              "body",
+              { x: G.margin, y: G.band.y + h + 14, w: G.width },
+              { color: theme.colors.muted, name: "Caption", align: "center" },
+            );
+        } else if (f) figurePanel(c, f, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h - lh });
+        break;
+      }
+      case "picture-sequence": {
+        // 2-4 pictures in a row, the same size, a short caption under each, an arrow between
+        // (life cycles, changes over time).
+        heading(c, input.heading);
+        const seq = (input.sequence ?? []).slice(0, 4);
+        if ((input.sequence ?? []).length > 4) c.over.push("sequence over 4 pictures");
+        const n = Math.max(1, seq.length);
+        const arrowW = 44;
+        const w = Math.floor((G.width - arrowW * (n - 1)) / n);
+        const capH = Math.max(0, ...seq.map((s) => measure(c, s.caption, "body", w, 600)));
+        if (capH > Math.ceil(c.s.body * LH.body * 2))
+          c.over.push(`sequence caption ${Math.round(capH / (c.s.body * LH.body))} lines`);
+        const picH = Math.min(Math.round(w * 0.9), G.band.h - capH - 14);
+        const total = picH + 14 + capH;
+        const y = Math.max(G.band.y, Math.round(bandMid - total / 2));
+        seq.forEach((s, k) => {
+          const x = G.margin + k * (w + arrowW);
+          if (s.figure && "photo" in s.figure) photoBox(c, s.figure, { x, y, w, h: picH }, true);
+          else if (s.figure) figurePanel(c, s.figure, { x, y, w, h: picH });
           text(
             c,
-            col.text,
+            s.caption,
             "body",
-            { x: x + pad, y: lab.y + lab.h + 10, w: w - 2 * pad },
-            { color: theme.colors.ink, name: "Text" },
+            { x, y: y + picH + 14, w },
+            { color: theme.colors.ink, weight: 600, align: "center", name: "Caption" },
           );
+          if (k < n - 1)
+            c.els.push({
+              id: uid(),
+              type: "line",
+              name: "Arrow",
+              x: x + w + 8,
+              y: Math.round(y + picH / 2 - 10),
+              w: arrowW - 16,
+              h: 20,
+              from: { x: 0, y: 0.5 },
+              to: { x: 1, y: 0.5 },
+              stroke: theme.colors.accent,
+              strokeWidth: 4,
+              arrowEnd: true,
+            } as SlideElement);
         });
         break;
       }
