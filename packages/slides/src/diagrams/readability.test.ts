@@ -223,4 +223,135 @@ describe("dd-diagrams readability", () => {
         (svgOf(r.element.src as string).match(/<path d="M[^"]*Z"|polygon/g) ?? []).length,
       ).toBeGreaterThanOrEqual(0);
   });
+
+  // r3-diag: every other kind grown from its sample (1 to 10 entries in its main list, labels of 4
+  // to 40 characters), at three key stages and both zones: never throws, and what draws reads
+  // cleanly; a spec it cannot draw reports why.
+  test("grown specs of every kind never throw, and what draws reads cleanly", () => {
+    const MAIN: Record<string, string> = {
+      "bar-chart": "bars",
+      pie: "slices",
+      cycle: "steps",
+      timeline: "events",
+      layers: "layers",
+      venn: "items",
+      "number-line": "points",
+      river: "labels",
+      "labelled-diagram": "labels",
+      carroll: "cells",
+      flow: "steps",
+      table: "rows",
+      "bar-model": "bars",
+    };
+    const sample: Record<string, Record<string, unknown>> = {};
+    for (const v of [...Object.values(DIAGRAM_SAMPLES), ...Object.values(TEMPLATE_SPECS)] as Record<
+      string,
+      unknown
+    >[])
+      sample[v.kind as string] ??= v;
+    const relabel = (o: unknown, text: string, i: number): unknown => {
+      if (typeof o === "string") return text;
+      if (Array.isArray(o)) return o.map((v) => relabel(v, text, i));
+      if (!o || typeof o !== "object") return o;
+      return Object.fromEntries(
+        Object.entries(o).map(([k, v]) => [
+          k,
+          typeof v === "string" && ["label", "text", "name", "caption"].includes(k) ? text : v,
+        ]),
+      );
+    };
+    const bad: string[] = [];
+    let n = 0;
+    for (const [kind, f] of Object.entries(MAIN)) {
+      const base = sample[kind];
+      if (!base) continue;
+      const items = (base[f] as unknown[]) ?? [];
+      for (const count of [1, 3, 6, 10])
+        for (const chars of [4, 14, 40]) {
+          const text = "Rising prices and falling output".repeat(2).slice(0, chars);
+          const spec = {
+            ...base,
+            [f]: Array.from({ length: count }, (_, i) => relabel(items[i % items.length], text, i)),
+          };
+          for (const ks of KS)
+            for (const z of Object.values(ZONES))
+              withKeyStage(ks, () => {
+                n++;
+                try {
+                  const r = drawDiagram(spec, t, { x: 0, y: 0, ...z });
+                  if (!r.ok) {
+                    if (!r.reasons.length)
+                      bad.push(`${kind} ${count}x${chars} ${ks}: refused with no reason`);
+                    return;
+                  }
+                  const faults = readabilityFaults(r.spec, t, { ...z, fs: r.fs });
+                  if (faults.length) bad.push(`${kind} ${count}x${chars} ${ks}: ${faults[0]}`);
+                } catch (e) {
+                  bad.push(`${kind} ${count}x${chars} ${ks}: throws ${(e as Error).message}`);
+                }
+              });
+        }
+    }
+    expect(n).toBeGreaterThan(800);
+    expect(bad).toEqual([]);
+  }, 300_000);
+
+  // r3-diag: y11 r2 s10. A label naming a gas line drawn to the top of the canvas was placed past
+  // the edge, moved back inside and set across the line. Placement now checks the moved box, and a
+  // crossing is never drawn: the drawing is clean or refused.
+  test("a label naming a line that runs to the canvas edge stands clear of it", () => {
+    const spec = {
+      kind: "labelled-diagram",
+      alt: "A flask of marble chips and acid on a balance",
+      canvas: "square",
+      shapes: [
+        { type: "rect", x: 15, y: 80, w: 70, h: 12, fill: "muted" },
+        {
+          type: "polygon",
+          points: [
+            [40, 30],
+            [60, 30],
+            [60, 45],
+            [75, 78],
+            [25, 78],
+            [40, 45],
+          ],
+          fill: "surface",
+        },
+        { type: "rect", x: 25, y: 62, w: 50, h: 16, fill: "accent2" },
+        { type: "rect", x: 42, y: 22, w: 16, h: 9, fill: "surface" },
+        {
+          type: "line",
+          points: [
+            [50, 20],
+            [52, 12],
+            [48, 6],
+          ],
+          dashed: true,
+        },
+        { type: "circle", cx: 88, cy: 60, r: 8, fill: "none" },
+      ],
+      labels: [
+        { text: "Escaping carbon dioxide", at: [50, 8] },
+        { text: "Loose cotton wool", at: [58, 26] },
+        { text: "Acid and marble", at: [50, 70] },
+        { text: "Balance", at: [50, 86] },
+        { text: "Stopwatch", at: [88, 60] },
+      ],
+    };
+    for (const ks of KS)
+      withKeyStage(ks, () => {
+        const r = drawDiagram(spec, t, { x: 0, y: 0, ...ZONES.half });
+        // y11 is KS4 (and KS3 type matches): it draws there; KS2's larger type may refuse, with a
+        // reason, but never draws a crossing.
+        if (ks !== "ks2") expect(r.ok).toBe(true);
+        if (!r.ok) expect(r.reasons.length).toBeGreaterThan(0);
+        if (r.ok)
+          expect(
+            readabilityFaults(r.spec, t, { ...ZONES.half, fs: r.fs }).filter((f) =>
+              f.includes("across a line"),
+            ),
+          ).toEqual([]);
+      });
+  });
 });

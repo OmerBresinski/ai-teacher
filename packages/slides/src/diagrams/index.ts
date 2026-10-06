@@ -560,6 +560,14 @@ export function diagramFaults(
 /** Panels meant to differ that draw the same: two particle boxes alike, or two series alike. */
 function samePanels(s: DiagramSpec): string[] {
   const out: string[] = [];
+  // r3-diag: compare panels that differ in nothing drawn (no count, extra, speed or room
+  // difference) show no difference, whatever their captions say.
+  if (s.kind === "particles" && s.show === "compare" && s.panels) {
+    const keyOf = (q: NonNullable<typeof s.panels>[number]) =>
+      JSON.stringify([q.state, q.count, q.extra, q.room, q.speed ?? (s.motion ? "slow" : "")]);
+    if (new Set(s.panels.map(keyOf)).size === 1)
+      out.push("the compare panels draw exactly the same, so the picture shows no difference");
+  }
   if (s.kind === "labelled-diagram") {
     const boxes = s.shapes.flatMap((sh) => (sh.type === "particles" ? [sh] : []));
     const near = (a: number, b: number) => Math.abs(a - b) <= 0.15 * Math.max(a, b);

@@ -213,13 +213,16 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
   const note = (i: number) => s.notes?.[i];
   const arrowWord = (i: number) =>
     s.arrows?.[i] ??
-    (s.show === "states" || s.show === "compare" || s.show === "collision"
+    (s.show === "states" || s.show === "compare" || s.show === "collision" || s.captions?.length
       ? undefined
       : s.show === "diffusion"
         ? "spreads"
         : "dissolves");
   const hasArrows =
-    (s.show !== "states" && s.show !== "compare" && s.show !== "collision") ||
+    (s.show !== "states" &&
+      s.show !== "compare" &&
+      s.show !== "collision" &&
+      !s.captions?.length) ||
     (s.arrows?.length ?? 0) > 0;
   const key =
     s.key ?? (s.show === "dissolving" ? (["Solvent", "Solute"] as [string, string]) : undefined);
@@ -278,7 +281,15 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         ? blockSize(x, Array(nl).fill("x"), Math.max(TYPE_FLOOR, fs * 0.9), WEIGHT.label).bh +
           0.35 * fs
         : 0;
-      const keyH = key ? 1.6 * fs : 0;
+      // r3-diag: a key too wide for one row stacks its two entries (y11 r2 s5 "Other particles").
+      const kf = Math.max(TYPE_FLOOR, fs * 0.9);
+      const keyRow = key
+        ? fs * 2.2 +
+          textWidth(key[0], x, kf, WEIGHT.label) +
+          textWidth(key[1], x, kf, WEIGHT.label) +
+          36
+        : 0;
+      const keyH = key ? (keyRow <= w ? 1.6 : 2.9) * fs : 0;
       const wl = Math.max(0, ...arrowLines.map((l) => (l as string[]).length));
       const wordH =
         under && wl
@@ -382,11 +393,14 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
           arrow(cx + side * 0.18 + rr * 1.2, cy2, cx + side * 0.42, cy2, x.c.ink, 2, a),
         );
     }
-    if (p.speed && p.state !== "solid") {
-      // compare: movement arrows on every third particle, long when fast and short when slow.
-      const len = p.speed === "fast" ? 2.6 : 1.1;
+    const moving = p.speed ?? (s.show === "compare" && s.motion ? "slow" : undefined);
+    if (moving && p.state !== "solid") {
+      // compare: movement arrows, long on most particles when fast and short on a few when slow,
+      // so a temperature pair reads apart at a glance (y11 r2 s4 looked the same).
+      const len = moving === "fast" ? 3.4 : 0.9;
+      const every = moving === "fast" ? 2 : 4;
       p.dots.forEach((d, j) => {
-        if (j % 3 !== 0) return;
+        if (j % every !== 0) return;
         const ang = (j * 137.5 * Math.PI) / 180;
         const [dx, dy] = [Math.cos(ang), Math.sin(ang)];
         const sx = ix + d.at[0] * ib + dx * r * 1.1;
@@ -487,17 +501,24 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     const wa = textWidth(key[0], x, kfs, WEIGHT.label);
     const wb = textWidth(key[1], x, kfs, WEIGHT.label);
     const total = r * 2 + 6 + wa + 24 + r * 2 + 6 + wb;
-    let kx = (w - total) / 2;
-    out.push(
-      `<circle cx="${n(kx + r)}" cy="${n(ky)}" r="${n(r)}" fill="${x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
-    );
-    out.push(text(x, kx + 2 * r + 6, ky, [key[0]], { fs: kfs, anchor: "start" }));
-    kx += 2 * r + 6 + wa + 24;
-    out.push(
-      `<circle cx="${n(kx + r)}" cy="${n(ky)}" r="${n(r)}" fill="${x.c.accent2}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
-    );
-    out.push(text(x, kx + 2 * r + 6, ky, [key[1]], { fs: kfs, anchor: "start" }));
-    if (total > w) bad(x, "the key is wider than the drawing");
+    const entry = (cx0: number, cy: number, label: string, fill: string) => {
+      out.push(
+        `<circle cx="${n(cx0 + r)}" cy="${n(cy)}" r="${n(r)}" fill="${fill}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
+      );
+      out.push(text(x, cx0 + 2 * r + 6, cy, [label], { fs: kfs, anchor: "start" }));
+    };
+    if (total <= w) {
+      const kx = (w - total) / 2;
+      entry(kx, ky, key[0], x.c.accent);
+      entry(kx + 2 * r + 6 + wa + 24, ky, key[1], x.c.accent2);
+    } else {
+      // Two rows, each entry centred, the second under the first.
+      const y0 = top + capH + side + noteH + fs * 0.75;
+      const one = (wl: number) => (w - (2 * r + 6 + wl)) / 2;
+      entry(one(wa), y0, key[0], x.c.accent);
+      entry(one(wb), y0 + fs * 1.3, key[1], x.c.accent2);
+      if (2 * r + 6 + Math.max(wa, wb) > w) bad(x, "the key is wider than the drawing");
+    }
   }
   return out.join("");
 }

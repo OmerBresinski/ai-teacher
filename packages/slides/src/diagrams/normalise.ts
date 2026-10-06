@@ -11,7 +11,9 @@
  *
  * Pure. A spec that is not one of these, or does not parse, comes back unchanged.
  */
+
 import type { EnergyProfileValues } from "../figures/energy-profile";
+import { parseDiagram } from "./index";
 import { resolveLabels } from "./labelled";
 import {
   type DiagramSpec,
@@ -171,12 +173,60 @@ export function energyProfileOf(spec: unknown): EnergyProfileValues | undefined 
 
 /** `spec` with the core kinds' geometry decided in code; anything else as it came. */
 export function normaliseDiagram(spec: unknown): unknown {
-  const r = DiagramSpecSchema.safeParse(spec);
-  if (!r.success) return spec;
-  const s0 = r.data;
+  // r3-diag: parsed as the slide draws it (long labels stretched), so a spec with a label a little
+  // over its limit is still normalised.
+  const s0 = parseDiagram(spec);
+  if (!s0) return spec;
   const s = s0.kind === "line-graph" ? withTangents(s0) : s0;
   const tpl = asTemplate(s);
   if (tpl) return tpl;
+  // r3-diag: compare panels the writer left identical, whose captions name what differs, take that
+  // difference: lower/higher temperature moves slow/fast, higher concentration holds twice the
+  // particles, higher pressure has the smaller container (y11 r2 s4 drew two identical panels).
+  if (s.kind === "particles" && s.show === "compare" && s.panels && s.panels.length === 2) {
+    const [a, b] = s.panels;
+    const same = JSON.stringify(a) === JSON.stringify(b);
+    const caps = (s.captions ?? []).join(" ").toLowerCase();
+    if (same && a && b) {
+      const low = (s.captions?.[0] ?? "").toLowerCase();
+      const flip = /higher|more|hot|warm|high/.test(low) && !/lower|less|cold|low/.test(low);
+      const [lo, hi] = flip ? [b, a] : [a, b];
+      let changed = false;
+      if (/temperat|hot|cold|heat/.test(caps)) {
+        lo.speed = "slow";
+        hi.speed = "fast";
+        changed = true;
+      } else if (/concentrat/.test(caps)) {
+        hi.count = Math.min(20, lo.count * 2);
+        changed = true;
+      } else if (/pressure|compress|volume/.test(caps)) {
+        hi.room = "small";
+        changed = true;
+      }
+      if (changed) return { ...s, panels: flip ? [hi, lo] : [lo, hi] };
+    }
+  }
+  // r3-diag: a before/after particle pair whose own words are about collisions and energy (y11 r2
+  // s3 wrote "dissolving" with captions "Insufficient energy" / "Sufficient energy") is a collision
+  // pair: drawn as particles meeting and bouncing apart or reacting, not as a solute dissolving.
+  if (s.kind === "particles" && (s.show === "dissolving" || s.show === "diffusion")) {
+    const words = [...(s.captions ?? []), ...(s.notes ?? []), ...(s.key ?? [])].join(" ");
+    if (/collision|collide|energy|react/i.test(words)) {
+      const outcome = (t: string) =>
+        /\b(no|not|insufficient|low|too little|unsuccessful|without)\b/i.test(t)
+          ? ("bounces" as const)
+          : ("reacts" as const);
+      const caps = s.captions ?? [];
+      const outcomes = (caps.length ? caps : ["", ""])
+        .slice(0, 2)
+        .map((c, i) =>
+          caps.length ? outcome(`${c} ${s.notes?.[i] ?? ""}`) : i === 0 ? "bounces" : "reacts",
+        );
+      const { key: _k, arrows: _a, ...rest } = s;
+      const c: unknown = { ...rest, show: "collision", outcomes };
+      if (parseDiagram(c)) return c;
+    }
+  }
   const out: DiagramSpec | undefined =
     s.kind === "line-graph" && isHydrograph(s)
       ? normaliseHydrograph(s)
@@ -184,7 +234,7 @@ export function normaliseDiagram(spec: unknown): unknown {
         ? normaliseParticles(s)
         : undefined;
   if (!out) return s === s0 ? spec : s;
-  return DiagramSpecSchema.safeParse(out).success ? out : spec;
+  return parseDiagram(out) ? out : spec;
 }
 
 // ─── hydrograph ─────────────────────────────────────────────────────────────────────────────
@@ -353,6 +403,8 @@ const shortLabel = (t: string, max = 16) => {
  */
 export function simplerDiagrams(spec: unknown): unknown[] {
   const base = normaliseDiagram(spec);
+  // Simpler forms only for a spec within its limits: one with long labels draws whole (stretched)
+  // or steps up to a bigger zone, rather than losing its notes to fit (DIAGRAM-AUDIT step-up).
   const r = DiagramSpecSchema.safeParse(base);
   if (!r.success) return [base];
   const s = r.data;

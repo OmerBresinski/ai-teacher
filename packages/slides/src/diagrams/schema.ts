@@ -253,7 +253,8 @@ export const LabelledDiagramSchema = z
     kind: z.literal("labelled-diagram"),
     ...common,
     canvas: z.enum(["square", "wide"]).default("square"),
-    shapes: z.array(Shape).min(1).max(12),
+    // r3-diag: apparatus (a flask, bung, tube and syringe) takes more than 12 primitives.
+    shapes: z.array(Shape).min(1).max(20),
     labels: z
       .array(
         z.object({
