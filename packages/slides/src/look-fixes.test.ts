@@ -159,9 +159,11 @@ describe("the answers never cover the questions", () => {
         }
       }
       const withAnswers = pages.filter((p) => named(p.elements, ANSWERS_NAME).length > 0);
-      // On a panel, or (a plain list that now fits, ruling 162) revealed in each question's row.
+      // On a panel, revealed in each question's row (ruling 162), or, when they are too long to sit
+      // beside their questions, in the notes (ruling 159: no reserved answer space).
       const inRows = pages.some((p) => named(p.elements, ROW_REVEAL_NAME).length > 0);
-      expect(withAnswers.length > 0 || inRows).toBe(true);
+      const inNotes = pages.some((p) => (p.notes ?? "").includes("Plants make food using light"));
+      expect(withAnswers.length > 0 || inRows || inNotes).toBe(true);
       const own = withAnswers.find((p) => texts(p).some((x) => x.endsWith(": answers")));
       if (own) {
         expect(own.question).toBeUndefined();

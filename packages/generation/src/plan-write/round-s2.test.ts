@@ -28,14 +28,24 @@ const explain = (objective: number, question: string, answer: string): Raw => ({
   answer,
   wrongOptions: [],
 });
+// Ruling 159 freed the room an answer took under its question, so S2's recorded stems are said
+// more than once here to stay too long for the slide.
 const LONG_O1 = explain(
   1,
-  "If you walk upstream from a river’s mouth to its mountain source, which courses do you pass through in order and how do its channel and valley usually change?",
+  Array(8)
+    .fill(
+      "If you walk upstream from a river’s mouth to its mountain source, which courses do you pass through in order and how do its channel and valley usually change?",
+    )
+    .join(" "),
   "Lower, middle then upper course: the channel gets narrower and shallower and the valley narrower and steeper, ending in a V-shaped valley.",
 );
 const SHORTER_O1 = explain(
   1,
-  "Walking from mouth to source, what is the course order and how do the channel and valley change?",
+  Array(8)
+    .fill(
+      "Walking from mouth to source, what is the course order and how do the channel and valley change?",
+    )
+    .join(" "),
   LONG_O1.answer,
 );
 const MCQ_O2: Raw = {

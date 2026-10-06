@@ -69,7 +69,7 @@ describe("the close (UX ruling 141)", () => {
 
   test("a question too long to fit is passed over; none at all leaves the reference slide", () => {
     const long = {
-      question: "Explain why ".repeat(60).trim(),
+      question: "Explain why ".repeat(200).trim(),
       answer: "Because. ".repeat(40).trim(),
     };
     const short = { question: "What is 2 + 2?", answer: "4" };

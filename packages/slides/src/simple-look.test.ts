@@ -140,15 +140,23 @@ describe("simple: an exit ticket keeps a natural rhythm (y1 s10)", () => {
     factRefs: [],
   } as SlideSpec;
   for (const theme of THEMES) {
-    test(`${theme.id}: one fixed gap between items, the group at the top, not stretched`, () => {
+    test(`${theme.id}: one fixed gap between items, no hidden-answer gap, the group at the top`, () => {
       const slide = materialiseSlide(spec, theme.id, META, counter());
       const heading = named(slide, "Heading")[0] as TextElement;
       const qs = named(slide, "Row text").sort((a, b) => a.y - b.y) as TextElement[];
       const rs = named(slide, "Row reveal") as TextElement[];
       expect(qs).toHaveLength(3);
-      // Every answer sits the same way (all beside or all under), so the rows read alike.
-      const under = rs.map((r) => qs.some((q) => r.y > q.y && Math.abs(r.x - q.x) < 2));
-      expect(new Set(under).size).toBe(1);
+      // Ruling 159: no reserved answer space. An answer sits beside its question or not on the
+      // slide at all (it is in the notes); never under it, where it would leave a gap while hidden.
+      const under = rs.filter((r) => qs.some((q) => r.y > q.y && Math.abs(r.x - q.x) < 2));
+      expect(under).toHaveLength(0);
+      // Rows read alike: every answer is beside its question, or none is on the slide.
+      expect([0, qs.length]).toContain(rs.length);
+      // The gap after each question is the fixed reading gap from the question's own foot.
+      const qgaps = qs
+        .slice(1)
+        .map((q, i) => q.y - ((qs[i] as TextElement).y + (qs[i] as TextElement).h));
+      expect(Math.max(...qgaps)).toBeLessThanOrEqual(24);
       // A row's foot is its question or the answer under it; the gap to the next row is fixed.
       const foot = (q: TextElement) =>
         Math.max(

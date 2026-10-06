@@ -87,14 +87,18 @@ const INPUT: Omit<ExitItemsInput, "count" | "redo"> = {
 };
 
 describe("exit ticket size on S1 y6", () => {
-  test("as recorded, the long first item crowds the set: not all three reach the slide", () => {
-    // One item under the kind tag; two since the tag's lane was freed (ruling 159).
+  test("as recorded, all three reach the slide now that no answer is set under its question", () => {
+    // One item under the kind tag; two since the tag's lane was freed; three since an answer too
+    // long to sit beside its question reserves no room under it (ruling 159).
     const w = closingQuestionsWritten(recorded.y6ExitItems);
-    expect((w?.questions as unknown[] | undefined)?.length).toBeLessThan(3);
+    expect((w?.questions as unknown[] | undefined)?.length).toBe(3);
   });
   test("the long item is asked again shorter, not trimmed off, and three items reach the slide", async () => {
     const inputs: ExitItemsInput[] = [];
-    const raw = y6Raw();
+    // The recorded first item now fits (ruling 159), so it is said eight times over to crowd the set.
+    const raw = y6Raw().map((item, i) =>
+      i === 0 ? { ...item, question: Array(8).fill(item.question).join(" ") } : item,
+    );
     const got = await modelExitItems(
       INPUT,
       async (input) => {

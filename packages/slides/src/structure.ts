@@ -1331,13 +1331,39 @@ function structureSet(
       foot ? SAFE_BOTTOM - footH - SPACE[3] : SAFE_BOTTOM,
       t,
       ids,
-      { plain: true },
+      { plain: true, besideOnly: slide.kind === "exit-ticket" },
     );
     if (placed) {
       const moved = rest.map((e) =>
         e === foot ? { ...foot, y: snapY(placed.bottom + SPACE[3]), h: footH } : e,
       );
-      return [{ ...slide, elements: [...moved, ...placed.elements] }];
+      // Ruling 159: answers too long to sit beside their questions reserve no room under them.
+      // They are revealed together on one step in the free room under the list (ruling 141), or,
+      // when that room is too small, they are in the notes only.
+      const given = lines.map((l, i) => l.answer ?? answers[i] ?? "");
+      const shown = placed.elements.some((e) => e.name === ROW_REVEAL_NAME);
+      const panel =
+        shown || !given.some(Boolean)
+          ? undefined
+          : answersPanel(
+              given.map((text, i) => ({ n: i + 1, text })).filter((a) => a.text),
+              t,
+              ids,
+            );
+      const below = foot ? snapY(placed.bottom + SPACE[3]) + footH : placed.bottom;
+      const room = panel !== undefined && panel.y >= below + SPACE[4];
+      const listed = `Answers: ${given.map((a, i) => `${i + 1}. ${a}`).join(" ")}`;
+      const notes =
+        shown || !given.some(Boolean) || given.every((a) => !a || (slide.notes ?? "").includes(a))
+          ? slide.notes
+          : [slide.notes, listed].filter(Boolean).join("\n");
+      return [
+        {
+          ...slide,
+          elements: [...moved, ...placed.elements, ...(room && panel ? [panel] : [])],
+          ...(notes ? { notes } : {}),
+        },
+      ];
     }
   }
   if (slide.kind === "exit-ticket") return [slide];
@@ -3077,6 +3103,11 @@ export type RowOptions = {
    * muted ink, the rows from the top of the room at a reading gap.
    */
   plain?: boolean;
+  /**
+   * Ruling 159 (exit tickets): answers go beside their questions or not in the rows at all; no
+   * answer is set under its question, where it would leave a gap while hidden.
+   */
+  besideOnly?: boolean;
 };
 
 /** The sizes a set of `n` rows tries: larger type for fewer rows, never below the body floor. */
@@ -3161,13 +3192,15 @@ export function rowCards(
         : r,
     );
     // Ruling 141: a set's answers stay a reveal (a short one beside its question, a long one
-    // under it), so the teacher can show them.
-    const kept = rs;
-    // A plain list's answers all sit the same way (item 9): when one is too long to go beside its
-    // question, every answer goes under its own, so the rows read alike.
-    const allUnder = plain && rs.some((r) => r.reveal && !beside(r));
+    // under it), so the teacher can show them. Ruling 159: a plain list reserves no answer space.
+    // Its answers go beside their questions, or, when one is too long for that, none is on the
+    // slide (they are in the notes), so the rows read alike and a hidden answer leaves no gap.
+    const kept: Row[] =
+      plain && options.besideOnly && rs.some((r) => r.reveal && !beside(r))
+        ? rs.map(({ reveal: _hidden, ...r }): Row => r)
+        : rs;
     const measured = kept.map((r) => {
-      const at = !allUnder && beside(r);
+      const at = beside(r);
       const stacked =
         !!options.mainOneLine &&
         hasSide &&
