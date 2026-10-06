@@ -18,23 +18,31 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
   // bar spans the zone; names beside their bars are kept for rows compared side by side.
   // It stays beside when the drawing is too short for a name line over the bar (a wide, short zone).
   const braceH0 = fs * 2.8;
+  const underH0 = s.combined && s.bars.length === 1 ? fs * 2.9 : 0;
   const rowsH = (named: number) =>
     s.bars.reduce((a, b) => a + (b.total ? braceH0 : 0) + (b.label ? named : 0) + fs * 1.8, 0) +
-    fs * 0.9 * (s.bars.length - 1);
+    fs * 0.9 * (s.bars.length - 1) +
+    underH0;
   const above =
-    labelW > w * LABEL_SIDE_MAX || (labelW > 0 && s.bars.length === 1 && rowsH(fs * 1.5) <= h);
+    labelW > w * LABEL_SIDE_MAX || (labelW > 0 && s.bars.length === 1 && rowsH(fs * 1.8) <= h);
   const left = labelW > 0 && !above ? labelW + gap : 0;
-  const nameH = above ? fs * 1.5 : 0;
-  const right = s.combined ? fs * 1.2 + gap + textWidth(s.combined, x, fs, 600) : 0;
+  const nameH = above ? fs * 1.8 : 0;
+  // dd-diagrams: one bar's `combined` names part of that bar (the shaded parts: "3/5 = 18"), so it
+  // stands under a brace below those parts, not beside the bar where it took the parts' width and
+  // ran off the edge (K y5 s10 "⅝ walk"). Rows compared side by side keep the brace on the right.
+  const under = !!s.combined && s.bars.length === 1;
+  const underH = under ? fs * 2.9 : 0;
+  const right =
+    s.combined && !under ? fs * 1.2 + gap + textWidth(s.combined, x, fs, 600) * 1.08 + 2 : 0;
   const barW = w - left - right - 4;
   const braceH = braceH0;
   const rowGap = fs * 0.9;
   const tops = s.bars.map((b) => (b.total ? braceH : 0) + (b.label ? nameH : 0));
-  const room = h - tops.reduce((a, b) => a + b, 0) - rowGap * (s.bars.length - 1);
+  const room = h - tops.reduce((a, b) => a + b, 0) - rowGap * (s.bars.length - 1) - underH;
   // As tall as the room allows, to BAR_H_MAX label heights: a bar model is read as blocks, not a strip.
   const barH = Math.max(fs * 1.8, Math.min(fs * BAR_H_MAX, room / s.bars.length));
   const used =
-    tops.reduce((a, b) => a + b, 0) + barH * s.bars.length + rowGap * (s.bars.length - 1);
+    tops.reduce((a, b) => a + b, 0) + barH * s.bars.length + rowGap * (s.bars.length - 1) + underH;
   const scale = Math.max(...s.bars.map((b) => b.parts.reduce((a, p) => a + p.value, 0)));
   const unit = barW / scale;
   const out: string[] = [];
@@ -69,13 +77,20 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
         `<rect x="${n(px + cut / 2)}" y="${n(y)}" width="${n(pw - cut)}" height="${n(barH)}" fill="${p.shaded ? c.accent : c.tint}"/>`,
       );
       // Clear of both sides of its part by a quarter label height, so "6 m" never touches its edges.
-      const fits = !p.label || textWidth(p.label, x, fs, 600) <= pw - cut - fs * 0.5;
+      // dd-diagrams: "6; ¼" is a value and its fraction: two lines, the fraction under the value,
+      // never one run-on label.
+      const lines = p.label ? p.label.split(/\s*;\s*/).filter(Boolean) : [];
+      const fits =
+        !p.label ||
+        (lines.length <= 2 &&
+          lines.length * fs * 1.2 <= barH - fs * 0.3 &&
+          lines.every((l) => textWidth(l, x, fs, 600) <= pw - cut - fs * 0.5));
       // fix-bars: a part whose label does not fit is a fault, not a silent drop, so the drawing
       // takes a wider zone (or a smaller zoom) instead of losing the numbers it is there to show.
       if (!fits) x.faults?.push(`the part label "${p.label}" does not fit its part`);
       if (p.label && fits) {
         out.push(
-          text(x, px + pw / 2, y + barH / 2, [p.label], {
+          text(x, px + pw / 2, y + barH / 2, lines, {
             weight: 600,
             fill: p.shaded ? c.onAccent : c.ink,
           }),
@@ -91,7 +106,32 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
     lastBottom = y + barH;
     y += barH + rowGap;
   });
-  if (s.combined) {
+  if (s.combined && under) {
+    const b = s.bars[0];
+    const unitW = barW / scale;
+    let a = -1;
+    let z = -1;
+    let acc = 0;
+    b?.parts.forEach((p, i) => {
+      if (p.shaded && a < 0) a = i;
+      if (p.shaded) z = i;
+    });
+    const edges = (b?.parts ?? []).map((p) => {
+      const e0 = acc;
+      acc += p.value;
+      return [e0, acc] as const;
+    });
+    const [from, to] = a >= 0 ? [edges[a]?.[0] ?? 0, edges[z]?.[1] ?? acc] : [0, acc];
+    const bx0 = x0 + from * unitW;
+    const bx1 = x0 + to * unitW;
+    const by = lastBottom + fs * 0.35;
+    out.push(hBrace(bx0, bx1, by, -fs * 0.8, c.ink));
+    // Held clear of both edges with room to spare: display faces set bold run wider than their
+    // measured advances (T y5 s9 "14 adventure" lost its first digit at the left edge).
+    const half = textWidth(s.combined, x, fs, 600) * 0.62;
+    const cx = Math.max(half + 2, Math.min(w - half - 2, (bx0 + bx1) / 2));
+    out.push(text(x, cx, by + fs * 1.0, [s.combined], { weight: 600, v: "top" }));
+  } else if (s.combined) {
     const bx = x0 + barW + fs * 0.35;
     out.push(vBrace(firstTop, lastBottom, bx, fs * 0.8, c.ink));
     out.push(

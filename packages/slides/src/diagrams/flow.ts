@@ -2,6 +2,7 @@
  * Flows: a chain of steps laid out in rows that snake (left to right, then right to left, so every
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
+import { type KeyStage, keyStage } from "../themes";
 import type { Flow } from "./schema";
 import { STROKE, sub, WEIGHT } from "./style";
 import { arrow, arrowHead, type Ctx, n, text, textWidth, wrap } from "./svg";
@@ -52,28 +53,133 @@ export function drawFlow(f: Flow, x: Ctx, w: number, h: number): string {
   return f.layout === "cycle" ? cycle(f, x, w, h) : chain(f, x, w, h);
 }
 
+/** dd-diagrams: the most steps a chain shows at each key stage; past it the flow does not draw. */
+export const FLOW_STEP_CAP: Record<KeyStage, number> = { ks1: 4, ks2: 4, ks3: 5, ks4: 6, ks5: 6 };
+
+type ChainPlan = {
+  fs: number;
+  noteFs: number;
+  cols: number;
+  rows: number;
+  bw: number;
+  bh: number;
+  gapX: number;
+  gapY: number;
+  lines: string[][];
+  notes: (string[] | undefined)[];
+};
+
+/**
+ * dd-diagrams: a chain reads as one line of boxes, one column, or a two-row snake (left to right,
+ * then right to left), never more rows. Box labels stand at the label size or one step down (never
+ * under the stage's small size) and every box is as tall as its longest label needs; arrow words
+ * sit in their own gap, never over a box or another word. A chain that cannot be laid out that way
+ * in its zone is a fault (the slide falls back), never drawn small (T y9 s9, y10 s3).
+ */
+function planChain(f: Flow, x: Ctx, w: number, h: number): ChainPlan | undefined {
+  const k = f.steps.length;
+  const sizes = [...new Set([x.fs, Math.max(sub(x.fs), x.minFs)])].filter((v) => v >= x.minFs);
+  const shapes: [number, number][] =
+    w / h >= 1.6
+      ? [
+          [k, 1],
+          [Math.ceil(k / 2), 2],
+          [1, k],
+        ]
+      : [
+          [1, k],
+          [Math.ceil(k / 2), 2],
+          [k, 1],
+        ];
+  for (const fs of sizes) {
+    const noteFs = Math.max(sub(fs), x.minFs);
+    for (const [cols, rows] of shapes) {
+      if (rows > 2 && cols > 1) continue;
+      // Words on arrows within a row sit above the arrow in the gap between the boxes.
+      const rowArrow = (i: number) =>
+        cols > 1 && Math.floor(i / cols) === Math.floor((i + 1) / cols);
+      const hWords = f.steps.flatMap((s, i) =>
+        i < k - 1 && rowArrow(i) && s.arrow ? [s.arrow] : [],
+      );
+      const longestWord = Math.max(
+        0,
+        ...hWords.flatMap((t) =>
+          t.split(/\s+/).map((wd) => textWidth(wd, x, noteFs, WEIGHT.label)),
+        ),
+      );
+      const gapX = cols > 1 ? Math.max(fs * 2.2, longestWord + 16) : 0;
+      const bw = Math.min((w - gapX * (cols - 1)) / cols, fs * 14);
+      if (bw < fs * 3.5) continue;
+      const lines = f.steps.map((s) => {
+        const l = wrap(s.label, x, bw - fs * 0.9, 3, fs, WEIGHT.name);
+        return l[l.length - 1]?.endsWith("…") ||
+          l.some((t) => textWidth(t, x, fs, WEIGHT.name) > bw - fs * 0.9 + 0.5)
+          ? undefined
+          : l;
+      });
+      if (lines.some((l) => !l)) continue;
+      const most = Math.max(...lines.map((l) => (l as string[]).length));
+      const bh = most * fs * 1.2 + fs * 0.9;
+      // Arrow words: horizontal ones wrapped to their gap (two lines at most), vertical ones beside
+      // their arrow, inside the drawing.
+      const vRoom = cols === 1 ? w / 2 - fs * 0.6 - 8 : w - bw / 2 - 16;
+      const notes = f.steps.map((s, i) => {
+        if (!s.arrow || i >= k - 1) return undefined;
+        const room = rowArrow(i) ? gapX - 8 : vRoom;
+        const l = wrap(s.arrow, x, room, 2, noteFs, WEIGHT.label);
+        return l[l.length - 1]?.endsWith("…") ||
+          l.some((t) => textWidth(t, x, noteFs, WEIGHT.label) > room + 0.5)
+          ? null
+          : l;
+      });
+      if (notes.some((l) => l === null)) continue;
+      const vNoteH = Math.max(
+        0,
+        ...notes.flatMap((l, i) => (l && !rowArrow(i) ? [l.length * noteFs * 1.2] : [])),
+      );
+      const gapY = rows > 1 ? Math.max(fs * 2.2, vNoteH + 12) : 0;
+      // A word above a row arrow needs room over the arrow, inside the box band.
+      const hNoteH = Math.max(
+        0,
+        ...notes.flatMap((l, i) => (l && rowArrow(i) ? [l.length * noteFs * 1.2 + 8] : [])),
+      );
+      if (hNoteH > bh / 2 + (rows > 1 ? gapY / 2 : (h - bh) / 2)) continue;
+      const totalH =
+        rows * bh + (rows - 1) * gapY + (rows === 1 ? Math.max(0, hNoteH * 2 - bh) : 0);
+      const totalW = cols * bw + (cols - 1) * gapX;
+      if (totalH > h || totalW > w + 0.5) continue;
+      return {
+        fs,
+        noteFs,
+        cols,
+        rows,
+        bw,
+        bh,
+        gapX,
+        gapY,
+        lines: lines as string[][],
+        notes: notes as (string[] | undefined)[],
+      };
+    }
+  }
+  return undefined;
+}
+
 function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
-  const { c, fs } = x;
+  const { c } = x;
   // The boxes' strokes stay inside the drawing: a 2-point inset on every side.
   const inset = 2;
   const w = fullW - inset * 2;
   const h = fullH - inset * 2;
   const k = f.steps.length;
-  const wide = w / h >= 1.6;
-  const cols = wide ? (k <= 4 ? k : Math.ceil(k / 2)) : k <= 4 ? 1 : 2;
-  const rows = Math.ceil(k / cols);
-  const arrowRoom = Math.max(
-    fs * 2.4,
-    ...f.steps.map((s) => (s.arrow ? textWidth(s.arrow, x, fs * 0.85) + 16 : 0)),
-  );
-  const gapX = cols > 1 ? arrowRoom : 0;
-  const gapY = fs * 2.6;
-  // A node is a label in a box, not a panel (UX ruling 155): at most 2.5 lines of its own text
-  // tall, and only as wide as its longest label asks (with padding), centred in the drawing.
-  const longestLabel = Math.max(...f.steps.map((s) => textWidth(s.label, x, fs, 600)));
-  const bh = Math.min((h - gapY * (rows - 1)) / rows, fs * 1.2 * 2.5);
-  const bwCap = Math.max(fs * 6, longestLabel + fs * 1.6);
-  const bw = Math.min((w - gapX * (cols - 1)) / cols, fs * 14, bwCap);
+  const cap = FLOW_STEP_CAP[keyStage() ?? "ks4"];
+  if (k > cap) x.faults?.push(`the flow has ${k} steps, past the ${cap} this key stage reads`);
+  const plan = planChain(f, x, w, h);
+  if (!plan) {
+    x.faults?.push("the flow does not fit its zone at a readable size");
+    return "";
+  }
+  const { fs, noteFs, cols, rows, bw, bh, gapX, gapY } = plan;
   const totalW = bw * cols + gapX * (cols - 1);
   const totalH = bh * rows + gapY * (rows - 1);
   const ox = inset + (w - totalW) / 2;
@@ -85,13 +191,14 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     return { cx: ox + col * (bw + gapX) + bw / 2, cy: oy + r * (bh + gapY) + bh / 2, w: bw, h: bh };
   });
   const out: string[] = [];
-  const small = Math.max(sub(fs), x.minFs);
+  const style = { fs: noteFs, fill: c.ink, weight: WEIGHT.label };
   boxes.forEach((b, i) => {
     const next = boxes[i + 1];
     if (!next) return;
     const [x1, y1] = edge(b, next.cx, next.cy, 4);
     const [x2, y2] = edge(next, b.cx, b.cy, 4);
     out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
+    x.strokes?.push([x1, y1, x2, y2]);
     x.arrows?.push({
       tip: [x2, y2],
       target: {
@@ -101,50 +208,30 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         y1: next.cy + next.h / 2,
       },
     });
-    const note = f.steps[i]?.arrow;
-    if (note) {
-      const vertical = Math.abs(x2 - x1) < 1;
+    const lines = plan.notes[i];
+    if (!lines) return;
+    if (Math.abs(y2 - y1) < 1) {
+      out.push(text(x, (x1 + x2) / 2, Math.min(y1, y2) - 6, lines, { v: "bottom", ...style }));
+    } else {
+      // Beside a vertical arrow, towards the middle of the drawing (a turn of the snake sits at an
+      // outer column, so the middle of its gap row is clear).
+      const toLeft = x1 > fullW / 2;
       out.push(
-        vertical
-          ? // Beside the arrow on the side facing the middle, so a right-hand column's note
-            // stays inside the drawing.
-            text(x, x1 > fullW / 2 ? x1 - 10 : x1 + 10, (y1 + y2) / 2, [note], {
-              anchor: x1 > fullW / 2 ? "end" : "start",
-              fs: small,
-              fill: c.ink,
-              weight: WEIGHT.label,
-            })
-          : // Within the gap between the boxes (CANDIDATE y9 s4: "Government urges" ran into both):
-            // wrapped to the gap, never smaller than the label floor.
-            (() => {
-              const room = Math.max(0, Math.abs(x2 - x1) - 8);
-              const fits = (f: number) => {
-                const lines = wrap(note, x, room, 2, f, WEIGHT.label);
-                return lines.every((l) => textWidth(l, x, f, WEIGHT.label) <= room) ? lines : null;
-              };
-              const lines = fits(small) ?? [note];
-              const style = { fs: small, fill: c.ink, weight: WEIGHT.label };
-              // Two lines sit either side of the arrow, so neither leaves the row.
-              const above = text(x, (x1 + x2) / 2, Math.min(y1, y2) - 6, [lines[0] ?? note], {
-                v: "bottom",
-                ...style,
-              });
-              return lines[1]
-                ? above +
-                    text(x, (x1 + x2) / 2, Math.max(y1, y2) + 6, [lines[1]], { v: "top", ...style })
-                : above;
-            })(),
+        text(x, toLeft ? x1 - 10 : x1 + 10, (y1 + y2) / 2, lines, {
+          anchor: toLeft ? "end" : "start",
+          ...style,
+        }),
       );
     }
   });
-  const bfs = boxSize(
-    x,
-    boxes,
-    f.steps.map((s) => s.label),
-  );
-  f.steps.forEach((s, i) => {
+  f.steps.forEach((_, i) => {
     const b = boxes[i];
-    if (b) out.push(box(x, b, s.label, bfs));
+    const lines = plan.lines[i];
+    if (!b || !lines) return;
+    out.push(
+      `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>`,
+      text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs }),
+    );
   });
   return out.join("");
 }

@@ -33,12 +33,54 @@ const Bar = z.object({
   total: label(14).optional(),
 });
 
-export const BarModelSchema = z.object({
-  kind: z.literal("bar-model"),
-  ...common,
-  bars: z.array(Bar).min(1).max(4),
-  combined: label(14).optional(),
-});
+/** A part label a bar model can show: a number, a fraction, an unknown ("?") or one letter. */
+const QUANTITY = /[0-9?¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|^[a-z]$/i;
+/** The number a label leads with ("35 books" → 35), if it leads with one. */
+const leading = (t: string): number | undefined => {
+  const m = /^\s*(\d[\d,]*(?:\.\d+)?)(?![\d/⁄])/.exec(t);
+  return m ? Number((m[1] as string).replace(/,/g, "")) : undefined;
+};
+
+/**
+ * dd-diagrams: a bar model draws quantities. Its parts are labelled with numbers (or "?"), and a
+ * total that leads with a number is the sum of its parts (their values, or their numbered labels):
+ * K y9 s3 drew "5 loaves" over parts worth 10 marks, a count of things set over money, which reads
+ * as wrong. Such a spec does not parse, so the slide falls back to words.
+ */
+export const BarModelSchema = z
+  .object({
+    kind: z.literal("bar-model"),
+    ...common,
+    bars: z.array(Bar).min(1).max(4),
+    combined: label(14).optional(),
+  })
+  .superRefine((m, ctx) => {
+    m.bars.forEach((b, i) => {
+      b.parts.forEach((p, j) => {
+        if (p.label && !QUANTITY.test(p.label))
+          ctx.addIssue({
+            code: "custom",
+            message: `part label "${p.label}" is not a quantity`,
+            path: ["bars", i, "parts", j, "label"],
+          });
+      });
+      const n = b.total ? leading(b.total) : undefined;
+      if (n === undefined) return;
+      const values = b.parts.reduce((a, p) => a + p.value, 0);
+      const defaults = b.parts.every((p) => p.value === 1);
+      const labelled = b.parts.map((p) => (p.label ? leading(p.label) : undefined));
+      const byLabels = labelled.every((v) => v !== undefined)
+        ? labelled.reduce<number>((a, v) => a + (v as number), 0)
+        : undefined;
+      const near = (a: number) => Math.abs(a - n) <= 1e-6 * Math.max(1, n);
+      if (!defaults && !near(values) && !(byLabels !== undefined && near(byLabels)))
+        ctx.addIssue({
+          code: "custom",
+          message: `total "${b.total}" is not the sum of its parts (${values})`,
+          path: ["bars", i, "total"],
+        });
+    });
+  });
 
 // ─── line graph ─────────────────────────────────────────────────────────────────────────────
 

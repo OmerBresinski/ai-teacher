@@ -731,4 +731,6 @@ export function sparseDrawing(
   const f = drawnFill(spec, theme, size);
   return f !== undefined && f < min;
 }
+
+export { type DrawnDiagram, drawDiagram, readabilityFaults } from "./draw";
 export { figureGeometryFaults } from "./geometry";

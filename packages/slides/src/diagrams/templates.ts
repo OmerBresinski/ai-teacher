@@ -161,41 +161,67 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         capH: number;
         noteH: number;
         keyH: number;
+        under: boolean;
+        wordH: number;
       }
     | undefined;
-  for (let fs = x.fs; fs >= TYPE_FLOOR && !layout; fs -= 1) {
-    const gapWords = Array.from({ length: k - 1 }, (_, i) => arrowWord(i)).filter(
-      Boolean,
-    ) as string[];
-    const gapText = Math.max(
-      0,
-      ...gapWords.flatMap((g) => g.split(/\s+/).map((wd) => textWidth(wd, x, fs * 0.9, 600))),
-    );
-    const gap = hasArrows ? Math.max(w * 0.09, gapText + 12, 2.2 * fs) : Math.max(w * 0.05, 14);
-    // Modern looks: soft panels stand clear of the drawing's edge.
-    const colW = (w - 2 * panelInset() - (k - 1) * gap) / k;
-    const capLines = ps.map((_, i) => fitLines(x, cap(i), colW, 2, fs, 700));
-    const noteLines = ps.map((_, i) =>
-      note(i) ? fitLines(x, note(i) as string, colW, 3, fs * 0.9, WEIGHT.label) : [],
-    );
-    const arrowLines = gapWords.map((g) => fitLines(x, g, gap - 6, 2, fs * 0.9, 600));
-    if (capLines.some((l) => !l) || noteLines.some((l) => !l) || arrowLines.some((l) => !l))
-      continue;
-    const capH =
-      Math.max(...capLines.map((l) => blockSize(x, l as string[], fs, 700).bh)) + 0.35 * fs;
-    const nl = Math.max(0, ...noteLines.map((l) => (l as string[]).length));
-    const noteH = nl ? blockSize(x, Array(nl).fill("x"), fs * 0.9, WEIGHT.label).bh + 0.35 * fs : 0;
-    const keyH = key ? 1.6 * fs : 0;
-    const side = Math.min(colW, h - capH - noteH - keyH - 4);
-    if (side < 4.5 * fs || side < 70) continue;
-    layout = { fs, gap, colW, side, capH, noteH, keyH };
-  }
+  // dd-diagrams: state changes in a narrow zone (T y7 s8, s9: three panels and "Condensing" in a
+  // half zone drew nothing). When the words do not fit between the panels, the panels close up
+  // round short arrows and each word stands under its arrow, centred on the gap.
+  for (const under of hasArrows && k > 1 ? [false, true] : [false])
+    for (let fs = x.fs; fs >= TYPE_FLOOR && !layout; fs -= 1) {
+      const gapWords = Array.from({ length: k - 1 }, (_, i) => arrowWord(i)).filter(
+        Boolean,
+      ) as string[];
+      const gapText = Math.max(
+        0,
+        ...gapWords.flatMap((g) =>
+          g.split(/\s+/).map((wd) => textWidth(wd, x, Math.max(TYPE_FLOOR, fs * 0.9), 600)),
+        ),
+      );
+      if (layout) break;
+      const gap = !hasArrows
+        ? Math.max(w * 0.05, 14)
+        : under
+          ? Math.max(w * 0.06, 2 * fs)
+          : Math.max(w * 0.09, gapText + 12, 2.2 * fs);
+      // Modern looks: soft panels stand clear of the drawing's edge.
+      const colW = (w - 2 * panelInset() - (k - 1) * gap) / k;
+      const capLines = ps.map((_, i) => fitLines(x, cap(i), colW, 2, fs, 700));
+      const noteLines = ps.map((_, i) =>
+        note(i)
+          ? fitLines(x, note(i) as string, colW, 3, Math.max(TYPE_FLOOR, fs * 0.9), WEIGHT.label)
+          : [],
+      );
+      const wordRoom = under ? colW + gap - fs * 0.6 : gap - 6;
+      const arrowLines = gapWords.map((g) =>
+        fitLines(x, g, wordRoom, 2, Math.max(TYPE_FLOOR, fs * 0.9), 600),
+      );
+      if (capLines.some((l) => !l) || noteLines.some((l) => !l) || arrowLines.some((l) => !l))
+        continue;
+      const capH =
+        Math.max(...capLines.map((l) => blockSize(x, l as string[], fs, 700).bh)) + 0.35 * fs;
+      const nl = Math.max(0, ...noteLines.map((l) => (l as string[]).length));
+      const noteH = nl
+        ? blockSize(x, Array(nl).fill("x"), Math.max(TYPE_FLOOR, fs * 0.9), WEIGHT.label).bh +
+          0.35 * fs
+        : 0;
+      const keyH = key ? 1.6 * fs : 0;
+      const wl = Math.max(0, ...arrowLines.map((l) => (l as string[]).length));
+      const wordH =
+        under && wl
+          ? blockSize(x, Array(wl).fill("x"), Math.max(TYPE_FLOOR, fs * 0.9), 600).bh + 0.4 * fs
+          : 0;
+      const side = Math.min(colW, h - capH - noteH - keyH - wordH - 4);
+      if (side < 4.5 * fs || side < 70) continue;
+      layout = { fs, gap, colW, side, capH, noteH, keyH, under, wordH };
+    }
   if (!layout) {
     bad(x, "the particle panels do not fit the space");
     return "";
   }
-  const { fs, gap, colW, side, capH, noteH, keyH } = layout;
-  const used = capH + side + noteH + keyH;
+  const { fs, gap, colW, side, capH, noteH, keyH, under, wordH } = layout;
+  const used = capH + side + noteH + keyH + wordH;
   const top = (h - used) / 2;
   const out: string[] = [];
   const boxY = top + capH;
@@ -266,15 +292,22 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     }
     const nt = note(i);
     if (nt) {
-      const lines = fitLines(x, nt, colW, 3, fs * 0.9, WEIGHT.label) as string[];
-      const b = blockSize(x, lines, fs * 0.9, WEIGHT.label);
-      const y0 = boxY + side + 0.35 * fs;
+      const lines = fitLines(
+        x,
+        nt,
+        colW,
+        3,
+        Math.max(TYPE_FLOOR, fs * 0.9),
+        WEIGHT.label,
+      ) as string[];
+      const b = blockSize(x, lines, Math.max(TYPE_FLOOR, fs * 0.9), WEIGHT.label);
+      const y0 = boxY + side + wordH + 0.35 * fs;
       out.push(
         drawBlock(
           x,
           { x0: cx0 + colW / 2 - b.bw / 2, x1: cx0 + colW / 2 + b.bw / 2, y0, y1: y0 + b.bh },
           lines,
-          fs * 0.9,
+          Math.max(TYPE_FLOOR, fs * 0.9),
           {
             fill: x.c.ink,
           },
@@ -284,21 +317,28 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
     if (hasArrows && i < k - 1) {
       const ax0 = cx0 + colW - (colW - side) / 2 + 4;
       const ax1 = ax0 + gap + (colW - side) - 8;
-      const ay = boxY + side * 0.62;
+      const ay = boxY + side * (under ? 0.82 : 0.62);
       out.push(arrow(ax0, ay, ax1, ay, x.c.ink, 2.5, Math.max(9, fs * 0.55)));
       x.strokes?.push([ax0, ay, ax1, ay]);
       const word = arrowWord(i);
       if (word) {
-        const lines = fitLines(x, word, gap - 6, 2, fs * 0.9, 600) as string[];
-        const b = blockSize(x, lines, fs * 0.9, 600);
+        const lines = fitLines(
+          x,
+          word,
+          under ? colW + gap - fs * 0.6 : gap - 6,
+          2,
+          Math.max(TYPE_FLOOR, fs * 0.9),
+          600,
+        ) as string[];
+        const b = blockSize(x, lines, Math.max(TYPE_FLOOR, fs * 0.9), 600);
         const mid = (ax0 + ax1) / 2;
-        const y1 = ay - 0.3 * fs;
+        const y1 = under ? boxY + side + 0.4 * fs + b.bh : ay - 0.3 * fs;
         out.push(
           drawBlock(
             x,
             { x0: mid - b.bw / 2, x1: mid + b.bw / 2, y0: y1 - b.bh, y1 },
             lines,
-            fs * 0.9,
+            Math.max(TYPE_FLOOR, fs * 0.9),
             {
               weight: WEIGHT.label,
               fill: x.c.ink,
@@ -310,7 +350,7 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
   });
   if (key) {
     const ky = top + capH + side + noteH + keyH * 0.55;
-    const kfs = fs * 0.9;
+    const kfs = Math.max(TYPE_FLOOR, fs * 0.9);
     const wa = textWidth(key[0], x, kfs, WEIGHT.label);
     const wb = textWidth(key[1], x, kfs, WEIGHT.label);
     const total = r * 2 + 6 + wa + 24 + r * 2 + 6 + wb;
