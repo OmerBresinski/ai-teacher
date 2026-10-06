@@ -35,12 +35,15 @@ export function readabilityFaults(
   theme: Theme,
   size: { w: number; h: number; fs?: number },
 ): string[] {
-  if (!parseDiagram(spec)) return ["it does not draw"];
-  try {
-    return diagramGeometryFaults(spec, theme, size as { w: number; h: number });
-  } catch {
-    return ["it does not draw"];
-  }
+  // r3-diag: read as drawDiagram draws it (labels a little over their limit stretched).
+  return withLongLabels(() => {
+    if (!parseDiagram(spec)) return ["it does not draw"];
+    try {
+      return diagramGeometryFaults(spec, theme, size as { w: number; h: number });
+    } catch {
+      return ["it does not draw"];
+    }
+  });
 }
 
 /**

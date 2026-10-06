@@ -3,6 +3,8 @@
 // bun lab/bakeoff/diagram-limits.ts <out.json>
 import { writeFileSync } from "node:fs";
 import { drawDiagram } from "../../packages/slides/src/diagrams";
+import { DIAGRAM_SAMPLES } from "../../packages/slides/src/diagrams/samples";
+import { TEMPLATE_SPECS } from "../../packages/slides/src/diagrams/template-specs";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 
 const SLOTS = { side: { w: 348, h: 284 }, full: { w: 788, h: 235 } } as const;
@@ -134,5 +136,76 @@ for (const ks of STAGES)
       maxNoteChars: { panels3: most(0, 28, (c) => draws(particles(3, c), ks, slot)) },
     });
   }
+// r3-diag: the other kinds, grown from their menu samples: the main list (bars, slices, steps,
+// events, layers, items, points, labels, cells) cloned to n entries with labels of c characters.
+const MAIN: Record<string, string> = {
+  "bar-chart": "bars",
+  pie: "slices",
+  cycle: "steps",
+  timeline: "events",
+  layers: "layers",
+  venn: "items",
+  "number-line": "points",
+  river: "labels",
+  "labelled-diagram": "labels",
+  carroll: "cells",
+};
+const SAMPLE: Record<string, Record<string, unknown>> = {};
+for (const v of Object.values({ ...DIAGRAM_SAMPLES, ...TEMPLATE_SPECS }) as Record<
+  string,
+  unknown
+>[])
+  SAMPLE[v.kind as string] ??= v;
+const relabel = (o: unknown, text: string, i: number, base: Record<string, unknown>): unknown => {
+  if (typeof o === "string") return text;
+  if (Array.isArray(o)) return o.map((x) => relabel(x, text, i, base));
+  if (!o || typeof o !== "object") return o;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === "string" && ["label", "text", "name", "caption"].includes(k)) out[k] = text;
+    else if (k === "value" && typeof v === "number" && base.kind === "number-line") {
+      const lo = base.min as number;
+      const hi = base.max as number;
+      out[k] = lo + Math.round(((i + 1) * (hi - lo)) / 12);
+    } else if (k === "value" && typeof v === "number") out[k] = v + i;
+    else out[k] = v;
+  }
+  return out;
+};
+const grow = (kind: string, n: number, c: number) => {
+  const base = SAMPLE[kind] as Record<string, unknown>;
+  const f = MAIN[kind] as string;
+  const items = (base[f] as unknown[]) ?? [];
+  if (!items.length) return base;
+  const list = Array.from({ length: n }, (_, i) =>
+    relabel(items[i % items.length], `${words(Math.max(2, c - 2))} ${i + 1}`.slice(0, c), i, base),
+  );
+  return { ...base, [f]: list };
+};
+for (const kind of [...Object.keys(MAIN), "hydrograph"]) {
+  if (!SAMPLE[kind]) continue;
+  for (const ks of STAGES)
+    for (const slot of Object.keys(SLOTS) as (keyof typeof SLOTS)[]) {
+      kinds[kind] ??= {};
+      if (kind === "hydrograph") {
+        kinds[kind][`${ks}.${slot}`] = { draws: draws(SAMPLE[kind], ks, slot) };
+        continue;
+      }
+      const f = MAIN[kind] as string;
+      const n0 = ((SAMPLE[kind] as Record<string, unknown>)[f] as unknown[]).length;
+      kinds[kind][`${ks}.${slot}`] = {
+        [`max_${f}`]: { labels10: most(1, 12, (n) => draws(grow(kind, n, 10), ks, slot)) },
+        maxLabelChars: { [`${f}${n0}`]: most(3, 40, (c) => draws(grow(kind, n0, c), ks, slot)) },
+      };
+    }
+}
+(out.required as Record<string, string>)["number-line"] =
+  "min < max with at most 40 ticks; points and jumps on the line";
+(out.required as Record<string, string>).pie =
+  "slice values are positive and name parts of one whole";
+(out.required as Record<string, string>)["bar-chart"] =
+  "one value axis with a label and unit; bars share it";
+(out.required as Record<string, string>)["labelled-diagram"] =
+  "shapes on the 100-unit canvas (160 wide when canvas is wide); every label names a drawn shape";
 writeFileSync(process.argv[2] ?? "diagram-limits.json", `${JSON.stringify(out, null, 1)}\n`);
 console.log("wrote", process.argv[2]);

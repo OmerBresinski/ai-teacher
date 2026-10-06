@@ -428,6 +428,21 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
               if (to && segHitsBox(leaderStart(p, to), to, q.box)) cost += 3000;
               if (q.to && segHitsBox(leaderStart(q, q.to), q.to, box)) cost += 3000;
             }
+            // r3-diag: a label crossed by another shape's line (a tube, a bench, a balance's
+            // edge) reads as clutter and is a fault (y11 r2 s10): priced high, so a pushed-out
+            // spot with a leader wins.
+            for (const sh of s.shapes) {
+              for (const [a, b] of segsOf(sh, X, Y))
+                if (
+                  segHitsBox(a, b, {
+                    x0: box.x0 - 2,
+                    y0: box.y0 - 2,
+                    x1: box.x1 + 2,
+                    y1: box.y1 + 6,
+                  })
+                )
+                  cost += 100_000;
+            }
             shapePx.forEach((b, i) => {
               if (i === l.target || contains(b)) return;
               const sh = s.shapes[i] as Shape;
@@ -608,4 +623,29 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     );
   }
   return out.join("");
+}
+
+/** r3-diag: a shape's straight edges in drawing points (lines, arrows, polygons, rects). */
+function segsOf(sh: Shape, X: (u: number) => number, Y: (v: number) => number): [Pt, Pt][] {
+  const P = ([u, v]: Pt): Pt => [X(u), Y(v)];
+  const chain = (pts: Pt[], closed: boolean): [Pt, Pt][] => {
+    const out: [Pt, Pt][] = [];
+    for (let i = 0; i + 1 < pts.length; i++) out.push([P(pts[i] as Pt), P(pts[i + 1] as Pt)]);
+    if (closed && pts.length > 2) out.push([P(pts[pts.length - 1] as Pt), P(pts[0] as Pt)]);
+    return out;
+  };
+  if (sh.type === "line") return chain(sh.points as Pt[], false);
+  if (sh.type === "arrow") return chain([sh.from as Pt, sh.to as Pt], false);
+  if (sh.type === "polygon") return chain(sh.points as Pt[], true);
+  if (sh.type === "rect")
+    return chain(
+      [
+        [sh.x, sh.y],
+        [sh.x + sh.w, sh.y],
+        [sh.x + sh.w, sh.y + sh.h],
+        [sh.x, sh.y + sh.h],
+      ],
+      true,
+    );
+  return [];
 }

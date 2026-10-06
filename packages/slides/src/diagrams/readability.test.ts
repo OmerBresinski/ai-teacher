@@ -223,4 +223,76 @@ describe("dd-diagrams readability", () => {
         (svgOf(r.element.src as string).match(/<path d="M[^"]*Z"|polygon/g) ?? []).length,
       ).toBeGreaterThanOrEqual(0);
   });
+
+  // r3-diag: every other kind grown from its sample (1 to 10 entries in its main list, labels of 4
+  // to 40 characters), at three key stages and both zones: never throws, and what draws reads
+  // cleanly; a spec it cannot draw reports why.
+  test("grown specs of every kind never throw, and what draws reads cleanly", () => {
+    const MAIN: Record<string, string> = {
+      "bar-chart": "bars",
+      pie: "slices",
+      cycle: "steps",
+      timeline: "events",
+      layers: "layers",
+      venn: "items",
+      "number-line": "points",
+      river: "labels",
+      "labelled-diagram": "labels",
+      carroll: "cells",
+      flow: "steps",
+      table: "rows",
+      "bar-model": "bars",
+    };
+    const sample: Record<string, Record<string, unknown>> = {};
+    for (const v of [...Object.values(DIAGRAM_SAMPLES), ...Object.values(TEMPLATE_SPECS)] as Record<
+      string,
+      unknown
+    >[])
+      sample[v.kind as string] ??= v;
+    const relabel = (o: unknown, text: string, i: number): unknown => {
+      if (typeof o === "string") return text;
+      if (Array.isArray(o)) return o.map((v) => relabel(v, text, i));
+      if (!o || typeof o !== "object") return o;
+      return Object.fromEntries(
+        Object.entries(o).map(([k, v]) => [
+          k,
+          typeof v === "string" && ["label", "text", "name", "caption"].includes(k) ? text : v,
+        ]),
+      );
+    };
+    const bad: string[] = [];
+    let n = 0;
+    for (const [kind, f] of Object.entries(MAIN)) {
+      const base = sample[kind];
+      if (!base) continue;
+      const items = (base[f] as unknown[]) ?? [];
+      for (const count of [1, 3, 6, 10])
+        for (const chars of [4, 14, 40]) {
+          const text = "Rising prices and falling output".repeat(2).slice(0, chars);
+          const spec = {
+            ...base,
+            [f]: Array.from({ length: count }, (_, i) => relabel(items[i % items.length], text, i)),
+          };
+          for (const ks of KS)
+            for (const z of Object.values(ZONES))
+              withKeyStage(ks, () => {
+                n++;
+                try {
+                  const r = drawDiagram(spec, t, { x: 0, y: 0, ...z });
+                  if (!r.ok) {
+                    if (!r.reasons.length)
+                      bad.push(`${kind} ${count}x${chars} ${ks}: refused with no reason`);
+                    return;
+                  }
+                  const faults = readabilityFaults(r.spec, t, { ...z, fs: r.fs });
+                  if (faults.length) bad.push(`${kind} ${count}x${chars} ${ks}: ${faults[0]}`);
+                } catch (e) {
+                  bad.push(`${kind} ${count}x${chars} ${ks}: throws ${(e as Error).message}`);
+                }
+              });
+        }
+    }
+    expect(n).toBeGreaterThan(800);
+    expect(bad).toEqual([]);
+  }, 300_000);
 });

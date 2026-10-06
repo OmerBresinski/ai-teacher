@@ -24,7 +24,9 @@ describe("G1 diagram quality gate", () => {
     };
     expect(diagramFaults(spec, theme, size).join(" ")).toContain("draw exactly the same");
   });
-  test("labels set across the drawing's lines are faults (F1 y8 drainage basin)", () => {
+  // r3-diag: label placement now prices a line through a label as near-forbidden, so the F1 y8
+  // basin's labels are moved clear (the gate that caught them still runs on every drawing).
+  test("labels once set across the drawing's lines now stand clear of them (F1 y8 drainage basin)", () => {
     const spec = {
       kind: "labelled-diagram",
       alt: "A drainage basin.",
@@ -58,7 +60,7 @@ describe("G1 diagram quality gate", () => {
         { text: "Infiltration", at: [35, 65], side: "left" },
       ],
     };
-    expect(diagramFaults(spec, theme, size).some((f) => f.includes("across a line"))).toBe(true);
+    expect(diagramFaults(spec, theme, size).some((f) => f.includes("across a line"))).toBe(false);
   });
   test("a clean particle comparison passes", () => {
     const spec = {
