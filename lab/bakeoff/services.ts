@@ -126,6 +126,29 @@ export class Ledger {
   }
   /** Set by `shareBudget`: writes this run's committed spend for the runs it shares with. */
   publish: () => void = () => {};
+  /** What the sharing runs have actually spent (holds excluded); set by `shareBudget`. */
+  peersSpent: () => number = () => 0;
+  /** Spend that no release can free: this run's and its peers', holds excluded. */
+  get spent() {
+    return this.total + this.outside() + this.peersSpent();
+  }
+  /**
+   * Round 3 fix: `tryHold`, but a step refused only because other steps hold reserves waits for
+   * them to release (polling, up to `waitMs`) instead of being refused at once. Six parallel runs
+   * each holding a main call's worst case starved y1's hen picture set and refused y10 and y11's
+   * main calls although real spend was far under the cap. Refuses at once when spend alone fails.
+   */
+  async holdWhenFree(what: string, est: number, waitMs = 60_000, pollMs = 250) {
+    const end = Date.now() + waitMs;
+    for (;;) {
+      if (this.spent + est > this.capUsd + 1e-9) break;
+      if (this.committed + est <= this.capUsd + 1e-9) return this.guard(what, est);
+      if (Date.now() >= end) break;
+      await new Promise((r) => setTimeout(r, pollMs));
+    }
+    this.refused.push(what);
+    return undefined;
+  }
 }
 
 /**
@@ -136,7 +159,21 @@ export class Ledger {
 export function shareBudget(ledger: Ledger, dir: string, id: string) {
   mkdirSync(dir, { recursive: true });
   const mine = `${dir}/${id}.json`;
-  ledger.publish = () => writeFileSync(mine, JSON.stringify({ committed: ledger.own }));
+  ledger.publish = () =>
+    writeFileSync(
+      mine,
+      JSON.stringify({ committed: ledger.own, spent: ledger.total + ledger.outside() }),
+    );
+  ledger.peersSpent = () => {
+    let sum = 0;
+    for (const f of readdirSync(dir))
+      if (f.endsWith(".json") && `${dir}/${f}` !== mine)
+        try {
+          const j = JSON.parse(readFileSync(`${dir}/${f}`, "utf8"));
+          sum += Number(j.spent ?? j.committed) || 0;
+        } catch {}
+    return sum;
+  };
   ledger.peers = () => {
     let sum = 0;
     for (const f of readdirSync(dir))
@@ -165,7 +202,10 @@ export function ledgerGenerator<
   const wrap =
     (call: (a: never) => Promise<{ costUsd: number }>, isEdit: boolean) =>
     async (a: { size: string }) => {
-      const held = ledger.tryHold(isEdit ? "image edit" : "image generation", est(a.size, isEdit));
+      const held = await ledger.holdWhenFree(
+        isEdit ? "image edit" : "image generation",
+        est(a.size, isEdit),
+      );
       if (!held) throw new Error(`run cap $${ledger.capUsd} reached`);
       try {
         const out = await call(a as never);
@@ -199,7 +239,7 @@ export async function guarded<T>(
   job: () => Promise<T | undefined>,
   log?: (e: object) => void,
 ): Promise<T | undefined> {
-  const held = ledger.tryHold(what, est);
+  const held = await ledger.holdWhenFree(what, est);
   if (!held) {
     log?.({ ev: "cap-refused", what, est, committed: Number(ledger.committed.toFixed(4)) });
     return undefined;
@@ -1144,6 +1184,20 @@ export async function diagramSpec(
     log,
   );
 }
+/** Why a spec doesn't draw, in a line ("" when it does): the schema's issues as path: message. */
+export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): string {
+  if (parses(out)) return "";
+  const kind = (out as { kind?: unknown })?.kind;
+  const own = (DiagramSpecSchema.options as unknown as z.ZodType[]).find(
+    (o) => (o as unknown as { shape?: { kind?: { value?: unknown } } }).shape?.kind?.value === kind,
+  );
+  const r = (own ?? DiagramSpecSchema).safeParse(out);
+  if (r.success) return "it did not draw";
+  return r.error.issues
+    .slice(0, 4)
+    .map((i) => `${i.path.map(String).join(".") || "spec"}: ${i.message}`)
+    .join("; ");
+}
 async function specCalls(
   ask: DiagramAsk,
   ledger: Ledger,
@@ -1152,20 +1206,34 @@ async function specCalls(
 ): Promise<unknown | undefined> {
   const schema = z.toJSONSchema(kindSchema as never, { target: "draft-7" });
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
+  let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const r = await chat({
       model: "gpt-6-luna",
       effort: "low",
       system: diagramSystem(),
-      user,
+      // Round 3 fix (y11 s8 particles failed twice, reason never seen): the retry is told why.
+      user: fault
+        ? `${user}\n\nYour last spec did not draw: ${fault}\nFix that and send it again.`
+        : user,
       schema,
       name: "diagram",
       strict: false,
     });
     ledger.add("diagrams", r.usd);
-    log({ ev: "diagram-call", key: ask.key, ms: r.ms, usd: r.usd, attempt });
     // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).
-    if (r.out && withLongLabels(() => parseDiagram(r.out))) return r.out;
+    fault = r.out
+      ? diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
+      : "no output";
+    log({
+      ev: "diagram-call",
+      key: ask.key,
+      ms: r.ms,
+      usd: r.usd,
+      attempt,
+      ...(fault ? { fault, out: r.out } : {}),
+    });
+    if (!fault) return r.out;
   }
   return undefined;
 }

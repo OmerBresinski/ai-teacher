@@ -154,15 +154,22 @@ describe("round 2 cap guard", () => {
     expect(ledger.refused).toEqual(["picture 3:picture"]);
     expect(events[0]).toMatchObject({ ev: "cap-refused" });
   });
-  test("parallel jobs see each other's holds; holds are released after", async () => {
+  test("parallel jobs see each other's holds; the third waits for a release (round 3)", async () => {
     const ledger = new Ledger(0.06);
     const g = fakeGenerator();
+    let peak = 0;
     const rs = await Promise.all(
-      [0, 1, 2].map(() => guarded(ledger, "picture", 0.025, () => g.generate())),
+      [0, 1, 2].map(() =>
+        guarded(ledger, "picture", 0.025, async () => {
+          peak = Math.max(peak, ledger.committed);
+          return g.generate();
+        }),
+      ),
     );
-    expect(g.calls).toBe(2);
-    expect(rs.filter(Boolean).length).toBe(2);
-    expect(ledger.committed).toBe(0);
+    expect(peak).toBeLessThanOrEqual(0.06);
+    expect(g.calls).toBe(3);
+    expect(rs.filter(Boolean).length).toBe(3);
+    expect(ledger.refused).toEqual([]);
   });
   test("a job that throws resolves to undefined and releases its hold", async () => {
     const ledger = new Ledger(1);

@@ -152,6 +152,13 @@ export function objectiveCount(b: Brief): string {
   return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three or four";
 }
 
+/** A step the run can't go on without: waits for other holds to release, then throws past the cap. */
+async function mustHold(ledger: Ledger, what: string, est: number) {
+  const held = await ledger.holdWhenFree(what, est);
+  if (!held) throw new Error(`cap $${ledger.capUsd} would be passed by ${what} (held $${est})`);
+  return held;
+}
+
 export type FillExtras = {
   objectives?: { teacher: string; pupil: string }[];
   context?: string;
@@ -673,7 +680,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   let pupilJob: Promise<void> = Promise.resolve();
   if (twoPhase) {
     // (1) Teacher objectives: Sol, Luna when no first objective has streamed by 8 s (code defaults).
-    const heldObj = ledger.guard("objectives call", STEP_EST.objectives * 2);
+    const heldObj = await mustHold(ledger, "objectives call", STEP_EST.objectives * 2);
     const run = await objectivesCall(
       {
         system: readFileSync(`${shared0}/objectives.txt`, "utf8"),
@@ -802,7 +809,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     user,
     systemChars: p.system.length,
   });
-  const heldMain = ledger.guard("main call", o.replay ? 0 : STEP_EST.main);
+  const heldMain = await mustHold(ledger, "main call", o.replay ? 0 : STEP_EST.main);
   const main = o.replay
     ? await replayStream(o.replay, (d) => parser.push(d))
     : await chatStream(
@@ -871,7 +878,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const u = `${user}\n\nLesson:\n${main.text}\n\nSlide: ${i + 1}`;
     notesJobs.push(
       (async () => {
-        const held = ledger.guard(`notes s${i + 1}`, STEP_EST.notes);
+        const held = await mustHold(ledger, `notes s${i + 1}`, STEP_EST.notes);
         const r = await chat({
           model: "gpt-6-luna",
           effort: "low",
