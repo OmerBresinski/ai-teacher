@@ -151,7 +151,10 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
     const draw: CountArray = { total, groups, perGroup, arrangement };
     return { kind: "draw", request: { ...base, text: ask.text, route: "generic", draw } };
   }
-  const real = d.route === "commons";
+  const period = d.period?.trim() || undefined;
+  // Ruling 163 (SOL-SIMPLE): a period makes the subject historical on any route, so it takes the
+  // real ladder (Commons first) and the history table's fallback, never a stock-photo generation.
+  const real = d.route === "commons" || !!period;
   // The request's year-plus-event anchor leads a Commons search ("hyperinflation 1923" ranks the
   // real 1923 Weimar photo first; the director's own wording did not).
   const dated = real ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
@@ -165,21 +168,20 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
     .filter((p) => p.shows && p.imagePrompt);
   const first = pictures[0];
   if (!first) return { kind: "none" };
-  const period = d.period?.trim() || undefined;
-  const fallback = real
-    ? REAL_FALLBACK[period ? historyPolicy() : "present"][d.named ?? "object"]
-    : undefined;
+  // A historical scene with no named kind is read as an event (an illustration under `strict`).
+  const kind = d.named ?? (period ? "event" : "object");
+  const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
   const mustShow = countedPhoto
     ? uniq([
         `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
         ...first.mustShow,
       ]).slice(0, 3)
     : first.mustShow;
+  const counting = countedPhoto && countImagePrompt(countedPhoto);
+  const illustrated = !counting && fallback === "illustration" && !!period;
   const imagePrompt =
-    (countedPhoto && countImagePrompt(countedPhoto)) ||
-    (fallback === "illustration" && period
-      ? illustrationPrompt(first.imagePrompt, period)
-      : first.imagePrompt);
+    counting ||
+    (illustrated && period ? illustrationPrompt(first.imagePrompt, period) : first.imagePrompt);
   return {
     kind: "photo",
     request: {
@@ -191,6 +193,7 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       stockFirst: d.route === "pexels" && !countedPhoto,
       ...(fallback ? { realFallback: fallback } : {}),
       ...(period ? { period } : {}),
+      ...(illustrated ? { style: "illustration" as const } : {}),
     },
     brief: {
       request: first.shows,

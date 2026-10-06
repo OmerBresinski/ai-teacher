@@ -16,7 +16,7 @@ import {
 import type { StorageAdapter } from "@tj/domain";
 import { LIBRARY_WORKSPACE_ID } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
-import type { BankRequest, PictureBank, PlacedPhoto } from "@tj/generation";
+import type { BankRequest, MadePicture, PictureBank, PlacedPhoto } from "@tj/generation";
 import {
   type AspectFamily,
   bankLicenceOk,
@@ -98,6 +98,18 @@ function photoOf(row: BankImageRow): PlacedPhoto {
   };
 }
 
+/** The opening of `illustrationPrompt`: a row stored before the style flag was painted if so. */
+const PAINTED = "A hand-painted educational illustration";
+
+/** How a stored generated picture looks; undefined for stock. A row with no flag is a photo. */
+export function styleOf(row: BankImageRow): MadePicture["style"] {
+  const flags = (row.flags ?? {}) as { drawn?: boolean; style?: string };
+  if (flags.drawn) return "drawn";
+  if (row.provider !== "generated") return undefined;
+  if (flags.style === "illustration" || row.prompt?.startsWith(PAINTED)) return "illustration";
+  return "photo";
+}
+
 export function createPictureBank(opts: PictureBankOptions): PictureBank & {
   spentUsd(): number;
 } {
@@ -155,6 +167,16 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
     });
   };
 
+  const readDataUrl = async (key: string): Promise<string | undefined> => {
+    const readable = storage as Partial<{
+      get: (k: string) => Promise<{ body: ReadableStream<Uint8Array>; contentType: string }>;
+    }>;
+    if (!readable.get) return undefined;
+    const obj = await readable.get(key);
+    const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
+    return `data:${obj.contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+  };
+
   return {
     spentUsd: () => spent,
     async lookup(req, signal) {
@@ -178,7 +200,13 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       });
       if (!best) return undefined;
       await touchBankImage(db, best.row.id);
-      return photoOf(best.row);
+      // The bytes go with the hit so the judge checks it against this request before it is used.
+      const style = styleOf(best.row);
+      const dataUrl =
+        style === "drawn"
+          ? undefined
+          : await readDataUrl(best.row.storageKey).catch(() => undefined);
+      return { ...photoOf(best.row), ...(style ? { style } : {}), ...(dataUrl ? { dataUrl } : {}) };
     },
     async reject(photo) {
       // FIX1: a generated picture the judge refused never comes back from the library.
@@ -244,7 +272,7 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
           { width: w ?? 1200, height: h ?? 1200 },
         );
         emit({ kind: "generate", id: row.id, costUsd: 0, ms: Date.now() - t0 });
-        return photoOf(row);
+        return { ...photoOf(row), style: "drawn" };
       }
       if (!generator) return undefined;
       const { size } = sizeForAspect(req.aspect);
@@ -282,13 +310,14 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
           generatorTerms: IMAGE_TERMS,
           prompt,
           costUsd: out.costUsd.toFixed(6),
-          flags: { lookCheck: faithful, faithful },
+          flags: { lookCheck: faithful, faithful, style: req.style ?? "photo" },
         },
         { width: w, height: h },
       );
       emit({ kind: "generate", id: row.id, costUsd: out.costUsd, ms: out.ms });
       return {
         ...photoOf(row),
+        style: req.style ?? "photo",
         dataUrl: `data:${out.mime};base64,${Buffer.from(out.bytes).toString("base64")}`,
       };
     },

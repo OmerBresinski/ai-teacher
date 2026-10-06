@@ -73,6 +73,31 @@ describe("planPicture", () => {
     expect(p.request.imagePrompt).toContain("clearly a painting and not a photograph");
   });
 
+  // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:
+  // Commons first, and any generation is the painted illustration, never a photograph.
+  test("a historical subject on any route is Commons or an illustration, never a photo", () => {
+    const prev = process.env.HISTORY_POLICY;
+    delete process.env.HISTORY_POLICY;
+    try {
+      for (const route of ["commons", "pexels", "library-or-generate"] as const) {
+        const p = photoPlan(dir({ route, period: "Germany, 1923" }), {
+          text: "A shopper with a basket of banknotes at a 1923 market",
+          named: null,
+        });
+        expect(p.request.route).toBe("real");
+        expect(p.request.period).toBe("Germany, 1923");
+        expect(p.request.realFallback).toBe("illustration");
+        expect(p.request.style).toBe("illustration");
+        expect(p.request.imagePrompt).toContain("clearly a painting and not a photograph");
+      }
+      const person = photoPlan(dir({ route: "commons", named: "person", period: "1920s" }));
+      expect(person.request.realFallback).toBe("none");
+      expect(photoPlan(dir({ route: "pexels" })).request.style).toBeUndefined();
+    } finally {
+      if (prev !== undefined) process.env.HISTORY_POLICY = prev;
+    }
+  });
+
   test("pexels searches stock first; library-or-generate goes straight to generation", () => {
     expect(photoPlan(dir({ route: "pexels" })).request.stockFirst).toBe(true);
     expect(photoPlan(dir({ route: "library-or-generate" })).request.stockFirst).toBe(false);

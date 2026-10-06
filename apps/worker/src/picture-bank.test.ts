@@ -181,6 +181,31 @@ describeDb("picture bank (TEACH-84) on Postgres + pgvector", () => {
     expect(reused?.src).toMatch(/^\/files\/[0-9a-f-]+\/bank\//);
   });
 
+  test("a library hit carries its bytes for the judge and its style; a rejected row never returns", async () => {
+    const { bank } = setup();
+    const r = { ...req("a painted 1923 market scene", 1, "real"), style: "illustration" as const };
+    const made = await bank.generate(r, false, signal);
+    expect(made?.style).toBe("illustration");
+    const [row] = await listBankImages(unsafeDb);
+    expect(row?.flags).toMatchObject({ style: "illustration" });
+    const hit = await bank.lookup(r, signal);
+    expect(hit?.dataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(hit?.style).toBe("illustration");
+    if (hit) await bank.reject?.(hit);
+    expect(await bank.lookup(r, signal)).toBeUndefined();
+  });
+
+  test("an older generated row with no style flag reads as photo-style unless its prompt was the painting", async () => {
+    const { bank } = setup();
+    await bank.generate(req("two cats seen from above"), false, signal);
+    await sql`update bank_images set flags = '{"faithful": false}'::jsonb`;
+    expect((await bank.lookup(req("two cats seen from above"), signal))?.style).toBe("photo");
+    await sql`update bank_images set prompt = 'A hand-painted educational illustration, clearly a painting and not a photograph. x'`;
+    expect((await bank.lookup(req("two cats seen from above"), signal))?.style).toBe(
+      "illustration",
+    );
+  });
+
   test("the spend cap stops generation", async () => {
     const { bank, generator } = setup(0.001);
     expect(await bank.generate(req("a frog on a lily pad"), false, signal)).toBeUndefined();

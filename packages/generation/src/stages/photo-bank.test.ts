@@ -4,6 +4,7 @@ import { gatePasses, type PlacedPhoto } from "./illustrate";
 import {
   type BankRequest,
   findPicture,
+  type MadePicture,
   mustShowOf,
   type PictureBank,
   photoBankOn,
@@ -288,5 +289,173 @@ describe("judge fits (round 3: dog with an unrelated puppy, one cat, ice in the 
     };
     expect(gatePasses(brief, v)).toBe(false);
     expect(gatePasses(brief, { ...v, fits: true })).toBe(true);
+  });
+});
+
+// SOL-SIMPLE (6 Oct): library rows generated under the old counting prompt ("exactly two cats from
+// above") were handed to "an adult cat beside a kitten", "a hen and a chick" and "sheep and cows"
+// with no judge, because a library hit skipped the judge that a fresh picture gets.
+describe("a library hit is judged like a fresh picture", () => {
+  const signal = new AbortController().signal;
+  const req: BankRequest = { text: "an adult cat beside a kitten", named: null, route: "generic" };
+  const stored = (over: Partial<MadePicture> = {}): MadePicture => ({
+    ...photo("/files/lib/bank/old.png"),
+    source: { ...photo("x").source, provider: "generated" },
+    dataUrl: "data:image/png;base64,AA==",
+    style: "photo",
+    ...over,
+  });
+  const bankWith = (hit: MadePicture | undefined) => {
+    const calls: string[] = [];
+    const rejected: string[] = [];
+    const bank: PictureBank = {
+      lookup: async () => {
+        calls.push("lookup");
+        return hit;
+      },
+      remember: async () => {
+        calls.push("remember");
+      },
+      generate: async () => {
+        calls.push("generate");
+        return stored({ src: "/files/lib/bank/new.png" });
+      },
+      reject: async (p) => {
+        rejected.push(p.src);
+      },
+    };
+    return { bank, calls, rejected };
+  };
+
+  test("a hit the judge refuses for this request is marked and not placed; the ladder goes on", async () => {
+    const { bank, calls, rejected } = bankWith(stored());
+    const judged: string[] = [];
+    const out = await findPicture(
+      req,
+      bank,
+      async () => undefined,
+      signal,
+      async (p) => {
+        judged.push(p.src);
+        return p.src.endsWith("new.png");
+      },
+    );
+    expect(judged[0]).toBe("/files/lib/bank/old.png");
+    expect(rejected).toEqual(["/files/lib/bank/old.png"]);
+    expect(out.via).toBe("generated");
+    expect(out.photo?.src).toBe("/files/lib/bank/new.png");
+    expect(calls).toEqual(["lookup", "generate"]);
+  });
+
+  test("a hit the judge accepts is placed from the library", async () => {
+    const { bank, rejected } = bankWith(stored());
+    const out = await findPicture(
+      req,
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(out.via).toBe("library");
+    expect(rejected).toEqual([]);
+  });
+
+  test("a hit whose bytes cannot be shown to the judge is a miss, not a placement", async () => {
+    const { bank, rejected } = bankWith(stored({ dataUrl: undefined }));
+    const out = await findPicture(
+      req,
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(out.via).toBe("generated");
+    expect(rejected).toEqual([]);
+  });
+
+  test("a drawn count from the library is code's own drawing: no judge", async () => {
+    const { bank } = bankWith(stored({ style: "drawn", dataUrl: undefined }));
+    const out = await findPicture(
+      { ...req, draw: { total: 4, groups: 1, perGroup: 4, arrangement: "rows" } },
+      bank,
+      async () => undefined,
+      signal,
+      async () => false,
+    );
+    expect(out.via).toBe("library");
+  });
+});
+
+// SOL-SIMPLE (6 Oct), ruling 163 strict: a historical request never places a photo-style
+// generated picture, whichever rung it comes from.
+describe("ruling 163: no photo-style generated picture for a historical request", () => {
+  const signal = new AbortController().signal;
+  const history: BankRequest = {
+    text: "A shopper carries a basket of paper marks in 1923",
+    named: "event",
+    route: "real",
+    period: "Germany, 1923",
+    realFallback: "illustration",
+    style: "illustration",
+    imagePrompt: "x",
+  };
+  const made = (style: MadePicture["style"], src: string): MadePicture => ({
+    ...photo(src),
+    source: { ...photo(src).source, provider: "generated" },
+    dataUrl: "data:image/png;base64,AA==",
+    style,
+  });
+  const run = async (
+    req: BankRequest,
+    hit: MadePicture | undefined,
+    fresh: MadePicture | undefined,
+  ) => {
+    const rejected: string[] = [];
+    const bank: PictureBank = {
+      lookup: async () => hit,
+      remember: async () => {},
+      generate: async () => fresh,
+      reject: async (p) => {
+        rejected.push(p.src);
+      },
+    };
+    const out = await findPicture(
+      req,
+      bank,
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    return { out, rejected };
+  };
+  const placedPhotoStyle = (p: MadePicture | undefined) =>
+    p?.source.provider === "generated" && (p as MadePicture).style === "photo";
+
+  test("library: a photo-style generated row is skipped, an illustration is fine", async () => {
+    const a = await run(history, made("photo", "/files/b/photo.png"), undefined);
+    expect(placedPhotoStyle(a.out.photo)).toBe(false);
+    expect(a.out.photo).toBeUndefined();
+    const b = await run(history, made(undefined, "/files/b/old.png"), undefined);
+    expect(b.out.photo).toBeUndefined();
+    const c = await run(history, made("illustration", "/files/b/ill.png"), undefined);
+    expect(c.out.via).toBe("library");
+  });
+
+  test("fresh and fallback: a photo-style generation is refused and leaves the library", async () => {
+    for (const req of [
+      history,
+      { ...history, route: "generic" as const, realFallback: undefined, stockFirst: true },
+      { ...history, realFallback: "faithful" as const, style: undefined },
+    ]) {
+      const { out, rejected } = await run(req, undefined, made("photo", "/files/b/gen.png"));
+      if (req.realFallback === "faithful") continue; // `labelled`: faithful is the policy's choice
+      expect(placedPhotoStyle(out.photo)).toBe(false);
+      expect(rejected).toContain("/files/b/gen.png");
+    }
+  });
+
+  test("a historical illustration generated fresh is placed", async () => {
+    const { out } = await run(history, undefined, made("illustration", "/files/b/gen.png"));
+    expect(out.via).toBe("generated");
   });
 });

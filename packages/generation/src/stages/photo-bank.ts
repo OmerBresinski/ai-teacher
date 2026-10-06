@@ -67,14 +67,35 @@ export interface BankRequest {
   realFallback?: RealFallback;
   /** The time and place a historical subject belongs to: the judge's context. */
   period?: string;
+  /** How a generation for this request looks: `illustration` is the painted one (ruling 163). */
+  style?: "illustration";
 }
 
-/** A generated picture, with its bytes as a data URL so the judge can look at it. */
-export type MadePicture = PlacedPhoto & { dataUrl?: string };
+/**
+ * A generated or stored picture, with its bytes as a data URL so the judge can look at it, and
+ * how a generated one looks (`drawn`: a count drawn in code). Stock pictures have no style.
+ */
+export type MadePicture = PlacedPhoto & {
+  dataUrl?: string;
+  style?: "photo" | "illustration" | "drawn";
+};
+
+/**
+ * Ruling 163: a historical request (one with a period) never places a photo-style generated
+ * picture; only `labelled`'s faithful fallback may. A generated picture with no style is a photo.
+ */
+export function styleAllowed(req: BankRequest, picture: MadePicture): boolean {
+  if (!req.period || picture.source.provider !== "generated") return true;
+  if (picture.style === "illustration" || picture.style === "drawn") return true;
+  return req.realFallback === "faithful";
+}
 
 export interface PictureBank {
-  /** A stored picture for this request (same family, above the threshold), else undefined. */
-  lookup(req: BankRequest, signal: AbortSignal): Promise<PlacedPhoto | undefined>;
+  /**
+   * A stored picture for this request (same family, above the threshold), else undefined; with
+   * its bytes (`dataUrl`) so the judge sees it before it is used, and its style when generated.
+   */
+  lookup(req: BankRequest, signal: AbortSignal): Promise<MadePicture | undefined>;
   /** Store a fetched picture once (licence-filtered by the implementation). */
   remember(req: BankRequest, photo: PlacedPhoto): Promise<void>;
   /** Generate (or draw), store and return a picture; undefined when refused. */
@@ -83,7 +104,7 @@ export interface PictureBank {
     faithful: boolean,
     signal: AbortSignal,
   ): Promise<MadePicture | undefined>;
-  /** Take a generated picture the judge refused out of the library, so no lesson reuses it. */
+  /** Take a picture the judge refused (fresh or from the library) out of the library for good. */
   reject?(photo: PlacedPhoto): Promise<void>;
 }
 
@@ -120,11 +141,28 @@ export async function findPicture(
   const make = async (faithful: boolean) => {
     for (let attempt = 0; attempt < 2; attempt++) {
       const made = await bank.generate(req, faithful, signal).catch(rethrowAbort);
+      if (made && !styleAllowed(req, made)) {
+        // A photo-style picture for a historical request: the wrong kind, so no retry either.
+        await bank.reject?.(made).catch(rethrowAbort);
+        return undefined;
+      }
       if (!made || req.draw || !judgeMade || !made.dataUrl) return made;
       if (await judgeMade(made).catch(rethrowAbort)) return made;
       await bank.reject?.(made).catch(rethrowAbort);
     }
     return undefined;
+  };
+  // A library hit is judged against this request's mustShow exactly like a fresh picture; one the
+  // judge refuses is marked and never reused (SOL-SIMPLE: rows from the old counting prompt).
+  const usable = async (hit: MadePicture): Promise<boolean> => {
+    if (!styleAllowed(req, hit)) return false;
+    if (req.draw || hit.style === "drawn" || !judgeMade) return true;
+    if (!hit.dataUrl) return false;
+    const verdict = await judgeMade(hit).catch(rethrowAbort);
+    if (verdict) return true;
+    // A judge that failed says nothing about the row: skip it, but only a refusal marks it.
+    if (verdict === false) await bank.reject?.(hit).catch(rethrowAbort);
+    return false;
   };
   let libraryDown = false;
   const hit = await bank.lookup(req, signal).catch((error) => {
@@ -132,7 +170,7 @@ export async function findPicture(
     libraryDown = true;
     return undefined;
   });
-  if (hit) return done(hit, "library");
+  if (hit && (await usable(hit))) return done(hit, "library");
   // With the library unreachable nothing could be stored, so nothing is generated.
   if (libraryDown) return done(await fetchStock().catch(rethrowAbort), "fetched");
   if (req.draw) return done(await make(false), "generated");
