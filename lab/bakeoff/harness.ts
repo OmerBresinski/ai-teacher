@@ -319,23 +319,24 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       log({ ev: "objectives", n: plan.objectives?.length });
       mark("objectives");
     }
+    // Each flow entry starts its slide's picture the moment it closes (smoke 2: the whole flow took
+    // 22 s to stream, so waiting for it delayed the first pictures by up to that much).
+    if (top === "flow" && path.length === 2) {
+      const f = v as NonNullable<Plan["flow"]>[number];
+      const i = f.slide - 1;
+      if (f.look_at?.kind === "picture" && f.look_at.shows && i > 0 && !early.has(i)) {
+        const p = startPhoto(
+          i,
+          { key: "early", type: "photo", shows: f.look_at.shows, mustSee: [], named: false },
+          { heading: f.does, text: "" },
+        );
+        if (p) early.set(i, p);
+      }
+    }
     if (top === "flow" && path.length === 1) {
       plan.flow = v as Plan["flow"];
       mark("flow");
       log({ ev: "flow", n: plan.flow?.length });
-      // Every picture the flow names starts now (one per slide; a sequence starts at its slide).
-      for (const f of plan.flow ?? []) {
-        const i = f.slide - 1;
-        if (f.look_at?.kind === "picture" && f.look_at.shows && i > 0) {
-          const p = startPhoto(
-            i,
-            { key: "early", type: "photo", shows: f.look_at.shows, mustSee: [], named: false },
-            { heading: f.does, text: "" },
-          );
-          if (p) early.set(i, p);
-        }
-      }
-      // The objectives slide exists as soon as objectives do (slide 2 is always objectives).
     }
     if (top === "slides" && path.length === 2 && typeof idx === "number") {
       const s = v as Record<string, unknown>;
