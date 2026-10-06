@@ -1,6 +1,6 @@
 // BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
 // with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Writable } from "node:stream";
@@ -81,6 +81,8 @@ export type ChatReq = {
   schema: object;
   name?: string;
   strict?: boolean;
+  /** Output cap (reasoning included): bounds the cost of a runaway call. */
+  maxTokens?: number;
 };
 const body = (r: ChatReq, stream: boolean) => ({
   model: r.model,
@@ -93,6 +95,7 @@ const body = (r: ChatReq, stream: boolean) => ({
     type: "json_schema",
     json_schema: { name: r.name ?? "out", strict: r.strict ?? true, schema: r.schema },
   },
+  ...(r.maxTokens ? { max_completion_tokens: r.maxTokens } : {}),
   ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
 });
 
@@ -138,8 +141,18 @@ export async function chatStream(
   onText: (delta: string) => void,
 ): Promise<{ text: string; usage: Usage; usd: number; ms: number; firstTokenMs: number }> {
   const t0 = performance.now();
+  // Stalls and runaway whitespace abort the call (a strict-schema stream once went quiet for 10
+  // minutes and died with ECONNRESET, its usage never reported).
+  const ac = new AbortController();
+  let stall: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    clearTimeout(stall);
+    stall = setTimeout(() => ac.abort(new Error("stream stalled 90 s")), 90_000);
+  };
+  arm();
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
+    signal: ac.signal,
     headers: {
       Authorization: `Bearer ${key(".dayback-openai-key")}`,
       "Content-Type": "application/json",
@@ -154,9 +167,11 @@ export async function chatStream(
   let text = "";
   let usage: Usage | undefined;
   let first = -1;
+  let blank = 0;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
+    arm();
     pending += dec.decode(value, { stream: true });
     const lines = pending.split("\n");
     pending = lines.pop() ?? "";
@@ -169,12 +184,18 @@ export async function chatStream(
       if (j.usage) usage = j.usage;
       const d = j.choices?.[0]?.delta?.content;
       if (d) {
+        blank = /^\s*$/.test(d) ? blank + d.length : 0;
+        if (blank > 400) {
+          ac.abort(new Error("runaway whitespace"));
+          throw new Error(`runaway whitespace after ${text.length} chars`);
+        }
         if (first < 0) first = Math.round(performance.now() - t0);
         text += d;
         onText(d);
       }
     }
   }
+  clearTimeout(stall);
   if (!usage) throw new Error("stream ended without usage");
   return {
     text,
@@ -212,10 +233,18 @@ export type PhotoAsk = {
   shows: string;
   mustSee: string[];
   named: boolean;
+  /** The slot's width / height: stock search prefers it, the director and generation frame for it. */
+  aspect?: number;
+  /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
+  style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
   index: number;
 };
 export type PhotoResult = {
+  /** The request text the picture director was given. */
+  request: string;
+  /** The must-see subjects' boxes in the picture (fractions 0..1), when the judge returned them. */
+  subjects?: { name: string; x: number; y: number; w: number; h: number }[];
   src: string;
   alt: string;
   aspect: number;
@@ -226,6 +255,8 @@ export type PhotoResult = {
 
 /** The picture services for one run; `costs` collects bank and director spend. */
 export function pictureService(opts: {
+  /** The lesson's picture style and theme palette, read when each generation starts. */
+  styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] };
   runDir: string;
   pgPort: number;
   ledger: Ledger;
@@ -273,7 +304,14 @@ export function pictureService(opts: {
       })(),
       storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
       embedder: im.createOpenAiEmbedder({ apiKey: okey }),
-      generator: im.createOpenAiImageGenerator({ apiKey: okey }),
+      generator: styledGenerator(
+        guardedGenerator(
+          im.createOpenAiImageGenerator({ apiKey: okey }),
+          () => opts.ledger.parts.pictures ?? 0,
+          opts.bankCapUsd,
+        ),
+        opts.styleOf,
+      ),
       capUsd: opts.bankCapUsd,
       ids: () => newId(),
       onEvent: (e: { costUsd?: number }) => {
@@ -335,32 +373,17 @@ export function pictureService(opts: {
       mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
       purpose: "context",
       specific: ask.named,
+      ...(ask.aspect ? { aspect: Math.round(ask.aspect * 100) / 100 } : {}),
     };
-    const full = {
-      ...lesson.base,
-      id: lesson.id,
-      title: lesson.title,
-      yearGroup: lesson.yearGroup,
-      subject: lesson.subject,
-    } as Record<string, unknown>;
-    const facts = (full.facts ?? { outline: [] }) as { outline?: unknown[] };
     const at = (x: unknown) =>
-      pickPhoto(
-        {
-          ...full,
-          facts: {
-            ...facts,
-            outline: Array.from({ length: ask.index + 1 }, (_, i) =>
-              i === ask.index
-                ? { id: `s${i + 1}`, kind: "image-text", factRefs: [], imageBrief: x }
-                : { id: `s${i + 1}`, kind: "content", factRefs: [] },
-            ),
-          },
-        } as never,
-        ask.index,
-        deps as never,
-      ).catch(() => ({ outcome: "empty" }));
+      pickPhoto(pickerLesson(lesson, ask.index, x) as never, ask.index, deps as never).catch(
+        () => ({ outcome: "empty" }),
+      );
+    // Illustration lessons: generic pictures are generated in the lesson's style (no stock photos);
+    // named real things still come from Commons and Pexels (ruling 163 unchanged).
+    const illustrated = ask.style === "illustration" && !ask.named;
     const stock = async (first: unknown) => {
+      if (illustrated) return undefined;
       const r = (await at(first)) as { outcome: string; photo?: unknown };
       return r.outcome === "placed" ? r.photo : undefined;
     };
@@ -376,7 +399,7 @@ export function pictureService(opts: {
       judgeMade: (brief: unknown, made: { dataUrl?: string }) =>
         made.dataUrl
           ? judgeMade({
-              lesson: full as never,
+              lesson: pickerLesson(lesson, ask.index) as never,
               index: ask.index,
               brief: brief as never,
               deps: deps as never,
@@ -393,15 +416,119 @@ export function pictureService(opts: {
     })) as { src: string; alt: string; about?: string; source?: { provider?: string } } | undefined;
     if (!photo) return undefined;
     return {
+      request,
       src: photo.src,
       alt: photo.alt,
       about: photo.about,
       provider: photo.source?.provider,
       source: photo.source,
+      // The judge's boxes for the must-see subjects, once its prompt returns them (PICTURE-FIT, prompt agent).
+      ...((photo as { evidence?: { subjects?: PhotoResult["subjects"] } }).evidence?.subjects
+        ? {
+            subjects: (photo as { evidence: { subjects: PhotoResult["subjects"] } }).evidence
+              .subjects,
+          }
+        : {}),
       aspect: aspectOf(photo.src),
     };
   }
   return { find, aiSpend };
+}
+
+export type PickerLessonInfo = {
+  id: string;
+  title: string;
+  yearGroup: string;
+  subject: string;
+  base: Record<string, unknown>;
+};
+/**
+ * The lesson the production picture code (`pickPhoto`, `judgeMade`) reads: every `facts` field it
+ * touches (objectives, vocabulary, keyIdeas, outline) present, the brief's topic, and an outline
+ * entry for slide `index` carrying `imageBrief`. Smoke 2/3: a missing field threw inside the
+ * judge, so every stock pick failed and every generated picture was rejected.
+ */
+export function pickerLesson(l: PickerLessonInfo, index: number, imageBrief?: unknown) {
+  const facts = {
+    objectives: [],
+    vocabulary: [],
+    keyIdeas: [],
+    ...((l.base.facts ?? {}) as object),
+  };
+  return {
+    ...l.base,
+    id: l.id,
+    title: l.title,
+    yearGroup: l.yearGroup,
+    subject: l.subject,
+    brief: { topic: l.title },
+    facts: {
+      ...facts,
+      outline: Array.from({ length: index + 1 }, (_, i) =>
+        i === index
+          ? {
+              id: `s${i + 1}`,
+              kind: "image-text",
+              factRefs: [],
+              ...(imageBrief ? { imageBrief } : {}),
+            }
+          : { id: `s${i + 1}`, kind: "content", factRefs: [] },
+      ),
+    },
+  };
+}
+
+/**
+ * One locked illustration style per lesson (Greg 6 Oct): when the lesson's picture style is
+ * "illustration", every generation's prompt gets the prompt agent's style line
+ * (prompts/shared/illustration-style.txt, {{palette}} = the theme's colours), the same on every
+ * call. No file yet: prompts pass through unchanged and the run logs it. A reference image per
+ * lesson (the first generation, sent with the rest) needs the image edits endpoint: not wired yet.
+ */
+export function styledGenerator<G extends { generate: (a: never) => Promise<unknown> }>(
+  g: G,
+  styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] },
+): G {
+  const file = `${BAKEOFF}/prompts/shared/illustration-style.txt`;
+  return {
+    ...g,
+    generate: (a: never) => {
+      const st = styleOf?.();
+      const arg = a as { prompt?: string };
+      if (st?.style !== "illustration" || !arg.prompt || !existsSync(file)) return g.generate(a);
+      const line = readFileSync(file, "utf8")
+        .trim()
+        .replace("{{palette}}", (st.palette ?? []).join(", "));
+      return g.generate({ ...arg, prompt: `${arg.prompt}\n\n${line}` } as never);
+    },
+  };
+}
+
+/**
+ * The image generator with a hard cap the bank's own cap missed (smoke 3: 20 parallel generations
+ * against a $0.03 cap, $0.125 spent). Generations still run in parallel, but each reserves its
+ * cost (about $0.0063) first, and none starts once spend plus reservations would pass the cap.
+ */
+export function guardedGenerator<G extends { generate: (a: never) => Promise<unknown> }>(
+  g: G,
+  spent: () => number,
+  capUsd: number,
+): G {
+  const PER = 0.0063;
+  let reserved = 0;
+  return {
+    ...g,
+    generate: async (a: never) => {
+      if (spent() + reserved + PER > capUsd + 1e-9)
+        throw new Error(`picture generation cap $${capUsd} reached`);
+      reserved += PER;
+      try {
+        return await g.generate(a);
+      } finally {
+        reserved -= PER;
+      }
+    },
+  };
 }
 
 /** A stored photo's own width / height (sips, macOS); 4:3 when it cannot be read. */

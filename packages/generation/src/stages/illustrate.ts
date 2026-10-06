@@ -733,7 +733,10 @@ async function judge(
 }
 
 /** Which `mustShow` items the judge saw, spelt as the brief spells them. */
-function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): string[] {
+function itemsSeen(
+  brief: Pick<ImageBrief, "mustShow">,
+  verdict: Pick<PickOrRequery, "visible">,
+): string[] {
   const seen = new Set(verdict.visible.map(normaliseItem));
   return brief.mustShow.filter((item) => seen.has(normaliseItem(item)));
 }
@@ -746,9 +749,11 @@ function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery):
  */
 export function gatePasses(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
-  verdict: PickOrRequery,
+  verdict: Omit<PickOrRequery, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
 ): boolean {
   if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
+  // BAKEOFF 6 Oct: a named sex, age or kind the picked subject is not (a cockerel for "hen").
+  if (verdict.kindMatches === false) return false;
   if (brief.mustShow.length === 0) return true;
   // PICTURE-AUDIT #1: items taken from the writer's request are the things the slide's words
   // name (the sheep AND the lamb), so every one must be in view; Plan's parts lists need one.
