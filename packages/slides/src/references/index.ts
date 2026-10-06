@@ -724,13 +724,13 @@ export const REFERENCES: RefDef[] = [
         kind: "list",
         min: 2,
         max: isPrimary(st) ? 3 : 4,
-        cap: { role: "body", w: PROSE - 60, lines: 2 },
+        cap: { role: "body", w: PROSE - 60, lines: 3 },
         note: "One objective each, pupil-facing ('I can ...').",
       },
     ],
     draw: (c, v) => {
       heading(c, v);
-      region(c, numberedBlocks(c, "items", strs(v.items), FULL.x, PROSE, 2), BAND, 4);
+      region(c, numberedBlocks(c, "items", strs(v.items), FULL.x, PROSE, 3), BAND, 4);
     },
   },
   {
