@@ -22,6 +22,29 @@ const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" i
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
 
+/**
+ * The T menu's merged entries back to catalogue templates (prompts/PROMPTS.md): `visual-text` is
+ * picture-text or diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape
+ * (a `kind` = a diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
+ */
+export function normalise(s: S): S {
+  const t = s.template;
+  if (t !== "visual-text" && t !== "big-visual") return s;
+  const { figure, ...rest } = s;
+  const dia = isDia(figure);
+  const template =
+    t === "visual-text"
+      ? dia
+        ? "diagram-text"
+        : "picture-text"
+      : dia
+        ? "big-diagram"
+        : "big-picture";
+  // No figure at all: the words stand alone.
+  if (!isDia(figure) && !isPic(figure)) return { ...rest, template: "explain" };
+  return { ...rest, template, [dia ? "diagram" : "picture"]: figure };
+}
+
 /** The pictures and diagrams a slide holds, with stable keys. */
 function figures(s: S): { key: string; f: Pic | Dia }[] {
   const out: { key: string; f: Pic | Dia }[] = [];
@@ -38,22 +61,64 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
 }
 
 /** The figure a slot shows now: the photo or drawing when it has landed, an open slot while pending, nothing when it failed. */
-function figureNow(key: string, f: Pic | Dia, ctx: MaterialiseCtx): Figure | undefined {
+function figureNow(
+  key: string,
+  f: Pic | Dia,
+  ctx: MaterialiseCtx,
+  mark = false,
+): Figure | undefined {
   const v = ctx.visual(key);
-  if (v.status === "photo") return { photo: v.photo.src, alt: v.photo.alt, aspect: v.photo.aspect };
+  if (v.status === "photo")
+    return {
+      photo: v.photo.src,
+      alt: v.photo.alt,
+      aspect: v.photo.aspect,
+      request: v.photo.request,
+      ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
+    };
   if (v.status === "diagram") return { diagram: v.spec };
   if (v.status === "failed") return undefined;
   return isDia(f)
     ? { photo: PLACEHOLDER_IMAGE, alt: `Diagram: ${f.shows}` }
-    : { photo: PLACEHOLDER_IMAGE, alt: f.shows };
+    : {
+        photo: PLACEHOLDER_IMAGE,
+        alt: f.shows,
+        request: mark ? `slot:${key}` : [f.shows, ...(f.must_see ?? [])].join(". "),
+      };
 }
 
-export function toInput(s: S, ctx: MaterialiseCtx): TemplateInput {
+/** Templates whose photo slots crop to their own box (the rest show a photo at its own shape). */
+const FIXED_SHAPE = new Set(["compare", "picture-sequence"]);
+/**
+ * Each photo slot's shape on this slide, read off the laid-out slide itself: the slide is laid out
+ * with every visual pending, each open slot marked with its key, and the slot's box measured.
+ */
+export function slotShapes(
+  s: S,
+  vctx: Omit<MaterialiseCtx, "visual">,
+): Record<string, { aspect: number; fixed: boolean }> {
+  const ctx: MaterialiseCtx = { ...vctx, visual: () => ({ status: "pending" }) };
+  const input = toInput(s, ctx, true);
+  const els = layoutTemplate(input, vctx.theme, vctx.stage).slide.elements;
+  const out: Record<string, { aspect: number; fixed: boolean }> = {};
+  for (const e of els) {
+    const r = (e as { request?: string }).request;
+    if (e.type === "image" && r?.startsWith("slot:"))
+      out[r.slice(5)] = {
+        aspect: Math.round((e.w / e.h) * 100) / 100,
+        fixed: FIXED_SHAPE.has(input.template),
+      };
+  }
+  return out;
+}
+
+export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInput {
+  const s = normalise(raw);
   const template = str(s.template) as TemplateInput["template"];
   const heading = str(s.heading);
   const fig = (k: string) => {
     const f = s[k];
-    return isPic(f) || isDia(f) ? figureNow(k, f, ctx) : undefined;
+    return isPic(f) || isDia(f) ? figureNow(k, f, ctx, mark) : undefined;
   };
   const lead = s.lead == null ? undefined : str(s.lead);
   switch (template) {
@@ -88,23 +153,31 @@ export function toInput(s: S, ctx: MaterialiseCtx): TemplateInput {
     }
     case "picture-sequence": {
       const seq = (Array.isArray(s.sequence) ? s.sequence : []) as (Pic & { caption?: string })[];
+      // A sequence with a picture that could not be made reads as captions and arrows over
+      // nothing: the stages become numbered steps instead.
+      if (seq.some((_, n) => ctx.visual(`seq.${n}`).status === "failed"))
+        return { template: "steps", heading, points: seq.map((x) => str(x.caption)) };
       return {
         template,
         heading,
         sequence: seq.map((x, n) => ({
           caption: str(x.caption),
-          figure: figureNow(`seq.${n}`, x, ctx),
+          figure: figureNow(`seq.${n}`, x, ctx, mark),
         })),
       };
     }
     case "compare": {
       const cols = (Array.isArray(s.columns) ? s.columns : []) as S[];
+      // One column's picture missing leaves a hole: every column goes without when any failed.
+      const anyFailed = cols.some(
+        (c, n) => isPic(c.picture) && ctx.visual(`col.${n}`).status === "failed",
+      );
       return {
         template,
         heading,
         columns: cols.map((c, n) => {
           const p = c.picture;
-          const f = isPic(p) ? figureNow(`col.${n}`, p, ctx) : undefined;
+          const f = isPic(p) && !anyFailed ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
           return { label: str(c.label), text: str(c.text), ...(f ? { figure: f } : {}) };
         }),
       };
@@ -159,7 +232,9 @@ export const armT: ArmPlugin = {
       effort: "low",
     };
   },
-  visuals(s) {
+  visuals(raw, index, vctx) {
+    const s = normalise(raw);
+    const slots = slotShapes(s, { ...vctx, index });
     return figures(s).map(
       ({ key, f }): VisualAsk =>
         isDia(f)
@@ -170,11 +245,45 @@ export const armT: ArmPlugin = {
               shows: f.shows,
               mustSee: f.must_see ?? [],
               named: f.subject === "named",
+              ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
             },
     );
   },
   materialise(s, ctx) {
     const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
+    return { slide: r.slide, over: r.over };
+  },
+  placeholder(f, ctx) {
+    // Provisional from the flow entry alone: its job as the heading, the layout shape its
+    // look_at implies, picture slots open (their pictures are already being found).
+    const slot = { photo: PLACEHOLDER_IMAGE, alt: f.look_at?.shows ?? "" };
+    const heading = f.does;
+    const kind = f.look_at?.kind;
+    const input: TemplateInput =
+      kind === "picture"
+        ? { template: "picture-text", heading, figure: slot }
+        : kind === "picture-sequence"
+          ? {
+              template: "picture-sequence",
+              heading,
+              sequence: [0, 1, 2].map(() => ({ caption: "", figure: slot })),
+            }
+          : kind === "diagram"
+            ? {
+                template: "diagram-text",
+                heading,
+                figure: { ...slot, alt: `Diagram: ${f.look_at?.shows ?? ""}` },
+              }
+            : { template: "explain", heading, lead: "" };
+    const r = layoutTemplate(input, ctx.theme, ctx.stage);
+    return { slide: r.slide, over: [] };
+  },
+  codeObjectives(ctx) {
+    const r = layoutTemplate(
+      toInput({ template: "objectives" }, { ...ctx, visual: () => ({ status: "pending" }) }),
+      ctx.theme,
+      ctx.stage,
+    );
     return { slide: r.slide, over: r.over };
   },
   codeTitle(brief, ctx) {
@@ -185,14 +294,16 @@ export const armT: ArmPlugin = {
     );
     return { slide: r.slide, over: r.over };
   },
-  questions(s) {
+  questions(raw) {
+    const s = normalise(raw);
     if (s.template === "hinge") return [str(s.stem)];
     if (["question-set", "practice", "exit-ticket"].includes(str(s.template)))
       return strs(s.questions);
-    if (s.template === "discussion") return [str(s.lead ?? s.question)];
+    // A discussion question has no one answer: it is not checked for one (rerun s6 false positive).
     return [];
   },
-  words(s) {
+  words(raw) {
+    const s = normalise(raw);
     const parts: string[] = [
       str(s.heading),
       str(s.lead),

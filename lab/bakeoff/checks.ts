@@ -1,6 +1,7 @@
 // BAKEOFF harness: code checks on one laid-out slide (the harness's own; BAKEOFF/eval has the gates).
 import type { Slide, SlideElement } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "../../packages/slides/src/layouts";
+import { cutSubjects, type SubjectBox } from "../../packages/slides/src/templates/index";
 
 export type CheckResult = { slide: number; faults: string[] };
 type Box = { x: number; y: number; w: number; h: number };
@@ -58,6 +59,14 @@ export function checkSlide(a: {
   for (let i = 0; i < pics.length; i++)
     for (let j = i + 1; j < pics.length; j++)
       if (inter(pics[i] as Box, pics[j] as Box) > 4) faults.push("overlap: two pictures");
+  // PICTURE-FIT gate: a crop that cuts a must-see subject's box (boxes from the vision judge).
+  for (const p of pics) {
+    const e = p as {
+      crop?: { x: number; y: number; w: number; h: number };
+      subjects?: SubjectBox[];
+    };
+    for (const name of cutSubjects(e.crop, e.subjects)) faults.push(`cut: the crop cuts "${name}"`);
+  }
   // Dangling: words that point at a picture with no picture on the slide.
   if (POINTING.test(a.words) && !s.elements.some(realPicture))
     faults.push(`dangling: "${a.words.match(POINTING)?.[0]}" with no picture on the slide`);
