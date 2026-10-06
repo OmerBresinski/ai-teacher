@@ -8,6 +8,7 @@
  */
 import type { Theme } from "@tj/domain/documents";
 import { countLines } from "../text-measure";
+import { resolveTextStyle } from "../text-style";
 import { getTheme, typeScale, withKeyStage } from "../themes";
 import {
   type Block,
@@ -361,7 +362,16 @@ export function headingCap(theme: Theme, stage: Stage): number {
     const z = blockSizes(theme, stage, 0);
     let best = 0;
     for (let n = 10; n <= 140; n += 2)
-      if (countLines(filler(n, 3), "heading", theme, 832, theme.weights.heading, z.heading) <= 2)
+      if (
+        countLines(
+          filler(n, 3),
+          "heading",
+          theme,
+          832 + 2 * resolveTextStyle({ preset: "heading" }, theme).padding,
+          theme.weights.heading,
+          z.heading,
+        ) <= 2
+      )
         best = n;
     return best;
   });

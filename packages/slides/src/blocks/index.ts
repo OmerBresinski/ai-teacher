@@ -29,7 +29,7 @@ import { uid } from "../factories";
 import { slideFits } from "../fit-check";
 import { G, mix } from "../templates";
 import { countLines } from "../text-measure";
-import { ladderStops } from "../text-style";
+import { ladderStops, resolveTextStyle } from "../text-style";
 import { typeScale, withKeyStage } from "../themes";
 
 /* ------------------------------------------------------------------ */
@@ -222,7 +222,16 @@ const weightOf = (r: Role, t: Theme) =>
 
 function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): number {
   const size = c.z[role];
-  const lines = countLines(plain(text), PRESET[role], c.t, w, weight ?? weightOf(role, c.t), size);
+  // countLines takes the preset's own padding off the width; our boxes have none, so add it back.
+  const pad = resolveTextStyle({ preset: PRESET[role] }, c.t).padding;
+  const lines = countLines(
+    plain(text),
+    PRESET[role],
+    c.t,
+    w + 2 * pad,
+    weight ?? weightOf(role, c.t),
+    size,
+  );
   return Math.ceil(Math.max(1, lines) * size * LH[role]);
 }
 
@@ -647,7 +656,7 @@ function drawTitle(c: Ctx, head: string, blocks: Block[]) {
   const px = G.right - pw;
   const w = pic ? Math.max(300, px - G.margin - 44) : 720;
   const maxLines = pic ? 5 : 3;
-  const lines = countLines(plain(head), "title", c.t, w, c.t.weights.heading, c.z.title);
+  const lines = Math.round(measure(c, head, "title", w) / (c.z.title * LH.title));
   if (lines > maxLines) c.over.push(`title ${lines}/${maxLines} lines`);
   const tH = measure(c, head, "title", w);
   const lH = sub ? measure(c, sub.text, "lead", w, 400) : 0;
@@ -712,7 +721,7 @@ function drawMedia(c: Ctx, blocks: Block[], side: "right" | "left") {
     c,
     m,
     { x: panel, y: band.y, w: G.panel.w, h: band.h },
-    side === "right" ? "right" : "left",
+    side === "right" ? "right" : "center",
   );
 }
 
@@ -751,12 +760,11 @@ function cardsPiece(
   const d = Math.round(c.z.body * 1.25);
   const anyPic = cards.some((k) => k.picture);
   const ph = anyPic ? picH : 0;
-  const labelW = numbered ? iw - d - 12 : iw;
+  // A numbered card puts its disc on a row of its own, so the label has the card's full width.
+  const labelW = iw;
+  const discRow = numbered ? d + 10 : 0;
   const hs = cards.map(
-    (k) =>
-      Math.max(numbered ? d : 0, measure(c, k.label, "lead", labelW)) +
-      10 +
-      measure(c, k.text, "body", iw),
+    (k) => discRow + measure(c, k.label, "lead", labelW) + 10 + measure(c, k.text, "body", iw),
   );
   const h = Math.max(...hs, 0) + 2 * pad + ph;
   return {
@@ -768,13 +776,14 @@ function cardsPiece(
         if (k.picture) photo(c, k.picture, { x, y, w, h: ph }, true, "center");
         let ty = y + ph + pad;
         if (numbered) disc(c, String(i + 1), x + pad, ty, d);
+        ty += discRow;
         const lab = text(
           c,
           k.label,
           "lead",
           {
-            x: x + pad + (numbered ? d + 12 : 0),
-            y: ty + (numbered ? Math.max(0, (d - c.z.lead * LH.lead) / 2) : 0),
+            x: x + pad,
+            y: ty,
             w: labelW,
           },
           {
@@ -782,7 +791,7 @@ function cardsPiece(
             name: "Card label",
           },
         );
-        ty = Math.max(lab.y + lab.h, numbered ? ty + d : 0) + 10;
+        ty = lab.y + lab.h + 10;
         text(
           c,
           k.text,
@@ -805,7 +814,11 @@ function sequencePiece(c: Ctx, items: { picture: Pic; caption: string }[], avail
   const gap = 44;
   const w = Math.floor((G.width - gap * (n - 1)) / n);
   const capH = Math.max(...items.map((it) => measure(c, it.caption, "body", w)), 0);
-  const ph = Math.max(80, Math.min(Math.round(w * 0.8), avail - capH - 12));
+  // Pictures keep at least 150 tall (or 60 % of their width): captions give way first.
+  const ph = Math.max(
+    Math.min(150, Math.round(w * 0.6)),
+    Math.min(Math.round(w * 0.8), avail - capH - 12),
+  );
   const h = ph + 12 + capH;
   return {
     h,
@@ -866,7 +879,7 @@ function drawCompareOrSequence(c: Ctx, blocks: Block[], recipe: "compare" | "seq
   if (seq?.items.length) mid.push(sequencePiece(c, seq.items, avail));
   else if (cards.length) {
     const textH = cardsPiece(c, cards, recipe === "sequence", 0).h;
-    const picH = Math.max(90, Math.min(170, avail - textH));
+    const picH = Math.max(130, Math.min(170, avail - textH));
     mid.push(cardsPiece(c, cards, recipe === "sequence", picH));
   }
   place(c, [...top, ...mid, ...bottom], gap, recipe);
