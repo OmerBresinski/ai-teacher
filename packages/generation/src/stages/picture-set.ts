@@ -75,7 +75,7 @@ export function setImagePrompt(shows: string[], look?: LessonLook, same = true):
       .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
       .join("; ")}.`,
     same
-      ? "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint, whole, at the same scale, on the same plain light background."
+      ? "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint and camera distance, whole, so its size follows its stage, on the same plain light background."
       : "The panels are a matched set to compare side by side: each subject whole, seen from the same viewpoint, at the same scale, in the same light, on the same plain light background.",
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ].join("\n");
