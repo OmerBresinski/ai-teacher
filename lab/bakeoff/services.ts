@@ -23,6 +23,7 @@ import { mustShowOf } from "../../packages/generation/src/stages/photo-bank";
 import { findDirected } from "../../packages/generation/src/stages/picture-director";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram } from "../../packages/slides/src/diagrams/index";
+import { placePhoto } from "../../packages/slides/src/templates/index";
 import { createStorage } from "../../packages/storage/src/index";
 
 export const ROUNDS =
@@ -235,6 +236,8 @@ export type PhotoAsk = {
   named: boolean;
   /** The slot's width / height: stock search prefers it, the director and generation frame for it. */
   aspect?: number;
+  /** The slot crops to its own box: a generic stock photo that would only fit shrunk is refused (generation renders at the slot's shape). */
+  fixedShape?: boolean;
   /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
   style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
@@ -382,10 +385,24 @@ export function pictureService(opts: {
     // Illustration lessons: generic pictures are generated in the lesson's style (no stock photos);
     // named real things still come from Commons and Pexels (ruling 163 unchanged).
     const illustrated = ask.style === "illustration" && !ask.named;
+    let madeBoxes: Box4[] | undefined;
     const stock = async (first: unknown) => {
       if (illustrated) return undefined;
-      const r = (await at(first)) as { outcome: string; photo?: unknown };
-      return r.outcome === "placed" ? r.photo : undefined;
+      const r = (await at(first)) as { outcome: string; photo?: { src: string; boxes?: Box4[] } };
+      if (r.outcome !== "placed" || !r.photo) return undefined;
+      // A generic stock photo that this slot could only show shrunk on a panel is refused, so the
+      // director generates one at the slot's shape instead (named real things keep their photo).
+      if (!ask.named && ask.fixedShape && ask.aspect) {
+        const fit = placePhoto(aspectOf(r.photo.src), ask.aspect, subjectsOf(r.photo.boxes));
+        if (fit.mode === "contain") {
+          appendFileSync(
+            `${opts.runDir}/log.jsonl`,
+            `${JSON.stringify({ t: Date.now(), ev: "stock-wrong-shape", key: ask.key, src: r.photo.src })}\n`,
+          );
+          return undefined;
+        }
+      }
+      return r.photo;
     };
     const photo = (await findDirected({
       bank: images.bank as never,
@@ -404,6 +421,9 @@ export function pictureService(opts: {
               brief: brief as never,
               deps: deps as never,
               dataUrl: made.dataUrl,
+              onVerdict: (v: { boxes?: Box4[] }) => {
+                madeBoxes = v.boxes;
+              },
             })
           : Promise.resolve(true),
       deps: deps as never,
@@ -413,7 +433,9 @@ export function pictureService(opts: {
         `${JSON.stringify({ t: Date.now(), ev: "picture-error", key: ask.key, err: String(e).slice(0, 300) })}\n`,
       );
       return undefined;
-    })) as { src: string; alt: string; about?: string; source?: { provider?: string } } | undefined;
+    })) as
+      | { src: string; alt: string; about?: string; source?: { provider?: string }; boxes?: Box4[] }
+      | undefined;
     if (!photo) return undefined;
     return {
       request,
@@ -422,17 +444,35 @@ export function pictureService(opts: {
       about: photo.about,
       provider: photo.source?.provider,
       source: photo.source,
-      // The judge's boxes for the must-see subjects, once its prompt returns them (PICTURE-FIT, prompt agent).
-      ...((photo as { evidence?: { subjects?: PhotoResult["subjects"] } }).evidence?.subjects
-        ? {
-            subjects: (photo as { evidence: { subjects: PhotoResult["subjects"] } }).evidence
-              .subjects,
-          }
+      // The judge's boxes for the must-see items (judge v15): the stock pick's own, else the
+      // made-picture judge's last verdict for this ask.
+      ...(subjectsOf(
+        photo.boxes ??
+          (photo.source?.provider === "pexels" || photo.source?.provider === "commons"
+            ? undefined
+            : madeBoxes),
+      )
+        ? { subjects: subjectsOf(photo.boxes ?? madeBoxes) }
         : {}),
       aspect: aspectOf(photo.src),
     };
   }
   return { find, aiSpend };
+}
+
+type Box4 = { item: string; left: number; top: number; right: number; bottom: number };
+/** The judge's boxes as template subjects ({name, x, y, w, h}); undefined when there are none. */
+export function subjectsOf(boxes?: Box4[]) {
+  const ok = (boxes ?? []).filter((b) => b.right > b.left && b.bottom > b.top);
+  return ok.length
+    ? ok.map((b) => ({
+        name: b.item,
+        x: b.left,
+        y: b.top,
+        w: b.right - b.left,
+        h: b.bottom - b.top,
+      }))
+    : undefined;
 }
 
 export type PickerLessonInfo = {

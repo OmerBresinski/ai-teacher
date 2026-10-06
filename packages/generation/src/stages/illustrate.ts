@@ -70,6 +70,8 @@ export type PlacedPhoto = {
   evidence: PhotoEvidence;
   /** What the photo's source says it shows (Commons title, description, categories; Pexels alt). */
   about?: string;
+  /** BAKEOFF: where the judge saw each must-see item in this photo (fractions), for subject-aware crops. */
+  boxes?: PickOrRequery["boxes"];
 };
 
 /** The image element with the photograph on it; geometry and id are the placeholder's. */
@@ -545,9 +547,10 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         thumbnail: picked.src.tiny,
       };
       taken.add(picked.pageUrl);
+      const placed = await store(images, picked, brief, evidence);
       return {
         outcome: "placed",
-        photo: await store(images, picked, brief, evidence),
+        photo: verdict.boxes.length ? { ...placed, boxes: verdict.boxes } : placed,
         judged: round === 0 ? "pick" : "query",
       };
     }
@@ -654,6 +657,8 @@ export async function judgeMade(args: {
   brief: ImageBrief;
   deps: PipelineDeps;
   dataUrl: string;
+  /** BAKEOFF: the judge's whole verdict (its boxes place the picture's crop). */
+  onVerdict?: (verdict: PickOrRequery) => void;
 }): Promise<boolean> {
   const made: PhotoResult = {
     id: "made",
@@ -683,6 +688,7 @@ export async function judgeMade(args: {
     slideIndex: args.index,
     made: { fits: verdict.fits, why: verdict.why },
   });
+  args.onVerdict?.(verdict);
   return verdict.pick === "made" && gatePasses(args.brief, verdict);
 }
 

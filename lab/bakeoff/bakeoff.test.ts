@@ -339,7 +339,7 @@ describe("design object, placeholders, templates (decisions a and b)", () => {
     );
     return dir;
   };
-  const run = async (design: object, b = brief) => {
+  const run = async (design: object, b = brief, modelTheme = true) => {
     const dir = replayWith(design);
     await runLesson({
       arm: armT,
@@ -351,6 +351,7 @@ describe("design object, placeholders, templates (decisions a and b)", () => {
       noVisuals: true,
       noNotes: true,
       noRepair: true,
+      modelTheme,
     });
     return {
       lesson: JSON.parse(fs.readFileSync(`${dir}/out/lesson.json`, "utf8")),
@@ -372,6 +373,12 @@ describe("design object, placeholders, templates (decisions a and b)", () => {
     );
     expect(r.lesson.themeId).toBe("chalk");
     expect(r.timings.theme.used).toBe("chalk");
+  });
+  test("bake-off default: the fixed theme renders, the model's choice is recorded, and fitVersion is written", async () => {
+    const r = await run({ theme: "studio", picture_style: "photo" }, brief, false);
+    expect(r.lesson.themeId).toBe("splash");
+    expect(r.timings.theme).toEqual({ used: "splash", model: "studio", teacher: null });
+    expect(r.lesson.fitVersion).toBe(3);
   });
   test("an unknown theme keeps the brief's", async () => {
     const r = await run({ theme: "no-such-theme", picture_style: "photo" });

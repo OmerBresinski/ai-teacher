@@ -5,7 +5,7 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
-import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
+import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type CheckResult, checkSlide } from "./checks";
 import { PartialJson, type Path } from "./partial";
 import {
@@ -202,6 +202,10 @@ export type RunOpts = {
   noNotes?: boolean;
   /** Skip the repair pass. */
   noRepair?: boolean;
+  /** Let `design.theme` restyle the lesson. Off in the bake-off: every arm renders on the brief's fixed theme and the choice is only recorded. */
+  modelTheme?: boolean;
+  /** The run's picture-generation cap (bank), default $0.06. */
+  bankCapUsd?: number;
 };
 
 export type RunResult = {
@@ -254,6 +258,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       id: lessonId,
       title: (plan.slides[0]?.heading as string) ?? brief.topic,
       themeId,
+      // The web view re-fits (shrinks) text in any lesson without the current fit version (arm K's find).
+      fitVersion: FIT_VERSION,
       subject: brief.subject,
       ageBand: brief.keyStage,
       yearGroup: brief.yearGroup,
@@ -292,7 +298,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         runDir: o.outDir,
         pgPort: o.pgPort,
         ledger,
-        bankCapUsd: 0.03,
+        bankCapUsd: o.bankCapUsd ?? 0.06,
         styleOf: () => ({
           style: plan.design?.picture_style,
           palette: [
@@ -327,6 +333,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       mustSee: a.mustSee,
       named: a.named,
       ...(a.aspect ? { aspect: a.aspect } : {}),
+      ...(a.fixedShape ? { fixedShape: true } : {}),
       ...(plan.design?.picture_style ? { style: plan.design.picture_style } : {}),
       slide: { heading: words.heading, text: words.text, point: "" },
       index: i,
@@ -458,7 +465,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   };
   function applyDesign() {
     const d = plan.design ?? {};
-    const chosen = brief.teacherTheme ? brief.teacherTheme : d.theme;
+    const chosen = brief.teacherTheme ? brief.teacherTheme : o.modelTheme ? d.theme : undefined;
     let ok = false;
     if (chosen && chosen !== themeId) {
       try {
