@@ -372,16 +372,62 @@ export function diagramZoom(
 ): number {
   const s = parseDiagram(spec);
   if (!s || FILLS_BOX.has(s.kind)) return 1;
+  return cleanZooms(spec, theme, rect)[0] ?? 1;
+}
+
+/** The zooms (largest first, to `MAX_DIAGRAM_ZOOM`, in tenths) at which the drawing fills its zone with no fault. */
+function cleanZooms(
+  spec: unknown,
+  theme: Theme,
+  rect: { w: number; h: number; fs?: number },
+): number[] {
+  const out: number[] = [];
+  const bar = parseDiagram(spec)?.kind === "bar-model";
   for (let z = MAX_DIAGRAM_ZOOM; z > 1.05; z = Math.round((z - 0.1) * 10) / 10) {
     const size = { w: rect.w / z, h: rect.h / z, fs: rect.fs };
     if (size.w < 80 || size.h < 60) continue;
+    // A bar model spans its box by design (its bars run edge to edge), so it has no fill cap.
     if (
       diagramFaults(spec, theme, size).length === 0 &&
-      (drawnFill(spec, theme, size) ?? 0) <= 0.92
+      (bar || (drawnFill(spec, theme, size) ?? 0) <= 0.92)
     )
-      return z;
+      out.push(z);
   }
-  return 1;
+  return out;
+}
+
+/**
+ * fix-bars: the label size a drawing shows on the slide in `rect`, in slide points: its own label
+ * size at the zoom it takes, times that zoom.
+ */
+export function shownLabelSize(
+  spec: unknown,
+  theme: Theme,
+  rect: { w: number; h: number; fs?: number },
+): number {
+  const z = diagramZoom(spec, theme, rect);
+  return context(theme, Math.round(rect.w / z), Math.round(rect.h / z), rect.fs).fs * z;
+}
+
+/**
+ * fix-bars (FULL-RUN y5): a bar model is read by its numbers, so its part labels, row names and
+ * total stand at the slide's body size. It draws at body size in `rect` when some zoom that shows
+ * its labels at least that large draws it with no fault (every part label inside its part). A bar
+ * model that does not (eight parts of "5 cm" in a half zone) takes the full-width zone instead.
+ * Other kinds keep their own label sizes: always true.
+ */
+export function drawsAtBodySize(
+  spec: unknown,
+  theme: Theme,
+  rect: { w: number; h: number; fs?: number },
+): boolean {
+  const s = parseDiagram(spec);
+  if (s?.kind !== "bar-model") return true;
+  const body = theme.sizes.body * 0.95;
+  const shown = (z: number) =>
+    context(theme, Math.round(rect.w / z), Math.round(rect.h / z), rect.fs).fs * z;
+  if (shown(1) >= body && diagramFaults(spec, theme, rect).length === 0) return true;
+  return cleanZooms(spec, theme, rect).some((z) => shown(z) >= body);
 }
 
 /**
