@@ -431,17 +431,18 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
             // r3-diag: a label crossed by another shape's line (a tube, a bench, a balance's
             // edge) reads as clutter and is a fault (y11 r2 s10): priced high, so a pushed-out
             // spot with a leader wins.
+            // Checked where the label will be drawn: a box past the drawing's edge is moved back
+            // inside it (clampIn), which can set it onto a line running to the edge (y11 r2 s10).
+            const cdx = Math.max(0, -box.x0) - Math.max(0, box.x1 - w);
+            const cdy = Math.max(0, -box.y0) - Math.max(0, box.y1 - h);
+            const cb: Box = {
+              x0: box.x0 + cdx - 2,
+              y0: box.y0 + cdy - 2,
+              x1: box.x1 + cdx + 2,
+              y1: box.y1 + cdy + 6,
+            };
             for (const sh of s.shapes) {
-              for (const [a, b] of segsOf(sh, X, Y))
-                if (
-                  segHitsBox(a, b, {
-                    x0: box.x0 - 2,
-                    y0: box.y0 - 2,
-                    x1: box.x1 + 2,
-                    y1: box.y1 + 6,
-                  })
-                )
-                  cost += 100_000;
+              for (const [a, b] of segsOf(sh, X, Y)) if (segHitsBox(a, b, cb)) cost += 100_000;
             }
             shapePx.forEach((b, i) => {
               if (i === l.target || contains(b)) return;
@@ -637,6 +638,17 @@ function segsOf(sh: Shape, X: (u: number) => number, Y: (v: number) => number): 
   if (sh.type === "line") return chain(sh.points as Pt[], false);
   if (sh.type === "arrow") return chain([sh.from as Pt, sh.to as Pt], false);
   if (sh.type === "polygon") return chain(sh.points as Pt[], true);
+  // A particle box's walls (open at the top), as the drawing records them.
+  if (sh.type === "particles")
+    return chain(
+      [
+        [sh.x, sh.y],
+        [sh.x, sh.y + sh.h],
+        [sh.x + sh.w, sh.y + sh.h],
+        [sh.x + sh.w, sh.y],
+      ],
+      false,
+    );
   if (sh.type === "rect")
     return chain(
       [

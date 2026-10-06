@@ -295,4 +295,63 @@ describe("dd-diagrams readability", () => {
     expect(n).toBeGreaterThan(800);
     expect(bad).toEqual([]);
   }, 300_000);
+
+  // r3-diag: y11 r2 s10. A label naming a gas line drawn to the top of the canvas was placed past
+  // the edge, moved back inside and set across the line. Placement now checks the moved box, and a
+  // crossing is never drawn: the drawing is clean or refused.
+  test("a label naming a line that runs to the canvas edge stands clear of it", () => {
+    const spec = {
+      kind: "labelled-diagram",
+      alt: "A flask of marble chips and acid on a balance",
+      canvas: "square",
+      shapes: [
+        { type: "rect", x: 15, y: 80, w: 70, h: 12, fill: "muted" },
+        {
+          type: "polygon",
+          points: [
+            [40, 30],
+            [60, 30],
+            [60, 45],
+            [75, 78],
+            [25, 78],
+            [40, 45],
+          ],
+          fill: "surface",
+        },
+        { type: "rect", x: 25, y: 62, w: 50, h: 16, fill: "accent2" },
+        { type: "rect", x: 42, y: 22, w: 16, h: 9, fill: "surface" },
+        {
+          type: "line",
+          points: [
+            [50, 20],
+            [52, 12],
+            [48, 6],
+          ],
+          dashed: true,
+        },
+        { type: "circle", cx: 88, cy: 60, r: 8, fill: "none" },
+      ],
+      labels: [
+        { text: "Escaping carbon dioxide", at: [50, 8] },
+        { text: "Loose cotton wool", at: [58, 26] },
+        { text: "Acid and marble", at: [50, 70] },
+        { text: "Balance", at: [50, 86] },
+        { text: "Stopwatch", at: [88, 60] },
+      ],
+    };
+    for (const ks of KS)
+      withKeyStage(ks, () => {
+        const r = drawDiagram(spec, t, { x: 0, y: 0, ...ZONES.half });
+        // y11 is KS4 (and KS3 type matches): it draws there; KS2's larger type may refuse, with a
+        // reason, but never draws a crossing.
+        if (ks !== "ks2") expect(r.ok).toBe(true);
+        if (!r.ok) expect(r.reasons.length).toBeGreaterThan(0);
+        if (r.ok)
+          expect(
+            readabilityFaults(r.spec, t, { ...ZONES.half, fs: r.fs }).filter((f) =>
+              f.includes("across a line"),
+            ),
+          ).toEqual([]);
+      });
+  });
 });
