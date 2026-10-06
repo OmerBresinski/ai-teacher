@@ -270,7 +270,12 @@ function heading(c: Ctx, value: string) {
 function figurePanel(
   c: Ctx,
   f: Figure | undefined,
-  rect = { x: G.panel.x, y: G.band.y, w: G.panel.w, h: G.band.h },
+  rect: { x: number; y: number; w: number; h: number } = {
+    x: G.panel.x,
+    y: G.band.y,
+    w: G.panel.w,
+    h: G.band.h,
+  },
 ) {
   if (!f) return;
   if ("photo" in f) {
