@@ -10,6 +10,7 @@ import {
   type Db,
   insertBankImage,
   nearestBankImages,
+  rejectBankImage,
   touchBankImage,
 } from "@tj/db";
 import type { StorageAdapter } from "@tj/domain";
@@ -178,6 +179,11 @@ export function createPictureBank(opts: PictureBankOptions): PictureBank & {
       if (!best) return undefined;
       await touchBankImage(db, best.row.id);
       return photoOf(best.row);
+    },
+    async reject(photo) {
+      // FIX1: a generated picture the judge refused never comes back from the library.
+      if (!photo.src.startsWith("/files/")) return;
+      await rejectBankImage(db, photo.src.slice("/files/".length));
     },
     async remember(req, photo) {
       const t0 = Date.now();

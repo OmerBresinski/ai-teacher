@@ -128,6 +128,33 @@ describe("findPicture ladder", () => {
     aspect: 1,
   });
 
+  // FIX1 (FULL-RUN y1 s5): a generated "cow and calf" that the judge called a cat and a dog was
+  // stored on generation and handed back by the library to the next lesson, unjudged.
+  test("a generated picture the judge refuses leaves the library", async () => {
+    const { bank, calls } = fakeBank();
+    const rejected: string[] = [];
+    bank.generate = async () => {
+      calls.push("generate");
+      return {
+        ...photo(`/files/bank/gen${calls.length}.png`),
+        dataUrl: "data:image/png;base64,AA==",
+      };
+    };
+    bank.reject = async (p) => {
+      rejected.push(p.src);
+    };
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => undefined,
+      signal,
+      async () => false,
+    );
+    expect(out.photo).toBeUndefined();
+    expect(rejected.length).toBe(calls.filter((c) => c === "generate").length);
+    expect(rejected.length).toBeGreaterThan(0);
+  });
+
   test("a library hit is reused: no search, no generation", async () => {
     const { bank, calls } = fakeBank(photo("/files/bank/old.jpg"));
     let searched = false;

@@ -52,3 +52,14 @@ export async function listBankImages(db: Db, limit = 200): Promise<BankImageRow[
     .orderBy(desc(bankImages.createdAt))
     .limit(limit);
 }
+
+/**
+ * A picture the judge refused (FIX1): no longer `ready`, so `nearestBankImages` never offers it
+ * again. Found by its storage key, which is all a placed picture carries (`/files/<key>`).
+ */
+export async function rejectBankImage(db: Db, storageKey: string): Promise<void> {
+  await db
+    .update(bankImages)
+    .set({ status: "rejected" })
+    .where(eq(bankImages.storageKey, storageKey));
+}

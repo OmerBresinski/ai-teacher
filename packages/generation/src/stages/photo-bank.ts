@@ -83,6 +83,8 @@ export interface PictureBank {
     faithful: boolean,
     signal: AbortSignal,
   ): Promise<MadePicture | undefined>;
+  /** Take a generated picture the judge refused out of the library, so no lesson reuses it. */
+  reject?(photo: PlacedPhoto): Promise<void>;
 }
 
 export type BankVia = "library" | "fetched" | "generated" | "generated-faithful" | "none";
@@ -120,6 +122,7 @@ export async function findPicture(
       const made = await bank.generate(req, faithful, signal).catch(rethrowAbort);
       if (!made || req.draw || !judgeMade || !made.dataUrl) return made;
       if (await judgeMade(made).catch(rethrowAbort)) return made;
+      await bank.reject?.(made).catch(rethrowAbort);
     }
     return undefined;
   };

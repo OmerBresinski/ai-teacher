@@ -9,6 +9,7 @@ export {
   listBankImages,
   type NewBankImage,
   nearestBankImages,
+  rejectBankImage,
   touchBankImage,
 } from "./bank";
 export { type CreateDbOptions, createDb, type Db, type DbHandle, type Sql } from "./client";
