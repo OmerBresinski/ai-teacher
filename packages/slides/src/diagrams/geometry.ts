@@ -118,7 +118,7 @@ function topOf(p: PathElement): Pt {
 
 /** Every geometry fault in a drawn figure (its elements in the figure's points). */
 /** The least share of a figure's height its plot keeps. */
-export const PLOT_MIN = 0.4;
+export const PLOT_MIN = 0.6;
 
 export function figureGeometryFaults(children: SlideElement[], theme: Theme): string[] {
   const out: string[] = [];
@@ -154,42 +154,30 @@ export function figureGeometryFaults(children: SlideElement[], theme: Theme): st
       if (ox > 2 && oy > 2) out.push("two figure labels overlap");
     }
   // FIX1 (y11 s7, render2): a plot squeezed to a strip by the rows under it. The energy axis runs
-  // the plot's height; under PLOT_MIN of the figure's, the figure needs a taller or wider zone.
+  // the plot's height; under PLOT_MIN of the figure's (FIX-ENERGY: 0.6, was 0.4, which passed the
+  // y11 strip), the figure needs a taller or wider zone.
   const axis = named("Energy axis");
   if (axis) {
     const figH = Math.max(...children.map((c) => c.y + c.h));
     if (axis.h < figH * PLOT_MIN) out.push("the plot is squeezed to a strip");
   }
-  // FIX1 (y11 s7): a label laid on a profile curve (the legend once landed on the hump). The curve
-  // is sampled as the renderer draws it (a smooth path: cubic segments through its knots, control
-  // points a sixth of the neighbours' span along); a label's ink (its box less 2 pt a side and the top and bottom quarters of its line box) holds no sample.
+  // FIX1 (y11 s7): a label laid on a profile curve (the legend once landed on the hump). A label's
+  // ink (its box less 2 pt a side and the top and bottom quarters of its line box) holds no sample.
   for (const c of children)
     if (c.type === "path" && /profile/i.test(c.name ?? "")) {
-      const ps = (c as PathElement).points;
-      for (let i = 0; i < ps.length - 1; i++) {
-        const p1 = ps[i] as Pt;
-        const p2 = ps[i + 1] as Pt;
-        const p0 = (ps[i - 1] ?? p1) as Pt;
-        const p3 = (ps[i + 2] ?? p2) as Pt;
-        const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-        const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-        for (let k = 0; k <= 16; k++) {
-          const u = k / 16;
-          const m = 1 - u;
-          const bx =
-            m * m * m * p1.x + 3 * m * m * u * c1.x + 3 * m * u * u * c2.x + u * u * u * p2.x;
-          const by =
-            m * m * m * p1.y + 3 * m * m * u * c1.y + 3 * m * u * u * c2.y + u * u * u * p2.y;
-          const x = c.x + bx * c.w;
-          const y = c.y + by * c.h;
-          if (
-            texts.some(
-              (t) =>
-                x > t.x + 2 && x < t.x + t.w - 2 && y > t.y + t.h * 0.25 && y < t.y + t.h * 0.75,
-            )
+      // FIX-ENERGY: sampled as the renderer draws it (`pathSegments`: a monotone cubic for a
+      // left-to-right graph). The Catmull-Rom model used before overshot each plateau, and on a
+      // tall plot named a label hanging under the products' level as sitting on the curve.
+      const p = c as PathElement;
+      for (const q of samplePath(pathSegments(p, p.w, p.h), 24)) {
+        const x = p.x + q.x;
+        const y = p.y + q.y;
+        if (
+          texts.some(
+            (t) => x > t.x + 2 && x < t.x + t.w - 2 && y > t.y + t.h * 0.25 && y < t.y + t.h * 0.75,
           )
-            out.push("a figure label sits on a curve");
-        }
+        )
+          out.push("a figure label sits on a curve");
       }
     }
   return [...new Set(out)];

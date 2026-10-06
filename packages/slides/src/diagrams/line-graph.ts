@@ -4,6 +4,8 @@
  * heating curve's "melting"), pointed annotations ("peak discharge") and intervals between two x
  * values drawn as a labelled double arrow ("lag time").
  */
+
+import { packRows } from "./legend";
 import type { LineGraph } from "./schema";
 import { look, sub } from "./style";
 import { arrowHead, type Ctx, n, num, text, textWidth, ticks, wrap } from "./svg";
@@ -37,21 +39,14 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   // The legend runs in rows, a key that does not fit the width starting the next one (round H:
   // a third series, "Channel capacity", ran off the drawing on every narrow theme).
   const keyW = (label: string) => fs * 2.4 + textWidth(label, x, small);
-  const legendAt: { i: number; lx: number; row: number }[] = [];
-  if (legend) {
-    let lx = 0;
-    let row = 0;
-    g.series.forEach((s, i) => {
-      if (!s.label || flat(s)) return;
-      const kw = keyW(s.label);
-      if (lx > 0 && lx + kw - fs * 1.0 > w) {
-        row += 1;
-        lx = 0;
-      }
-      legendAt.push({ i, lx, row });
-      lx += kw;
-    });
-  }
+  // Packed by the shared legend plan (FIX-ENERGY); a key's width carries its trailing space, which
+  // may overhang the drawing's edge by `fs`.
+  const keyIdx = legend ? g.series.flatMap((s, i) => (s.label && !flat(s) ? [i] : [])) : [];
+  const legendAt: { i: number; lx: number; row: number }[] = packRows(
+    keyIdx.map((i) => ({ w: keyW(g.series[i]?.label ?? ""), h: fs })),
+    w + fs,
+    0,
+  ).flatMap((r, row) => r.items.map(({ i, x: lx }) => ({ i: keyIdx[i] as number, lx, row })));
   const legendH = legend ? fs * 1.8 + Math.max(0, ...legendAt.map((k) => k.row)) * fs * 1.3 : 0;
   // Intervals with no `y` get a band of their own under the legend, one row each.
   const banded = g.intervals.filter((v) => v.y === undefined);
