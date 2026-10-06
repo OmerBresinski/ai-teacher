@@ -352,6 +352,8 @@ export type PhotoResult = {
 export function pictureService(opts: {
   /** The lesson's picture style and theme palette, read when each generation starts. */
   styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] };
+  /** No library lookups (a clean A/B: every picture fetched or made for this run). */
+  noLibrary?: boolean;
   /** `generate`: every generic picture is made in the house photo look (no stock, no other looks). */
   generic?: "stock-first" | "generate";
   runDir: string;
@@ -397,27 +399,30 @@ export function pictureService(opts: {
     store: (photo: unknown, target: string) =>
       im.storePhoto({ photo, target, storage, workspaceId: WS } as never),
     searchCommons: (q: string, o: object) => commons.search({ query: q, ...o }),
-    bank: createPictureBank({
-      db: (() => {
-        const d = createDb(
-          `postgres://postgres:postgres@localhost:${opts.pgPort}/teaching_journey`,
-        ) as { unsafeDb?: unknown; db?: unknown };
-        return (d.unsafeDb ?? d.db) as never;
-      })(),
-      storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
-      embedder: im.createOpenAiEmbedder({ apiKey: okey }),
-      // The lesson's look travels on each request (LessonLook), not as a string appended here.
-      generator: gen,
-      capUsd: opts.bankCapUsd,
-      ids: () => newId(),
-      onEvent: (e: { costUsd?: number }) => {
-        opts.ledger.add("pictures", e.costUsd ?? 0);
-        appendFileSync(
-          `${opts.runDir}/pictures.bank.jsonl`,
-          `${JSON.stringify({ t: Date.now(), ...e })}\n`,
-        );
-      },
-    } as never),
+    bank: withoutLibrary(
+      createPictureBank({
+        db: (() => {
+          const d = createDb(
+            `postgres://postgres:postgres@localhost:${opts.pgPort}/teaching_journey`,
+          ) as { unsafeDb?: unknown; db?: unknown };
+          return (d.unsafeDb ?? d.db) as never;
+        })(),
+        storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
+        embedder: im.createOpenAiEmbedder({ apiKey: okey }),
+        // The lesson's look travels on each request (LessonLook), not as a string appended here.
+        generator: gen,
+        capUsd: opts.bankCapUsd,
+        ids: () => newId(),
+        onEvent: (e: { costUsd?: number }) => {
+          opts.ledger.add("pictures", e.costUsd ?? 0);
+          appendFileSync(
+            `${opts.runDir}/pictures.bank.jsonl`,
+            `${JSON.stringify({ t: Date.now(), ...e })}\n`,
+          );
+        },
+      } as never),
+      opts.noLibrary,
+    ),
   };
   const logger = pino(
     { level: "info" },
@@ -1014,4 +1019,12 @@ export function setPanelResults(
       ...(subjects ? { subjects } : {}),
     } as PhotoResult;
   });
+}
+
+/** The bank with lookups switched off (`noLibrary`): every request misses the library. */
+function withoutLibrary<B extends { lookup: (...a: never[]) => Promise<unknown> }>(
+  b: B,
+  off?: boolean,
+): B {
+  return off ? { ...b, lookup: async () => undefined } : b;
 }

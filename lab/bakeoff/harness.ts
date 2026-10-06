@@ -219,6 +219,8 @@ export type RunOpts = {
   freshSlides?: number[];
   /** `generate`: every generic picture made in the house photo look (side-by-side B). */
   generic?: "stock-first" | "generate";
+  /** No picture-library lookups. */
+  noLibrary?: boolean;
   /** Skip the notes calls. */
   noNotes?: boolean;
   /** Skip the repair pass. */
@@ -330,6 +332,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           ledger,
           bankCapUsd: o.bankCapUsd ?? 0.06,
           ...(o.generic ? { generic: o.generic } : {}),
+          ...(o.noLibrary ? { noLibrary: true } : {}),
           styleOf: () => ({
             style: plan.design?.picture_style,
             palette: [

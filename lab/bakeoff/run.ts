@@ -53,6 +53,7 @@ for (const id of briefs) {
     noVisuals: flag("--no-visuals"),
     ...(opt("--reuse-visuals") ? { reuseVisuals: opt("--reuse-visuals") } : {}),
     ...(opt("--generic") === "generate" ? { generic: "generate" as const } : {}),
+    ...(flag("--no-library") ? { noLibrary: true } : {}),
     ...(opt("--fresh-slides")
       ? { freshSlides: String(opt("--fresh-slides")).split(",").map(Number) }
       : {}),
