@@ -78,7 +78,12 @@ export type Verdict = { ok: true } | { ok: false; why: string[] };
  * - no sentence is split across separate cards or columns (y10 s10);
  * - no words are lost: the original's words are in the new slide or in `to_notes` (90 %).
  */
-export function judgeRepair(before: S, after: S, toNotes: string[] = []): Verdict {
+export function judgeRepair(
+  before: S,
+  after: S,
+  toNotes: string[] = [],
+  opts: { diagramFault?: boolean } = {},
+): Verdict {
   const why: string[] = [];
   if (NEVER.has(String(after.template))) why.push(`became a ${after.template} slide`);
   for (const s of textSlots(after)) if (!s.text.trim()) why.push(`empty slot ${s.path}`);
@@ -88,9 +93,23 @@ export function judgeRepair(before: S, after: S, toNotes: string[] = []): Verdic
   // One to one: two pictures merged into one new request lose one of them.
   const free = [...now];
   for (const f of was) {
-    const k = free.findIndex((g) => sameFigure(f, g));
+    // A `diagram` fault asks for the diagram to be rewritten (R2 y11 s5 and s10 were rejected as
+    // "lost the diagram" for re-wording it): any diagram in its place keeps it.
+    const k = free.findIndex(
+      (g) =>
+        sameFigure(f, g) || (opts.diagramFault && f.type === "diagram" && g.type === "diagram"),
+    );
     if (k < 0) why.push(`lost the ${f.type} "${f.shows.slice(0, 40)}"`);
     else free.splice(k, 1);
+  }
+  // Cards and sequence steps carry a picture each or none (round 2 y9 s6: a compare with a picture
+  // in card 1 only). The harness fetches every picture a slide asks for; it cannot invent the rest.
+  for (const key of ["columns", "sequence"]) {
+    const cards = after[key];
+    if (!Array.isArray(cards) || cards.length < 2) continue;
+    const withPic = cards.filter((c) => isFigure((c as S | null)?.picture) || isFigure(c)).length;
+    if (withPic > 0 && withPic < cards.length)
+      why.push(`${withPic} of ${cards.length} ${key} have a picture (all or none)`);
   }
   for (const key of ["columns", "sequence"]) {
     const cols = after[key];

@@ -173,3 +173,107 @@ describe("round 2 cap guard", () => {
     expect(ledger.committed).toBe(0);
   });
 });
+
+describe("round 3: uneven compare pictures (y9 s6)", () => {
+  const input = {
+    template: "visual-text",
+    heading: "Prices raced ahead of money",
+    lead: "Hyperinflation means extremely rapid price rises: the same money buys less and less.",
+    points: [
+      { label: "Workers", text: "Wages could lose value before workers spent them." },
+      { label: "Savers", text: "Savings in marks lost most of their buying power." },
+    ],
+    figure: {
+      shows: "an authentic photograph of people counting German paper marks in 1923",
+      must_see: [],
+      subject: "named",
+    },
+  };
+  const out = {
+    template: "compare",
+    heading: "Prices raced ahead of money",
+    columns: [
+      { label: "Hyperinflation", text: input.lead, picture: input.figure },
+      {
+        label: "Workers",
+        text: "Wages could lose value before workers spent them.",
+        picture: null,
+      },
+      { label: "Savers", text: "Savings in marks lost most of their buying power.", picture: null },
+    ],
+  };
+  test("a compare with a picture in some cards only is rejected", () => {
+    const v = judgeRepair(input, out);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.why.join(" ")).toContain("1 of 3 columns have a picture");
+  });
+});
+
+describe("round 3: title and objectives are structural", () => {
+  test("title -> slide 1, objectives -> slide 2, slides[i] -> slide i+3, streamed", async () => {
+    const { PartialJson } = await import("./partial");
+    const { slideIndexer } = await import("./harness");
+    const at = slideIndexer();
+    const got: [number, string][] = [];
+    const p = new PartialJson((path, v) => {
+      const i = at(path, v);
+      if (i !== undefined) got.push([i, String((v as { template?: string }).template)]);
+    });
+    const text = JSON.stringify({
+      design: { theme: "chalk", picture_style: "photo" },
+      flow: [{ slide: 1, does: "t", look_at: { kind: "none", shows: null } }],
+      title: { template: "title", heading: "Fractions", lead: "x", picture: null },
+      objectives: { template: "objectives" },
+      slides: [{ template: "explain", heading: "a", lead: "b", points: [] }, { template: "hinge" }],
+    });
+    for (let k = 0; k < text.length; k += 17) p.push(text.slice(k, k + 17));
+    expect(got).toEqual([
+      [0, "title"],
+      [1, "objectives"],
+      [2, "explain"],
+      [3, "hinge"],
+    ]);
+  });
+  test("an older stream with every slide in slides keeps its indices", () => {
+    const { slideIndexer } = require("./harness");
+    const at = slideIndexer();
+    expect(at(["objectives"], [{ teacher: "a", pupil: "b" }])).toBeUndefined();
+    expect(at(["slides", 0], { template: "title" })).toBe(0);
+    expect(at(["slides", 4], { template: "explain" })).toBe(4);
+  });
+});
+
+describe("round 3: a diagram fault may rewrite the diagram (y11 s5)", () => {
+  const before = {
+    template: "visual-text",
+    heading: "Increasing concentration",
+    lead: "A more concentrated solution contains more reactant particles per unit volume.",
+    points: [
+      "Reactant particles collide more often.",
+      "There are more successful collisions per second.",
+    ],
+    figure: {
+      kind: "particles",
+      shows:
+        "Equal-sized solution panels with fewer and more dissolved reactant particles, using equal-length motion arrows",
+      labels: ["Other particles"],
+    },
+  };
+  const after = {
+    ...before,
+    figure: {
+      kind: "particles",
+      shows:
+        "Two equal-sized panels: fewer reactant particles at low concentration, more at high concentration",
+      labels: ["Low", "High"],
+    },
+  };
+  test("rejected without the diagram fault, accepted with it", () => {
+    expect(judgeRepair(before, after).ok).toBe(false);
+    expect(judgeRepair(before, after, [], { diagramFault: true }).ok).toBe(true);
+  });
+  test("a diagram fault still may not drop the diagram", () => {
+    const { figure: _, ...noFig } = after;
+    expect(judgeRepair(before, noFig, [], { diagramFault: true }).ok).toBe(false);
+  });
+});

@@ -152,6 +152,8 @@ export type ChatReq = {
   strict?: boolean;
   /** Output cap (reasoning included): bounds the cost of a runaway call. */
   maxTokens?: number;
+  /** Deadline for one attempt (non-streamed calls), default CHAT_TIMEOUT_MS. */
+  timeoutMs?: number;
 };
 const body = (r: ChatReq, stream: boolean) => ({
   model: r.model,
@@ -168,19 +170,27 @@ const body = (r: ChatReq, stream: boolean) => ({
   ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
 });
 
+/** A non-streamed structured call's deadline (the slowest healthy luna call seen was ~15 s). */
+export const CHAT_TIMEOUT_MS = 40_000;
+
 /** One structured call; returns the parsed output, usage and cost. */
 export async function chat(
   r: ChatReq,
 ): Promise<{ out: unknown; text: string; usage: Usage; usd: number; ms: number }> {
   const t0 = performance.now();
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key(".dayback-openai-key")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body(r, false)),
-  });
+  // Round 3 (R2 y10: eleven notes calls hung ~80 s, then the socket closed): every call has a
+  // deadline; a timed-out or dropped call is tried once more before it fails.
+  const once = () =>
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key(".dayback-openai-key")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body(r, false)),
+      signal: AbortSignal.timeout(r.timeoutMs ?? CHAT_TIMEOUT_MS),
+    });
+  const res = await once().catch(() => once());
   const j = (await res.json()) as {
     choices?: { message: { content: string } }[];
     usage: Usage;

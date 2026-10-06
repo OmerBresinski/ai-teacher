@@ -307,26 +307,39 @@ export async function inlineThumbnails(
   agent: string,
   signal?: AbortSignal,
 ): Promise<CommonsPhoto[]> {
-  const out: CommonsPhoto[] = [];
-  for (const photo of photos) {
-    if (out.length >= limit) break;
+  // BAKEOFF round 3 profile: thumbnails were fetched one after another inside the one-at-a-time
+  // API queue, so four Commons searches took 85-140 s end to end (y9 R2: last picture at 154 s).
+  // Now a few thumbnails download at once, each with its own deadline, outside the API queue
+  // (upload.wikimedia.org is not the API), and the first `limit` that load are kept in order.
+  const one = async (photo: CommonsPhoto): Promise<CommonsPhoto | undefined> => {
+    const timeout = AbortSignal.timeout(THUMB_TIMEOUT_MS);
     try {
       const res = await fetchFn(photo.src.tiny, {
         headers: { "User-Agent": agent },
-        ...(signal ? { signal } : {}),
+        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       });
       const type = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
-      if (!res.ok || !/^image\/(jpeg|webp|png)$/.test(type)) continue;
+      if (!res.ok || !/^image\/(jpeg|webp|png)$/.test(type)) return undefined;
       const bytes = new Uint8Array(await res.arrayBuffer());
-      if (bytes.length === 0 || bytes.length > MAX_THUMB_BYTES) continue;
+      if (bytes.length === 0 || bytes.length > MAX_THUMB_BYTES) return undefined;
       const tiny = `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
-      out.push({ ...photo, src: { ...photo.src, tiny } });
+      return { ...photo, src: { ...photo.src, tiny } };
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") throw error;
+      if (signal?.aborted) throw error;
+      return undefined;
     }
+  };
+  const out: CommonsPhoto[] = [];
+  for (let k = 0; k < photos.length && out.length < limit; k += THUMB_CONCURRENCY) {
+    const got = await Promise.all(photos.slice(k, k + THUMB_CONCURRENCY).map(one));
+    for (const p of got) if (p && out.length < limit) out.push(p);
   }
   return out;
 }
+/** Thumbnails fetched at once, and one thumbnail's deadline. */
+const THUMB_CONCURRENCY = 4;
+const THUMB_TIMEOUT_MS = 6_000;
+const SEARCH_TIMEOUT_MS = 20_000;
 
 export interface CommonsClient {
   search(params: CommonsSearchParams): Promise<CommonsPhoto[]>;
@@ -382,16 +395,17 @@ export function createCommonsClient(
           "iiextmetadatafilter",
           "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
         );
+        // A deadline on the API call too: a stalled request held the whole queue (round 3 profile).
+        const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
         const res = await fetchFn(url.toString(), {
           headers: { "User-Agent": agent, "Api-User-Agent": agent },
-          ...(signal ? { signal } : {}),
+          signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         });
         if (!res.ok) throw new CommonsError(res.status, `Commons search failed (${res.status})`);
-        const photos = commonsPhotosOf(await res.json(), {
+        return commonsPhotosOf(await res.json(), {
           allowDrawings: allowDrawings || diagrams,
           ...(diagrams ? { diagrams } : {}),
         });
-        return inlineThumbnails(photos, inline, fetchFn, agent, signal);
-      }),
+      }).then((photos) => inlineThumbnails(photos, inline, fetchFn, agent, signal)),
   };
 }

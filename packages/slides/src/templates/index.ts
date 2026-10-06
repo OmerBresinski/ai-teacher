@@ -928,7 +928,9 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const cols = input.columns ?? [];
         const gap = 24;
         const colW = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
-        const pics = cols.some((col) => col.figure);
+        // Every card has its picture or none does (round 2 y9 s6: one picture over three cards left
+        // two blank picture bands). Cards without a picture for every column are text cards.
+        const pics = cols.length > 0 && cols.every((col) => col.figure);
         if (pics) {
           // Picture first (Greg 6 Oct): equal columns across the content width from the heading's
           // left edge; each card is a 4:3 picture band at the card's full inner width, then the label

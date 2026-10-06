@@ -222,3 +222,22 @@ describe("round 2: title, hinge and compare fit", () => {
     for (const e of r.slide.elements) expect(e.y + e.h).toBeLessThanOrEqual(500);
   });
 });
+
+describe("round 3: compare pictures all or none", () => {
+  test("one picture over three cards draws text cards, no blank picture bands", () => {
+    const r = layoutTemplate(
+      {
+        template: "compare",
+        heading: "Prices",
+        columns: [
+          { label: "A", text: "One.", figure: { photo: "/x.jpg", aspect: 1.3 } },
+          { label: "B", text: "Two." },
+          { label: "C", text: "Three." },
+        ],
+      },
+      getTheme("studio"),
+      "ks3",
+    );
+    expect(r.slide.elements.some((e) => e.type === "image")).toBe(false);
+  });
+});

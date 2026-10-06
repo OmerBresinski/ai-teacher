@@ -455,13 +455,15 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   };
 
   // ── b. the streamed planning call ──
+  const slideIndexOf = slideIndexer();
   const onValue = (path: Path, v: unknown) => {
-    const [top, idx] = path;
+    const [top] = path;
+    const idx = slideIndexOf(path, v);
     if (top === "design" && path.length === 1) {
       plan.design = v as Design;
       applyDesign();
     }
-    if (top === "objectives" && path.length === 1 && !twoPhase) {
+    if (top === "objectives" && path.length === 1 && Array.isArray(v) && !twoPhase) {
       plan.objectives = v as Plan["objectives"];
       // The picture stock path judges photos against the lesson's objectives (illustrate.ts).
       lessonInfo.base = {
@@ -505,7 +507,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       mark("flow");
       log({ ev: "flow", n: plan.flow?.length });
     }
-    if (top === "slides" && path.length === 2 && typeof idx === "number") {
+    if (idx !== undefined) {
       const s = v as Record<string, unknown>;
       plan.slides[idx] = s;
       const as = withKeyStage(brief.keyStage, () => arm.visuals(s, idx, { ...base, plan }));
@@ -954,7 +956,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(
             String,
           );
-          const verdict = judgeRepair(before, o2.slide, moved);
+          const verdict = judgeRepair(before, o2.slide, moved, {
+            diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
+          });
           if (!verdict.ok) {
             log({
               ev: "repair-rejected",
@@ -984,14 +988,16 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   }
   // A diagram that still cannot draw: a picture of the same thing when it is a real, concrete
   // thing (the picture director, the diagram's `shows` as the request); else words only.
-  for (let i = 0; i < n; i++) {
+  // Round 3 profile (R2 y11: checks at 51 s, done at 100 s): the slides' fallbacks ran one after
+  // another; they run side by side now.
+  const fallback = async (i: number) => {
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
       | Extract<VisualAsk, { type: "diagram" }>
       | undefined;
-    if (!dAsk || path.has(i)) continue;
+    if (!dAsk || path.has(i)) return;
     if (!laid.get(i)?.diagram?.length && visuals.get(`${i}:${dAsk.key}`)?.status === "diagram") {
       path.set(i, "diagram");
-      continue;
+      return;
     }
     const s = plan.slides[i] as Record<string, unknown>;
     const pic = concrete(dAsk.kind, dAsk.shows) ? arm.asPicture?.(s) : undefined;
@@ -1001,12 +1007,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       const got = (asks.get(i) ?? []).some((a) => visuals.get(`${i}:${a.key}`)?.status === "photo");
       if (got) {
         path.set(i, "picture");
-        continue;
+        return;
       }
       restore(i, s, n0, saved);
     }
     path.set(i, "words");
-  }
+  };
+  await Promise.all(Array.from({ length: n }, (_, i) => fallback(i)));
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
   checks = check();
   // Teaching slides left with no picture or diagram (round 2 summary).
@@ -1082,6 +1089,27 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   });
   writeJson(`${o.outDir}/checks.json`, { count, summary, slides: checks });
   return { lessonFile, timings, cost: { ...cost, total }, checks };
+}
+
+/**
+ * Round 3: which lesson slide a streamed value is. The T schema (prompts/T/make_schema.py) makes
+ * slide 1 and 2 structural: top-level `title` and `objectives` objects, then `slides` = slide 3 on.
+ * Older schemas (and K/R) put every slide in `slides`. The two layouts are told apart by the
+ * stream itself: a top-level `title` object switches the offset on.
+ */
+export function slideIndexer() {
+  let split = false;
+  return (path: Path, v: unknown): number | undefined => {
+    const isSlide = !!v && typeof v === "object" && !Array.isArray(v);
+    if (path.length === 1 && path[0] === "title" && isSlide) {
+      split = true;
+      return 0;
+    }
+    if (path.length === 1 && path[0] === "objectives" && isSlide) return 1;
+    if (path.length === 2 && path[0] === "slides" && typeof path[1] === "number")
+      return path[1] + (split ? 2 : 0);
+    return undefined;
+  };
 }
 
 /** Render helper for plugins: a diagram spec's SVG at a size, at the stage's type scale. */
