@@ -330,7 +330,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           runDir: o.outDir,
           pgPort: o.pgPort,
           ledger,
-          bankCapUsd: o.bankCapUsd ?? 0.06,
+          // Room for every picture plus its one regeneration, with parallel reservations (y1 run4: at
+          // $0.02-0.035 the guard refused 5 slots before any judge saw them).
+          bankCapUsd: o.bankCapUsd ?? 0.15,
           ...(o.generic ? { generic: o.generic } : {}),
           ...(o.noLibrary ? { noLibrary: true } : {}),
           styleOf: () => ({
