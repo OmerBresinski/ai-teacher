@@ -3,18 +3,28 @@ import type { BarModel } from "./schema";
 import { look, WEIGHT } from "./style";
 import { type Ctx, hBrace, n, text, textWidth, vBrace } from "./svg";
 
+/** The widest a row's name may be, as a share of the drawing, beside its bar. */
+const LABEL_SIDE_MAX = 0.2;
+/** The tallest a bar is drawn, in label heights. */
+const BAR_H_MAX = 5;
+
 export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
   const gap = fs * 0.6;
   const labelW = Math.max(0, ...s.bars.map((b) => (b.label ? textWidth(b.label, x, fs, 600) : 0)));
-  const left = labelW > 0 ? labelW + gap : 0;
+  // FIX1: a row name wider than a fifth of the drawing stands over its bar, so the bars keep the
+  // drawing's width (y5's "Counters" took a third of a half zone and the bars were a narrow strip).
+  const above = labelW > w * LABEL_SIDE_MAX;
+  const left = labelW > 0 && !above ? labelW + gap : 0;
+  const nameH = above ? fs * 1.5 : 0;
   const right = s.combined ? fs * 1.2 + gap + textWidth(s.combined, x, fs, 600) : 0;
   const barW = w - left - right - 4;
-  const braceH = fs * 2.4;
+  const braceH = fs * 2.8;
   const rowGap = fs * 0.9;
-  const tops = s.bars.map((b) => (b.total ? braceH : 0));
+  const tops = s.bars.map((b) => (b.total ? braceH : 0) + (b.label ? nameH : 0));
   const room = h - tops.reduce((a, b) => a + b, 0) - rowGap * (s.bars.length - 1);
-  const barH = Math.max(fs * 1.8, Math.min(fs * 3.4, room / s.bars.length));
+  // As tall as the room allows, to BAR_H_MAX label heights: a bar model is read as blocks, not a strip.
+  const barH = Math.max(fs * 1.8, Math.min(fs * BAR_H_MAX, room / s.bars.length));
   const used =
     tops.reduce((a, b) => a + b, 0) + barH * s.bars.length + rowGap * (s.bars.length - 1);
   const scale = Math.max(...s.bars.map((b) => b.parts.reduce((a, p) => a + p.value, 0)));
@@ -27,7 +37,15 @@ export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string 
   s.bars.forEach((b, i) => {
     y += tops[i] ?? 0;
     if (i === 0) firstTop = y;
-    if (b.label) {
+    if (b.label && above) {
+      out.push(
+        text(x, x0, y - (b.total ? braceH : 0) - fs * 0.6, [b.label], {
+          anchor: "start",
+          weight: WEIGHT.name,
+          v: "bottom",
+        }),
+      );
+    } else if (b.label) {
       out.push(
         text(x, left - gap, y + barH / 2, [b.label], { anchor: "end", weight: WEIGHT.name }),
       );

@@ -23,7 +23,7 @@ const OVER_HALF: Record<string, string[]> = {
   "timeline-seven": ["403x336"],
   "cycle-five": ["403x336", "490x245"],
   "river-meander-section": ["403x378"],
-  "bar-model-ratio": ["490x245"],
+  // FIX1: bar-model-ratio now draws clean in 490x245 too (row names over the bars).
 };
 const FULL = { w: 844, h: 370 };
 

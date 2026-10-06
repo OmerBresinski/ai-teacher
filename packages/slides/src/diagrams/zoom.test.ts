@@ -46,4 +46,19 @@ describe("diagram zoom", () => {
       ),
     ).toBe(1);
   });
+  for (const t of THEMES)
+    test(`the y5 bar model spans most of its zone, as blocks not a strip (${t.id})`, () => {
+      const el = diagramElement(BAR, t, HALF);
+      const svg = decodeURIComponent(el?.src ?? "");
+      const vb = (svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/) ?? []).slice(1).map(Number);
+      const k = HALF.w / (vb[0] as number);
+      const rects = [
+        ...svg.matchAll(/<rect x="([\d.-]+)" y="([\d.-]+)" width="([\d.]+)" height="([\d.]+)"/g),
+      ].map((m) => m.slice(1).map(Number));
+      const x0 = Math.min(...rects.map((r) => r[0] as number));
+      const x1 = Math.max(...rects.map((r) => (r[0] as number) + (r[2] as number)));
+      const barH = Math.max(...rects.map((r) => r[3] as number));
+      expect((x1 - x0) * k).toBeGreaterThan(HALF.w * 0.8);
+      expect(barH * k).toBeGreaterThan(HALF.h * 0.25);
+    });
 });
