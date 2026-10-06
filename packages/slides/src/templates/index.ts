@@ -675,67 +675,44 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const colW = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
         const pics = cols.some((col) => col.figure);
         if (pics) {
-          // Picture first (Greg 6 Oct, fit2): each card is a picture band of about 4:3 taking most
-          // of the band's height, the label and a short line under it. The card is as wide as its
-          // picture, so the cards sit centred as a group rather than stretching the picture flat.
-          const pad = 12;
-          const wordsAt = (w: number) =>
-            Math.max(
-              ...cols.map(
-                (col) =>
-                  measure(c, col.label, "lead", w - 2 * pad, 700) +
-                  (col.text ? 6 + measure(c, col.text, "body", w - 2 * pad) : 0),
-              ),
-              0,
-            );
-          // The widest card whose picture is a full 4:3 above its words.
-          // Picture cards may use the gap under a one-line heading and the band's foot, so a KS1
-          // card still has a 4:3 picture over a label and a line.
-          const top = Math.max(G.band.y - 40, Math.round(head.y + head.h + 20));
-          const bottom = G.band.y + G.band.h + 24;
-          const avail = bottom - top - 2 * pad - 10;
-          let cardW = colW;
-          let best = { w: colW, area: -1 };
-          for (let w = colW; w >= 200; w -= 4) {
-            const room = avail - wordsAt(w);
-            const want = Math.round((w - 2 * pad) * 0.75);
-            if (room >= want) {
-              cardW = w;
-              best = { w, area: Number.POSITIVE_INFINITY };
-              break;
-            }
-            // Else the biggest picture whose band stays near 4:3 (at most 1.6:1, so a 3:2 photo
-            // still covers it); a wider band only when no width gives one.
-            const ph = Math.min(room, want);
-            const near = ph > 0 && (w - 2 * pad) / ph <= 1.6;
-            const area = (w - 2 * pad) * ph + (near ? 1e7 : 0);
-            if (area > best.area) best = { w, area };
-          }
-          if (best.area !== Number.POSITIVE_INFINITY) cardW = best.w;
-          const words = wordsAt(cardW);
-          const picH = Math.min(Math.round((cardW - 2 * pad) * 0.75), avail - words);
-          const mid = Math.round((top + bottom) / 2);
-          if (picH < 120) c.over.push(`compare photos ${picH}pt tall`);
-          const total = cardW * cols.length + gap * (cols.length - 1);
-          const x0 = G.margin + Math.round((G.width - total) / 2);
-          const h = Math.max(picH, 120) + 2 * pad + 10 + words;
-          const y = Math.max(top, Math.round(mid - h / 2));
-          if (y + h > bottom) c.over.push(`compare ${h}/${bottom - top}pt`);
+          // Picture first (Greg 6 Oct): equal columns across the content width from the heading's
+          // left edge; each card is a 4:3 picture band at the card's full inner width, then the label
+          // and a short line. Words wrap inside the card and never change its width; words too long
+          // for the full 4:3 band are a fault (the band shrinks only to keep the card on the slide).
+          const pad = 10;
+          const top = Math.max(G.band.y - 48, Math.round(head.y + head.h + 12));
+          const bottom = G.band.y + G.band.h + 32;
+          const iw = colW - 2 * pad;
+          const words = Math.max(
+            ...cols.map(
+              (col) =>
+                measure(c, col.label, "lead", iw, 700) +
+                (col.text ? 4 + measure(c, col.text, "body", iw) : 0),
+            ),
+            0,
+          );
+          const full = Math.round(iw * 0.75);
+          const picH = Math.min(full, bottom - top - 2 * pad - 8 - words);
+          if (picH < Math.floor(full * 0.96))
+            c.over.push(`compare picture ${picH}/${full}pt (under 4:3)`);
+          const bh = Math.max(picH, 60);
+          const h = bh + 2 * pad + 8 + words;
+          const y = Math.max(top, Math.round((top + bottom) / 2 - h / 2));
           cols.forEach((col, k) => {
-            const x = x0 + k * (cardW + gap);
-            box(c, { x, y, w: cardW, h }, theme.colors.surface, {
+            const x = G.margin + k * (colW + gap);
+            box(c, { x, y, w: colW, h }, theme.colors.surface, {
               stroke: theme.colors.line,
               strokeWidth: 1,
               radius: Math.min(theme.radius, 16),
             });
-            const band = { x: x + pad, y: y + pad, w: cardW - 2 * pad, h: Math.max(picH, 120) };
+            const band = { x: x + pad, y: y + pad, w: iw, h: bh };
             if (col.figure && "photo" in col.figure) photoBox(c, col.figure, band);
             else if (col.figure) figurePanel(c, col.figure, band);
             const lab = text(
               c,
               col.label,
               "lead",
-              { x: x + pad, y: band.y + band.h + 10, w: cardW - 2 * pad },
+              { x: x + pad, y: band.y + band.h + 8, w: iw },
               { color: theme.colors.accent, weight: 700, name: "Label" },
             );
             if (col.text)
@@ -743,7 +720,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
                 c,
                 col.text,
                 "body",
-                { x: x + pad, y: lab.y + lab.h + 6, w: cardW - 2 * pad },
+                { x: x + pad, y: lab.y + lab.h + 4, w: iw },
                 { color: theme.colors.ink, name: "Text" },
               );
           });
