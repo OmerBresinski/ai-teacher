@@ -70,13 +70,13 @@ import { withUsage } from "../stages/generate";
 import { judgeMade, pickPhoto, plainSubject, withPhoto } from "../stages/illustrate";
 import { mustShowOf, photoBankOn } from "../stages/photo-bank";
 import { findDirected, type SlideForPicture } from "../stages/picture-director";
-
 import { audienceOf, planClassFor } from "../stages/shared";
 import type { PipelineDeps, PipelineState, T3Report } from "../types";
 import { DiagramSpecSchema } from "./diagram-spec";
 import { ASKED_FORMS, fitLadder, fitWritten, renderWritten, type Written, withSetTag } from "./fit";
 import { isSetForm } from "./menu";
 import { broadenedBrief, NO_PICTURE_ROW, noPictureOf } from "./slide-check";
+import { dataUrlAspect, titleVariantFor } from "./title-photo";
 
 /** What the picture director reads of a written slide: its heading, words and notes. */
 function slideForPicture(s: {
@@ -1947,6 +1947,8 @@ async function simpleLessonSlidesAtStage(
   };
 
   const slides: Slide[] = [];
+  const titleFits = () =>
+    PICTURE_ORDER.filter((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok);
   const pv = w.titlePicture
     ? PICTURE_ORDER.find((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok)
     : undefined;
@@ -1956,6 +1958,10 @@ async function simpleLessonSlidesAtStage(
   if (titleDrawn) title = titleDrawn;
   else if (pv && tp?.photo && deps.images) {
     const photo = await find(0, briefOf(tp.photo));
+    const v = photo
+      ? titleVariantFor(titleSpec, themeId, titleFits(), dataUrlAspect(photo.evidence?.thumbnail))
+      : undefined;
+    if (v && v !== pv) title = materialiseSlide(titleSpec, themeId, meta(), deps.ids, v);
     title = photo ? placeIn(title, photo) : bareTitle();
   }
   slides.push({ ...title, id: title0.id });
@@ -2264,6 +2270,8 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
   deck[1] = shown?.kind === "objectives" ? { ...objectivesSlide, id: shown.id } : objectivesSlide;
   void save(() => mark("title"));
   let titleAsked = false;
+  const titleFits = () =>
+    PICTURE_ORDER.filter((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok);
   const startTitle = (p: { subject?: string; named?: string | null } | null | undefined) => {
     titleAsked = true;
     const pv = PICTURE_ORDER.find((v) => fitsPlanned(titleSpec, { variant: v, stepDown: 0 }).ok);
@@ -2278,8 +2286,15 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
     photos.push(
       find(0, pic, { subject: p.subject, named: p.named ?? null }).then((photo) => {
         if (!photo) return;
+        // FIX1: the composition whose visible photo area is nearest the photo's own shape.
+        const v = titleVariantFor(
+          titleSpec,
+          themeId,
+          titleFits(),
+          dataUrlAspect(photo.evidence?.thumbnail),
+        );
         deck[0] = {
-          ...placeIn(materialiseSlide(titleSpec, themeId, meta(), deps.ids, pv), photo),
+          ...placeIn(materialiseSlide(titleSpec, themeId, meta(), deps.ids, v ?? pv), photo),
           id: title0.id,
         };
         mark("lastPicture");
