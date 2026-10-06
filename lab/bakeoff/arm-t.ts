@@ -253,6 +253,39 @@ export const armT: ArmPlugin = {
     const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
     return { slide: r.slide, over: r.over };
   },
+  placeholder(f, ctx) {
+    // Provisional from the flow entry alone: its job as the heading, the layout shape its
+    // look_at implies, picture slots open (their pictures are already being found).
+    const slot = { photo: PLACEHOLDER_IMAGE, alt: f.look_at?.shows ?? "" };
+    const heading = f.does;
+    const kind = f.look_at?.kind;
+    const input: TemplateInput =
+      kind === "picture"
+        ? { template: "picture-text", heading, figure: slot }
+        : kind === "picture-sequence"
+          ? {
+              template: "picture-sequence",
+              heading,
+              sequence: [0, 1, 2].map(() => ({ caption: "", figure: slot })),
+            }
+          : kind === "diagram"
+            ? {
+                template: "diagram-text",
+                heading,
+                figure: { ...slot, alt: `Diagram: ${f.look_at?.shows ?? ""}` },
+              }
+            : { template: "explain", heading, lead: "" };
+    const r = layoutTemplate(input, ctx.theme, ctx.stage);
+    return { slide: r.slide, over: [] };
+  },
+  codeObjectives(ctx) {
+    const r = layoutTemplate(
+      toInput({ template: "objectives" }, { ...ctx, visual: () => ({ status: "pending" }) }),
+      ctx.theme,
+      ctx.stage,
+    );
+    return { slide: r.slide, over: r.over };
+  },
   codeTitle(brief, ctx) {
     const r = layoutTemplate(
       { template: "title", heading: brief.topic, lead: `${brief.yearGroup} ${brief.subject}` },

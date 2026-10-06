@@ -1,6 +1,6 @@
 // BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
 // with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Writable } from "node:stream";
@@ -235,6 +235,8 @@ export type PhotoAsk = {
   named: boolean;
   /** The slot's width / height: stock search prefers it, the director and generation frame for it. */
   aspect?: number;
+  /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
+  style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
   index: number;
 };
@@ -253,6 +255,8 @@ export type PhotoResult = {
 
 /** The picture services for one run; `costs` collects bank and director spend. */
 export function pictureService(opts: {
+  /** The lesson's picture style and theme palette, read when each generation starts. */
+  styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] };
   runDir: string;
   pgPort: number;
   ledger: Ledger;
@@ -300,10 +304,13 @@ export function pictureService(opts: {
       })(),
       storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
       embedder: im.createOpenAiEmbedder({ apiKey: okey }),
-      generator: guardedGenerator(
-        im.createOpenAiImageGenerator({ apiKey: okey }),
-        () => opts.ledger.parts.pictures ?? 0,
-        opts.bankCapUsd,
+      generator: styledGenerator(
+        guardedGenerator(
+          im.createOpenAiImageGenerator({ apiKey: okey }),
+          () => opts.ledger.parts.pictures ?? 0,
+          opts.bankCapUsd,
+        ),
+        opts.styleOf,
       ),
       capUsd: opts.bankCapUsd,
       ids: () => newId(),
@@ -372,7 +379,11 @@ export function pictureService(opts: {
       pickPhoto(pickerLesson(lesson, ask.index, x) as never, ask.index, deps as never).catch(
         () => ({ outcome: "empty" }),
       );
+    // Illustration lessons: generic pictures are generated in the lesson's style (no stock photos);
+    // named real things still come from Commons and Pexels (ruling 163 unchanged).
+    const illustrated = ask.style === "illustration" && !ask.named;
     const stock = async (first: unknown) => {
+      if (illustrated) return undefined;
       const r = (await at(first)) as { outcome: string; photo?: unknown };
       return r.outcome === "placed" ? r.photo : undefined;
     };
@@ -463,6 +474,32 @@ export function pickerLesson(l: PickerLessonInfo, index: number, imageBrief?: un
             }
           : { id: `s${i + 1}`, kind: "content", factRefs: [] },
       ),
+    },
+  };
+}
+
+/**
+ * One locked illustration style per lesson (Greg 6 Oct): when the lesson's picture style is
+ * "illustration", every generation's prompt gets the prompt agent's style line
+ * (prompts/shared/illustration-style.txt, {{palette}} = the theme's colours), the same on every
+ * call. No file yet: prompts pass through unchanged and the run logs it. A reference image per
+ * lesson (the first generation, sent with the rest) needs the image edits endpoint: not wired yet.
+ */
+export function styledGenerator<G extends { generate: (a: never) => Promise<unknown> }>(
+  g: G,
+  styleOf?: () => { style?: "photo" | "illustration"; palette?: string[] },
+): G {
+  const file = `${BAKEOFF}/prompts/shared/illustration-style.txt`;
+  return {
+    ...g,
+    generate: (a: never) => {
+      const st = styleOf?.();
+      const arg = a as { prompt?: string };
+      if (st?.style !== "illustration" || !arg.prompt || !existsSync(file)) return g.generate(a);
+      const line = readFileSync(file, "utf8")
+        .trim()
+        .replace("{{palette}}", (st.palette ?? []).join(", "));
+      return g.generate({ ...arg, prompt: `${arg.prompt}\n\n${line}` } as never);
     },
   };
 }

@@ -320,3 +320,88 @@ describe("PICTURE-FIT: pictures fit their slots without cutting the subject", ()
     ).toMatchObject({ fixedShape: true });
   });
 });
+
+describe("design object, placeholders, templates (decisions a and b)", () => {
+  const { runLesson, fillTemplate } = require("./harness");
+  const { styledGenerator, BAKEOFF } = require("./services");
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const REC =
+    "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds/ONECALL/rerun/T/y1-science-animals-young/stream.txt";
+  const brief = JSON.parse(
+    fs.readFileSync(`${BAKEOFF}/briefs/y1-science-animals-young.json`, "utf8"),
+  );
+  const replayWith = (design: object) => {
+    const dir = fs.mkdtempSync(`${os.tmpdir()}/bakeoff-`);
+    fs.writeFileSync(
+      `${dir}/main.txt`,
+      `{"design":${JSON.stringify(design)},${fs.readFileSync(REC, "utf8").trim().slice(1)}`,
+    );
+    return dir;
+  };
+  const run = async (design: object, b = brief) => {
+    const dir = replayWith(design);
+    await runLesson({
+      arm: armT,
+      brief: b,
+      outDir: `${dir}/out`,
+      capUsd: 0.01,
+      pgPort: 0,
+      replay: `${dir}/main.txt`,
+      noVisuals: true,
+      noNotes: true,
+      noRepair: true,
+    });
+    return {
+      lesson: JSON.parse(fs.readFileSync(`${dir}/out/lesson.json`, "utf8")),
+      timings: JSON.parse(fs.readFileSync(`${dir}/out/timings.json`, "utf8")),
+      log: fs.readFileSync(`${dir}/out/log.jsonl`, "utf8"),
+    };
+  };
+  test("design.theme sets the lesson's theme and is recorded", async () => {
+    const r = await run({ theme: "studio", picture_style: "illustration" });
+    expect(r.lesson.themeId).toBe("studio");
+    expect(r.timings.theme).toEqual({ used: "studio", model: "studio", teacher: null });
+    expect(r.timings.pictureStyle).toBe("illustration");
+    expect(r.log).toContain('"ev":"design"');
+  });
+  test("a teacher's theme wins over the model's", async () => {
+    const r = await run(
+      { theme: "studio", picture_style: "photo" },
+      { ...brief, teacherTheme: "chalk" },
+    );
+    expect(r.lesson.themeId).toBe("chalk");
+    expect(r.timings.theme.used).toBe("chalk");
+  });
+  test("an unknown theme keeps the brief's", async () => {
+    const r = await run({ theme: "no-such-theme", picture_style: "photo" });
+    expect(r.lesson.themeId).toBe(brief.theme);
+  });
+  test("each flow entry lays its slide out provisionally before the slide's content arrives", async () => {
+    const r = await run({ theme: "splash", picture_style: "photo" });
+    expect(r.timings.ms.firstPlaceholder).toBeLessThanOrEqual(r.timings.ms.firstTeachingSlide);
+    expect((r.log.match(/"why":"placeholder s/g) ?? []).length).toBeGreaterThan(5);
+  });
+  test("every prompt-agent user template fills with no braces left", () => {
+    const S = `${BAKEOFF}/prompts/shared`;
+    const objectives = [
+      { teacher: "t1", pupil: "p1" },
+      { teacher: "t2", pupil: "p2" },
+    ];
+    const u = fillTemplate(fs.readFileSync(`${S}/user.txt`, "utf8"), brief, { objectives });
+    expect(u).not.toContain("{{");
+    expect(u).toContain("1. Teacher: t1 | Pupils: p1");
+    expect(fillTemplate(fs.readFileSync(`${S}/objectives-user.txt`, "utf8"), brief)).toContain(
+      "Objectives: two or three",
+    );
+  });
+  test("photo lessons' generation prompts pass through unchanged", async () => {
+    const seen: string[] = [];
+    const g = styledGenerator(
+      { generate: async (a: { prompt: string }) => seen.push(a.prompt) },
+      () => ({ style: "photo" }),
+    );
+    await g.generate({ prompt: "a hen" } as never);
+    expect(seen).toEqual(["a hen"]);
+  });
+});
