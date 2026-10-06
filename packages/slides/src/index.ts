@@ -11,6 +11,7 @@
  */
 
 export * from "./background";
+export * from "./balance";
 export * from "./callout";
 export * from "./choose-variant";
 export * from "./content-shapes";

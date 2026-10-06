@@ -11,6 +11,7 @@ import {
 } from "@tj/domain/documents";
 import {
   asFigureFull,
+  balanceSlide,
   bodyLineChars,
   boxH,
   docFromText,
@@ -2455,6 +2456,8 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       slide = drawPlain(plain);
       photoAsk = undefined;
     }
+    // FIX1: short content sits balanced in its zone (bubble fitted, cards hugging, columns centred).
+    slide = balanceSlide(slide, theme);
     const zoneEl = slide.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
     const pic = photoAsk
       ? {
