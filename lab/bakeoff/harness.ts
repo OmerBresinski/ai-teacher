@@ -168,6 +168,8 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     const expr = raw.trim();
     const t = expr.match(/^([\w.]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
     if (t) return get(t[1] as string) ? (t[2] as string) : (t[3] as string);
+    const d = expr.match(/^([\w.]+)\s*\?\?\s*"([^"]*)"$/);
+    if (d) return String(get(d[1] as string) ?? d[2]);
     if (expr.startsWith("count:") && expr.includes("objectiveCount")) return objectiveCount(b);
     if (expr.startsWith("for each objective"))
       return (x.objectives ?? [])
