@@ -694,7 +694,9 @@ export async function judgeMade(args: {
     made: { fits: verdict.fits, why: verdict.why },
   });
   args.onVerdict?.(verdict);
-  return verdict.pick === "made" && gatePasses(args.brief, verdict);
+  // One candidate: any pick means this picture (round 3: Luna sometimes answered "photo 1" or the
+  // caption instead of the id, which flipped otherwise passing verdicts).
+  return verdict.pick !== null && gatePasses(args.brief, verdict);
 }
 
 /**
