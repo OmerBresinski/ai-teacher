@@ -13,7 +13,7 @@ import { type LessonLook, lessonIllustrationPrompt } from "./picture-director";
 
 /** Words that say which stage, size or age a panel is at, not what the subject is. */
 const STAGE =
-  /^(?:a|an|the|of|same|very|one|its|their|this|that|with|and|in|on|at|from|to|as|young|younger|old|older|adult|grown|full|fully|baby|newly|new|hatched|born|small|smaller|little|tiny|big|bigger|large|larger|growing|grown-up|developing|developed|early|later|late|final|first|second|third|stage|side-on|standing|sitting|lying|clear|cloudy|before|after|start|end|same|scale|photographic|breed|kind|type|picture|photo|image|view|showing|feathers|fleece|coat|fur|full-grown|beside|next|alongside|plus|holding|together|both|its|her|his)$/i;
+  /^(?:a|an|the|of|same|very|one|its|their|this|that|with|and|in|on|at|from|to|as|her|his|beside|next|alongside|plus|holding|together|both|young|younger|old|older|adult|grown|grown-up|full-grown|full|fully|half|partly|completely|newly|new|fresh|small|smaller|little|tiny|big|bigger|large|larger|tall|taller|short|shorter|growing|developing|developed|early|later|late|final|first|second|third|stage|before|after|start|end|scale|photographic|kind|type|picture|photo|image|view|showing|side-on|standing|sitting|lying|clear|cloudy|melting|melted|rusting|rusty|rusted|burning|burnt|burned|wilting|wilted|ripe|unripe|dry|wet|empty|some|more|less|much|still|now|then)$/i;
 
 /** The words that name what a panel shows, without its stage words. */
 export function subjectWords(shows: string): string[] {
@@ -23,6 +23,18 @@ export function subjectWords(shows: string): string[] {
     .split(/\s+/)
     .filter((w) => w.length > 2 && !STAGE.test(w))
     .map((w) => w.replace(/(?:ies)$/, "y").replace(/(?<=[^s])s$/, ""));
+}
+
+/**
+ * A set about change across real time (dated, "in the past", a century): not a generated set.
+ * Ruling 163: a real place or thing then and now is Commons or nothing, never a made "then".
+ */
+export function isHistoricalSet(shows: string[]): boolean {
+  return shows.some((s) =>
+    /\b(?:1[0-9]{3}|20[0-9]{2})s?\b|\bcentur(?:y|ies)\b|\bdecades?\b|\bin the past\b|\bvictorian\b|\bmedieval\b|\btudor\b|\bhistoric(?:al)?\b|\bancient\b|\bthen and now\b|\byears? (?:ago|later)\b/i.test(
+      s,
+    ),
+  );
 }
 
 /**
@@ -57,7 +69,7 @@ export function setImagePrompt(shows: string[], look?: LessonLook): string {
     `One image divided into ${n} equal side-by-side panels separated by thin pure white gaps. Left to right: ${shows
       .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
       .join("; ")}.`,
-    "Every panel shows the very same individual subject at a different stage: the same breed or kind, colouring and markings, seen from the same side, whole, at the same scale, on the same plain light background.",
+    "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint, whole, at the same scale, on the same plain light background.",
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ].join("\n");
   return look?.style === "illustration" ? lessonIllustrationPrompt(body, look) : body;

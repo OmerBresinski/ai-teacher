@@ -24,7 +24,11 @@ import {
   findDirected,
   type LessonLook,
 } from "../../packages/generation/src/stages/picture-director";
-import { setImagePrompt, setSize } from "../../packages/generation/src/stages/picture-set";
+import {
+  isHistoricalSet,
+  setImagePrompt,
+  setSize,
+} from "../../packages/generation/src/stages/picture-set";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
 import { placePhoto } from "../../packages/slides/src/templates/index";
@@ -581,7 +585,13 @@ export function pictureService(opts: {
     asks: PhotoAsk[],
     lesson: Parameters<typeof find>[1],
   ): Promise<(PhotoResult | undefined)[]> {
-    if (asks.some((a) => a.named) || /^hist/i.test(lesson.subject))
+    // Not generated as a set: named real things, history lessons, and change across real time
+    // (a street in 1900 and 2000): each picture takes the director's ladder (ruling 163).
+    if (
+      asks.some((a) => a.named) ||
+      /^hist/i.test(lesson.subject) ||
+      isHistoricalSet(asks.map((a) => a.shows))
+    )
       return Promise.all(asks.map((a) => find(a, lesson)));
     const setKey = asks.map((a) => a.key).join("+");
     return guarded(opts.ledger, `picture set ${setKey}`, STEP_EST.pictureSet, () =>

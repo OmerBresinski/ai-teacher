@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isSameSubjectSet, setImagePrompt, setSize } from "./picture-set";
+import { isHistoricalSet, isSameSubjectSet, setImagePrompt, setSize } from "./picture-set";
 
 describe("same-subject sets", () => {
   test("a sequence is always a set; compare cards only of one thing", () => {
@@ -30,5 +30,34 @@ describe("same-subject sets", () => {
     const p = setImagePrompt(["A chick", "A hen"], { style: "illustration", palette: ["#111111"] });
     expect(p.split("\n")[0]).toContain("illustration");
     expect(p).toContain("#111111");
+  });
+});
+
+describe("sets are about any subject, never real time", () => {
+  test("non-animal sets group by their shared subject", () => {
+    expect(
+      isSameSubjectSet([
+        "An ice cube on a plate",
+        "A melting ice cube",
+        "A small puddle where the ice cube was",
+      ]),
+    ).toBe(true);
+    expect(
+      isSameSubjectSet(["A shiny new iron nail", "The nail starting to rust", "A rusty iron nail"]),
+    ).toBe(true);
+    expect(
+      isSameSubjectSet(["A tall candle", "The candle half burnt", "A short candle stub"]),
+    ).toBe(true);
+    expect(isSameSubjectSet(["A bean seed in soil", "A bean seedling", "A tall bean plant"])).toBe(
+      true,
+    );
+  });
+  test("change across real time is not a generated set (ruling 163)", () => {
+    expect(isHistoricalSet(["The high street in 1900", "The same street in 2000"])).toBe(true);
+    expect(isHistoricalSet(["A village a century ago", "The village today"])).toBe(true);
+    expect(isHistoricalSet(["An ice cube", "A melting ice cube"])).toBe(false);
+  });
+  test("the frame names no animal words", () => {
+    expect(setImagePrompt(["A", "B"])).not.toMatch(/breed|animal|fur|feather/i);
   });
 });
