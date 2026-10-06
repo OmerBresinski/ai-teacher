@@ -657,3 +657,43 @@ describe("pictures meant to be compared are one set (never part library, part fr
     expect(seq.some((a) => a.sameSubject === false)).toBe(false);
   });
 });
+
+describe("run-level hard cap (picture runs overshot three times)", () => {
+  const { Ledger, ledgerGenerator, shareBudget, imageEstimate } = require("./services");
+  const fakeGen = (cost: number, calls: { n: number }) => ({
+    model: "fake",
+    generate: async () => {
+      calls.n++;
+      await new Promise((r) => setTimeout(r, 5));
+      return { costUsd: cost, bytes: new Uint8Array(), mime: "image/png", ms: 1 };
+    },
+  });
+  test("every generation reserves before it starts; parallel calls never pass the cap", async () => {
+    const ledger = new Ledger(0.02);
+    const calls = { n: 0 };
+    const g = ledgerGenerator(fakeGen(0.0059, calls), ledger, imageEstimate);
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => g.generate({ size: "1024x1024", prompt: "p" })),
+    );
+    expect(results.filter((r) => r.status === "rejected").length).toBeGreaterThan(0);
+    expect(ledger.total).toBeLessThanOrEqual(0.02);
+    expect(calls.n).toBe(results.filter((r) => r.status === "fulfilled").length);
+  });
+  test("a shared budget counts the other run: two arms can't each spend the whole cap", async () => {
+    const dir = `${require("node:os").tmpdir()}/budget-${Date.now()}-${Math.random()}`;
+    const a = new Ledger(0.02);
+    const b = new Ledger(0.02);
+    shareBudget(a, dir, "A");
+    shareBudget(b, dir, "B");
+    const ca = { n: 0 };
+    const cb = { n: 0 };
+    const ga = ledgerGenerator(fakeGen(0.0059, ca), a, imageEstimate);
+    const gb = ledgerGenerator(fakeGen(0.0059, cb), b, imageEstimate);
+    for (let i = 0; i < 4; i++) {
+      await ga.generate({ size: "1024x1024" }).catch(() => undefined);
+      await gb.generate({ size: "1024x1024" }).catch(() => undefined);
+    }
+    expect(a.total + b.total).toBeLessThanOrEqual(0.02);
+    expect(ca.n + cb.n).toBeLessThan(8);
+  });
+});

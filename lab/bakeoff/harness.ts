@@ -24,6 +24,7 @@ import {
   pictureService,
   replayStream,
   STEP_EST,
+  shareBudget,
   writeJson,
 } from "./services";
 
@@ -221,6 +222,8 @@ export type RunOpts = {
   generic?: "stock-first" | "generate";
   /** No picture-library lookups. */
   noLibrary?: boolean;
+  /** A directory shared by runs launched together: the cap holds across all of them. */
+  budgetDir?: string;
   /** Skip the notes calls. */
   noNotes?: boolean;
   /** Skip the repair pass. */
@@ -250,6 +253,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   writeJson(`${o.outDir}/brief.json`, brief);
   const log = (e: object) => appendFileSync(logFile, `${JSON.stringify({ ms: ms(), ...e })}\n`);
   const ledger = new Ledger(o.capUsd);
+  // One hard cap shared by runs launched side by side (--budget-dir): each counts the others.
+  if (o.budgetDir) shareBudget(ledger, o.budgetDir, `${arm.id}-${brief.id}-${process.pid}`);
   let themeId: string = brief.teacherTheme ?? brief.theme;
   const base = {
     brief,

@@ -1,6 +1,13 @@
 // BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
 // with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Writable } from "node:stream";
@@ -77,8 +84,17 @@ export class Ledger {
   get total() {
     return Object.values(this.parts).reduce((a, b) => a + b, 0);
   }
-  /** Spent, booked elsewhere and still held. */
+  /**
+   * Other runs sharing one budget (`shareBudget`): their committed spend, counted against this
+   * cap too, so two arms run side by side can't each spend the whole cap.
+   */
+  peers: () => number = () => 0;
+  /** Spent, booked elsewhere, still held, and what the runs sharing this budget have committed. */
   get committed() {
+    return this.total + this.outside() + this.held + this.peers();
+  }
+  /** This run's own committed spend (what it publishes to the shared budget). */
+  get own() {
     return this.total + this.outside() + this.held;
   }
   /** Refusals (round 2): steps the cap kept from starting, for the run log. */
@@ -99,12 +115,76 @@ export class Ledger {
     if (this.committed + est > this.capUsd + 1e-9)
       throw new Error(`cap $${this.capUsd} would be passed by ${what} (held $${est})`);
     this.held += est;
+    this.publish();
     let open = true;
     return () => {
       if (open) this.held = Math.max(0, this.held - est);
       open = false;
+      this.publish();
     };
   }
+  /** Set by `shareBudget`: writes this run's committed spend for the runs it shares with. */
+  publish: () => void = () => {};
+}
+
+/**
+ * One hard cap across several runs at once (an A/B run side by side): each run writes its
+ * committed spend to `<dir>/<id>.json` on every hold and release, and counts the others' against
+ * the shared cap. Picture run 5 (6 Oct) overshot because each arm had its own cap.
+ */
+export function shareBudget(ledger: Ledger, dir: string, id: string) {
+  mkdirSync(dir, { recursive: true });
+  const mine = `${dir}/${id}.json`;
+  ledger.publish = () => writeFileSync(mine, JSON.stringify({ committed: ledger.own }));
+  ledger.peers = () => {
+    let sum = 0;
+    for (const f of readdirSync(dir))
+      if (f.endsWith(".json") && `${dir}/${f}` !== mine)
+        try {
+          sum += Number(JSON.parse(readFileSync(`${dir}/${f}`, "utf8")).committed) || 0;
+        } catch {}
+    return sum;
+  };
+  ledger.publish();
+}
+
+/**
+ * Every image generation (or edit) reserves its own worst case on the run's ledger before it
+ * starts and is refused (throws, so the ladder treats it as a miss) past the run cap; its real
+ * cost is booked as part "pictures" before the hold is released. This is the run-level hard cap
+ * for pictures: no separate bank cap can add spend past it.
+ */
+export function ledgerGenerator<
+  G extends {
+    model: string;
+    generate: (a: never) => Promise<{ costUsd: number }>;
+    edit?: (a: never) => Promise<{ costUsd: number }>;
+  },
+>(g: G, ledger: Ledger, est: (size: string, edit: boolean) => number): G {
+  const wrap =
+    (call: (a: never) => Promise<{ costUsd: number }>, isEdit: boolean) =>
+    async (a: { size: string }) => {
+      const held = ledger.tryHold(isEdit ? "image edit" : "image generation", est(a.size, isEdit));
+      if (!held) throw new Error(`run cap $${ledger.capUsd} reached`);
+      try {
+        const out = await call(a as never);
+        ledger.add("pictures", out.costUsd);
+        return out;
+      } finally {
+        held();
+      }
+    };
+  return {
+    ...g,
+    generate: wrap(g.generate.bind(g), false),
+    ...(g.edit ? { edit: wrap(g.edit.bind(g), true) } : {}),
+  } as G;
+}
+
+/** A generation's worst case: low-quality output tokens at the size, plus a prompt, plus 25%. */
+export function imageEstimate(size: string, edit: boolean): number {
+  const base = im.expectedImageCostUsd(size as never);
+  return (edit ? base + 1200 * (10 / 1e6) : base) * 1.25;
 }
 
 /**
@@ -140,8 +220,9 @@ export const STEP_EST = {
   notes: 0.003, // luna, one slide
   repair: 0.004, // luna, one slide
   diagram: 0.004, // luna spec, two attempts (observed $0.0013 each)
-  picture: 0.025,
-  pictureSet: 0.02, // up to 2 strips + a judge per panel + a set judge // director + up to 3 generations + judges (generation also under the bank cap)
+  // Generations reserve themselves (ledgerGenerator); these holds cover the director and judges.
+  picture: 0.006,
+  pictureSet: 0.006, // up to 2 strips + a judge per panel + a set judge // director + up to 3 generations + judges (generation also under the bank cap)
 };
 
 /* ------------------------------------------------------------------ */
@@ -386,10 +467,14 @@ export function pictureService(opts: {
       return { key: k };
     },
   };
-  const gen = guardedGenerator(
-    im.createOpenAiImageGenerator({ apiKey: okey }),
-    () => opts.ledger.parts.pictures ?? 0,
-    opts.bankCapUsd,
+  const gen = ledgerGenerator(
+    guardedGenerator(
+      im.createOpenAiImageGenerator({ apiKey: okey }),
+      () => opts.ledger.parts.pictures ?? 0,
+      opts.bankCapUsd,
+    ),
+    opts.ledger,
+    imageEstimate,
   );
   const pex = im.createPexelsClient({ apiKey: key(".dayback-pexels-key") });
   const commons = im.createCommonsClient();
@@ -413,8 +498,9 @@ export function pictureService(opts: {
         generator: gen,
         capUsd: opts.bankCapUsd,
         ids: () => newId(),
-        onEvent: (e: { costUsd?: number }) => {
-          opts.ledger.add("pictures", e.costUsd ?? 0);
+        onEvent: (e: { kind?: string; costUsd?: number }) => {
+          // Generations are booked by ledgerGenerator; the bank books only its embeddings here.
+          if (e.kind !== "generate") opts.ledger.add("pictures", e.costUsd ?? 0);
           appendFileSync(
             `${opts.runDir}/pictures.bank.jsonl`,
             `${JSON.stringify({ t: Date.now(), ...e })}\n`,
@@ -699,7 +785,6 @@ export function pictureService(opts: {
         runLog({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
         break;
       }
-      opts.ledger.add("pictures", made.costUsd);
       let panels: Uint8Array[];
       try {
         panels = im.splitPanels(made.bytes, asks.length, aspect);
