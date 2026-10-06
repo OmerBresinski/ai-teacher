@@ -2,6 +2,7 @@
 // Prompt and schema: BAKEOFF/prompts/T/{system,schema}.<KS1|KS2|KS3-5>.{txt,json} (the prompt agent's),
 // else SOL-SIMPLE's arm T as a stand-in.
 import { existsSync, readFileSync } from "node:fs";
+import { drawDiagram } from "../../packages/slides/src/diagrams";
 import { PLACEHOLDER_IMAGE } from "../../packages/slides/src/layouts";
 import {
   type Figure,
@@ -149,6 +150,18 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
     case "picture-text":
     case "diagram-text": {
       const f = fig(template === "picture-text" ? "picture" : "diagram");
+      // dd-diagrams2: a drawing too big for the side panel at a readable size (a long flow) takes
+      // the full width instead, its bullets joined as the lines under it, before it is dropped.
+      if (f && "diagram" in f && template === "diagram-text") {
+        const half = drawDiagram(f.diagram, ctx.theme, { x: 0, y: 0, w: 348, h: 284 });
+        if (!half.ok && drawDiagram(f.diagram, ctx.theme, { x: 0, y: 0, w: 788, h: 235 }).ok)
+          return {
+            template: "big-diagram",
+            heading,
+            lead: [lead, ...pts(s.points)].filter(Boolean).join(" "),
+            figure: f,
+          };
+      }
       // A picture or diagram that could not be made: the words stand alone (explain), never an empty panel.
       return {
         template: f ? template : "explain",

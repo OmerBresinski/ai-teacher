@@ -127,7 +127,7 @@ describe("fallback: an invalid spec draws nothing", () => {
       ],
     },
     { kind: "flow", alt: "x", layout: "cycle", steps: [{ label: "a" }, { label: "b" }] },
-    { kind: "flow", alt: "x", steps: Array.from({ length: 7 }, () => ({ label: "a" })) },
+    { kind: "flow", alt: "x", steps: Array.from({ length: 9 }, () => ({ label: "a" })) },
     { kind: "labelled-diagram", alt: "x", shapes: [{ type: "circle", cx: 150, cy: 50, r: 5 }] },
     { kind: "labelled-diagram", alt: "x", shapes: [{ type: "spline", points: [] }] },
     { kind: "number-line", alt: "x", min: 0, max: 100, step: 1 }, // 100 ticks

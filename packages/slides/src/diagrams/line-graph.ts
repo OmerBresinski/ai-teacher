@@ -38,6 +38,13 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       x.axes?.push({ name, max: ax.max, data: Math.max(...pts.map((p) => p[1])) });
   }
   const y2t = g.y2 ? ticks(g.y2.min, g.y2.max, g.y2.step) : [];
+  // dd-diagrams2: an energy profile's axes carry no numbers (reaction progress and energy here
+  // are not measured), so it draws no ticks, only its two axis titles.
+  const energy = energyHumps(g).length > 0;
+  if (energy) {
+    yt.splice(0, yt.length);
+    xt.splice(0, xt.length);
+  }
   const tickW = (vals: number[]) => Math.max(0, ...vals.map((v) => textWidth(num(v), x, small)));
   // A flat two-point line is a threshold ("channel capacity"): drawn dashed and named on the line,
   // not in the legend.
@@ -72,7 +79,10 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   // The y axis title runs along the plot: one line at the label size, else a step smaller, else
   // two lines; a title longer than that is a fault, never clipped (K y11 s11's "Gas volume / cm³").
   const loose0 = g.annotations.length;
-  const top0 = legendH + fs * 0.8 + (loose0 > 0 ? fs * 1.2 : 0) + banded.length * bandRow;
+  const high0 =
+    !energyHumps(g).length &&
+    g.annotations.some((a) => (a.y - g.y.min) / (g.y.max - g.y.min || 1) > 0.8);
+  const top0 = legendH + fs * 0.8 + (loose0 > 0 && high0 ? fs * 1.2 : 0) + banded.length * bandRow;
   // The rotated title is centred on the plot and may run into the empty left margin above and
   // below it, but not into the legend row or off the drawing.
   const mid0 = top0 + (h - top0 - bottom) / 2;
@@ -132,7 +142,10 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   const peakH = peakRow ? small * 1.5 : 0;
   const band = banded.length * bandRow + peakH;
   const loose = g.annotations.length - (peakRow ? 2 : 0);
-  const top = legendH + fs * 0.8 + (loose > 0 ? fs * 1.2 : 0) + band;
+  // dd-diagrams2: a row is kept over the plot only for a label on a point near its top.
+  const span = g.y.max - g.y.min || 1;
+  const high = g.annotations.some((a) => (a.y - g.y.min) / span > 0.8) && !energy;
+  const top = legendH + fs * 0.8 + (loose > 0 && high ? fs * 1.2 : 0) + band;
   const ph = h - top - bottom;
   // A plot squeezed under its own labels shows no shape (round H: 78 of 300 points).
   if (ph < 0.42 * h || ph < small * 4.5)
@@ -431,15 +444,38 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       v.y === undefined ? legendH + peakH + row * bandRow + small * 1.2 + fs * 0.3 : Y(v.y);
     const lw = textWidth(v.label, x, small, 600);
     const cx = Math.max(lw / 2 + 2, Math.min(w - lw / 2 - 2, (x1 + x2) / 2));
-    return { v, x1, x2, ay, cx, lw };
+    // dd-diagrams2: the label goes above its arrow, else under it, else beside the span, the first
+    // place clear of the curves.
+    const lh = small * 1.25;
+    const forms = [
+      {
+        lx: cx,
+        ly: ay - fs * 0.3,
+        vv: "bottom" as const,
+        b: { x0: cx - lw / 2, x1: cx + lw / 2, y0: ay - fs * 0.3 - lh, y1: ay - fs * 0.3 },
+      },
+      {
+        lx: cx,
+        ly: ay + fs * 0.3,
+        vv: "top" as const,
+        b: { x0: cx - lw / 2, x1: cx + lw / 2, y0: ay + fs * 0.3, y1: ay + fs * 0.3 + lh },
+      },
+      ...[x2 + 6 + lw / 2, x1 - 6 - lw / 2].map((px) => ({
+        lx: px,
+        ly: ay + lh / 2,
+        vv: "bottom" as const,
+        b: { x0: px - lw / 2, x1: px + lw / 2, y0: ay - lh / 2, y1: ay + lh / 2 },
+      })),
+    ];
+    const lab =
+      v.y === undefined
+        ? (forms[0] as (typeof forms)[number])
+        : (forms.find((q) => q.b.x0 >= left && q.b.x1 <= left + pw && !crossesCurve(q.b)) ??
+          (forms[0] as (typeof forms)[number]));
+    return { v, x1, x2, ay, cx, lw, lab };
   });
   const taken: Box[] = spans.flatMap((sp) => [
-    {
-      x0: sp.cx - sp.lw / 2 - 4,
-      y0: sp.ay - fs * 0.3 - small * 1.25,
-      x1: sp.cx + sp.lw / 2 + 4,
-      y1: sp.ay - fs * 0.3,
-    },
+    { x0: sp.lab.b.x0 - 4, y0: sp.lab.b.y0, x1: sp.lab.b.x1 + 4, y1: sp.lab.b.y1 },
     { x0: sp.x1, y0: sp.ay - 6, x1: sp.x2, y1: sp.ay + 6 },
   ]);
   taken.push(...segBoxes);
@@ -573,7 +609,12 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       taken.every((t) => b.x1 <= t.x0 || b.x0 >= t.x1 || b.y1 <= t.y0 || b.y0 >= t.y1);
     const near: -1 | 1 = prefLeft ? -1 : 1;
     const far: -1 | 1 = prefLeft ? 1 : -1;
+    const inward: -1 | 1 = ax < left + pw / 2 ? 1 : -1;
     const tries: Spot[] = [
+      // dd-diagrams2: first right by the point, leaning into the plot, below then above (an
+      // energy profile's "Reactants" sits under its level, not at the top on a long leader).
+      spot(inward, true, 0.25, 0.2),
+      spot(inward, false, 0.25, 0.2),
       // Just over the point, leaning outward: over a peak nothing of the curve is higher.
       spot(near, false, 0.6, 0.25),
       spot(far, false, 0.6, 0.25),
@@ -656,7 +697,7 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   }
 
   // Intervals: dashed drops at both ends, a double arrow between them, the label above it.
-  for (const { v, x1, x2, ay, cx } of spans) {
+  for (const { v, x1, x2, ay, lab } of spans) {
     const head = Math.max(9, fs * 0.55);
     const dash = `stroke-dasharray="${n(fs * 0.35)} ${n(fs * 0.3)}"`;
     out.push(
@@ -666,9 +707,7 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
       arrowHead(x1, ay, x2, ay, head, c.ink),
       arrowHead(x2, ay, x1, ay, head, c.ink),
     );
-    out.push(
-      text(x, cx, ay - fs * 0.3, [v.label], { v: "bottom", fs: small, weight: 600, halo: c.bg }),
-    );
+    out.push(text(x, lab.lx, lab.ly, [v.label], { v: lab.vv, fs: small, weight: 600, halo: c.bg }));
   }
 
   // Legend.

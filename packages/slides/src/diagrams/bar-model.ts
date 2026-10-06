@@ -8,9 +8,25 @@ const LABEL_SIDE_MAX = 0.2;
 /** The tallest a bar is drawn, in label heights. */
 const BAR_H_MAX = 5;
 
-export function drawBarModel(s: BarModel, x: Ctx, w: number, h: number): string {
+export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
   const gap = fs * 0.6;
+  // dd-diagrams2: a row name that only repeats the bar's total ("40" beside a bar totalled "40")
+  // says nothing; it is dropped.
+  const digits = (t?: string) => (t ?? "").replace(/[^0-9./]/g, "");
+  const s: BarModel = {
+    ...s0,
+    bars: s0.bars.map((b) =>
+      b.label &&
+      b.total &&
+      (b.label.trim() === b.total.trim() ||
+        (digits(b.label) !== "" &&
+          digits(b.label) === digits(b.total) &&
+          /^[\d\s.,]+$/.test(b.label)))
+        ? { ...b, label: undefined }
+        : b,
+    ),
+  };
   const labelW = Math.max(0, ...s.bars.map((b) => (b.label ? textWidth(b.label, x, fs, 600) : 0)));
   // FIX1: a row name wider than a fifth of the drawing stands over its bar, so the bars keep the
   // drawing's width (y5's "Counters" took a third of a half zone and the bars were a narrow strip).

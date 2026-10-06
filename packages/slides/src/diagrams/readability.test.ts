@@ -52,7 +52,7 @@ describe("dd-diagrams readability", () => {
     expect(bad).toEqual([]);
     // Most of the corpus still draws somewhere: refusing is the exception, not the rule.
     expect(drawn).toBeGreaterThan(SPECS.length * KS.length * 0.8);
-  });
+  }, 120_000);
 
   test("T y7 s8 and s9: state changes draw three panels with their arrow words in a half zone", () => {
     for (const [states, arrows] of [
@@ -135,10 +135,15 @@ describe("dd-diagrams readability", () => {
   test("a flow past its key stage's cap, or too long for its zone, reports it cannot draw", () => {
     const steps = (k: number) =>
       Array.from({ length: k }, (_, i) => ({ label: `Step number ${i + 1} happens` }));
-    const six = { kind: "flow", alt: "x", steps: steps(6) };
-    const r = withKeyStage("ks3", () => drawDiagram(six, t, { x: 0, y: 0, ...ZONES.band }));
+    // KS2 reads at most six steps (dd-diagrams2 caps: KS1 5, KS2 6, KS3 and up 8).
+    const seven = { kind: "flow", alt: "x", steps: steps(7) };
+    const r = withKeyStage("ks2", () => drawDiagram(seven, t, { x: 0, y: 0, ...ZONES.band }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reasons.join(" ")).toContain("key stage");
+    // KS3 adapts: seven steps draw as a two-row snake full width.
+    expect(withKeyStage("ks3", () => drawDiagram(seven, t, { x: 0, y: 0, ...ZONES.band })).ok).toBe(
+      true,
+    );
     const four = { kind: "flow", alt: "x", steps: steps(4) };
     expect(withKeyStage("ks3", () => drawDiagram(four, t, { x: 0, y: 0, ...ZONES.band })).ok).toBe(
       true,

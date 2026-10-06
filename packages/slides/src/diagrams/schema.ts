@@ -192,7 +192,7 @@ export const FlowSchema = z
     steps: z
       .array(z.object({ label: label(32), arrow: label(14).optional() }))
       .min(2)
-      .max(6),
+      .max(8),
   })
   .refine((f) => f.layout === "chain" || f.steps.length >= 3, "a cycle needs three steps");
 
@@ -351,7 +351,31 @@ export const ParticlesSchema = z
     kind: z.literal("particles"),
     ...common,
     /** states: one panel per state; diffusion and dissolving: a before and an after panel. */
-    show: z.enum(["states", "diffusion", "dissolving"]).default("states"),
+    show: z.enum(["states", "diffusion", "dissolving", "compare", "collision"]).default("states"),
+    /**
+     * compare: two or three containers side by side that differ in one thing: how many particles
+     * (`count`, concentration), how many of a second kind (`extra`), how fast they move (`speed`,
+     * temperature) or how big the container is (`room`, gas pressure).
+     */
+    panels: z
+      .array(
+        z.object({
+          state: STATE.default("gas"),
+          count: z.number().int().min(2).max(20).default(10),
+          extra: z.number().int().min(0).max(12).default(0),
+          speed: z.enum(["slow", "fast"]).optional(),
+          room: z.enum(["small", "large"]).default("large"),
+        }),
+      )
+      .min(2)
+      .max(3)
+      .optional(),
+    /** collision: one or two panels, two particles meeting and then bouncing apart or reacting. */
+    outcomes: z
+      .array(z.enum(["bounces", "reacts"]))
+      .min(1)
+      .max(2)
+      .optional(),
     states: z.array(STATE).min(1).max(3).default(["solid", "liquid", "gas"]),
     /** A name over each panel (default the state's name, or Before / After). */
     captions: z.array(label(16)).max(3).optional(),
@@ -365,9 +389,11 @@ export const ParticlesSchema = z
     key: z.tuple([label(18), label(18)]).optional(),
   })
   .refine(
-    (p) => new Set(p.states).size === p.states.length,
+    (p) => p.show !== "states" || new Set(p.states).size === p.states.length,
     "each state appears once, so the panels differ",
-  );
+  )
+  .refine((p) => p.show !== "compare" || !!p.panels, "compare needs panels")
+  .refine((p) => p.show !== "collision" || !!p.outcomes, "collision needs outcomes");
 
 export const HydrographSchema = z.object({
   kind: z.literal("hydrograph"),

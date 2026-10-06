@@ -399,6 +399,15 @@ export function simplerDiagrams(spec: unknown): unknown[] {
       })),
     });
   }
+  // dd-diagrams2: a flow's arrow words are connectives ("so", "then"); a flow that cannot fit
+  // with them draws without them before it is refused.
+  if (s.kind === "flow" && s.steps.some((st) => st.arrow)) {
+    out.push({ ...s, steps: s.steps.map((st) => ({ label: st.label })) });
+    if (s.title) {
+      const { title: _t, ...bare } = s;
+      out.push({ ...bare, steps: s.steps.map((st) => ({ label: st.label })) } as DiagramSpec);
+    }
+  }
   if (s.kind === "particles") {
     const { title: _t, ...bare } = s;
     const { notes: _n, ...plain } = bare;
