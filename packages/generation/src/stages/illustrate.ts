@@ -281,6 +281,8 @@ type PlaceArgs = {
   images: PhotoPlacer;
   deps: PipelineDeps;
   index: number;
+  /** A library picture made for an earlier request, judged against this one. */
+  reuse?: boolean;
 };
 
 /**
@@ -657,6 +659,8 @@ export async function judgeMade(args: {
   brief: ImageBrief;
   deps: PipelineDeps;
   dataUrl: string;
+  /** The picture is a library hit made for another request (its judge also refuses extras). */
+  reuse?: boolean;
   /** BAKEOFF: the judge's whole verdict (its boxes place the picture's crop). */
   onVerdict?: (verdict: PickOrRequery) => void;
 }): Promise<boolean> {
@@ -679,6 +683,7 @@ export async function judgeMade(args: {
       images: args.deps.images as PhotoPlacer,
       deps: args.deps,
       index: args.index,
+      ...(args.reuse ? { reuse: true } : {}),
     },
     [made],
     [],
@@ -720,6 +725,7 @@ async function judge(
       mustShow: brief.mustShow,
       needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
       ...(brief.period ? { period: brief.period } : {}),
+      ...(args.reuse ? { reuse: true } : {}),
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,
