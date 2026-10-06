@@ -6,6 +6,7 @@
 import type { Theme } from "@tj/domain/documents";
 import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
+import { typeScale } from "../themes";
 import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
 /** The colours a diagram draws in, all from the theme. */
@@ -26,6 +27,8 @@ export type Palette = {
 
 /** Everything a kind's renderer needs: palette, families, the label size. */
 export type Ctx = {
+  /** The smallest label the drawing may set: the stage's bodySmall step, or the type floor. */
+  minFs: number;
   c: Palette;
   body: string;
   title: string;
@@ -135,7 +138,13 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
     titleStack: t.fonts.title,
     // Round A6: labels a step larger (a 403-wide panel draws 24, was 20), so a class reads them.
     // A drawing sized to its content (UX ruling 155) keeps the label size of its full panel.
-    fs: fs ?? Math.max(TYPE_FLOOR, Math.min(26, Math.round(Math.min(w, h) / 16))),
+    // FIX-TYPE: at a key stage a label is never under the stage's bodySmall step (`typeScale`),
+    // whoever asked for the size; a drawing is only ever scaled up into its zone.
+    minFs: Math.max(TYPE_FLOOR, typeScale(t)?.bodySmall ?? 0),
+    fs: Math.max(
+      typeScale(t)?.bodySmall ?? 0,
+      fs ?? Math.max(TYPE_FLOOR, Math.min(26, Math.round(Math.min(w, h) / 16))),
+    ),
   };
 }
 

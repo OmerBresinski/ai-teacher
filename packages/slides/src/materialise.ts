@@ -77,7 +77,7 @@ import {
   withTerms,
 } from "./structure";
 import { measureHeadless } from "./text-measure";
-import { resolveFontSize } from "./text-style";
+import { resolveFontSize, snapToScale } from "./text-style";
 import { NUMBER_NAME, tidySlide } from "./text-tidy";
 import { withThemeColours } from "./theme-colours";
 import { getTheme } from "./themes";
@@ -155,7 +155,13 @@ export function materialiseSlides(
   );
 }
 
-function materialisePages(
+/** Every page's stored sizes on the deck's key-stage scale (`snapToScale`). */
+function materialisePages(...args: Parameters<typeof materialisePagesRaw>): Slide[] {
+  const t = getTheme(args[1]);
+  return materialisePagesRaw(...args).map((s) => snapToScale(s, t));
+}
+
+function materialisePagesRaw(
   spec: SlideSpec,
   themeId: string,
   meta: MaterialiseMeta,
@@ -1155,7 +1161,7 @@ function fillOpenResponse(
     els.push(head);
     y = snapY(SAFE.y + head.h + SPACE[4]);
   }
-  const size = Math.round(resolveFontSize(t, "body") * 1.15);
+  const size = resolveFontSize(t, "body", Math.round(resolveFontSize(t, "body") * 1.15));
   const marksW = 96;
   if (lead) {
     const doc = docFromText(lead);
@@ -1219,7 +1225,7 @@ function oneQuestion(
   const measure = measureHeadless(t);
   const head = textOf(laid, "heading");
   const els: SlideElement[] = [];
-  const size = Math.round(resolveFontSize(t, "body") * 1.15);
+  const size = resolveFontSize(t, "body", Math.round(resolveFontSize(t, "body") * 1.15));
   const block = (name: string, words: string, y: number, style: TextElement["style"]) => {
     const doc = docFromText(words);
     const h = Math.ceil(

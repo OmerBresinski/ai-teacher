@@ -66,7 +66,7 @@ export const InsertRail = memo(function InsertRail({
   showLabels,
 }: InsertRailProps) {
   const lesson = useLesson();
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   const history = useHistory();
   const session = useSessionActions();
   const { imagePanel } = useSessionUi();

@@ -331,8 +331,8 @@ export function GeneratingThemeDialog({
  */
 export function displayInTheme<L extends Lesson>(lesson: L, themeId: string | null | undefined): L {
   if (!themeId || themeId === lesson.themeId) return lesson;
-  const from = getTheme(lesson.themeId);
-  const to = getTheme(themeId);
+  const from = getTheme(lesson.themeId, lesson.ageBand);
+  const to = getTheme(themeId, lesson.ageBand);
   return {
     ...lesson,
     themeId: to.id,

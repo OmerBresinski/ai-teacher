@@ -331,13 +331,21 @@ export function LessonEditor({
         const current = lessonRef.current;
         if (!current || current.themeId === themeId) return;
         h.flushTransactions();
-        h.dispatch(rethemeFromReducer, current, themeId, createMeasurer(getTheme(themeId)));
+        h.dispatch(
+          rethemeFromReducer,
+          current,
+          themeId,
+          createMeasurer(getTheme(themeId, current.ageBand)),
+        );
       },
     }),
     [session],
   );
 
-  const theme = useMemo(() => getTheme(lesson?.themeId), [lesson?.themeId]);
+  const theme = useMemo(
+    () => getTheme(lesson?.themeId, lesson?.ageBand),
+    [lesson?.themeId, lesson?.ageBand],
+  );
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
 
   /** Add an element to the active slide and select it — TeachDeck's `insertElement`. */

@@ -41,6 +41,8 @@ import {
   SPACE,
   setKeyStage,
   slideFits,
+  snapToScale,
+  steppedDown,
   withoutPicture,
 } from "@tj/slides";
 import {
@@ -2472,7 +2474,12 @@ async function t3Streamed(state: PipelineState, deps: PipelineDeps): Promise<Pip
       photoAsk = undefined;
     }
     // FIX1: short content sits balanced in its zone (bubble fitted, cards hugging, columns centred).
-    slide = balanceSlide(slide, theme);
+    slide = snapToScale(balanceSlide(slide, theme), theme);
+    // FIX-TYPE: every size is a step of the stage's scale; a step under the role's own is a fit
+    // step-down, logged so a deck's step-downs can be counted.
+    const stepped = steppedDown(slide, theme);
+    if (stepped.length)
+      deps.logger.info({ stage: "generate", slide: k, stepped }, "type stepped down");
     const zoneEl = slide.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
     const pic = photoAsk
       ? {

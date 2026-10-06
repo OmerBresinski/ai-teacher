@@ -88,7 +88,10 @@ export function Navigator() {
   const session = useSessionActions();
   const activeSlideId = useActiveSlideId();
   const { clipboardSlide } = useSessionUi();
-  const theme = useMemo(() => getTheme(lesson.themeId), [lesson.themeId]);
+  const theme = useMemo(
+    () => getTheme(lesson.themeId, lesson.ageBand),
+    [lesson.themeId, lesson.ageBand],
+  );
   const { bySlide: residuals } = useResidualFindings();
   const { busySlideIds, onRegenerate } = useProposals();
 

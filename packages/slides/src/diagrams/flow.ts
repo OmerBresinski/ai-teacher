@@ -20,7 +20,13 @@ function boxLines(x: Ctx, b: Box, label: string, f: number): string[] | undefine
  * step fits (a step down from the label size at most), so no single box shrinks alone.
  */
 function boxSize(x: Ctx, boxes: Box[], labels: string[]): number {
-  for (const f of [x.fs, x.fs * 0.88, x.fs * 0.76].map((v) => Math.max(sub(v, 1), 16)))
+  // FIX-TYPE: a box label steps down no further than the stage's bodySmall (`x.minFs`).
+  // When no size at or over it fits, the old steps keep the drawing rather than drop it.
+  const tries = [x.fs, x.fs * 0.88, x.fs * 0.76];
+  for (const f of [
+    ...tries.map((v) => Math.max(sub(v, 1), 16, x.minFs)),
+    ...tries.map((v) => Math.max(sub(v, 1), 16)),
+  ])
     if (labels.every((l, i) => boxes[i] && boxLines(x, boxes[i] as Box, l, f))) return f;
   return Math.max(16, x.fs * 0.76);
 }
@@ -79,7 +85,7 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     return { cx: ox + col * (bw + gapX) + bw / 2, cy: oy + r * (bh + gapY) + bh / 2, w: bw, h: bh };
   });
   const out: string[] = [];
-  const small = sub(fs);
+  const small = Math.max(sub(fs), x.minFs);
   boxes.forEach((b, i) => {
     const next = boxes[i + 1];
     if (!next) return;
@@ -158,7 +164,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
     return { cx: cx + rx * Math.cos(a), cy: cy + ry * Math.sin(a), w: bw, h: bh };
   });
   const out: string[] = [];
-  const small = sub(fs);
+  const small = Math.max(sub(fs), x.minFs);
   boxes.forEach((b, i) => {
     const next = boxes[(i + 1) % k];
     if (!next) return;

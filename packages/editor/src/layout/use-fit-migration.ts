@@ -78,7 +78,7 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
   // Ask whether the editor is quiet before measuring anything.
   if (!isIdle()) return { ran: false, tidied: 0, deferred: true };
 
-  const theme = getTheme(lesson.themeId);
+  const theme = getTheme(lesson.themeId, lesson.ageBand);
   const measure = measurer(theme);
 
   // One forced layout for the whole deck rather than one per box.
