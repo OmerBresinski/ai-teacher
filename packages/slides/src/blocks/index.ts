@@ -703,7 +703,9 @@ function drawStack(c: Ctx, blocks: Block[]) {
     return;
   }
   const hasTable = body.some((b) => b.type === "table");
-  const w = hasTable ? G.width : STACK_W;
+  // A table, or a numbered list alone (objectives), takes the full width.
+  const listOnly = body.length === 1 && body[0]?.type === "points" && !!body[0].numbered;
+  const w = hasTable || listOnly ? G.width : STACK_W;
   place(c, columnPieces(c, body, G.margin, w, true), gapOf(c), "stack");
 }
 

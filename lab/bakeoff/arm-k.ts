@@ -8,6 +8,9 @@ import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
 import { BAKEOFF } from "./services";
 
 type S = Record<string, unknown>;
+/** A repaired slide comes back as { fix, slide, to_notes } (the K repair schema): the slide is inside. */
+const unwrap = (s: S): S =>
+  s && typeof s.slide === "object" && s.slide && "fix" in s ? (s.slide as S) : s;
 type PicAsk = { shows?: string; must_see?: string[]; subject?: "named" | "generic" };
 const band = (b: Brief) => (b.keyStage === "ks1" ? "KS1" : b.keyStage === "ks2" ? "KS2" : "KS3-5");
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
@@ -132,7 +135,7 @@ export const armK: ArmPlugin = {
       effort: "low",
     };
   },
-  visuals: (s) => asksOf(s),
+  visuals: (s) => asksOf(unwrap(s)),
   promptStage: (brief) => band(brief),
   codeObjectives(ctx) {
     const r = layoutBlocks(
@@ -152,7 +155,8 @@ export const armK: ArmPlugin = {
     );
     return { slide: r.slide, over: r.over };
   },
-  materialise(s, ctx) {
+  materialise(raw, ctx) {
+    const s = unwrap(raw);
     let { recipe, blocks } = toBlocks(s, ctx);
     // The objectives recipe carries nothing: code makes it a stack of the plan's pupil objectives.
     const objectives = s.recipe === "objectives" || ctx.index === 1;
@@ -185,12 +189,14 @@ export const armK: ArmPlugin = {
     );
     return { slide: r.slide, over: r.over };
   },
-  questions(s) {
+  questions(raw) {
+    const s = unwrap(raw);
     return blocksOf(s)
       .filter((b) => b.type === "question")
       .map((b) => str(b.text));
   },
-  words(s) {
+  words(raw) {
+    const s = unwrap(raw);
     const parts = [str(s.heading)];
     for (const b of blocksOf(s)) {
       parts.push(str(b.text), str(b.label), ...strs(b.header));
