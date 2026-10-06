@@ -170,6 +170,8 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     const t = expr.match(/^([\w.]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
     if (t) return get(t[1] as string) ? (t[2] as string) : (t[3] as string);
     if (expr.startsWith("count:") && expr.includes("objectiveCount")) return objectiveCount(b);
+    if (expr.startsWith("for each objective") && expr.includes("teacher wording only"))
+      return (x.objectives ?? []).map((o, k) => `${k + 1}. ${o.teacher}`).join("\n");
     if (expr.startsWith("for each objective"))
       return (x.objectives ?? [])
         .map((o, k) => `${k + 1}. Teacher: ${o.teacher}${o.pupil ? ` | Pupils: ${o.pupil}` : ""}`)
@@ -727,37 +729,47 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       const userFile = `${shared0}/pupil-objectives-user.txt`;
       const teacherLines = objectives.map((x, k) => `${k + 1}. ${x.teacher}`).join("\n");
       const held = ledger.tryHold("pupil objectives", STEP_EST.objectives);
+      const pupilUser = () =>
+        existsSync(userFile)
+          ? fillTemplate(readFileSync(userFile, "utf8"), brief, {
+              objectives,
+              maxWords: OBJECTIVES_CONFIG.pupilMaxWords[brief.keyStage],
+            })
+          : `${brief.yearGroup} ${brief.subject}: ${brief.topic}\n\nTeacher objectives:\n${teacherLines}`;
+      // Built inside the promise chain: a template fault falls back to teacher wording, never kills the run.
       pupilJob = (
         held
-          ? pupilCall(
-              {
-                system: readFileSync(pupilSys, "utf8"),
-                user: existsSync(userFile)
-                  ? fillTemplate(readFileSync(userFile, "utf8"), brief, { objectives })
-                  : `${brief.yearGroup} ${brief.subject}: ${brief.topic}\n\nTeacher objectives:\n${teacherLines}`,
-                schema: existsSync(schemaFile)
-                  ? JSON.parse(readFileSync(schemaFile, "utf8"))
-                  : pupilSchema(objectives.length),
-                name: "pupil_objectives",
-                maxTokens: 1500,
-              },
-              chatStream,
-              (line, k) => {
-                const x = objectives[k];
-                if (!x) return;
-                x.pupil = line;
-                if (k === 0) mark("slide2First");
-                laySlide2(`pupil objective ${k + 1}`);
-              },
-            ).then((r) => {
-              ledger.add("objectives", r.result.usd);
-              log({
-                ev: "pupil-objectives",
-                n: r.pupil.length,
-                model: OBJECTIVES_CONFIG.pupil.model,
-                usd: r.result.usd,
-              });
-            })
+          ? Promise.resolve()
+              .then(() =>
+                pupilCall(
+                  {
+                    system: readFileSync(pupilSys, "utf8"),
+                    user: pupilUser(),
+                    schema: existsSync(schemaFile)
+                      ? JSON.parse(readFileSync(schemaFile, "utf8"))
+                      : pupilSchema(objectives.length),
+                    name: "pupil_objectives",
+                    maxTokens: 1500,
+                  },
+                  chatStream,
+                  (line, k) => {
+                    const x = objectives[k];
+                    if (!x) return;
+                    x.pupil = line;
+                    if (k === 0) mark("slide2First");
+                    laySlide2(`pupil objective ${k + 1}`);
+                  },
+                ),
+              )
+              .then((r) => {
+                ledger.add("objectives", r.result.usd);
+                log({
+                  ev: "pupil-objectives",
+                  n: r.pupil.length,
+                  model: OBJECTIVES_CONFIG.pupil.model,
+                  usd: r.result.usd,
+                });
+              })
           : Promise.reject(new Error("cap refused the pupil call"))
       )
         .catch((e) => log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) }))

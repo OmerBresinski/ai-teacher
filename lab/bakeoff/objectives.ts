@@ -10,11 +10,14 @@ export const OBJECTIVES_CONFIG = {
   /** No first objective by then: the primary call is aborted and the fallback runs. */
   firstWithinMs: 8_000,
   pupil: { model: "gpt-6-luna", effort: "low" },
+  /** The pupil line's word limit by key stage ({{maxWords}} in pupil-objectives-user.txt). */
+  pupilMaxWords: { ks1: 8, ks2: 10, ks3: 12, ks4: 12, ks5: 12 },
 } as const satisfies {
   primary: { model: string; effort: ChatReq["effort"] };
   fallback: { model: string; effort: ChatReq["effort"] };
   firstWithinMs: number;
   pupil: { model: string; effort: ChatReq["effort"] };
+  pupilMaxWords: Record<"ks1" | "ks2" | "ks3" | "ks4" | "ks5", number>;
 };
 
 type StreamResult = { text: string; usage: unknown; usd: number; ms: number; firstTokenMs: number };
