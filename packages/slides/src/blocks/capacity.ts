@@ -259,14 +259,14 @@ export const VARIANTS: Variant[] = [
       id: `compare:${k}picture-cards`,
       recipe: "compare",
       note: `${k} cards with a picture on top of each`,
-      fields: { label: k === 2 ? 20 : 14, text: 1 },
+      fields: { label: 12, text: 1 },
       fill: (n) => [
         H(n),
         ...Array.from(
           { length: k },
           (_, i): Block => ({
             type: "card",
-            label: n(k === 2 ? 20 : 14, i * 4),
+            label: n(12, i * 4),
             text: n(1, i * 7),
             picture: pic,
           }),

@@ -753,6 +753,7 @@ function cardsPiece(
   cards: { label: string; text: string; picture?: Pic }[],
   numbered: boolean,
   picH: number,
+  avail = band.h,
 ): Piece {
   const n = Math.max(1, cards.length);
   // Four cards at KS1 type (body 32pt and up) are too narrow in a row: they go 2 x 2, the disc beside the label.
@@ -760,12 +761,18 @@ function cardsPiece(
   const rows = Math.ceil(n / cols);
   const grid = rows > 1;
   const gap = grid ? 16 : 24;
-  const w = Math.floor((G.width - gap * (cols - 1)) / cols);
-  const pad = Math.round(c.z.body * (grid ? 0.5 : 0.75));
+  const anyPic = cards.some((k) => k.picture);
+  const pad = Math.round(c.z.body * (grid || (anyPic && c.z.body >= 28) ? 0.5 : 0.75));
+  // KS1-2 (body 28pt and up): each picture is a full 4:3 across its card (T's rule). The cards are as
+  // wide as the band allows with room for a one-line label and two lines of text, and the row is centred.
+  const fourThree = anyPic && c.z.body >= 28;
+  const reserve = Math.ceil(c.z.lead * LH.lead + 10 + 2 * c.z.body * LH.body + 2 * pad);
+  const full = Math.floor((G.width - gap * (cols - 1)) / cols);
+  const w = fourThree ? Math.min(full, Math.floor((avail - reserve) / 0.75)) : full;
+  const x0 = G.margin + Math.round((G.width - (cols * w + gap * (cols - 1))) / 2);
   const iw = w - 2 * pad;
   const d = Math.round(c.z.body * 1.25);
-  const anyPic = cards.some((k) => k.picture);
-  const ph = anyPic ? picH : 0;
+  const ph = anyPic ? (fourThree ? Math.round(w * 0.75) : picH) : 0;
   // A numbered card puts its disc on a row of its own, so the label has the card's full width.
   const beside = numbered && grid;
   const labelW = beside ? iw - d - 12 : iw;
@@ -782,7 +789,7 @@ function cardsPiece(
     h: rows * h + (rows - 1) * gap,
     draw: (y0) => {
       cards.forEach((k, i) => {
-        const x = G.margin + (i % cols) * (w + gap);
+        const x = x0 + (i % cols) * (w + gap);
         const y = y0 + Math.floor(i / cols) * (h + gap);
         card(c, { x, y, w, h });
         if (k.picture) photo(c, k.picture, { x, y, w, h: ph }, true, "center");
@@ -892,7 +899,7 @@ function drawCompareOrSequence(c: Ctx, blocks: Block[], recipe: "compare" | "seq
   else if (cards.length) {
     const textH = cardsPiece(c, cards, recipe === "sequence", 0).h;
     const picH = Math.max(130, Math.min(170, avail - textH));
-    mid.push(cardsPiece(c, cards, recipe === "sequence", picH));
+    mid.push(cardsPiece(c, cards, recipe === "sequence", picH, avail));
   }
   place(c, [...top, ...mid, ...bottom], gap, recipe);
 }
