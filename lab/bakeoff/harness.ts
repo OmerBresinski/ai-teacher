@@ -238,7 +238,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     title: brief.topic,
     yearGroup: brief.yearGroup,
     subject: brief.subject,
-    base: {},
+    base: {} as Record<string, unknown>,
   };
   /** Early picture jobs from the flow, keyed by slide index; a slide's single picture takes it over. */
   const early = new Map<number, Promise<PhotoResult | undefined>>();
@@ -309,6 +309,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const [top, idx] = path;
     if (top === "objectives" && path.length === 1) {
       plan.objectives = v as Plan["objectives"];
+      // The picture stock path judges photos against the lesson's objectives (illustrate.ts).
+      lessonInfo.base = {
+        facts: {
+          objectives: (plan.objectives ?? []).map((x, k) => ({ id: `o${k + 1}`, text: x.teacher })),
+          outline: [],
+        },
+      };
       log({ ev: "objectives", n: plan.objectives?.length });
       mark("objectives");
     }
@@ -378,9 +385,28 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           user,
           schema: p.schema,
           name: "lesson",
+          maxTokens: 9000,
         },
-        (d) => parser.push(d),
-      );
+        (d) => {
+          appendFileSync(`${o.outDir}/stream.txt`, d);
+          parser.push(d);
+        },
+      ).catch((e) => {
+        // No usage on a failed stream: book an estimate (input + what arrived, 4 chars a token).
+        const est = ((p.system.length + user.length) / 4) * 2e-6 + (parser.text.length / 4) * 10e-6;
+        ledger.add("mainFailedEstimate", est);
+        log({
+          ev: "main-error",
+          err: String(e).slice(0, 300),
+          chars: parser.text.length,
+          estUsd: est,
+        });
+        writeJson(`${o.outDir}/cost.json`, {
+          ...ledger.parts,
+          note: "main call failed; estimate only",
+        });
+        throw e;
+      });
   ledger.add("main", main.usd);
   writeJson(`${o.outDir}/main.json`, {
     text: main.text,

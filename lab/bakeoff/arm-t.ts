@@ -22,6 +22,29 @@ const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" i
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
 
+/**
+ * The T menu's merged entries back to catalogue templates (prompts/PROMPTS.md): `visual-text` is
+ * picture-text or diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape
+ * (a `kind` = a diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
+ */
+export function normalise(s: S): S {
+  const t = s.template;
+  if (t !== "visual-text" && t !== "big-visual") return s;
+  const { figure, ...rest } = s;
+  const dia = isDia(figure);
+  const template =
+    t === "visual-text"
+      ? dia
+        ? "diagram-text"
+        : "picture-text"
+      : dia
+        ? "big-diagram"
+        : "big-picture";
+  // No figure at all: the words stand alone.
+  if (!isDia(figure) && !isPic(figure)) return { ...rest, template: "explain" };
+  return { ...rest, template, [dia ? "diagram" : "picture"]: figure };
+}
+
 /** The pictures and diagrams a slide holds, with stable keys. */
 function figures(s: S): { key: string; f: Pic | Dia }[] {
   const out: { key: string; f: Pic | Dia }[] = [];
@@ -40,15 +63,26 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
 /** The figure a slot shows now: the photo or drawing when it has landed, an open slot while pending, nothing when it failed. */
 function figureNow(key: string, f: Pic | Dia, ctx: MaterialiseCtx): Figure | undefined {
   const v = ctx.visual(key);
-  if (v.status === "photo") return { photo: v.photo.src, alt: v.photo.alt, aspect: v.photo.aspect };
+  if (v.status === "photo")
+    return {
+      photo: v.photo.src,
+      alt: v.photo.alt,
+      aspect: v.photo.aspect,
+      request: v.photo.request,
+    };
   if (v.status === "diagram") return { diagram: v.spec };
   if (v.status === "failed") return undefined;
   return isDia(f)
     ? { photo: PLACEHOLDER_IMAGE, alt: `Diagram: ${f.shows}` }
-    : { photo: PLACEHOLDER_IMAGE, alt: f.shows };
+    : {
+        photo: PLACEHOLDER_IMAGE,
+        alt: f.shows,
+        request: [f.shows, ...(f.must_see ?? [])].join(". "),
+      };
 }
 
-export function toInput(s: S, ctx: MaterialiseCtx): TemplateInput {
+export function toInput(raw: S, ctx: MaterialiseCtx): TemplateInput {
+  const s = normalise(raw);
   const template = str(s.template) as TemplateInput["template"];
   const heading = str(s.heading);
   const fig = (k: string) => {
@@ -88,6 +122,10 @@ export function toInput(s: S, ctx: MaterialiseCtx): TemplateInput {
     }
     case "picture-sequence": {
       const seq = (Array.isArray(s.sequence) ? s.sequence : []) as (Pic & { caption?: string })[];
+      // A sequence with a picture that could not be made reads as captions and arrows over
+      // nothing: the stages become numbered steps instead.
+      if (seq.some((_, n) => ctx.visual(`seq.${n}`).status === "failed"))
+        return { template: "steps", heading, points: seq.map((x) => str(x.caption)) };
       return {
         template,
         heading,
@@ -99,12 +137,16 @@ export function toInput(s: S, ctx: MaterialiseCtx): TemplateInput {
     }
     case "compare": {
       const cols = (Array.isArray(s.columns) ? s.columns : []) as S[];
+      // One column's picture missing leaves a hole: every column goes without when any failed.
+      const anyFailed = cols.some(
+        (c, n) => isPic(c.picture) && ctx.visual(`col.${n}`).status === "failed",
+      );
       return {
         template,
         heading,
         columns: cols.map((c, n) => {
           const p = c.picture;
-          const f = isPic(p) ? figureNow(`col.${n}`, p, ctx) : undefined;
+          const f = isPic(p) && !anyFailed ? figureNow(`col.${n}`, p, ctx) : undefined;
           return { label: str(c.label), text: str(c.text), ...(f ? { figure: f } : {}) };
         }),
       };
@@ -159,7 +201,8 @@ export const armT: ArmPlugin = {
       effort: "low",
     };
   },
-  visuals(s) {
+  visuals(raw) {
+    const s = normalise(raw);
     return figures(s).map(
       ({ key, f }): VisualAsk =>
         isDia(f)
@@ -185,14 +228,16 @@ export const armT: ArmPlugin = {
     );
     return { slide: r.slide, over: r.over };
   },
-  questions(s) {
+  questions(raw) {
+    const s = normalise(raw);
     if (s.template === "hinge") return [str(s.stem)];
     if (["question-set", "practice", "exit-ticket"].includes(str(s.template)))
       return strs(s.questions);
     if (s.template === "discussion") return [str(s.lead ?? s.question)];
     return [];
   },
-  words(s) {
+  words(raw) {
+    const s = normalise(raw);
     const parts: string[] = [
       str(s.heading),
       str(s.lead),

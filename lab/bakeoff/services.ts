@@ -81,6 +81,8 @@ export type ChatReq = {
   schema: object;
   name?: string;
   strict?: boolean;
+  /** Output cap (reasoning included): bounds the cost of a runaway call. */
+  maxTokens?: number;
 };
 const body = (r: ChatReq, stream: boolean) => ({
   model: r.model,
@@ -93,6 +95,7 @@ const body = (r: ChatReq, stream: boolean) => ({
     type: "json_schema",
     json_schema: { name: r.name ?? "out", strict: r.strict ?? true, schema: r.schema },
   },
+  ...(r.maxTokens ? { max_completion_tokens: r.maxTokens } : {}),
   ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
 });
 
@@ -138,8 +141,18 @@ export async function chatStream(
   onText: (delta: string) => void,
 ): Promise<{ text: string; usage: Usage; usd: number; ms: number; firstTokenMs: number }> {
   const t0 = performance.now();
+  // Stalls and runaway whitespace abort the call (a strict-schema stream once went quiet for 10
+  // minutes and died with ECONNRESET, its usage never reported).
+  const ac = new AbortController();
+  let stall: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    clearTimeout(stall);
+    stall = setTimeout(() => ac.abort(new Error("stream stalled 90 s")), 90_000);
+  };
+  arm();
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
+    signal: ac.signal,
     headers: {
       Authorization: `Bearer ${key(".dayback-openai-key")}`,
       "Content-Type": "application/json",
@@ -154,9 +167,11 @@ export async function chatStream(
   let text = "";
   let usage: Usage | undefined;
   let first = -1;
+  let blank = 0;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
+    arm();
     pending += dec.decode(value, { stream: true });
     const lines = pending.split("\n");
     pending = lines.pop() ?? "";
@@ -169,12 +184,18 @@ export async function chatStream(
       if (j.usage) usage = j.usage;
       const d = j.choices?.[0]?.delta?.content;
       if (d) {
+        blank = /^\s*$/.test(d) ? blank + d.length : 0;
+        if (blank > 400) {
+          ac.abort(new Error("runaway whitespace"));
+          throw new Error(`runaway whitespace after ${text.length} chars`);
+        }
         if (first < 0) first = Math.round(performance.now() - t0);
         text += d;
         onText(d);
       }
     }
   }
+  clearTimeout(stall);
   if (!usage) throw new Error("stream ended without usage");
   return {
     text,
@@ -216,6 +237,8 @@ export type PhotoAsk = {
   index: number;
 };
 export type PhotoResult = {
+  /** The request text the picture director was given. */
+  request: string;
   src: string;
   alt: string;
   aspect: number;
@@ -273,7 +296,11 @@ export function pictureService(opts: {
       })(),
       storage: createStorage({ STORAGE_ROOT: STORE }).adapter,
       embedder: im.createOpenAiEmbedder({ apiKey: okey }),
-      generator: im.createOpenAiImageGenerator({ apiKey: okey }),
+      generator: guardedGenerator(
+        im.createOpenAiImageGenerator({ apiKey: okey }),
+        () => opts.ledger.parts.pictures ?? 0,
+        opts.bankCapUsd,
+      ),
       capUsd: opts.bankCapUsd,
       ids: () => newId(),
       onEvent: (e: { costUsd?: number }) => {
@@ -343,7 +370,14 @@ export function pictureService(opts: {
       yearGroup: lesson.yearGroup,
       subject: lesson.subject,
     } as Record<string, unknown>;
-    const facts = (full.facts ?? { outline: [] }) as { outline?: unknown[] };
+    // Every facts field the picture code reads (illustrate.ts: objectives, vocabulary, keyIdeas, outline).
+    const facts = {
+      objectives: [],
+      vocabulary: [],
+      keyIdeas: [],
+      outline: [],
+      ...((full.facts ?? {}) as object),
+    } as { outline?: unknown[] };
     const at = (x: unknown) =>
       pickPhoto(
         {
@@ -393,6 +427,7 @@ export function pictureService(opts: {
     })) as { src: string; alt: string; about?: string; source?: { provider?: string } } | undefined;
     if (!photo) return undefined;
     return {
+      request,
       src: photo.src,
       alt: photo.alt,
       about: photo.about,
@@ -402,6 +437,33 @@ export function pictureService(opts: {
     };
   }
   return { find, aiSpend };
+}
+
+/**
+ * The image generator with a hard cap the bank's own cap missed (smoke 3: 20 parallel generations
+ * against a $0.03 cap, $0.125 spent). Generations still run in parallel, but each reserves its
+ * cost (about $0.0063) first, and none starts once spend plus reservations would pass the cap.
+ */
+export function guardedGenerator<G extends { generate: (a: never) => Promise<unknown> }>(
+  g: G,
+  spent: () => number,
+  capUsd: number,
+): G {
+  const PER = 0.0063;
+  let reserved = 0;
+  return {
+    ...g,
+    generate: async (a: never) => {
+      if (spent() + reserved + PER > capUsd + 1e-9)
+        throw new Error(`picture generation cap $${capUsd} reached`);
+      reserved += PER;
+      try {
+        return await g.generate(a);
+      } finally {
+        reserved -= PER;
+      }
+    },
+  };
 }
 
 /** A stored photo's own width / height (sips, macOS); 4:3 when it cannot be read. */

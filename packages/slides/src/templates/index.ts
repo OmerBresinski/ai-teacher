@@ -69,7 +69,15 @@ const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
 
 /** `aspect`: the photo's own width / height, so a panel can take its shape and crop nothing. */
 /** A photo whose `photo` is "" is an open slot (the picture is still being found): the image view draws its placeholder. */
-export type Figure = { photo: string; alt?: string; aspect?: number } | { diagram: unknown };
+export type Figure =
+  | {
+      photo: string;
+      alt?: string;
+      aspect?: number;
+      /** The picture director's request text, kept on the image element for the eval. */
+      request?: string;
+    }
+  | { diagram: unknown };
 export type TemplateId =
   | "title"
   | "objectives"
@@ -285,7 +293,7 @@ function heading(c: Ctx, value: string) {
  */
 function photoBox(
   c: Ctx,
-  f: { photo: string; alt?: string; aspect?: number },
+  f: { photo: string; alt?: string; aspect?: number; request?: string },
   rect: { x: number; y: number; w: number; h: number },
   cover = true,
 ) {
@@ -305,6 +313,7 @@ function photoBox(
     h: Math.round(r.h),
     src: f.photo,
     alt: f.alt ?? "",
+    ...(f.request ? { request: f.request } : {}),
     fit: "cover",
     radius: c.t.radius,
   } as ImageElement);
@@ -336,6 +345,7 @@ function figurePanel(
       ...fitted,
       src: f.photo,
       alt: f.alt ?? "",
+      ...(f.request ? { request: f.request } : {}),
       fit: "cover",
       radius: c.t.radius,
     } as ImageElement);
