@@ -398,7 +398,7 @@ describe("design object, placeholders, templates (decisions a and b)", () => {
     ];
     const u = fillTemplate(fs.readFileSync(`${S}/user.txt`, "utf8"), brief, { objectives });
     expect(u).not.toContain("{{");
-    expect(u).toContain("1. Teacher: t1 | Pupils: p1");
+    expect(u).toContain("1. t1\n2. t2");
     expect(fillTemplate(fs.readFileSync(`${S}/objectives-user.txt`, "utf8"), brief)).toContain(
       "Objectives: two or three",
     );
