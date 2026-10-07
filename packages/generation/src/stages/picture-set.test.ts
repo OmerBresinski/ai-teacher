@@ -61,3 +61,12 @@ describe("sets are about any subject, never real time", () => {
     expect(setImagePrompt(["A", "B"])).not.toMatch(/breed|animal|fur|feather/i);
   });
 });
+
+describe("a solo panel is one picture, not a 1-panel strip (round 5)", () => {
+  test("no gutter or panel layout wording for one panel", () => {
+    const p = setImagePrompt(["A hen beside a chick"]);
+    expect(p).not.toMatch(/side-by-side|gaps|Left to right/);
+    expect(p).toContain("not divided into panels");
+    expect(setSize(1)).toBe("1024x1024");
+  });
+});

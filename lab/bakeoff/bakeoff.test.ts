@@ -607,7 +607,7 @@ describe("same-subject sets never cross-wire or render a failed panel", () => {
   });
 });
 
-describe("pictures meant to be compared are one set (never part library, part fresh)", () => {
+describe("sets are for sequences only; compare cards get one picture each (round 5)", () => {
   const vctx = {
     brief: { keyStage: "ks1" },
     theme: getTheme("splash"),
@@ -615,7 +615,7 @@ describe("pictures meant to be compared are one set (never part library, part fr
     plan: { objectives: [], flow: [], slides: [] },
   } as never;
   const pic = (shows: string) => ({ shows, must_see: [shows], subject: "generic" });
-  test("every compare card's picture is in set col; different things are framed as a matched set", () => {
+  test("a compare card's picture is never part of a split strip", () => {
     const asks = withKeyStage("ks1", () =>
       armT.visuals(
         {
@@ -638,8 +638,7 @@ describe("pictures meant to be compared are one set (never part library, part fr
         vctx,
       ),
     ) as { set?: string; sameSubject?: boolean }[];
-    expect(asks.map((a) => a.set)).toEqual(["col", "col"]);
-    expect(asks.every((a) => a.sameSubject === false)).toBe(true);
+    expect(asks.map((a) => a.set)).toEqual([undefined, undefined]);
   });
   test("a sequence's panels are one same-subject set; a lone picture is not a set", () => {
     const seq = withKeyStage("ks1", () =>

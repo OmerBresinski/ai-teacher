@@ -390,10 +390,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   };
   /** Early picture jobs from the flow, keyed by slide index; a slide's single picture takes it over. */
   const early = new Map<number, Promise<PhotoResult | undefined>>();
+  /** Aborts an early flow job a slide doesn't take over (compare cards, sequences): no spend for nothing. */
+  const earlyAbort = new Map<number, AbortController>();
   const startPhoto = (
     i: number,
     a: Extract<VisualAsk, { type: "photo" }>,
     words: { heading: string; text: string },
+    signal?: AbortSignal,
   ) => {
     const k = `${i}:${a.key}`;
     const fresh = o.freshSlides?.includes(i + 1);
@@ -416,6 +419,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       ...(plan.design?.picture_style ? { style: plan.design.picture_style } : {}),
       slide: { heading: words.heading, text: words.text, point: "" },
       index: i,
+      ...(signal ? { signal } : {}),
     };
     log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect });
     return pics.find(ask, lessonInfo);
@@ -570,12 +574,17 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         mark("firstPlaceholder");
       }
       if (f.look_at?.kind === "picture" && f.look_at.shows && i > 0 && !early.has(i)) {
+        const ac = new AbortController();
         const p = startPhoto(
           i,
           { key: "early", type: "photo", shows: f.look_at.shows, mustSee: [], named: false },
           { heading: f.does, text: "" },
+          ac.signal,
         );
-        if (p) early.set(i, p);
+        if (p) {
+          early.set(i, p);
+          earlyAbort.set(i, ac);
+        }
       }
     }
     if (top === "flow" && path.length === 1) {
@@ -616,10 +625,21 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
               all.then((r) => r[n]),
             );
       }
+      // Round 5: an early job this slide will not take over is stopped (y1 r4: "a cow with a calf
+      // and a hen with a chick" was generated and judged twice for a compare slide that never used it).
+      const takes = !!e && !!photos[0] && !photos[0].fixedShape && !photos[0].set;
+      if (e && !takes) {
+        earlyAbort.get(idx)?.abort();
+        log({
+          ev: "early-dropped",
+          slide: idx + 1,
+          why: photos.length ? "slide uses its own slots" : "no picture on the slide",
+        });
+      }
       photos.forEach((a, n) => {
         if (a.set && (sets.get(a.set)?.length ?? 0) >= 2 && (pics || reused)) return;
         // The slide's first picture takes over the flow's early job (already running).
-        if (n === 0 && e && !a.fixedShape) {
+        if (n === 0 && e && takes) {
           visuals.set(`${idx}:${a.key}`, { status: "pending" });
           landPhoto(idx, a.key, e);
           return;

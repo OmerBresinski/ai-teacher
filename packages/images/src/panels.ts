@@ -179,7 +179,9 @@ export function panelBounds(r: Raster, n: number): [number, number][] {
     const near = runs
       .filter(([a, b]) => a > 0 && b < r.width - 1 && Math.abs((a + b) / 2 - mark) <= 0.4 * w)
       .sort((p, q) => Math.abs((p[0] + p[1]) / 2 - mark) - Math.abs((q[0] + q[1]) / 2 - mark))[0];
-    cuts.push(near ?? [Math.round(mark), Math.round(mark)]);
+    // Round 5: never cut where the model drew no gutter; that cut is a seam through a picture.
+    if (!near) throw new Error(`strip has no gutter near panel edge ${k} of ${n}`);
+    cuts.push(near);
   }
   const out: [number, number][] = [];
   let start = 0;
@@ -240,6 +242,7 @@ function window(r: Raster, x: number, y: number, w: number, h: number): Raster {
  */
 export function splitPanels(png: Uint8Array, n: number, aspect: number): Uint8Array[] {
   const r = decodePng(png);
+  if (n === 1) return [encodePng(fitWindow(r, aspect))];
   const panels = panelBounds(r, n).map(([a, b]) => {
     const inset = Math.round((b - a) * 0.015);
     return crop(r, a + inset, 0, b - a - 2 * inset, r.height);
@@ -263,4 +266,50 @@ export function splitPanels(png: Uint8Array, n: number, aspect: number): Uint8Ar
     const y = Math.max(0, Math.min(panel.height - h, Math.round(cy - h / 2)));
     return encodePng(window(panel, Math.round(cx - w / 2), y, w, h));
   });
+}
+
+/** One picture cropped to `aspect` round its subject (a solo panel: no gutters to find). */
+function fitWindow(r: Raster, aspect: number): Raster {
+  let w = r.width;
+  let h = Math.round(w / aspect);
+  if (h > r.height) {
+    h = r.height;
+    w = Math.round(h * aspect);
+  }
+  const box = subjectBox(r);
+  const cx = box ? box.x + box.w / 2 : r.width / 2;
+  const cy = box ? box.y + box.h / 2 : r.height / 2;
+  const x = Math.max(0, Math.min(r.width - w, Math.round(cx - w / 2)));
+  const y = Math.max(0, Math.min(r.height - h, Math.round(cy - h / 2)));
+  return crop(r, x, y, w, h);
+}
+
+/** A 16x16 grey thumbnail, for telling near-identical panels apart. */
+function thumb(r: Raster): number[] {
+  const out: number[] = [];
+  for (let j = 0; j < 16; j++)
+    for (let i = 0; i < 16; i++) {
+      const x = Math.min(r.width - 1, Math.floor(((i + 0.5) * r.width) / 16));
+      const y = Math.min(r.height - 1, Math.floor(((j + 0.5) * r.height) / 16));
+      const o = (y * r.width + x) * 3;
+      out.push(((r.rgb[o] ?? 0) + (r.rgb[o + 1] ?? 0) + (r.rgb[o + 2] ?? 0)) / 3);
+    }
+  return out;
+}
+
+/**
+ * Pairs of panels that are near copies of each other (mean grey difference under `tol` on 16x16
+ * thumbnails): a doubled panel, never a stage. Round 5: y1 r4 showed the same hen twice.
+ */
+export function duplicatePanels(pngs: Uint8Array[], tol = 6): [number, number][] {
+  const ts = pngs.map((p) => thumb(decodePng(p)));
+  const out: [number, number][] = [];
+  for (let a = 0; a < ts.length; a++)
+    for (let b = a + 1; b < ts.length; b++) {
+      const ta = ts[a] ?? [];
+      const tb = ts[b] ?? [];
+      const d = ta.reduce((s, v, i) => s + Math.abs(v - (tb[i] ?? 0)), 0) / (ta.length || 1);
+      if (d < tol) out.push([a, b]);
+    }
+  return out;
 }
