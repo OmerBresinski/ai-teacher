@@ -159,7 +159,15 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
           return {
             template: "big-diagram",
             heading,
-            lead: [lead, ...pts(s.points)].filter(Boolean).join(" "),
+            // Round 4 fix (y10 s4 "[object Object]"): key-card points are objects; join their words.
+            lead: [
+              lead,
+              ...pts(s.points).map((p) =>
+                typeof p === "string" ? p : p.label ? `${p.label}: ${p.text}` : p.text,
+              ),
+            ]
+              .filter(Boolean)
+              .join(" "),
             figure: f,
           };
       }

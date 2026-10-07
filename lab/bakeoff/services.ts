@@ -1227,6 +1227,34 @@ export async function diagramSpec(
   );
 }
 /**
+ * Round 4 fix: a JSON schema OpenAI's response_format accepts. The drawer's zod schema has tuples
+ * (particles `key`), which draft-7 writes as `items: [a, b]`; OpenAI refuses that (400 "is not of
+ * type 'object'"), so every particles spec failed in round 4 (y7 5/5, y11 stretch 5/5). A tuple
+ * becomes an array of its first item's type with the tuple's length.
+ */
+export function openaiSchema<T>(node: T): T {
+  if (Array.isArray(node)) return node.map(openaiSchema) as T;
+  if (!node || typeof node !== "object") return node;
+  const o: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(node)) o[k] = openaiSchema(v);
+  if (Array.isArray(o.items)) {
+    const list = o.items as unknown[];
+    o.items = list[0] ?? {};
+    o.minItems ??= list.length;
+    o.maxItems ??= list.length;
+    delete o.additionalItems;
+  }
+  if (Array.isArray(o.prefixItems)) {
+    const list = o.prefixItems as unknown[];
+    delete o.prefixItems;
+    o.items ??= list[0] ?? {};
+    o.minItems ??= list.length;
+    o.maxItems ??= list.length;
+  }
+  return o as T;
+}
+
+/**
  * A set that placed only some panels: each missing panel is made alone by `solo` (in parallel);
  * placed panels are kept as they are. Never throws (a failed solo stays undefined).
  */
@@ -1260,7 +1288,7 @@ async function specCalls(
   log: (e: object) => void,
   kindSchema: unknown,
 ): Promise<unknown | undefined> {
-  const schema = z.toJSONSchema(kindSchema as never, { target: "draft-7" });
+  const schema = openaiSchema(z.toJSONSchema(kindSchema as never, { target: "draft-7" }));
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {

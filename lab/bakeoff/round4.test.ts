@@ -210,3 +210,34 @@ describe("arm T: equation-hero (round 4 final schema)", () => {
     expect(armT.words(eq)).toContain("a = Δv ÷ t");
   });
 });
+
+test("every diagram kind's spec schema has no tuple items (OpenAI 400 in round 4)", async () => {
+  const { openaiSchema } = await import("./services");
+  const { DiagramSpecSchema } = await import("../../packages/slides/src/diagrams/schema");
+  const { z } = await import("../../packages/generation/node_modules/zod");
+  const bad: string[] = [];
+  const walk = (n: unknown, path: string, kind: string) => {
+    if (Array.isArray(n)) {
+      n.forEach((x, i) => {
+        walk(x, `${path}[${i}]`, kind);
+      });
+      return;
+    }
+    if (!n || typeof n !== "object") return;
+    const o = n as Record<string, unknown>;
+    if (Array.isArray(o.items) || "prefixItems" in o) bad.push(`${kind}${path}`);
+    for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`, kind);
+  };
+  for (const opt of DiagramSpecSchema.options as unknown as {
+    shape: { kind: { value: string } };
+  }[]) {
+    const js = openaiSchema(z.toJSONSchema(opt as never, { target: "draft-7" } as never));
+    walk(js, "", opt.shape.kind.value);
+  }
+  expect(bad).toEqual([]);
+});
+
+test("a long diagram moved full width joins key-card points as words, never [object Object]", async () => {
+  const src = await Bun.file(`${import.meta.dir}/arm-t.ts`).text();
+  expect(src).not.toContain('lead: [lead, ...pts(s.points)].filter(Boolean).join(" ")');
+});
