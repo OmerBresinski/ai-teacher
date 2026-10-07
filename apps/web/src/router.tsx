@@ -35,6 +35,7 @@ import {
   worksheetsRoute,
 } from "@/routes/library.route";
 import { rootRoute } from "@/routes/root.route";
+import { settingsRoute } from "@/routes/settings.route";
 import { signInRoute } from "@/routes/sign-in.route";
 import { signInConfirmRoute } from "@/routes/sign-in-confirm.route";
 import { worksheetCreateRoute } from "@/routes/worksheet-create.route";
@@ -61,6 +62,7 @@ export const routeTree = rootRoute.addChildren([
       worksheetCreateRoute,
       seriesIndexRoute,
       seriesDetailRoute,
+      settingsRoute,
     ]),
     lessonPrintRoute,
     worksheetEditorRoute,

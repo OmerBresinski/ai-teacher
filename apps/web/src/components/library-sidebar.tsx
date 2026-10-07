@@ -8,6 +8,7 @@ import {
   Layers,
   LogOut,
   Presentation,
+  Settings,
   SwatchBook,
   Upload,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const IMPORT_ICON = <Upload {...ICON} />;
 const SHORTCUTS_ICON = <CircleHelp {...ICON} />;
 const SIGN_OUT_ICON = <LogOut {...ICON} />;
 const KIT_ICON = <SwatchBook {...ICON} />;
+const SETTINGS_ICON = <Settings {...ICON} />;
 const WORDMARK = (
   <Display as="span" size="md" className="whitespace-nowrap">
     DayBack
@@ -125,6 +127,9 @@ export function LibrarySidebar({
             </SidebarItem>
           ) : null}
           <ThemeMenu />
+          <SidebarItem asChild icon={SETTINGS_ICON} active={pathname === "/settings"}>
+            <Link to="/settings">Settings</Link>
+          </SidebarItem>
           <SidebarItem icon={SIGN_OUT_ICON} onClick={() => void signOut()}>
             Sign out
           </SidebarItem>

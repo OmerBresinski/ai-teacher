@@ -27,6 +27,7 @@ const SHELL_ROUTES = [
   "/w/$worksheetId",
   "/w/$worksheetId/print",
   "/kit",
+  "/settings",
 ];
 
 describe("router", () => {
@@ -52,8 +53,8 @@ describe("router", () => {
     const PUBLIC = new Set(["__root__", "/sign-in", "/sign-in/confirm", "/auth", "/guest"]);
     const authed = ids.filter((id) => !PUBLIC.has(id));
     expect(authed.every((id) => id.startsWith("/auth/") || id.startsWith("/guest/"))).toBe(true);
-    // The six shell pages share the pathless `library` layout (sidebar, dialogs, shell memory).
-    expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(6);
+    // The six shell pages and Settings share the pathless `library` layout (sidebar, dialogs).
+    expect(ids.filter((id) => id.startsWith("/auth/library/"))).toHaveLength(7);
     // Account-only document routes: print and the worksheets. (`/auth/dev/jobs` joins in dev.)
     expect(ids.filter((id) => /^\/auth\/(l|w)\//.test(id)).sort()).toEqual([
       "/auth/l/$lessonId/print",

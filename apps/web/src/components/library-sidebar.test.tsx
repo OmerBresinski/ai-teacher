@@ -62,6 +62,16 @@ describe("LibrarySidebar", () => {
     expect(localStorage.getItem("tj:sidebar-collapsed")).toBe("1");
   });
 
+  it("links to Settings in the foot and marks it active there", () => {
+    pathname = "/settings";
+    renderSidebar();
+
+    const link = screen.getByRole("link", { name: /Settings/ });
+    expect(link).toHaveAttribute("href", "/settings");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /Lessons/ })).not.toHaveAttribute("aria-current");
+  });
+
   it("sets the selected theme", async () => {
     renderSidebar();
 
