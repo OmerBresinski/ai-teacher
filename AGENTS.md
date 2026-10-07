@@ -95,6 +95,12 @@ closely related to an open ticket goes into that ticket as a **lettered part** i
 3. Each part ships as its own PR on `<gitBranchName>-a` / `<gitBranchName>-b`, titled with
    `(TEACH-<n> part a)` / `(TEACH-<n> part b)`. The ticket moves to **Done** only when every part
    has shipped.
+4. Existing citations of the ticket (code, docs, commits) stay as they are: they refer to Part a,
+   which keeps the original text. New references write `TEACH-<n> part b`, never `TEACH-<n>b`, so
+   Linear's and GitHub's id linking still matches.
+5. The Linear–GitHub integration moves the issue to Done when a linked PR merges. If other parts
+   remain after a part's PR merges, the merger sets the ticket back to **In Progress** (or
+   **Backlog**) and comments which part shipped.
 
 ### Tech debt
 
