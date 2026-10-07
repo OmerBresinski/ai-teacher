@@ -466,6 +466,8 @@ export type PhotoAsk = {
   aspect?: number;
   /** The slot crops to its own box: a generic stock photo that would only fit shrunk is refused (generation renders at the slot's shape). */
   fixedShape?: boolean;
+  /** Aborts this picture's job (an early flow job no slide took over). */
+  signal?: AbortSignal;
   /** A set member: false when the set's panels are different things compared (still made together). */
   sameSubject?: boolean;
   /** The design call's `design.picture_style`: "illustration" generates generic pictures in the lesson's one style. */
@@ -655,7 +657,7 @@ export function pictureService(opts: {
       ai,
       budget: createBudget({ capUsd: 0.05, capTokens: 2_000_000 }),
       effortFor: () => "low",
-      signal: new AbortController().signal,
+      signal: ask.signal ?? new AbortController().signal,
       logger,
       now: () => new Date(),
       ids: () => newId(),
@@ -911,7 +913,9 @@ export function pictureService(opts: {
       },
     };
     let best: { results: (PhotoResult | undefined)[]; ok: number } | undefined;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    // Round 5 retry cap: one strip; panels it could not place get one solo generation each (one
+    // regenerate per slot). A second strip doubled the cost on y1 r4 and failed the same way.
+    for (let attempt = 0; attempt < 1; attempt++) {
       let made: Awaited<ReturnType<typeof gen.generate>>;
       try {
         made = await gen.generate({ prompt, size: setSize(asks.length) } as never);
@@ -922,6 +926,9 @@ export function pictureService(opts: {
       let panels: Uint8Array[];
       try {
         panels = im.splitPanels(made.bytes, asks.length, aspect);
+        const dup = im.duplicatePanels(panels);
+        if (dup.length)
+          throw new Error(`strip repeats a panel: ${dup.map((p) => p.join("=")).join(", ")}`);
       } catch (e) {
         runLog({ ev: "set-error", set: setKey, attempt, err: String(e).slice(0, 200) });
         break;

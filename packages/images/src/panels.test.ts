@@ -54,3 +54,24 @@ describe("panels", () => {
     }
   });
 });
+
+describe("no seams, no doubled panels (round 5)", () => {
+  test("a strip with a missing gutter is refused, never cut through a picture", () => {
+    const r = strip([100, 100], [20, 20]);
+    // paint over the gutter: the two panels now run into each other
+    for (let y = 0; y < r.height; y++)
+      r.rgb.fill(236, (y * r.width + 100) * 3, (y * r.width + 108) * 3);
+    expect(() => panelBounds(r, 2)).toThrow();
+  });
+  test("near-identical panels are caught; different stages are not", () => {
+    const { duplicatePanels } = require("./panels");
+    const same = splitPanels(encodePng(strip([100, 100], [30, 30])), 2, 1.25);
+    expect(duplicatePanels(same)).toEqual([[0, 1]]);
+    const grow = splitPanels(encodePng(strip([100, 100], [16, 60])), 2, 1.25);
+    expect(duplicatePanels(grow)).toEqual([]);
+  });
+  test("a solo panel is cropped to the slot shape without looking for gutters", () => {
+    const one = decodePng(splitPanels(encodePng(strip([120], [30])), 1, 1.25)[0] as Uint8Array);
+    expect(Math.abs(one.width / one.height - 1.25)).toBeLessThan(0.02);
+  });
+});

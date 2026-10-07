@@ -2,7 +2,6 @@
 // Prompt and schema: BAKEOFF/prompts/T/{system,schema}.<KS1|KS2|KS3-5>.{txt,json} (the prompt agent's),
 // else SOL-SIMPLE's arm T as a stand-in.
 import { existsSync, readFileSync } from "node:fs";
-import { isSameSubjectSet } from "../../packages/generation/src/stages/picture-set";
 import { drawDiagram } from "../../packages/slides/src/diagrams";
 import { PLACEHOLDER_IMAGE } from "../../packages/slides/src/layouts";
 import {
@@ -292,7 +291,9 @@ export const armT: ArmPlugin = {
       figs.filter(({ key, f }) => key.startsWith(pre) && !isDia(f)).map(({ f }) => f.shows);
     const setOf = (key: string): string | undefined => {
       if (key.startsWith("seq.")) return shows("seq.").length >= 2 ? "seq" : undefined;
-      if (key.startsWith("col.")) return shows("col.").length >= 2 ? "col" : undefined;
+      // Round 5 (Sonnet judge, y1 r4 s4-s5: seams and doubled panels): a compare card gets one
+      // coherent picture of its own, never a crop of a split strip. Sets are for true sequences.
+      if (key.startsWith("col.")) return undefined;
       return undefined;
     };
     return figs.map(
@@ -307,9 +308,6 @@ export const armT: ArmPlugin = {
               named: f.subject === "named",
               ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
               ...(setOf(key) ? { set: setOf(key) } : {}),
-              ...(key.startsWith("col.") && setOf(key) && !isSameSubjectSet(shows("col."))
-                ? { sameSubject: false }
-                : {}),
             },
     );
   },

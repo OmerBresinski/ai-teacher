@@ -77,6 +77,7 @@ export function soloImagePrompt(shows: string, look?: LessonLook): string {
 
 /** One strip for the set: wide enough that each panel holds a whole subject. */
 export function setSize(n: number): ImageSize {
+  if (n === 1) return "1024x1024";
   return n >= 3 ? "2048x1152" : "1536x1024";
 }
 
@@ -88,6 +89,17 @@ export function setSize(n: number): ImageSize {
  */
 export function setImagePrompt(shows: string[], look?: LessonLook, same = true): string {
   const n = shows.length;
+  // One panel generated on its own (a partial set's missing stage): a single picture in the
+  // strip's look, never a "1-panel strip" (round 5: that wording drew gutters and seams).
+  if (n === 1) {
+    const one = [
+      `${(shows[0] ?? "").replace(/\s+/g, " ").trim().replace(/\.$/, "")}.`,
+      "One single photograph, not divided into panels: the subject whole, seen side-on, on a plain light background.",
+      "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
+    ].join("\n");
+    if (look?.style === "illustration") return lessonIllustrationPrompt(one, look);
+    return housePhoto(look) ? housePhotoPrompt(one, look) : one;
+  }
   const body = [
     `One image divided into ${n} equal side-by-side panels separated by thin pure white gaps. Left to right: ${shows
       .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
