@@ -17,7 +17,6 @@ import { authClient } from "@/lib/auth";
 import { libraryQueries, librarySelectors } from "@/lib/library";
 import { sessionBoundary } from "@/lib/session-boundary";
 import { usePreference } from "@/lib/use-preference";
-import { ThemeMenu } from "./theme-menu";
 
 /** Stable client storage contract (apps/web/AGENTS.md); "1" collapsed, anything else expanded. */
 const COLLAPSED_KEY = "tj:sidebar-collapsed";
@@ -126,7 +125,6 @@ export function LibrarySidebar({
               <Link to="/kit">Kit</Link>
             </SidebarItem>
           ) : null}
-          <ThemeMenu />
           <SidebarItem asChild icon={SETTINGS_ICON} active={pathname === "/settings"}>
             <Link to="/settings">Settings</Link>
           </SidebarItem>

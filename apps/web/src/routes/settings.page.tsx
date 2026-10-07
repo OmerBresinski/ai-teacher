@@ -23,7 +23,7 @@ const THEME_ORDER: readonly Theme[] = ["light", "dark", "high-contrast", "system
 /**
  * One page of plain sections (F17 §8: no nested menus). It holds the settings that exist today:
  * the account's name and email, read from `/me` (the auth layout has already fetched it), and the
- * theme, which lives in the browser through `useTheme` like the sidebar's Theme menu.
+ * theme, which lives in the browser through `useTheme`. This is the only place to change it.
  */
 export function SettingsPage() {
   const { data: me } = useQuery(meQueryOptions);

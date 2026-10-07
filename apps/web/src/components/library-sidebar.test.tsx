@@ -72,14 +72,10 @@ describe("LibrarySidebar", () => {
     expect(screen.getByRole("link", { name: /Lessons/ })).not.toHaveAttribute("aria-current");
   });
 
-  it("sets the selected theme", async () => {
+  it("has no Theme menu: the theme is set on the Settings page", () => {
     renderSidebar();
 
-    const trigger = screen.getByRole("button", { name: "Theme" });
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Dark" }));
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(localStorage.getItem("tj-theme")).toBe("dark");
+    expect(screen.queryByRole("button", { name: "Theme" })).toBeNull();
   });
 });
 
