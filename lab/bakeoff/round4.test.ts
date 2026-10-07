@@ -1,7 +1,8 @@
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { fillTemplate } from "./harness";
 import { coverage, lessonNotes, notesText, renderedLines, repairObjectives } from "./round4";
+import { fillPartialSet } from "./services";
 
 const fx = JSON.parse(readFileSync(`${import.meta.dir}/fixtures/y11-r3-flow.json`, "utf8")) as {
   flow: { slide: number; does: string; teaches: number[] }[];
@@ -131,4 +132,45 @@ test("challenge defaults to core and takes the brief's value", () => {
       challenge: "stretch",
     } as never),
   ).toBe("Challenge: stretch");
+});
+
+describe("partial-set fallback (y1 round 3 cat and sheep)", () => {
+  const ask = (key: string, shows: string) => ({ key, shows });
+  const cases = {
+    // 3:col placed 1 of 2: the grown cat was rejected on both attempts.
+    cat: {
+      asks: [
+        ask("3:col.0", "A grown tabby cat standing at the same scale as the kitten"),
+        ask("3:col.1", "A small tabby kitten standing at the same scale as the grown cat"),
+      ],
+      placed: [undefined, "kitten.png"],
+    },
+    // 5:col placed 1 of 2: the lamb was rejected on both attempts.
+    sheep: {
+      asks: [
+        ask("5:col.0", "A grown white sheep standing at the same scale as the lamb"),
+        ask("5:col.1", "A small white lamb standing at the same scale as the sheep"),
+      ],
+      placed: ["sheep.png", undefined],
+    },
+  };
+  for (const [name, c] of Object.entries(cases))
+    test(`${name}: the missing panel is made alone from its own request, the placed one kept`, async () => {
+      const calls: string[] = [];
+      const out = await fillPartialSet(c.placed, c.asks, async (a) => {
+        calls.push(a.shows);
+        return `solo:${a.key}`;
+      });
+      const missing = c.placed.findIndex((x) => x === undefined);
+      expect(calls).toEqual([c.asks[missing]?.shows]);
+      expect(out.every(Boolean)).toBe(true);
+      expect(out[1 - missing]).toBe(c.placed[1 - missing]);
+    });
+  test("a solo panel that fails or throws stays empty; the rest are unaffected", async () => {
+    const out = await fillPartialSet([undefined, undefined, "c"], [1, 2, 3], async (a) => {
+      if (a === 1) throw new Error("image 500");
+      return undefined;
+    });
+    expect(out).toEqual([undefined, undefined, "c"]);
+  });
 });

@@ -862,6 +862,53 @@ export function pictureService(opts: {
     );
     const aspect = asks[0]?.aspect ?? 4 / 3;
     runLog({ ev: "set-start", set: setKey, n: asks.length, aspect });
+    /** One panel judged alone against its own request (the set's panel judge, and solo panels). */
+    const judgePanel = (
+      a: PhotoAsk,
+      url: string,
+      k: number,
+      boxes: (Box4[] | undefined)[],
+      panelWhy: (string | undefined)[],
+    ) => {
+      const request = [a.shows, ...a.mustSee].join(". ");
+      const brief = {
+        subject: plainSubject(a.shows).slice(0, 60),
+        request: request.slice(0, 400),
+        // A set panel must show its subject; the stage details ("developing feathers") are
+        // the strip's job and the set judge's, not a per-panel must (y1 chick: the growing
+        // chicken failed twice on "developing feathers" while the judge said it fit).
+        mustShow: a.mustSee.length ? a.mustSee : mustShowOf(request).slice(0, 1),
+        purpose: "context",
+        specific: false,
+        aspect: Math.round(aspect * 100) / 100,
+      };
+      return judgeMade({
+        lesson: pickerLesson(lesson, a.index) as never,
+        index: a.index,
+        brief: brief as never,
+        deps: deps as never,
+        dataUrl: url,
+        onVerdict: (v: { boxes?: Box4[]; why?: string | null }) => {
+          boxes[k] = v.boxes;
+          panelWhy[k] = v.why ?? undefined;
+        },
+      }).catch(() => false);
+    };
+    const panelOpts = {
+      model: gen.model,
+      style: (look?.style === "illustration"
+        ? "illustration"
+        : look?.generic === "generate"
+          ? "house"
+          : "photo") as "photo" | "illustration" | "house",
+      save: (bytes: Uint8Array) => {
+        const id = newId();
+        const k2 = `${WS}/sets/${id}.png`;
+        mkdirSync(resolve(STORE, k2, ".."), { recursive: true });
+        writeFileSync(resolve(STORE, k2), bytes);
+        return { id, src: `/files/${k2}`, aspect: aspectOf(`/files/${k2}`) };
+      },
+    };
     let best: { results: (PhotoResult | undefined)[]; ok: number } | undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
       let made: Awaited<ReturnType<typeof gen.generate>>;
@@ -882,33 +929,10 @@ export function pictureService(opts: {
       const boxes: (Box4[] | undefined)[] = [];
       const panelWhy: (string | undefined)[] = [];
       const judged = await Promise.all(
-        asks.map((a, k) => {
-          const request = [a.shows, ...a.mustSee].join(". ");
-          const brief = {
-            subject: plainSubject(a.shows).slice(0, 60),
-            request: request.slice(0, 400),
-            // A set panel must show its subject; the stage details ("developing feathers") are
-            // the strip's job and the set judge's, not a per-panel must (y1 chick: the growing
-            // chicken failed twice on "developing feathers" while the judge said it fit).
-            mustShow: a.mustSee.length ? a.mustSee : mustShowOf(request).slice(0, 1),
-            purpose: "context",
-            specific: false,
-            aspect: Math.round(aspect * 100) / 100,
-          };
-          return judgeMade({
-            lesson: pickerLesson(lesson, a.index) as never,
-            index: a.index,
-            brief: brief as never,
-            deps: deps as never,
-            dataUrl: urls[k] ?? "",
-            onVerdict: (v: { boxes?: Box4[]; why?: string | null }) => {
-              boxes[k] = v.boxes;
-              panelWhy[k] = v.why ?? undefined;
-            },
-          }).catch(() => false);
-        }),
+        asks.map((a, k) => judgePanel(a, urls[k] ?? "", k, boxes, panelWhy)),
       );
       const same = await judgeSet(shows, urls);
+
       const odd = new Set(same?.odd ?? []);
       const pass = judged.map((j, k) => j === true && (!same || same.same || !odd.has(k)));
       runLog({
@@ -936,28 +960,44 @@ export function pictureService(opts: {
           why: judged[k] !== true ? panelWhy[k] : same?.why,
         });
       }
-      const results = setPanelResults(asks, panels, pass, boxes, {
-        model: gen.model,
-        style:
-          look?.style === "illustration"
-            ? "illustration"
-            : look?.generic === "generate"
-              ? "house"
-              : "photo",
-        save: (bytes) => {
-          const id = newId();
-          const k2 = `${WS}/sets/${id}.png`;
-          mkdirSync(resolve(STORE, k2, ".."), { recursive: true });
-          writeFileSync(resolve(STORE, k2), bytes);
-          return { id, src: `/files/${k2}`, aspect: aspectOf(`/files/${k2}`) };
-        },
-        setKey,
-      });
+      const results = setPanelResults(asks, panels, pass, boxes, { ...panelOpts, setKey });
       const ok = results.filter(Boolean).length;
       if (!best || ok > best.ok) best = { results, ok };
       if (ok === asks.length) break;
     }
-    const out = best?.results ?? asks.map(() => undefined);
+    // Round 4 partial-set fallback (y1 cat and sheep placed 1 of 2, and all-or-none dropped both):
+    // each panel the set could not place is generated alone, same request in the lesson's look,
+    // and judged alone; panels the set placed are kept.
+    const solo = async (a: PhotoAsk, k: number): Promise<PhotoResult | undefined> => {
+      try {
+        const made = await gen.generate({
+          prompt: setImagePrompt([a.shows], look, true),
+          size: setSize(1),
+        } as never);
+        const panel = im.splitPanels(made.bytes, 1, aspect)[0] ?? made.bytes;
+        const url = `data:image/png;base64,${Buffer.from(panel).toString("base64")}`;
+        const bx: (Box4[] | undefined)[] = [];
+        const why: (string | undefined)[] = [];
+        const ok = (await judgePanel(a, url, 0, bx, why)) === true;
+        runLog({
+          ev: "set-solo",
+          set: setKey,
+          key: a.key,
+          ok,
+          usd: made.costUsd,
+          ...(ok ? {} : { why: why[0] }),
+        });
+        if (!ok) return undefined;
+        return setPanelResults([a], [panel], [true], bx, {
+          ...panelOpts,
+          setKey: `${setKey}#solo${k}`,
+        })[0];
+      } catch (e) {
+        runLog({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
+        return undefined;
+      }
+    };
+    const out = await fillPartialSet(best?.results ?? asks.map(() => undefined), asks, solo);
     runLog({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
     return out;
   }
@@ -1186,6 +1226,20 @@ export async function diagramSpec(
     log,
   );
 }
+/**
+ * A set that placed only some panels: each missing panel is made alone by `solo` (in parallel);
+ * placed panels are kept as they are. Never throws (a failed solo stays undefined).
+ */
+export async function fillPartialSet<A, R>(
+  results: (R | undefined)[],
+  asks: A[],
+  solo: (a: A, k: number) => Promise<R | undefined>,
+): Promise<(R | undefined)[]> {
+  return Promise.all(
+    asks.map((a, k) => (results[k] !== undefined ? results[k] : solo(a, k).catch(() => undefined))),
+  );
+}
+
 /** Why a spec doesn't draw, in a line ("" when it does): the schema's issues as path: message. */
 export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): string {
   if (parses(out)) return "";
