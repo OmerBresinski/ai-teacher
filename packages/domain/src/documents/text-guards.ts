@@ -34,7 +34,7 @@ export function decodeEntities(text: string): string {
 export const LEAKED_PUPIL_PHRASES: readonly RegExp[] = [
   /\bno names\b/i,
   // The house rule names the country's spelling (TEACH-33 part b), so any of them is a leak.
-  /\b(?:British|Irish|Indian|American|Australian) English\b/i,
+  /\b(?:British|Irish|Indian|American|Australian|New Zealand) English\b/i,
   /\bfact ids?\b/i,
   /\bfactRefs\b/i,
   /\bJSON\b/,

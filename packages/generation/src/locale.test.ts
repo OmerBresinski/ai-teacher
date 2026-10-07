@@ -6,6 +6,7 @@ import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { z } from "zod";
 import { callStructured } from "./call";
+import MASTER from "./fixtures/master-system-prompts.json";
 import { PROMPTS } from "./prompts";
 import { type Audience, audienceBlock, localiseSystem } from "./prompts/shared";
 import { audienceOf } from "./stages/shared";
@@ -15,19 +16,27 @@ import { audienceOf } from "./stages/shared";
  * England's requests are byte-for-byte what they were.
  */
 
+const sha256 = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
 const now = new Date("2026-10-07T10:00:00Z");
 const brief = { brief: { topic: "Money: making amounts" }, yearGroup: "Year 5" } as const;
 
 describe("localiseSystem", () => {
-  test("England and the other UK nations: every system prompt is unchanged", () => {
-    for (const country of ["england", "wales", "scotland", "northern-ireland"] as const) {
-      for (const prompt of Object.values(PROMPTS)) {
-        expect(localiseSystem(prompt.system, localeFor(country))).toBe(prompt.system);
+  test("England and the other UK nations: every system prompt is master's, byte for byte", () => {
+    // Hashes of each `system` taken from origin/master at 42b710c9 (the branch point), not from
+    // the PROMPTS object under test. A prompt reworded since then bumps its version: refresh the
+    // fixture from master in that change.
+    for (const [name, prompt] of Object.entries(PROMPTS)) {
+      const golden = (MASTER as Record<string, { version: string; systemSha256: string }>)[name];
+      expect(golden, `${name} missing from master-system-prompts.json`).toBeDefined();
+      if (!golden) continue;
+      expect(prompt.version as string, `${name} changed version: refresh the fixture`).toBe(
+        golden.version,
+      );
+      for (const country of ["england", "wales", "scotland", "northern-ireland"] as const) {
+        expect(sha256(localiseSystem(prompt.system, localeFor(country)))).toBe(golden.systemSha256);
       }
+      expect(sha256(localiseSystem(prompt.system, undefined))).toBe(golden.systemSha256);
     }
-    expect(localiseSystem(PROMPTS["plan-skeleton"].system, undefined)).toBe(
-      PROMPTS["plan-skeleton"].system,
-    );
   });
 
   test("India: the teacher and the spelling are substituted, nothing else", () => {

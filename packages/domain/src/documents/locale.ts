@@ -17,6 +17,7 @@ export const COUNTRIES = [
   "india",
   "usa",
   "australia",
+  "new-zealand",
 ] as const;
 export type Country = (typeof COUNTRIES)[number];
 export const CountrySchema = z.enum(COUNTRIES);
@@ -126,6 +127,17 @@ const LOCALES: Record<Country, Locale> = {
     currency: { symbol: "$", code: "AUD", name: "dollars and cents" },
     units: "metric",
   },
+  "new-zealand": {
+    country: "new-zealand",
+    label: "New Zealand",
+    language: "en-NZ",
+    spelling: "New Zealand English",
+    teacher: "New Zealand teacher",
+    curriculum: { scheme: "NZC", name: "The New Zealand Curriculum" },
+    yearNaming: { word: "Year", groups: "Year 1 to Year 13" },
+    currency: { symbol: "$", code: "NZD", name: "dollars and cents" },
+    units: "metric",
+  },
 };
 
 /** The locale a country sets; a missing or unknown country is England's (lessons saved before). */
@@ -147,4 +159,35 @@ export function speaksLikeEngland(locale: Locale): boolean {
     locale.currency.code === england.currency.code &&
     locale.units === england.units
   );
+}
+
+/** ISO 3166-1 alpha-2 codes Dayback has a country for; the UK splits by region below. */
+const ISO_COUNTRIES: Record<string, Country> = {
+  IE: "ireland",
+  IN: "india",
+  US: "usa",
+  AU: "australia",
+  NZ: "new-zealand",
+};
+/** ISO 3166-2:GB subdivision codes as edge geolocation reports them (`ENG`, `WLS`, …). */
+const UK_REGIONS: Record<string, Country> = {
+  ENG: "england",
+  WLS: "wales",
+  SCT: "scotland",
+  NIR: "northern-ireland",
+};
+
+/**
+ * The country a new account starts with, from the edge's geolocation of its first request
+ * (TEACH-33 part b): an ISO country code and, for the UK, an optional region. Anything Dayback
+ * has no country for, or no answer, is England. Only the result is stored, never the address.
+ */
+export function countryFromGeo(iso: string | null | undefined, region?: string | null): Country {
+  const code = iso?.trim().toUpperCase();
+  if (!code) return DEFAULT_COUNTRY;
+  if (code === "GB" || code === "UK") {
+    const sub = region?.trim().toUpperCase().replace(/^GB-/, "");
+    return (sub && UK_REGIONS[sub]) || DEFAULT_COUNTRY;
+  }
+  return ISO_COUNTRIES[code] ?? DEFAULT_COUNTRY;
 }

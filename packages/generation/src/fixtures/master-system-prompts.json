@@ -1,0 +1,78 @@
+{
+  "check-input": {
+    "version": "check-input.v4",
+    "systemSha256": "4ea0cabbbecf096465179b8f69555788fc53919c0727491797e60693f6fc83c2"
+  },
+  "plan-skeleton": {
+    "version": "plan-skeleton.v22",
+    "systemSha256": "8c90bf32229ff9863d99b852bcd7d935809ab0dfb8ea4b07db238602cdf6a538"
+  },
+  "plan-facts": {
+    "version": "plan-facts.v14",
+    "systemSha256": "a4093de1156d5e9df285ae811fa44c7c3a6d0ee42653123106c29b869bddef54"
+  },
+  "plan-objectives": {
+    "version": "plan-objectives.v18",
+    "systemSha256": "5e35567b89f11836f20049ac842d484627298ba23f0eeca45105ffc101ba562d"
+  },
+  "plan-facts-objective": {
+    "version": "plan-facts-objective.v15",
+    "systemSha256": "b9151fd781553a487dc5f6113cd6c0c849d27bcfc0ce8ae87a16cb2f17499de8"
+  },
+  "plan-teach-objective": {
+    "version": "plan-teach-objective.v4",
+    "systemSha256": "a6623be3e265a5a9dd3c644261044bcdadbfea085ada9e3e86568beb91e49dd1"
+  },
+  "plan-question-set": {
+    "version": "plan-question-set.v7",
+    "systemSha256": "f66c1421714dafe2cf2f783128eb33b45f323f3af4039332e42fbd64584afe5d"
+  },
+  "verify-facts": {
+    "version": "verify-facts.v8",
+    "systemSha256": "26e02d973a151b150e3d185bffb7f96c4bea48c7ea2fb61775e77a336b201257"
+  },
+  "generate-slide": {
+    "version": "generate-slide.v31",
+    "systemSha256": "afac8ea27730c5eb86682f1d59f016c0a0e618239ee4ab965551e9c2f80f42de"
+  },
+  "generate-worksheet": {
+    "version": "generate-worksheet.v11",
+    "systemSha256": "e2b2f7654d63f8a48bf8ee920fb1a8b3c619085beee3ccb33cf8cc571b5c9143"
+  },
+  "generate-worksheet-fill": {
+    "version": "generate-worksheet-fill.v3",
+    "systemSha256": "8a558a932c65d252d88181676a1da287c3e3276ec89b4965da566858ad616456"
+  },
+  "parse-brief": {
+    "version": "parse-brief.v2",
+    "systemSha256": "784122ae55a31c1ad057c8a9a5c4b06eda6ee433284f6182803b6f149c5b731a"
+  },
+  "pick-or-requery-photo": {
+    "version": "pick-or-requery-photo.v7",
+    "systemSha256": "a78254a5373ad3fc3401c80f641d83e2817bb432fc2e65c3d649bb2cc948f5c8"
+  },
+  "shortlist-photos": {
+    "version": "shortlist-photos.v3",
+    "systemSha256": "ec9193d5ab1c4772b5b2b1def001f97317c7feaad183ccece9abb3e2b96dcf2f"
+  },
+  "evaluate": {
+    "version": "evaluate.v10",
+    "systemSha256": "8ff753f974c9f9fb31c8180d7be1602f840db07cba3d45d389a7f912f14ba4dd"
+  },
+  "repair": {
+    "version": "repair.v17",
+    "systemSha256": "14700f8c646b60cfb72233b62ded4b7da85ec57995d79fca8c9ebcf80729d461"
+  },
+  "repair-fact": {
+    "version": "repair-fact.v6",
+    "systemSha256": "5767b80f426352511c452895e5862cf6f129b68f331993a162a639ec23c3276d"
+  },
+  "cascade": {
+    "version": "cascade.v5",
+    "systemSha256": "e584c3f0506d0965a8fbe357892dcf4485d7237e38542ffb2f3cdf44f81f951a"
+  },
+  "regenerate": {
+    "version": "regenerate.v5",
+    "systemSha256": "7bf54c05a64c6f71bf6ff14d7fc9c0be117396150b005276ff3ee60514c99796"
+  }
+}

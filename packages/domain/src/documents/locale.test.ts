@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { lessonFromBrief } from "./create-lesson";
-import { COUNTRIES, DEFAULT_COUNTRY, LOCALE_LIST, localeFor, speaksLikeEngland } from "./locale";
+import {
+  COUNTRIES,
+  countryFromGeo,
+  DEFAULT_COUNTRY,
+  LOCALE_LIST,
+  localeFor,
+  speaksLikeEngland,
+} from "./locale";
 
 describe("localeFor (TEACH-33 part b)", () => {
   test.each([
@@ -12,6 +19,7 @@ describe("localeFor (TEACH-33 part b)", () => {
     ["india", "en-IN", "Indian English", "₹", "metric", "Class", "CBSE"],
     ["usa", "en-US", "American English", "$", "us-customary", "Grade", "CCSS"],
     ["australia", "en-AU", "Australian English", "$", "metric", "Year", "ACARA"],
+    ["new-zealand", "en-NZ", "New Zealand English", "$", "metric", "Year", "NZC"],
   ] as const)("%s", (country, language, spelling, symbol, units, word, scheme) => {
     const l = localeFor(country);
     expect(l.country).toBe(country);
@@ -59,5 +67,27 @@ describe("lessonFromBrief country defaults", () => {
     const lesson = lessonFromBrief({ ...input, language: "cy" }, "l1", now, "india");
     expect(lesson.language).toBe("cy");
     expect(lesson.country).toBe("india");
+  });
+});
+
+describe("countryFromGeo (geolocated default)", () => {
+  test.each([
+    ["IN", undefined, "india"],
+    ["in", undefined, "india"],
+    ["IE", undefined, "ireland"],
+    ["US", "CA", "usa"],
+    ["AU", undefined, "australia"],
+    ["NZ", undefined, "new-zealand"],
+    ["GB", "SCT", "scotland"],
+    ["GB", "GB-WLS", "wales"],
+    ["GB", "NIR", "northern-ireland"],
+    ["GB", "ENG", "england"],
+    ["GB", undefined, "england"],
+    ["FR", undefined, "england"],
+    ["", undefined, "england"],
+    [null, undefined, "england"],
+    [undefined, undefined, "england"],
+  ] as const)("%s/%s → %s", (iso, region, expected) => {
+    expect(countryFromGeo(iso, region)).toBe(expected);
   });
 });

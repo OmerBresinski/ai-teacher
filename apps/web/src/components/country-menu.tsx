@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type Country, CountrySchema, LOCALE_LIST, localeFor } from "@tj/domain/documents";
+import { CountrySchema, LOCALE_LIST } from "@tj/domain/documents";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   SidebarItem,
   toast,
@@ -15,8 +14,6 @@ import { Globe } from "lucide-react";
 import { accountSettingsQuery, setCountryMutation } from "@/lib/account-settings";
 
 const COUNTRY_ICON = <Globe size={16} strokeWidth={1.5} />;
-/** The countries that write exactly as England does today (same spelling, money and units). */
-const UK = new Set<Country>(["england", "wales", "scotland", "northern-ireland"]);
 
 /**
  * The account's country (TEACH-33 part b, ruling 183), beside Theme in the sidebar foot and built
@@ -36,7 +33,7 @@ export function CountryMenu() {
       <DropdownMenuTrigger asChild>
         <SidebarItem icon={COUNTRY_ICON}>Country</SidebarItem>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-w-64">
+      <DropdownMenuContent align="end">
         <DropdownMenuLabel>Country for new lessons</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={country}
@@ -51,12 +48,6 @@ export function CountryMenu() {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <p className="px-2 py-1.5 text-xs text-muted-foreground">
-          {UK.has(country)
-            ? "Sets spelling, currency and units. Lessons you have made keep theirs."
-            : `Spelling, currency and units follow ${localeFor(country).label}. Year groups and the curriculum stay England's for now.`}
-        </p>
       </DropdownMenuContent>
     </DropdownMenu>
   );

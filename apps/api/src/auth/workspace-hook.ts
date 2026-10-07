@@ -8,6 +8,7 @@
  */
 import type { DbHandle } from "@tj/db";
 import { newId, type WorkspaceId } from "@tj/domain";
+import { type Country, countryFromGeo, DEFAULT_COUNTRY } from "@tj/domain/documents";
 import type { Logger } from "../logger";
 
 export const PERSONAL_WORKSPACE_NAME = "Personal";
@@ -29,15 +30,42 @@ export async function findPersonalWorkspaceId(
  * under concurrency: the unique index on `workspaces.owner_user_id` makes the insert
  * `ON CONFLICT DO NOTHING`, and the follow-up select returns whichever row won.
  */
-export async function createPersonalWorkspace(db: Sql, userId: string): Promise<WorkspaceId> {
+export async function createPersonalWorkspace(
+  db: Sql,
+  userId: string,
+  country: Country = DEFAULT_COUNTRY,
+): Promise<WorkspaceId> {
   const id = newId<WorkspaceId>();
   await db.sql`
-    insert into workspaces (id, owner_user_id, name)
-    values (${id}, ${userId}, ${PERSONAL_WORKSPACE_NAME})
+    insert into workspaces (id, owner_user_id, name, country)
+    values (${id}, ${userId}, ${PERSONAL_WORKSPACE_NAME}, ${country})
     on conflict (owner_user_id) do nothing`;
   const found = await findPersonalWorkspaceId(db, userId);
   if (!found) throw new Error(`createPersonalWorkspace: no workspace for user ${userId}`);
   return found;
+}
+
+/**
+ * Country-level geolocation headers edges add to a request, first match wins: Vercel, Cloudflare,
+ * CloudFront. Railway's edge adds none, so the API sees one only behind a proxy that does.
+ */
+const GEO_COUNTRY_HEADERS = ["x-vercel-ip-country", "cf-ipcountry", "cloudfront-viewer-country"];
+const GEO_REGION_HEADERS = [
+  "x-vercel-ip-country-region",
+  "cf-region-code",
+  "cloudfront-viewer-country-region",
+];
+
+/**
+ * The country a new account starts with (TEACH-33 part b): the edge's geolocation of the
+ * sign-up request, mapped by `countryFromGeo`. No header, or a country Dayback does not cover,
+ * is England. Reads the headers only; the address is never looked at or stored.
+ */
+export function countryFromRequestHeaders(headers: Headers | undefined | null): Country {
+  if (!headers) return DEFAULT_COUNTRY;
+  const first = (names: string[]) =>
+    names.map((n) => headers.get(n)).find((v) => v !== null && v.trim() !== "");
+  return countryFromGeo(first(GEO_COUNTRY_HEADERS), first(GEO_REGION_HEADERS));
 }
 
 /**

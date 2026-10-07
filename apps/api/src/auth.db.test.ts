@@ -40,6 +40,7 @@ import {
   verifyUrlFromEmailLink,
   withFailingWorkspaceHandover,
 } from "./test-helpers";
+import { WORKSPACE_HEADER } from "./workspace";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -542,6 +543,65 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     // better-auth 1.7.2's placeholder: a random local part on the reserved `.invalid` TLD, so it
     // can never clash with a teacher's address or receive mail.
     expect(me.user.email).toMatch(/^[a-z0-9]+@anonymous\.placeholder\.invalid$/);
+  });
+
+  // --- account country (TEACH-33 part b) ------------------------------------------------------
+
+  async function countryOf(workspaceId: string) {
+    return (
+      await db.sql<{ country: string }[]>`
+      select country from workspaces where id = ${workspaceId}`
+    )[0]?.country;
+  }
+  const patchCountry = (target: typeof app, cookie: string, country: string, extra = {}) =>
+    target.request(`${BASE}/me/settings`, {
+      method: "PATCH",
+      headers: { cookie, origin: WEB, "content-type": "application/json", ...extra },
+      body: JSON.stringify({ country }),
+    });
+
+  test("a new account's country is geolocated from the edge header; none is England", async () => {
+    const geo = await anonApp.request(`${BASE}/auth/sign-in/anonymous`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: WEB,
+        "x-vercel-ip-country": "IN",
+      },
+      body: "{}",
+    });
+    const india = await meBody(anonApp, cookieHeaderFromResponse(geo));
+    expect(await countryOf(india.workspaceId)).toBe("india");
+
+    const { cookie } = await signInAnonymously();
+    expect(await countryOf((await meBody(anonApp, cookie)).workspaceId)).toBe("england");
+
+    // Only the country is stored: the workspaces row has no address column to put one in.
+    const columns = await db.sql<{ column_name: string }[]>`
+      select column_name from information_schema.columns where table_name = 'workspaces'`;
+    expect(columns.map((c) => c.column_name).sort()).toEqual(
+      ["country", "created_at", "id", "name", "owner_user_id", "updated_at"].sort(),
+    );
+  });
+
+  test("an anonymous session may read its country but not change it (default deny)", async () => {
+    const { cookie } = await signInAnonymously();
+    const me = await meBody(anonApp, cookie);
+    const read = await anonApp.request(`${BASE}/me/settings`, { headers: { cookie } });
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual({ country: "england" });
+    expect((await patchCountry(anonApp, cookie, "india")).status).toBe(403);
+    expect(await countryOf(me.workspaceId)).toBe("england");
+  });
+
+  test("PATCH /me/settings changes only the session's own Workspace, whatever header is sent", async () => {
+    const a = await createTestUserWithWorkspace(db.unsafeDb);
+    const b = await createTestUserWithWorkspace(db.unsafeDb);
+    const cookie = await issueSessionCookie(auth, a.userId);
+    const res = await patchCountry(app, cookie, "india", { [WORKSPACE_HEADER]: b.workspaceId });
+    expect(res.status).toBe(200);
+    expect(await countryOf(a.workspaceId)).toBe("india");
+    expect(await countryOf(b.workspaceId)).toBe("england");
   });
 
   test("anonymous user cannot delete itself: 400 DELETE_ANONYMOUS_USER_DISABLED", async () => {
