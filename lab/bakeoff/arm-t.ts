@@ -212,6 +212,15 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
     }
     case "steps":
       return { template, heading, points: strs(s.points ?? s.steps), figure: fig("figure") };
+    case "equation-hero":
+      return {
+        template,
+        heading,
+        ...(lead ? { lead } : {}),
+        formula: str(s.formula),
+        points: strs(s.points ?? s.lines),
+        figure: fig("figure"),
+      };
     case "hinge":
       return { template, heading, stem: str(s.stem), options: strs(s.options) };
     case "question-set":
@@ -372,6 +381,7 @@ export const armT: ArmPlugin = {
       str(s.heading),
       str(s.lead),
       str(s.stem),
+      str(s.formula),
       str(s.instruction),
       ...pts(s.points).map((p) => (typeof p === "string" ? p : `${p.label}: ${p.text}`)),
       ...strs(s.questions),

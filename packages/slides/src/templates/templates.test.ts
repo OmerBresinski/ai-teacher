@@ -241,3 +241,42 @@ describe("round 3: compare pictures all or none", () => {
     expect(r.slide.elements.some((e) => e.type === "image")).toBe(false);
   });
 });
+
+describe("equation hero (round 4)", () => {
+  const t = getTheme("studio");
+  const base = {
+    template: "equation-hero" as const,
+    heading: "Calculate a mean rate",
+    formula: "rate = change ÷ time",
+    points: ["rate = 48 cm³ ÷ 30 s", "rate = 1.6 cm³/s"],
+  };
+  test("the formula is the focal line, display size in a washed panel, lines beneath", () => {
+    const r = layoutTemplate(base, t, "ks4");
+    expect(r.over).toEqual([]);
+    const els = r.slide.elements as { name?: string; y: number; style?: { fontSize?: number } }[];
+    const f = els.find((e) => e.name === "Formula");
+    const steps = els.filter((e) => e.name === "Step");
+    expect(els.some((e) => e.name === "Formula panel")).toBe(true);
+    expect(f?.style?.fontSize).toBe(templateScale(t, "ks4").heading);
+    expect(steps.length).toBe(2);
+    expect(steps.every((s) => s.y > (f?.y ?? 0))).toBe(true);
+  });
+  test("over-capacity marks: a formula past 2 lines, a column past the band", () => {
+    expect(
+      layoutTemplate({ ...base, formula: sample(200) }, t, "ks4").over.some((o) =>
+        o.startsWith("formula"),
+      ),
+    ).toBe(true);
+    expect(
+      layoutTemplate({ ...base, points: [1, 2, 3, 4].map(() => sample(150)) }, t, "ks4").over
+        .length,
+    ).toBeGreaterThan(0);
+  });
+  test("measured capacity is in the catalogue docs, with the formula's own line length", () => {
+    const doc = TEMPLATE_DOCS.find((d) => d.id === "equation-hero");
+    expect(doc).toBeDefined();
+    const c = measureTemplate(doc as never, t, "ks4");
+    expect(c.charsPerLine.formula).toBeGreaterThan(20);
+    expect(c.variants[0]?.maxCharsPerItem).toBeGreaterThan(40);
+  });
+});

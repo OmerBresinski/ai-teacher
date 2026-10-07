@@ -1,0 +1,120 @@
+{
+  "flow": [
+    {
+      "slide": 1,
+      "does": "Introduce measuring and explaining reaction rates",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Gas collected during a reaction"
+      },
+      "teaches": []
+    },
+    {
+      "slide": 2,
+      "does": "Share the approved objectives",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "teaches": []
+    },
+    {
+      "slide": 3,
+      "does": "Connect observable changes to rate measurements",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Gas collection and mass-loss apparatus"
+      },
+      "teaches": [1]
+    },
+    {
+      "slide": 4,
+      "does": "Model mean rates from volume and mass changes",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "teaches": [1]
+    },
+    {
+      "slide": 5,
+      "does": "Explain gradients and changing reaction rates",
+      "look_at": {
+        "kind": "diagram",
+        "shows": "A product-volume curve becoming less steep"
+      },
+      "teaches": [1]
+    },
+    {
+      "slide": 6,
+      "does": "Model an instantaneous rate using a tangent",
+      "look_at": {
+        "kind": "diagram",
+        "shows": "A tangent and a large gradient triangle"
+      },
+      "teaches": [1]
+    },
+    {
+      "slide": 7,
+      "does": "Check independent rate calculations",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "teaches": [1]
+    },
+    {
+      "slide": 8,
+      "does": "Teach successful collisions and temperature",
+      "look_at": {
+        "kind": "diagram",
+        "shows": "Particles moving faster at a higher temperature"
+      },
+      "teaches": [2]
+    },
+    {
+      "slide": 9,
+      "does": "Explain concentration, pressure and surface area",
+      "look_at": {
+        "kind": "picture",
+        "shows": "More concentrated solutions, compressed gas and fragmented solids"
+      },
+      "teaches": [2]
+    },
+    {
+      "slide": 10,
+      "does": "Diagnose a collision-theory misconception",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "teaches": [2]
+    }
+  ],
+  "templates": [
+    null,
+    null,
+    "compare",
+    "steps",
+    "visual-text",
+    "steps",
+    "practice",
+    "visual-text",
+    "compare",
+    "hinge"
+  ],
+  "objectives": [
+    {
+      "teacher": "Calculate the rate of a reaction from changes in mass or gas volume over time, and determine rates from the gradients of reaction graphs, including tangents for instantaneous rates.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Explain how temperature, concentration, gas pressure and the surface area of solids affect reaction rates using collision theory, activation energy and the frequency of successful collisions.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Explain how catalysts increase reaction rates by providing an alternative reaction pathway with a lower activation energy, without being used up.",
+      "pupil": ""
+    }
+  ]
+}

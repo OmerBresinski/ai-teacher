@@ -33,3 +33,17 @@ test("a diagram fault names the schema issue for the retry", () => {
   expect(f).toContain("panels");
   expect(diagramFaultOf({ kind: "x" }, () => ({}))).toBe("");
 });
+
+test("the spec writer's particles schema offers compare and collision (y11 s8)", async () => {
+  const { DiagramSpecSchema } = await import("../../packages/slides/src/diagrams/schema");
+  const src = await Bun.file(`${import.meta.dir}/services.ts`).text();
+  expect(src).toContain(
+    'import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema"',
+  );
+  const p = (
+    DiagramSpecSchema.options as unknown as {
+      shape: { kind: { value: string }; show: { options: string[] } };
+    }[]
+  ).find((o) => o.shape.kind.value === "particles");
+  expect(JSON.stringify(p?.shape.show)).toContain("compare");
+});

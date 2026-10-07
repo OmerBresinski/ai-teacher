@@ -29,6 +29,7 @@ const VALUED = new Set([
   "--generic",
   "--budget-dir",
   "--replay-repair",
+  "--challenge",
 ]);
 const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i - 1] ?? ""));
 const arm = ARMS[opt("--arm", "T") as string];
@@ -39,7 +40,13 @@ for (const id of briefs) {
   const bf = `${BAKEOFF}/briefs/${id}.json`;
   if (!existsSync(bf)) throw new Error(`no brief ${bf}`);
   const brief = JSON.parse(readFileSync(bf, "utf8")) as Brief;
-  const outDir = `${runs}/${arm.id}/${id}`;
+  // Round 4 test override (HARNESS "challenge input"): --challenge or CHALLENGE; the run folder
+  // gets the value as a suffix so the three y11 lessons sit side by side.
+  const challenge = (opt("--challenge") as string | undefined) ?? process.env.CHALLENGE;
+  if (challenge && !["support", "core", "stretch"].includes(challenge))
+    throw new Error(`--challenge must be support, core or stretch, not ${challenge}`);
+  if (challenge) brief.challenge = challenge as Brief["challenge"];
+  const outDir = `${runs}/${arm.id}/${id}${challenge ? `.${challenge}` : ""}`;
   if (existsSync(`${outDir}/lesson.json`)) {
     console.log(`SKIP ${id}: ${outDir} exists (use a fresh --out)`);
     continue;

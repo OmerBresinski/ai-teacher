@@ -198,6 +198,30 @@ export const TEMPLATE_DOCS: TemplateDoc[] = [
     ],
   },
   {
+    id: "equation-hero",
+    use: "a worked calculation: the formula as the focal line, then the substitution and answer, one line each, with a graph if it helps",
+    slots: [
+      HEADING,
+      {
+        name: "lead",
+        holds: "an optional sentence on what the formula finds",
+        kind: "text",
+        optional: true,
+      },
+      { name: "formula", holds: "the formula in words or symbols", kind: "text" },
+      { name: "points", holds: "the substitution and answer lines", kind: "list", items: [1, 4] },
+      { ...DIAGRAM, holds: "an optional graph or diagram", optional: true },
+    ],
+    variants: [
+      ...[2, 3, 4].map((n) => ({ label: `formula + ${n} lines`, counts: { points: n } })),
+      ...[2, 3].map((n) => ({
+        label: `formula + ${n} lines with figure`,
+        counts: { points: n },
+        figure: "photo" as const,
+      })),
+    ],
+  },
+  {
     id: "hinge",
     use: "one multiple-choice question: a stem and 2-4 options in a 2x2 grid",
     slots: [
@@ -329,6 +353,13 @@ function inputFor(
       };
     case "steps":
       return { ...base, points: items(v.counts.points ?? 3), ...(fig ? { figure: fig } : {}) };
+    case "equation-hero":
+      return {
+        ...base,
+        formula: sample(FORMULA_SAMPLE),
+        points: items(v.counts.points ?? 2),
+        ...(fig ? { figure: fig } : {}),
+      };
     case "hinge":
       return { ...base, stem: sample(Math.round(n * 1.6)), options: items(v.counts.options ?? 4) };
     default:
@@ -372,6 +403,9 @@ function perLine(
   );
 }
 
+/** The formula an equation-hero capacity is measured with ("rate = change in volume ÷ time"). */
+const FORMULA_SAMPLE = 16;
+
 export function measureTemplate(doc: TemplateDoc, theme: Theme, stage: Stage): Capacity {
   // Fit-first: measured at full size, ladder off (the ladder is a net, not capacity).
   const clean = (input: TemplateInput) =>
@@ -397,6 +431,13 @@ export function measureTemplate(doc: TemplateDoc, theme: Theme, stage: Stage): C
       ),
       body: perLine(theme, stage, "body", w),
       lead: perLine(theme, stage, "lead", w),
+      // Equation hero: the formula band's line at display size (2 lines allowed).
+      ...(doc.id === "equation-hero"
+        ? {
+            formula: perLine(theme, stage, "heading", G.width - 2 * G.inset),
+            formulaBesideFigure: perLine(theme, stage, "heading", G.left.w - 2 * G.inset),
+          }
+        : {}),
     },
     headingMax,
     headingOneLine: perLine(theme, stage, "heading", G.width),

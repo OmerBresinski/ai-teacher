@@ -17,10 +17,7 @@ import { createAi, createBudget } from "../../packages/ai/src/index";
 import { createDb } from "../../packages/db/src/index";
 import { newId } from "../../packages/domain/src/index";
 import { z } from "../../packages/generation/node_modules/zod";
-import {
-  DIAGRAM_CONTRACT,
-  DiagramSpecSchema,
-} from "../../packages/generation/src/plan-write/diagram-spec";
+import { DIAGRAM_CONTRACT } from "../../packages/generation/src/plan-write/diagram-spec";
 import {
   judgeMade,
   pickPhoto,
@@ -39,6 +36,10 @@ import {
 } from "../../packages/generation/src/stages/picture-set";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
+// Round 3 fix: the drawer's own schema, not generation's mirror. The mirror's particles `show`
+// had only states/diffusion/dissolving (no compare or collision) and no cubes kind, so the spec
+// writer could not ask for y11 s8's "faster particles at a higher temperature".
+import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
 import { placePhoto } from "../../packages/slides/src/templates/index";
 import { createStorage } from "../../packages/storage/src/index";
 
@@ -263,6 +264,7 @@ export const STEP_EST = {
   objectives: 0.01,
   notes: 0.003, // luna, one slide
   repair: 0.004, // luna, one slide
+  objectiveRepair: 0.012, // luna, the whole lesson in, up to four slides out
   diagram: 0.004, // luna spec, two attempts (observed $0.0013 each)
   // Generations reserve themselves (ledgerGenerator); these holds cover the director and judges.
   picture: 0.006,

@@ -97,7 +97,8 @@ export type TemplateId =
   | "question-set"
   | "discussion"
   | "practice"
-  | "exit-ticket";
+  | "exit-ticket"
+  | "equation-hero";
 
 export type TemplateInput = {
   template: TemplateId;
@@ -120,6 +121,8 @@ export type TemplateInput = {
   sequence?: { caption: string; figure?: Figure }[];
   /** The one quiet line under a question list. */
   instruction?: string;
+  /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
+  formula?: string;
   figure?: Figure;
 };
 
@@ -774,7 +777,50 @@ const KIND: Record<TemplateId, SlideKind> = {
   discussion: "discussion",
   practice: "open-response",
   "exit-ticket": "exit-ticket",
+  "equation-hero": "worked-example",
 };
+
+/**
+ * Equation hero (round 4, GPT Pro review point c): a worked calculation. The formula is the focal
+ * line, display size, in a washed band; the substitution and answer lines sit beneath it in body
+ * type, one per line; an optional lead above, an optional figure (a graph) beside. Over-capacity
+ * marks: the formula past 2 lines (or a word wider than its band), the column past the band.
+ */
+function equationHero(c: Ctx, input: TemplateInput) {
+  heading(c, input.heading);
+  const x = G.margin;
+  const w = input.figure ? G.left.w : G.width;
+  const inner = w - 2 * G.inset;
+  let y: number = G.band.y;
+  if (input.lead?.trim()) {
+    const el = text(c, input.lead, "lead", { x, y, w }, { weight: 700, name: "Lead" });
+    y += el.h + 16;
+  }
+  const formula = input.formula?.trim() ?? "";
+  const fh = measure(c, formula, "heading", inner);
+  box(c, { x, y, w, h: fh + 2 * G.inset }, wash(c.t), { name: "Formula panel" });
+  text(
+    c,
+    formula,
+    "heading",
+    { x: x + G.inset, y: y + G.inset, w: inner },
+    {
+      name: "Formula",
+      color: c.t.colors.ink,
+    },
+  );
+  const lines = Math.round(fh / (c.s.heading * LH.heading));
+  if (lines > 2) c.over.push(`formula ${lines} lines`);
+  if (!wordsFit(c, formula, "heading", inner, c.s.heading)) c.over.push("formula word too wide");
+  y += fh + 2 * G.inset + 18;
+  for (const p of input.points ?? []) {
+    const el = text(c, pointText(p), "body", { x: x + G.inset, y, w: inner }, { name: "Step" });
+    y += el.h + 10;
+  }
+  const used = Math.round(y - 10 - G.band.y);
+  if (used > G.band.h) c.over.push(`equation column ${used}/${G.band.h}pt`);
+  if (input.figure) figurePanel(c, input.figure);
+}
 
 /**
  * No empty panels ever: a figure that cannot draw (a failed diagram, an empty drawing) is dropped
@@ -1101,6 +1147,9 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         });
         break;
       }
+      case "equation-hero":
+        equationHero(c, input);
+        break;
       case "steps":
         heading(c, input.heading);
         if (input.figure) {

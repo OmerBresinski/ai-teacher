@@ -12,6 +12,14 @@ import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./obj
 import { PartialJson, type Path } from "./partial";
 import { concrete, judgeRepair, repairable, sameFigure, teaching } from "./repair";
 import {
+  coverage,
+  lessonNotes,
+  notesText,
+  objectiveRepairSchema,
+  renderedLines,
+  repairObjectives,
+} from "./round4";
+import {
   aspectOf,
   BAKEOFF,
   chat,
@@ -41,6 +49,8 @@ export type Brief = {
   yearGroup: string;
   year: number;
   keyStage: Stage;
+  /** Round 4 (Greg): task demand, separate from reading level; default core. */
+  challenge?: "support" | "core" | "stretch";
   theme: "splash" | "studio";
   readingLevel: string;
   language: string;
@@ -105,7 +115,13 @@ export type FlowEntry = {
 export type Plan = {
   design?: Design;
   objectives?: { teacher: string; pupil: string }[];
-  flow?: { slide: number; does: string; look_at?: { kind: string; shows: string | null } }[];
+  flow?: {
+    slide: number;
+    does: string;
+    look_at?: { kind: string; shows: string | null };
+    /** Round 4: the objective numbers this slide teaches or checks. */
+    teaches?: number[];
+  }[];
   slides: (Record<string, unknown> | undefined)[];
 };
 
@@ -186,6 +202,7 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
         .map((o, k) => `${k + 1}. Teacher: ${o.teacher}${o.pupil ? ` | Pupils: ${o.pupil}` : ""}`)
         .join("\n");
     if (expr.startsWith("context block")) return x.context ?? "";
+    if (expr.startsWith("for each final slide")) return String(x.slidesAsShown ?? "");
     if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] }, null, 1);
     if (expr in x) return String(x[expr]);
     const v = get(expr);
@@ -565,6 +582,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       plan.flow = v as Plan["flow"];
       mark("flow");
       log({ ev: "flow", n: plan.flow?.length });
+      // Round 4: coverage as planned, before any slide is written (logged; repaired after the stream).
+      if (plan.flow?.some((f) => Array.isArray(f.teaches)))
+        log({
+          ev: "coverage-flow",
+          ...coverage(plan.flow, plan.objectives?.length ?? 0, () => undefined),
+        });
     }
     // Slide 2 belongs to code in the two-phase flow (pupil wording call); a streamed one is ignored.
     if (idx === 1 && twoPhase && arm.codeObjectives) return;
@@ -867,6 +890,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   const shared = `${BAKEOFF}/prompts/shared`;
   const hasNotesPrompt =
     existsSync(`${shared}/notes.txt`) && existsSync(`${shared}/notes-schema.json`);
+  // Round 4: a notes schema with a top-level `slides` array is one call per lesson, after repair.
+  const lessonNotesCall =
+    hasNotesPrompt &&
+    "slides" in
+      ((JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8")) as { properties?: object })
+        .properties ?? {});
   for (let i = 0; i < n; i++) {
     const s = plan.slides[i];
     if (!s) continue;
@@ -874,7 +903,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       notes.set(i, { notes: s.notes, answers: (s.answers as string[]) ?? [] });
       continue;
     }
-    if (o.noNotes || !hasNotesPrompt) continue;
+    if (o.noNotes || !hasNotesPrompt || lessonNotesCall) continue;
     const system = readFileSync(`${shared}/notes.txt`, "utf8");
     const schema = JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8"));
     const u = `${user}\n\nLesson:\n${main.text}\n\nSlide: ${i + 1}`;
@@ -948,12 +977,15 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   // Round 2 guards (repair.ts): never the title or objectives slide; a repaired slide that drops a
   // figure, leaves a slot empty, splits a sentence across cards or loses words is rejected and the
   // original kept with its flag; a new figure the repaired slide asks for is fetched like any other.
-  const failing = checks.filter((c) => {
-    const i = c.slide - 1;
-    const ok = c.faults.length > 0 && repairable(plan.slides[i] as Record<string, unknown>, i);
-    if (c.faults.length && !ok) log({ ev: "repair-not-allowed", slide: c.slide, faults: c.faults });
-    return ok;
-  });
+  const pickFailing = () =>
+    checks.filter((c) => {
+      const i = c.slide - 1;
+      const ok = c.faults.length > 0 && repairable(plan.slides[i] as Record<string, unknown>, i);
+      if (c.faults.length && !ok)
+        log({ ev: "repair-not-allowed", slide: c.slide, faults: c.faults });
+      return ok;
+    });
+  let failing = pickFailing();
   const recorded = new Map<number, unknown>();
   if (o.replayRepair && existsSync(o.replayRepair))
     for (const l of readFileSync(o.replayRepair, "utf8").split("\n").filter(Boolean)) {
@@ -1008,6 +1040,40 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     for (const [k, v] of saved.state) if (v) visuals.set(`${i}:${k}`, v);
     relay(i, "repair-reverted");
   };
+  // ── e0. round 4 objective coverage: one targeted repair when an objective has no teaching or
+  // checking slide (y11 round 3 dropped catalysts), before the fit repair so new slides get checks.
+  const objRepairSys = `${shared}/objective-repair.txt`;
+  if (
+    plan.flow?.some((f) => Array.isArray(f.teaches)) &&
+    existsSync(objRepairSys) &&
+    existsSync(repairSchema) &&
+    (plan.objectives?.length ?? 0) > 0
+  ) {
+    const flow = plan.flow;
+    const slides = plan.slides as Record<string, unknown>[];
+    const held = await ledger.holdWhenFree("objective repair", STEP_EST.objectiveRepair);
+    if (held) {
+      const out = await repairObjectives({
+        plan: { flow, slides },
+        objectives: (plan.objectives ?? []).map((x) => x.teacher),
+        context: user,
+        system: readFileSync(objRepairSys, "utf8"),
+        schema: objectiveRepairSchema(JSON.parse(readFileSync(repairSchema, "utf8"))),
+        chat,
+        log,
+        onUsd: (v) => ledger.add("repair", v),
+      }).finally(held);
+      if (out.repaired) {
+        plan.flow = out.plan.flow as Plan["flow"];
+        for (let i = 2; i < n; i++)
+          if (out.plan.slides[i] !== slides[i])
+            await swapSlide(i, out.plan.slides[i] as Record<string, unknown>);
+        checks = check();
+        failing = pickFailing();
+        save("objective repair");
+      }
+    } else log({ ev: "objective-repair-refused" });
+  }
   /** The "Diagram kinds:" block of shared/base-visuals.<stage>.txt (the repair's menu of kinds). */
   const diagramKinds = () => {
     for (const f of [`${shared}/base-visuals.${stageKey}.txt`, `${shared}/base-visuals.txt`])
@@ -1160,6 +1226,42 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   };
   await Promise.all(Array.from({ length: n }, (_, i) => fallback(i)));
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
+  // ── f. round 4 notes: one call on the final slides as rendered, only placed visuals listed ──
+  if (lessonNotesCall && !o.noNotes) {
+    const placed = (i: number) =>
+      (asks.get(i) ?? []).flatMap((a) => {
+        const v = visuals.get(`${i}:${a.key}`);
+        if (v?.status === "photo") return [`Picture: ${a.shows}`];
+        if (v?.status === "diagram" && a.type === "diagram")
+          return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
+        return [];
+      });
+    const lines = Array.from({ length: n }, (_, i) =>
+      renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placed(i)),
+    ).join("\n\n");
+    const userNotes = fillTemplate(readFileSync(`${shared}/notes-user.txt`, "utf8"), brief, {
+      objectives: plan.objectives,
+      context: user,
+      slidesAsShown: lines,
+    });
+    const held = await ledger.holdWhenFree("lesson notes", STEP_EST.notes * n);
+    if (held) {
+      const got = await lessonNotes({
+        slides: n,
+        system: readFileSync(`${shared}/notes.txt`, "utf8"),
+        user: userNotes,
+        schema: JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8")),
+        chat,
+        log,
+        onUsd: (v) => ledger.add("notes", v),
+      }).finally(held);
+      for (const [k, s] of got)
+        if (k >= 1 && k <= n)
+          notes.set(k - 1, { notes: notesText(s), answers: s.answers ? [s.answers] : [] });
+      writeJson(`${o.outDir}/notes.json`, { slides: [...got.values()] });
+      mark("notes");
+    } else log({ ev: "notes-refused" });
+  }
   checks = check();
   // Teaching slides left with no picture or diagram (round 2 summary).
   const textOnlyTeach = Array.from({ length: n }, (_, i) => i).filter(
