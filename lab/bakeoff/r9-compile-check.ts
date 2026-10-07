@@ -42,6 +42,10 @@ for (const [name, b, loc] of cases) {
   if (/\bGBP\b|\bINR\b/.test(system)) fail(`${name}: an ISO currency code in the prompt`);
   if (name === "INDIA" ? !system.includes("₹") : !system.includes("£"))
     fail(`${name}: no currency symbol`);
+  // Round 9: no length in the strict schema (the decoder would cut a sentence off at the limit).
+  if (/"(pattern|maxLength)"/.test(JSON.stringify(p.schema)))
+    fail(`${name}: a length limit in the schema`);
+  if (!/ in all\b/.test(system)) fail(`${name}: no calibrated total ("N in all") in the Fits`);
   const faults = openaiSchemaFaults(p.schema, true);
   if (faults.length) fail(`${name}: strict schema faults: ${faults.slice(0, 3).join("; ")}`);
   if (out) {

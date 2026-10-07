@@ -323,8 +323,13 @@ export function lostFault(
 }
 
 /** Round 9: catalogue/fit.json, the measured characters per field (lab/bakeoff/fit-table.ts). */
+type FitLimit = { item: number; total: number; instruction?: number };
 type FitVariant = {
   label: string;
+  /** Round 9 calibration (round9/calibrate.py): each item, all the text, the instruction. */
+  limit?: FitLimit;
+  limitBare?: FitLimit;
+  noInstruction?: boolean;
   counts: Record<string, number>;
   figure: boolean;
   keyCards?: boolean;
@@ -385,26 +390,37 @@ export function charsOver(slide: unknown, stage: string): string[] {
     L.variants.filter((x) => x.chars > 0).sort((a, b) => a.chars - b.chars)[0];
   if (!v) return [];
   const hasIns = typeof s.instruction === "string" && s.instruction.trim().length > 0;
-  const room = hasIns ? v.chars : (v.charsNoInstruction ?? v.chars);
+  const lim = (hasIns ? v.limit : (v.limitBare ?? v.limit)) ?? {
+    item: hasIns ? v.chars : (v.charsNoInstruction ?? v.chars),
+    total: Number.POSITIVE_INFINITY,
+    ...(v.instruction ? { instruction: v.instruction } : {}),
+  };
   const out: string[] = [];
-  const over = (field: string, text: unknown, cap: number | undefined) => {
+  let all = 0;
+  const over = (field: string, text: unknown, cap: number | undefined, counts = true) => {
     const t = typeof text === "string" ? text : "";
+    if (counts) all += t.length;
     if (cap && t.length > cap)
       out.push(`${field}: ${t.length} characters, room ${cap} (${t.length - cap} over)`);
   };
-  over("heading", s.heading, F.heading);
-  if (typeof s.lead === "string") over("lead", s.lead, room);
-  if (typeof s.instruction === "string") over("instruction", s.instruction, v.instruction);
+  over("heading", s.heading, F.heading, false);
+  if (typeof s.lead === "string") over("lead", s.lead, lim.item);
+  if (typeof s.instruction === "string")
+    over("instruction", s.instruction, v.noInstruction ? 1 : lim.instruction);
   if (typeof s.stem === "string") over("stem", s.stem, v.stem);
   if (typeof s.formula === "string")
-    over("formula", s.formula, fig ? F.formulaBesideFigure : F.formula);
+    over("formula", s.formula, fig ? F.formulaBesideFigure : F.formula, false);
   items.forEach((it, k) => {
     const o = (it ?? {}) as Record<string, unknown>;
     const text = typeof it === "string" ? it : (o.text ?? o.caption);
-    over(`${listKey}[${k + 1}]`, text, room);
+    over(`${listKey}[${k + 1}]`, text, lim.item);
     if (typeof o.label === "string")
-      over(`${listKey}[${k + 1}].label`, o.label, v.keyLabel ?? v.columnLabel);
+      over(`${listKey}[${k + 1}].label`, o.label, v.keyLabel ?? v.columnLabel, false);
   });
+  if (all > lim.total)
+    out.push(
+      `all the slide's text: ${all} characters, room ${lim.total} (${all - lim.total} over)`,
+    );
   return out;
 }
 

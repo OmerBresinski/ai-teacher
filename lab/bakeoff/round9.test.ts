@@ -103,13 +103,14 @@ describe("round 9: fit faults in characters", () => {
   const slide = {
     template: "practice",
     heading: "Prices",
-    questions: ["x".repeat(150), "Short?"],
+    questions: ["x".repeat(300), "Short?"],
     instruction: "Answer in full sentences.",
     figure: { kind: "table", shows: "t", labels: [] },
   };
   test("the repair is told which field and how many characters over", () => {
     const f = repairTerms("overflow: questions 354/328pt", slide, "KS3-5");
-    expect(f).toMatch(/^overflow: questions\[1\]: 150 characters, room \d+ \(\d+ over\)$/);
+    expect(f).toMatch(/^overflow: questions\[1\]: 300 characters, room \d+ \(\d+ over\)/);
+    expect(f).toContain("all the slide's text:");
     expect(charsOver({ ...slide, questions: ["Short?"] }, "KS3-5")).toEqual([]);
   });
   test("a fault no field explains is said as a share, never 'about N lines'", () => {

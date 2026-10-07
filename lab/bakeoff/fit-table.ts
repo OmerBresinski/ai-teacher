@@ -64,20 +64,30 @@ const PH = { photo: "x", aspect: 4 / 3 };
 const DIA = { diagram: { kind: "cycle", alt: "c", steps: ["Egg", "Chick", "Hen"] } };
 
 /** The slide `doc`/`v` with every text field at its limit: items and lead `n`, heading `h`, instruction `ins`. */
-function input(doc: Doc, v: Variant, n: number, h: number, ins: number): TemplateInput {
+/**
+ * Round 9 calibration: which field is long. "all" sets every field at n at once (the joint fit);
+ * "first" sets the first item at n and the rest at REST; "lead" the lead at n, items at REST. The
+ * single-field ceilings come from "first" and "lead".
+ */
+let LONG: "all" | "first" | "lead" = "all";
+const REST = 16;
+function input(doc: Doc, v: Variant, n0: number, h: number, ins: number): TemplateInput {
+  const n = LONG === "all" ? n0 : REST;
+  const leadN = LONG === "first" ? REST : n0;
   const fig = v.figure === "photo" ? PH : v.figure === "diagram" ? DIA : undefined;
-  const items = (k: number) => Array.from({ length: k }, (_, i) => sample(n, i * 3 + 1));
+  const items = (k: number) =>
+    Array.from({ length: k }, (_, i) => sample(i === 0 && LONG === "first" ? n0 : n, i * 3 + 1));
   const base = { template: doc.id, heading: sample(h, 7) } as TemplateInput;
   const c = v.counts as Record<string, number>;
   switch (doc.id) {
     case "title":
-      return { ...base, lead: sample(n), ...(fig ? { figure: fig } : {}) } as TemplateInput;
+      return { ...base, lead: sample(leadN), ...(fig ? { figure: fig } : {}) } as TemplateInput;
     case "explain":
     case "picture-text":
     case "diagram-text":
       return {
         ...base,
-        lead: sample(n),
+        lead: sample(leadN),
         points: v.keyCards
           ? items(c.points ?? 1).map((text, i) => ({ label: sample(KEY_LABEL, i * 5), text }))
           : items(c.points ?? 0),
@@ -86,7 +96,7 @@ function input(doc: Doc, v: Variant, n: number, h: number, ins: number): Templat
     case "big-picture":
     case "big-diagram":
     case "discussion":
-      return { ...base, lead: sample(n), ...(fig ? { figure: fig } : {}) } as TemplateInput;
+      return { ...base, lead: sample(leadN), ...(fig ? { figure: fig } : {}) } as TemplateInput;
     case "picture-sequence":
       return {
         ...base,
@@ -130,18 +140,25 @@ function input(doc: Doc, v: Variant, n: number, h: number, ins: number): Templat
   }
 }
 
+/**
+ * Round 9 calibration: what ships clean, the renderer's ladder included (a column may step down to
+ * the small body size before it overflows). Round 7 shipped 1 overflow while half its slides broke
+ * the full-size fit, so the full-size measure (fit-first) said about half the room the slides have.
+ */
+const LADDER = true;
 /** Whether the slide lays out with nothing over on every theme and stage of `g`. */
 const clean = (g: Group, make: () => TemplateInput) =>
   GROUPS[g].themes.every((th) =>
-    GROUPS[g].stages.every((st) =>
-      atFullSize(() => {
+    GROUPS[g].stages.every((st) => {
+      const lay = () => {
         try {
           return layoutTemplate(make(), getTheme(th), st as never).over.length === 0;
         } catch {
           return false;
         }
-      }),
-    ),
+      };
+      return LADDER ? lay() : atFullSize(lay);
+    }),
   );
 /**
  * The largest even n in [2, max] such that every even length up to n fits: a cap the writer can trust
@@ -193,17 +210,20 @@ const FIELDS: Record<string, string[]> = {
   "exit-ticket": ["questions"],
 };
 const QUESTIONS = new Set(["question-set", "practice", "exit-ticket"]);
+/** Round 9: the fewest characters a question, step or working line needs to say anything. */
+const MIN_ITEM = 30;
+const STARVE = new Set([...QUESTIONS]);
 
 export function measureFit() {
   const out: Record<string, unknown> = {};
   for (const g of Object.keys(GROUPS) as Group[]) {
     const byId = new Map(TEMPLATE_DOCS.map((d) => [d.id as string, d]));
     const explain = byId.get("explain") as Doc;
-    // A heading is one line: a two-line heading takes a body line from every layout, and measuring
-    // the items under a two-line heading cut every question slide's room by a third.
-    const heading = Math.min(
-      oneLine(g, G.width, "heading"),
-      largest((h) => clean(g, () => input(explain, explain.variants[0] as Variant, 10, h, 0)), 160),
+    // Round 9 calibration: the heading band holds two lines; the cap is the longest heading the
+    // layout keeps clean (round 7 headings over one line shipped clean).
+    const heading = largest(
+      (h) => clean(g, () => input(explain, explain.variants[0] as Variant, 10, h, 0)),
+      160,
     );
     const layouts: Record<string, unknown> = {};
     for (const [w, ids] of Object.entries(WRITER)) {
@@ -214,10 +234,33 @@ export function measureFit() {
           d.variants.filter((v) => v.label === label).map((v) => [d, v] as const),
         );
         const figure = !!vs[0]?.[1].figure;
-        const ins = QUESTIONS.has(w) ? oneLine(g, figure ? G.left.w : 760) : 0;
-        const n = Math.min(
-          ...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, heading, ins)))),
-        );
+        // Round 9 (coordinator): a question slide with a figure whose questions would get under
+        // MIN_ITEM characters with an instruction line has no instruction line (KS1-2 held 22-24).
+        const fit = (insN: number) =>
+          Math.min(
+            ...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, heading, insN)))),
+          );
+        const ins0 = QUESTIONS.has(w) ? oneLine(g, figure ? G.left.w : 760) : 0;
+        const n0 = fit(ins0);
+        const noIns = QUESTIONS.has(w) && figure && n0 < MIN_ITEM && fit(0) >= MIN_ITEM;
+        const ins = noIns ? 0 : ins0;
+        const nFit = noIns ? fit(0) : n0;
+        // A way that leaves its items too little room to say anything is not offered (the
+        // layout, not the text, is the problem); the writer picks another way of filling it.
+        const n = STARVE.has(w) && nFit < MIN_ITEM ? 0 : nFit;
+        // Round 9 calibration: one field long with the rest short (its ceiling), and the joint total
+        // (every field at n at once) as the layout's character budget.
+        const ceilingOf = (insN: number) =>
+          Math.min(
+            ...vs.flatMap(([d, v]) =>
+              (["first", "lead"] as const).map((mode) => {
+                LONG = mode;
+                const r = largest((k) => clean(g, () => input(d, v, k, heading, insN)));
+                LONG = "all";
+                return r || 240;
+              }),
+            ),
+          );
         // A question slide without its instruction line has that line's room for its questions.
         const bare = ins
           ? Math.min(
@@ -234,6 +277,9 @@ export function measureFit() {
           keyCards: !!v0.keyCards,
           chars: n,
           ...(ins ? { instruction: ins, charsNoInstruction: bare } : {}),
+          ceiling: n ? ceilingOf(ins) : 0,
+          ...(noIns ? { noInstruction: true } : {}),
+          ...(ins ? { ceilingNoInstruction: bare ? ceilingOf(0) : 0 } : {}),
           ...(w === "hinge" && n ? { stem: Math.round(n * 1.6) } : {}),
           ...(v0.keyCards ? { keyLabel: KEY_LABEL } : {}),
           ...(w === "compare" ? { columnLabel: COLUMN_LABEL } : {}),
