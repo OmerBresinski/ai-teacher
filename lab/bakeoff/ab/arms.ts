@@ -25,6 +25,8 @@ export const AB_ARMS = [
   "b3-l1",
   "b3-m1",
   "b3-r1",
+  "b3-r1t",
+  "b3-ms",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -119,6 +121,24 @@ export const AB_CONFIG: Record<
     fixes: true,
     delta: "base3 + r1: the misconception clause removed",
   },
+  // D18 (8 Oct): structural arms on base3; schemas from lab/bakeoff/ab/structural.ts, wording from the
+  // prompt-engineer (ab/arms3/<arm>/REQUEST.md).
+  "b3-r1t": {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    r1t: true,
+    delta:
+      "base3 + R1 stage 1: question pictures as 0-4 one-thing tiles; items carry needs_picture",
+  },
+  "b3-ms": {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    delta: "base3 + a nullable misconception slot before the flow",
+  },
   // D11 R2 (RADICAL.md): structured kinds are per-kind spec defs the writer fills; code draws them.
   // Prompt text is base3's until the prompt-engineer rewrites the diagram section.
   "b3-r2": {
@@ -146,6 +166,8 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b3-l1": { ref: "base3" },
   "b3-m1": { ref: "base3" },
   "b3-r1": { ref: "base3" },
+  "b3-r1t": { ref: "base3" },
+  "b3-ms": { ref: "base3" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -155,6 +177,8 @@ export function setAbArm(a: AbArm | undefined) {
 }
 export const abArm = () => current;
 /** D11 correctness fixes (K3 incomplete-writer failure, seeded hinge shuffle): base3 onwards only. */
+/** R1 stage 1 (b3-r1t): the writer's items and tiles are flattened for the harness (writer-only scoring). */
+export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
 export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
 export const abFixes = () => (current ? Boolean(AB_CONFIG[current].fixes) : false);

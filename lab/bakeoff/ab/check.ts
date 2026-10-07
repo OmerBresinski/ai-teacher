@@ -255,6 +255,25 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
         `${a} ${id}: not exactly one line changed (-${sd.del.length} +${sd.add.length}, ${jd.length} schema paths)`,
       );
     // R2: the system text is base3's; only the diagram defs change.
+    // D18: each structural arm touches only its own schema paths, plus at most the requested prompt lines.
+    const OWN: Record<string, { paths: RegExp; lines: number }> = {
+      "b3-r1t": {
+        paths:
+          /^\$\.\$defs\.(item|tile|question-set|practice|exit-ticket|[a-z-]+\.properties\.lead)\b/,
+        lines: 8,
+      },
+      "b3-ms": { paths: /^\$\.(properties\.misconception|required)\b/, lines: 1 },
+    };
+    const own = OWN[a];
+    if (own) {
+      const stray = jd.filter((l) => !own.paths.test(l));
+      if (stray.length)
+        fail(`${a} ${id}: schema paths outside its own: ${stray.slice(0, 2).join("; ")}`);
+      if (sd.del.length > own.lines || sd.add.length > own.lines)
+        fail(
+          `${a} ${id}: system -${sd.del.length} +${sd.add.length} lines, more than the ${own.lines} requested`,
+        );
+    }
     // D13: b3-r2's system may differ from base3's only inside the diagram section (the "- A diagram's
     // kind" bullet through the end of the "Diagram kinds:" list); before and after it, byte for byte.
     if (a === "b3-r2") {

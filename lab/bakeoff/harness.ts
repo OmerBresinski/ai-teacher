@@ -9,8 +9,9 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
-import { type AbArm, abArm, abFiles, abFixes, abShared, sha } from "./ab/arms";
+import { type AbArm, abArm, abFiles, abFixes, abR1t, abShared, sha } from "./ab/arms";
 import { continueForFit } from "./ab/continue";
+import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { type Locale, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
@@ -1223,6 +1224,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       // Round 6: no em dashes on slides (Greg 1 Oct; r5 y8).
       s = slideNoEmDash(s);
       // D11 fix (base3 onwards): the hinge's correct option lands at a seeded, uniform position.
+      // b3-r1t (writer-only stage): items to text and the first tile as the picture, for the rest of the harness.
+      if (abR1t()) s = flattenR1t(s);
       if (abFixes()) s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
       // Round 9 (coordinator 6): the flow's look is the writer's visual decision. A slide whose
       // look names a picture but which asks for none gets the picture from look's phrase.
