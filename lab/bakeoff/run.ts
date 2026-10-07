@@ -80,6 +80,7 @@ for (const id of briefs) {
       ? { freshSlides: String(opt("--fresh-slides")).split(",").map(Number) }
       : {}),
     noNotes: flag("--no-notes"),
+    writerOnly: flag("--writer-only"),
     ...(opt("--objectives-from") ? { objectivesFrom: String(opt("--objectives-from")) } : {}),
     noRepair: flag("--no-repair"),
     ...(opt("--replay-repair") ? { replayRepair: opt("--replay-repair") } : {}),
@@ -94,6 +95,7 @@ for (const id of briefs) {
       failing: r.checks.filter((c) => c.faults.length).length,
     }),
   );
-  if (!flag("--no-render")) console.log("rendered", await renderLesson(r.lessonFile));
+  if (!flag("--no-render") && !flag("--writer-only"))
+    console.log("rendered", await renderLesson(r.lessonFile));
 }
 process.exit(0);

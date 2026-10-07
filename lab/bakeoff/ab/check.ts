@@ -230,6 +230,14 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
     const jd = jsonDiff(b.schema, r.schema);
     if (a === "base2" && (sd.del.length || sd.add.length || jd.length || b.system !== r.system))
       fail(`base2 ${id}: differs from a1`);
+    // D11: K1 changes only the flow's minItems and maxItems; the system text is byte for byte base2's.
+    if (
+      a === "k1" &&
+      (b.system !== r.system ||
+        jd.map((l) => l.split(":")[0]).join(",") !==
+          "$.properties.flow.minItems,$.properties.flow.maxItems")
+    )
+      fail(`k1 ${id}: changes more than the flow bounds (${jd.join("; ")})`);
     if (spec.same) {
       // D4: the arm's delta on base2 is exactly its delta on base (same lines out and in, same schema paths).
       const [p0, p1] = spec.same;

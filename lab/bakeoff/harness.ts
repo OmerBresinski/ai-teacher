@@ -754,6 +754,8 @@ export type RunOpts = {
   objectivesFrom?: string;
   /** Skip pictures and diagrams (layout-only dry run). */
   noVisuals?: boolean;
+  /** A/B round 3: run only the writer (main) call; save request.json, main.json, cost.json, then stop. */
+  writerOnly?: boolean;
   /** Reuse the pictures of an earlier run dir of the same replayed stream (offline re-layout; no spend). */
   reuseVisuals?: string;
   /** With reuseVisuals: these slides (1-based) fetch their pictures afresh; the rest reuse. */
@@ -781,7 +783,9 @@ export type RunResult = {
   checks: CheckResult[];
 };
 
-export async function runLesson(o: RunOpts): Promise<RunResult> {
+export async function runLesson(o0: RunOpts): Promise<RunResult> {
+  // Writer-only: no pictures, diagrams, notes or repair; the request itself is unchanged.
+  const o: RunOpts = o0.writerOnly ? { ...o0, noVisuals: true, noNotes: true, noRepair: true } : o0;
   const { arm, brief } = o;
   setLocale(brief.locale);
   const t0 = performance.now();
@@ -1476,8 +1480,20 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     usd: main.usd,
     ms: main.ms,
     firstTokenMs: main.firstTokenMs,
+    finishReason: "finishReason" in main ? (main.finishReason ?? null) : null,
   });
   mark("streamDone");
+  if (o.writerOnly) {
+    writeJson(`${o.outDir}/cost.json`, { ...ledger.parts, total: main.usd, main: main.usd });
+    log({
+      ev: "summary",
+      writerOnly: true,
+      slides: plan.slides.length,
+      usd: main.usd,
+      ms: main.ms,
+    });
+    return { lessonFile, timings, cost: { main: main.usd, total: main.usd }, checks: [] };
+  }
   const n = plan.slides.length;
   // Early jobs for slides that turned out to have no picture still land (cost is spent) but are not placed.
   for (const [i, e] of early)

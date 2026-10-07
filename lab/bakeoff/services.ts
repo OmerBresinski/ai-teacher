@@ -398,7 +398,14 @@ export async function chat(
 export async function chatStream(
   r: ChatReq,
   onText: (delta: string) => void,
-): Promise<{ text: string; usage: Usage; usd: number; ms: number; firstTokenMs: number }> {
+): Promise<{
+  text: string;
+  usage: Usage;
+  usd: number;
+  ms: number;
+  firstTokenMs: number;
+  finishReason?: string;
+}> {
   r = localiseReq(r);
   const t0 = performance.now();
   // Stalls and runaway whitespace abort the call (a strict-schema stream once went quiet for 10
@@ -432,6 +439,7 @@ export async function chatStream(
   let usage: Usage | undefined;
   let first = -1;
   let blank = 0;
+  let finishReason: string | undefined;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -444,8 +452,12 @@ export async function chatStream(
       if (!l.startsWith("data:")) continue;
       const data = l.slice(5).trim();
       if (data === "[DONE]") continue;
-      const j = JSON.parse(data) as { choices?: { delta?: { content?: string } }[]; usage?: Usage };
+      const j = JSON.parse(data) as {
+        choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
+        usage?: Usage;
+      };
       if (j.usage) usage = j.usage;
+      if (j.choices?.[0]?.finish_reason) finishReason = j.choices[0].finish_reason;
       const d = j.choices?.[0]?.delta?.content;
       if (d) {
         blank = /^\s*$/.test(d) ? blank + d.length : 0;
@@ -467,6 +479,7 @@ export async function chatStream(
     usd: usd(r.model, usage),
     ms: Math.round(performance.now() - t0),
     firstTokenMs: first,
+    finishReason,
   };
 }
 
