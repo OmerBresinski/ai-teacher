@@ -447,7 +447,7 @@ describe("a library hit is judged like a fresh picture", () => {
 
 // SOL-SIMPLE (6 Oct), ruling 163 strict: a historical request never places a photo-style
 // generated picture, whichever rung it comes from.
-describe("ruling 163: no photo-style generated picture for a historical request", () => {
+describe("ruling 163: no generated picture for a historical request", () => {
   const signal = new AbortController().signal;
   const history: BankRequest = {
     text: "A shopper carries a basket of paper marks in 1923",
@@ -490,32 +490,30 @@ describe("ruling 163: no photo-style generated picture for a historical request"
   const placedPhotoStyle = (p: MadePicture | undefined) =>
     p?.source.provider === "generated" && (p as MadePicture).style === "photo";
 
-  test("library: a photo-style generated row is skipped, an illustration is fine", async () => {
-    const a = await run(history, made("photo", "/files/b/photo.png"), undefined);
-    expect(placedPhotoStyle(a.out.photo)).toBe(false);
-    expect(a.out.photo).toBeUndefined();
-    const b = await run(history, made(undefined, "/files/b/old.png"), undefined);
-    expect(b.out.photo).toBeUndefined();
-    const c = await run(history, made("illustration", "/files/b/ill.png"), undefined);
-    expect(c.out.via).toBe("library");
+  // BAKEOFF round 6 (r5 y4 s3, an AI "illustration" of the Roman landing): no generated picture
+  // of any style for a past event or person; real artefacts and artworks only.
+  test("library: no generated row of any style is placed for a historical request", async () => {
+    for (const style of ["photo", undefined, "illustration"] as const) {
+      const a = await run(history, made(style, `/files/b/${style}.png`), undefined);
+      expect(a.out.photo).toBeUndefined();
+    }
   });
 
-  test("fresh and fallback: a photo-style generation is refused and leaves the library", async () => {
+  test("fresh: nothing is generated for a historical request, whatever the fallback", async () => {
     for (const req of [
       history,
       { ...history, route: "generic" as const, realFallback: undefined, stockFirst: true },
       { ...history, realFallback: "faithful" as const, style: undefined },
     ]) {
-      const { out, rejected } = await run(req, undefined, made("photo", "/files/b/gen.png"));
-      if (req.realFallback === "faithful") continue; // `labelled`: faithful is the policy's choice
-      expect(placedPhotoStyle(out.photo)).toBe(false);
-      expect(rejected).toContain("/files/b/gen.png");
+      const { out } = await run(req, undefined, made("illustration", "/files/b/gen.png"));
+      expect(out.photo).toBeUndefined();
+      expect(out.via).toBe("none");
     }
   });
 
-  test("a historical illustration generated fresh is placed", async () => {
-    const { out } = await run(history, undefined, made("illustration", "/files/b/gen.png"));
-    expect(out.via).toBe("generated");
+  test("a code drawing (drawn) is still allowed", async () => {
+    const { out } = await run(history, made("drawn", "/files/b/map.png"), undefined);
+    expect(out.via).toBe("library");
   });
 });
 

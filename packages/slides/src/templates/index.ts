@@ -539,10 +539,15 @@ function elementDrawsSomething(el: SlideElement): boolean {
 }
 
 /** Would this figure draw in `rect`? (A dry run: nothing is added to the slide.) */
-function figureDraws(c: Ctx, f: Figure | undefined, rect?: Parameters<typeof figurePanel>[2]) {
+function figureDraws(
+  c: Ctx,
+  f: Figure | undefined,
+  rect?: Parameters<typeof figurePanel>[2],
+  fails?: string[],
+) {
   if (!f) return false;
   if ("photo" in f) return true;
-  return figurePanel({ ...c, els: [], over: [] }, f, rect);
+  return figurePanel({ ...c, els: [], over: [], ...(fails ? { fails } : {}) }, f, rect);
 }
 
 /** A column of blocks, centred on the band (or top-aligned at `top`), each measured first. */
@@ -613,6 +618,7 @@ function leadAndPoints(
   x: number,
   w: number,
   what: string,
+  top?: number,
 ) {
   const labelled = points.filter((p) => pointLabel(p)).length;
   const cards = labelled >= 1 && labelled <= 2;
@@ -698,7 +704,7 @@ function leadAndPoints(
       }
       return { blocks, gap: cards ? Math.round(c.s.body * 0.8 * r.space) : gap };
     },
-    { what },
+    { what, ...(top !== undefined ? { top } : {}) },
   );
 }
 
@@ -826,10 +832,52 @@ function equationHero(c: Ctx, input: TemplateInput) {
  * No empty panels ever: a figure that cannot draw (a failed diagram, an empty drawing) is dropped
  * and the slide takes its words-only sibling, as a failed picture already does in the arm.
  */
+/**
+ * Round 6: the full-width room under a slide's words, the words laid out across the band first
+ * (a diagram too big for the side panel goes there before it is given up).
+ */
+function belowRect(c: Ctx, input: TemplateInput) {
+  const d: Ctx = { ...c, els: [], over: [], fails: [] };
+  leadAndPoints(
+    d,
+    input.lead,
+    input.points ?? [],
+    G.margin,
+    G.width,
+    "text above figure",
+    G.band.y,
+  );
+  const bottom = d.els.length ? Math.max(...d.els.map((e) => e.y + e.h)) : G.band.y - 12;
+  return { x: G.margin, y: bottom + 16, w: G.width, h: bandBottom - bottom };
+}
+
+/** The big-diagram panel (as its case lays it out): full width, a plot at most 1.7 times as wide as tall. */
+function bigRect(c: Ctx, input: TemplateInput) {
+  const line = input.lead;
+  const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
+  const f = input.figure;
+  const kind = f && "diagram" in f ? String((f.diagram as { kind?: unknown })?.kind ?? "") : "";
+  const plot = /graph|chart|profile|plot|axes/.test(kind);
+  const pw = plot ? Math.min(G.width, Math.round((G.band.h - lh) * 1.7)) : G.width;
+  return { x: G.margin + Math.round((G.width - pw) / 2), y: G.band.y, w: pw, h: G.band.h - lh };
+}
+
 function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   const f = input.figure;
   let out = input;
-  if (f && !("photo" in f) && !figureDraws(c, f)) {
+  const below = () => {
+    if (input.template !== "diagram-text" || !f || !("diagram" in f)) return false;
+    const r = belowRect(c, input);
+    return r.h >= 140 && figureDraws(c, f, r, []);
+  };
+  // Round 6 (r5 y12 s4 table, s7 graph): a big figure is tried in the big panel, not the side
+  // panel (it was judged by the side panel's size and dropped although it drew full width).
+  const big = input.template === "big-diagram" ? bigRect(c, input) : undefined;
+  // The side panel's reasons are kept only when the figure goes (they are the harness's fault).
+  const sideFails: string[] = [];
+  const dropped = !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
+  if (dropped) c.fails?.push(...sideFails);
+  if (dropped) {
     const { figure: _, ...rest } = input;
     out =
       input.template === "picture-text" || input.template === "diagram-text"
@@ -932,11 +980,35 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         leadAndPoints(c, input.lead, raw, G.margin, 680, "explain");
         break;
       case "picture-text":
-      case "diagram-text":
+      case "diagram-text": {
         heading(c, input.heading);
+        const mark = c.els.length;
+        const overMark = c.over.length;
+        const failMark = c.fails?.length ?? 0;
         leadAndPoints(c, input.lead, raw, G.left.x, G.left.w, "text column");
-        figurePanel(c, input.figure);
+        if (figurePanel(c, input.figure)) break;
+        const f = input.figure;
+        if (tpl !== "diagram-text" || !f || !("diagram" in f)) break;
+        // Round 6 (r5 y9 s5, y12 s4 tables and y12 s7 graph lost in the side panel): a diagram
+        // too big for the side panel takes the full width under the words, as round 3's tables
+        // did, before it is given up.
+        const side = c.els.splice(mark);
+        const sideOver = c.over.splice(overMark);
+        const rect = belowRect(c, input);
+        leadAndPoints(c, input.lead, raw, G.margin, G.width, "text above figure", G.band.y);
+        const failsNow = c.fails?.length ?? 0;
+        if (rect.h >= 140 && figurePanel(c, f, rect)) {
+          c.fails?.splice(failMark);
+          break;
+        }
+        // Neither fits: the side layout and its faults stand.
+        c.fails?.splice(failsNow);
+        c.els.splice(mark);
+        c.over.splice(overMark);
+        c.els.push(...side);
+        c.over.push(...sideOver);
         break;
+      }
       case "big-diagram": {
         heading(c, input.heading);
         const line = input.lead;
@@ -949,9 +1021,10 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const kind =
           f && "diagram" in f ? String((f.diagram as { kind?: unknown })?.kind ?? "") : "";
         const plot = /graph|chart|profile|plot|axes/.test(kind);
+        // Round 6 (r5 y12 s7): the caption runs the full width under a narrow plot; set at the
+        // plot's width it took three lines and left the plot too flat to read.
         const pw = plot ? Math.min(G.width, Math.round((G.band.h - lh) * 1.7)) : G.width;
-        const lh2 = line ? measure(c, line, "body", pw) + 14 : 0;
-        const ph = G.band.h - lh2;
+        const ph = G.band.h - lh;
         figurePanel(c, input.figure, {
           x: G.margin + Math.round((G.width - pw) / 2),
           y: G.band.y,
@@ -963,7 +1036,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             c,
             line,
             "body",
-            { x: G.margin + Math.round((G.width - pw) / 2), y: bandBottom - lh2 + 14, w: pw },
+            { x: G.margin, y: bandBottom - lh + 14, w: G.width },
             { color: theme.colors.muted, name: "Caption" },
           );
         break;
@@ -1037,6 +1110,20 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           c.s = s0;
           break;
         }
+        // Round 6: an optional lead over text cards (a table's rows as cards keep their lead).
+        const leadH = input.lead ? measure(c, input.lead, "lead", G.width) + 16 : 0;
+        if (input.lead)
+          text(
+            c,
+            input.lead,
+            "lead",
+            { x: G.margin, y: G.band.y - 8, w: G.width },
+            {
+              color: theme.colors.ink,
+              name: "Lead",
+            },
+          );
+        const room = G.band.h - leadH;
         // Round 2: text cards on the fit ladder (padding closes up, then body one step down).
         let pad = 22;
         const textH = (col: { label: string; text: string }) =>
@@ -1048,10 +1135,12 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           c.s = r.small ? { ...s0, body: s0.small, lead: s0.small } : s0;
           pad = Math.max(14, Math.round(22 * r.space));
           h = Math.max(...cols.map(textH), 0) + 2 * pad;
-          if (h <= G.band.h || k === RUNGS.length - 1) break;
+          if (h <= room || k === RUNGS.length - 1) break;
         }
-        if (h > G.band.h) c.over.push(`compare ${h}/${G.band.h}pt`);
-        const y = Math.max(G.band.y, Math.round(bandMid - h / 2 - 4));
+        if (h > room) c.over.push(`compare ${h}/${room}pt`);
+        const y = leadH
+          ? G.band.y - 8 + leadH
+          : Math.max(G.band.y, Math.round(bandMid - h / 2 - 4));
         cols.forEach((col, k) => {
           const x = G.margin + k * (colW + gap);
           box(c, { x, y, w: colW, h }, theme.colors.surface, {

@@ -38,6 +38,7 @@ import {
 import * as im from "../../packages/images/src/index";
 import {
   diagramJsonSchema,
+  mendSpec,
   parseDiagram,
   withLongLabels,
 } from "../../packages/slides/src/diagrams/index";
@@ -1323,6 +1324,8 @@ async function specCalls(
       strict: false,
     });
     ledger.add("diagrams", r.usd);
+    // Round 6: a spec's optional decoration that cannot stand is mended in code (mendSpec).
+    if (r.out) r.out = mendSpec(r.out);
     // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).
     fault = r.out
       ? diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))

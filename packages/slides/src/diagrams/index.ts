@@ -34,9 +34,11 @@ export {
   energyProfileOf,
   isHydrograph,
   isParticleRow,
+  mendSpec,
   normaliseDiagram,
   simplerDiagrams,
   withTangents,
+  yearOf,
 } from "./normalise";
 export { DIAGRAM_SAMPLES } from "./samples";
 export * from "./schema";

@@ -244,45 +244,43 @@ test("a long diagram moved full width joins key-card points as words, never [obj
 });
 
 describe("round 4 sheet faults", () => {
-  test("y11 s6: a table that cannot draw keeps its data as lines", async () => {
-    const { tableLines } = await import("./harness");
-    const labels = [
-      "Thiosulfate/cm³",
-      "Water/cm³",
-      "Time/s",
-      "40",
-      "0",
-      "20",
-      "30",
-      "10",
-      "27",
-      "20",
-      "20",
-      "40",
-      "10",
-      "30",
-      "80",
-    ];
-    expect(tableLines(undefined, { labels })).toEqual([
-      "Thiosulfate/cm³: 40 · Water/cm³: 0 · Time/s: 20",
-      "Thiosulfate/cm³: 30 · Water/cm³: 10 · Time/s: 27",
-      "Thiosulfate/cm³: 20 · Water/cm³: 20 · Time/s: 40",
-      "Thiosulfate/cm³: 10 · Water/cm³: 30 · Time/s: 80",
-    ]);
-    const spec = { status: "diagram", spec: { header: ["a", "b"], rows: [["1", "2"]] } };
-    expect(tableLines(spec as never, {})).toEqual(["a: 1 · b: 2"]);
-    const { armT } = await import("./arm-t");
-    expect(
-      armT.asTableText?.(
-        { template: "big-visual", heading: "Read the results", lead: "Identify the trend." },
-        ["x"],
-      ),
-    ).toEqual({
-      template: "explain",
-      heading: "Read the results",
-      lead: "Identify the trend.",
-      points: ["x"],
+  test("y11 s6: a table that cannot draw keeps its data, never joined by separators", async () => {
+    const { tableRows } = await import("./harness");
+    const labels = ["Thiosulfate/cm³", "Water/cm³", "Time/s", "40", "0", "20", "30", "10", "27"];
+    expect(tableRows(undefined, { labels })).toEqual({
+      header: ["Thiosulfate/cm³", "Water/cm³", "Time/s"],
+      rows: [
+        ["40", "0", "20"],
+        ["30", "10", "27"],
+      ],
     });
+    const spec = { status: "diagram", spec: { header: ["a", "b"], rows: [["1", "2"]] } };
+    expect(tableRows(spec as never, {})).toEqual({ header: ["a", "b"], rows: [["1", "2"]] });
+    const { armT } = await import("./arm-t");
+    // Round 6 (r5 y9 s5 "Month: January · Bread: Loaf · Paper marks: 250"): cards per row, the
+    // constant column in the lead.
+    const out = armT.asTableText?.(
+      { template: "visual-text", heading: "What could a mark buy?", lead: "Prices rose." },
+      {
+        header: ["Month", "Bread", "Paper marks"],
+        rows: [
+          ["January", "Loaf", "250"],
+          ["July", "Loaf", "3,465"],
+          ["November", "Loaf", "200,000,000,000"],
+        ],
+      },
+    );
+    expect(out).toEqual({
+      template: "compare",
+      heading: "What could a mark buy?",
+      lead: "Prices rose. Bread: Loaf.",
+      columns: [
+        { label: "January", text: "Paper marks: 250", picture: null },
+        { label: "July", text: "Paper marks: 3,465", picture: null },
+        { label: "November", text: "Paper marks: 200,000,000,000", picture: null },
+      ],
+    });
+    expect(JSON.stringify(out)).not.toContain("·");
   });
   test("y1 objectives: the pupil word limit is the slide's measured room, not 8", async () => {
     const { pupilWordLimit } = await import("./harness");

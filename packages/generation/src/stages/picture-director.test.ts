@@ -342,7 +342,16 @@ describe("findPicture", () => {
       sig(),
       async () => true,
     );
-    expect(ill.via).toBe("generated");
+    // BAKEOFF round 6, ruling 163 tightened: nothing is generated for a past event.
+    expect(ill.via).toBe("none");
+    const now = await findPicture(
+      req({ route: "real", realFallback: "illustration", imagePrompt: "I" }),
+      bank(log),
+      async () => undefined,
+      sig(),
+      async () => true,
+    );
+    expect(now.via).toBe("generated");
   });
 });
 

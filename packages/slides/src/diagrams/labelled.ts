@@ -191,9 +191,13 @@ export function resolveLabels(s: LabelledDiagram): ResolvedLabel[] {
     const b = shapeBox(sh);
     return isClosed(sh) ? (b.x1 - b.x0) * (b.y1 - b.y0) : 0;
   };
+  const grid = gridOf(s.shapes);
+  const inCell = (l: { at: Pt }) =>
+    [...grid].some((i) => shapeDistance(s.shapes[i] as Shape, l.at).d === 0);
   for (const l of s.labels) {
     const key = l.text.toLowerCase().replace(/\s+/g, " ");
-    if (seen.has(key)) continue;
+    // A grid's cells may repeat an entry (an area model's two x headers).
+    if (seen.has(key) && !inCell(l)) continue;
     let best: { i: number; d: number; at: Pt; a: number } | undefined;
     s.shapes.forEach((sh, i) => {
       const r = shapeDistance(sh, l.at);
@@ -258,7 +262,23 @@ type Placed = {
   side: ResolvedLabel["side"];
   /** A particle box's description sets lighter than the caption over it. */
   weight?: number;
+  /** A grid cell's entry, set inside its cell (it may sit over the cell's own outline). */
+  inCell?: boolean;
 };
+
+/** The rects that make a grid: 4 or more of one size (within 1 unit), by index. */
+export function gridOf(shapes: Shape[]): Set<number> {
+  const rects = shapes
+    .map((sh, i) => ({ sh, i }))
+    .filter((r): r is { sh: Extract<Shape, { type: "rect" }>; i: number } => r.sh.type === "rect");
+  for (const r of rects) {
+    const same = rects.filter(
+      (o) => Math.abs(o.sh.w - r.sh.w) <= 1 && Math.abs(o.sh.h - r.sh.h) <= 1,
+    );
+    if (same.length >= 4) return new Set(same.map((o) => o.i));
+  }
+  return new Set();
+}
 
 const overlap = (a: Box, b: Box) =>
   Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) *
@@ -350,6 +370,7 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
     });
     const shapePx = boxes.map(px);
     const sides = ["top", "bottom", "right", "left"] as const;
+    const gridCells = gridOf(s.shapes);
     for (const l of labels) {
       // A particle box's description goes in the slot under its caption, in its column.
       if (s.shapes[l.target]?.type === "particles") {
@@ -365,6 +386,21 @@ export function drawLabelled(s: LabelledDiagram, x: Ctx, w: number, h: number): 
       }
       const t = against[l.target] as Box;
       const tp = shapePx[l.target] as Box;
+      // Round 6 (y10m area model): a label whose point is inside a cell of a grid (4+ rects of one
+      // size) is that cell's entry: set centred in it, no leader, when it fits.
+      const sh = s.shapes[l.target];
+      if (sh?.type === "rect" && gridCells.has(l.target) && l.part) {
+        const lines = [l.text];
+        const bw = textWidth(l.text, x, lf, WEIGHT.label);
+        const bh = blockH(1);
+        if (bw <= tp.x1 - tp.x0 - lf * 0.4 && bh <= tp.y1 - tp.y0 - 2) {
+          const cx = (tp.x0 + tp.x1) / 2;
+          const cy = (tp.y0 + tp.y1) / 2;
+          const box = { x0: cx - bw / 2, y0: cy - bh / 2, x1: cx + bw / 2, y1: cy + bh / 2 };
+          placed.push({ lines, box, anchor: "middle", side: "bottom", inCell: true });
+          continue;
+        }
+      }
       const to: Pt | undefined = l.part ? [X(l.at[0]), Y(l.at[1])] : undefined;
       const contains = (b: Box) =>
         b.x0 <= tp.x0 + 0.5 && b.y0 <= tp.y0 + 0.5 && b.x1 >= tp.x1 - 0.5 && b.y1 >= tp.y1 - 0.5;

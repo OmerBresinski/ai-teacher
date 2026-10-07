@@ -13,7 +13,7 @@
 import type { ImageElement, Theme } from "@tj/domain/documents";
 import { uid } from "../factories";
 import { diagramGeometryFaults } from "./geometry";
-import { diagramElement, parseDiagram, simplerDiagrams, withLongLabels } from "./index";
+import { diagramElement, mendSpec, parseDiagram, simplerDiagrams, withLongLabels } from "./index";
 import { context } from "./svg";
 
 export type DrawnDiagram =
@@ -57,6 +57,8 @@ export function drawDiagram(
   rect: { x: number; y: number; w: number; h: number; fs?: number },
   ids: () => string = uid,
 ): DrawnDiagram {
+  // Round 6: optional decoration that cannot stand (a timeline period given as years) is mended.
+  spec = mendSpec(spec);
   try {
     return withLongLabels(() => {
       if (!parseDiagram(spec)) return { ok: false, reasons: ["the spec does not parse"] };

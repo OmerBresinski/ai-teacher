@@ -103,13 +103,13 @@ export function lookMatches(req: BankRequest, hit: MadePicture): boolean {
 }
 
 /**
- * Ruling 163: a historical request (one with a period) never places a photo-style generated
- * picture; only `labelled`'s faithful fallback may. A generated picture with no style is a photo.
+ * Ruling 163, tightened in BAKEOFF round 6 (r5 y4 s3: an AI "illustration" of the Roman landing):
+ * a historical request (one with a period) never places a generated picture of any style; only a
+ * code drawing (`drawn`) may. Past events and people are shown by real artefacts and artworks.
  */
 export function styleAllowed(req: BankRequest, picture: MadePicture): boolean {
   if (!req.period || picture.source.provider !== "generated") return true;
-  if (picture.style === "illustration" || picture.style === "drawn") return true;
-  return req.realFallback === "faithful";
+  return picture.style === "drawn";
 }
 
 export interface PictureBank {
@@ -193,6 +193,8 @@ export async function findPicture(
     ms: now() - t0,
   });
   const make = async (faithful: boolean) => {
+    // Ruling 163 (round 6): nothing is generated for a past event or person.
+    if (req.period && !req.draw) return undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
       const made = await bank.generate(req, faithful, signal).catch(rethrowAbort);
       if (made && !styleAllowed(req, made)) {

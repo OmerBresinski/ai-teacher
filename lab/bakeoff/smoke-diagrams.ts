@@ -74,8 +74,58 @@ export function savedSpecs(dirs: string[]): { key: string; spec: unknown; ks?: s
   return specs;
 }
 
+/**
+ * Round 6: specs that must always draw. BC/AD timelines (y4 r5 failed both tries on a period given
+ * as years), one with a period as years and one with no period.
+ */
+export const MUST_DRAW: { key: string; spec: unknown; ks?: string }[] = [
+  {
+    key: "r6 timeline BC/AD period as years",
+    ks: "ks2",
+    spec: {
+      kind: "timeline",
+      title: "Three important dates",
+      alt: "Timeline from 55 BC to AD 43.",
+      events: [
+        { date: "55 BC", text: "Caesar's first expedition" },
+        { date: "54 BC", text: "Caesar's second expedition" },
+        { date: "AD 43", text: "Claudius's invasion" },
+      ],
+      period: { from: -55, to: 43, label: "55 BC to AD 43" },
+    },
+  },
+  {
+    key: "r6 timeline BC/AD no period",
+    ks: "ks2",
+    spec: {
+      kind: "timeline",
+      alt: "Timeline from 753 BC to AD 410.",
+      events: [
+        { date: "753 BC", text: "Rome founded" },
+        { date: "27 BC", text: "Augustus becomes emperor" },
+        { date: "AD 43", text: "Invasion of Britain" },
+        { date: "AD 410", text: "Romans leave Britain" },
+      ],
+    },
+  },
+  {
+    key: "r6 timeline period label missing",
+    ks: "ks3",
+    spec: {
+      kind: "timeline",
+      alt: "Timeline of 1923.",
+      events: [
+        { date: "Jan 1923", text: "Ruhr occupied" },
+        { date: "Sep 1923", text: "Passive resistance ends" },
+        { date: "Nov 1923", text: "Rentenmark introduced" },
+      ],
+      period: { from: 1, to: 3 },
+    },
+  },
+];
+
 if (import.meta.main) {
-  const specs = savedSpecs(process.argv.slice(2));
+  const specs = [...savedSpecs(process.argv.slice(2)), ...MUST_DRAW];
   const samples = Object.entries(DIAGRAM_SAMPLES).map(([k, v]) => ({
     key: `sample ${k}`,
     spec: v,

@@ -2,7 +2,6 @@
 // Prompt and schema: BAKEOFF/prompts/T/{system,schema}.<KS1|KS2|KS3-5>.{txt,json} (the prompt agent's),
 // else SOL-SIMPLE's arm T as a stand-in.
 import { existsSync, readFileSync } from "node:fs";
-import { drawDiagram } from "../../packages/slides/src/diagrams";
 import { PLACEHOLDER_IMAGE } from "../../packages/slides/src/layouts";
 import {
   type Figure,
@@ -10,6 +9,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
+import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
 import { BAKEOFF, ROUNDS } from "./services";
 
@@ -40,8 +40,10 @@ const isPic = (f: unknown): f is Pic =>
  * (a `kind` = a diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
  */
 /** A sentence that points at a visual (a picture, diagram, graph, table or data) on the slide. */
-const POINTS_AT =
-  /\b(look at|in the (photo|picture|image|diagram|drawing|graph|table|chart)|(this|the) (photo|picture|image|diagram|drawing|graph|table|chart|curve|results|data)( shows| below| above)?|shown (above|below)|can you see)\b/i;
+const POINTS_AT = new RegExp(
+  `\\b(look at|in the (photo|picture|image|diagram|drawing|graph|table|chart)|(this|the) (photo|picture|image|diagram|drawing|graph|table|chart|curve|results|data)( shows| below| above)?|shown (above|below)|can you see)\\b|${ANY_POINTING.source}`,
+  "i",
+);
 
 export function normalise(s: S): S {
   const t = s.template;
@@ -154,26 +156,9 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
     case "picture-text":
     case "diagram-text": {
       const f = fig(template === "picture-text" ? "picture" : "diagram");
-      // dd-diagrams2: a drawing too big for the side panel at a readable size (a long flow) takes
-      // the full width instead, its bullets joined as the lines under it, before it is dropped.
-      if (f && "diagram" in f && template === "diagram-text") {
-        const half = drawDiagram(f.diagram, ctx.theme, { x: 0, y: 0, w: 348, h: 284 });
-        if (!half.ok && drawDiagram(f.diagram, ctx.theme, { x: 0, y: 0, w: 788, h: 235 }).ok)
-          return {
-            template: "big-diagram",
-            heading,
-            // Round 4 fix (y10 s4 "[object Object]"): key-card points are objects; join their words.
-            lead: [
-              lead,
-              ...pts(s.points).map((p) =>
-                typeof p === "string" ? p : p.label ? `${p.label}: ${p.text}` : p.text,
-              ),
-            ]
-              .filter(Boolean)
-              .join(" "),
-            figure: f,
-          };
-      }
+      // Round 6: a drawing too big for the side panel is laid out by the template, full width under
+      // the words (packages/slides templates, diagram-text), before it is given up. The old move to
+      // big-diagram here squeezed the bullets into a caption and lost r5 y9 s5 and y12 s4.
       // A picture or diagram that could not be made: the words stand alone (explain), never an empty panel.
       return {
         template: f ? template : "explain",
@@ -214,6 +199,7 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
       return {
         template,
         heading,
+        ...(lead && !cols.some((c) => isPic(c.picture)) ? { lead } : {}),
         columns: cols.map((c, n) => {
           const p = c.picture;
           const f = isPic(p) && !anyFailed ? figureNow(`col.${n}`, p, ctx, mark) : undefined;
@@ -315,12 +301,14 @@ export const armT: ArmPlugin = {
     const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
     return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
   },
-  asWords(raw) {
+  asWords(raw, opts) {
     const s = normalise(raw);
+    // Round 6: `keepPointing` takes the figure away and keeps every word (the rewrite's input).
+    const POINTS = opts?.keepPointing ? /$^/ : POINTS_AT;
     const drop = (t: unknown) =>
       str(t)
         .split(/(?<=[.?!])\s+/)
-        .filter((x) => !POINTS_AT.test(x))
+        .filter((x) => !POINTS.test(x))
         .join(" ");
     const { figure: _f, picture: _p, ...rest } = s as S;
     const tpl = String(s.template);
@@ -333,15 +321,52 @@ export const armT: ArmPlugin = {
       ...(Array.isArray(s.points)
         ? {
             points: (s.points as unknown[]).filter(
-              (p) => !POINTS_AT.test(typeof p === "string" ? p : str((p as S).text)),
+              (p) => !POINTS.test(typeof p === "string" ? p : str((p as S).text)),
             ),
           }
         : {}),
+      // Round 6: questions that need the missing visual go too.
+      ...(Array.isArray(s.questions)
+        ? { questions: (s.questions as unknown[]).filter((q) => !POINTS.test(str(q))) }
+        : {}),
+      ...(typeof s.prompt === "string" ? { prompt: drop(s.prompt) } : {}),
+      ...(typeof s.stem === "string" ? { stem: drop(s.stem) } : {}),
     };
   },
-  asTableText(raw, lines) {
+  asTableText(raw, table) {
     const s = normalise(raw);
-    return { template: "explain", heading: str(s.heading), lead: str(s.lead), points: lines };
+    const { header, rows } = table;
+    // A cell, with its column's header when there is one ("Paper marks: 250").
+    const cell = (r: string[], k: number) => (header?.[k] ? `${header[k]}: ${r[k]}` : (r[k] ?? ""));
+    // A column whose cells are all the same says nothing per row ("Bread: Loaf"): it goes in the lead.
+    const cols = (rows[0] ?? []).map((_, k) => k);
+    const same = cols.filter(
+      (k) => k > 0 && rows.length > 1 && rows.every((r) => r[k] === rows[0]?.[k]),
+    );
+    const keep = cols.filter((k) => k > 0 && !same.includes(k));
+    const rest = (r: string[]) =>
+      keep
+        .map((k) => cell(r, k))
+        .filter((x) => x.trim())
+        .join("; ");
+    const constant = same.map((k) => cell(rows[0] ?? [], k)).join("; ");
+    const lead = [str(s.lead), constant ? `${constant}.` : ""].filter(Boolean).join(" ");
+    const name = (r: string[]) =>
+      header?.[0] && /^\d/.test(r[0] ?? "") ? `${header[0]} ${r[0]}` : (r[0] ?? "");
+    // Two to four rows: one card each, as a compare (round 5 y9 "Who lost?" cards read well).
+    if (rows.length >= 2 && rows.length <= 4 && keep.length)
+      return {
+        template: "compare",
+        heading: str(s.heading),
+        ...(lead ? { lead } : {}),
+        columns: rows.map((r) => ({ label: name(r), text: rest(r), picture: null })),
+      };
+    return {
+      template: "explain",
+      heading: str(s.heading),
+      lead,
+      points: rows.map((r) => (keep.length ? { label: name(r), text: rest(r) } : name(r))),
+    };
   },
   asPicture(raw) {
     // Round 2: a diagram of a real thing that could not draw becomes a picture of the same thing.

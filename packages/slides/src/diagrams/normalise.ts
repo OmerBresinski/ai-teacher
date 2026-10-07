@@ -475,3 +475,43 @@ export function simplerDiagrams(spec: unknown): unknown[] {
   }
   return out.filter((v) => DiagramSpecSchema.safeParse(v).success);
 }
+
+/** A date label as a signed year (BC negative): "55 BC" -55, "AD 43" 43, "1923" 1923. */
+export function yearOf(date: string): number | undefined {
+  const bc = date.match(/(\d+)\s*(?:BC|BCE)\b/i);
+  if (bc) return -Number(bc[1]);
+  const ad = date.match(/(?:AD|CE)\s*(\d+)|(\d+)\s*(?:AD|CE)\b|\b(\d{1,4})\b/i);
+  const n = ad?.[1] ?? ad?.[2] ?? ad?.[3];
+  return n ? Number(n) : undefined;
+}
+
+/**
+ * Round 6 (y4 r5: a BC-AD timeline failed both tries on `period.from: -55`): a spec's optional
+ * decoration that cannot stand is mended in code, never a reason to lose the drawing. A timeline's
+ * `period` given as years becomes the events' positions; one that still does not fit is dropped.
+ */
+export function mendSpec(spec: unknown): unknown {
+  const s = spec as {
+    kind?: unknown;
+    events?: { date?: unknown }[];
+    period?: { from?: unknown; to?: unknown; label?: unknown } | null;
+  };
+  if (!s || typeof s !== "object" || s.kind !== "timeline" || !Array.isArray(s.events)) return spec;
+  if (s.period === undefined) return spec;
+  const n = s.events.length;
+  const p = s.period;
+  const ok = (a: unknown, b: unknown) =>
+    Number.isInteger(a) &&
+    Number.isInteger(b) &&
+    (a as number) >= 1 &&
+    (b as number) > (a as number) &&
+    (b as number) <= n;
+  const { period: _p, ...rest } = s;
+  if (!p || typeof p !== "object" || typeof p.label !== "string" || !p.label.trim()) return rest;
+  if (ok(p.from, p.to)) return spec;
+  const years = s.events.map((e) => yearOf(String(e?.date ?? "")));
+  const at = (y: unknown) => (typeof y === "number" ? years.indexOf(y) + 1 : 0);
+  const from = at(p.from);
+  const to = at(p.to);
+  return ok(from, to) ? { ...rest, period: { ...p, from, to } } : rest;
+}

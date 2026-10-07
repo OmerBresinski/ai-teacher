@@ -27,10 +27,22 @@ const realPicture = (e: SlideElement) =>
 /** Words that point at data, a table or a graph (round 4). */
 export const DATA_POINTING =
   /\b(the (results|table|data|graph|curve|chart|tangent|readings|trend|values shown)|(this|that) (table|graph|chart|data|curve)|shown (above|below)|in the (table|graph|chart))\b/i;
+/**
+ * Round 6 (r5 y2 s3 "Are these two parts halves?", y2 s5 "shape C", y4 s4 "Read the timeline",
+ * y12 s7 "Describe the difference"): words that need a visual the words cannot stand in for.
+ */
+export const VISUAL_POINTING =
+  /\b(these (two |three |four )?(parts|pieces|shapes|pictures|photos|images|groups|counters|halves|quarters|diagrams|objects)|shapes? [A-D]\b|which shape|read the (timeline|time line|graph|table|chart|diagram|map)|(on|in|from|use|study) (the|this) (timeline|time line|map|diagram|picture|photo|image|drawing)|(the|this) (timeline|time line|diagram|picture|photo|image|drawing) (shows|below|above)|look closely|describe the difference(?! between)|what do you notice|can you see)\b/i;
+/** Any wording that points at a visual or data (the union, for stripping sentences). */
+export const ANY_POINTING = new RegExp(`${DATA_POINTING.source}|${VISUAL_POINTING.source}`, "i");
+
 /** A referent fault, or undefined when the slide shows what its words point at. */
 export function referentFault(words: string, hasFigure: boolean): string | undefined {
+  if (hasFigure) return undefined;
+  const seen = words.match(VISUAL_POINTING)?.[0];
+  if (seen) return `dangling: "${seen}" with no picture or diagram on the slide`;
   const hit = words.match(DATA_POINTING)?.[0];
-  if (!hit || hasFigure) return undefined;
+  if (!hit) return undefined;
   if ((words.match(/\d+(?:[.,]\d+)?/g) ?? []).length >= 4) return undefined;
   return `dangling: "${hit}" with no data, table or graph on the slide`;
 }
@@ -49,6 +61,8 @@ export function checkSlide(a: {
   answers: string[] | undefined;
   notesChecked: boolean;
   words: string;
+  /** Round 6: the specs of the diagrams drawn on the slide (the count check). */
+  specs?: unknown[];
 }): CheckResult {
   const faults: string[] = [];
   const s = a.slide;
@@ -89,6 +103,10 @@ export function checkSlide(a: {
   // table or a graph need a drawn figure or the data itself (at least 4 numbers) on the slide.
   const referent = referentFault(a.words, s.elements.some(realPicture));
   if (referent) faults.push(referent);
+  for (const sp of a.specs ?? []) {
+    const f = countFault(sp);
+    if (f) faults.push(f);
+  }
   // Answerable: every question has an answer from the notes call; one that needs a picture has one.
   if (a.notesChecked && a.questions.length) {
     const got = a.answers?.filter((x) => x.trim()).length ?? 0;
@@ -101,4 +119,119 @@ export function checkSlide(a: {
     if (POINTING.test(q) && !s.elements.some(realPicture))
       faults.push(`unanswerable: "${q.slice(0, 40)}" needs a picture the slide does not have`);
   return { slide: a.index + 1, faults: [...new Set(faults)] };
+}
+
+/**
+ * Round 6 (r5 y8 "Il est gentil. — He is kind."): slides carry no em dashes (Greg 1 Oct). A gloss
+ * after one becomes a bracket ("Il est gentil. (He is kind.)", "Mon frère (my brother)"); any
+ * other dash becomes a colon, then commas.
+ */
+export function noEmDash(t: string): string {
+  if (!t.includes("—")) return t;
+  // One line at a time: "Il est gentil. — He is kind.\nIl est amusant. — He is funny."
+  if (t.includes("\n")) return t.split("\n").map(noEmDash).join("\n");
+  const parts = t.split(/\s*—\s*/);
+  if (parts.length === 2) {
+    const [a, b] = parts as [string, string];
+    if (b.trim() && b.trim().split(/\s+/).length <= 10) return `${a.trimEnd()} (${b.trim()})`;
+  }
+  return parts
+    .map((p, k) => (k === 0 ? p : `${k === 1 ? ":" : ","} ${p}`))
+    .join("")
+    .replace(/\s+([:,])/g, "$1");
+}
+
+/** Every string in a slide's JSON with `noEmDash` applied. */
+export function slideNoEmDash<T>(v: T): T {
+  if (typeof v === "string") return noEmDash(v) as T;
+  if (Array.isArray(v)) return v.map(slideNoEmDash) as T;
+  if (v && typeof v === "object")
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, slideNoEmDash(x)])) as T;
+  return v;
+}
+
+/** Round 6: slides that repeat another (same heading, or words more than 70 % alike). */
+export function duplicateFaults(
+  slides: { index: number; heading: string; words: string }[],
+): Map<number, string> {
+  const out = new Map<number, string>();
+  const bag = (w: string) => new Set(w.toLowerCase().match(/[\p{L}\d]{3,}/gu) ?? []);
+  const norm = (h: string) =>
+    h
+      .toLowerCase()
+      .replace(/[^\p{L}\d]+/gu, " ")
+      .trim();
+  for (let j = 0; j < slides.length; j++)
+    for (let i = 0; i < j; i++) {
+      const a = slides[i];
+      const b = slides[j];
+      if (!a || !b || out.has(b.index)) continue;
+      const A = bag(a.words);
+      const B = bag(b.words);
+      const both = [...A].filter((x) => B.has(x)).length;
+      const alike = both / Math.max(1, A.size + B.size - both);
+      // A parallel example (the same words, other numbers: "one quarter of 8", "of 20") is not one.
+      const nums = (w: string) => [...new Set(w.match(/\d+(?:[.,]\d+)?/g) ?? [])].sort().join(" ");
+      const sameNumbers = nums(a.words) === nums(b.words);
+      if ((norm(a.heading) && norm(a.heading) === norm(b.heading)) || (alike > 0.7 && sameNumbers))
+        out.set(
+          b.index,
+          `duplicate: repeats s${a.index + 1} ("${a.heading.slice(0, 40)}", ${Math.round(alike * 100)}% alike); make it different or merge it into s${a.index + 1}`,
+        );
+    }
+  return out;
+}
+
+const COUNTED: [RegExp, string][] = [
+  [/^(counters?|dots?|circles?|beads?|marbles?|sweets?|balls?|buttons?|coins?)$/i, "circle"],
+  [/^(squares?|cubes?|blocks?|tiles?|boxes?)$/i, "rect"],
+];
+/**
+ * Round 6: a labelled drawing's "20 counters" matches what is drawn: all the counters, one colour's
+ * worth, the ones inside one outline, or an even share of them.
+ */
+export function countFault(spec: unknown): string | undefined {
+  const s = spec as {
+    kind?: string;
+    shapes?: {
+      type: string;
+      fill?: string;
+      cx?: number;
+      cy?: number;
+      x?: number;
+      y?: number;
+      w?: number;
+      h?: number;
+    }[];
+    labels?: { text: string }[];
+  };
+  if (s?.kind !== "labelled-diagram" || !Array.isArray(s.shapes) || !Array.isArray(s.labels))
+    return;
+  for (const l of s.labels) {
+    const m = l.text.match(/\b(\d+)\s+([\p{L}]+)/u);
+    if (!m) continue;
+    const type = COUNTED.find(([re]) => re.test(m[2] ?? ""))?.[1];
+    if (!type) continue;
+    const n = Number(m[1]);
+    const marks = s.shapes.filter((sh) => sh.type === type);
+    if (marks.length < 2) continue;
+    const ok = new Set<number>([marks.length]);
+    const byFill = new Map<string, number>();
+    for (const sh of marks) byFill.set(sh.fill ?? "", (byFill.get(sh.fill ?? "") ?? 0) + 1);
+    for (const v of byFill.values()) ok.add(v);
+    for (let k = 2; k <= 10; k++) if (marks.length % k === 0) ok.add(marks.length / k);
+    for (const box of s.shapes.filter((sh) => sh.type === "rect" && type === "circle")) {
+      const inside = marks.filter(
+        (c) =>
+          (c.cx ?? 0) >= (box.x ?? 0) &&
+          (c.cx ?? 0) <= (box.x ?? 0) + (box.w ?? 0) &&
+          (c.cy ?? 0) >= (box.y ?? 0) &&
+          (c.cy ?? 0) <= (box.y ?? 0) + (box.h ?? 0),
+      ).length;
+      if (inside) ok.add(inside);
+    }
+    if (!ok.has(n))
+      return `count: the label "${l.text}" says ${n} but the drawing shows ${marks.length} ${m[2]}`;
+  }
+  return undefined;
 }
