@@ -33,7 +33,6 @@ import {
 } from "./arms";
 
 const BAKEOFF = AB.replace(/\/ab$/, "");
-const C4 = ", as compact JSON with no indentation";
 export const AB_BRIEFS = [
   "y1-science-animals-young",
   "y5-maths-fractions-of-amounts",
@@ -73,17 +72,14 @@ for (const a of AB_ARMS) {
     if (a === "a2" && !system.includes("ask is the slide's line"))
       fail(`a2 ${st}: compiled system lacks "ask is the slide's line"`);
     if (a !== "a2" && /\bask_without\b/.test(system)) fail(`${a} ${st}: mentions ask_without`);
+    if (system.includes("compact JSON")) fail(`${a} ${st}: carries the C4 compact-JSON clause`);
     if (a === "base") {
-      // base = round 5 byte for byte + C4 (compact JSON, the ledger's "ship it"), and nothing else.
+      // base = round 5 byte for byte (coordinator, 7 Oct: no C4).
       const v = abFiles("base", st, ROUND5_VERBATIM);
       const r5 = readFileSync(v.system, "utf8");
       if (r5.length !== ROUND5_SYSTEM_CHARS[st])
         fail(`round5-verbatim ${st}: ${r5.length} chars, round 5 sent ${ROUND5_SYSTEM_CHARS[st]}`);
-      if (
-        system !== r5.replace("in the same order.", `in the same order${C4}.`) ||
-        !r5.includes("in the same order.")
-      )
-        fail(`base ${st}: not round 5 + the C4 clause`);
+      if (system !== r5) fail(`base ${st}: system is not round 5 byte for byte`);
       if (readFileSync(f.schema, "utf8") !== readFileSync(v.schema, "utf8"))
         fail(`base ${st}: schema is not round 5's`);
     }
@@ -91,9 +87,11 @@ for (const a of AB_ARMS) {
 }
 {
   const p = tPin(ROUND5_VERBATIM);
-  if (p === ROUND5_T_PIN)
-    ok(`round5-verbatim T hash ${p} = round 5 run pin; base = it + C4 (checked per stage)`);
+  if (p === ROUND5_T_PIN) ok(`round5-verbatim T hash ${p} = round 5 run pin`);
   else fail(`round5-verbatim T hash ${p} != round 5 run pin ${ROUND5_T_PIN}`);
+  const b = tPin(`${AB}/prompts/base`);
+  if (b === ROUND5_T_PIN) ok(`base T hash ${b} = round 5 run pin`);
+  else fail(`base T hash ${b} != round 5 run pin ${ROUND5_T_PIN}`);
 }
 
 // Pictures: round 5's director and judge in every arm (they are code, so one version for all arms).
@@ -142,9 +140,19 @@ for (const a of AB_ARMS) {
       schema: p.schema,
     };
     if (req.user !== r5.user) fail(`${a} ${id}: user turn differs from round 5's`);
+    if (a === "base") {
+      // The request as sent (after localise) against round 5's files, byte for byte.
+      const st = brief.keyStage === "ks1" ? "KS1" : brief.keyStage === "ks2" ? "KS2" : "KS3-5";
+      const v = abFiles("base", st, ROUND5_VERBATIM);
+      if (req.system !== readFileSync(v.system, "utf8"))
+        fail(`base ${id}: sent system is not round 5's`);
+      if (JSON.stringify(req.schema) !== JSON.stringify(JSON.parse(readFileSync(v.schema, "utf8"))))
+        fail(`base ${id}: sent schema is not round 5's`);
+      if (!bad) ok(`base ${id}: system, schema, user, model and effort = round 5`);
+    }
     if (req.model !== r5.model || req.effort !== r5.effort) fail(`${a} ${id}: model/effort differ`);
-    if (a === "base" && req.system.length !== r5.systemChars + C4.length)
-      fail(`base ${id}: system ${req.system.length} chars, round 5 ${r5.systemChars} + C4`);
+    if (a === "base" && req.system.length !== r5.systemChars)
+      fail(`base ${id}: system ${req.system.length} chars, round 5 ${r5.systemChars}`);
     mkdirSync(`${out}/${a}`, { recursive: true });
     writeFileSync(`${out}/${a}/${id}.json`, JSON.stringify(req, null, 1));
     const byBrief = reqs[a] ?? {};
