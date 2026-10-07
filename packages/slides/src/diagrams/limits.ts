@@ -176,5 +176,5 @@ export function slotLimitLine(kind: string, stage: string, slot: DiagramSlot): s
   if (!l) return "";
   if (!l.items) return `Limits for this slot: a ${kind} does not fit here.`;
   const chars = l.chars ? `, each label up to ${l.chars} characters` : "";
-  return `Limits for this slot: up to ${l.items} ${l.noun}${chars}. Use only the parts the request names: no title, and no box, label or note it does not ask for.`;
+  return `Limits for this slot: up to ${l.items} ${l.noun}${chars}. The diagram holds the parts the request names.`;
 }
