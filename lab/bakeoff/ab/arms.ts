@@ -21,6 +21,8 @@ export const AB_ARMS = [
   "k1",
   "base3",
   "b3-r2",
+  "b3-d1",
+  "b3-l1",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -83,6 +85,23 @@ export const AB_CONFIG: Record<
     fixes: true,
     delta: "D11a base: base2 + K1 + K3 (incomplete writer fails) + seeded hinge shuffle",
   },
+  // D12 (7 Oct): one prompt line each on base3, drafted by the prompt-engineer (ab/arms3/<arm>), unedited.
+  "b3-d1": {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    delta:
+      "base3 + d1: a picture is one scene; separate things get separate pictures (picture bullet)",
+  },
+  "b3-l1": {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    delta:
+      "base3 + l1: the give-away rule covers a question's picture or diagram (base-head line 19)",
+  },
   // D11 R2 (RADICAL.md): structured kinds are per-kind spec defs the writer fills; code draws them.
   // Prompt text is base3's until the prompt-engineer rewrites the diagram section.
   "b3-r2": {
@@ -106,6 +125,8 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   k1: { ref: "base2" },
   base3: { ref: "k1" },
   "b3-r2": { ref: "base3" },
+  "b3-d1": { ref: "base3" },
+  "b3-l1": { ref: "base3" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */

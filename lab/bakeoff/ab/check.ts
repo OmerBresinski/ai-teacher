@@ -234,6 +234,14 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
     const jd = jsonDiff(b.schema, r.schema);
     if (a === "base2" && (sd.del.length || sd.add.length || jd.length || b.system !== r.system))
       fail(`base2 ${id}: differs from a1`);
+    // D12: d1 and l1 change exactly one system line on every stage, and no schema path.
+    if (
+      (a === "b3-d1" || a === "b3-l1") &&
+      (sd.del.length !== 1 || sd.add.length !== 1 || jd.length)
+    )
+      fail(
+        `${a} ${id}: not exactly one line changed (-${sd.del.length} +${sd.add.length}, ${jd.length} schema paths)`,
+      );
     // R2: the system text is base3's; only the diagram defs change.
     if (a === "b3-r2" && (b.system !== r.system || jd.some((l) => !/^\$\.\$defs\./.test(l))))
       fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
