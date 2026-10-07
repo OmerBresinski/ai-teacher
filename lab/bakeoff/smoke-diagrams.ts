@@ -1,15 +1,20 @@
 // Pre-launch diagram smoke gate (round 5; judges' point d). Exits 1, and the run must not launch,
-// when (1) any kind's spec schema is one OpenAI would refuse (round 4: tuples gave every particles
-// spec a 400), or (2) a saved spec (`<run>/diagrams.jsonl` from earlier runs, else the drawer's
-// own samples) no longer parses or draws at the slide's figure panel or full width.
+// when (1) the schema the lab sends for any kind (`diagramJsonSchema`, lab/r5-diag wire form) has a
+// tuple or another form OpenAI refuses (round 4: every particles spec got a 400), or (2) a saved
+// lesson spec (lab/r5-diag fixture, plus `<run>/diagrams.jsonl` of any run given) no longer draws
+// at the slide's figure panel or full width. The drawer's own samples only warn.
 // Usage: bun lab/bakeoff/smoke-diagrams.ts [runDir ...]
 import { existsSync, readFileSync } from "node:fs";
-import { z } from "../../packages/generation/node_modules/zod";
 import { drawDiagram } from "../../packages/slides/src/diagrams/draw";
+import { withLongLabels } from "../../packages/slides/src/diagrams/index";
 import { DIAGRAM_SAMPLES } from "../../packages/slides/src/diagrams/samples";
 import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
-import { getTheme } from "../../packages/slides/src/themes";
-import { openaiSchema } from "./services";
+import { diagramJsonSchema, openaiSchemaFaults } from "../../packages/slides/src/diagrams/wire";
+import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
+
+const KINDS = (
+  DiagramSpecSchema.options as unknown as { shape: { kind: { value: string } } }[]
+).map((o) => o.shape.kind.value);
 
 export function schemaFaults(): string[] {
   const bad: string[] = [];
@@ -25,37 +30,52 @@ export function schemaFaults(): string[] {
     if (Array.isArray(o.items) || "prefixItems" in o) bad.push(`tuple at ${path}`);
     for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`);
   };
-  for (const opt of DiagramSpecSchema.options as unknown as {
-    shape: { kind: { value: string } };
-  }[])
-    walk(
-      openaiSchema(z.toJSONSchema(opt as never, { target: "draft-7" } as never)),
-      opt.shape.kind.value,
-    );
+  for (const kind of KINDS) {
+    const sent = diagramJsonSchema(kind as never);
+    walk(sent, kind);
+    for (const f of openaiSchemaFaults(sent)) bad.push(`${kind}: ${f}`);
+  }
   return bad;
 }
 
-export function drawFaults(specs: { key: string; spec: unknown }[]): string[] {
-  const theme = getTheme("studio", "ks3");
+export function drawFaults(specs: { key: string; spec: unknown; ks?: string }[]): string[] {
   const bad: string[] = [];
-  for (const { key, spec } of specs) {
-    const side = drawDiagram(spec, theme, { x: 0, y: 0, w: 348, h: 284 });
-    const wide = drawDiagram(spec, theme, { x: 0, y: 0, w: 788, h: 235 });
+  for (const { key, spec, ks } of specs) {
+    const st = (ks ?? "ks3") as "ks1";
+    const theme = getTheme("studio", st);
+    const draw = (w: number, h: number) =>
+      withKeyStage(st, () => withLongLabels(() => drawDiagram(spec, theme, { x: 0, y: 0, w, h })));
+    const side = draw(348, 284);
+    const wide = draw(788, 235);
     if (!side.ok && !wide.ok)
       bad.push(`${key}: ${(wide.reasons ?? side.reasons ?? []).slice(0, 2).join("; ")}`);
   }
   return bad;
 }
 
-if (import.meta.main) {
-  const specs: { key: string; spec: unknown }[] = [];
-  for (const dir of process.argv.slice(2))
+export function savedSpecs(dirs: string[]): { key: string; spec: unknown; ks?: string }[] {
+  const specs: { key: string; spec: unknown; ks?: string }[] = [];
+  const FIX = `${import.meta.dir}/../../packages/generation/src/plan-write/fixtures/diagram-lesson-specs.json`;
+  if (existsSync(FIX))
+    // A fixture marked `refused` is one the drawer is meant to refuse: not a smoke failure.
+    for (const r of JSON.parse(readFileSync(FIX, "utf8")) as {
+      name: string;
+      ks?: string;
+      spec: unknown;
+      refused?: boolean;
+    }[])
+      if (!r.refused) specs.push({ key: `fixture ${r.name}`, spec: r.spec, ks: r.ks });
+  for (const dir of dirs)
     if (existsSync(`${dir}/diagrams.jsonl`))
       for (const l of readFileSync(`${dir}/diagrams.jsonl`, "utf8").split("\n").filter(Boolean)) {
         const r = JSON.parse(l) as { key: string; spec: unknown };
         specs.push({ key: `${dir.split("/").pop()} ${r.key}`, spec: r.spec });
       }
-  // The drawer's samples only warn (they are the diagram agent's fixtures); saved run specs block.
+  return specs;
+}
+
+if (import.meta.main) {
+  const specs = savedSpecs(process.argv.slice(2));
   const samples = Object.entries(DIAGRAM_SAMPLES).map(([k, v]) => ({
     key: `sample ${k}`,
     spec: v,
@@ -66,7 +86,7 @@ if (import.meta.main) {
   console.log(
     faults.length
       ? `SMOKE-FAIL\n${faults.join("\n")}`
-      : `SMOKE-OK ${specs.length} saved specs, ${samples.length} samples, every kind's schema clean`,
+      : `SMOKE-OK ${specs.length} saved specs, ${KINDS.length} kinds' sent schemas clean`,
   );
   process.exit(faults.length ? 1 : 0);
 }
