@@ -31,7 +31,7 @@ import { claimOnLink, claimPending, recordPendingClaim } from "./claim";
 import { authIpAddress } from "./client-ip";
 import { admitMagicLinkSend, magicLinkBounds } from "./magic-link-bounds";
 import { confirmPageUrl, MAGIC_LINK_EXPIRES_IN_SECONDS, magicLinkMail } from "./magic-link-mail";
-import { countryFromRequestHeaders, createPersonalWorkspace } from "./workspace-hook";
+import { createPersonalWorkspace } from "./workspace-hook";
 
 export const AUTH_BASE_PATH = "/auth";
 
@@ -316,9 +316,8 @@ export function createAuth({ env, db, mail, logger }: CreateAuthOptions) {
     databaseHooks: {
       user: {
         create: {
-          after: async (user, ctx) => {
-            // The sign-up request's geolocated country (TEACH-33 part b); England without one.
-            await createPersonalWorkspace(db, user.id, countryFromRequestHeaders(ctx?.headers));
+          after: async (user) => {
+            await createPersonalWorkspace(db, user.id);
           },
         },
       },

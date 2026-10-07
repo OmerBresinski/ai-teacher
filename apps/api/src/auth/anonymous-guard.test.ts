@@ -86,7 +86,7 @@ describe("anonymousGuard", () => {
     expect(isAnonymousAllowed("POST", `/lessons/${ID}/plan/extra`)).toBe(false);
   });
 
-  test("every write route the app registers is refused except the four allowed", () => {
+  test("every write route the app registers is refused except the five allowed", () => {
     const app = createApp({ env: TEST_ENV, db: {} as never, logger: silentLogger });
     const writes = app.routes
       .filter((r) => !["GET", "HEAD", "OPTIONS", "ALL"].includes(r.method))
@@ -101,7 +101,10 @@ describe("anonymousGuard", () => {
       "POST /lessons",
       "POST /lessons/:id/generate",
       "POST /lessons/:id/plan",
+      "POST /me/settings/country-hint",
     ]);
+    // TEACH-33 part b: the country itself stays closed to anonymous sessions.
+    expect(writes).toContain("PATCH /me/settings");
     // Sanity: the sweep saw the refused ones too.
     expect(writes).toContain("PUT /documents/:id");
     expect(writes).toContain("POST /lessons/:id/worksheet");

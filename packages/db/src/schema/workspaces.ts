@@ -31,9 +31,11 @@ export const workspaces = pgTable(
     /**
      * TEACH-33 part b (ruling 183): the account's country, one of `COUNTRIES` in `@tj/domain`
      * (read through `localeFor`, which treats anything else as England). Text, not an enum, so a
-     * new country is a code change only.
+     * new country is a code change only. NULL means not chosen yet: it reads as England, and
+     * only then does the sign-up country hint (`applyCountryHint`) set it. Rows that existed
+     * before migration 0012 were filled with England.
      */
-    country: text("country").notNull().default("england"),
+    country: text("country"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -1,6 +1,6 @@
 import type { WorkspaceId } from "@tj/domain";
 import { type Country, localeFor } from "@tj/domain/documents";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { workspaces } from "./schema/workspaces";
 import type { ScopableDb } from "./tenant";
 
@@ -10,17 +10,45 @@ import type { ScopableDb } from "./tenant";
  * the session (`getWorkspaceId`), never from the request body.
  */
 
-/** The Workspace's country; England when the row is missing or holds an unknown value. */
-export async function getWorkspaceCountry(
+/**
+ * The Workspace's country and whether one was ever set; England when the row is missing, unset
+ * (`chosen: false`) or holds an unknown value.
+ */
+export async function getWorkspaceSettings(
   db: ScopableDb,
   workspaceId: WorkspaceId,
-): Promise<Country> {
+): Promise<{ country: Country; chosen: boolean }> {
   const rows = await db
     .select({ country: workspaces.country })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
     .limit(1);
-  return localeFor(rows[0]?.country).country;
+  const stored = rows[0]?.country ?? null;
+  return { country: localeFor(stored).country, chosen: stored !== null };
+}
+
+/** The Workspace's country; England when the row is missing, unset or holds an unknown value. */
+export async function getWorkspaceCountry(
+  db: ScopableDb,
+  workspaceId: WorkspaceId,
+): Promise<Country> {
+  return (await getWorkspaceSettings(db, workspaceId)).country;
+}
+
+/**
+ * Set the country from the sign-up hint (the web's geolocation), only while none is set, so it
+ * never overrides a teacher's choice or an existing account. Returns the country now in force.
+ */
+export async function applyCountryHint(
+  db: ScopableDb,
+  workspaceId: WorkspaceId,
+  country: Country,
+): Promise<Country> {
+  await db
+    .update(workspaces)
+    .set({ country, updatedAt: new Date() })
+    .where(and(eq(workspaces.id, workspaceId), isNull(workspaces.country)));
+  return getWorkspaceCountry(db, workspaceId);
 }
 
 /** Set the Workspace's country. New lessons read it; saved lessons keep their own. */

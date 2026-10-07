@@ -1074,8 +1074,7 @@
           "name": "country",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'england'"
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

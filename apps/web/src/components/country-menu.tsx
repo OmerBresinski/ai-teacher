@@ -11,7 +11,8 @@ import {
   toast,
 } from "@tj/ui";
 import { Globe } from "lucide-react";
-import { accountSettingsQuery, setCountryMutation } from "@/lib/account-settings";
+import { useEffect } from "react";
+import { accountSettingsQuery, hintCountry, setCountryMutation } from "@/lib/account-settings";
 
 const COUNTRY_ICON = <Globe size={16} strokeWidth={1.5} />;
 
@@ -27,6 +28,11 @@ export function CountryMenu() {
     onError: () => toast("Could not save your country. Try again."),
   });
   const country = data?.country ?? "england";
+  const unset = data?.chosen === false;
+  // A new account (no country yet): geolocate it once, through the web's edge function.
+  useEffect(() => {
+    if (unset) void hintCountry(queryClient).catch(() => {});
+  }, [unset, queryClient]);
 
   return (
     <DropdownMenu>

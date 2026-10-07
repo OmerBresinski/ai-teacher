@@ -231,13 +231,13 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       return (await getDocument(ws, lessonId))?.body as Lesson;
     };
     try {
-      expect(await (await settings("GET")).json()).toEqual({ country: "england" });
+      expect(await (await settings("GET")).json()).toMatchObject({ country: "england" });
       const before = await lessonOf(await postLesson(wsA, { brief: { topic: "Money" } }));
       expect(before).toMatchObject({ country: "england", language: "en-GB" });
 
       const patched = await settings("PATCH", { country: "india" });
       expect(patched.status).toBe(200);
-      expect(await (await settings("GET")).json()).toEqual({ country: "india" });
+      expect(await (await settings("GET")).json()).toEqual({ country: "india", chosen: true });
       const after = await lessonOf(await postLesson(wsA, { brief: { topic: "Money" } }));
       expect(after).toMatchObject({ country: "india", language: "en-IN" });
       // The earlier lesson is untouched by the change.

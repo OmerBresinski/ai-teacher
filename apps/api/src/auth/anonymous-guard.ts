@@ -21,6 +21,8 @@ const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 export const ANONYMOUS_WRITE_ALLOW_LIST: ReadonlyArray<{ method: string; path: RegExp }> = [
   // Brief → lesson (two per Workspace, global daily cap).
   { method: "POST", path: /^\/lessons$/ },
+  // TEACH-33 part b: the sign-up country hint (sets an unset country only).
+  { method: "POST", path: /^\/me\/settings\/country-hint$/ },
   // The objectives step (SO-1): re-plan (at most 3 per lesson) and confirm.
   { method: "POST", path: /^\/lessons\/[^/]+\/plan$/ },
   { method: "POST", path: /^\/lessons\/[^/]+\/generate$/ },

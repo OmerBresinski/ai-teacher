@@ -300,9 +300,17 @@ The evidence is in `docs/security/auth-edge.md`.
 ## Amendment (TEACH-33 part b, 7 Oct 2026): the account's country
 
 The account's country (UX ruling 183) is a column on the personal Workspace, `workspaces.country`
-(text, default `'england'`, migration `0012_workspace_country.sql`), not on better-auth's `users`
+(text, nullable, migration `0012_workspace_country.sql`; rows that existed before it hold
+`'england'`, a new row starts NULL, which reads as England), not on better-auth's `users`
 table: the Workspace is the account in the MVP, every request already resolves it, and `users` is
 better-auth's schema. It is read and written through `getWorkspaceCountry` / `setWorkspaceCountry`
 (`@tj/db`) behind `GET` / `PATCH /me/settings`. `POST /lessons` copies it onto the new Lesson
 (`Lesson.country`); generation reads the lesson's own country through `localeFor`
 (`@tj/domain/documents`), so a later change of setting never rewrites a saved lesson.
+
+A new account's country is geolocated by the web, not the API: Railway's edge adds no country
+header, Vercel's does. The web's Edge Function `apps/web/api/geo-country.ts` answers Vercel's
+`x-vercel-ip-country` (plus the region for the UK) as an ISO hint, and the SPA posts it once to
+`POST /me/settings/country-hint`, which validates it, maps it with `countryFromGeo` (anything
+unsupported is England) and sets it only while the column is NULL. Only the resolved country is
+stored; no address is read or kept.

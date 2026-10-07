@@ -16,11 +16,7 @@ import type { AppEnv } from "../context";
 import { errorResponse } from "../errors";
 import { getWorkspaceId, WORKSPACE_HEADER } from "../workspace";
 import type { Auth } from "./auth";
-import {
-  countryFromRequestHeaders,
-  createPersonalWorkspace,
-  findPersonalWorkspaceId,
-} from "./workspace-hook";
+import { createPersonalWorkspace, findPersonalWorkspaceId } from "./workspace-hook";
 
 export const UNAUTHORIZED_MESSAGE = "You need to sign in to do that.";
 
@@ -55,11 +51,7 @@ export function requireSession(
 
     const workspaceId =
       (await findPersonalWorkspaceId(db, result.user.id)) ??
-      (await createPersonalWorkspace(
-        db,
-        result.user.id,
-        countryFromRequestHeaders(c.req.raw.headers),
-      ));
+      (await createPersonalWorkspace(db, result.user.id));
 
     c.set("user", result.user);
     c.set("session", result.session);

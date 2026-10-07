@@ -2,7 +2,12 @@ import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { newId, type WorkspaceId } from "@tj/domain";
 import { sql } from "drizzle-orm";
 import { createTestUserWithWorkspace, withTestDb } from "./testing";
-import { getWorkspaceCountry, setWorkspaceCountry } from "./workspace-settings";
+import {
+  applyCountryHint,
+  getWorkspaceCountry,
+  getWorkspaceSettings,
+  setWorkspaceCountry,
+} from "./workspace-settings";
 
 const t = await withTestDb();
 const describeDb = t.ok ? describe : describe.skip;
@@ -22,8 +27,19 @@ describeDb("workspace country (TEACH-33 part b)", () => {
     await createTestUserWithWorkspace(unsafeDb, { workspaceId: wsB, workspaceName: "B" });
   });
 
-  test("a new Workspace is England", async () => {
-    expect(await getWorkspaceCountry(unsafeDb, wsA)).toBe("england");
+  test("a new Workspace is unset, which reads as England", async () => {
+    expect(await getWorkspaceSettings(unsafeDb, wsA)).toEqual({
+      country: "england",
+      chosen: false,
+    });
+  });
+
+  test("the sign-up hint sets an unset country once and never overrides one", async () => {
+    expect(await applyCountryHint(unsafeDb, wsA, "india")).toBe("india");
+    expect(await applyCountryHint(unsafeDb, wsA, "usa")).toBe("india");
+    await setWorkspaceCountry(unsafeDb, wsB, "wales");
+    expect(await applyCountryHint(unsafeDb, wsB, "india")).toBe("wales");
+    expect(await getWorkspaceSettings(unsafeDb, wsA)).toEqual({ country: "india", chosen: true });
   });
 
   test("set then read; the other Workspace is untouched", async () => {

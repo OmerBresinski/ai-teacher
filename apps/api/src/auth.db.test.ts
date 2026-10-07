@@ -549,7 +549,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
 
   async function countryOf(workspaceId: string) {
     return (
-      await db.sql<{ country: string }[]>`
+      await db.sql<{ country: string | null }[]>`
       select country from workspaces where id = ${workspaceId}`
     )[0]?.country;
   }
@@ -560,21 +560,37 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       body: JSON.stringify({ country }),
     });
 
-  test("a new account's country is geolocated from the edge header; none is England", async () => {
-    const geo = await anonApp.request(`${BASE}/auth/sign-in/anonymous`, {
+  const hint = (target: typeof app, cookie: string, body: unknown) =>
+    target.request(`${BASE}/me/settings/country-hint`, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: WEB,
-        "x-vercel-ip-country": "IN",
-      },
-      body: "{}",
+      headers: { cookie, origin: WEB, "content-type": "application/json" },
+      body: JSON.stringify(body),
     });
-    const india = await meBody(anonApp, cookieHeaderFromResponse(geo));
-    expect(await countryOf(india.workspaceId)).toBe("india");
 
-    const { cookie } = await signInAnonymously();
-    expect(await countryOf((await meBody(anonApp, cookie)).workspaceId)).toBe("england");
+  test("country hint: a new account takes it once; a bad hint or none leaves England", async () => {
+    // A hint: the web's geolocation sets the unset country, and a second hint changes nothing.
+    const first = await signInAnonymously();
+    const a = await meBody(anonApp, first.cookie);
+    expect(await countryOf(a.workspaceId)).toBeNull();
+    const res = await hint(anonApp, first.cookie, { hint: "IN" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ country: "india", chosen: true });
+    await hint(anonApp, first.cookie, { hint: "US" });
+    expect(await countryOf(a.workspaceId)).toBe("india");
+
+    // A bad hint: refused, nothing stored, still reads as England.
+    const second = await signInAnonymously();
+    const b = await meBody(anonApp, second.cookie);
+    for (const body of [{ hint: "<script>" }, { hint: "203.0.113.9" }, {}]) {
+      expect((await hint(anonApp, second.cookie, body)).status).toBe(400);
+    }
+    expect(await countryOf(b.workspaceId)).toBeNull();
+
+    // No hint: England, not yet chosen.
+    const read = await anonApp.request(`${BASE}/me/settings`, {
+      headers: { cookie: second.cookie },
+    });
+    expect(await read.json()).toEqual({ country: "england", chosen: false });
 
     // Only the country is stored: the workspaces row has no address column to put one in.
     const columns = await db.sql<{ column_name: string }[]>`
@@ -584,14 +600,24 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     );
   });
 
+  test("country hint never overrides a teacher's own choice", async () => {
+    const a = await createTestUserWithWorkspace(db.unsafeDb);
+    const cookie = await issueSessionCookie(auth, a.userId);
+    expect((await patchCountry(app, cookie, "wales")).status).toBe(200);
+    expect(await (await hint(app, cookie, { hint: "IN" })).json()).toEqual({
+      country: "wales",
+      chosen: true,
+    });
+  });
+
   test("an anonymous session may read its country but not change it (default deny)", async () => {
     const { cookie } = await signInAnonymously();
     const me = await meBody(anonApp, cookie);
     const read = await anonApp.request(`${BASE}/me/settings`, { headers: { cookie } });
     expect(read.status).toBe(200);
-    expect(await read.json()).toEqual({ country: "england" });
+    expect(await read.json()).toEqual({ country: "england", chosen: false });
     expect((await patchCountry(anonApp, cookie, "india")).status).toBe(403);
-    expect(await countryOf(me.workspaceId)).toBe("england");
+    expect(await countryOf(me.workspaceId)).toBeNull();
   });
 
   test("PATCH /me/settings changes only the session's own Workspace, whatever header is sent", async () => {
@@ -601,7 +627,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     const res = await patchCountry(app, cookie, "india", { [WORKSPACE_HEADER]: b.workspaceId });
     expect(res.status).toBe(200);
     expect(await countryOf(a.workspaceId)).toBe("india");
-    expect(await countryOf(b.workspaceId)).toBe("england");
+    expect(await countryOf(b.workspaceId)).toBeNull();
   });
 
   test("anonymous user cannot delete itself: 400 DELETE_ANONYMOUS_USER_DISABLED", async () => {

@@ -7,5 +7,5 @@
     },
     "types": ["vite/client", "@types/bun", "@tj/config/bun-test/jest-dom"]
   },
-  "include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "bun-test.setup.ts"]
+  "include": ["src", "api", "e2e", "vite.config.ts", "playwright.config.ts", "bun-test.setup.ts"]
 }
