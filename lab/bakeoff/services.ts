@@ -42,6 +42,7 @@ import {
   drawerJsonSchema,
   dropNulls,
   limitLines,
+  MEANING_SCHEMAS,
   meaningFaults,
   mendSpec,
   parseDiagram,
@@ -1381,12 +1382,20 @@ async function specCalls(
     if (r.out) r.out = dropNulls(r.out);
     // Equal groups: a request that labels the per-group count shows it (round 8 drawer check, y2).
     if (r.out) r.out = withAskedCounts(r.out, ask.labels);
+    // Round 8 drawer fix: a meaning-form spec is checked as the model sent it. mendSpec converts it
+    // to the drawn form (layout/steps, states/captions), so checking after the mend refused every
+    // flow and particles spec that was right, with "Unrecognized keys".
+    const sent = r.out;
+    const meaningKind =
+      typeof (sent as { kind?: unknown })?.kind === "string" &&
+      (sent as { kind: string }).kind in MEANING_SCHEMAS;
     // Round 6: a spec's optional decoration that cannot stand is mended in code (mendSpec).
     if (r.out) r.out = mendSpec(r.out);
     // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).
     // Round 8: a meaning-form spec's faults are said in its own fields (meaning.ts).
     fault = r.out
-      ? meaningFaults(r.out) || diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
+      ? meaningFaults(meaningKind ? sent : r.out) ||
+        diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
       : "no output";
     log({
       ev: "diagram-call",
@@ -1394,7 +1403,7 @@ async function specCalls(
       ms: r.ms,
       usd: r.usd,
       attempt,
-      ...(fault ? { fault, out: r.out } : {}),
+      ...(fault ? { fault, out: sent } : {}),
     });
     if (!fault) return r.out;
   }

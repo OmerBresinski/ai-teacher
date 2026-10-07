@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { captionRule, fitsMeasured, LIMITS } from "./limits";
 import { meaningFaults, withAskedCounts } from "./meaning";
+import { mendSpec } from "./normalise";
 import { DIAGRAM_KINDS } from "./schema";
 import { drawerJsonSchema, openaiSchemaFaults, strictForm } from "./wire";
 
@@ -68,5 +69,21 @@ describe("round 8 drawer fix", () => {
     });
     expect(withAskedCounts(g, [])).toBe(g);
     expect(withAskedCounts({ kind: "flow" }, ["3"])).toEqual({ kind: "flow" });
+  });
+  test("a meaning spec is checked as sent, not after the mend", () => {
+    const flow = {
+      kind: "flow",
+      alt: "Branches.",
+      nodes: ["(x + 3)(x − 4) = 0", "x + 3 = 0", "x = −3", "x − 4 = 0", "x = 4"],
+      links: [
+        { from: 0, to: 1 },
+        { from: 1, to: 2 },
+        { from: 0, to: 3 },
+        { from: 3, to: 4 },
+      ],
+    };
+    expect(meaningFaults(flow)).toBe("");
+    // The mended (drawn) form has layout/steps, which the meaning schema refuses.
+    expect(meaningFaults(mendSpec(flow))).toContain("Unrecognized keys");
   });
 });
