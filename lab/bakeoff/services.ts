@@ -51,6 +51,7 @@ import {
 } from "../../packages/slides/src/diagrams/index";
 import {
   type DiagramSlot,
+  slotBox,
   slotLimit,
   slotLimitLine,
 } from "../../packages/slides/src/diagrams/limits";
@@ -1583,11 +1584,42 @@ async function specCallsRound5(
   return undefined;
 }
 async function specCalls(
-  ask: DiagramAsk,
+  ask0: DiagramAsk,
   ledger: Ledger,
   log: (e: object) => void,
   kindSchema: unknown,
 ): Promise<unknown | undefined> {
+  // A/B a3 (coordinator, 7 Oct): a request with more parts, or longer labels, than its slot's cap
+  // is never sent against a schema it cannot meet. It is drawn across the slide when that slot
+  // holds it (the layout's side-overflow-goes-full-width rule then lays it there); otherwise no
+  // call is made and the slide goes to the restage path in code.
+  const fitsSlot = (slot: "side" | "full") => {
+    const l = slotLimit(ask0.kind, ask0.stage ?? "ks3", slot);
+    if (!l) return true;
+    return (
+      ask0.labels.length <= l.items &&
+      (!l.chars || ask0.labels.every((x) => x.length <= (l.chars as number)))
+    );
+  };
+  let ask = ask0;
+  const asked = ask0.slot?.name ?? "side";
+  if (!fitsSlot(asked)) {
+    const limit = slotLimit(ask0.kind, ask0.stage ?? "ks3", asked);
+    if (asked === "side" && fitsSlot("full")) {
+      const box = slotBox(ask0.stage ?? "ks3", "full");
+      ask = { ...ask0, slot: { placement: "across the slide", w: box.w, h: box.h, name: "full" } };
+      log({ ev: "diagram-over-cap", key: ask0.key, labels: ask0.labels.length, limit, to: "full" });
+    } else {
+      log({
+        ev: "diagram-over-cap",
+        key: ask0.key,
+        labels: ask0.labels.length,
+        limit,
+        to: "restage",
+      });
+      return undefined;
+    }
+  }
   // r5: the one wire schema, derived from the drawer's (`diagramJsonSchema`); `kindSchema` only
   // says the kind exists.
   void kindSchema;
