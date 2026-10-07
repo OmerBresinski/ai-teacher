@@ -3,6 +3,7 @@
 //        [--no-visuals] [--no-notes] [--no-repair] [--no-render] <brief-id> [...]
 // Keys are read from ~/.dayback-openai-key and ~/.dayback-pexels-key (never printed).
 import { existsSync, readFileSync } from "node:fs";
+import { isAbArm, pinFaults, setAbArm } from "./ab/arms";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
 import { renderLesson } from "./render";
@@ -30,11 +31,23 @@ const VALUED = new Set([
   "--budget-dir",
   "--replay-repair",
   "--challenge",
+  "--objectives-from",
 ]);
 const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i - 1] ?? ""));
-const arm = ARMS[opt("--arm", "T") as string];
+// A/B (7 Oct): `--arm base|a1|a2|a3` runs arm T with that A/B arm's pinned writer prompt and schema.
+const armArg = opt("--arm", "T") as string;
+if (isAbArm(armArg)) setAbArm(armArg);
+const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));
+// A/B: a paid run only on the pinned prompt and schema files (ab/check.ts --pin wrote PINS.json).
+if (isAbArm(armArg) && cap > 0 && !opt("--replay")) {
+  const bad = pinFaults(armArg);
+  if (bad.length) {
+    console.error(`A/B arm ${armArg}: refusing a paid run:\n  ${bad.join("\n  ")}`);
+    process.exit(3);
+  }
+}
 const runs = opt("--out", `${BAKEOFF}/runs`) as string;
 for (const id of briefs) {
   const bf = `${BAKEOFF}/briefs/${id}.json`;
@@ -67,6 +80,7 @@ for (const id of briefs) {
       ? { freshSlides: String(opt("--fresh-slides")).split(",").map(Number) }
       : {}),
     noNotes: flag("--no-notes"),
+    ...(opt("--objectives-from") ? { objectivesFrom: String(opt("--objectives-from")) } : {}),
     noRepair: flag("--no-repair"),
     ...(opt("--replay-repair") ? { replayRepair: opt("--replay-repair") } : {}),
     modelTheme: flag("--model-theme"),

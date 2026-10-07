@@ -9,6 +9,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
+import { abArm, abFiles } from "./ab/arms";
 import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
 import { BAKEOFF, ROUNDS } from "./services";
@@ -340,6 +341,17 @@ export const armT: ArmPlugin = {
   id: "T",
   prompt(brief) {
     const k = band(brief);
+    // A/B (7 Oct): the arm's own pinned system text and code-generated schema; nothing appended.
+    const ab = abArm();
+    if (ab) {
+      const f = abFiles(ab, k);
+      return {
+        system: readFileSync(f.system, "utf8"),
+        schema: JSON.parse(readFileSync(f.schema, "utf8")),
+        model: "gpt-6.1-sol",
+        effort: "low",
+      };
+    }
     const dir = `${BAKEOFF}/prompts/T`;
     if (existsSync(`${dir}/system.${k}.txt`) && existsSync(`${dir}/schema.${k}.json`))
       return {

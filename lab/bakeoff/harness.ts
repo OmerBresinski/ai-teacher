@@ -9,6 +9,8 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
+import { type AbArm, abArm, abFiles, abShared, sha } from "./ab/arms";
+import { continueForFit } from "./ab/continue";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { type Locale, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
@@ -707,8 +709,20 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
 }
 
 /** The main call's user turn: prompts/shared/user.txt filled (with the approved objectives in two-phase runs), else a plain field list. */
+/** The flow's visual decision: round 9's `look`, or round 5's `look_at` (same kind enum and shows). */
+export function lookOf(
+  f:
+    | {
+        look?: { kind: string; shows: string | null };
+        look_at?: { kind: string; shows: string | null };
+      }
+    | undefined,
+): { kind: string; shows: string } | undefined {
+  const l = f?.look ?? f?.look_at;
+  return l ? { kind: l.kind, shows: l.shows ?? "" } : undefined;
+}
 export function contextBlock(b: Brief, objectives?: { teacher: string; pupil: string }[]): string {
-  const f = `${BAKEOFF}/prompts/shared/user.txt`;
+  const f = `${abShared() ?? `${BAKEOFF}/prompts/shared`}/user.txt`;
   if (existsSync(f)) return fillTemplate(readFileSync(f, "utf8"), b, { objectives });
   return [
     `Topic: ${b.topic}`,
@@ -736,6 +750,8 @@ export type RunOpts = {
   replay?: string;
   /** Round 2: answer the repair from a recorded repair.jsonl (slide -> out) instead of calling it. */
   replayRepair?: string;
+  /** A/B (7 Oct): a run directory whose objectives.json holds the approved objectives to reuse. */
+  objectivesFrom?: string;
   /** Skip pictures and diagrams (layout-only dry run). */
   noVisuals?: boolean;
   /** Reuse the pictures of an earlier run dir of the same replayed stream (offline re-layout; no spend). */
@@ -797,6 +813,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   // Round 7: each slide as streamed, for the ask_without report (the fallbacks swap the slide).
   const firstSlides = new Map<number, Record<string, unknown>>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
+  /** Coordinator (7 Oct): continuation slides laid after slide i (the strip's overflowing items). */
+  const continued = new Map<number, Materialised[]>();
   let title: Materialised | undefined;
   let flowSeen = 0;
 
@@ -807,6 +825,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       const m = laid.get(i) ?? (i === 0 ? title : undefined);
       if (!m) continue;
       slides.push({ id: `s${i + 1}`, ...m.slide, notes: notes.get(i)?.notes ?? "" } as Slide);
+      for (const [k, c] of (continued.get(i) ?? []).entries())
+        slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" } as Slide);
     }
     stampPictureSources(slides, visuals);
     writeJson(lessonFile, {
@@ -926,7 +946,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       index: i,
       ...(signal ? { signal } : {}),
       // Round 9 (coordinator F): the flow's look named a picture: the director must find one.
-      ...(/^picture/.test(plan.flow?.find((x) => x.slide === i + 1)?.look?.kind ?? "")
+      ...(/^picture/.test(lookOf(plan.flow?.find((x) => x.slide === i + 1))?.kind ?? "")
         ? { final: true }
         : {}),
     };
@@ -1129,7 +1149,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       s = slideNoEmDash(s);
       // Round 9 (coordinator 6): the flow's look is the writer's visual decision. A slide whose
       // look names a picture but which asks for none gets the picture from look's phrase.
-      const look = plan.flow?.find((x) => x.slide === idx + 1)?.look;
+      // A/B base (coordinator 7 Oct): round 5's flow names it look_at; the same field, read the same way.
+      const look = lookOf(plan.flow?.find((x) => x.slide === idx + 1));
       const added = withLook(s, look);
       if (added.how) {
         log({ ev: "look-added", slide: idx + 1, how: added.how, shows: look?.shows });
@@ -1220,15 +1241,25 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
 
   // ── b0. two phases (Greg 6 Oct, decision b): an objectives call, the teacher signs off (auto here),
   // then the design call takes the approved objectives. Only when the prompt agent's files exist.
-  const shared0 = `${BAKEOFF}/prompts/shared`;
+  // A/B: the arm's own shared prompts (round 5's, ab/prompts/<arm>/shared).
+  const shared0 = abShared() ?? `${BAKEOFF}/prompts/shared`;
   const twoPhase =
     !o.replay &&
+    !o.objectivesFrom &&
     existsSync(`${shared0}/objectives.txt`) &&
     existsSync(`${shared0}/objectives-schema.json`);
   let signOffMs = 0;
   // A replay (pictures-only re-run) takes the recorded run's approved objectives, so the objectives
   // slide and the picture judge's lesson facts match the original run (both round-1 branches added this).
-  const recordedObj = o.replay && !plan.objectives ? `${dirname(o.replay)}/objectives.json` : "";
+  // A/B (7 Oct): every arm reuses round 5's approved objectives for a brief (`objectivesFrom`), so
+  // the writer's user turn is the same in every arm and the same as round 5's.
+  const recordedObj = plan.objectives
+    ? ""
+    : o.objectivesFrom
+      ? `${o.objectivesFrom}/objectives.json`
+      : o.replay
+        ? `${dirname(o.replay)}/objectives.json`
+        : "";
   if (recordedObj && existsSync(recordedObj)) {
     const rec = JSON.parse(readFileSync(recordedObj, "utf8")) as {
       objectives?: { teacher: string; pupil: string }[];
@@ -1257,6 +1288,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     );
     save(why);
   };
+  // A/B: recorded objectives (round 5's, --objectives-from, or a replay) carry no pupil lines, and no
+  // pupil call runs, so slide 2 is laid from the teacher wording, the same in every arm.
+  if (abArm() && !twoPhase && plan.objectives?.length) {
+    for (const x of plan.objectives) if (!x.pupil.trim()) x.pupil = x.teacher;
+    laySlide2("objectives slide (recorded objectives, teacher wording)");
+  }
   let pupilJob: Promise<void> = Promise.resolve();
   if (twoPhase) {
     // (1) Teacher objectives: Sol, Luna when no first objective has streamed by 8 s (code defaults).
@@ -1388,6 +1425,14 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     effort: p.effort,
     user,
     systemChars: p.system.length,
+    // A/B: which arm, and the exact system and schema sent (hashes; the texts are pinned files).
+    ...(abArm()
+      ? {
+          abArm: abArm(),
+          systemSha: sha(p.system),
+          schemaSha: sha(JSON.stringify(p.schema)),
+        }
+      : {}),
   });
   const heldMain = await mustHold(ledger, "main call", o.replay ? 0 : STEP_EST.main);
   const main = o.replay
@@ -1442,15 +1487,18 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
 
   // ── c. notes: a second small call per slide, all in parallel (unless the main schema carries notes) ──
   const notesJobs: Promise<void>[] = [];
-  const shared = `${BAKEOFF}/prompts/shared`;
+  const shared = abShared() ?? `${BAKEOFF}/prompts/shared`;
+  // A/B: every arm's notes prompt is round 8's (coordinator: candidate 13 is base code), in its shared/.
+  const notesDir = shared;
   const hasNotesPrompt =
-    existsSync(`${shared}/notes.txt`) && existsSync(`${shared}/notes-schema.json`);
+    existsSync(`${notesDir}/notes.txt`) && existsSync(`${notesDir}/notes-schema.json`);
   // Round 4: a notes schema with a top-level `slides` array is one call per lesson, after repair.
   const lessonNotesCall =
     hasNotesPrompt &&
     "slides" in
-      ((JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8")) as { properties?: object })
-        .properties ?? {});
+      ((
+        JSON.parse(readFileSync(`${notesDir}/notes-schema.json`, "utf8")) as { properties?: object }
+      ).properties ?? {});
   for (let i = 0; i < n; i++) {
     const s = plan.slides[i];
     if (!s) continue;
@@ -1459,8 +1507,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       continue;
     }
     if (o.noNotes || !hasNotesPrompt || lessonNotesCall) continue;
-    const system = readFileSync(`${shared}/notes.txt`, "utf8");
-    const schema = JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8"));
+    const system = readFileSync(`${notesDir}/notes.txt`, "utf8");
+    const schema = JSON.parse(readFileSync(`${notesDir}/notes-schema.json`, "utf8"));
     const u = `${user}\n\nLesson:\n${main.text}\n\nSlide: ${i + 1}`;
     notesJobs.push(
       (async () => {
@@ -1545,9 +1593,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     arm.promptStage?.(brief) ??
     (brief.keyStage === "ks1" ? "KS1" : brief.keyStage === "ks2" ? "KS2" : "KS3-5");
   const armDir = `${BAKEOFF}/prompts/${arm.id}`;
-  const repairSchema = existsSync(`${armDir}/repair-schema.${stageKey}.json`)
-    ? `${armDir}/repair-schema.${stageKey}.json`
-    : `${armDir}/repair-schema.json`;
+  // A/B: the arm's own repair schema (its slide shapes), generated with its writer schema.
+  const repairSchema = abArm()
+    ? abFiles(abArm() as AbArm, stageKey).repairSchema
+    : existsSync(`${armDir}/repair-schema.${stageKey}.json`)
+      ? `${armDir}/repair-schema.${stageKey}.json`
+      : `${armDir}/repair-schema.json`;
   const repairUser = `${shared}/repair-user.txt`;
   // Round 2 guards (repair.ts): never the title or objectives slide; a repaired slide that drops a
   // figure, leaves a slot empty, splits a sentence across cards or loses words is rejected and the
@@ -1779,7 +1830,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(String);
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
-      fit: mode === "fit" && c.faults.some((f) => /^(overflow|clipped|cut|overlap):/.test(f)),
+      // A/B: every arm repairs with round 5's repair.txt, which may move one whole unit to the
+      // notes or split; it is judged by round 5's rule (word loss), not round 8's fit-only rule.
+      fit:
+        !abArm() &&
+        mode === "fit" &&
+        c.faults.some((f) => /^(overflow|clipped|cut|overlap):/.test(f)),
       // Round 9 (review S2): a restaged slide may lose its figure and the words that pointed at
       // it, never a question, an item or the slide's other words.
       ...(mode !== "fit" ? { restage: true, exempt: ro.exempt ?? POINTING_WORDS } : {}),
@@ -1918,8 +1974,52 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     restore(i, orig, n0, saved);
     const strip = fixedFallback(orig, { type: "photo" }, [], 0);
     saved = await swapSlide(i, strip.slide);
-    log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip", overflow: over() });
     void saved;
+    // Coordinator (7 Oct; r8 y5 s10): the last resort never ships overflow. The strip is laid on the
+    // fit ladder already (spacing, then the stage's small type: the theme's minimum size); what
+    // still does not fit moves to continuation slides of the same layout, items in order.
+    if (over().length) {
+      const fits = (sl: Record<string, unknown>) => {
+        const m = withKeyStage(brief.keyStage, () =>
+          arm.materialise(sl, {
+            ...base,
+            index: i,
+            plan,
+            visual: () => ({ status: "failed" }) as VisualState,
+          }),
+        );
+        const f = checkSlide({
+          specs: [],
+          index: i,
+          slide: m.slide,
+          over: m.over ?? [],
+          questions: [],
+          answers: undefined,
+          notesChecked: true,
+          words: "",
+        });
+        return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
+      };
+      const cont = continueForFit(plan.slides[i] as Record<string, unknown>, (sl) => fits(sl).ok);
+      if (cont) {
+        saved = await swapSlide(i, cont.first);
+        continued.set(
+          i,
+          cont.rest.map((sl) => fits(sl).m),
+        );
+        save(`continued s${i + 1}`);
+        log({
+          ev: "restage-fallback",
+          slide: i + 1,
+          mode,
+          how: "strip-continued",
+          extra: cont.rest.length,
+          overflow: over(),
+        });
+        return "strip-continued";
+      }
+    }
+    log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip", overflow: over() });
     return "strip";
   };
   const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
@@ -2078,7 +2178,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       .filter((i) => i >= 2)
       .map((i) => renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placed(i)))
       .join("\n\n");
-    const userNotes = fillTemplate(readFileSync(`${shared}/notes-user.txt`, "utf8"), brief, {
+    const userNotes = fillTemplate(readFileSync(`${notesDir}/notes-user.txt`, "utf8"), brief, {
       objectives: plan.objectives,
       context: user,
       slidesAsShown: lines,
@@ -2088,9 +2188,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       const got = await lessonNotes({
         slides: n,
         first: 3,
-        system: readFileSync(`${shared}/notes.txt`, "utf8"),
+        system: readFileSync(`${notesDir}/notes.txt`, "utf8"),
         user: userNotes,
-        schema: JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8")),
+        schema: JSON.parse(readFileSync(`${notesDir}/notes-schema.json`, "utf8")),
         chat,
         log,
         onUsd: (v) => ledger.add("notes", v),

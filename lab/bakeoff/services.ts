@@ -62,6 +62,7 @@ import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
 import { atFullSize, layoutTemplate, placePhoto } from "../../packages/slides/src/templates/index";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { createStorage } from "../../packages/storage/src/index";
+import { AB_CONFIG, type AbArm, abArm, abShared } from "./ab/arms";
 import { locale, localise } from "./locale";
 
 export const ROUNDS =
@@ -626,7 +627,7 @@ export function pictureService(opts: {
    * DIRECTOR_BATCH_WINDOW_MS (default 400) share one director call (round 3 COST.md). On by default
    * (round 3 ship config in code); DIRECTOR_BATCH=0 turns it off for an ablation.
    */
-  const batchFile = `${BAKEOFF}/prompts/shared/director-batch.txt`;
+  const batchFile = `${abShared() ?? `${BAKEOFF}/prompts/shared`}/director-batch.txt`;
   const direct =
     DIRECTOR_BATCH_ON() && existsSync(batchFile)
       ? createDirectorBatcher(
@@ -1097,7 +1098,7 @@ export function pictureService(opts: {
     shows: string[],
     urls: string[],
   ): Promise<{ same: boolean; odd: number[]; why?: string } | undefined> {
-    const dir = `${BAKEOFF}/prompts/shared`;
+    const dir = abShared() ?? `${BAKEOFF}/prompts/shared`;
     if (!existsSync(`${dir}/set-judge.txt`) || !existsSync(`${dir}/set-judge-schema.json`))
       return undefined;
     try {
@@ -1310,7 +1311,7 @@ function diagramSystem(): string {
   const contract = read(`${BAKEOFF}/prompts/shared/diagram-contract.v2.txt`) ?? DIAGRAM_CONTRACT;
   for (const f of [
     `${BAKEOFF}/prompts/shared/diagram-spec.v2.txt`,
-    `${BAKEOFF}/prompts/shared/diagram-spec.txt`,
+    `${abShared() ?? `${BAKEOFF}/prompts/shared`}/diagram-spec.txt`,
     `${ROUNDS}/SOL-SIMPLE/prompts/diagram-spec.txt`,
   ]) {
     const head = read(f);
@@ -1333,7 +1334,13 @@ export async function diagramSpec(
     ledger,
     `diagram ${ask.key}`,
     STEP_EST.diagram,
-    () => specCalls(ask, ledger, log, kindSchema),
+    () =>
+      // A/B (ledger C3): the round 8 meaning drawer (strict schema, slot limits, exact labels) only
+      // for the arm's meaning kinds (a3: equal-groups, fraction-shapes, flow); every other kind,
+      // and every kind in base, a1 and a2, gets round 5's drawer call.
+      abArm() && !AB_CONFIG[abArm() as AbArm].meaningKinds.includes(ask.kind)
+        ? specCallsRound5(ask, ledger, log)
+        : specCalls(ask, ledger, log, kindSchema),
     log,
   );
 }
@@ -1538,6 +1545,49 @@ export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): s
     .slice(0, 4)
     .map((i) => `${i.path.map(String).join(".") || "spec"}: ${i.message}`)
     .join("; ");
+}
+/**
+ * A/B base drawer: round 5's call as it stood at db104336 (lab/bakeoff/services.ts specCalls): the
+ * wire schema (not strict), no slot or limit line, round 5's prompt (shared/diagram-spec.txt + the
+ * contract), one retry told the parse fault.
+ */
+async function specCallsRound5(
+  ask: DiagramAsk,
+  ledger: Ledger,
+  log: (e: object) => void,
+): Promise<unknown | undefined> {
+  const schema = diagramJsonSchema(ask.kind as Parameters<typeof diagramJsonSchema>[0]);
+  const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
+  const system = `${readFileSync(`${abShared() ?? `${BAKEOFF}/prompts/shared`}/diagram-spec.txt`, "utf8").trim()}\n\n${DIAGRAM_CONTRACT}`;
+  let fault = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await chat({
+      model: "gpt-6-luna",
+      effort: "low",
+      system,
+      user: fault
+        ? `${user}\n\nYour last spec did not draw: ${fault}\nFix that and send it again.`
+        : user,
+      schema,
+      name: "diagram",
+      strict: false,
+    });
+    ledger.add("diagrams", r.usd);
+    fault = r.out
+      ? diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
+      : "no output";
+    log({
+      ev: "diagram-call",
+      key: ask.key,
+      drawer: "round5",
+      ms: r.ms,
+      usd: r.usd,
+      attempt,
+      ...(fault ? { fault, out: r.out } : {}),
+    });
+    if (!fault) return r.out;
+  }
+  return undefined;
 }
 async function specCalls(
   ask: DiagramAsk,
