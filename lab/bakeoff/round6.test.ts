@@ -3,7 +3,6 @@ import { describe, expect, test } from "bun:test";
 import { getTheme } from "../../packages/slides/src/themes";
 import { armT } from "./arm-t";
 import { countFault, duplicateFaults, noEmDash, referentFault } from "./checks";
-import { isApparatus } from "./harness";
 
 describe("round 6: visual or rewrite", () => {
   test("the referent check catches r5 y2 s3, y2 s5, y4 s4 and y12 s7", () => {
@@ -24,23 +23,13 @@ describe("round 6: visual or rewrite", () => {
     ])
       expect(referentFault(words, false)).toBeUndefined();
   });
-  test("words only drops the pointing sentences and questions", () => {
+  test("round 8: words only keeps every question (no pointing regex)", () => {
     const out = armT.asWords?.({
       template: "practice",
       heading: "Look again",
       questions: ["Which shape shows one half shaded?", "What is half of 12?"],
     });
-    expect(out?.questions).toEqual(["What is half of 12?"]);
-  });
-});
-
-describe("round 6: apparatus is a photo", () => {
-  test("a labelled drawing of apparatus is a photo's job; particles and maps are not", () => {
-    expect(isApparatus("labelled-diagram", "A conical flask connected to a gas syringe")).toBe(
-      true,
-    );
-    expect(isApparatus("labelled-diagram", "The layers of the rainforest")).toBe(false);
-    expect(isApparatus("particles", "Particles in a flask")).toBe(false);
+    expect(out?.questions).toEqual(["Which shape shows one half shaded?", "What is half of 12?"]);
   });
 });
 

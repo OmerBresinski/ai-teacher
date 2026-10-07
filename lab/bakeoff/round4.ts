@@ -197,9 +197,12 @@ export function renderedLines(n: number, elements: El[], visuals: string[]): str
 
 export type SlideNotes = {
   n: number;
-  answers: string | null;
+  /** Round 8: one answer per question, in order (an old notes file has one string). */
+  answers: string[] | string | null;
   misconceptions: string | null;
   background: string | null;
+  /** Round 8: how the teacher runs the slide and for how long (the writer defers this to notes). */
+  run?: string | null;
 };
 
 /** The notes as the teacher reads them, under the three headings; empty parts are left out. */
@@ -207,7 +210,15 @@ export function notesText(s: SlideNotes | undefined): string {
   if (!s) return "";
   return (
     [
-      ["Answers", s.answers],
+      ["Running", s.run ?? null],
+      [
+        "Answers",
+        Array.isArray(s.answers)
+          ? s.answers
+              .map((a, i) => (s.answers && s.answers.length > 1 ? `${i + 1}. ${a}` : a))
+              .join("\n")
+          : s.answers,
+      ],
       ["Misconceptions", s.misconceptions],
       ["Background", s.background],
     ] as const

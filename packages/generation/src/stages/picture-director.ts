@@ -276,6 +276,8 @@ interface Ask {
   named: string | null;
   aspect?: number;
   look?: LessonLook;
+  /** Round 8: the writer's own picture spec (kept as the picture's shows and must-see). */
+  writer?: { shows: string; mustShow: string[] };
 }
 
 /** The slot's plan from the director's answer; none when there is no usable answer. */
@@ -316,8 +318,13 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       imagePrompt: p.imagePrompt.replace(/\s+/g, " ").trim(),
     }))
     .filter((p) => p.shows && p.imagePrompt);
-  const first = pictures[0];
-  if (!first) return { kind: "none" };
+  const first0 = pictures[0];
+  if (!first0) return { kind: "none" };
+  // Round 8 (dataflow audit B): the writer's picture spec is the truth. The director adds search
+  // terms and the image prompt; it never rewrites what the picture shows or must show.
+  const first = ask.writer
+    ? { ...first0, shows: ask.writer.shows, mustShow: ask.writer.mustShow.slice(0, 4) }
+    : first0;
   // A historical scene with no named kind is read as an event (an illustration under `strict`).
   const kind = d.named ?? (depicts ? "event" : "object");
   const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
@@ -325,7 +332,7 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
     ? uniq([
         `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
         ...first.mustShow,
-      ]).slice(0, 3)
+      ]).slice(0, ask.writer ? 5 : 3)
     : first.mustShow;
   const counting = countedPhoto && countImagePrompt(countedPhoto);
   const illustrated = !counting && fallback === "illustration" && !!period;
@@ -382,7 +389,12 @@ export interface SlideForPicture {
  */
 export async function findDirected(args: {
   bank: PictureBank;
-  ask: { subject: string; named?: string | null };
+  ask: {
+    subject: string;
+    named?: string | null;
+    /** Round 8: the writer's own shows and must-see, kept as the picture's spec. */
+    writer?: { shows: string; mustShow: string[]; subject?: "named" | "generic" };
+  };
   brief: ImageBrief;
   slide: SlideForPicture;
   lesson: { title: string; yearGroup?: string; subject?: string };
@@ -411,10 +423,12 @@ export async function findDirected(args: {
     mustShow: b.mustShow ?? [],
     aspect: b.aspect ?? 1.6,
     ...(args.look ? { style: args.look.style } : {}),
+    ...(ask.writer?.subject ? { writerSubject: ask.writer.subject } : {}),
   });
   const plan = planPicture(direction, {
     text: ask.subject,
     named: ask.named ?? null,
+    ...(ask.writer ? { writer: ask.writer } : {}),
     ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
     ...(args.look ? { look: args.look } : {}),
   });

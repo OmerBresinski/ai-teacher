@@ -39,12 +39,6 @@ const isPic = (f: unknown): f is Pic =>
  * picture-text or diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape
  * (a `kind` = a diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
  */
-/** A sentence that points at a visual (a picture, diagram, graph, table or data) on the slide. */
-const POINTS_AT = new RegExp(
-  `\\b(look at|in the (photo|picture|image|diagram|drawing|graph|table|chart)|(this|the) (photo|picture|image|diagram|drawing|graph|table|chart|curve|results|data)( shows| below| above)?|shown (above|below)|can you see)\\b|${ANY_POINTING.source}`,
-  "i",
-);
-
 export function normalise(s: S): S {
   const t = s.template;
   if (t !== "visual-text" && t !== "big-visual") return s;
@@ -388,13 +382,17 @@ export const armT: ArmPlugin = {
   asWords(raw, opts) {
     // Round 7: the slide has lost its visual, so every ask line is its stand-alone form.
     const s = resolveAsks(raw, () => false);
-    // Round 6: `keepPointing` takes the figure away and keeps every word (the rewrite's input).
-    const POINTS = opts?.keepPointing ? /$^/ : POINTS_AT;
-    const drop = (t: unknown) =>
-      str(t)
-        .split(/(?<=[.?!])\s+/)
-        .filter((x) => !POINTS.test(x))
-        .join(" ");
+    // Round 8 (boundary audit B8): no regex judges which sentences point at the visual; the
+    // writer's ask / ask_without pair is the only swap. The words stay as written.
+    void opts;
+    const drop = (t: unknown) => str(t);
+    const POINTS = /$^/;
+    // Round 8 (audit 9): a dropped figure's labels keep teaching: they stay on the slide as a point.
+    const labels = ["figure", "diagram", "picture"]
+      .map((k) => (s as S)[k] as S | null | undefined)
+      .flatMap((f) => (f && Array.isArray(f.labels) ? (f.labels as unknown[]).map(str) : []))
+      .filter((l) => l.trim() && !/^[A-Z?]$|^\d+$/.test(l.trim()));
+    const kept = labels.length >= 2 ? [labels.join("; ")] : [];
     const { figure: _f, picture: _p, ...rest } = s as S;
     const tpl = String(s.template);
     return {
@@ -405,11 +403,16 @@ export const armT: ArmPlugin = {
       lead: drop(s.lead),
       ...(Array.isArray(s.points)
         ? {
-            points: (s.points as unknown[]).filter(
-              (p) => !POINTS.test(typeof p === "string" ? p : str((p as S).text)),
-            ),
+            points: [
+              ...(s.points as unknown[]).filter(
+                (p) => !POINTS.test(typeof p === "string" ? p : str((p as S).text)),
+              ),
+              ...kept,
+            ],
           }
-        : {}),
+        : kept.length
+          ? { points: kept }
+          : {}),
       // Round 6: questions that need the missing visual go too.
       ...(Array.isArray(s.questions)
         ? { questions: (s.questions as unknown[]).filter((q) => !POINTS.test(str(q))) }
@@ -489,9 +492,11 @@ export const armT: ArmPlugin = {
       // Round 7: an ask written for the drawing ("read the gradient") may not fit a photo of the
       // thing, so the picture carries the stand-alone line either way.
       const alone = (f as S).ask_without ?? null;
+      // Round 8 (audit 9): the drawing's labels name what pupils must see in the picture.
+      const labels = Array.isArray((f as S).labels) ? ((f as S).labels as unknown[]).map(str) : [];
       const pic = {
         shows: f.shows,
-        must_see: [],
+        must_see: labels.filter((l) => l.trim().length > 1).slice(0, 4),
         subject: "generic",
         ask: alone,
         ask_without: alone,

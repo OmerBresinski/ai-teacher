@@ -73,6 +73,8 @@ export type PictureDirectorInput = {
   aspect: number;
   /** The lesson's picture style (design.picture_style); photo when the lesson has none. */
   style?: "photo" | "illustration";
+  /** Round 8: the writer's subject field: one particular real thing (named) or any good example. */
+  writerSubject?: "named" | "generic";
 };
 
 const Picture = z.object({
@@ -94,9 +96,10 @@ const Count = z.object({
 /** Flat and fully required (strict json_schema); code reads only the fields the route uses. */
 export const PictureDirectorSchema = z.object({
   route: z.enum(PICTURE_ROUTES),
-  pictures: z.array(Picture),
+  // Round 8 (dataflow audit B): one picture per slot (the slide's own request), and no unused
+  // `diagram` field; the slot's diagram is the writer's, never the director's.
+  pictures: z.array(Picture).max(1),
   count: Count.nullable(),
-  diagram: z.enum(DIAGRAM_KINDS as [string, ...string[]]).nullable(),
   named: z.enum(NAMED_KINDS).nullable(),
   period: z.string().nullable(),
 });
@@ -145,6 +148,7 @@ export function pictureDirectorPrompt(input: PictureDirectorInput): {
       `Requested to show: ${input.mustShow.length ? input.mustShow.join("; ") : "(none)"}`,
       `Picture zone: ${shapeOf(input.aspect)}, ${ratio} wide to 1 high.`,
       `Picture style for this lesson: ${input.style ?? "photo"}`,
+      ...(input.writerSubject ? [`Writer's subject: ${input.writerSubject}`] : []),
     ].join("\n"),
   };
 }

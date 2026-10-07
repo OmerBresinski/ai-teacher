@@ -733,7 +733,16 @@ export function pictureService(opts: {
     };
     const photo = (await findDirected({
       bank: images.bank as never,
-      ask: { subject: request, named: ask.named ? plainSubject(ask.shows).slice(0, 60) : null },
+      ask: {
+        subject: request,
+        named: ask.named ? plainSubject(ask.shows).slice(0, 60) : null,
+        // Round 8: the slide's own request is the picture's spec; the director only adds searches.
+        writer: {
+          shows: ask.shows,
+          mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
+          subject: ask.named ? "named" : "generic",
+        },
+      },
       brief: b as never,
       slide: ask.slide,
       lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },

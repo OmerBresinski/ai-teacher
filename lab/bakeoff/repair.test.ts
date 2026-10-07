@@ -118,7 +118,8 @@ describe("round 2 diagram failure", () => {
     });
     expect(s?.figure).toEqual({
       shows: "a flower with petals, stem and leaves",
-      must_see: [],
+      // Round 8: the drawing's labels become what the picture must show.
+      must_see: ["petal"],
       subject: "generic",
       ask: null,
       ask_without: null,

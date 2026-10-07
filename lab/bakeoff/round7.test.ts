@@ -12,7 +12,7 @@ import {
 } from "../../packages/slides/src/diagrams/index";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { armT, resolveAsks } from "./arm-t";
-import { keepAsksHonest, pictureFallbackOk, pictureVeto, SCHEMATIC } from "./harness";
+import { keepAsksHonest, pictureFallbackOk, pictureVeto } from "./harness";
 
 const R6 =
   "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds/BAKEOFF/round6/runs/T";
@@ -167,21 +167,14 @@ describe("round 7: diagrams re-lay out before they drop", () => {
 });
 
 describe("round 7: pictures", () => {
-  test("decorative schematics and AI portraits are vetoed; real things are not", () => {
-    const g = (request: string, style = "illustration") =>
-      pictureVeto({ request, provider: "generated", style });
-    expect(g("Two panels containing the same sixteen equal-sized particles", "drawn")).toBeTruthy();
-    expect(g("Two rectangles with equal and unequal divisions")).toBeTruthy();
-    expect(g("A fictional father called Marc")).toBeTruthy();
-    expect(
-      g("A whole square sandwich beside another sandwich cut into four equal squares"),
-    ).toBeUndefined();
-    expect(g("A model of the Globe Theatre")).toBeUndefined();
-    expect(pictureVeto({ request: "A family at dinner", provider: "pexels" })).toBeUndefined();
-    expect(pictureFallbackOk("labelled-diagram", "A solid model with equal-sized circles")).toBe(
-      false,
+  test("round 8: no keyword veto; only an LLM verdict refuses a picture", () => {
+    expect(pictureVeto({ request: "A fictional father", provider: "generated" })).toBeUndefined();
+    expect(pictureVeto({ veto: "an AI portrait of a real-seeming person" })).toBe(
+      "an AI portrait of a real-seeming person",
     );
-    expect(SCHEMATIC.test("ripe wheat growing in a British field")).toBe(false);
+    expect(pictureFallbackOk("labelled-diagram", "A solid model")).toBe(true);
+    expect(pictureFallbackOk("equal-groups", "12 counters")).toBe(false);
+    expect(pictureFallbackOk("table", "results")).toBe(false);
   });
   // Round 5 y4's picture requests (and round 6's resources request), replayed through the plan.
   const dir = (route: string, period: string | null, shows: string, named: string | null = null) =>

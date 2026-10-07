@@ -219,37 +219,14 @@ export const DATA_KINDS = new Set([
   "carroll",
   "hydrograph",
 ]);
-/** Round 6: a labelled drawing of lab apparatus (a photo's job, never drawn). */
-export const isApparatus = (kind: string | undefined, shows: string) =>
-  kind === "labelled-diagram" &&
-  /\b(apparatus|equipment|set-?up|flask|beaker|burette|pipette|test tubes?|bunsen|syringe|clamp|delivery tube|thermometer|measuring cylinder|filter funnel|tripod|gauze|water bath|balance)\b/i.test(
-    shows,
-  );
 /**
- * Round 7: a request whose subject is a schematic (a model of particles, panels, plain shapes cut
- * into parts) is a diagram's job. A made picture of it is decoration (r6 y7 s9's red balls, y2
- * s4's rectangles), never the thing.
+ * Round 8 (boundary audit B7): no keyword rule judges what a request means (the round 6-7
+ * isApparatus, SCHEMATIC and PORTRAIT regexes are gone). A placed picture is refused only by an
+ * LLM verdict carried on it (`veto`, the director's or judge's reason); code enforces, never decides.
  */
-export const SCHEMATIC =
-  /\b(particles?|molecules?|atoms?)\b|^(an?|one|two|three|four|the)?\s*(\w+\s)?(rectangles?|squares?|circles?|triangles?|shapes?|panels?|bars?|grids?|(\w+ )?models?|diagrams?)(\s+(with|containing|split|divided|cut|showing|in|and|side)\b|[,.;]|$)/i;
-/**
- * Round 7 (r6 y8: AI portraits of a "fictional father"): a made picture of a particular,
- * real-seeming person (a family member, a named or fictional person) is not shown.
- */
-export const PORTRAIT =
-  /\b(fictional|portraits?|called [A-Z]\w+|named [A-Z]\w+|(grand)?(father|mother|parents?)|brothers?|sisters?|famil(y|ies)|aunts?|uncles?|cousins?|husband|wife|son|daughter|step\w+)\b/i;
-/** Round 7: why a placed picture is not shown, or undefined when it may be. */
-export function pictureVeto(r: {
-  request?: string;
-  provider?: string;
-  style?: string;
-}): string | undefined {
-  const made = r.provider === "generated" || r.style === "drawn";
-  const req = r.request ?? "";
-  if (made && SCHEMATIC.test(req.trim())) return "a made picture of a schematic (a diagram's job)";
-  if (r.provider === "generated" && r.style !== "drawn" && PORTRAIT.test(req))
-    return "an AI portrait of a real-seeming person";
-  return undefined;
+export function pictureVeto(r: object): string | undefined {
+  const v = (r as { veto?: unknown }).veto;
+  return typeof v === "string" && v.trim() ? v : undefined;
 }
 
 /**
@@ -275,11 +252,19 @@ export function keepAsksHonest(
 }
 
 /** A failed diagram may become a picture of the same thing unless it is data or a schematic. */
-export const pictureFallbackOk = (kind: string | undefined, shows: string) =>
-  !!kind &&
-  !DATA_KINDS.has(kind) &&
-  !/\b(graph|chart|table|axis|axes|equation|ratio)\b/i.test(shows) &&
-  !SCHEMATIC.test(shows.trim());
+export const pictureFallbackOk = (kind: string | undefined, _shows: string) =>
+  !!kind && !DATA_KINDS.has(kind) && !MEANING_KINDS.has(kind);
+/** Round 8: code-drawn kinds whose meaning a picture cannot carry (counts, shares, states, links). */
+export const MEANING_KINDS = new Set(["equal-groups", "fraction-shapes", "particles", "flow"]);
+
+/** Round 8: the teaching point a picture is for: the line that sends pupils to it, else the lead. */
+export function pointOf(s: Record<string, unknown>): string {
+  for (const k of ["figure", "picture", "diagram"]) {
+    const f = s[k] as { ask?: unknown } | null | undefined;
+    if (f && typeof f.ask === "string" && f.ask.trim()) return f.ask;
+  }
+  return typeof s.lead === "string" ? s.lead : typeof s.ask === "string" ? s.ask : "";
+}
 
 /** A table's data as header and rows. */
 export type TableData = { header?: string[]; rows: string[][] };
@@ -563,7 +548,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   const startPhoto = (
     i: number,
     a: Extract<VisualAsk, { type: "photo" }>,
-    words: { heading: string; text: string },
+    words: { heading: string; text: string; point?: string },
     signal?: AbortSignal,
   ) => {
     const k = `${i}:${a.key}`;
@@ -585,7 +570,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       ...(a.aspect ? { aspect: a.aspect } : {}),
       ...(a.fixedShape ? { fixedShape: true } : {}),
       ...(plan.design?.picture_style ? { style: plan.design.picture_style } : {}),
-      slide: { heading: words.heading, text: words.text, point: "" },
+      slide: { heading: words.heading, text: words.text, point: words.point ?? "" },
       index: i,
       ...(signal ? { signal } : {}),
     };
@@ -753,25 +738,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         save(`placeholder s${i + 1}`);
         mark("firstPlaceholder");
       }
-      if (
-        f.look_at?.kind === "picture" &&
-        f.look_at.shows &&
-        i > 0 &&
-        !early.has(i) &&
-        !SCHEMATIC.test(f.look_at.shows.trim())
-      ) {
-        const ac = new AbortController();
-        const p = startPhoto(
-          i,
-          { key: "early", type: "photo", shows: f.look_at.shows, mustSee: [], named: false },
-          { heading: f.does, text: "" },
-          ac.signal,
-        );
-        if (p) {
-          early.set(i, p);
-          earlyAbort.set(i, ac);
-        }
-      }
+      // Round 8 (dataflow audit A, item 4): the flow plans; it starts no picture. Every picture
+      // and diagram comes from its slide's own request, started when that slide closes.
     }
     if (top === "flow" && path.length === 1) {
       plan.flow = v as Plan["flow"];
@@ -791,22 +759,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       // Round 6 (r5 y11 s6 drew garbled apparatus): apparatus is a photo, as in round 3. A drawn
       // apparatus is never placed; a slide whose photo cannot be found stands alone in words.
       const first = withKeyStage(brief.keyStage, () => arm.visuals(s, idx, { ...base, plan }));
-      // Round 7 (r6 y2 s4: two rectangles "with equal and unequal divisions" made as a picture):
-      // a schematic asked for as a picture is drawn as a diagram from the slide's own words.
-      if (first.some((a) => a.type === "photo" && SCHEMATIC.test(a.shows.trim()))) {
-        const dia = arm.asDiagram?.(s, (shows) => SCHEMATIC.test(shows.trim()));
-        if (dia) {
-          log({ ev: "schematic-diagram", slide: idx + 1 });
-          s = dia;
-        }
-      }
-      if (first.some((a) => a.type === "diagram" && isApparatus(a.kind, a.shows))) {
-        const pic = arm.asPicture?.(s);
-        if (pic) {
-          log({ ev: "apparatus-photo", slide: idx + 1 });
-          s = pic;
-        }
-      }
+      // Round 8 (boundary audit B7): no keyword rule swaps a picture for a diagram or a diagram
+      // for a picture; the writer's kind stands, and the picture director decides a picture's route.
+      void first;
       // Round 6: no em dashes on slides (Greg 1 Oct; r5 y8).
       s = slideNoEmDash(s);
       plan.slides[idx] = s;
@@ -852,7 +807,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           landPhoto(idx, a.key, e);
           return;
         }
-        const p = startPhoto(idx, a, { heading, text: words });
+        const p = startPhoto(idx, a, { heading, text: words, point: pointOf(s) });
         if (p) landPhoto(idx, a.key, p);
       });
       if (!o.noVisuals)
@@ -1231,12 +1186,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     ("ask_without" in x ||
       Object.values(x as object).some((v) => (Array.isArray(v) ? v.some(hasAsks) : hasAsks(v))));
   const asksPrompt = plan.slides.some(hasAsks);
-  const VISUAL_DANGLING = /^(dangling: .* no picture|unanswerable:)/;
+  // Round 8: dangling and unanswerable are reported metrics (checks.json summary.dangling), never
+  // hidden and never a repair trigger: the ask / ask_without pair is the fix by construction.
+  const VISUAL_DANGLING = /^(dangling|unanswerable):/;
+  void asksPrompt;
   const pickFailing = () =>
     checks
-      .map((c) =>
-        asksPrompt ? { ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) } : c,
-      )
+      .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
       .filter((c) => {
         const i = c.slide - 1;
         const ok = c.faults.length > 0 && repairable(plan.slides[i] as Record<string, unknown>, i);
@@ -1605,8 +1561,19 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       for (const [k, s0] of got) {
         if (k < 3 || k > n) continue;
         // Audit b: a multiple-choice answer starts with the correct letter as rendered.
-        const s = { ...s0, answers: withCorrectLetter(s0.answers, plan.slides[k - 1]) };
-        notes.set(k - 1, { notes: notesText(s), answers: s.answers ? [s.answers] : [] });
+        const a0 = Array.isArray(s0.answers) ? s0.answers : s0.answers;
+        const lettered = Array.isArray(a0)
+          ? a0.map((x, j) => (j === 0 ? (withCorrectLetter(x, plan.slides[k - 1]) ?? x) : x))
+          : withCorrectLetter(a0, plan.slides[k - 1]);
+        const s = { ...s0, answers: lettered };
+        // Round 8: one answer per question (notes schema v2); an old notes file's single string
+        // answers the whole slide.
+        const answers = Array.isArray(s.answers)
+          ? s.answers.map(String)
+          : s.answers
+            ? Array<string>(12).fill(String(s.answers))
+            : [];
+        notes.set(k - 1, { notes: notesText(s), answers });
       }
       writeJson(`${o.outDir}/notes.json`, { slides: [...got.values()] });
       mark("notes");
@@ -1664,7 +1631,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       teaching(plan.slides[i] as Record<string, unknown>) &&
       !(laid.get(i)?.slide.elements ?? []).some((e) => e.type === "image"),
   );
+  const dangling = checks.flatMap((c) =>
+    c.faults
+      .filter((f) => /^(dangling|unanswerable):/.test(f))
+      .map((f) => ({ slide: c.slide, fault: f })),
+  );
   const summary = {
+    dangling,
     textOnlyTeach: textOnlyTeach.length,
     textOnlySlides: textOnlyTeach.map((i) => i + 1),
     visualPaths: Object.fromEntries([...path].map(([i, p]) => [i + 1, p])),

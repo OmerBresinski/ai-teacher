@@ -30,7 +30,6 @@ const dir = (over: Partial<PictureDirection>): PictureDirection => ({
   route: "pexels",
   pictures: [pic()],
   count: null,
-  diagram: null,
   named: null,
   period: null,
   ...over,
@@ -158,9 +157,7 @@ describe("planPicture", () => {
       perGroup: 6,
       arrangement: "groups",
     });
-    expect(planPicture(dir({ route: "code", pictures: [], diagram: "cycle" }), ask).kind).toBe(
-      "none",
-    );
+    expect(planPicture(dir({ route: "code", pictures: [] }), ask).kind).toBe("none");
     expect(planPicture(dir({ route: "none", pictures: [] }), ask).kind).toBe("none");
     expect(planPicture(undefined, ask).kind).toBe("none");
     expect(planPicture(dir({ pictures: [pic({ imagePrompt: " " })] }), ask).kind).toBe("none");

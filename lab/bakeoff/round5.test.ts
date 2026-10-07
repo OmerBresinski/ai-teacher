@@ -20,11 +20,13 @@ describe("round 5 harness", () => {
     expect(pictureFallbackOk("particles", "Particles moving faster at a higher temperature")).toBe(
       false,
     );
-    expect(pictureFallbackOk("flow", "How hyperinflation spiralled")).toBe(true);
+    // Round 8: a flow's links are its meaning; a picture cannot carry them.
+    expect(pictureFallbackOk("flow", "How hyperinflation spiralled")).toBe(false);
+    expect(pictureFallbackOk("cycle", "The water cycle")).toBe(true);
     expect(pictureFallbackOk("line-graph", "Gas volume over time")).toBe(false);
     expect(pictureFallbackOk("table", "Results")).toBe(false);
   });
-  test("words only never point at the missing visual", () => {
+  test("round 8: words only keeps the writer's words (ask_without is the swap, no regex)", () => {
     const s = {
       template: "visual-text",
       heading: "Inside a solid",
@@ -34,8 +36,8 @@ describe("round 5 harness", () => {
     };
     const w = armT.asWords?.(s) as Record<string, unknown>;
     expect(w.template).toBe("explain");
-    expect(w.lead).toBe("Particles are closely packed.");
-    expect(w.points).toEqual(["They vibrate."]);
+    expect(w.lead).toBe("Look at the diagram. Particles are closely packed.");
+    expect(w.points).toEqual(["The diagram shows fixed positions.", "They vibrate."]);
     expect(w.figure).toBeUndefined();
   });
   test("notes: a partial answer (y7: 4 of 12) gets a top-up call for exactly the missing slides", async () => {
