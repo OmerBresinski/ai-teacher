@@ -115,12 +115,13 @@ test("lesson notes retry once, fill missing slides with empty notes, and keep an
     log: (e) => events.push(e as { ev: string }),
     onUsd: () => {},
   });
-  expect(calls).toBe(2);
+  // 1 error, 1 partial answer, then the round 5 top-up for the missing slides.
+  expect(calls).toBe(3);
   expect(got.size).toBe(4);
   expect(got.get(3)?.answers).toBe("21");
   expect(notesText(got.get(3))).toBe("Answers\n21\n\nBackground\nBars.");
   expect(notesText(got.get(1))).toBe("");
-  expect(events.map((e) => e.ev)).toEqual(["notes-error", "notes"]);
+  expect(events.map((e) => e.ev)).toEqual(["notes-error", "notes", "notes-missing"]);
 });
 
 test("challenge defaults to core and takes the brief's value", () => {

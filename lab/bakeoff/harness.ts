@@ -148,6 +148,8 @@ export interface ArmPlugin {
   words(slide: Record<string, unknown>): string;
   /** Round 2: the slide with its failed diagram turned into a picture request of the same thing (or undefined). */
   asPicture?(slide: Record<string, unknown>): Record<string, unknown> | undefined;
+  /** Round 5: the slide as words only, with any sentence pointing at its missing visual removed. */
+  asWords?(slide: Record<string, unknown>): Record<string, unknown> | undefined;
   /** Round 4: a table that cannot draw, as words that keep its data (one line per row). */
   asTableText?(
     slide: Record<string, unknown>,
@@ -172,6 +174,45 @@ export function objectiveCount(b: Brief): string {
   const n = Math.round((b.slides.min + b.slides.max) / 2);
   return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three or four";
 }
+
+/** A placed picture as the notes call sees it: its alt (what it is), plus the subjects seen in it. */
+export function placedPictureText(
+  photo: { alt?: string; subjects?: { name: string }[] } | undefined,
+  request: string,
+): string {
+  const alt = photo?.alt?.trim();
+  const seen = (photo?.subjects ?? []).map((x) => x.name).filter(Boolean);
+  return `${alt || request}${seen.length ? ` (visible: ${seen.join(", ")})` : ""}`;
+}
+
+/** "B: ..." for a multiple-choice slide whose `correct` (1-based option) is set, unless already lettered. */
+export function withCorrectLetter(
+  answers: string | null,
+  slide: Record<string, unknown> | undefined,
+) {
+  const c = Number(slide?.correct);
+  if (!answers || !Number.isInteger(c) || c < 1 || c > 6) return answers;
+  const letter = String.fromCharCode(64 + c);
+  return new RegExp(`^\\s*${letter}\\b`).test(answers) ? answers : `${letter}: ${answers}`;
+}
+
+/** Diagram kinds that are data: a picture cannot stand in for them (round 5 fallback order). */
+export const DATA_KINDS = new Set([
+  "table",
+  "line-graph",
+  "bar-chart",
+  "bar-model",
+  "number-line",
+  "pie",
+  "venn",
+  "carroll",
+  "hydrograph",
+]);
+/** A failed diagram may become a picture of the same thing unless it is data. */
+export const pictureFallbackOk = (kind: string | undefined, shows: string) =>
+  !!kind &&
+  !DATA_KINDS.has(kind) &&
+  !/\b(graph|chart|table|axis|axes|equation|ratio)\b/i.test(shows);
 
 /**
  * A table's data as lines, "Header: cell · Header: cell", from its drawn-or-not spec, else from
@@ -573,6 +614,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           const spec = raw && dropEchoTitle(raw, heading);
           visuals.set(k, spec ? { status: "diagram", spec } : { status: "failed" });
           log({ ev: "diagram-done", key: k, ok: !!spec });
+          // Round 5: specs are saved so a later run can replay them as a pre-launch smoke gate.
+          if (spec)
+            appendFileSync(
+              `${o.outDir}/diagrams.jsonl`,
+              `${JSON.stringify({ key: k, kind: a.kind, spec })}\n`,
+            );
           timings.lastDiagram = ms();
           relay(i, "diagram");
         }),
@@ -1260,7 +1307,27 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       return;
     }
     const s = plan.slides[i] as Record<string, unknown>;
-    const pic = concrete(dAsk.kind, dAsk.shows) ? arm.asPicture?.(s) : undefined;
+    // Round 5 (visual or fallback): a diagram whose spec never came back (an API error, y7 r4) is
+    // asked once more before anything else.
+    const k = `${i}:${dAsk.key}`;
+    if (visuals.get(k)?.status === "failed" && !o.noVisuals && !o.replay) {
+      const sl = plan.slides[i] as Record<string, unknown>;
+      startDiagram(
+        i,
+        dAsk,
+        `${String(sl.heading ?? "")}\n${arm.words(sl)}`,
+        String(sl.heading ?? ""),
+      );
+      await settle();
+      relay(i, "diagram retry");
+      if (!laid.get(i)?.diagram?.length && visuals.get(k)?.status === "diagram") {
+        path.set(i, "diagram-retry");
+        return;
+      }
+    }
+    // Then a picture of the same thing: any kind that shows a thing or process (particles, flow,
+    // cycle, layers...), not only concrete ones; data kinds (graphs, tables) cannot be pictures.
+    const pic = pictureFallbackOk(dAsk.kind, dAsk.shows) ? arm.asPicture?.(s) : undefined;
     if (pic) {
       const n0 = notes.get(i);
       const saved = await swapSlide(i, pic);
@@ -1280,6 +1347,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       path.set(i, "table-text");
       return;
     }
+    // Words only as the last resort, and never words that point at the visual that is not there.
+    const words = arm.asWords?.(s);
+    if (words && JSON.stringify(words) !== JSON.stringify(s)) await swapSlide(i, words);
     path.set(i, "words");
   };
   await Promise.all(Array.from({ length: n }, (_, i) => fallback(i)));
@@ -1289,14 +1359,18 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const placed = (i: number) =>
       (asks.get(i) ?? []).flatMap((a) => {
         const v = visuals.get(`${i}:${a.key}`);
-        if (v?.status === "photo") return [`Picture: ${a.shows}`];
+        // Round 5 (notes audit: marble chips described as magnesium): what the placed picture is,
+        // its own alt and the subjects the judge saw in it, not what was asked for.
+        if (v?.status === "photo") return [`Picture: ${placedPictureText(v.photo, a.shows)}`];
         if (v?.status === "diagram" && a.type === "diagram")
           return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
         return [];
       });
-    const lines = Array.from({ length: n }, (_, i) =>
-      renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placed(i)),
-    ).join("\n\n");
+    // Title and objectives slides get no notes (audit d): they are left out of the call.
+    const lines = Array.from({ length: n }, (_, i) => i)
+      .filter((i) => i >= 2)
+      .map((i) => renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placed(i)))
+      .join("\n\n");
     const userNotes = fillTemplate(readFileSync(`${shared}/notes-user.txt`, "utf8"), brief, {
       objectives: plan.objectives,
       context: user,
@@ -1306,6 +1380,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     if (held) {
       const got = await lessonNotes({
         slides: n,
+        first: 3,
         system: readFileSync(`${shared}/notes.txt`, "utf8"),
         user: userNotes,
         schema: JSON.parse(readFileSync(`${shared}/notes-schema.json`, "utf8")),
@@ -1313,9 +1388,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         log,
         onUsd: (v) => ledger.add("notes", v),
       }).finally(held);
-      for (const [k, s] of got)
-        if (k >= 1 && k <= n)
-          notes.set(k - 1, { notes: notesText(s), answers: s.answers ? [s.answers] : [] });
+      for (const [k, s0] of got) {
+        if (k < 3 || k > n) continue;
+        // Audit b: a multiple-choice answer starts with the correct letter as rendered.
+        const s = { ...s0, answers: withCorrectLetter(s0.answers, plan.slides[k - 1]) };
+        notes.set(k - 1, { notes: notesText(s), answers: s.answers ? [s.answers] : [] });
+      }
       writeJson(`${o.outDir}/notes.json`, { slides: [...got.values()] });
       mark("notes");
     } else log({ ev: "notes-refused" });

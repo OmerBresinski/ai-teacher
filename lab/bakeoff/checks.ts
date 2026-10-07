@@ -24,6 +24,17 @@ const realPicture = (e: SlideElement) =>
   !!(e as { src?: string }).src &&
   (e as { src: string }).src !== PLACEHOLDER_IMAGE;
 
+/** Words that point at data, a table or a graph (round 4). */
+export const DATA_POINTING =
+  /\b(the (results|table|data|graph|curve|chart|tangent|readings|trend|values shown)|(this|that) (table|graph|chart|data|curve)|shown (above|below)|in the (table|graph|chart))\b/i;
+/** A referent fault, or undefined when the slide shows what its words point at. */
+export function referentFault(words: string, hasFigure: boolean): string | undefined {
+  const hit = words.match(DATA_POINTING)?.[0];
+  if (!hit || hasFigure) return undefined;
+  if ((words.match(/\d+(?:[.,]\d+)?/g) ?? []).length >= 4) return undefined;
+  return `dangling: "${hit}" with no data, table or graph on the slide`;
+}
+
 /** Words that point pupils at a picture or diagram. */
 const POINTING =
   /\b(look at|look closely|in the (photo|picture|image|diagram|drawing)|(this|the) (photo|picture|image|diagram|drawing)( shows| below| above)?|on the (picture|photo|diagram)|can you see|what do you notice)\b/i;
@@ -74,6 +85,10 @@ export function checkSlide(a: {
   // Dangling: words that point at a picture with no picture on the slide.
   if (POINTING.test(a.words) && !s.elements.some(realPicture))
     faults.push(`dangling: "${a.words.match(POINTING)?.[0]}" with no picture on the slide`);
+  // Referent (round 4 y11 s6 "Identify the trend" with its table gone): words that point at data, a
+  // table or a graph need a drawn figure or the data itself (at least 4 numbers) on the slide.
+  const referent = referentFault(a.words, s.elements.some(realPicture));
+  if (referent) faults.push(referent);
   // Answerable: every question has an answer from the notes call; one that needs a picture has one.
   if (a.notesChecked && a.questions.length) {
     const got = a.answers?.filter((x) => x.trim()).length ?? 0;

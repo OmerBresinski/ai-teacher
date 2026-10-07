@@ -231,6 +231,8 @@ export async function lessonNotes(o: {
   log: (e: object) => void;
   onUsd: (usd: number) => void;
   timeoutMs?: number;
+  /** The first slide that gets notes (3: title and objectives are left out). */
+  first?: number;
 }): Promise<Map<number, SlideNotes>> {
   const got = new Map<number, SlideNotes>();
   for (let attempt = 0; attempt < 2 && !got.size; attempt++) {
@@ -253,7 +255,31 @@ export async function lessonNotes(o: {
       o.log({ ev: "notes-error", attempt, err: String(e).slice(0, 200) });
     }
   }
-  for (let n = 1; n <= o.slides; n++)
+  // Round 5 (y7 r4: one valid response held 4 of 12 slides): the missing slides get one more call,
+  // named in a line after the lesson (harness wording; prompt agent may own it).
+  const missing = Array.from({ length: o.slides }, (_, k) => k + 1).filter(
+    (n) => n >= (o.first ?? 1) && !got.has(n),
+  );
+  if (got.size && missing.length) {
+    try {
+      const r = await o.chat({
+        model: "gpt-6-luna",
+        effort: "low",
+        system: o.system,
+        user: `${o.user}\n\nWrite the notes for these slides only: ${missing.join(", ")}.`,
+        schema: o.schema as ChatReq["schema"],
+        name: "notes",
+        timeoutMs: o.timeoutMs ?? 60_000,
+      } as ChatReq);
+      o.onUsd(r.usd);
+      const rows = (r.out as { slides?: SlideNotes[] })?.slides ?? [];
+      for (const s of rows) if (missing.includes(s?.n) && !got.has(s.n)) got.set(s.n, s);
+      o.log({ ev: "notes-missing", asked: missing, got: rows.length, usd: r.usd, ms: r.ms });
+    } catch (e) {
+      o.log({ ev: "notes-missing-error", asked: missing, err: String(e).slice(0, 200) });
+    }
+  }
+  for (let n = o.first ?? 1; n <= o.slides; n++)
     if (!got.has(n)) got.set(n, { n, answers: null, misconceptions: null, background: null });
   return got;
 }

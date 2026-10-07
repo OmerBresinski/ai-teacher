@@ -40,6 +40,10 @@ const isPic = (f: unknown): f is Pic =>
  * picture-text or diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape
  * (a `kind` = a diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
  */
+/** A sentence that points at a visual (a picture, diagram, graph, table or data) on the slide. */
+const POINTS_AT =
+  /\b(look at|in the (photo|picture|image|diagram|drawing|graph|table|chart)|(this|the) (photo|picture|image|diagram|drawing|graph|table|chart|curve|results|data)( shows| below| above)?|shown (above|below)|can you see)\b/i;
+
 export function normalise(s: S): S {
   const t = s.template;
   if (t !== "visual-text" && t !== "big-visual") return s;
@@ -312,6 +316,30 @@ export const armT: ArmPlugin = {
   materialise(s, ctx) {
     const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
     return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
+  },
+  asWords(raw) {
+    const s = normalise(raw);
+    const drop = (t: unknown) =>
+      str(t)
+        .split(/(?<=[.?!])\s+/)
+        .filter((x) => !POINTS_AT.test(x))
+        .join(" ");
+    const { figure: _f, picture: _p, ...rest } = s as S;
+    const tpl = String(s.template);
+    return {
+      ...rest,
+      template: ["diagram-text", "picture-text", "big-diagram", "big-picture"].includes(tpl)
+        ? "explain"
+        : tpl,
+      lead: drop(s.lead),
+      ...(Array.isArray(s.points)
+        ? {
+            points: (s.points as unknown[]).filter(
+              (p) => !POINTS_AT.test(typeof p === "string" ? p : str((p as S).text)),
+            ),
+          }
+        : {}),
+    };
   },
   asTableText(raw, lines) {
     const s = normalise(raw);
