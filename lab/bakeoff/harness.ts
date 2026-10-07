@@ -238,7 +238,8 @@ export function tableLines(v: VisualState | undefined, ask: { labels?: string[] 
 
 /** A step the run can't go on without: waits for other holds to release, then throws past the cap. */
 async function mustHold(ledger: Ledger, what: string, est: number) {
-  const held = await ledger.holdWhenFree(what, est);
+  // Round 5: a step the run cannot go on without waits up to 5 minutes for peers' holds.
+  const held = await ledger.holdWhenFree(what, est, 300_000);
   if (!held) throw new Error(`cap $${ledger.capUsd} would be passed by ${what} (held $${est})`);
   return held;
 }

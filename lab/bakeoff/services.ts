@@ -265,7 +265,9 @@ export const DIRECTOR_BATCH_ON = () => process.env.DIRECTOR_BATCH !== "0";
 
 /** Worst-case cost of one paid step (USD), reserved before it starts. */
 export const STEP_EST = {
-  main: 0.12, // sol, the whole streamed plan at its output cap
+  // Round 5: the reserve at the real cost (r4 main calls $0.029-0.040), not the output cap ($0.12):
+  // 12 parallel worst-case holds passed the $0.85 run cap before any spend.
+  main: 0.045, // sol, the whole streamed plan
   objectives: 0.01,
   notes: 0.003, // luna, one slide
   repair: 0.004, // luna, one slide
