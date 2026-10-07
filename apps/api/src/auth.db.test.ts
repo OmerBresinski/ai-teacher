@@ -33,6 +33,7 @@ import { createPersonalWorkspace, logUsersWithoutWorkspace } from "./auth/worksp
 import { SMALL_JSON_BODY_BYTES } from "./body-limits";
 import { createEventsRuntime } from "./events/runtime";
 import { CaptureMailSender, extractFirstUrl } from "./mail";
+import { SETTINGS_RATE_LIMIT } from "./rate-limit";
 import {
   captureLogger,
   silentLogger,
@@ -598,6 +599,16 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
     expect(columns.map((c) => c.column_name).sort()).toEqual(
       ["country", "created_at", "id", "name", "owner_user_id", "updated_at"].sort(),
     );
+  });
+
+  test("country hint is rate limited per Workspace", async () => {
+    const { cookie } = await signInAnonymously();
+    const statuses: number[] = [];
+    for (let i = 0; i <= SETTINGS_RATE_LIMIT.limit; i++) {
+      statuses.push((await hint(anonApp, cookie, { hint: "IN" })).status);
+    }
+    expect(statuses.slice(0, -1).every((s) => s === 200)).toBe(true);
+    expect(statuses.at(-1)).toBe(429);
   });
 
   test("country hint never overrides a teacher's own choice", async () => {

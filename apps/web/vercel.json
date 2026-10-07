@@ -85,6 +85,15 @@
           "value": "noindex, nofollow"
         }
       ]
+    },
+    {
+      "source": "/api/geo-country",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store"
+        }
+      ]
     }
   ],
   "redirects": [

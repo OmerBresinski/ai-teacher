@@ -42,6 +42,7 @@ import {
   loadSourceRateLimitConfig,
   type RateLimitConfig,
   rateLimitByWorkspace,
+  SETTINGS_RATE_LIMIT,
 } from "./rate-limit";
 import { authProviderRoutes } from "./routes/auth-providers";
 import { briefRoutes } from "./routes/briefs";
@@ -149,6 +150,7 @@ function buildApp({
   const aiLimiter = createRateLimiter(loadRateLimitConfig(process.env, rateLimit));
   const imageLimiter = createRateLimiter(loadImageRateLimitConfig(process.env, imageRateLimit));
   const sourceLimiter = createRateLimiter(loadSourceRateLimitConfig(process.env, sourceRateLimit));
+  const settingsLimiter = createRateLimiter(SETTINGS_RATE_LIMIT);
   const app = new Hono<AppEnv>();
 
   // 1. request-id: honour an incoming `x-request-id`, otherwise crypto.randomUUID(); echoed back.
@@ -277,6 +279,15 @@ function buildApp({
   app.use("/lessons/:id/worksheet", rateLimitByWorkspace(aiLimiter));
   // The brief parse (ADR 0029 item 13) makes one model call inside the request.
   app.use("/briefs/parse", rateLimitByWorkspace(aiLimiter));
+  // TEACH-33 part b: the sign-up country hint (open to anonymous sessions) and settings writes.
+  const settingsLimit = rateLimitByWorkspace(
+    settingsLimiter,
+    "Too many settings changes for this workspace. Try again in a moment.",
+  );
+  app.use("/me/settings/country-hint", settingsLimit);
+  app.use("/me/settings", (c, next) =>
+    c.req.method === "PATCH" ? settingsLimit(c, next) : next(),
+  );
 
   // 5. Routes — chained so the RPC types survive (ADR 0005).
   const routes = app

@@ -73,6 +73,12 @@ export function loadSourceRateLimitConfig(
   };
 }
 
+/**
+ * Account-settings writes per Workspace (TEACH-33 part b): the country hint is open to anonymous
+ * sessions, so it is bounded like the other open writes. A person sends one per new account.
+ */
+export const SETTINGS_RATE_LIMIT: RateLimitConfig = { limit: 20, windowMs: 60_000 };
+
 export function createRateLimiter({ limit, windowMs }: RateLimitConfig): RateLimiter {
   const buckets = new Map<string, { count: number; resetAt: number }>();
 
