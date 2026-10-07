@@ -192,6 +192,18 @@ function lineDiff(x: string, y: string): { del: string[]; add: string[] } {
   while (j < b.length) add.push(b[j++]!);
   return { del, add };
 }
+/** [start, end) of the writer's diagram section: the "- A diagram's kind" bullet to the end of the kinds list. */
+function diagramSection(sys: string): [number, number] {
+  const start = sys.indexOf("\n- A diagram's kind");
+  const list = sys.indexOf("\nDiagram kinds:\n", start);
+  if (start < 0 || list < 0) return [-1, -1];
+  let end = list + "\nDiagram kinds:\n".length;
+  while (sys.startsWith("- ", end)) {
+    const nl = sys.indexOf("\n", end);
+    end = nl < 0 ? sys.length : nl + 1;
+  }
+  return [start + 1, end];
+}
 /** JSON paths whose values differ. */
 function jsonDiff(x: unknown, y: unknown, path = "$"): string[] {
   if (JSON.stringify(x) === JSON.stringify(y)) return [];
@@ -236,15 +248,28 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       fail(`base2 ${id}: differs from a1`);
     // D12: d1 and l1 change exactly one system line on every stage, and no schema path.
     if (
-      (a === "b3-d1" || a === "b3-l1") &&
+      ["b3-d1", "b3-l1", "b3-m1", "b3-r1"].includes(a) &&
       (sd.del.length !== 1 || sd.add.length !== 1 || jd.length)
     )
       fail(
         `${a} ${id}: not exactly one line changed (-${sd.del.length} +${sd.add.length}, ${jd.length} schema paths)`,
       );
     // R2: the system text is base3's; only the diagram defs change.
-    if (a === "b3-r2" && (b.system !== r.system || jd.some((l) => !/^\$\.\$defs\./.test(l))))
-      fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
+    // D13: b3-r2's system may differ from base3's only inside the diagram section (the "- A diagram's
+    // kind" bullet through the end of the "Diagram kinds:" list); before and after it, byte for byte.
+    if (a === "b3-r2") {
+      const [x0, x1] = diagramSection(b.system);
+      const [y0, y1] = diagramSection(r.system);
+      if (
+        x0 < 0 ||
+        y0 < 0 ||
+        b.system.slice(0, x0) !== r.system.slice(0, y0) ||
+        b.system.slice(x1) !== r.system.slice(y1)
+      )
+        fail(`b3-r2 ${id}: its system differs from base3's outside the diagram section`);
+      if (jd.some((l) => !/^\$\.\$defs\./.test(l)))
+        fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
+    }
     if (a === "base3" && (jd.length || b.system !== r.system))
       fail(`base3 ${id}: its request differs from k1 (base3 is k1's files + code fixes)`);
     // D11: K1 changes only the flow's minItems and maxItems; the system text is byte for byte base2's.

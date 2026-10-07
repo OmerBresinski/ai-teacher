@@ -23,6 +23,8 @@ export const AB_ARMS = [
   "b3-r2",
   "b3-d1",
   "b3-l1",
+  "b3-m1",
+  "b3-r1",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -102,6 +104,21 @@ export const AB_CONFIG: Record<
     delta:
       "base3 + l1: the give-away rule covers a question's picture or diagram (base-head line 19)",
   },
+  // D13 (8 Oct): misconception arms, one prompt line each on base3 (ab/arms3/<arm>, unedited).
+  "b3-m1": {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    delta: "base3 + m1: a misconception slide only where a well-known one exists",
+  },
+  "b3-r1": {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    delta: "base3 + r1: the misconception clause removed",
+  },
   // D11 R2 (RADICAL.md): structured kinds are per-kind spec defs the writer fills; code draws them.
   // Prompt text is base3's until the prompt-engineer rewrites the diagram section.
   "b3-r2": {
@@ -127,6 +144,8 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b3-r2": { ref: "base3" },
   "b3-d1": { ref: "base3" },
   "b3-l1": { ref: "base3" },
+  "b3-m1": { ref: "base3" },
+  "b3-r1": { ref: "base3" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
