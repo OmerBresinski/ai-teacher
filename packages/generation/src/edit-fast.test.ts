@@ -4,6 +4,7 @@ import type { Lesson, RichDoc, Slide } from "@tj/domain/documents";
 import {
   lesson as demoLesson,
   multipleChoiceSlide,
+  text,
   textElement,
 } from "@tj/domain/documents/fixtures";
 import pino from "pino";
@@ -13,6 +14,7 @@ import {
   EditTargetError,
   echoes,
   editFast,
+  leakFaults,
   packEditFast,
   textToDoc,
 } from "./edit-fast";
@@ -147,6 +149,20 @@ describe("editFast (TEACH-97 part d)", () => {
       packEditFast({ lesson: lesson(mc), slide: mc, elementId: "o1", instruction: "x" }),
     ).toThrow(EditTargetError);
   });
+});
+
+test("naming the keyed option's letter is a leak; the article A is not", () => {
+  const mc = { ...multipleChoiceSlide(), id: "s-mc-3" };
+  const withText = (t: string) => ({
+    ...mc,
+    elements: mc.elements.map((e) => (e.id === "q" ? { ...e, doc: text(t) } : e)),
+  });
+  expect(
+    leakFaults(mc, withText("Which process turns liquid water into vapour? (A)"), "q"),
+  ).toHaveLength(1);
+  expect(
+    leakFaults(mc, withText("A process turns liquid water into vapour. Which one?"), "q"),
+  ).toHaveLength(0);
 });
 
 describe("textToDoc", () => {

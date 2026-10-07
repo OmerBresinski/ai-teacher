@@ -293,10 +293,26 @@ export function leakFaults(before: Slide, after: Slide, elementId: string): stri
   };
   const was = textIn(before);
   const now = textIn(after);
-  return answers
+  const faults = answers
     .filter((a) => a.trim() !== "" && echoes(now, a) && !echoes(was, a))
     .map((a) => `the new text gives away the answer "${a}"; do not state it`);
+  for (const letter of keyedLetters(before)) {
+    if (letterCount(now, letter) > letterCount(was, letter))
+      faults.push(`the new text gives away the answer by naming option ${letter}; do not name it`);
+  }
+  return faults;
 }
+
+/** The letters a multiple-choice slide shows on its correct options (A for the first option). */
+function keyedLetters(slide: Slide): string[] {
+  const q = slide.question;
+  if (q?.type !== "multiple-choice") return [];
+  return q.options.flatMap((o, i) => (o.correct ? [String.fromCharCode(65 + i)] : []));
+}
+
+/** A letter standing alone ("(B)", "B.", "option B"); the article "A word" does not count. */
+const letterCount = (text: string, letter: string): number =>
+  [...text.matchAll(new RegExp(`(?<![A-Za-z’'])${letter}(?![A-Za-z’'])(?! [a-z])`, "g"))].length;
 
 /* ------------------------------------------------------------------ */
 /* The call                                                           */
