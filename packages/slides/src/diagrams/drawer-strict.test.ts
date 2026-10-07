@@ -87,3 +87,28 @@ describe("round 8 drawer fix", () => {
     expect(meaningFaults(mendSpec(flow))).toContain("Unrecognized keys");
   });
 });
+
+test("a graph with two arrows out of one box draws (y12 multi-store, full zone)", async () => {
+  const { fromMeaning, renderDiagram } = await import("./index");
+  const { getTheme, withKeyStage } = await import("../themes");
+  const spec = {
+    kind: "flow",
+    alt: "Memory stores.",
+    title: "How information moves",
+    nodes: ["Sensory register", "Short-term memory", "Long-term memory"],
+    links: [
+      { from: 0, to: 1, label: "Attention" },
+      { from: 1, to: 2, label: "Maintenance rehearsal" },
+      { from: 1, to: 1, label: "Rehearsal" },
+      { from: 2, to: 1, label: "Retrieval" },
+      { from: 0, to: "out", label: "Decay" },
+      { from: 1, to: "out", label: "Decay" },
+      { from: 1, to: "out", label: "Displacement" },
+    ],
+  };
+  const svg = withKeyStage("ks5", () =>
+    renderDiagram(fromMeaning(spec) as never, getTheme("studio", "ks5"), { w: 844, h: 380 }),
+  );
+  expect(svg?.match(/<rect/g)?.length).toBe(3);
+  expect(svg).toContain("displacement");
+});

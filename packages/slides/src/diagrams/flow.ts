@@ -141,7 +141,19 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
   });
   const most = Math.max(...cols.map((col) => col.length));
   const loops = links.filter((l) => l.to === l.from);
-  const outs = links.filter((l) => l.to === "out");
+  // Round 8 drawer check (y12 multi-store): two arrows out of one box (STM: decay, displacement)
+  // put their words side by side under it, where they always clashed, so the model never drew.
+  // A box has one arrow out, its words each cause in turn ("Decay, displacement").
+  const outs: GLink[] = [];
+  for (const l of links)
+    if (l.to === "out") {
+      const same = outs.find((o) => o.from === l.from);
+      if (!same) outs.push({ ...l });
+      else if (l.label)
+        same.label = same.label
+          ? `${same.label}, ${l.label.replace(/^./, (ch) => ch.toLowerCase())}`
+          : l.label;
+    }
   const backs = links.filter((_, i) => back.has(i));
   const fwd = links.filter((l, i) => l.to !== "out" && l.to !== l.from && !back.has(i));
   for (const tall of w / h >= 1.1 ? [false, true] : [true, false])
