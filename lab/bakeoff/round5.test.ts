@@ -15,9 +15,10 @@ describe("round 5 harness", () => {
     expect(referentFault(withData, false)).toBeUndefined();
     expect(referentFault("Explain why gases compress.", false)).toBeUndefined();
   });
-  test("visual or fallback: particles and flows may become pictures; graphs and tables never", () => {
+  test("visual or fallback: flows may become pictures; particles, graphs and tables never", () => {
+    // Round 7 (r6 y7 s9's red balls): a particle model is a schematic, never a made picture.
     expect(pictureFallbackOk("particles", "Particles moving faster at a higher temperature")).toBe(
-      true,
+      false,
     );
     expect(pictureFallbackOk("flow", "How hyperinflation spiralled")).toBe(true);
     expect(pictureFallbackOk("line-graph", "Gas volume over time")).toBe(false);

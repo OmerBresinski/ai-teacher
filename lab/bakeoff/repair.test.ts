@@ -120,6 +120,8 @@ describe("round 2 diagram failure", () => {
       shows: "a flower with petals, stem and leaves",
       must_see: [],
       subject: "generic",
+      ask: null,
+      ask_without: null,
     });
   });
 });

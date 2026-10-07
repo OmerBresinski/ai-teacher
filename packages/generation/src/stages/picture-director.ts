@@ -296,7 +296,15 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
   const period = d.period?.trim() || undefined;
   // Ruling 163 (SOL-SIMPLE): a period makes the subject historical on any route, so it takes the
   // real ladder (Commons first) and the history table's fallback, never a stock-photo generation.
-  const real = d.route === "commons" || !!period;
+  // BAKEOFF round 7: a period makes a picture historical only when it depicts a past event or
+  // person (r6 y4: wheat and ore with a period were refused generation and the deck had no
+  // pictures). A generic thing (a wheat field, a lump of ore) stays generic, period or not.
+  const depicts =
+    !!period &&
+    (d.named === "event" ||
+      d.named === "person" ||
+      (!d.named && DEPICTS.test(`${ask.text} ${d.pictures[0]?.shows ?? ""}`)));
+  const real = d.route === "commons" || depicts;
   // The request's year-plus-event anchor leads a Commons search ("hyperinflation 1923" ranks the
   // real 1923 Weimar photo first; the director's own wording did not).
   const dated = real ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
@@ -311,7 +319,7 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
   const first = pictures[0];
   if (!first) return { kind: "none" };
   // A historical scene with no named kind is read as an event (an illustration under `strict`).
-  const kind = d.named ?? (period ? "event" : "object");
+  const kind = d.named ?? (depicts ? "event" : "object");
   const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
   const mustShow = countedPhoto
     ? uniq([
@@ -345,6 +353,7 @@ export function planPicture(d: PictureDirection | undefined, ask: Ask): PictureP
       stockFirst: d.route === "pexels" && !countedPhoto && !looked && !housed,
       ...(fallback ? { realFallback: fallback } : {}),
       ...(period ? { period } : {}),
+      ...(depicts ? { depicts: true } : {}),
       ...(illustrated || looked ? { style: "illustration" as const } : {}),
       ...(housed ? { style: "house" as const } : {}),
       ...(palette ? { palette } : {}),
@@ -433,7 +442,7 @@ export async function findDirected(args: {
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
       : b;
-  const out = await findPicture(
+  let out = await findPicture(
     req,
     args.bank,
     () => args.stock(brief),
@@ -442,6 +451,20 @@ export async function findDirected(args: {
     Date.now,
     sharedVerdictCache,
   );
+  // BAKEOFF round 7, ruling 163: a past event or person that the scene search missed is shown by a
+  // real artefact, coin, map, site or museum object (the round 5 Claudius bust), before nothing.
+  if (!out.photo && req.depicts && plan.kind === "photo") {
+    const t0 = Date.now();
+    const artefact: ImageBrief = {
+      ...brief,
+      request: artefactRequest(req.text, req.period),
+      mustShow: [],
+      queries: artefactQueries(req.text, req.period),
+      specific: true,
+    };
+    const got = await args.stock(artefact).catch(() => undefined);
+    if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
+  }
   log({ via: out.via, ms: out.ms });
   const style = (out.photo as MadePicture | undefined)?.style;
   args.onOutcome?.({
@@ -469,8 +492,34 @@ export async function findDirected(args: {
           ? "drawn"
           : (style ?? "photo")
         : "photo",
-    ...(req.period ? { period: req.period } : {}),
+    ...(req.period && req.depicts ? { period: req.period } : {}),
   };
+}
+
+/** Round 7: words that make a historical picture show people or an event (not wheat or ore). */
+const DEPICTS =
+  /\b(people|person|man|men|woman|women|child|children|crowd|soldiers?|army|armies|legion(ary|aries)?|troops|king|queen|emperor|ruler|leader|workers?|shoppers?|families|family|villagers|battle|landing|invasion|invad\w*|march\w*|riot|protest|meeting|ceremony|siege|fight\w*|attack\w*|parade|queue)\b/i;
+
+/** Round 7: the artefact request for a past event or person whose scene has no real picture. */
+export function artefactRequest(shows: string, period?: string): string {
+  return `A real surviving artefact, coin, map, site or museum object connected with: ${shows}${period ? ` (${period})` : ""}`;
+}
+
+/**
+ * Round 7: Commons queries for artefacts of a past event or person: its proper names (and the
+ * period's) with coin, map, museum object and site.
+ */
+export function artefactQueries(shows: string, period?: string): string[] {
+  const words = `${period ?? ""} ${shows}`.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) ?? [];
+  const STOP = new Set(["A", "An", "The", "Two", "Three", "One", "Some", "This", "That"]);
+  const names = [...new Set(words.filter((w) => !STOP.has(w)))].slice(0, 2);
+  const subject = names.join(" ") || shows.split(/\s+/).slice(0, 3).join(" ");
+  return [
+    `${subject} coin`,
+    `${subject} map`,
+    `${subject} museum`,
+    `${subject} archaeological site`,
+  ];
 }
 
 /** A placed picture with how it looks and the period it belongs to. */

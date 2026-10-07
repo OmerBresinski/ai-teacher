@@ -148,6 +148,11 @@ export interface ArmPlugin {
   words(slide: Record<string, unknown>): string;
   /** Round 2: the slide with its failed diagram turned into a picture request of the same thing (or undefined). */
   asPicture?(slide: Record<string, unknown>): Record<string, unknown> | undefined;
+  /** Round 7: the slide with its schematic pictures (`which` picks them) asked for as diagrams. */
+  asDiagram?(
+    slide: Record<string, unknown>,
+    which: (shows: string) => boolean,
+  ): Record<string, unknown> | undefined;
   /** Round 5: the slide as words only, with any sentence pointing at its missing visual removed. */
   asWords?(
     slide: Record<string, unknown>,
@@ -220,11 +225,39 @@ export const isApparatus = (kind: string | undefined, shows: string) =>
   /\b(apparatus|equipment|set-?up|flask|beaker|burette|pipette|test tubes?|bunsen|syringe|clamp|delivery tube|thermometer|measuring cylinder|filter funnel|tripod|gauze|water bath|balance)\b/i.test(
     shows,
   );
-/** A failed diagram may become a picture of the same thing unless it is data. */
+/**
+ * Round 7: a request whose subject is a schematic (a model of particles, panels, plain shapes cut
+ * into parts) is a diagram's job. A made picture of it is decoration (r6 y7 s9's red balls, y2
+ * s4's rectangles), never the thing.
+ */
+export const SCHEMATIC =
+  /\b(particles?|molecules?|atoms?)\b|^(an?|one|two|three|four|the)?\s*(\w+\s)?(rectangles?|squares?|circles?|triangles?|shapes?|panels?|bars?|grids?|(\w+ )?models?|diagrams?)(\s+(with|containing|split|divided|cut|showing|in|and|side)\b|[,.;]|$)/i;
+/**
+ * Round 7 (r6 y8: AI portraits of a "fictional father"): a made picture of a particular,
+ * real-seeming person (a family member, a named or fictional person) is not shown.
+ */
+export const PORTRAIT =
+  /\b(fictional|portraits?|called [A-Z]\w+|named [A-Z]\w+|(grand)?(father|mother|parents?)|brothers?|sisters?|famil(y|ies)|aunts?|uncles?|cousins?|husband|wife|son|daughter|step\w+)\b/i;
+/** Round 7: why a placed picture is not shown, or undefined when it may be. */
+export function pictureVeto(r: {
+  request?: string;
+  provider?: string;
+  style?: string;
+}): string | undefined {
+  const made = r.provider === "generated" || r.style === "drawn";
+  const req = r.request ?? "";
+  if (made && SCHEMATIC.test(req.trim())) return "a made picture of a schematic (a diagram's job)";
+  if (r.provider === "generated" && r.style !== "drawn" && PORTRAIT.test(req))
+    return "an AI portrait of a real-seeming person";
+  return undefined;
+}
+
+/** A failed diagram may become a picture of the same thing unless it is data or a schematic. */
 export const pictureFallbackOk = (kind: string | undefined, shows: string) =>
   !!kind &&
   !DATA_KINDS.has(kind) &&
-  !/\b(graph|chart|table|axis|axes|equation|ratio)\b/i.test(shows);
+  !/\b(graph|chart|table|axis|axes|equation|ratio)\b/i.test(shows) &&
+  !SCHEMATIC.test(shows.trim());
 
 /** A table's data as header and rows. */
 export type TableData = { header?: string[]; rows: string[][] };
@@ -402,6 +435,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   const visuals = new Map<string, VisualState>();
   const asks = new Map<number, VisualAsk[]>();
   const laid = new Map<number, Materialised>();
+  // Round 7: each slide as streamed, for the ask_without report (the fallbacks swap the slide).
+  const firstSlides = new Map<number, Record<string, unknown>>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
   let title: Materialised | undefined;
   let flowSeen = 0;
@@ -570,7 +605,11 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
           log({ ev: "picture-error", key: `${i}:${key}`, err: String(e).slice(0, 200) });
           return undefined;
         })
-        .then((r) => {
+        .then((r0) => {
+          const veto = r0 ? pictureVeto(r0) : undefined;
+          if (veto)
+            log({ ev: "picture-veto", key: `${i}:${key}`, why: veto, request: r0?.request });
+          const r = veto ? undefined : r0;
           visuals.set(`${i}:${key}`, r ? { status: "photo", photo: r } : { status: "failed" });
           // One picture at most once per lesson unless the same request asks for it (K's y1 smoke:
           // the title photo came back on another slide). The later slide loses it and falls back.
@@ -692,7 +731,13 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         save(`placeholder s${i + 1}`);
         mark("firstPlaceholder");
       }
-      if (f.look_at?.kind === "picture" && f.look_at.shows && i > 0 && !early.has(i)) {
+      if (
+        f.look_at?.kind === "picture" &&
+        f.look_at.shows &&
+        i > 0 &&
+        !early.has(i) &&
+        !SCHEMATIC.test(f.look_at.shows.trim())
+      ) {
         const ac = new AbortController();
         const p = startPhoto(
           i,
@@ -724,6 +769,15 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       // Round 6 (r5 y11 s6 drew garbled apparatus): apparatus is a photo, as in round 3. A drawn
       // apparatus is never placed; a slide whose photo cannot be found stands alone in words.
       const first = withKeyStage(brief.keyStage, () => arm.visuals(s, idx, { ...base, plan }));
+      // Round 7 (r6 y2 s4: two rectangles "with equal and unequal divisions" made as a picture):
+      // a schematic asked for as a picture is drawn as a diagram from the slide's own words.
+      if (first.some((a) => a.type === "photo" && SCHEMATIC.test(a.shows.trim()))) {
+        const dia = arm.asDiagram?.(s, (shows) => SCHEMATIC.test(shows.trim()));
+        if (dia) {
+          log({ ev: "schematic-diagram", slide: idx + 1 });
+          s = dia;
+        }
+      }
       if (first.some((a) => a.type === "diagram" && isApparatus(a.kind, a.shows))) {
         const pic = arm.asPicture?.(s);
         if (pic) {
@@ -734,6 +788,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       // Round 6: no em dashes on slides (Greg 1 Oct; r5 y8).
       s = slideNoEmDash(s);
       plan.slides[idx] = s;
+      firstSlides.set(idx, s);
       const as = withKeyStage(brief.keyStage, () => arm.visuals(s, idx, { ...base, plan }));
       asks.set(idx, as);
       const words = arm.words(s);
@@ -1146,14 +1201,27 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   // Round 2 guards (repair.ts): never the title or objectives slide; a repaired slide that drops a
   // figure, leaves a slot empty, splits a sentence across cards or loses words is rejected and the
   // original kept with its flag; a new figure the repaired slide asks for is fetched like any other.
+  // Round 7 (prompts "round 7 draft"): visual requests carry ask / ask_without, and the arm shows
+  // the right one by construction, so a visual-dangling fault only reports.
+  const hasAsks = (x: unknown): boolean =>
+    !!x &&
+    typeof x === "object" &&
+    ("ask_without" in x ||
+      Object.values(x as object).some((v) => (Array.isArray(v) ? v.some(hasAsks) : hasAsks(v))));
+  const asksPrompt = plan.slides.some(hasAsks);
+  const VISUAL_DANGLING = /^(dangling: .* no picture|unanswerable:)/;
   const pickFailing = () =>
-    checks.filter((c) => {
-      const i = c.slide - 1;
-      const ok = c.faults.length > 0 && repairable(plan.slides[i] as Record<string, unknown>, i);
-      if (c.faults.length && !ok)
-        log({ ev: "repair-not-allowed", slide: c.slide, faults: c.faults });
-      return ok;
-    });
+    checks
+      .map((c) =>
+        asksPrompt ? { ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) } : c,
+      )
+      .filter((c) => {
+        const i = c.slide - 1;
+        const ok = c.faults.length > 0 && repairable(plan.slides[i] as Record<string, unknown>, i);
+        if (c.faults.length && !ok)
+          log({ ev: "repair-not-allowed", slide: c.slide, faults: c.faults });
+        return ok;
+      });
   let failing = pickFailing();
   const recorded = new Map<number, unknown>();
   if (o.replayRepair && existsSync(o.replayRepair))
@@ -1444,12 +1512,18 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   // ── e2. round 6: visual or rewrite. Words that point at a visual the slide does not show (r5 y2
   // s3/s5, y4 s4, y12 s7) are rewritten to stand alone; failing that, the pointing sentences go.
   // Never a silent text-only slide: every one is logged with how it ended.
+  // Round 7: the swap is by construction (ask / ask_without in the arm); the referent regex only
+  // reports. The rewrite-or-strip below runs only for a slide with no ask fields (older prompts).
   const DANGLING = /^(dangling|unanswerable):/;
   const standAlone = async (i: number) => {
     const s0 = plan.slides[i] as Record<string, unknown> | undefined;
     if (!s0 || !repairable(s0, i)) return;
     const hit = check()[i]?.faults.find((f) => DANGLING.test(f));
     if (!hit) return;
+    if (asksPrompt) {
+      log({ ev: "stand-alone", slide: i + 1, fault: hit, how: "report" });
+      return;
+    }
     let how = "left";
     const fault = `${hit}; no visual can be made for it, so the words must stand alone`;
     if (!o.noRepair && (await repairOne({ slide: i + 1, faults: [fault] }, "stand-alone")))
@@ -1516,6 +1590,46 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     } else log({ ev: "notes-refused" });
   }
   checks = check();
+  // Round 7: every slide that shows an `ask_without` line, and why its visual is not there.
+  const askWithout: { slide: number; key: string; why: string; line: string }[] = [];
+  for (const [i, s0] of firstSlides) {
+    const holders: [string, Record<string, unknown>][] = [];
+    for (const k of ["picture", "diagram", "figure"]) {
+      const f = s0[k];
+      if (f && typeof f === "object") holders.push([k, f as Record<string, unknown>]);
+    }
+    (Array.isArray(s0.columns) ? (s0.columns as Record<string, unknown>[]) : []).forEach((c, n) => {
+      if (c?.picture && typeof c.picture === "object")
+        holders.push([`col.${n}`, c.picture as Record<string, unknown>]);
+    });
+    if (s0.template === "picture-sequence") holders.push(["seq.0", s0]);
+    for (const [k, f] of holders) {
+      const line = typeof f.ask_without === "string" ? f.ask_without.trim() : "";
+      if (!line) continue;
+      const keys = (asks.get(i) ?? []).map((a) => a.key);
+      const key =
+        keys.find((x) => x === k) ?? keys.find((x) => x.startsWith(k.split(".")[0] ?? k)) ?? k;
+      const st = visuals.get(`${i}:${key}`)?.status ?? "none";
+      const dropped = laid.get(i)?.diagram;
+      const p = path.get(i);
+      const now = plan.slides[i] as Record<string, unknown>;
+      const gone = !hasAsks(now);
+      const why =
+        st === "failed" || st === "none"
+          ? `${st}${p ? `, then ${p}` : ""}`
+          : dropped?.length
+            ? `layout dropped: ${dropped.join("; ").slice(0, 160)}`
+            : gone
+              ? `fallback ${p ?? "swap"}`
+              : st === "pending"
+                ? "never landed"
+                : p === "picture"
+                  ? "diagram failed; a picture with the stand-alone line"
+                  : "";
+      if (why) askWithout.push({ slide: i + 1, key: k, why, line: line.slice(0, 160) });
+    }
+  }
+  for (const a of askWithout) log({ ev: "ask-without", ...a });
   // Teaching slides left with no picture or diagram (round 2 summary).
   const textOnlyTeach = Array.from({ length: n }, (_, i) => i).filter(
     (i) =>
@@ -1527,6 +1641,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     textOnlyTeach: textOnlyTeach.length,
     textOnlySlides: textOnlyTeach.map((i) => i + 1),
     visualPaths: Object.fromEntries([...path].map(([i, p]) => [i + 1, p])),
+    askWithout,
     capRefused: ledger.refused,
   };
   log({ ev: "summary", ...summary });

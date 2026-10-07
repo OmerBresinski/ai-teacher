@@ -31,11 +31,15 @@ import {
 } from "./templates";
 
 export {
+  areaModelTable,
   energyProfileOf,
   isHydrograph,
   isParticleRow,
   mendSpec,
   normaliseDiagram,
+  oneStateCompare,
+  particleTitle,
+  shadedFractionLabels,
   simplerDiagrams,
   withTangents,
   yearOf,

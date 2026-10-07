@@ -402,13 +402,35 @@ const shortLabel = (t: string, max = 16) => {
  * still name each state). Other kinds have no simpler form.
  */
 export function simplerDiagrams(spec: unknown): unknown[] {
-  const base = normaliseDiagram(spec);
+  let base = normaliseDiagram(spec);
+  // Round 7 (r6 y12 s4): a cycle sets three to six steps round an ellipse; with more its boxes
+  // overlap, so it is laid out as a chain.
+  const c = base as { kind?: unknown; layout?: unknown; steps?: unknown[] };
+  if (c?.kind === "flow" && c.layout === "cycle" && Array.isArray(c.steps) && c.steps.length > 6)
+    base = { ...c, layout: "chain" };
   // Simpler forms only for a spec within its limits: one with long labels draws whole (stretched)
   // or steps up to a bigger zone, rather than losing its notes to fit (DIAGRAM-AUDIT step-up).
   const r = DiagramSpecSchema.safeParse(base);
-  if (!r.success) return [base];
+  if (!r.success) {
+    // BAKEOFF round 7 (r6 y12 s4: an 8-step cycle whose arrow words ran a character over and off
+    // the drawing): a flow re-lays out as a chain, then without its arrow words, before it is
+    // dropped, even when its arrow words miss their limit.
+    const f = base as { kind?: unknown; layout?: unknown; steps?: { label?: unknown }[] };
+    if (f?.kind === "flow" && Array.isArray(f.steps)) {
+      const steps = f.steps.map((st) => ({ label: st?.label }));
+      const forms = [
+        ...(f.layout === "cycle" ? [{ ...f, layout: "chain" }] : []),
+        { ...f, steps },
+        ...(f.layout === "cycle" ? [{ ...f, layout: "chain", steps }] : []),
+      ];
+      return [base, ...forms.filter((v) => DiagramSpecSchema.safeParse(v).success)];
+    }
+    return [base];
+  }
   const s = r.data;
   const out: DiagramSpec[] = [s];
+  // Round 7: a cycle re-lays out as a chain (rows or a snake) before it loses anything.
+  if (s.kind === "flow" && s.layout === "cycle") out.push({ ...s, layout: "chain" });
   if (s.kind === "line-graph" && isHydrograph(s)) {
     const a: LineGraph = { ...s, segments: [] };
     const b: LineGraph = {
@@ -455,6 +477,8 @@ export function simplerDiagrams(spec: unknown): unknown[] {
   // with them draws without them before it is refused.
   if (s.kind === "flow" && s.steps.some((st) => st.arrow)) {
     out.push({ ...s, steps: s.steps.map((st) => ({ label: st.label })) });
+    if (s.layout === "cycle")
+      out.push({ ...s, layout: "chain", steps: s.steps.map((st) => ({ label: st.label })) });
     if (s.title) {
       const { title: _t, ...bare } = s;
       out.push({ ...bare, steps: s.steps.map((st) => ({ label: st.label })) } as DiagramSpec);
@@ -490,7 +514,188 @@ export function yearOf(date: string): number | undefined {
  * decoration that cannot stand is mended in code, never a reason to lose the drawing. A timeline's
  * `period` given as years becomes the events' positions; one that still does not fit is dropped.
  */
+type AreaLabel = { text?: unknown; at?: unknown };
+type AreaRect = { type?: unknown; x?: number; y?: number; w?: number; h?: number };
+
+/**
+ * BAKEOFF round 7 (r6 y10m: the area model drawn as free lines with unequal cells and labels on
+ * the wrong edges): an area model (grid method) is a table grid. The factors outside the rectangle
+ * become the headers (along the top) and the first column (down the side); the labels inside it are
+ * the products, each in the cell of its nearest factor column and row. Anything that does not read
+ * as a full grid stays as it was.
+ */
+export function areaModelTable(spec: unknown): unknown {
+  const s = spec as {
+    kind?: unknown;
+    title?: unknown;
+    alt?: unknown;
+    shapes?: AreaRect[];
+    labels?: AreaLabel[];
+  };
+  if (!s || typeof s !== "object" || s.kind !== "labelled-diagram") return spec;
+  if (
+    !/\b(area model|grid method|box method|area diagram)\b/i.test(`${s.title ?? ""} ${s.alt ?? ""}`)
+  )
+    return spec;
+  const rect = (s.shapes ?? []).find(
+    (r) => r?.type === "rect" && [r.x, r.y, r.w, r.h].every((v) => typeof v === "number"),
+  );
+  if (!rect) return spec;
+  const [rx, ry, rw, rh] = [rect.x ?? 0, rect.y ?? 0, rect.w ?? 0, rect.h ?? 0];
+  const pts = (s.labels ?? []).flatMap((l) => {
+    const at = l?.at as unknown;
+    if (typeof l?.text !== "string" || !Array.isArray(at)) return [];
+    const [x, y] = at as number[];
+    return typeof x === "number" && typeof y === "number" ? [{ t: l.text.trim(), x, y }] : [];
+  });
+  const inX = (x: number) => x > rx && x < rx + rw;
+  const inY = (y: number) => y > ry && y < ry + rh;
+  const cells = pts.filter((p) => inX(p.x) && inY(p.y));
+  const cols = pts.filter((p) => inX(p.x) && !inY(p.y)).sort((a, b) => a.x - b.x);
+  const rows = pts.filter((p) => inY(p.y) && !inX(p.x)).sort((a, b) => a.y - b.y);
+  if (cols.length < 2 || rows.length < 1 || cells.length !== cols.length * rows.length) return spec;
+  if (cols.length > 4 || rows.length > 7) return spec;
+  const near = <T extends { x: number; y: number }>(xs: T[], v: number, k: "x" | "y") =>
+    xs.reduce((b, p, i) => (Math.abs(p[k] - v) < Math.abs((xs[b] as T)[k] - v) ? i : b), 0);
+  const grid = rows.map(() => cols.map(() => ""));
+  for (const c of cells) {
+    const r = grid[near(rows, c.y, "y")] as string[];
+    const k = near(cols, c.x, "x");
+    if (r[k]) return spec;
+    r[k] = c.t;
+  }
+  const table = {
+    kind: "table",
+    ...(typeof s.title === "string" ? { title: s.title } : {}),
+    alt: typeof s.alt === "string" ? s.alt : "An area model grid",
+    header: ["×", ...cols.map((c) => c.t)],
+    rows: rows.map((r, i) => [r.t, ...(grid[i] as string[])]),
+  };
+  return DiagramSpecSchema.safeParse(table).success ? table : spec;
+}
+
+/**
+ * BAKEOFF round 7 (r6 y7 s5: "Liquid particles" over a solid-to-liquid pair): a particle drawing's
+ * title agrees with what it draws. A states drawing titled for some of its states draws only
+ * those; a title naming a state the drawing does not show is dropped (the heading names it).
+ */
+export function particleTitle(spec: unknown): unknown {
+  const s = spec as {
+    kind?: unknown;
+    title?: unknown;
+    show?: unknown;
+    states?: unknown;
+    panels?: { state?: unknown }[];
+    captions?: unknown[];
+    notes?: unknown[];
+    arrows?: unknown[];
+  };
+  if (!s || typeof s !== "object" || s.kind !== "particles" || typeof s.title !== "string")
+    return spec;
+  const named = ["solid", "liquid", "gas"].filter((w) =>
+    new RegExp(`\\b${w}`, "i").test(String(s.title)),
+  );
+  if (!named.length) return spec;
+  const show = s.show ?? "states";
+  const drawn =
+    show === "states"
+      ? Array.isArray(s.states)
+        ? (s.states as string[])
+        : ["solid", "liquid", "gas"]
+      : (s.panels ?? []).map((p) => String(p?.state ?? "gas"));
+  if (named.every((w) => drawn.includes(w)) && drawn.every((w) => named.includes(w))) return spec;
+  const { title: _t, ...bare } = s;
+  if (show !== "states" || !named.every((w) => drawn.includes(w))) return bare;
+  const keep = drawn.map((w, i) => (named.includes(w) ? i : -1)).filter((i) => i >= 0);
+  const pick = (xs?: unknown[]) =>
+    Array.isArray(xs) && xs.length === drawn.length ? keep.map((i) => xs[i]) : undefined;
+  const { panels: _p, arrows: _a, captions: _c, notes: _n, ...rest } = s;
+  const captions = pick(s.captions);
+  const notes = pick(s.notes);
+  return {
+    ...rest,
+    states: keep.map((i) => drawn[i]),
+    ...(captions ? { captions } : {}),
+    ...(notes ? { notes } : {}),
+  };
+}
+
+/**
+ * BAKEOFF round 7 (r6 y2 s3: "one half" pointed at the unshaded half): a fraction label on a shape
+ * with a shaded part names the shaded part. One label per fraction name, pointing at the middle of
+ * the shaded part, when it does not already.
+ */
+export function shadedFractionLabels(spec: unknown): unknown {
+  const s = spec as {
+    kind?: unknown;
+    shapes?: { type?: unknown; fill?: unknown; x?: number; y?: number; w?: number; h?: number }[];
+    labels?: { text?: unknown; at?: unknown }[];
+  };
+  if (!s || typeof s !== "object" || s.kind !== "labelled-diagram" || !Array.isArray(s.labels))
+    return spec;
+  const shaded = (s.shapes ?? []).filter(
+    (r) =>
+      r?.type === "rect" &&
+      r.fill === "accent" &&
+      [r.x, r.y, r.w, r.h].every((v) => typeof v === "number"),
+  ) as { x: number; y: number; w: number; h: number }[];
+  if (!shaded.length) return spec;
+  const x0 = Math.min(...shaded.map((r) => r.x));
+  const y0 = Math.min(...shaded.map((r) => r.y));
+  const x1 = Math.max(...shaded.map((r) => r.x + r.w));
+  const y1 = Math.max(...shaded.map((r) => r.y + r.h));
+  // Only one shaded region (its rects touch): two shaded shapes leave the labels alone.
+  const area = shaded.reduce((a, r) => a + r.w * r.h, 0);
+  if (area < (x1 - x0) * (y1 - y0) * 0.95) return spec;
+  const FRACTION =
+    /^(one|two|three|a)?\s*(half|halves|quarters?|thirds?|fifths?|sixths?|eighths?)$|^\d+\s*\/\s*\d+$/i;
+  const inside = (at: unknown) =>
+    Array.isArray(at) && at[0] > x0 && at[0] < x1 && at[1] > y0 && at[1] < y1;
+  const seen = new Set<string>();
+  let changed = false;
+  const labels = s.labels.flatMap((l) => {
+    const t = typeof l?.text === "string" ? l.text.trim() : "";
+    if (!FRACTION.test(t)) return [l];
+    const k = t.toLowerCase();
+    if (seen.has(k)) {
+      changed = true;
+      return [];
+    }
+    seen.add(k);
+    if (inside(l.at)) return [l];
+    changed = true;
+    return [{ ...l, at: [Math.round((x0 + x1) / 2), Math.round((y0 + y1) / 2)] }];
+  });
+  return changed ? { ...s, labels } : spec;
+}
+
+/**
+ * Round 7 (r5 and r6 y7 "Solid particles": two identical solid panels, refused as showing no
+ * difference): a compare whose panels are all the same is one state drawn once.
+ */
+export function oneStateCompare(spec: unknown): unknown {
+  const s = spec as {
+    kind?: unknown;
+    show?: unknown;
+    panels?: { state?: unknown }[];
+    captions?: unknown[];
+    notes?: unknown[];
+  };
+  if (!s || typeof s !== "object" || s.kind !== "particles" || s.show !== "compare") return spec;
+  const ps = s.panels ?? [];
+  if (ps.length < 2 || !ps.every((p) => JSON.stringify(p) === JSON.stringify(ps[0]))) return spec;
+  const { panels: _p, arrows: _a, captions, notes, ...rest } = s as typeof s & { arrows?: unknown };
+  return {
+    ...rest,
+    show: "states",
+    states: [String(ps[0]?.state ?? "gas")],
+    ...(Array.isArray(captions) && captions.length ? { captions: [captions[0]] } : {}),
+    ...(Array.isArray(notes) && notes.length ? { notes: [notes[0]] } : {}),
+  };
+}
+
 export function mendSpec(spec: unknown): unknown {
+  spec = shadedFractionLabels(particleTitle(oneStateCompare(areaModelTable(spec))));
   const s = spec as {
     kind?: unknown;
     events?: { date?: unknown }[];

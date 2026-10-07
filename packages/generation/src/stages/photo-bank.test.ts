@@ -454,6 +454,7 @@ describe("ruling 163: no generated picture for a historical request", () => {
     named: "event",
     route: "real",
     period: "Germany, 1923",
+    depicts: true,
     realFallback: "illustration",
     style: "illustration",
     imagePrompt: "x",

@@ -975,10 +975,20 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         heading(c, input.heading);
         numbered(c, pts, G.margin, 720, "objectives");
         break;
-      case "explain":
+      case "explain": {
         heading(c, input.heading);
+        const mark = c.els.length;
+        const overMark = c.over.length;
         leadAndPoints(c, input.lead, raw, G.margin, 680, "explain");
+        // BAKEOFF round 7 (r6 y2 s5: the words left when a diagram failed ran off the slide): words
+        // that overflow the reading width take the full width before they are called over.
+        if (c.over.length > overMark) {
+          c.els.splice(mark);
+          c.over.splice(overMark);
+          leadAndPoints(c, input.lead, raw, G.margin, G.width, "explain");
+        }
         break;
+      }
       case "picture-text":
       case "diagram-text": {
         heading(c, input.heading);

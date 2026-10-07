@@ -336,6 +336,7 @@ describe("findPicture", () => {
         realFallback: "illustration",
         imagePrompt: "I",
         period: "London, 1666",
+        depicts: true,
       }),
       bank(log),
       async () => undefined,
@@ -394,7 +395,7 @@ describe("lesson look (dd-pics, 6 Oct)", () => {
     expect(p.request.palette).toBeUndefined();
   });
   test("ruling 163 unchanged: a historical event keeps the painted period prompt", () => {
-    const p = photoPlan(dir({ route: "pexels", period: "Germany, 1923" }), {
+    const p = photoPlan(dir({ route: "pexels", period: "Germany, 1923", named: "event" }), {
       ...ask,
       look,
     } as never);
@@ -425,7 +426,7 @@ describe("generic: generate (house photo look)", () => {
     } as never);
     expect(real.request.route).toBe("real");
     expect(real.request.style).toBeUndefined();
-    const hist = photoPlan(dir({ route: "pexels", period: "Germany, 1923" }), {
+    const hist = photoPlan(dir({ route: "pexels", period: "Germany, 1923", named: "event" }), {
       ...ask,
       look: house,
     } as never);

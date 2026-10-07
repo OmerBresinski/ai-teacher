@@ -68,6 +68,8 @@ export interface BankRequest {
   realFallback?: RealFallback;
   /** The time and place a historical subject belongs to: the judge's context. */
   period?: string;
+  /** Round 7: the picture depicts a past event or person (ruling 163 applies to it). */
+  depicts?: boolean;
   /**
    * How a generation for this request looks: `illustration` is the painted one (ruling 163) or the
    * lesson's locked illustration style; absent is a photo.
@@ -104,11 +106,12 @@ export function lookMatches(req: BankRequest, hit: MadePicture): boolean {
 
 /**
  * Ruling 163, tightened in BAKEOFF round 6 (r5 y4 s3: an AI "illustration" of the Roman landing):
- * a historical request (one with a period) never places a generated picture of any style; only a
- * code drawing (`drawn`) may. Past events and people are shown by real artefacts and artworks.
+ * a request that depicts a past event or person never places a generated picture of any style; only
+ * a code drawing (`drawn`) may. They are shown by real artefacts and artworks. Round 7: a generic
+ * thing with a period (wheat, ore) is not depicting and may still be generated.
  */
 export function styleAllowed(req: BankRequest, picture: MadePicture): boolean {
-  if (!req.period || picture.source.provider !== "generated") return true;
+  if (!req.period || !req.depicts || picture.source.provider !== "generated") return true;
   return picture.style === "drawn";
 }
 
@@ -193,8 +196,8 @@ export async function findPicture(
     ms: now() - t0,
   });
   const make = async (faithful: boolean) => {
-    // Ruling 163 (round 6): nothing is generated for a past event or person.
-    if (req.period && !req.draw) return undefined;
+    // Ruling 163 (round 6, narrowed round 7): nothing is generated for a past event or person.
+    if (req.period && req.depicts && !req.draw) return undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
       const made = await bank.generate(req, faithful, signal).catch(rethrowAbort);
       if (made && !styleAllowed(req, made)) {

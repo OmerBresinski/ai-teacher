@@ -133,7 +133,64 @@ export function slotShapes(
   return out;
 }
 
-export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInput {
+/** A line from an `ask` field, or undefined for null or blank. */
+const line = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+const joined = (...xs: (string | undefined)[]) => xs.filter(Boolean).join(" ") || undefined;
+
+/**
+ * BAKEOFF round 7 (prompts "round 7 draft"): every picture or diagram request carries `ask`, the
+ * one line that needs pupils to see the visual, and `ask_without`, the same move standing alone.
+ * The slide shows `ask` when its visual is placed and `ask_without` when it is missing, failed or
+ * fell back: no slide can point at a visual that is not there. The line joins the slide's own
+ * words (the lead, a question set's instruction, a card's text); the ask fields are removed.
+ */
+export function resolveAsks(raw: S, placed: (key: string) => boolean): S {
+  const s: S = { ...normalise(raw) };
+  const tpl = str(s.template);
+  for (const k of ["picture", "diagram", "figure"]) {
+    const f = s[k];
+    if (!f || typeof f !== "object" || !("ask" in f || "ask_without" in f)) continue;
+    const { ask, ask_without, ...rest } = f as S;
+    s[k] = rest;
+    const l = placed(k) ? line(ask) : line(ask_without);
+    if (!l) continue;
+    if (["question-set", "practice", "exit-ticket"].includes(tpl))
+      s.instruction = joined(l, line(s.instruction));
+    else if (tpl === "discussion") s.lead = joined(line(s.lead), l);
+    else s.lead = joined(line(s.lead), l);
+  }
+  if (Array.isArray(s.columns))
+    s.columns = (s.columns as S[]).map((c, n) => {
+      const p = c?.picture as S | undefined;
+      if (!p || typeof p !== "object" || !("ask" in p || "ask_without" in p)) return c;
+      const { ask, ask_without, ...rest } = p;
+      const l = placed(`col.${n}`) ? line(ask) : line(ask_without);
+      return { ...c, picture: rest, ...(l ? { text: joined(line(c.text), l) } : {}) };
+    });
+  if (tpl === "picture-sequence" && ("ask" in s || "ask_without" in s)) {
+    const seq = Array.isArray(s.sequence) ? s.sequence : [];
+    const all = seq.length > 0 && seq.every((_, n) => placed(`seq.${n}`));
+    const l = all ? line(s.ask) : line(s.ask_without);
+    delete s.ask;
+    delete s.ask_without;
+    if (l) s.lead = joined(line(s.lead), l);
+  }
+  return s;
+}
+
+export function toInput(
+  raw0: S,
+  ctx: MaterialiseCtx,
+  mark = false,
+  missing?: Set<string>,
+): TemplateInput {
+  // Round 7: a visual counts as placed while it is pending (its slot shows) and once it landed.
+  const placed = (k: string) => {
+    if (missing?.has(k)) return false;
+    const st = ctx.visual(k).status;
+    return st === "photo" || st === "diagram" || st === "pending";
+  };
+  const raw = resolveAsks(raw0, placed);
   const s = normalise(raw);
   const template = str(s.template) as TemplateInput["template"];
   const heading = str(s.heading);
@@ -180,10 +237,13 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
       // A sequence with a picture that could not be made reads as captions and arrows over
       // nothing: the stages become numbered steps instead.
       if (seq.some((_, n) => ctx.visual(`seq.${n}`).status === "failed"))
-        return { template: "steps", heading, points: seq.map((x) => str(x.caption)) };
+        return lead
+          ? { template: "explain", heading, lead, points: seq.map((x) => str(x.caption)) }
+          : { template: "steps", heading, points: seq.map((x) => str(x.caption)) };
       return {
         template,
         heading,
+        ...(lead ? { lead } : {}),
         sequence: seq.map((x, n) => ({
           caption: str(x.caption),
           figure: figureNow(`seq.${n}`, x, ctx, mark),
@@ -207,8 +267,20 @@ export function toInput(raw: S, ctx: MaterialiseCtx, mark = false): TemplateInpu
         }),
       };
     }
-    case "steps":
-      return { template, heading, points: strs(s.points ?? s.steps), figure: fig("figure") };
+    case "steps": {
+      // Round 7: steps with an ask line read as a lead and numbered-free points beside the figure.
+      const f = fig("figure");
+      const points = strs(s.points ?? s.steps);
+      if (!lead) return { template, heading, points, figure: f };
+      if (!f) return { template: "explain", heading, lead, points };
+      return {
+        template: "photo" in f ? "picture-text" : "diagram-text",
+        heading,
+        lead,
+        points,
+        figure: f,
+      };
+    }
     case "equation-hero":
       return {
         template,
@@ -298,11 +370,24 @@ export const armT: ArmPlugin = {
     );
   },
   materialise(s, ctx) {
-    const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
+    let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
+    // Round 7: a diagram the layout dropped is missing: the slide is laid out again with its
+    // `ask_without` lines (the drawer's reasons are kept for the checks).
+    if (r.diagram?.length) {
+      const why = r.diagram;
+      const missing = new Set(
+        ["picture", "diagram", "figure"].filter((k) => ctx.visual(k).status === "diagram"),
+      );
+      r = {
+        ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage),
+        diagram: why,
+      };
+    }
     return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
   },
   asWords(raw, opts) {
-    const s = normalise(raw);
+    // Round 7: the slide has lost its visual, so every ask line is its stand-alone form.
+    const s = resolveAsks(raw, () => false);
     // Round 6: `keepPointing` takes the figure away and keeps every word (the rewrite's input).
     const POINTS = opts?.keepPointing ? /$^/ : POINTS_AT;
     const drop = (t: unknown) =>
@@ -334,7 +419,7 @@ export const armT: ArmPlugin = {
     };
   },
   asTableText(raw, table) {
-    const s = normalise(raw);
+    const s = resolveAsks(raw, () => false);
     const { header, rows } = table;
     // A cell, with its column's header when there is one ("Paper marks: 250").
     const cell = (r: string[], k: number) => (header?.[k] ? `${header[k]}: ${r[k]}` : (r[k] ?? ""));
@@ -368,6 +453,29 @@ export const armT: ArmPlugin = {
       points: rows.map((r) => (keep.length ? { label: name(r), text: rest(r) } : name(r))),
     };
   },
+  asDiagram(raw, which) {
+    const s = { ...raw };
+    const swap: Record<string, [string, string]> = {
+      "picture-text": ["diagram-text", "diagram"],
+      "big-picture": ["big-diagram", "diagram"],
+      "visual-text": ["visual-text", "figure"],
+      "big-visual": ["big-visual", "figure"],
+    };
+    for (const k of ["picture", "figure"]) {
+      const f = s[k];
+      if (!isPic(f) || isDia(f) || !which(str(f.shows))) continue;
+      const { must_see: _m, subject: _s, ...rest } = f as S;
+      const dia = { ...rest, kind: "labelled-diagram", labels: [] };
+      const to = swap[str(s.template)];
+      delete s[k];
+      if (to) {
+        s.template = to[0];
+        s[to[1]] = dia;
+      } else s[k] = dia;
+      return s;
+    }
+    return undefined;
+  },
   asPicture(raw) {
     // Round 2: a diagram of a real thing that could not draw becomes a picture of the same thing.
     const s = { ...raw };
@@ -378,7 +486,16 @@ export const armT: ArmPlugin = {
     for (const k of ["figure", "diagram", "picture"]) {
       const f = s[k];
       if (!isDia(f)) continue;
-      const pic = { shows: f.shows, must_see: [], subject: "generic" };
+      // Round 7: an ask written for the drawing ("read the gradient") may not fit a photo of the
+      // thing, so the picture carries the stand-alone line either way.
+      const alone = (f as S).ask_without ?? null;
+      const pic = {
+        shows: f.shows,
+        must_see: [],
+        subject: "generic",
+        ask: alone,
+        ask_without: alone,
+      };
       const to = swap[str(s.template)];
       delete s[k];
       if (to) {
@@ -439,7 +556,7 @@ export const armT: ArmPlugin = {
     return [];
   },
   words(raw) {
-    const s = normalise(raw);
+    const s = resolveAsks(raw, () => true);
     const parts: string[] = [
       str(s.heading),
       str(s.lead),
