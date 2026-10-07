@@ -2,12 +2,14 @@
 // and diagrams in parallel, notes per slide, code checks, one bounded repair, timings and cost.
 // The layout step is an `ArmPlugin` (arm T: templates; K: blocks + recipes; R: reference slides).
 // See BAKEOFF/HARNESS.md.
+
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
+import { type Locale, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
 import { PartialJson, type Path } from "./partial";
 import { judgeRepair, repairable, sameFigure, teaching } from "./repair";
@@ -43,6 +45,8 @@ import {
 
 export type Stage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
 export type Brief = {
+  /** Round 8: the teacher's locale (from their account); England when absent. */
+  locale?: Locale;
   id: string;
   topic: string;
   subject: string;
@@ -470,6 +474,7 @@ export type RunResult = {
 
 export async function runLesson(o: RunOpts): Promise<RunResult> {
   const { arm, brief } = o;
+  setLocale(brief.locale);
   const t0 = performance.now();
   const ms = () => Math.round(performance.now() - t0);
   const timings: Record<string, number> = {};

@@ -15,6 +15,7 @@
 // per-lesson budget (the env contract's Railway AI_LESSON_COST_CAP_USD / AI_LESSON_TOKEN_CAP),
 // never the harness cap: the pipeline reserves each call's cap up front, so a smaller lesson
 // budget refuses calls production would admit.
+
 import {
   appendFileSync,
   existsSync,
@@ -26,6 +27,7 @@ import {
 import { homedir } from "node:os";
 import { basename, resolve } from "node:path";
 import { Writable } from "node:stream";
+import { locale } from "./locale";
 
 const argv = process.argv.slice(2);
 const opt = (name: string) => {
@@ -99,7 +101,7 @@ if (photoDir) {
   photoPlacer = {
     search: (query: string, o: Record<string, unknown>) =>
       client
-        .search({ query, ...o, locale: "en-GB" })
+        .search({ query, ...o, locale: locale().spelling })
         .then((page: { photos: unknown[] }) => page.photos),
     store: (photo: unknown, target: string) =>
       storePhoto({ photo, target, storage, workspaceId: WS }),

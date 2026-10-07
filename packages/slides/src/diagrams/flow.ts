@@ -3,6 +3,7 @@
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
 import { type KeyStage, keyStage } from "../themes";
+import { finishOf } from "./finish";
 import { LIMITS } from "./limits";
 import type { Flow } from "./schema";
 import { STROKE, sub, WEIGHT } from "./style";
@@ -280,7 +281,7 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         if (!b || !l) return;
         void s;
         out.push(
-          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.finish === "warm" ? fs * 0.8 : fs * 0.35)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${x.finish === "warm" ? STROKE.data : STROKE.line}"/>`,
+          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"/>`,
           text(x, b.cx, b.cy, l, { weight: WEIGHT.name, fs }),
         );
       });

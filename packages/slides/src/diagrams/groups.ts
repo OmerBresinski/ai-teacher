@@ -8,11 +8,13 @@
  * rings, rounded counters with a highlight, a bolder outline) and refined for Studio and the KS3-5
  * themes (hairline rings, flat counters, fine cut lines).
  */
+
+import { finishOf } from "./finish";
 import type { EqualGroups, FractionShapes } from "./schema";
-import { STROKE, WEIGHT } from "./style";
+import { WEIGHT } from "./style";
 import { type Ctx, mix, n, text, textWidth } from "./svg";
 
-const warm = (x: Ctx) => x.finish === "warm";
+const tk = finishOf;
 
 /** Counter centres for `k` counters packed in a unit circle (radius 1), with their radius. */
 function packInCircle(k: number): { pts: [number, number][]; r: number } {
@@ -45,10 +47,10 @@ function packInCircle(k: number): { pts: [number, number][]; r: number } {
 }
 
 function counter(x: Ctx, cx: number, cy: number, r: number, fill: string): string {
-  const base = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${fill}" stroke="${x.c.ink}" stroke-width="${warm(x) ? 2 : STROKE.hair}"/>`;
-  if (!warm(x)) return base;
+  const base = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${fill}" stroke="${x.c.ink}" stroke-width="${tk(x).stroke.counter}"/>`;
+  if (!tk(x).highlight) return base;
   // A soft highlight up and to the left: a counter you could pick up.
-  return `${base}<circle cx="${n(cx - r * 0.32)}" cy="${n(cy - r * 0.32)}" r="${n(r * 0.3)}" fill="#ffffff" fill-opacity="0.45"/>`;
+  return `${base}<circle cx="${n(cx - r * 0.32)}" cy="${n(cy - r * 0.32)}" r="${n(r * 0.3)}" fill="${x.c.bg}" fill-opacity="${tk(x).highlight}"/>`;
 }
 
 export function drawEqualGroups(s: EqualGroups, x: Ctx, w: number, h: number): string {
@@ -62,9 +64,10 @@ export function drawEqualGroups(s: EqualGroups, x: Ctx, w: number, h: number): s
         ? "?"
         : String(per);
   const fs = x.fs;
-  const ring = warm(x) ? mix(x.c.accent, x.c.bg, 0.12) : "none";
-  const ringLine = warm(x) ? x.c.accent : x.c.muted;
-  const ringW = warm(x) ? 3 : STROKE.line;
+  const ft = tk(x);
+  const ring = ft.wash.ring ? mix(x.c.accent, x.c.bg, ft.wash.ring) : "none";
+  const ringLine = x.c[ft.ringRole];
+  const ringW = ft.stroke.ring;
   if (s.layout === "rows") {
     // Each group a row of counters in a rounded band, its count to the right of the band.
     const labelW = textWidth(s.unknown ? "?" : String(per), x, fs, WEIGHT.name) + fs;
@@ -123,7 +126,7 @@ export function drawEqualGroups(s: EqualGroups, x: Ctx, w: number, h: number): s
     const cx = ox + (i % cols) * cellW + cellW / 2;
     const cy = oy + row * cellH + R + 2;
     out.push(
-      `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}" fill="${ring}" stroke="${ringLine}" stroke-width="${ringW}"${warm(x) ? "" : ' stroke-dasharray="6 4"'}/>`,
+      `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}" fill="${ring}" stroke="${ringLine}" stroke-width="${ringW}"${ft.ringDash ? ` stroke-dasharray="${ft.ringDash}"` : ""}/>`,
     );
     x.strokes?.push([cx - R, cy + R, cx + R, cy + R]);
     for (const [px, py] of pack.pts)
@@ -237,10 +240,11 @@ export function drawFractionShapes(s: FractionShapes, x: Ctx, w: number, h: numb
     return "";
   }
   const out: string[] = [];
-  const line = warm(x) ? 3.5 : 2;
-  const cutW = warm(x) ? 2.5 : 1.5;
-  const shade = warm(x) ? x.c.accent : mix(x.c.accent, x.c.bg, 0.85);
-  const blank = warm(x) ? mix(x.c.accent, x.c.bg, 0.08) : x.c.bg;
+  const t = tk(x);
+  const line = t.stroke.outline;
+  const cutW = t.stroke.cut;
+  const shade = mix(x.c.accent, x.c.bg, t.wash.shaded);
+  const blank = t.wash.blank ? mix(x.c.accent, x.c.bg, t.wash.blank) : x.c.bg;
   s.shapes.forEach((sh, i) => {
     const aspect = sh.shape === "bar" ? 4 : sh.shape === "rectangle" ? 1.6 : 1;
     let W = Math.min(colW, roomH * aspect);

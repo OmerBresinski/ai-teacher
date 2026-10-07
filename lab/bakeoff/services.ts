@@ -1,5 +1,6 @@
 // BAKEOFF harness: the shared services every arm uses unchanged. OpenAI calls (streamed and plain,
 // with cost), the picture director + bank (lab/cand's, as production), the diagram spec + drawer.
+
 import {
   appendFileSync,
   existsSync,
@@ -51,6 +52,7 @@ import {
 import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
 import { placePhoto } from "../../packages/slides/src/templates/index";
 import { createStorage } from "../../packages/storage/src/index";
+import { locale, localise } from "./locale";
 
 export const ROUNDS =
   "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds";
@@ -330,9 +332,19 @@ const body = (r: ChatReq, stream: boolean) => ({
 export const CHAT_TIMEOUT_MS = 40_000;
 
 /** One structured call; returns the parsed output, usage and cost. */
+/** Round 8: a request's prompt text with the teacher's locale filled in. */
+function localiseReq<R extends { system?: unknown; user?: unknown }>(r: R): R {
+  return {
+    ...r,
+    ...(typeof r.system === "string" ? { system: localise(r.system) } : {}),
+    ...(typeof r.user === "string" ? { user: localise(r.user) } : {}),
+  };
+}
+
 export async function chat(
   r: ChatReq,
 ): Promise<{ out: unknown; text: string; usage: Usage; usd: number; ms: number }> {
+  r = localiseReq(r);
   const t0 = performance.now();
   // Round 3 (R2 y10: eleven notes calls hung ~80 s, then the socket closed): every call has a
   // deadline; a timed-out or dropped call is tried once more before it fails.
@@ -375,6 +387,7 @@ export async function chatStream(
   r: ChatReq,
   onText: (delta: string) => void,
 ): Promise<{ text: string; usage: Usage; usd: number; ms: number; firstTokenMs: number }> {
+  r = localiseReq(r);
   const t0 = performance.now();
   // Stalls and runaway whitespace abort the call (a strict-schema stream once went quiet for 10
   // minutes and died with ECONNRESET, its usage never reported).
@@ -555,7 +568,9 @@ export function pictureService(opts: {
   const commons = im.createCommonsClient();
   const images = {
     search: (q: string, o: object) =>
-      pex.search({ query: q, ...o, locale: "en-GB" }).then((p: { photos: unknown }) => p.photos),
+      pex
+        .search({ query: q, ...o, locale: locale().spelling })
+        .then((p: { photos: unknown }) => p.photos),
     store: (photo: unknown, target: string) =>
       im.storePhoto({ photo, target, storage, workspaceId: WS } as never),
     searchCommons: (q: string, o: object) => commons.search({ query: q, ...o }),
@@ -749,7 +764,7 @@ export function pictureService(opts: {
       brief: b as never,
       slide: ask.slide,
       lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
-      country: "England",
+      country: locale().country,
       index: ask.index,
       stock: stock as never,
       judgeMade: (brief: unknown, made: { dataUrl?: string; src?: string }, reuse?: boolean) => {

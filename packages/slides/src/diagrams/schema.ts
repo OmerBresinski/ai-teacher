@@ -113,6 +113,17 @@ export const LineGraphSchema = z
     x: Axis,
     y: Axis,
     y2: Axis.optional(),
+    /**
+     * Round 8: a trend's shape only (y12 shipped "Schematic patterns: these are not the original
+     * numerical results"): the axes are named, no numbers stand on them, and the points are in
+     * any units the axes' min and max frame (0 to 10 is enough).
+     */
+    qualitative: z
+      .boolean()
+      .optional()
+      .describe(
+        "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+      ),
     series: z.array(Series).min(1).max(3),
     segments: z
       .array(z.object({ from: finite, to: finite, label: label(20) }))

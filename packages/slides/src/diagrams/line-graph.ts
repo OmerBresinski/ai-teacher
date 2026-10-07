@@ -41,7 +41,7 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   // dd-diagrams2: an energy profile's axes carry no numbers (reaction progress and energy here
   // are not measured), so it draws no ticks, only its two axis titles.
   const energy = energyHumps(g).length > 0;
-  if (energy) {
+  if (energy || g.qualitative) {
     yt.splice(0, yt.length);
     xt.splice(0, xt.length);
   }

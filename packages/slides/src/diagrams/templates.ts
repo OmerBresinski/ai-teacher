@@ -4,6 +4,7 @@
  * figure draws cleanly on every theme and slot. Each draws into `w`×`h` slide points.
  */
 
+import { finishOf } from "./finish";
 import { timeOf } from "./meaning";
 import {
   addLine,
@@ -393,9 +394,9 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
       const lw = ib * 0.55;
       const lx = ix + (ib - lw) / 2;
       const ly = iy + ib - lh - 2;
-      const warmish = x.finish === "warm";
+      const ft = finishOf(x);
       out.push(
-        `<rect x="${n(lx)}" y="${n(ly)}" width="${n(lw)}" height="${n(lh)}" rx="${n(warmish ? lh * 0.35 : 3)}" fill="${mix(x.c.muted, x.c.bg, 0.55)}" stroke="${x.c.ink}" stroke-width="${warmish ? 2.5 : 1.5}"/>`,
+        `<rect x="${n(lx)}" y="${n(ly)}" width="${n(lw)}" height="${n(lh)}" rx="${n(lh * ft.radius.lump)}" fill="${mix(x.c.muted, x.c.bg, ft.wash.lump)}" stroke="${x.c.ink}" stroke-width="${ft.stroke.lump}"/>`,
       );
       x.strokes?.push([lx, ly, lx + lw, ly]);
       if (s.lump && i === 0) {

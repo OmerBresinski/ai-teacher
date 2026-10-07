@@ -28,10 +28,14 @@ const answer = {
 };
 
 describe("picture director schema", () => {
-  test("parses a full answer and refuses an unknown route or diagram kind", () => {
+  test("parses a full answer and refuses an unknown route; one picture at most (round 8)", () => {
     expect(PictureDirectorSchema.parse(answer).route).toBe("pexels");
     expect(PictureDirectorSchema.safeParse({ ...answer, route: "stock" }).success).toBe(false);
-    expect(PictureDirectorSchema.safeParse({ ...answer, diagram: "collage" }).success).toBe(false);
+    const two = [
+      ...(answer as { pictures: unknown[] }).pictures,
+      ...(answer as { pictures: unknown[] }).pictures,
+    ];
+    expect(PictureDirectorSchema.safeParse({ ...answer, pictures: two }).success).toBe(false);
     const code = {
       route: "code",
       pictures: [],
@@ -43,7 +47,6 @@ describe("picture director schema", () => {
         arrangement: "groups",
         empty: 0,
       },
-      diagram: null,
       named: null,
       period: null,
     };
