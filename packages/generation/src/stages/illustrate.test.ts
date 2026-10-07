@@ -250,7 +250,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v19",
+        promptVersion: "pick-or-requery-photo.v17",
         thumbnail: second.src.tiny,
       },
     });
@@ -268,7 +268,7 @@ describe("illustrate", () => {
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
     expect(state.lesson.generation?.promptVersions.generated).toContain(
-      "pick-or-requery-photo.v19",
+      "pick-or-requery-photo.v17",
     );
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
@@ -426,7 +426,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v19",
+      promptVersion: "pick-or-requery-photo.v17",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 
@@ -537,7 +537,7 @@ describe("illustrate", () => {
     const brief = { subject: "rodent incisors", mustShow: ["front teeth"] };
     const state = await run(imageLesson([brief]), recordingDeps(ai, { images, logger }));
     expect(ai.calls).toHaveLength(3);
-    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v5");
+    expect(ai.calls[0]?.context?.promptVersion).toBe("shortlist-photos.v4");
     expect(ai.calls[0]?.promptText).toContain(
       "do not reject a caption for not mentioning them: front teeth",
     );

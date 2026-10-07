@@ -115,11 +115,26 @@ export function pinFaults(arm: AbArm): string[] {
     if (existsSync(path) && pins[key] !== sha(readFileSync(path)))
       out.push(`${key} differs from its pin`);
   }
+  for (const f of CODE_PINNED)
+    if (pins[`code:${f}`] !== sha(readFileSync(`${REPO}/${f}`)))
+      out.push(`${f} (code) differs from its pin`);
   return out;
 }
 
 /** The non-writer prompt files an arm reads from its own shared/ (pinned). Notes come from the head
  * prompts/shared in every arm (base code item 13), pinned under "shared:". */
+/** Round 5's picture prompts, which are code (coordinator, 7 Oct): director v11, judge v17, shortlist. */
+export const CODE_PINNED = [
+  "packages/generation/src/prompts/picture-director.ts",
+  "packages/generation/src/prompts/pick-or-requery-photo.ts",
+  "packages/generation/src/prompts/shortlist-photos.ts",
+];
+export const REPO = `${import.meta.dir}/../../..`;
+export const PICTURE_VERSIONS = {
+  director: "picture-director.v11",
+  judge: "pick-or-requery-photo.v17",
+};
+
 export const SHARED_PINNED = [
   "shared/user.txt",
   "shared/objectives.txt",

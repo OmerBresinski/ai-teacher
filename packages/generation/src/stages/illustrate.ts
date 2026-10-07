@@ -283,8 +283,6 @@ type PlaceArgs = {
   index: number;
   /** A library picture made for an earlier request, judged against this one. */
   reuse?: boolean;
-  /** The lesson's picture style; the judge holds the picture to it (judge v19). */
-  pictureStyle?: "photo" | "illustration";
 };
 
 /**
@@ -665,8 +663,6 @@ export async function judgeMade(args: {
   reuse?: boolean;
   /** BAKEOFF: the judge's whole verdict (its boxes place the picture's crop). */
   onVerdict?: (verdict: PickOrRequery) => void;
-  /** The lesson's picture style (judge v19): an illustration lesson's made pictures are illustrations. */
-  pictureStyle?: "photo" | "illustration";
 }): Promise<boolean> {
   const made: PhotoResult = {
     id: "made",
@@ -688,7 +684,6 @@ export async function judgeMade(args: {
       deps: args.deps,
       index: args.index,
       ...(args.reuse ? { reuse: true } : {}),
-      ...(args.pictureStyle ? { pictureStyle: args.pictureStyle } : {}),
     },
     [made],
     [],
@@ -744,7 +739,6 @@ async function judge(
       needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
       ...(brief.period ? { period: brief.period } : {}),
       ...(args.reuse ? { reuse: true } : {}),
-      ...(args.pictureStyle ? { pictureStyle: args.pictureStyle } : {}),
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,

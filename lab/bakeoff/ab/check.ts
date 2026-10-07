@@ -17,7 +17,10 @@ import {
   AB_ARMS,
   type AbArm,
   abFiles,
+  CODE_PINNED,
   menuKinds,
+  PICTURE_VERSIONS,
+  REPO,
   ROUND5_SYSTEM_CHARS,
   ROUND5_T_PIN,
   ROUND5_VERBATIM,
@@ -91,6 +94,18 @@ for (const a of AB_ARMS) {
   if (p === ROUND5_T_PIN)
     ok(`round5-verbatim T hash ${p} = round 5 run pin; base = it + C4 (checked per stage)`);
   else fail(`round5-verbatim T hash ${p} != round 5 run pin ${ROUND5_T_PIN}`);
+}
+
+// Pictures: round 5's director and judge in every arm (they are code, so one version for all arms).
+{
+  const dir = readFileSync(`${REPO}/${CODE_PINNED[0]}`, "utf8");
+  const judge = readFileSync(`${REPO}/${CODE_PINNED[1]}`, "utf8");
+  if (!dir.includes(`"${PICTURE_VERSIONS.director}"`))
+    fail(`director is not ${PICTURE_VERSIONS.director}`);
+  else if (!judge.includes(`"${PICTURE_VERSIONS.judge}"`))
+    fail(`picture judge is not ${PICTURE_VERSIONS.judge}`);
+  else
+    ok(`pictures: ${PICTURE_VERSIONS.director}, ${PICTURE_VERSIONS.judge} (round 5) in every arm`);
 }
 
 // 3. compiled requests
@@ -252,6 +267,7 @@ if (process.argv.includes("--pin")) {
         if (existsSync(path)) pins[path.slice(AB.length + 1)] = sha(readFileSync(path));
       }
     }
+    for (const f of CODE_PINNED) pins[`code:${f}`] = sha(readFileSync(`${REPO}/${f}`));
     writeFileSync(`${AB}/PINS.json`, JSON.stringify(pins, null, 1));
     ok(`pinned ${Object.keys(pins).length} files -> ${AB}/PINS.json`);
   }

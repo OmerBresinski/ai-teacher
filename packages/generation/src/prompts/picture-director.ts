@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
 
 /*
  * Picture director (TEACH-84, ruling 158; PHOTO-BANK round 3, 6 Oct 2026). One `small` call
@@ -43,14 +44,8 @@ import { z } from "zod";
  *   (round 3: a bean "seed" panel came back already sprouting) (v10).
  * - apparatus, equipment or an object alone, no people or hands, unless the slide is about using it
  *   (round 3 y11 s9: the apparatus photos had people in frame) (v11).
- * - BAKEOFF round 8 (v12, prompt-engineer): one picture per slot; the writer's shows/mustShow are
- *   kept (code ignores the director's); the director adds route, queries and imagePrompt. The
- *   lesson's picture style holds (no "always commons" for a story in an illustration lesson).
- *   `veto` carries the director's reason to show nothing (a schematic, a made portrait of a
- *   real-seeming private person), replacing the round 6-7 SCHEMATIC/PORTRAIT keyword rules.
- *   The imagePrompt paragraph is cut to what the image model needs; no diagram-kind list.
  */
-export const PICTURE_DIRECTOR_VERSION = "picture-director.v12";
+export const PICTURE_DIRECTOR_VERSION = "picture-director.v11";
 
 /** What a commons subject is: code decides per kind whether a Commons miss may be generated. */
 export const NAMED_KINDS = ["event", "person", "work", "place", "object"] as const;
@@ -78,8 +73,6 @@ export type PictureDirectorInput = {
   aspect: number;
   /** The lesson's picture style (design.picture_style); photo when the lesson has none. */
   style?: "photo" | "illustration";
-  /** Round 8: the writer's subject field: one particular real thing (named) or any good example. */
-  writerSubject?: "named" | "generic";
 };
 
 const Picture = z.object({
@@ -101,38 +94,34 @@ const Count = z.object({
 /** Flat and fully required (strict json_schema); code reads only the fields the route uses. */
 export const PictureDirectorSchema = z.object({
   route: z.enum(PICTURE_ROUTES),
-  // Round 8 (dataflow audit B): one picture per slot (the slide's own request), and no unused
-  // `diagram` field; the slot's diagram is the writer's, never the director's.
-  pictures: z.array(Picture).max(1),
+  pictures: z.array(Picture),
   count: Count.nullable(),
+  diagram: z.enum(DIAGRAM_KINDS as [string, ...string[]]).nullable(),
   named: z.enum(NAMED_KINDS).nullable(),
   period: z.string().nullable(),
-  /** Round 8: the director's reason to show no picture here (code enforces, never decides). */
-  veto: z.string().nullable(),
 });
 export type PictureDirection = z.infer<typeof PictureDirectorSchema>;
 
-const SYSTEM = `You find the picture for one slide of a school lesson. The slide's writer has said what the picture shows and what pupils must see in it, and that stays as written. You decide where the picture comes from and write what that source needs: the route, the library searches and the image prompt.
-
-A good picture shows the slide's teaching point so that pupils can see it: the subject the writer asked for, plainly and truly, in the lesson's picture style, framed for its zone.
+const SYSTEM = `You choose the picture for one slide of a school lesson. The slide's writer described the picture it wants in a sentence; you decide where the picture comes from and write what that source needs. A picture earns its place when pupils can see in it what the slide teaches.
 
 Choose one route:
-- commons: a particular real thing that is named or dated: an artwork or a recorded production of a named work, a person, a place, a building, a document, an object, or an event tied to a date. The real photograph or reproduction is searched first, and a made picture is the fallback.
-- pexels: a real subject that ordinary stock photographs show, alone or in a simple everyday scene.
-- library-or-generate: a picture no real photograph is likely to show: an unusual combination, a staged comparison, or a scene, character or setting from a story as it might be imagined.
-- code: a number of identical things that a drawn array counts better than a photograph.
-- none: nothing pupils could see explains the point better than the slide's words.
+- commons: anything real and named or dated: a named work or a recorded production of it, an artwork, a person, a place, a building, a document, an object, or an event or scene tied to a date. Always commons, even when the request describes a particular moment of it: a real photograph or reproduction is searched first, and a generated one is only the fallback.
+- pexels: a real subject that ordinary stock photographs show: a single common subject, or a simple everyday scene, that a photo library very likely holds.
+- library-or-generate: an unnamed picture no real photograph is likely to show: an unusual combination of subjects, a staged comparison, or a fictional character or scene from a story, play or novel as it might be imagined or staged.
+- code: a drawing shows the idea better than a photograph, including an array of plain identical marks, or one of these: ${DIAGRAM_KINDS.join(", ")}.
+- none: nothing pupils could see explains the slide's point better than its words, so a picture would only decorate.
 
-The writer's subject is named when it wants one particular real thing and generic when any good example will do. The lesson's picture style holds for every picture: in an illustration lesson a story's characters, scenes and stagings are imagined (library-or-generate), and only a real historical person, document or artefact is shown as it truly looks.
+For commons, pexels and library-or-generate, give one picture, or two or three when the slide compares things that read better as separate photographs; then each picture shows one of them. When they show stages of one thing, each describes what is visibly true at its stage and what is not there yet that the next stage brings. For code and none, pictures is empty.
 
-veto is a short reason when no picture should be shown here, else null. A picture is vetoed when the request is a schematic, such as particles, a model or shapes cut into parts, which a diagram teaches and a picture would only decorate; or when the only picture possible is a made, realistic image of a particular person who seems real but is not a public figure. With a veto, route is none.
+Each picture has:
+- shows: one sentence naming the subject and what pupils must see in it.
+- mustShow: one to three things a camera records, each one visible thing in two to four words, most important first. Who or what it is, where and when cannot be seen, so leave them out: the judge reads them from the source's own record. When a picture shows a young one with its adult, or one of a set showing one subject growing, one item is "same kind and colouring", so the judge checks that they look related.
+- queries: two to four photo-library searches of two to four words each, most specific first: a dated event as its year and name, a named thing by its name, then words for the view the slide needs.
+- imagePrompt: what an image model is told if no stored or library photo fits: one subject in a simple setting that suits it. In a photo lesson it is one realistic photograph, and living subjects look natural and unposed, as in a real photograph. In an illustration lesson it describes only what is in the picture, since code adds the lesson's illustration style. A young one with its adult are the same breed or variety with the same colouring, both whole and neither crowding the other out. For commons, it shows the real thing as it truly looks or looked. Give a period or place only when the subject belongs to one, taken from the lesson, and the lesson's country only when what pupils see differs between countries; never show a place through landmarks, flags or national symbols. Name only what belongs in the picture, since the image model draws every object a prompt mentions, and describe what is there rather than what to leave out. Code adds the rules about text and a single frame. Frame it for the zone's shape.
 
-pictures holds one picture, or none for code, none or a veto:
-- shows and mustShow: the writer's, copied.
-- queries: two to four library searches of two to four words each, most specific first: a named thing by its name, a dated event by its year and name, then words for the view the slide needs.
-- imagePrompt: what an image model is told if no library picture fits: the subject in a setting that suits it, framed for the zone's shape. In a photo lesson it is one realistic, natural, unposed photograph; in an illustration lesson it describes only what is in the picture, since code adds the style. A historical event is a painted illustration of the scene. For primary-age pupils, one subject fills the frame on a plain background. Equipment or an object stands alone unless the slide is about using it. It names a period, place or country only when what pupils see depends on it, and describes only what is in the picture.
+For pupils up to Year 6, choose a picture a young pupil takes in at a glance: one subject, or the few the slide needs, filling the frame on a plain, uncluttered background rather than a busy scene; the queries ask for that view and the imagePrompt describes it. Apparatus, equipment or an object is shown on its own, with no people or hands, unless the slide is about how it is used.
 
-count, when the point is an exact number of real things: what is counted (plural), the total, the number of equal groups or rows, how many spaces each holds, groups or rows, and how many spaces are empty; route library-or-generate, or code when a drawn array teaches it better. named, for commons: event, person, work, place or object. period: the time and place a historical subject belongs to, as a phrase; null for anything present-day. Each is null when it does not apply.`;
+When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 
 function shapeOf(aspect: number): string {
   if (aspect > 1.15) return "landscape";
@@ -156,7 +145,6 @@ export function pictureDirectorPrompt(input: PictureDirectorInput): {
       `Requested to show: ${input.mustShow.length ? input.mustShow.join("; ") : "(none)"}`,
       `Picture zone: ${shapeOf(input.aspect)}, ${ratio} wide to 1 high.`,
       `Picture style for this lesson: ${input.style ?? "photo"}`,
-      ...(input.writerSubject ? [`Writer's subject: ${input.writerSubject}`] : []),
     ].join("\n"),
   };
 }

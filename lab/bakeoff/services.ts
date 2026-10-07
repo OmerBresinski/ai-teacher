@@ -789,13 +789,8 @@ export function pictureService(opts: {
             ask: {
               subject: request,
               named: ask.named ? plainSubject(ask.shows).slice(0, 60) : null,
-              // Round 8: the slide's own request is the picture's spec; the director only adds searches.
-              writer: {
-                shows: ask.shows,
-                mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
-                subject: ask.named ? "named" : "generic",
-                ...(ask.final ? { final: true } : {}),
-              },
+              // A/B (coordinator, 7 Oct): round 5's director v11 in every arm. Its input has no writer
+              // spec or "final" flag (round 8/9), so the request goes as round 5 sent it.
             },
             brief: b as never,
             slide: ask.slide,
@@ -817,8 +812,7 @@ export function pictureService(opts: {
                 deps: deps as never,
                 dataUrl: made.dataUrl,
                 ...(reuse ? { reuse } : {}),
-                // Round 9 (audit cause 5): the judge holds the picture to the lesson's style.
-                pictureStyle: ask.style ?? "photo",
+                // A/B: round 5's judge v17 takes no picture style (round 9's v19 line is not sent).
                 onVerdict: (v: { boxes?: Box4[]; why?: string | null; fits?: boolean }) => {
                   madeBoxes = v.boxes;
                   seen = { why: v.why ?? undefined, fits: v.fits };
@@ -968,7 +962,6 @@ export function pictureService(opts: {
         brief: brief as never,
         deps: deps as never,
         dataUrl: url,
-        pictureStyle: a.style ?? "photo",
         onVerdict: (v: { boxes?: Box4[]; why?: string | null }) => {
           boxes[k] = v.boxes;
           panelWhy[k] = v.why ?? undefined;

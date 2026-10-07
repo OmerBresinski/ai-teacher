@@ -238,7 +238,8 @@ describe("round 9 review: restaging, look and exact labels", () => {
   });
 });
 
-describe("round 9 review: the writer's picture decision is final for the director", () => {
+// A/B lab/ab: round 5's director v11 has no veto or final flag (finalDirection is round 9 code), so this is skipped here.
+describe.skip("round 9 review: the writer's picture decision is final for the director", () => {
   test("a veto becomes the plain route; illustration lessons never get stock photos for generic subjects", () => {
     const { finalDirection } = require("../../packages/generation/src/stages/picture-director");
     const ask = {

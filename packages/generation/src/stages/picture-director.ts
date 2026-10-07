@@ -276,47 +276,11 @@ interface Ask {
   named: string | null;
   aspect?: number;
   look?: LessonLook;
-  /** Round 8: the writer's own picture spec (kept as the picture's shows and must-see). */
-  writer?: { shows: string; mustShow: string[]; final?: boolean };
-}
-
-/**
- * BAKEOFF round 9 (coordinator F): when the writer's visual decision is final (its flow look names
- * a picture), the director picks the source and the picture but cannot return none: a veto, a
- * "none" route or a failed call becomes the plain route for the subject. A real, named subject goes
- * to Commons; a generic one in an illustration lesson to the library or a generated illustration,
- * never stock photos; otherwise the director's route, or Pexels. Without `final`, unchanged.
- */
-export function finalDirection(
-  d: PictureDirection | undefined,
-  ask: Ask,
-): PictureDirection | undefined {
-  const w = ask.writer;
-  if (!w?.final) return d;
-  const illustrated = ask.look?.style === "illustration";
-  const stuck =
-    !d || d.route === "none" || d.route === "code" || !!d.veto?.trim() || !d.pictures?.length;
-  let route: PictureDirection["route"] = stuck ? (ask.named ? "commons" : "pexels") : d.route;
-  if (!ask.named && illustrated && route === "pexels") route = "library-or-generate";
-  if (!stuck && route === d?.route) return d;
-  const pictures = d?.pictures?.length
-    ? d.pictures
-    : [
-        {
-          shows: w.shows,
-          mustShow: w.mustShow,
-          queries: [ask.named ?? w.shows],
-          imagePrompt: w.shows,
-        },
-      ];
-  return { ...(d ?? {}), route, pictures, veto: null } as unknown as PictureDirection;
 }
 
 /** The slot's plan from the director's answer; none when there is no usable answer. */
-export function planPicture(d0: PictureDirection | undefined, ask: Ask): PicturePlan {
-  const d = finalDirection(d0, ask);
-  // Round 8: the director's veto (its reason to show nothing) is enforced here, never decided.
-  if (!d || d.route === "none" || d.veto?.trim()) return { kind: "none" };
+export function planPicture(d: PictureDirection | undefined, ask: Ask): PicturePlan {
+  if (!d || d.route === "none") return { kind: "none" };
   const base = { named: ask.named, ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}) };
   const counted = countOk(d.count) ? d.count : undefined;
   // FIX1: a photo framed as a count only when there is something to count. A pair (an adult and
@@ -352,13 +316,8 @@ export function planPicture(d0: PictureDirection | undefined, ask: Ask): Picture
       imagePrompt: p.imagePrompt.replace(/\s+/g, " ").trim(),
     }))
     .filter((p) => p.shows && p.imagePrompt);
-  const first0 = pictures[0];
-  if (!first0) return { kind: "none" };
-  // Round 8 (dataflow audit B): the writer's picture spec is the truth. The director adds search
-  // terms and the image prompt; it never rewrites what the picture shows or must show.
-  const first = ask.writer
-    ? { ...first0, shows: ask.writer.shows, mustShow: ask.writer.mustShow.slice(0, 4) }
-    : first0;
+  const first = pictures[0];
+  if (!first) return { kind: "none" };
   // A historical scene with no named kind is read as an event (an illustration under `strict`).
   const kind = d.named ?? (depicts ? "event" : "object");
   const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
@@ -366,7 +325,7 @@ export function planPicture(d0: PictureDirection | undefined, ask: Ask): Picture
     ? uniq([
         `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
         ...first.mustShow,
-      ]).slice(0, ask.writer ? 5 : 3)
+      ]).slice(0, 3)
     : first.mustShow;
   const counting = countedPhoto && countImagePrompt(countedPhoto);
   const illustrated = !counting && fallback === "illustration" && !!period;
@@ -423,12 +382,7 @@ export interface SlideForPicture {
  */
 export async function findDirected(args: {
   bank: PictureBank;
-  ask: {
-    subject: string;
-    named?: string | null;
-    /** Round 8: the writer's own shows and must-see, kept as the picture's spec. */
-    writer?: { shows: string; mustShow: string[]; subject?: "named" | "generic" };
-  };
+  ask: { subject: string; named?: string | null };
   brief: ImageBrief;
   slide: SlideForPicture;
   lesson: { title: string; yearGroup?: string; subject?: string };
@@ -457,12 +411,10 @@ export async function findDirected(args: {
     mustShow: b.mustShow ?? [],
     aspect: b.aspect ?? 1.6,
     ...(args.look ? { style: args.look.style } : {}),
-    ...(ask.writer?.subject ? { writerSubject: ask.writer.subject } : {}),
   });
   const plan = planPicture(direction, {
     text: ask.subject,
     named: ask.named ?? null,
-    ...(ask.writer ? { writer: ask.writer } : {}),
     ...(b.aspect !== undefined ? { aspect: b.aspect } : {}),
     ...(args.look ? { look: args.look } : {}),
   });
@@ -481,12 +433,7 @@ export async function findDirected(args: {
     args.onOutcome?.({
       director: direction?.route ?? "failed",
       via: "none",
-      reason: !direction
-        ? "director-failed"
-        : direction.veto?.trim()
-          ? "director-veto"
-          : "director-none",
-      ...(direction?.veto?.trim() ? { veto: direction.veto.trim() } : {}),
+      reason: direction ? "director-none" : "director-failed",
     });
     return undefined;
   }
@@ -586,12 +533,9 @@ export interface PictureOutcome {
   via: string;
   route?: string;
   period?: string;
-  /** Round 8: the director's reason to show no picture, when it vetoed one. */
-  veto?: string;
   /** Why the slot is empty: the director gave nothing, a real thing missed with no fallback, or generation was refused (cap, judge, or error). */
   reason?:
     | "director-none"
-    | "director-veto"
     | "director-failed"
     | "real-miss-no-fallback"
     | "generation-refused-or-failed";

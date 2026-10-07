@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
+import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
 import { DIRECTOR_FIXTURES } from "../stages/picture-director.fixtures";
 import {
   PICTURE_DIRECTOR_VERSION,
@@ -24,18 +25,13 @@ const answer = {
   diagram: null,
   named: null,
   period: null,
-  veto: null,
 };
 
 describe("picture director schema", () => {
-  test("parses a full answer and refuses an unknown route; one picture at most (round 8)", () => {
+  test("parses a full answer and refuses an unknown route or diagram kind", () => {
     expect(PictureDirectorSchema.parse(answer).route).toBe("pexels");
     expect(PictureDirectorSchema.safeParse({ ...answer, route: "stock" }).success).toBe(false);
-    const two = [
-      ...(answer as { pictures: unknown[] }).pictures,
-      ...(answer as { pictures: unknown[] }).pictures,
-    ];
-    expect(PictureDirectorSchema.safeParse({ ...answer, pictures: two }).success).toBe(false);
+    expect(PictureDirectorSchema.safeParse({ ...answer, diagram: "collage" }).success).toBe(false);
     const code = {
       route: "code",
       pictures: [],
@@ -47,9 +43,9 @@ describe("picture director schema", () => {
         arrangement: "groups",
         empty: 0,
       },
+      diagram: null,
       named: null,
       period: null,
-      veto: null,
     };
     expect(PictureDirectorSchema.parse(code).count?.total).toBe(24);
   });
@@ -79,6 +75,7 @@ describe("picture director schema", () => {
     ]);
     const { system } = pictureDirectorPrompt(input);
     for (const r of PICTURE_ROUTES) expect(system).toContain(`- ${r}:`);
+    for (const k of DIAGRAM_KINDS) expect(system).toContain(k);
     expect(PICTURE_DIRECTOR_VERSION).toMatch(/^picture-director\.v\d+$/);
   });
 });
@@ -104,7 +101,7 @@ describe("picture director prompt", () => {
   });
 
   test("v8: the lesson's picture style is a user line, photo when the lesson has none", () => {
-    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v12");
+    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v11");
     expect(pictureDirectorPrompt(input).user).toContain("Picture style for this lesson: photo");
     expect(pictureDirectorPrompt({ ...input, style: "illustration" }).user).toContain(
       "Picture style for this lesson: illustration",
@@ -113,20 +110,19 @@ describe("picture director prompt", () => {
 
   test("v8: an illustration lesson's image prompt has no photographic words; fiction is not commons", () => {
     const { system } = pictureDirectorPrompt(input);
-    expect(system).toContain("In a photo lesson it is one realistic, natural, unposed photograph");
-    expect(system).toContain("in an illustration lesson it describes only what is in the picture");
-    expect(system).toContain("a scene, character or setting from a story as it might be imagined");
-    expect(system).toContain("a particular real thing that is named or dated");
-    expect(system).toContain("veto is a short reason when no picture should be shown here");
+    expect(system).toContain("In a photo lesson it is one realistic photograph");
+    expect(system).toContain("In an illustration lesson it describes only what is in the picture");
+    expect(system).toContain(
+      "or a fictional character or scene from a story, play or novel as it might be imagined or staged",
+    );
+    expect(system).toContain("anything real and named or dated");
   });
 });
 
 describe("who, where and when", () => {
   test("mustShow is what a camera records; the judge reads identity from the source's record", async () => {
     const { pickOrRequeryPrompt } = await import("./pick-or-requery-photo");
-    expect(pictureDirectorPrompt(input).system).toContain(
-      "shows and mustShow: the writer's, copied.",
-    );
+    expect(pictureDirectorPrompt(input).system).toContain("one to three things a camera records");
     expect(pickOrRequeryPrompt.system).toContain(
       "its source's own record (title, description, date)",
     );

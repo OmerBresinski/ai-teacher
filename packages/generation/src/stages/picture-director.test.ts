@@ -30,9 +30,9 @@ const dir = (over: Partial<PictureDirection>): PictureDirection => ({
   route: "pexels",
   pictures: [pic()],
   count: null,
+  diagram: null,
   named: null,
   period: null,
-  veto: null,
   ...over,
 });
 const ask = { text: "A full-grown sheep beside a lamb", named: null, aspect: 0.89 };
@@ -158,10 +158,10 @@ describe("planPicture", () => {
       perGroup: 6,
       arrangement: "groups",
     });
-    expect(planPicture(dir({ route: "code", pictures: [] }), ask).kind).toBe("none");
+    expect(planPicture(dir({ route: "code", pictures: [], diagram: "cycle" }), ask).kind).toBe(
+      "none",
+    );
     expect(planPicture(dir({ route: "none", pictures: [] }), ask).kind).toBe("none");
-    // Round 8: the director's veto is enforced in code, whatever route it named.
-    expect(planPicture(dir({ veto: "a schematic: a diagram's job" }), ask).kind).toBe("none");
     expect(planPicture(undefined, ask).kind).toBe("none");
     expect(planPicture(dir({ pictures: [pic({ imagePrompt: " " })] }), ask).kind).toBe("none");
   });
