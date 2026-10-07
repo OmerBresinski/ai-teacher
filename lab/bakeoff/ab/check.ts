@@ -230,6 +230,8 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
     const jd = jsonDiff(b.schema, r.schema);
     if (a === "base2" && (sd.del.length || sd.add.length || jd.length || b.system !== r.system))
       fail(`base2 ${id}: differs from a1`);
+    if (a === "base3" && (jd.length || b.system !== r.system))
+      fail(`base3 ${id}: its request differs from k1 (base3 is k1's files + code fixes)`);
     // D11: K1 changes only the flow's minItems and maxItems; the system text is byte for byte base2's.
     if (
       a === "k1" &&

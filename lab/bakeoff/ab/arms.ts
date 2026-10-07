@@ -10,7 +10,17 @@ import { existsSync, readFileSync } from "node:fs";
 const BAKEOFF =
   "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds/BAKEOFF";
 
-export const AB_ARMS = ["base", "a1", "a2", "a3", "base2", "b2-a2", "b2-a3", "k1"] as const;
+export const AB_ARMS = [
+  "base",
+  "a1",
+  "a2",
+  "a3",
+  "base2",
+  "b2-a2",
+  "b2-a3",
+  "k1",
+  "base3",
+] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
 export const AB = `${BAKEOFF}/ab`;
@@ -19,7 +29,7 @@ export const STAGES = ["KS1", "KS2", "KS3-5"] as const;
 /** What each arm changes on top of round 5 (code side). */
 export const AB_CONFIG: Record<
   AbArm,
-  { ask: boolean; kinds: string[]; meaningKinds: string[]; delta: string }
+  { ask: boolean; kinds: string[]; meaningKinds: string[]; delta: string; fixes?: boolean }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
   a1: { ask: false, kinds: [], meaningKinds: [], delta: "C1 specialist moves (prompt only)" },
@@ -57,6 +67,14 @@ export const AB_CONFIG: Record<
     meaningKinds: [],
     delta: "base2 + K1 flow bounds lo..hi (schema only)",
   },
+  // D11a (7 Oct): k1 passed its writer-only screen. base3 = k1's prompt files + the correctness fixes.
+  base3: {
+    ask: false,
+    kinds: [],
+    meaningKinds: [],
+    fixes: true,
+    delta: "D11a base: base2 + K1 + K3 (incomplete writer fails) + seeded hinge shuffle",
+  },
 };
 /** The arm each arm is diffed against, and the arm whose delta it must reproduce (D4). */
 export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }>> = {
@@ -67,6 +85,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b2-a2": { ref: "base2", same: ["base", "a2"] },
   "b2-a3": { ref: "base2", same: ["base", "a3"] },
   k1: { ref: "base2" },
+  base3: { ref: "k1" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -75,6 +94,8 @@ export function setAbArm(a: AbArm | undefined) {
   current = a;
 }
 export const abArm = () => current;
+/** D11 correctness fixes (K3 incomplete-writer failure, seeded hinge shuffle): base3 onwards only. */
+export const abFixes = () => (current ? Boolean(AB_CONFIG[current].fixes) : false);
 
 /** Round 5 as recorded: system length (JS chars) per stage in round5 request.json, and the T pin. */
 export const ROUND5_SYSTEM_CHARS: Record<(typeof STAGES)[number], number> = {

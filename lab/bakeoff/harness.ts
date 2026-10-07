@@ -9,7 +9,7 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
-import { type AbArm, abArm, abFiles, abShared, sha } from "./ab/arms";
+import { type AbArm, abArm, abFiles, abFixes, abShared, sha } from "./ab/arms";
 import { continueForFit } from "./ab/continue";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { type Locale, setLocale } from "./locale";
@@ -209,6 +209,68 @@ export function placedPictureText(
   const alt = photo?.alt?.trim();
   const seen = (photo?.subjects ?? []).map((x) => x.name).filter(Boolean);
   return `${alt || request}${seen.length ? ` (visible: ${seen.join(", ")})` : ""}`;
+}
+
+/**
+ * K3 (D11, 7 Oct): why a writer output is incomplete, or undefined when it is whole. A stream cut
+ * at the token limit, JSON that does not close, or fewer slides than the brief allows fails the run
+ * (one retry in ab/run.sh) instead of saving the flow's placeholders as a headings-only deck.
+ */
+export function writerIncomplete(o: {
+  finishReason?: string | null;
+  text: string;
+  minSlides: number;
+}): string | undefined {
+  if (o.finishReason === "length") return "finish_reason length (token limit)";
+  let out: { slides?: unknown[] };
+  try {
+    out = JSON.parse(o.text);
+  } catch {
+    return "writer JSON does not parse";
+  }
+  // `slides` holds slide 3 onwards (title and objectives are their own keys).
+  const n = Array.isArray(out?.slides) ? out.slides.length : 0;
+  if (n < o.minSlides - 2)
+    return `${n} slides after title and objectives, under ${o.minSlides - 2}`;
+  return undefined;
+}
+
+/** A 32-bit FNV-1a hash of a string (seeds the hinge shuffle). */
+function fnv(x: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < x.length; i++) h = Math.imul(h ^ x.charCodeAt(i), 0x01000193) >>> 0;
+  return h;
+}
+
+/**
+ * Seeded hinge shuffle (D11, 7 Oct): the writer put the answer at B on 76% of hinges. The options
+ * are permuted by a seeded Fisher-Yates (same seed, same order), so the correct option's position is
+ * uniform across seeds; `correct` follows its option. The notes and answer keys are written later from
+ * the slide as shown (and `withCorrectLetter` reads `correct`), so they match the new order.
+ */
+export function shuffleHinge(
+  slide: Record<string, unknown>,
+  seed: string,
+): Record<string, unknown> {
+  const opts = slide.options;
+  const c = Number(slide.correct);
+  if (slide.template !== "hinge" || !Array.isArray(opts) || opts.length < 2) return slide;
+  if (!Number.isInteger(c) || c < 1 || c > opts.length) return slide;
+  let st = fnv(seed) || 1;
+  const rnd = () => {
+    // mulberry32
+    st = (st + 0x6d2b79f5) >>> 0;
+    let t = st;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const order = opts.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [order[i], order[j]] = [order[j] as number, order[i] as number];
+  }
+  return { ...slide, options: order.map((i) => opts[i]), correct: order.indexOf(c - 1) + 1 };
 }
 
 /** "B: ..." for a multiple-choice slide whose `correct` (1-based option) is set, unless already lettered. */
@@ -1151,6 +1213,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       void first;
       // Round 6: no em dashes on slides (Greg 1 Oct; r5 y8).
       s = slideNoEmDash(s);
+      // D11 fix (base3 onwards): the hinge's correct option lands at a seeded, uniform position.
+      if (abFixes()) s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
       // Round 9 (coordinator 6): the flow's look is the writer's visual decision. A slide whose
       // look names a picture but which asks for none gets the picture from look's phrase.
       // A/B base (coordinator 7 Oct): round 5's flow names it look_at; the same field, read the same way.
@@ -1483,6 +1547,23 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     finishReason: "finishReason" in main ? (main.finishReason ?? null) : null,
   });
   mark("streamDone");
+  // K3 (base3 onwards): an incomplete writer output fails the run; it never ships a headings deck.
+  const incomplete = abFixes()
+    ? writerIncomplete({
+        finishReason: "finishReason" in main ? main.finishReason : undefined,
+        text: main.text,
+        minSlides: brief.slides.min,
+      })
+    : undefined;
+  if (incomplete) {
+    log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });
+    writeJson(`${o.outDir}/cost.json`, {
+      ...ledger.parts,
+      total: main.usd,
+      note: "writer output incomplete",
+    });
+    throw new Error(`writer output incomplete: ${incomplete}`);
+  }
   if (o.writerOnly) {
     writeJson(`${o.outDir}/cost.json`, { ...ledger.parts, total: main.usd, main: main.usd });
     log({
