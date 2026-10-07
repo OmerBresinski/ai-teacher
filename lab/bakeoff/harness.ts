@@ -1608,7 +1608,11 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       if (!line) continue;
       const keys = (asks.get(i) ?? []).map((a) => a.key);
       const key =
-        keys.find((x) => x === k) ?? keys.find((x) => x.startsWith(k.split(".")[0] ?? k)) ?? k;
+        keys.find((x) => x === k) ??
+        (["picture", "diagram", "figure"].includes(k)
+          ? keys.find((x) => ["picture", "diagram", "figure"].includes(x))
+          : keys.find((x) => x.startsWith(k.split(".")[0] ?? k))) ??
+        k;
       const st = visuals.get(`${i}:${key}`)?.status ?? "none";
       const dropped = laid.get(i)?.diagram;
       const p = path.get(i);
