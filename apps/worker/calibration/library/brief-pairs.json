@@ -1,0 +1,71 @@
+{
+  "about": "Hand-labelled pairs of picture-library cards (TEACH-84): the card is bankCard(imageBrief) = 'subject: mustShow items', the shape Plan's image briefs have on master. same = one photograph serves both briefs; near = the same topic, but a different photograph is needed (reusing would be wrong); different = unrelated. Labelled by the implementer from the briefs' wording, 7 Oct 2026.",
+  "pairs": [
+    ["ice cubes melting: ice cubes, meltwater", "melting ice: ice cubes, puddle of water", "same"],
+    [
+      "frog on a lily pad: frog, lily pad",
+      "frog sitting on lily pad: frog, lily pad, pond",
+      "same"
+    ],
+    ["volcano erupting: lava, ash cloud", "erupting volcano: lava flow, smoke", "same"],
+    ["honeybee on a flower: bee, pollen", "bee collecting pollen: honeybee, flower", "same"],
+    ["Roman soldiers: armour, shields", "Roman legionaries: helmets, shields", "same"],
+    ["rainforest canopy: tall trees, dense leaves", "tropical rainforest: canopy, trees", "same"],
+    ["water cycle evaporation: sea, sunlight", "evaporation from the sea: ocean, sun", "same"],
+    [
+      "Hadrian's Wall: stone wall, hills",
+      "Hadrian's Wall in Northumberland: wall, countryside",
+      "same"
+    ],
+    ["seedling growing: shoot, roots", "young plant sprouting: seedling, soil", "same"],
+    [
+      "magnet attracting paper clips: magnet, paper clips",
+      "magnet picking up paper clips: bar magnet, clips",
+      "same"
+    ],
+    ["coins on a table: pound coins", "British coins: pound coins, pence", "same"],
+    ["fox in a wood: red fox", "red fox: fox, woodland", "same"],
+    ["thermometer: scale, liquid", "thermometer reading: thermometer, scale", "same"],
+    ["solar panels on a roof: solar panels", "rooftop solar panels: panels, roof", "same"],
+    ["ice cubes melting: ice cubes, meltwater", "water boiling in a pan: steam, bubbles", "near"],
+    ["frog on a lily pad: frog, lily pad", "frogspawn in a pond: frogspawn", "near"],
+    ["frog on a lily pad: frog, lily pad", "tadpoles swimming: tadpoles", "near"],
+    ["volcano erupting: lava, ash cloud", "earthquake damage: cracked road", "near"],
+    ["Roman soldiers: armour, shields", "Roman mosaic floor: mosaic", "near"],
+    [
+      "24 counters in four groups of six: counters",
+      "12 counters in three groups of four: counters",
+      "near"
+    ],
+    ["three apples: apples", "five apples: apples", "near"],
+    ["caterpillar on a leaf: caterpillar", "butterfly on a flower: butterfly", "near"],
+    ["deciduous tree in autumn: orange leaves", "evergreen pine tree: needles", "near"],
+    ["river meander: bend, river bank", "waterfall: falling water, rocks", "near"],
+    [
+      "plant cell under a microscope: cell wall, chloroplasts",
+      "animal cell under a microscope: cell membrane, nucleus",
+      "near"
+    ],
+    ["copper sulfate crystals: blue crystals", "salt crystals: white crystals", "near"],
+    ["hen with chick: hen, chick", "cow with calf: cow, calf", "near"],
+    ["Globe Theatre: stage, yard", "Shakespeare portrait: Shakespeare", "near"],
+    ["ice cubes melting: ice cubes, meltwater", "Roman soldiers: armour, shields", "different"],
+    ["frog on a lily pad: frog, lily pad", "pound coins: coins", "different"],
+    ["volcano erupting: lava, ash cloud", "honeybee on a flower: bee, pollen", "different"],
+    [
+      "Hadrian's Wall: stone wall, hills",
+      "magnet attracting paper clips: magnet, clips",
+      "different"
+    ],
+    ["thermometer: scale, liquid", "fox in a wood: red fox", "different"],
+    ["solar panels on a roof: solar panels", "caterpillar on a leaf: caterpillar", "different"],
+    [
+      "river meander: bend, river bank",
+      "plant cell under a microscope: cell wall, chloroplasts",
+      "different"
+    ],
+    ["Globe Theatre: stage, yard", "seedling growing: shoot, roots", "different"],
+    ["three apples: apples", "volcano erupting: lava, ash cloud", "different"],
+    ["copper sulfate crystals: blue crystals", "rainforest canopy: tall trees", "different"]
+  ]
+}

@@ -20,6 +20,7 @@ import {
   shortlistSchemaFor,
 } from "../prompts/shortlist-photos";
 import {
+  type BankBrief,
   BudgetExceeded,
   emptyImageCounts,
   type PhotoPlacer,
@@ -45,7 +46,8 @@ const PER_PAGE = 30;
 /** Judge calls per slide: the first pick, and one more after a requery. */
 const MAX_JUDGE_CALLS = 2;
 
-type Judged = "pick" | "query" | "none";
+/** `library`: a picture the library served (TEACH-84), no search and no judge call. */
+type Judged = "pick" | "query" | "none" | "library";
 
 type PlaceOutcome =
   | { outcome: "placed"; photo: PlacedPhoto; judged: Judged }
@@ -372,6 +374,10 @@ export function factQueryHints(lesson: Lesson, index: number): string[] {
 
 async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
   const { brief, images, deps, index } = args;
+  // The library first (TEACH-84, ruling 158 item 6): a picture an earlier lesson placed for the
+  // same request needs no search, shortlist or judge call.
+  const fromLibrary = await lookupLibrary(args);
+  if (fromLibrary) return { outcome: "placed", photo: fromLibrary, judged: "library" };
   const candidates: PhotoResult[] = [];
   /** Every query actually searched, so the judge is told all of them and never repeats one. */
   const tried: string[] = [];
@@ -427,11 +433,13 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
         promptVersion: pickOrRequeryPrompt.version,
         thumbnail: picked.src.tiny,
       };
-      return {
-        outcome: "placed",
-        photo: await store(images, picked, brief, evidence),
-        judged: round === 0 ? "pick" : "query",
-      };
+      const photo = await store(images, picked, brief, evidence);
+      // Write-through: the judged photograph goes into the library for the next lesson.
+      const bankBrief = bankBriefOf(args);
+      if (bankBrief) {
+        images.rememberBank?.(bankBrief, { ...photo, width: picked.width, height: picked.height });
+      }
+      return { outcome: "placed", photo, judged: round === 0 ? "pick" : "query" };
     }
     if (picked) {
       deps.logger.info({
@@ -461,6 +469,66 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
     pool = photos.slice(0, MAX_CANDIDATES);
   }
   return { outcome: "empty", judged: "none" };
+}
+
+/**
+ * What the library is keyed by for this slide: the brief, the lesson's topic and age band, and the
+ * orientation illustrate searches (portrait). No band, no library: the tag filter needs one.
+ */
+function bankBriefOf(args: PlaceArgs): BankBrief | undefined {
+  const { lesson, brief } = args;
+  if (!lesson.ageBand) return undefined;
+  return {
+    subject: brief.subject,
+    mustShow: brief.mustShow,
+    topic: lesson.brief?.topic ?? lesson.title,
+    ageBand: lesson.ageBand,
+    orientation: "portrait",
+  };
+}
+
+/**
+ * One library lookup. A tag hit (same normalised subject) still has to show one of this brief's
+ * `mustShow` items, as `gatePasses` asks of a fresh pick, because the slide's text is written to
+ * what the picture shows; an embedding hit matched the subject and items together. A library
+ * failure is a miss, never a lost slide.
+ */
+async function lookupLibrary(args: PlaceArgs): Promise<PlacedPhoto | undefined> {
+  const { images, brief, deps, index } = args;
+  const bankBrief = bankBriefOf(args);
+  if (!images.lookupBank || !bankBrief) return undefined;
+  let hit: Awaited<ReturnType<NonNullable<PhotoPlacer["lookupBank"]>>>;
+  try {
+    hit = await images.lookupBank(bankBrief, { signal: deps.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    // The error's name only: a query error carries its parameters (the brief), ADR 0015.
+    deps.logger.info(
+      { stage: "illustrate", slideIndex: index, error: errorName(error) },
+      "library failed",
+    );
+    return undefined;
+  }
+  if (!hit) return undefined;
+  if (
+    hit.via === "tags" &&
+    brief.mustShow.length > 0 &&
+    itemsSeen(brief, hit.evidence).length === 0
+  ) {
+    deps.logger.info({ stage: "illustrate", slideIndex: index, library: "gated" });
+    return undefined;
+  }
+  deps.logger.info({
+    stage: "illustrate",
+    slideIndex: index,
+    library: hit.via,
+    similarity: Number(hit.similarity.toFixed(3)),
+  });
+  return { src: hit.src, alt: hit.alt, source: hit.source, evidence: hit.evidence };
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "unknown";
 }
 
 /** The candidates the judge sees when the shortlist cannot choose: the first `SHORTLIST_MAX`. */
@@ -552,7 +620,10 @@ async function judge(
 }
 
 /** Which `mustShow` items the judge saw, spelt as the brief spells them. */
-function itemsSeen(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrRequery): string[] {
+function itemsSeen(
+  brief: Pick<ImageBrief, "mustShow">,
+  verdict: Pick<PickOrRequery, "visible">,
+): string[] {
   const seen = new Set(verdict.visible.map(normaliseItem));
   return brief.mustShow.filter((item) => seen.has(normaliseItem(item)));
 }

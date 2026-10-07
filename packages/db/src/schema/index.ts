@@ -1,5 +1,6 @@
 import { anonymousSignins } from "./anonymous-signins";
 import { accounts, sessions, users, verifications } from "./auth";
+import { bankImages } from "./bank-images";
 import { documents } from "./documents";
 import { jobEvents } from "./job-events";
 import { magicLinkSends } from "./magic-link-sends";
@@ -9,6 +10,13 @@ import { workspaces } from "./workspaces";
 export * from "./_columns";
 export { anonymousSignins } from "./anonymous-signins";
 export { accounts, authSchema, sessions, users, verifications } from "./auth";
+export {
+  BANK_EMBED_DIMENSIONS,
+  type BankImageChecks,
+  type BankImageStatus,
+  bankImageStatus,
+  bankImages,
+} from "./bank-images";
 export { DOCUMENTS_REQUEST_ID_INDEX, documentKind, documents } from "./documents";
 export { JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX, jobEvents } from "./job-events";
 export { magicLinkSends } from "./magic-link-sends";
@@ -26,7 +34,8 @@ export const TENANT_TABLES = [jobEvents, documents, sources] as const;
  * The documented allow-list of tables without `workspace_id` (ADR 0007): the tenant root and the
  * better-auth identity tables (ADR 0008 — identity sits above the Workspace; see `auth.ts`), and
  * the per-IP anonymous sign-in counter (TEACH-222; see `anonymous-signins.ts`) and the magic-link
- * send log (TEACH-300; see `magic-link-sends.ts`).
+ * send log (TEACH-300; see `magic-link-sends.ts`), and the shared picture library (TEACH-84; see
+ * `bank-images.ts`: shared across Workspaces by design, holds no teacher content).
  * Anything else needs a written justification in its schema file.
  */
 export const NON_TENANT_TABLES = [
@@ -37,6 +46,7 @@ export const NON_TENANT_TABLES = [
   verifications,
   anonymousSignins,
   magicLinkSends,
+  bankImages,
 ] as const;
 
 /** Every application table, for the exhaustiveness check below and for tests. */
@@ -51,6 +61,7 @@ export const ALL_TABLES = {
   sources,
   anonymousSignins,
   magicLinkSends,
+  bankImages,
 } as const;
 
 // ---------------------------------------------------------------------------------------------

@@ -1,0 +1,63 @@
+0.962  near      three apples: apples | five apples: apples
+0.943  near      24 counters in four groups of six: counters | 12 counters in three groups of four: counters
+0.891  same      frog on a lily pad: frog, lily pad | frog sitting on lily pad: frog, lily pad, pon
+0.853  same      Roman soldiers: armour, shields | Roman legionaries: helmets, shields
+0.849  same      solar panels on a roof: solar panels | rooftop solar panels: panels, roof
+0.844  same      magnet attracting paper clips: magnet, paper  | magnet picking up paper clips: bar magnet, cl
+0.842  same      honeybee on a flower: bee, pollen | bee collecting pollen: honeybee, flower
+0.839  same      thermometer: scale, liquid | thermometer reading: thermometer, scale
+0.837  same      fox in a wood: red fox | red fox: fox, woodland
+0.835  same      ice cubes melting: ice cubes, meltwater | melting ice: ice cubes, puddle of water
+0.822  same      water cycle evaporation: sea, sunlight | evaporation from the sea: ocean, sun
+0.822  same      volcano erupting: lava, ash cloud | erupting volcano: lava flow, smoke
+0.790  same      rainforest canopy: tall trees, dense leaves | tropical rainforest: canopy, trees
+0.770  same      Hadrian's Wall: stone wall, hills | Hadrian's Wall in Northumberland: wall, count
+0.749  same      coins on a table: pound coins | British coins: pound coins, pence
+0.744  near      plant cell under a microscope: cell wall, chl | animal cell under a microscope: cell membrane
+0.677  same      seedling growing: shoot, roots | young plant sprouting: seedling, soil
+0.657  near      caterpillar on a leaf: caterpillar | butterfly on a flower: butterfly
+0.631  near      copper sulfate crystals: blue crystals | salt crystals: white crystals
+0.625  near      frog on a lily pad: frog, lily pad | frogspawn in a pond: frogspawn
+0.558  near      frog on a lily pad: frog, lily pad | tadpoles swimming: tadpoles
+0.482  near      deciduous tree in autumn: orange leaves | evergreen pine tree: needles
+0.422  near      hen with chick: hen, chick | cow with calf: cow, calf
+0.390  near      river meander: bend, river bank | waterfall: falling water, rocks
+0.385  near      Globe Theatre: stage, yard | Shakespeare portrait: Shakespeare
+0.363  near      ice cubes melting: ice cubes, meltwater | water boiling in a pan: steam, bubbles
+0.354  near      Roman soldiers: armour, shields | Roman mosaic floor: mosaic
+0.310  near      volcano erupting: lava, ash cloud | earthquake damage: cracked road
+0.274  different solar panels on a roof: solar panels | caterpillar on a leaf: caterpillar
+0.261  different volcano erupting: lava, ash cloud | honeybee on a flower: bee, pollen
+0.259  different frog on a lily pad: frog, lily pad | pound coins: coins
+0.212  different three apples: apples | volcano erupting: lava, ash cloud
+0.176  different river meander: bend, river bank | plant cell under a microscope: cell wall, chl
+0.151  different Globe Theatre: stage, yard | seedling growing: shoot, roots
+0.111  different Hadrian's Wall: stone wall, hills | magnet attracting paper clips: magnet, clips
+0.108  different ice cubes melting: ice cubes, meltwater | Roman soldiers: armour, shields
+0.102  different copper sulfate crystals: blue crystals | rainforest canopy: tall trees
+0.079  different thermometer: scale, liquid | fox in a wood: red fox
+
+threshold  reused  same  precision  recall
+0.500      19      14    0.74       1.00
+0.525      19      14    0.74       1.00
+0.550      19      14    0.74       1.00
+0.575      18      14    0.78       1.00
+0.600      18      14    0.78       1.00
+0.625      18      14    0.78       1.00
+0.650      16      14    0.88       1.00
+0.675      15      14    0.93       1.00
+0.700      14      13    0.93       0.93
+0.725      14      13    0.93       0.93
+0.750      12      12    1.00       0.86
+0.775      11      11    1.00       0.79
+0.800      10      10    1.00       0.71
+0.825       8       8    1.00       0.57
+0.850       2       2    1.00       0.14
+0.875       1       1    1.00       0.07
+0.900       0       0    1.00       0.00
+0.925       0       0    1.00       0.00
+0.950       0       0    1.00       0.00
+
+lowest "same" 0.677; highest non-"same" (numbers agreeing) 0.744
+in code: BANK_HIT_THRESHOLD 0.76, BANK_MISS_THRESHOLD 0.65
+embedding cost $0.000009

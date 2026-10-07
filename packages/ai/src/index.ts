@@ -22,6 +22,16 @@ export {
   NO_THINKING,
   OPENAI_PREFIX,
 } from "./create-ai";
+export {
+  type CreateEmbedderOptions,
+  cachedEmbedder,
+  createOpenAiEmbedder,
+  EMBED_DIMENSIONS,
+  EMBED_MODEL,
+  EMBED_USD_PER_MTOK,
+  type Embedder,
+  type Embedding,
+} from "./embed";
 export type { AiErrorCode } from "./errors";
 export { AiError, isAiError, ProviderFailure } from "./errors";
 export { costUsd, isPriced, type ModelPrice, PRICES, type TokenUsage } from "./prices";

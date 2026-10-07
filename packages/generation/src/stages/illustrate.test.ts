@@ -858,3 +858,136 @@ describe("factQueryHints (quality lab, Sept 2026)", () => {
     expect(ai.calls[0]?.promptText).not.toContain("Hou10");
   });
 });
+
+describe("illustrate: the picture library (TEACH-84)", () => {
+  const evidence = (visible: string[]) => ({
+    visible,
+    count: "one" as const,
+    alt: "Library photo",
+    promptVersion: "pick-or-requery-photo.v7",
+  });
+  const libraryHit = (
+    via: "tags" | "embedding",
+    visible: string[],
+  ): NonNullable<Awaited<ReturnType<NonNullable<PhotoPlacer["lookupBank"]>>>> => ({
+    src: "/files/ws/images/lib.jpg",
+    alt: "Library photo",
+    source: { ...storedFor(pexelsPhoto("lib", true)).source, evidence: evidence(visible) },
+    evidence: evidence(visible),
+    via,
+    similarity: via === "tags" ? 1 : 0.83,
+  });
+
+  test("a library hit is placed with no search, no store and no model call", async () => {
+    const { images, searches, stores } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const asked: unknown[] = [];
+    images.lookupBank = async (b) => {
+      asked.push(b);
+      return libraryHit("tags", ["ice cubes"]);
+    };
+    const ai = judge();
+    const deps = recordingDeps(ai, { images });
+    const lesson = imageLesson([{ subject: "ice cubes melting", mustShow: ["ice cubes"] }]);
+    const state = await run(lesson, deps);
+    expect(searches).toEqual([]);
+    expect(stores).toEqual([]);
+    expect(ai.calls).toHaveLength(0);
+    expect(asked).toEqual([
+      {
+        subject: "ice cubes melting",
+        mustShow: ["ice cubes"],
+        topic: lesson.brief?.topic ?? lesson.title,
+        ageBand: lesson.ageBand,
+        orientation: "portrait",
+      },
+    ]);
+    const element = imageOf(state.lesson, 0);
+    expect(element.src).toBe("/files/ws/images/lib.jpg");
+    expect(element.source?.provider).toBe("pexels");
+    expect(element.source?.evidence?.visible).toEqual(["ice cubes"]);
+    expect(deps.imageCounts?.placed).toBe(1);
+  });
+
+  test("a tag hit that shows none of this brief's mustShow items falls through to Pexels", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    images.lookupBank = async () => libraryHit("tags", ["glass"]);
+    const ai = judge(pick("p", ["meltwater"]));
+    const state = await run(
+      imageLesson([{ subject: "ice cubes melting", mustShow: ["meltwater"] }]),
+      recordingDeps(ai, { images }),
+    );
+    expect(stores).toEqual(["p"]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/p.jpg");
+  });
+
+  test("an embedding hit is served on the threshold the library applied", async () => {
+    const { images, searches } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    images.lookupBank = async () => libraryHit("embedding", ["frog"]);
+    const ai = judge();
+    const state = await run(
+      imageLesson([{ subject: "frog on a lily pad", mustShow: ["lily pad"] }]),
+      recordingDeps(ai, { images }),
+    );
+    expect(searches).toEqual([]);
+    expect(imageOf(state.lesson, 0).src).toBe("/files/ws/images/lib.jpg");
+  });
+
+  test("a miss searches Pexels and writes the judged photograph through to the library", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    const remembered: { subject: string; src: string; width: number; height: number }[] = [];
+    images.lookupBank = async () => undefined;
+    images.rememberBank = (b, photo) => {
+      remembered.push({
+        subject: b.subject,
+        src: photo.src,
+        width: photo.width,
+        height: photo.height,
+      });
+    };
+    const ai = judge(pick("p", ["lava"]));
+    await run(
+      imageLesson([{ subject: "volcano erupting", mustShow: ["lava"] }]),
+      recordingDeps(ai, { images }),
+    );
+    expect(remembered).toEqual([
+      { subject: "volcano erupting", src: "/files/ws/images/p.jpg", width: 4000, height: 6000 },
+    ]);
+  });
+
+  test("a library error is a miss, and a slide the judge refuses is never written through", async () => {
+    const { images, stores } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    let remembered = 0;
+    images.lookupBank = async () => {
+      throw new Error("db down");
+    };
+    images.rememberBank = () => {
+      remembered += 1;
+    };
+    const ai = judge(NONE);
+    const state = await run(
+      imageLesson([{ subject: "volcano erupting" }]),
+      recordingDeps(ai, { images }),
+    );
+    expect(stores).toEqual([]);
+    expect(remembered).toBe(0);
+    expect(imageOf(state.lesson, 0).src).toBe(PLACEHOLDER_IMAGE);
+  });
+
+  test("a lesson with no age band skips the library entirely", async () => {
+    const { images } = fakeImages(async () => [pexelsPhoto("p", true)]);
+    let looked = 0;
+    let remembered = 0;
+    images.lookupBank = async () => {
+      looked += 1;
+      return undefined;
+    };
+    images.rememberBank = () => {
+      remembered += 1;
+    };
+    const lesson = imageLesson([{ subject: "volcano erupting" }]);
+    delete lesson.ageBand;
+    await run(lesson, recordingDeps(judge(pick("p")), { images }));
+    expect(looked).toBe(0);
+    expect(remembered).toBe(0);
+  });
+});

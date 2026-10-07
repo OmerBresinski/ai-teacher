@@ -1,4 +1,4 @@
-import { type CreatedAi, createAi } from "@tj/ai";
+import { type CreatedAi, createAi, createOpenAiEmbedder, type Embedder } from "@tj/ai";
 import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import type { Planner, ReasoningEffort } from "@tj/generation";
@@ -38,6 +38,11 @@ export type WorkerDeps = {
   costWarnUsd?: number;
   storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter };
+  /**
+   * The picture library's embedder (TEACH-84; OpenAI `text-embedding-3-small`), present when
+   * `OPENAI_API_KEY` is set. Absent: the library matches by tags only.
+   */
+  embedder?: Embedder;
   jobs?: JobsContext;
 };
 
@@ -75,6 +80,9 @@ export function createWorkerDeps(
           storage: storage.adapter,
         }
       : undefined,
+    ...(env.PEXELS_API_KEY && env.OPENAI_API_KEY
+      ? { embedder: createOpenAiEmbedder({ apiKey: env.OPENAI_API_KEY }) }
+      : {}),
     storageKind: storage.kind,
   };
 }

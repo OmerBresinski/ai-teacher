@@ -22,6 +22,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { createLibrary, type Library } from "../library";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
@@ -63,12 +64,19 @@ export interface LessonJobSpec {
 
 /**
  * The pipeline's image collaborator (Images project): Pexels search plus bucket store, closed
- * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements.
+ * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements. With
+ * the picture library (TEACH-84) it also looks the brief up in the shared library first and
+ * writes judged photographs through to it.
  */
-function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
+function imagePlacer(
+  deps: WorkerDeps,
+  workspaceId: WorkspaceId,
+  library: Library | undefined,
+): PipelineDeps["images"] {
   const images = deps.images;
   if (!images) return undefined;
   return {
+    ...(library ? { lookupBank: library.lookupBank, rememberBank: library.rememberBank } : {}),
     search: (query, opts) =>
       images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
     store: (photo, target) =>
@@ -90,6 +98,16 @@ export async function runLessonJob<K extends LessonPipelineJob>(
   const lessonId = payload.lessonId;
   let keepLockForRetry = false;
   let handedOff = false;
+  // The picture library (TEACH-84): on whenever images are; its write-throughs are drained below.
+  const library = deps.images
+    ? createLibrary({
+        db: deps.db,
+        storage: deps.storage,
+        embedder: deps.embedder,
+        workspaceId,
+        logger,
+      })
+    : undefined;
   try {
     if (signal.aborted) {
       keepLockForRetry = signal.reason === "shutdown";
@@ -121,7 +139,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
-      images: imagePlacer(deps, workspaceId),
+      images: imagePlacer(deps, workspaceId, library),
     };
     let final: PipelineState;
     try {
@@ -162,6 +180,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
     }
     if (spec.after && !signal.aborted) handedOff = await spec.after(ws, final);
   } finally {
+    // Write-throughs run off the writing clock; the job waits for them only at its very end.
+    await library?.drain();
     if (keepLockForRetry) {
       logger.info({ lessonId }, "generating lock kept for the retry");
     } else if (handedOff) {

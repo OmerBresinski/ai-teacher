@@ -4,6 +4,7 @@ import type {
   GenerationStage,
   Lesson,
   LessonFacts,
+  PhotoSource,
   SourceLocator,
   SourceRef,
   Worksheet,
@@ -99,6 +100,42 @@ export interface PhotoPlacer {
     },
   ): Promise<PhotoResult[]>;
   store(photo: PhotoResult, target: "slide"): Promise<StoredPhoto>;
+  /**
+   * The picture library (TEACH-84, ruling 158 item 6): a `ready` library picture for this brief,
+   * already copied into the lesson's Workspace, or `undefined` (a miss, a timeout or a library
+   * error; never a throw except an abort). Absent: no library, Pexels only.
+   */
+  lookupBank?(brief: BankBrief, opts: { signal: AbortSignal }): Promise<BankHit | undefined>;
+  /**
+   * Write-through: a photograph this lesson placed after its judge passed it, to be stored once
+   * in the library for the next lesson. Fire and forget: never awaited by a stage, never throws;
+   * the worker drains pending writes before the job ends.
+   */
+  rememberBank?(brief: BankBrief, photo: BankPhoto & { width: number; height: number }): void;
+}
+
+/** What the library is asked for and keyed by: the slide's image brief and the lesson's tags. */
+export interface BankBrief {
+  subject: string;
+  mustShow: string[];
+  topic: string;
+  ageBand: string | undefined;
+  orientation: "landscape" | "portrait" | "square";
+}
+
+/** A placed photograph as the slide carries it (`PlacedPhoto` in illustrate). */
+export interface BankPhoto {
+  src: string;
+  alt: string;
+  source: PhotoSource;
+  evidence: NonNullable<PhotoSource["evidence"]>;
+}
+
+/** A library hit: the photograph (already in this Workspace), and how it was found. */
+export interface BankHit extends BankPhoto {
+  via: "tags" | "embedding";
+  /** Cosine similarity for an embedding hit; 1 for a tag hit. */
+  similarity: number;
 }
 
 /**
