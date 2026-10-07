@@ -10,6 +10,7 @@ import {
   cosine,
   numbersAgree,
   numbersIn,
+  sharesItem,
 } from "./bank";
 
 describe("picture library helpers", () => {
@@ -52,5 +53,12 @@ describe("picture library helpers", () => {
     expect(cosine([1, 0], [1, 0])).toBe(1);
     expect(cosine([1, 0], [0, 1])).toBe(0);
     expect(cosine([0, 0], [1, 0])).toBe(0);
+  });
+
+  test("a row shows a brief's item when one mustShow item is among its depicts", () => {
+    expect(sharesItem(["Ice cubes"], ["the ice cubes", "puddle"])).toBe(true);
+    expect(sharesItem(["ice cubes"], ["glass"])).toBe(false);
+    expect(sharesItem([], [])).toBe(true);
+    expect(sharesItem([], ["glass"])).toBe(false);
   });
 });

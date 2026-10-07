@@ -12,11 +12,13 @@ import type { PhotoSource } from "@tj/domain/documents";
 import type { BankBrief, BankHit, BankPhoto, PhotoPlacer } from "@tj/generation";
 import {
   BANK_EMBED_TIMEOUT_MS,
+  BANK_LOOKUP_DEADLINE_MS,
   bankCard,
   bankStorageKey,
   bankSubject,
   bankZone,
   numbersAgree,
+  sharesItem,
 } from "@tj/images";
 import type { Logger } from "pino";
 
@@ -54,6 +56,8 @@ export interface CreateLibraryOptions {
   ids?: () => string;
   now?: () => Date;
   embedTimeoutMs?: number;
+  /** The whole lookup's deadline (`BANK_LOOKUP_DEADLINE_MS`). */
+  lookupDeadlineMs?: number;
 }
 
 const EXTENSION_FOR_MIME: Record<string, string> = {
@@ -78,6 +82,7 @@ export function createLibrary(options: CreateLibraryOptions): Library {
   const ids = options.ids ?? (() => newId());
   const now = options.now ?? (() => new Date());
   const embedTimeoutMs = options.embedTimeoutMs ?? BANK_EMBED_TIMEOUT_MS;
+  const lookupDeadlineMs = options.lookupDeadlineMs ?? BANK_LOOKUP_DEADLINE_MS;
   const pending = new Set<Promise<void>>();
 
   async function readBytes(key: string): Promise<{ bytes: Uint8Array; mime: string }> {
@@ -87,11 +92,18 @@ export function createLibrary(options: CreateLibraryOptions): Library {
   }
 
   /** Copy a library row's bytes into this Workspace and return the hit. */
-  async function serve(row: BankImageRow, via: BankHit["via"], similarity: number) {
+  async function serve(
+    row: BankImageRow,
+    via: BankHit["via"],
+    similarity: number,
+    expired: () => boolean,
+  ) {
     const source = row.source as PhotoSource;
     const evidence = source.evidence;
     if (!evidence) return undefined;
     const { bytes } = await readBytes(row.storageKey);
+    // Past the deadline the slide has gone to Pexels: copy nothing, count no use.
+    if (expired()) return undefined;
     const ext = EXTENSION_FOR_MIME[row.mime] ?? "jpg";
     const key = storageKey(workspaceId, "images", `${ids()}.${ext}`);
     await storage.put(key, bytes, { contentType: row.mime });
@@ -129,45 +141,84 @@ export function createLibrary(options: CreateLibraryOptions): Library {
     }
   }
 
-  const lookupBank: Library["lookupBank"] = async (brief, { signal }) => {
-    if (!brief.ageBand) return undefined;
+  /**
+   * §5.5: the tag filter (ready rows of the subject, orientation and band whose card states the
+   * same numbers), then one embedding and exact cosine; an embedding hit must clear the threshold,
+   * state the same numbers and depict one of this brief's mustShow items.
+   */
+  async function find(
+    brief: BankBrief & { ageBand: string },
+    signal: AbortSignal,
+    expired: () => boolean,
+  ): Promise<BankHit | undefined> {
     const t0 = Date.now();
+    const card = bankCard(brief);
     const subject = bankSubject(brief.subject);
     const tags = { orientation: brief.orientation, band: brief.ageBand };
-    const exact = await findBankImagesByTags(db, { ...tags, subject }, 1);
+    const exact = await findBankImagesByTags(db, { ...tags, subject });
     signal.throwIfAborted();
-    const first = exact[0];
+    const first = exact.find((row) => numbersAgree(card, row.caption ?? ""));
     if (first) {
-      const hit = await serve(first, "tags", 1);
+      const hit = await serve(first, "tags", 1, expired);
       logger.info(
-        { library: "hit", via: "tags", rowId: first.id, ms: Date.now() - t0 },
+        { library: hit ? "hit" : "late", via: "tags", rowId: first.id, ms: Date.now() - t0 },
         "library lookup",
       );
       return hit;
     }
-    const card = bankCard(brief);
+    if (expired()) return undefined;
     const vector = await embedWithin(card, embedTimeoutMs);
     signal.throwIfAborted();
-    if (!vector) return undefined;
+    if (!vector || expired()) return undefined;
     const nearest = await nearestBankImages(db, tags, vector);
     const [top, second] = nearest;
     const zone = top ? bankZone(top.similarity) : "miss";
     const agree = top ? numbersAgree(card, top.caption ?? "") : false;
+    const shows = top ? sharesItem(top.depicts, brief.mustShow) : false;
+    const served = top !== undefined && zone === "hit" && agree && shows;
     logger.info(
       {
-        library: zone === "hit" && agree ? "hit" : "miss",
+        library: served ? "hit" : "miss",
         via: "embedding",
         zone,
         candidates: nearest.length,
         top: top ? Number(top.similarity.toFixed(3)) : null,
         margin: top && second ? Number((top.similarity - second.similarity).toFixed(3)) : null,
         numbersAgree: top ? agree : null,
+        depicts: top ? shows : null,
         ms: Date.now() - t0,
       },
       "library lookup",
     );
-    if (!top || zone !== "hit" || !agree) return undefined;
-    return serve(top, "embedding", top.similarity);
+    if (!served || !top) return undefined;
+    return serve(top, "embedding", top.similarity, expired);
+  }
+
+  /** `find` under the lookup deadline: past it, a miss (the slide goes to Pexels). */
+  const lookupBank: Library["lookupBank"] = async (brief, { signal }) => {
+    const ageBand = brief.ageBand;
+    if (!ageBand) return undefined;
+    let late = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => {
+        late = true;
+        resolve("timeout");
+      }, lookupDeadlineMs);
+    });
+    const work = find({ ...brief, ageBand }, signal, () => late);
+    // A lookup that finishes (or fails) after the deadline is nobody's concern any more.
+    work.catch(() => undefined);
+    try {
+      const result = await Promise.race([work, deadline]);
+      if (result === "timeout") {
+        logger.info({ library: "lookup-timeout", ms: lookupDeadlineMs }, "library lookup");
+        return undefined;
+      }
+      return result;
+    } finally {
+      clearTimeout(timer);
+    }
   };
 
   async function remember(
@@ -205,7 +256,6 @@ export function createLibrary(options: CreateLibraryOptions): Library {
       height: photo.height,
       orientation: brief.orientation,
       subject,
-      topic: brief.topic,
       bands: [band],
       depicts: brief.mustShow.filter((m) => seen.has(m.trim().toLowerCase())),
       style: "photo",

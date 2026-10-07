@@ -180,15 +180,19 @@ export async function runLessonJob<K extends LessonPipelineJob>(
     }
     if (spec.after && !signal.aborted) handedOff = await spec.after(ws, final);
   } finally {
-    // Write-throughs run off the writing clock; the job waits for them only at its very end.
-    await library?.drain();
-    if (keepLockForRetry) {
-      logger.info({ lessonId }, "generating lock kept for the retry");
-    } else if (handedOff) {
-      logger.debug({ lessonId }, "generating lock handed to the next job");
-    } else {
-      await clearGenerating(ws, lessonId, jobId);
-      logger.debug({ lessonId }, "generating lock released");
+    try {
+      if (keepLockForRetry) {
+        logger.info({ lessonId }, "generating lock kept for the retry");
+      } else if (handedOff) {
+        logger.debug({ lessonId }, "generating lock handed to the next job");
+      } else {
+        await clearGenerating(ws, lessonId, jobId);
+        logger.debug({ lessonId }, "generating lock released");
+      }
+    } finally {
+      // Write-throughs run off the writing clock: the lesson is unlocked first, then the job
+      // waits for them so none is cut off when the job ends.
+      await library?.drain();
     }
   }
 }

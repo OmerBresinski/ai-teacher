@@ -4,6 +4,7 @@ import {
   insertBankImage,
   type NewBankImage,
   nearestBankImages,
+  retireBankImage,
   touchBankImage,
 } from "./bank";
 import { withTestDb } from "./testing";
@@ -33,7 +34,6 @@ function row(over: Partial<NewBankImage> = {}): NewBankImage {
     height: 6000,
     orientation: "portrait",
     subject: "ice cubes melting",
-    topic: "States of matter",
     bands: ["ks3"],
     depicts: ["ice cubes"],
     style: "photo",
@@ -123,5 +123,19 @@ describeDb("bank_images", () => {
     });
     expect(found?.useCount).toBe(2);
     expect(found?.lastUsedAt?.toISOString()).toBe(at.toISOString());
+  });
+
+  test("a retired row is never served again; an unknown id changes nothing", async () => {
+    const created = await insertBankImage(db, row());
+    if (!created) throw new Error("not inserted");
+    const tags = { subject: "ice cubes melting", orientation: "portrait", band: "ks3" } as const;
+    expect(await retireBankImage(db, created.id)).toBe(true);
+    expect(await findBankImagesByTags(db, tags)).toHaveLength(0);
+    expect(await nearestBankImages(db, { orientation: "portrait", band: "ks3" }, vec(0))).toEqual(
+      [],
+    );
+    expect(await retireBankImage(db, "00000000-0000-4000-8000-999999999999")).toBe(false);
+    // The slot is free again for a new live row.
+    expect(await insertBankImage(db, row())).toBeDefined();
   });
 });

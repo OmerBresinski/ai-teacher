@@ -47,7 +47,6 @@ function axis(i: number, lean = 0): number[] {
 const brief = (over: Partial<BankBrief> = {}): BankBrief => ({
   subject: "Ice cubes melting",
   mustShow: ["ice cubes", "meltwater"],
-  topic: "States of matter",
   ageBand: "ks3",
   orientation: "portrait",
   ...over,
@@ -120,7 +119,7 @@ describeDb("worker picture library", () => {
     expect(storage.objects.get(row?.storageKey ?? "")?.bytes).toEqual(JPEG);
     expect(row?.depicts).toEqual(["ice cubes"]);
     expect(row?.bands).toEqual(["ks3"]);
-    expect(row?.topic).toBe("States of matter");
+    expect(row).not.toHaveProperty("topic");
     expect(row?.caption).toBe(card);
     expect(row?.embedModel).toBe("text-embedding-3-small");
     expect(row?.checks.checkedBy).toBe("pick-or-requery-photo.v7");
@@ -259,5 +258,63 @@ describeDb("worker picture library", () => {
     await library.drain();
     expect(log.lines.some((l) => l.includes("write-failed"))).toBe(true);
     expect(log.lines.join("")).not.toContain("ice cubes");
+  });
+
+  test("a tag hit whose card states other numbers is not served", async () => {
+    const stored = brief({ subject: "coins on a table", mustShow: ["3 coins"] });
+    const other = brief({ subject: "coins on a table", mustShow: ["5 coins"] });
+    const embedder = fakeEmbedder({ [bankCard(stored)]: axis(0), [bankCard(other)]: axis(0) });
+    const { library } = setup(embedder);
+    library.rememberBank(stored, { ...placed, evidence: { ...evidence, visible: ["3 coins"] } });
+    await library.drain();
+    expect(await library.lookupBank(other, { signal })).toBeUndefined();
+    expect((await library.lookupBank(stored, { signal }))?.via).toBe("tags");
+  });
+
+  test("an embedding hit must depict one of this brief's mustShow items", async () => {
+    const stored = brief();
+    const plain = brief({ subject: "melting ice", mustShow: [] });
+    const other = brief({ subject: "melting ice", mustShow: ["glass"] });
+    const embedder = fakeEmbedder({
+      [bankCard(stored)]: axis(0),
+      [bankCard(plain)]: axis(0, 0.3),
+      [bankCard(other)]: axis(0, 0.3),
+    });
+    const { library } = setup(embedder);
+    library.rememberBank(stored, placed);
+    await library.drain();
+    expect(await library.lookupBank(other, { signal })).toBeUndefined();
+    expect((await library.lookupBank(plain, { signal }))?.via).toBe("embedding");
+  });
+
+  test("a slow store under the lookup is a miss at the deadline, and copies nothing late", async () => {
+    const { library: writer, storage } = setup();
+    writer.rememberBank(brief(), placed);
+    await writer.drain();
+    const slow = {
+      ...storage,
+      get: async (key: string) => {
+        await new Promise((r) => setTimeout(r, 200));
+        return storage.get(key);
+      },
+    };
+    const library = createLibrary({
+      db,
+      storage: slow,
+      workspaceId: WS_B,
+      logger: memoryLogger().logger,
+      lookupDeadlineMs: 50,
+    });
+    const t0 = Date.now();
+    expect(await library.lookupBank(brief(), { signal })).toBeUndefined();
+    expect(Date.now() - t0).toBeLessThan(150);
+    await new Promise((r) => setTimeout(r, 250));
+    expect([...storage.objects.keys()].some((k) => k.startsWith(WS_B))).toBe(false);
+    const [row] = await findBankImagesByTags(db, {
+      subject: "ice cubes melting",
+      orientation: "portrait",
+      band: "ks3",
+    });
+    expect(row?.useCount).toBe(0);
   });
 });

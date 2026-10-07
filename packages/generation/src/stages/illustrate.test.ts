@@ -896,7 +896,6 @@ describe("illustrate: the picture library (TEACH-84)", () => {
       {
         subject: "ice cubes melting",
         mustShow: ["ice cubes"],
-        topic: lesson.brief?.topic ?? lesson.title,
         ageBand: lesson.ageBand,
         orientation: "portrait",
       },

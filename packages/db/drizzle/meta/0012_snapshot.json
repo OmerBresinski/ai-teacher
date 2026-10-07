@@ -479,12 +479,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "topic": {
-          "name": "topic",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "bands": {
           "name": "bands",
           "type": "text[]",

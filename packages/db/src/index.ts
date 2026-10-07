@@ -10,6 +10,7 @@ export {
   insertBankImage,
   type NewBankImage,
   nearestBankImages,
+  retireBankImage,
   touchBankImage,
 } from "./bank";
 export { type CreateDbOptions, createDb, type Db, type DbHandle, type Sql } from "./client";

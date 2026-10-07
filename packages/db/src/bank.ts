@@ -84,3 +84,17 @@ export async function touchBankImage(db: Db, id: string, now = new Date()): Prom
     .set({ useCount: sql`${bankImages.useCount} + 1`, lastUsedAt: now })
     .where(eq(bankImages.id, id));
 }
+
+/**
+ * Take a row out of service for good (TEACH-84 FR 5: a reported picture, or a generator whose
+ * terms changed): `status = 'retired'`, never served again, kept for audit. Internal only, no UI
+ * yet: run `bun apps/worker/scripts/retire-bank-image.ts <id>`. Returns whether a row changed.
+ */
+export async function retireBankImage(db: Db, id: string): Promise<boolean> {
+  const changed = await db
+    .update(bankImages)
+    .set({ status: "retired" })
+    .where(eq(bankImages.id, id))
+    .returning({ id: bankImages.id });
+  return changed.length > 0;
+}

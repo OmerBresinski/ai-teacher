@@ -52,6 +52,31 @@ export const BANK_MISS_THRESHOLD = 0.65;
 /** The §5.5 embedding deadline: an embedding slower than this is a miss, never a wait. */
 export const BANK_EMBED_TIMEOUT_MS = 300;
 
+/**
+ * The deadline on the whole lookup (tag query, embedding, cosine query and the copy into the
+ * Workspace). Past it the lookup is a miss and the slide goes to Pexels: a slow database or bucket
+ * never holds a slide. Not in the spec (it bounds only the embedding); set at 1 s in review.
+ */
+export const BANK_LOOKUP_DEADLINE_MS = 1000;
+
+function normaliseItem(item: string): string {
+  return item
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(?:a|an|the)\s+/, "");
+}
+
+/**
+ * Whether a stored row shows something this brief asks for: one of `mustShow` among the row's
+ * `depicts` (the items its judge saw). A brief with no items asks for nothing in particular.
+ */
+export function sharesItem(depicts: readonly string[], mustShow: readonly string[]): boolean {
+  if (mustShow.length === 0) return true;
+  const seen = new Set(depicts.map(normaliseItem));
+  return mustShow.some((m) => seen.has(normaliseItem(m)));
+}
+
 export type BankZone = "hit" | "grey" | "miss";
 
 export function bankZone(similarity: number): BankZone {

@@ -1,6 +1,7 @@
 export {
   BANK_EMBED_TIMEOUT_MS,
   BANK_HIT_THRESHOLD,
+  BANK_LOOKUP_DEADLINE_MS,
   BANK_MISS_THRESHOLD,
   BANK_STORAGE_SPACE,
   type BankZone,
@@ -11,6 +12,7 @@ export {
   cosine,
   numbersAgree,
   numbersIn,
+  sharesItem,
 } from "./bank";
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {

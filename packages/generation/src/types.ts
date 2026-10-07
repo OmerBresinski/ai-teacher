@@ -118,7 +118,6 @@ export interface PhotoPlacer {
 export interface BankBrief {
   subject: string;
   mustShow: string[];
-  topic: string;
   ageBand: string | undefined;
   orientation: "landscape" | "portrait" | "square";
 }

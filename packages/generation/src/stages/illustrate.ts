@@ -472,7 +472,7 @@ async function placeOne(args: PlaceArgs): Promise<PlaceOutcome> {
 }
 
 /**
- * What the library is keyed by for this slide: the brief, the lesson's topic and age band, and the
+ * What the library is keyed by for this slide: the brief, the lesson's age band, and the
  * orientation illustrate searches (portrait). No band, no library: the tag filter needs one.
  */
 function bankBriefOf(args: PlaceArgs): BankBrief | undefined {
@@ -481,7 +481,6 @@ function bankBriefOf(args: PlaceArgs): BankBrief | undefined {
   return {
     subject: brief.subject,
     mustShow: brief.mustShow,
-    topic: lesson.brief?.topic ?? lesson.title,
     ageBand: lesson.ageBand,
     orientation: "portrait",
   };

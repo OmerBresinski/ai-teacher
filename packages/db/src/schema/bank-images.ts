@@ -34,8 +34,9 @@ export type BankImageChecks = {
  *
  * **Non-tenant, by design (ADR 0007 justification):** the library is shared across Workspaces
  * (that is its whole point). No teacher content enters it: the tags and card are the pipeline's
- * own image brief (our Plan prompt's output about a curriculum topic, never a teacher's Source or
- * wording), the bytes are a stock photograph (Pexels; later Commons or a generated picture), and
+ * own image brief (our Plan prompt's output, normalised: subject, mustShow items, age band and
+ * orientation). The teacher's typed topic and the lesson title are never stored (the spec's `topic`
+ * tag is dropped for that reason). The bytes are a stock photograph (Pexels; later Commons or a generated picture), and
  * no column names a Workspace, lesson or user. Reads and writes go through `unsafeDb` (README).
  *
  * - `storage_key` is under the reserved library prefix (`BANK_STORAGE_SPACE/bank/<id>.<ext>`, see
@@ -60,7 +61,6 @@ export const bankImages = pgTable(
     height: integer("height").notNull(),
     orientation: text("orientation").notNull(),
     subject: text("subject").notNull(),
-    topic: text("topic").notNull(),
     bands: text("bands").array().notNull(),
     depicts: text("depicts").array().notNull().default(sql`'{}'::text[]`),
     style: text("style").notNull(),

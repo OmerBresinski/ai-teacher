@@ -7,7 +7,6 @@ CREATE TABLE "bank_images" (
 	"height" integer NOT NULL,
 	"orientation" text NOT NULL,
 	"subject" text NOT NULL,
-	"topic" text NOT NULL,
 	"bands" text[] NOT NULL,
 	"depicts" text[] DEFAULT '{}'::text[] NOT NULL,
 	"style" text NOT NULL,
