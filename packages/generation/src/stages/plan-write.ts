@@ -61,7 +61,7 @@ import {
   worksheetPointerLine,
 } from "../plan-write/closing";
 import { diagramDisagreements } from "../plan-write/diagram-agree";
-import { DiagramSpecSchema } from "../plan-write/diagram-spec";
+import { DrawerSpecSchema as DiagramSpecSchema } from "../plan-write/diagram-spec";
 import {
   fitLadder,
   fitWithRewrite,

@@ -354,6 +354,13 @@ export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
       { text: "7", in: [] },
     ],
   },
+  cubes: {
+    kind: "cubes",
+    alt: "One cube beside the same volume cut into 27 small cubes",
+    split: 3,
+    captions: ["One large cube", "27 small cubes"],
+    areas: true,
+  },
   carroll: {
     kind: "carroll",
     alt: "A Carroll diagram sorting shapes by whether they have right angles and four sides.",

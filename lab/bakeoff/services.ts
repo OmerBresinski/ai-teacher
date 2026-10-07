@@ -16,7 +16,7 @@ import { createPictureBank } from "../../apps/worker/src/picture-bank";
 import { createAi, createBudget } from "../../packages/ai/src/index";
 import { createDb } from "../../packages/db/src/index";
 import { newId } from "../../packages/domain/src/index";
-import { z } from "../../packages/generation/node_modules/zod";
+import type { z } from "../../packages/generation/node_modules/zod";
 import { DIAGRAM_CONTRACT } from "../../packages/generation/src/plan-write/diagram-spec";
 import {
   judgeMade,
@@ -35,7 +35,11 @@ import {
   setSize,
 } from "../../packages/generation/src/stages/picture-set";
 import * as im from "../../packages/images/src/index";
-import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
+import {
+  diagramJsonSchema,
+  parseDiagram,
+  withLongLabels,
+} from "../../packages/slides/src/diagrams/index";
 // Round 3 fix: the drawer's own schema, not generation's mirror. The mirror's particles `show`
 // had only states/diffusion/dissolving (no compare or collision) and no cubes kind, so the spec
 // writer could not ask for y11 s8's "faster particles at a higher temperature".
@@ -1288,7 +1292,10 @@ async function specCalls(
   log: (e: object) => void,
   kindSchema: unknown,
 ): Promise<unknown | undefined> {
-  const schema = openaiSchema(z.toJSONSchema(kindSchema as never, { target: "draft-7" }));
+  // r5: the one wire schema, derived from the drawer's (`diagramJsonSchema`); `kindSchema` only
+  // says the kind exists.
+  void kindSchema;
+  const schema = diagramJsonSchema(ask.kind as Parameters<typeof diagramJsonSchema>[0]);
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {

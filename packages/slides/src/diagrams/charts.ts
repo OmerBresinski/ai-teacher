@@ -4,6 +4,7 @@
  * geometry; the writer gives categories, values and items. Pure string building on the shared kit.
  */
 import { z } from "zod";
+import { pair } from "./pair";
 import { look, STROKE, sub, TYPE_FLOOR, WEIGHT } from "./style";
 import { type Ctx, mix, n, num, text, textWidth, ticks, wrap } from "./svg";
 
@@ -60,13 +61,10 @@ export const CarrollSchema = z.object({
   kind: z.literal("carroll"),
   ...common,
   /** The two row headings (a property and its opposite), then the two column headings. */
-  rows: z.tuple([label(18), label(18)]),
-  cols: z.tuple([label(18), label(18)]),
+  rows: pair(label(18)),
+  cols: pair(label(18)),
   /** The items in each cell, row by row. */
-  cells: z.tuple([
-    z.tuple([z.array(label(16)).max(5), z.array(label(16)).max(5)]),
-    z.tuple([z.array(label(16)).max(5), z.array(label(16)).max(5)]),
-  ]),
+  cells: pair(pair(z.array(label(16)).max(5))),
 });
 
 export type BarChart = z.infer<typeof BarChartSchema>;
