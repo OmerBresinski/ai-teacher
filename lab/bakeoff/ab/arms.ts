@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from "node:fs";
 const BAKEOFF =
   "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds/BAKEOFF";
 
-export const AB_ARMS = ["base", "a1", "a2", "a3"] as const;
+export const AB_ARMS = ["base", "a1", "a2", "a3", "base2", "b2-a2", "b2-a3"] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
 export const AB = `${BAKEOFF}/ab`;
@@ -35,6 +35,30 @@ export const AB_CONFIG: Record<
     meaningKinds: ["equal-groups", "fraction-shapes", "flow"],
     delta: "C3 equal-groups and fraction-shapes kinds, flow gloss, meaning drawer for those three",
   },
+  // D4 (7 Oct): the lab base is round 5 + A1. base2 = a1 exactly; b2-a2 and b2-a3 add A2's and A3's
+  // deltas, unchanged, on top of it.
+  base2: { ask: false, kinds: [], meaningKinds: [], delta: "D4 base: round 5 + A1 (= a1)" },
+  "b2-a2": {
+    ask: true,
+    kinds: [],
+    meaningKinds: [],
+    delta: "base2 + C2 ask / ask_without (A2's delta unchanged)",
+  },
+  "b2-a3": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: ["equal-groups", "fraction-shapes", "flow"],
+    delta: "base2 + C3 kinds, flow gloss, meaning drawer (A3's delta unchanged)",
+  },
+};
+/** The arm each arm is diffed against, and the arm whose delta it must reproduce (D4). */
+export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }>> = {
+  a1: { ref: "base" },
+  a2: { ref: "base" },
+  a3: { ref: "base" },
+  base2: { ref: "a1" },
+  "b2-a2": { ref: "base2", same: ["base", "a2"] },
+  "b2-a3": { ref: "base2", same: ["base", "a3"] },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
