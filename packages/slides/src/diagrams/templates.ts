@@ -3,6 +3,8 @@
  * and fills small typed slots; every position, size and label placement here is code's, so the
  * figure draws cleanly on every theme and slot. Each draws into `w`×`h` slide points.
  */
+
+import { timeOf } from "./meaning";
 import {
   addLine,
   type Box,
@@ -116,7 +118,14 @@ type Panel = {
   energy?: number;
   /** dd-diagrams2 collision: what happens after the two particles meet. */
   outcome?: "bounces" | "reacts";
+  /** Round 8: a solid lump on the floor; the particles stand above it. */
+  solid?: boolean;
+  /** Round 8: a squashed gas: a piston arrow pushes the lid in. */
+  squash?: boolean;
 };
+
+/** Round 8: the share of a panel's height a solid lump takes on its floor. */
+const LUMP = 0.26;
 
 /** `k` particle centres for a state in a unit box, deterministic (dd-diagrams2 compare). */
 function scatter(state: "solid" | "liquid" | "gas", k: number): Pt[] {
@@ -164,6 +173,8 @@ function panels(s: Particles): Panel[] {
       room: q.room === "small" ? 0.62 : 1,
       speed: q.speed,
       energy: q.energy,
+      solid: q.solid,
+      squash: q.squash,
       // The second kind is spread through the first (a solution), not stacked on top of it.
       dots: scatter(q.state, q.count + q.extra).map((at, i, all) => ({
         at,
@@ -376,7 +387,42 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
         ),
     );
     const dotStart = out.length;
+    if (p.solid) {
+      // Round 8: the lump on the floor, as wide as half the container, its name set on it.
+      const lh = ib * LUMP * 0.8;
+      const lw = ib * 0.55;
+      const lx = ix + (ib - lw) / 2;
+      const ly = iy + ib - lh - 2;
+      const warmish = x.finish === "warm";
+      out.push(
+        `<rect x="${n(lx)}" y="${n(ly)}" width="${n(lw)}" height="${n(lh)}" rx="${n(warmish ? lh * 0.35 : 3)}" fill="${mix(x.c.muted, x.c.bg, 0.55)}" stroke="${x.c.ink}" stroke-width="${warmish ? 2.5 : 1.5}"/>`,
+      );
+      x.strokes?.push([lx, ly, lx + lw, ly]);
+      if (s.lump && i === 0) {
+        const lf = Math.max(TYPE_FLOOR, Math.min(fs * 0.8, lh * 0.7));
+        if (textWidth(s.lump, x, lf, WEIGHT.label) <= lw - 6)
+          out.push(text(x, lx + lw / 2, ly + lh / 2, [s.lump], { fs: lf, fill: x.c.ink }));
+        else bad(x, "the lump's name does not fit on it");
+      }
+    }
+    if (p.squash) {
+      // Round 8: the piston: a bar on the lowered lid and an arrow pushing down onto it.
+      const a = Math.max(8, fs * 0.5);
+      out.push(
+        `<rect x="${n(ix + 2)}" y="${n(iy - 7)}" width="${n(ib - 4)}" height="6" rx="2" fill="${x.c.ink}"/>`,
+        arrow(
+          ix + ib / 2,
+          Math.max(boxY - capH * 0.2, iy - (iy - boxY) * 0.95 - 2),
+          ix + ib / 2,
+          iy - 9,
+          x.c.ink,
+          3,
+          a,
+        ),
+      );
+    }
     for (const d of p.dots) {
+      if (p.solid) d.at = [d.at[0], d.at[1] * (1 - LUMP)];
       out.push(
         `<circle cx="${n(ix + d.at[0] * ib)}" cy="${n(iy + d.at[1] * ib)}" r="${n(rc)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
       );
@@ -1006,7 +1052,8 @@ const median = (v: number[]) => {
 
 /** The year gaps between events, or undefined when a date names no year or runs backwards. */
 function yearGaps(s: Timeline): number[] | undefined {
-  const ys = s.events.map((e) => yearOf(e.date));
+  // Round 8: months and days count (two events in "January 1923" and "November 1923" are not one point).
+  const ys = s.events.map((e) => timeOf(e.date));
   if (ys.length < 2 || ys.some((y) => y === undefined)) return undefined;
   const g = (ys as number[]).slice(1).map((y, i) => y - (ys[i] as number));
   return g.some((v) => v < 0) ? undefined : g;

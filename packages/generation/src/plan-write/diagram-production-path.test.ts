@@ -120,7 +120,7 @@ describe("diagrams through the production path", () => {
 
   test("the cases cover all 17 kinds, cubes included", () => {
     expect(DRAWER_KINDS).toContain("cubes");
-    expect(DRAWER_KINDS.length).toBe(17);
+    expect(DRAWER_KINDS.length).toBe(19); // round 8: equal-groups, fraction-shapes
     const seen = new Set(CASES.map((c) => c.spec.kind));
     for (const k of DRAWER_KINDS) expect(seen.has(k)).toBe(true);
   });

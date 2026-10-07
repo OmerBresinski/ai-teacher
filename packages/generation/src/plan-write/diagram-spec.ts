@@ -36,6 +36,9 @@ export const DIAGRAM_KINDS: DiagramKind[] = [
   "labelled-diagram",
   "number-line",
   "table",
+  // Round 8 (DIAGRAM-SOURCE C2.3): code-drawn meaning-only kinds for KS1-2 maths.
+  "equal-groups",
+  "fraction-shapes",
 ];
 
 /**

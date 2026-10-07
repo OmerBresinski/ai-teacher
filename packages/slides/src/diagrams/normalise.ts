@@ -15,6 +15,7 @@
 import type { EnergyProfileValues } from "../figures/energy-profile";
 import { parseDiagram } from "./index";
 import { resolveLabels } from "./labelled";
+import { fromMeaning } from "./meaning";
 import {
   type DiagramSpec,
   DiagramSpecSchema,
@@ -695,6 +696,8 @@ export function oneStateCompare(spec: unknown): unknown {
 }
 
 export function mendSpec(spec: unknown): unknown {
+  // Round 8: a meaning-form spec becomes the form code draws first (meaning.ts).
+  spec = fromMeaning(spec);
   spec = shadedFractionLabels(particleTitle(oneStateCompare(areaModelTable(spec))));
   const s = spec as {
     kind?: unknown;

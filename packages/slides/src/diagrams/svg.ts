@@ -38,6 +38,11 @@ export type Ctx = {
   titleStack?: string;
   /** A dark theme: washes and ramps come from ink, not the accent. */
   dark?: boolean;
+  /**
+   * Round 8: the drawing's finish. warm (Splash and the other KS1-2 themes): rounder, softer
+   * fills, a highlight on counters; refined (Studio and the KS3-5 themes): fine lines, flat fills.
+   */
+  finish?: "warm" | "refined";
   /** The label size in slide points: never below the type floor, 18 (the back of the room). */
   fs: number;
   /** When set, every text block drawn is recorded here (`diagramFaults` reads the geometry). */
@@ -116,6 +121,19 @@ export function family(stack: string): string {
     .replace(/"/g, "'");
 }
 
+/** Round 8: the themes whose diagrams take the warm finish (the KS1-2 menu). */
+export const WARM_THEMES = new Set(["playground", "crayon", "splash", "treehouse"]);
+
+/**
+ * Round 8: a label that reads as a maths expression (an equation, or brackets beside an operator)
+ * is one unit: it never wraps at its spaces ("(x + 3)(x − 4) = 0" broke into fragments).
+ */
+export function isMathLabel(s: string): boolean {
+  const t = s.trim();
+  if (!/[=<>≤≥]|[)(]\s*[-+−×÷*/^]|[-+−×÷*/^]\s*[(]|\)\(/.test(t)) return false;
+  return t.split(/\s+/).filter((w) => /^[A-Za-z]{4,}$/.test(w)).length <= 1;
+}
+
 export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
   const bg = t.colors.background;
   const surface = t.colors.panel ?? t.colors.surface;
@@ -132,6 +150,7 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
       ...washes(t, surface, mix),
     },
     dark: !!t.dark,
+    finish: WARM_THEMES.has(t.id) ? "warm" : "refined",
     body: family(t.fonts.body),
     title: family(t.fonts.title),
     stack: t.fonts.body,
@@ -196,10 +215,20 @@ export function wrap(
   fs = x.fs,
   weight: number = WEIGHT.label,
 ) {
-  const words = s
-    .trim()
-    .split(/[^\S\u00a0]+/)
-    .filter(Boolean);
+  if (isMathLabel(s)) {
+    let one = s.trim().replace(/\s+/g, " ");
+    if (textWidth(one, x, fs, weight) <= maxW) return [one];
+    while (one.length > 1 && textWidth(`${one}…`, x, fs, weight) > maxW) one = one.slice(0, -1);
+    return [`${one.trimEnd()}…`];
+  }
+  // Round 8: an equation stands on one line or not at all (a cut line asks the caller for a
+  // smaller size, then fails the fit, rather than fragmenting the maths).
+  const words = isMathLabel(s)
+    ? [s.trim().replace(/\s+/g, "\u00a0")]
+    : s
+        .trim()
+        .split(/[^\S\u00a0]+/)
+        .filter(Boolean);
   const lines: string[] = [];
   let cur = "";
   for (const word of words) {

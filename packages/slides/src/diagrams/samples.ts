@@ -375,4 +375,18 @@ export const DIAGRAM_SAMPLES: Record<string, DiagramSpecInput> = {
       ],
     ],
   },
+  "equal-groups-quarter-of-12": {
+    kind: "equal-groups",
+    alt: "12 counters shared into 4 equal groups of 3.",
+    total: 12,
+    groups: 4,
+  },
+  "fraction-shapes-halves": {
+    kind: "fraction-shapes",
+    alt: "A circle and a square, each cut into two equal parts with one part shaded.",
+    shapes: [
+      { shape: "circle", parts: 2, shaded: 1, name: "A" },
+      { shape: "square", parts: 2, cut: "diagonal", shaded: 1, name: "B" },
+    ],
+  },
 };

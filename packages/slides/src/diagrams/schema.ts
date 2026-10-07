@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import { BarChartSchema, CarrollSchema, PieSchema, VennSchema } from "./charts";
+import { LIMITS } from "./limits";
 import { pair } from "./pair";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
@@ -187,13 +188,40 @@ export const FlowSchema = z
   .object({
     kind: z.literal("flow"),
     ...common,
-    layout: z.enum(["chain", "cycle"]).default("chain"),
+    /**
+     * chain and cycle: `steps` in order. graph (round 8, built by code from a flow's nodes and links,
+     * `meaning.ts`): `steps` are the unique boxes and `links` join them (branches, loops, returns,
+     * arrows out of the drawing).
+     */
+    layout: z.enum(["chain", "cycle", "graph"]).default("chain"),
     steps: z
-      .array(z.object({ label: label(32), arrow: label(14).optional() }))
+      .array(
+        z.object({
+          label: label(LIMITS.flow.nodeChars),
+          arrow: label(LIMITS.flow.linkChars).optional(),
+        }),
+      )
       .min(2)
       .max(8),
+    links: z
+      .array(
+        z.object({
+          from: z.number().int().min(0),
+          to: z.union([z.number().int().min(0), z.literal("out")]),
+          label: label(LIMITS.flow.linkChars).optional(),
+        }),
+      )
+      .max(LIMITS.flow.links)
+      .optional(),
   })
-  .refine((f) => f.layout === "chain" || f.steps.length >= 3, "a cycle needs three steps");
+  .refine((f) => f.layout !== "cycle" || f.steps.length >= 3, "a cycle needs three steps")
+  .refine(
+    (f) =>
+      f.layout !== "graph" ||
+      (!!f.links?.length &&
+        f.links.every((l) => l.from < f.steps.length && (l.to === "out" || l.to < f.steps.length))),
+    "a graph's links join its boxes",
+  );
 
 // ─── labelled diagram ───────────────────────────────────────────────────────────────────────
 
@@ -257,13 +285,13 @@ export const LabelledDiagramSchema = z
     labels: z
       .array(
         z.object({
-          text: label(24),
+          text: label(LIMITS.labels.chars),
           at: pt,
           /** Optional: code places the label on the side that keeps it clear when absent. */
           side: z.enum(["left", "right", "top", "bottom"]).optional(),
         }),
       )
-      .max(8)
+      .max(LIMITS.labels.max)
       .default([]),
   })
   .superRefine((d, ctx) => {
@@ -329,11 +357,11 @@ export const TableSchema = z
   .object({
     kind: z.literal("table"),
     ...common,
-    header: z.array(label(20)).min(1).max(5).optional(),
+    header: z.array(label(LIMITS.table.headerChars)).min(1).max(LIMITS.table.cols).optional(),
     rows: z
-      .array(z.array(z.string().trim().max(28)).min(1).max(5))
+      .array(z.array(z.string().trim().max(LIMITS.table.cellChars)).min(1).max(LIMITS.table.cols))
       .min(1)
-      .max(8),
+      .max(LIMITS.table.rows),
   })
   .refine((t) => {
     const cols = t.header?.length ?? t.rows[0]?.length;
@@ -367,6 +395,10 @@ export const ParticlesSchema = z
           /** r4: the panel's temperature or energy, any one unit across panels; motion scales with it. */
           energy: z.number().min(0).max(100000).optional(),
           room: z.enum(["small", "large"]).default("large"),
+          /** Round 8: a solid lump on the panel's floor (a reactant surface, a solute lump). */
+          solid: z.boolean().optional(),
+          /** Round 8: a gas squashed by a piston: the lid drawn low with an inward arrow. */
+          squash: z.boolean().optional(),
         }),
       )
       .min(2)
@@ -381,10 +413,12 @@ export const ParticlesSchema = z
     states: z.array(STATE).min(1).max(3).default(["solid", "liquid", "gas"]),
     /** A name over each panel (default the state's name, or Before / After). */
     captions: z.array(label(16)).max(3).optional(),
-    /** A short description under each panel ("fixed rows"). */
-    notes: z.array(label(28)).max(3).optional(),
+    /** A short description under each panel ("fixed rows"); "" leaves that panel without one. */
+    notes: z.array(z.string().trim().max(LIMITS.particles.noteChars)).max(3).optional(),
+    /** Round 8: the name set on a solid lump (`panels[].solid`). */
+    lump: label(LIMITS.particles.nameChars).optional(),
     /** Words on the arrow between neighbouring panels ("melting"). */
-    arrows: z.array(label(14)).max(2).optional(),
+    arrows: z.array(label(24)).max(2).optional(),
     /** Movement marks: vibration in a solid, short arrows in a liquid or gas. */
     motion: z.boolean().default(false),
     /** For diffusion and dissolving: what the two colours are (a key under the panels). */
@@ -460,7 +494,7 @@ export const CycleSchema = z
     kind: z.literal("cycle"),
     ...common,
     /** Clockwise from the top. */
-    steps: z.array(label(32)).min(3).max(5),
+    steps: z.array(label(LIMITS.cycle.stepChars)).min(LIMITS.cycle.min).max(LIMITS.cycle.max),
   })
   .refine(
     (c) => new Set(c.steps.map((s) => s.toLowerCase())).size === c.steps.length,
@@ -536,6 +570,109 @@ export const CubesSchema = z.object({
   areas: z.boolean().default(false),
 });
 
+// ─── equal groups and fraction shapes (round 8) ───────────────────────────────────────────────
+// Meaning only: the model says how many and how they are shared or cut; code draws every counter,
+// ring, part and label (DIAGRAM-SOURCE C2: y2's quarter of 12 and its "half" that shaded a quarter).
+
+export const EqualGroupsSchema = z
+  .object({
+    kind: z.literal("equal-groups"),
+    ...common,
+    total: z
+      .number()
+      .int()
+      .min(2)
+      .max(LIMITS.groups.totalMax)
+      .describe("How many counters in all."),
+    groups: z
+      .number()
+      .int()
+      .min(LIMITS.groups.groupsMin)
+      .max(LIMITS.groups.groupsMax)
+      .describe("How many equal groups they are shared into."),
+    layout: z
+      .enum(["rings", "rows"])
+      .default("rings")
+      .describe(
+        "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+      ),
+    show_count: z
+      .enum(["each", "one", "none"])
+      .default("each")
+      .describe("Which groups show how many they hold: each, only the first, or none."),
+    unknown: z
+      .boolean()
+      .optional()
+      .describe("true when pupils find how many are in each group: the count shows as ?."),
+  })
+  .strict()
+  .refine((g) => g.total % g.groups === 0, "equal groups need a total the groups divide");
+
+const FractionShape = z
+  .object({
+    shape: z.enum(["circle", "square", "rectangle", "bar"]).describe("The whole."),
+    parts: z
+      .number()
+      .int()
+      .min(2)
+      .max(LIMITS.fractions.partsMax)
+      .describe("How many equal parts the whole is cut into."),
+    cut: z
+      .enum(["auto", "vertical", "horizontal", "grid", "diagonal"])
+      .default("auto")
+      .describe(
+        "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+      ),
+    shaded: z
+      .number()
+      .int()
+      .min(0)
+      .describe("How many parts are shaded (0 for a shape pupils shade)."),
+    name: label(LIMITS.fractions.nameChars)
+      .optional()
+      .describe("A name set under the shape: a letter pupils are pointed to, or a fraction."),
+  })
+  .strict();
+
+export const FractionShapesSchema = z
+  .object({
+    kind: z.literal("fraction-shapes"),
+    ...common,
+    shapes: z.array(FractionShape).min(1).max(LIMITS.fractions.shapes),
+  })
+  .strict()
+  .superRefine((f, ctx) => {
+    f.shapes.forEach((s, i) => {
+      if (s.shaded > s.parts)
+        ctx.addIssue({
+          code: "custom",
+          message: "more parts shaded than cut",
+          path: ["shapes", i],
+        });
+      if (
+        s.cut === "diagonal" &&
+        (s.shape === "circle" || s.shape === "bar" || ![2, 4].includes(s.parts))
+      )
+        ctx.addIssue({
+          code: "custom",
+          message: "diagonals cut a square or rectangle into 2 or 4",
+          path: ["shapes", i, "cut"],
+        });
+      if (s.cut === "grid" && (s.shape === "circle" || ![4, 6, 8, 9, 12].includes(s.parts)))
+        ctx.addIssue({
+          code: "custom",
+          message: "a grid cuts a square or rectangle into 4, 6, 8, 9 or 12",
+          path: ["shapes", i, "cut"],
+        });
+      if (s.shape === "circle" && s.cut !== "auto")
+        ctx.addIssue({
+          code: "custom",
+          message: "a circle is cut into equal sectors (cut auto)",
+          path: ["shapes", i, "cut"],
+        });
+    });
+  });
+
 // ─── the union ──────────────────────────────────────────────────────────────────────────────
 
 export const DiagramSpecSchema = z.discriminatedUnion("kind", [
@@ -556,6 +693,8 @@ export const DiagramSpecSchema = z.discriminatedUnion("kind", [
   VennSchema,
   CarrollSchema,
   CubesSchema,
+  EqualGroupsSchema,
+  FractionShapesSchema,
 ]);
 
 export type DiagramSpec = z.infer<typeof DiagramSpecSchema>;
@@ -574,6 +713,8 @@ export type Layers = z.infer<typeof LayersSchema>;
 export type Cycle = z.infer<typeof CycleSchema>;
 export type River = z.infer<typeof RiverSchema>;
 export type Cubes = z.infer<typeof CubesSchema>;
+export type EqualGroups = z.infer<typeof EqualGroupsSchema>;
+export type FractionShapes = z.infer<typeof FractionShapesSchema>;
 export type { BarChart, Carroll, Pie, Venn } from "./charts";
 
 /** The hand-built templates (round I): code owns their geometry; the picture ladder tries them first. */
@@ -587,6 +728,8 @@ export const TEMPLATE_KINDS = [
   "bar-model",
   "number-line",
   "cubes",
+  "equal-groups",
+  "fraction-shapes",
 ] as const;
 
 /** Every kind, read off the union (one list, so a new kind cannot be left out). */

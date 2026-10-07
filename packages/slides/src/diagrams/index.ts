@@ -13,8 +13,10 @@ import { drawBarModel } from "./bar-model";
 import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
 import { drawCubes } from "./cubes";
 import { drawFlow } from "./flow";
+import { drawEqualGroups, drawFractionShapes } from "./groups";
 import { drawLabelled } from "./labelled";
 import { drawLineGraph } from "./line-graph";
+import { fromMeaning } from "./meaning";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
@@ -30,6 +32,16 @@ import {
   drawTimeline,
 } from "./templates";
 
+export { CHARS_PER_WORD, LIMITS, limitLines, wordsFor } from "./limits";
+export {
+  CHANGE_WORD,
+  drawerSchema,
+  flowShape,
+  fromMeaning,
+  MEANING_SCHEMAS,
+  meaningFaults,
+  timeOf,
+} from "./meaning";
 export {
   areaModelTable,
   energyProfileOf,
@@ -59,6 +71,8 @@ export { family as svgFontFamily } from "./svg";
 
 /** `spec` parsed, or `undefined` when it is not a diagram spec. */
 export function parseDiagram(spec: unknown): DiagramSpec | undefined {
+  // Round 8: a spec in its meaning form (meaning.ts) is drawn from the form code derives.
+  spec = fromMeaning(spec);
   const r = DiagramSpecSchema.safeParse(spec);
   if (r.success) return r.data;
   return longLabels > 0 ? parseLong(spec, r.error.issues).spec : undefined;
@@ -185,6 +199,7 @@ export function fittedDiagramElement(
 ):
   | { ok: true; element: ImageElement; stretched: boolean; fs?: number }
   | { ok: false; reasons: string[] } {
+  spec = fromMeaning(spec);
   const strict = DiagramSpecSchema.safeParse(spec);
   if (strict.success) {
     const element = diagramElement(settleDiagram(strict.data, rect).spec, theme, rect, ids);
@@ -317,6 +332,10 @@ function body(
         return drawCarroll(s, ix, wi, ih);
       case "cubes":
         return drawCubes(s, ix, wi, ih);
+      case "equal-groups":
+        return drawEqualGroups(s, ix, wi, ih);
+      case "fraction-shapes":
+        return drawFractionShapes(s, ix, wi, ih);
     }
   })();
   if (inset && probe && marks) {
@@ -765,6 +784,7 @@ export {
   DiagramWireSchema,
   diagramJsonSchema,
   diagramWireSchema,
+  drawerJsonSchema,
   dropNulls,
   openaiForm,
   openaiSchemaFaults,

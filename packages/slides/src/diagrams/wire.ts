@@ -11,6 +11,7 @@
  * - `strictForm(json)`: a JSON schema in the shape OpenAI's strict mode needs.
  */
 import { z } from "zod";
+import { MEANING_SCHEMAS } from "./meaning";
 import { type DiagramKind, DiagramSpecSchema } from "./schema";
 
 type Def = Record<string, unknown> & { type: string; checks?: unknown[] };
@@ -88,6 +89,19 @@ export function diagramJsonSchema(kind?: DiagramKind): Record<string, unknown> {
   const schema = kind ? diagramWireSchema(kind) : DiagramWireSchema;
   return openaiForm(
     z.toJSONSchema(schema, { target: "draft-7", unrepresentable: "any", io: "input" }),
+  ) as Record<string, unknown>;
+}
+
+/**
+ * Round 8: the JSON schema the lab's drawer model is sent for one kind: its meaning form
+ * (meaning.ts) where one exists, else the drawn form; limits stated, refinements left to the parse.
+ * Production's writer keeps `diagramJsonSchema` until the round is cut.
+ */
+export function drawerJsonSchema(kind: DiagramKind): Record<string, unknown> {
+  const meaning = MEANING_SCHEMAS[kind as keyof typeof MEANING_SCHEMAS];
+  if (!meaning) return diagramJsonSchema(kind);
+  return openaiForm(
+    z.toJSONSchema(relaxed(meaning), { target: "draft-7", unrepresentable: "any", io: "input" }),
   ) as Record<string, unknown>;
 }
 
