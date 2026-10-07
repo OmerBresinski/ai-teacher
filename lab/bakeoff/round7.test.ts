@@ -12,7 +12,7 @@ import {
 } from "../../packages/slides/src/diagrams/index";
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { armT, resolveAsks } from "./arm-t";
-import { pictureFallbackOk, pictureVeto, SCHEMATIC } from "./harness";
+import { keepAsksHonest, pictureFallbackOk, pictureVeto, SCHEMATIC } from "./harness";
 
 const R6 =
   "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds/BAKEOFF/round6/runs/T";
@@ -235,5 +235,20 @@ describe("round 7: pictures", () => {
       "Roman Britain museum",
       "Roman Britain archaeological site",
     ]);
+  });
+});
+
+describe("round 7: repairs keep asks honest", () => {
+  test("r7 y12 s8: a graph redrawn as a table loses its graph ask", () => {
+    const fig = (kind: string) => ({
+      kind,
+      shows: "s",
+      ask: "Compare the curves.",
+      ask_without: "Early words stay.",
+    });
+    const out = keepAsksHonest({ figure: fig("line-graph") }, { figure: fig("table") });
+    expect((out.figure as { ask: string }).ask).toBe("Early words stay.");
+    const same = keepAsksHonest({ figure: fig("table") }, { figure: fig("table") });
+    expect((same.figure as { ask: string }).ask).toBe("Compare the curves.");
   });
 });

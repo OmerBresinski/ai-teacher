@@ -252,6 +252,28 @@ export function pictureVeto(r: {
   return undefined;
 }
 
+/**
+ * Round 7 (r7 y12 s8: the repair redrew a graph as a table and kept "Compare the curves"): an
+ * `ask` written for one visual is not shown with another. A repaired figure whose kind changed
+ * while its ask stayed the same shows its `ask_without` line instead.
+ */
+export function keepAsksHonest(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Record<string, unknown> {
+  const out = { ...after };
+  for (const k of ["picture", "diagram", "figure"]) {
+    const b = before[k] as Record<string, unknown> | undefined;
+    const a = out[k] as Record<string, unknown> | undefined;
+    if (!a || typeof a !== "object" || typeof a.ask !== "string") continue;
+    const kindOf = (f?: Record<string, unknown>) =>
+      f && typeof f === "object" ? (f.kind ?? "picture") : undefined;
+    if (!b || kindOf(b) !== kindOf(a))
+      if (!b || b.ask === a.ask) out[k] = { ...a, ask: a.ask_without ?? null };
+  }
+  return out;
+}
+
 /** A failed diagram may become a picture of the same thing unless it is data or a schematic. */
 export const pictureFallbackOk = (kind: string | undefined, shows: string) =>
   !!kind &&
@@ -1401,6 +1423,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       return false;
     }
     const before = plan.slides[i] as Record<string, unknown>;
+    o2.slide = keepAsksHonest(before, o2.slide);
     const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(String);
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
