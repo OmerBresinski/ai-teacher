@@ -6,10 +6,55 @@
  * The writer's line for a slot takes the smaller of this cap and the slot's measured fit, so what a
  * writer is told always draws.
  */
+import { z } from "zod";
+import { FONT_STACKS } from "../fonts";
 import type { KeyStage } from "../themes";
+import { TYPE_FLOOR } from "./style";
+import { type Ctx, textWidth, wrap } from "./svg";
 
 /** Characters per word when a character cap is said as words (the writer prompts never see characters). */
 export const CHARS_PER_WORD = 7;
+
+/**
+ * A label measured, not counted (round 8: "Maintenance rehearsal", "Below activation energy" are
+ * subject terms a character cap refused). It stands when the renderer's own wrap (`svg.ts wrap`)
+ * sets it on at most `lines` lines no wider than `width` points, at the type floor, in every
+ * theme's body face. `width` is the room the renderer gives it in the narrowest zone it draws in.
+ */
+export type Measured = { width: number; lines: number; weight: number };
+
+/** The half zone's width (DIAGRAM_ZONES.half), which particle panels share. */
+const HALF_W = 422;
+/** The gap between particle panels with no arrows between them (`templates.ts drawParticles`). */
+const PANEL_GAP = Math.max(HALF_W * 0.05, 14);
+/** One particle panel's width when `k` panels share the half zone. */
+export const panelWidth = (k: number) =>
+  Math.floor((HALF_W - (k - 1) * PANEL_GAP) / Math.max(1, k));
+/** A particle panel's heading: two lines of its panel (`templates.ts`: fitLines(cap, colW, 2, fs, 700)). */
+export const captionRule = (k: number): Measured => ({
+  width: panelWidth(k),
+  lines: 2,
+  weight: 700,
+});
+/** Words on a flow's arrow: two lines (`flow.ts`: wrap(label, room, 2)). */
+const LINK: Measured = { width: 140, lines: 2, weight: 400 };
+
+const STACKS = [...new Set(Object.values(FONT_STACKS))];
+/** Whether `text` sets within `m` in every body face, measured as the renderer measures it. */
+export function fitsMeasured(text: string, m: Measured): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return STACKS.every((stack) => {
+    const x = { stack, fs: TYPE_FLOOR } as unknown as Ctx;
+    const lines = wrap(t, x, m.width, m.lines, TYPE_FLOOR, m.weight);
+    return (
+      !lines.at(-1)?.endsWith("…") &&
+      lines.every((l) => textWidth(l, x, TYPE_FLOOR, m.weight) <= m.width + 0.5)
+    );
+  });
+}
+/** A measured rule said as characters, for text the prompts read (an average glyph is 0.62 em). */
+const charsOf = (m: Measured) => Math.floor((m.lines * m.width) / (0.62 * TYPE_FLOOR));
 
 export const LIMITS = {
   /** A label on a labelled diagram: one part named, inside or on its shape. */
@@ -17,7 +62,16 @@ export const LIMITS = {
   /** A table: rows and columns of cells; a header names each column. */
   table: { rows: 8, cols: 5, cellWords: 4, cellChars: 28, headerChars: 20 },
   /** A flow: unique boxes (nodes) joined by links; a link's words name the change. */
-  flow: { nodes: 6, links: 8, nodeWords: 4, nodeChars: 32, linkWords: 2, linkChars: 14 },
+  flow: {
+    nodes: 6,
+    links: 8,
+    nodeWords: 4,
+    nodeChars: 32,
+    linkWords: 2,
+    /** Measured (`link`); `linkChars` is that rule said as characters. */
+    link: LINK,
+    linkChars: charsOf(LINK),
+  },
   /** A cycle: steps that loop back to the first. */
   cycle: { min: 3, max: 5, stepWords: 4, stepChars: 32 },
   /** A chain of steps (a flow that is a straight path): the most boxes a key stage reads. */
@@ -27,12 +81,34 @@ export const LIMITS = {
   /** Fraction shapes: shapes cut into equal parts. */
   fractions: { shapes: 4, partsMax: 12, nameChars: 12 },
   /** Particle panels. */
-  particles: { panels: 3, captionChars: 16, noteChars: 28, nameChars: 18 },
+  particles: {
+    panels: 3,
+    /** Measured at the narrowest case, three panels (`captionRule(k)` for k panels). */
+    caption: captionRule(3),
+    captionChars: charsOf(captionRule(3)),
+    noteChars: 28,
+    nameChars: 18,
+  },
   /** A timeline's events. */
   timeline: { min: 2, max: 7, dateChars: 14, textChars: 40, periodChars: 24 },
   /** A bar model's bars and parts. */
   bars: { bars: 3, parts: 12, labelChars: 12, unitChars: 6 },
 } as const;
+
+/**
+ * A label held to a measured rule: trimmed, not empty, and set by the renderer within `m`. The
+ * description states it as characters for the model; the parse measures it.
+ */
+export function measuredLabel(m: Measured) {
+  return z
+    .string()
+    .trim()
+    .min(1)
+    .refine((t) => fitsMeasured(t, m), {
+      message: `too wide: it must wrap onto ${m.lines} lines of ${m.width} points (about ${charsOf(m)} characters)`,
+    })
+    .describe(`up to ${m.lines} short lines, about ${charsOf(m)} characters in all`);
+}
 
 /** `chars` as a word count, never under one. */
 export const wordsFor = (chars: number) => Math.max(1, Math.round(chars / CHARS_PER_WORD));

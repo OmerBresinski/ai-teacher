@@ -7,7 +7,7 @@
  */
 import { z } from "zod";
 import { BarChartSchema, CarrollSchema, PieSchema, VennSchema } from "./charts";
-import { LIMITS } from "./limits";
+import { captionRule, LIMITS, measuredLabel } from "./limits";
 import { pair } from "./pair";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
@@ -209,7 +209,7 @@ export const FlowSchema = z
       .array(
         z.object({
           label: label(LIMITS.flow.nodeChars),
-          arrow: label(LIMITS.flow.linkChars).optional(),
+          arrow: measuredLabel(LIMITS.flow.link).optional(),
         }),
       )
       .min(2)
@@ -219,7 +219,7 @@ export const FlowSchema = z
         z.object({
           from: z.number().int().min(0),
           to: z.union([z.number().int().min(0), z.literal("out")]),
-          label: label(LIMITS.flow.linkChars).optional(),
+          label: measuredLabel(LIMITS.flow.link).optional(),
         }),
       )
       .max(LIMITS.flow.links)
@@ -423,7 +423,10 @@ export const ParticlesSchema = z
       .optional(),
     states: z.array(STATE).min(1).max(3).default(["solid", "liquid", "gas"]),
     /** A name over each panel (default the state's name, or Before / After). */
-    captions: z.array(label(16)).max(3).optional(),
+    captions: z
+      .array(measuredLabel(captionRule(2)))
+      .max(3)
+      .optional(),
     /** A short description under each panel ("fixed rows"); "" leaves that panel without one. */
     notes: z.array(z.string().trim().max(LIMITS.particles.noteChars)).max(3).optional(),
     /** Round 8: the name set on a solid lump (`panels[].solid`). */

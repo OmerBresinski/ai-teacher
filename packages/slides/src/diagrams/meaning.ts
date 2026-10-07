@@ -10,7 +10,7 @@
  * that parses as its meaning form, and each meaning form is strict, so an old spec never does.
  */
 import { z } from "zod";
-import { LIMITS } from "./limits";
+import { captionRule, fitsMeasured, LIMITS, measuredLabel } from "./limits";
 import {
   type DiagramKind,
   DiagramSpecSchema,
@@ -34,7 +34,7 @@ const STATE = z.enum(["solid", "liquid", "gas"]);
 const PanelMeaning = z
   .object({
     state: STATE.describe("The state of the particles in this panel."),
-    caption: label(P.captionChars)
+    caption: measuredLabel(captionRule(2))
       .optional()
       .describe(
         "The heading over this panel. Left out, code writes it: the state's name, Before/After, or the collision's outcome. Ignored when names is letters.",
@@ -134,6 +134,15 @@ export const ParticlesMeaningSchema = z
       if ((p.room || p.squash) && p.state !== "gas")
         issue("room and squash belong to a gas", ["panels", i]);
     });
+    // A caption stands on two lines of its own panel, whose width the panel count sets.
+    if (s.names !== "letters")
+      s.panels.forEach((p, i) => {
+        if (p.caption && !fitsMeasured(p.caption, captionRule(s.panels.length)))
+          issue(
+            `too wide for ${s.panels.length} panels: two lines of ${captionRule(s.panels.length).width} points`,
+            ["panels", i, "caption"],
+          );
+      });
     if (s.names_of?.extra && !s.panels.some((p) => (p.extra ?? 0) > 0))
       issue("names_of.extra names particles no panel draws", ["names_of"]);
     if (s.names_of?.solid && !s.panels.some((p) => p.solid))
@@ -275,7 +284,7 @@ export const FlowMeaningSchema = z
               .describe(
                 'The box the arrow reaches; the same box as from is a loop; "out" is an arrow leaving the drawing (lost, forgotten, removed).',
               ),
-            label: label(F.linkChars)
+            label: measuredLabel(F.link)
               .optional()
               .describe("The change or cause along the arrow, one or two words."),
           })
@@ -625,4 +634,20 @@ export function meaningFaults(spec: unknown): string {
     .slice(0, 4)
     .map((i) => `${i.path.map(String).join(".") || "spec"}: ${i.message}`)
     .join("; ");
+}
+
+/**
+ * An equal-groups spec as the writer asked for it: a request whose labels give the per-group count
+ * (y2's "3", "3", "3", "3" for a quarter of 12) shows that count on every group, never "?" or none.
+ * Anything else is returned unchanged. Never throws.
+ */
+export function withAskedCounts(spec: unknown, labels: readonly string[]): unknown {
+  const s = spec as { kind?: unknown; total?: unknown; groups?: unknown };
+  if (s?.kind !== "equal-groups" || typeof s.total !== "number" || typeof s.groups !== "number")
+    return spec;
+  if (!s.groups || s.total % s.groups) return spec;
+  const per = String(s.total / s.groups);
+  if (!labels.some((l) => l.trim() === per)) return spec;
+  const { unknown: _u, ...rest } = spec as Record<string, unknown>;
+  return { ...rest, show_count: "each" };
 }

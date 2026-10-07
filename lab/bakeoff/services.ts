@@ -40,10 +40,13 @@ import * as im from "../../packages/images/src/index";
 import {
   diagramJsonSchema,
   drawerJsonSchema,
+  dropNulls,
   limitLines,
   meaningFaults,
   mendSpec,
   parseDiagram,
+  strictForm,
+  withAskedCounts,
   withLongLabels,
 } from "../../packages/slides/src/diagrams/index";
 // Round 3 fix: the drawer's own schema, not generation's mirror. The mirror's particles `show`
@@ -1349,7 +1352,13 @@ async function specCalls(
   // r5: the one wire schema, derived from the drawer's (`diagramJsonSchema`); `kindSchema` only
   // says the kind exists.
   void kindSchema;
-  const schema = drawerJsonSchema(ask.kind as Parameters<typeof drawerJsonSchema>[0]);
+  // Round 8 drawer fix: strict structured output on the asked kind's schema alone. Every object is
+  // closed and every field required (optional ones nullable), so a round 7 shape (states/captions,
+  // layout/steps) cannot be sent; nulls are dropped before the parse.
+  const { $schema: _draft, ...open } = drawerJsonSchema(
+    ask.kind as Parameters<typeof drawerJsonSchema>[0],
+  );
+  const schema = strictForm(open) as object;
   const slot = ask.slot
     ? `\nSlot: ${ask.slot.placement}, ${Math.round(ask.slot.w)} by ${Math.round(ask.slot.h)} points`
     : "";
@@ -1366,9 +1375,12 @@ async function specCalls(
         : user,
       schema,
       name: "diagram",
-      strict: false,
+      strict: true,
     });
     ledger.add("diagrams", r.usd);
+    if (r.out) r.out = dropNulls(r.out);
+    // Equal groups: a request that labels the per-group count shows it (round 8 drawer check, y2).
+    if (r.out) r.out = withAskedCounts(r.out, ask.labels);
     // Round 6: a spec's optional decoration that cannot stand is mended in code (mendSpec).
     if (r.out) r.out = mendSpec(r.out);
     // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).

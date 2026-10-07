@@ -34,7 +34,10 @@ export function relaxed(schema: z.ZodType): z.ZodType {
     case "string": {
       const checks = (def.checks ?? []) as unknown[];
       const max = checks.map(checkMax).find((m) => typeof m === "number");
-      const kept = checks.filter((c) => !["max_length", "min_length"].includes(checkName(c) ?? ""));
+      // A measured label's width check (limits.ts measuredLabel) is the drawer's parse too.
+      const kept = checks.filter(
+        (c) => !["max_length", "min_length", "custom"].includes(checkName(c) ?? ""),
+      );
       return withMeta(
         schema,
         s.clone({ ...def, checks: kept }),

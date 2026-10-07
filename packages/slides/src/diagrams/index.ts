@@ -32,7 +32,15 @@ import {
   drawTimeline,
 } from "./templates";
 
-export { CHARS_PER_WORD, LIMITS, limitLines, wordsFor } from "./limits";
+export {
+  CHARS_PER_WORD,
+  captionRule,
+  fitsMeasured,
+  LIMITS,
+  limitLines,
+  measuredLabel,
+  wordsFor,
+} from "./limits";
 export {
   CHANGE_WORD,
   drawerSchema,
@@ -41,6 +49,7 @@ export {
   MEANING_SCHEMAS,
   meaningFaults,
   timeOf,
+  withAskedCounts,
 } from "./meaning";
 export {
   areaModelTable,

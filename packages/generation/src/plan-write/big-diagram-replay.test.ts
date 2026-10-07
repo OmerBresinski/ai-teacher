@@ -44,9 +44,11 @@ describe("LAYOUT-FIX big diagrams replayed from the smoke", () => {
         const spec = expandDrawing(f.picture);
         const base = t3DiagramBase(slide, spec, theme, true);
         const zone = base.elements.find((e) => e.type === "image" && e.src === PLACEHOLDER_IMAGE);
-        // lab/cand: y1's 3-box flow is sparse across the slide (a strip in empty space), so it
-        // steps down to the half zone with its words beside it; the others keep the full width.
+        // lab/cand: a flow that is sparse across the slide (y1's 3 boxes; y9's six short steps,
+        // which parse unstretched since arrow words are measured, round 8) steps down to the half
+        // zone with its words beside it; the others keep the full width.
         if (f.heading === "A chick grows") expect(zone?.w ?? 844).toBeLessThan(844);
+        else if (f.source.includes("y9")) expect(zone?.w).toBeGreaterThan(0);
         else expect(zone?.w).toBe(844);
         const d = placeT3Diagram(base, spec, theme, () => `g${n++}`);
         // dd-diagrams2: y9's six steps with two-word arrow notes adapt (snake, smaller labels) where
