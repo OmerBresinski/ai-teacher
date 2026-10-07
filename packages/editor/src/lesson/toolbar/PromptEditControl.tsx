@@ -56,7 +56,8 @@ export function PromptEditControl({ element, slideId }: { element: TextElement; 
 
   if (!onPromptEdit) return null;
 
-  const run = async (text: string) => {
+  /** `shown` is what the teacher picked or typed, for the "Undid: …" toast. */
+  const run = async (text: string, shown = text) => {
     const said = text.trim();
     const slide = lesson.slides.find((s) => s.id === slideId);
     if (said === "" || !slide || busy) return;
@@ -86,7 +87,7 @@ export function PromptEditControl({ element, slideId }: { element: TextElement; 
         label: "Undo",
         onClick: () => {
           history.undo();
-          toast(`Undid: ${said}`);
+          toast(`Undid: ${shown.trim()}`);
         },
       },
     });
@@ -130,7 +131,7 @@ export function PromptEditControl({ element, slideId }: { element: TextElement; 
                 variant="secondary"
                 size="sm"
                 disabled={busy !== null}
-                onClick={() => void run(s.instruction)}
+                onClick={() => void run(s.instruction, s.label)}
               >
                 {s.label}
               </Button>
