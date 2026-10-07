@@ -51,6 +51,9 @@ const brief = (over: Partial<BankBrief> = {}): BankBrief => ({
   orientation: "portrait",
   ...over,
 });
+/** The card a stored row gets: the subject and the items the judge saw, never the request's. */
+const storedCard = (b: BankBrief, visible: string[] = ["ice cubes"]) =>
+  bankCard({ subject: b.subject, mustShow: visible });
 const evidence = {
   visible: ["ice cubes"],
   count: "one" as const,
@@ -101,7 +104,7 @@ describeDb("worker picture library", () => {
   const signal = new AbortController().signal;
 
   test("write-through stores a judged photo once, ready, under the library prefix", async () => {
-    const card = bankCard(brief());
+    const card = storedCard(brief());
     const embedder = fakeEmbedder({ [card]: axis(0) });
     const { library, storage, log } = setup(embedder);
     library.rememberBank(brief(), placed);
@@ -132,7 +135,7 @@ describeDb("worker picture library", () => {
   });
 
   test("a tag hit makes no embedding call and is copied into the asking Workspace", async () => {
-    const embedder = fakeEmbedder({ [bankCard(brief())]: axis(0) });
+    const embedder = fakeEmbedder({ [storedCard(brief())]: axis(0) });
     const first = setup(embedder);
     first.library.rememberBank(brief(), placed);
     await first.library.drain();
@@ -172,7 +175,7 @@ describeDb("worker picture library", () => {
     const grey = brief({ subject: "glacier", mustShow: [] });
     const far = brief({ subject: "volcano", mustShow: [] });
     const embedder = fakeEmbedder({
-      [bankCard(stored)]: axis(0),
+      [storedCard(stored)]: axis(0),
       [bankCard(near)]: axis(0, 0.3), // cosine 0.958
       [bankCard(grey)]: axis(0, 1.2), // cosine 0.640… below 0.65: a miss
       [bankCard(far)]: axis(5),
@@ -190,7 +193,7 @@ describeDb("worker picture library", () => {
   test("a grey-zone match is a miss in phase 1", async () => {
     const stored = brief();
     const grey = brief({ subject: "slush", mustShow: [] });
-    const embedder = fakeEmbedder({ [bankCard(stored)]: axis(0), [bankCard(grey)]: axis(0, 1) }); // cosine 0.707
+    const embedder = fakeEmbedder({ [storedCard(stored)]: axis(0), [bankCard(grey)]: axis(0, 1) }); // cosine 0.707
     const { library, log } = setup(embedder);
     library.rememberBank(stored, placed);
     await library.drain();
@@ -201,7 +204,10 @@ describeDb("worker picture library", () => {
   test("cards whose numbers differ never share a picture", async () => {
     const stored = brief({ subject: "three apples", mustShow: [] });
     const other = brief({ subject: "five apples", mustShow: [] });
-    const embedder = fakeEmbedder({ [bankCard(stored)]: axis(0), [bankCard(other)]: axis(0, 0.1) });
+    const embedder = fakeEmbedder({
+      [storedCard(stored)]: axis(0),
+      [bankCard(other)]: axis(0, 0.1),
+    });
     const { library } = setup(embedder);
     library.rememberBank(stored, placed);
     await library.drain();
@@ -211,7 +217,7 @@ describeDb("worker picture library", () => {
   test("an embedding slower than the deadline is a miss, not a wait", async () => {
     const stored = brief();
     const slow = brief({ subject: "melting ice", mustShow: [] });
-    const fast = fakeEmbedder({ [bankCard(stored)]: axis(0) });
+    const fast = fakeEmbedder({ [storedCard(stored)]: axis(0) });
     const first = setup(fast);
     first.library.rememberBank(stored, placed);
     await first.library.drain();
@@ -263,7 +269,10 @@ describeDb("worker picture library", () => {
   test("a tag hit whose card states other numbers is not served", async () => {
     const stored = brief({ subject: "coins on a table", mustShow: ["3 coins"] });
     const other = brief({ subject: "coins on a table", mustShow: ["5 coins"] });
-    const embedder = fakeEmbedder({ [bankCard(stored)]: axis(0), [bankCard(other)]: axis(0) });
+    const embedder = fakeEmbedder({
+      [storedCard(stored, ["3 coins"])]: axis(0),
+      [bankCard(other)]: axis(0),
+    });
     const { library } = setup(embedder);
     library.rememberBank(stored, { ...placed, evidence: { ...evidence, visible: ["3 coins"] } });
     await library.drain();
@@ -276,7 +285,7 @@ describeDb("worker picture library", () => {
     const plain = brief({ subject: "melting ice", mustShow: [] });
     const other = brief({ subject: "melting ice", mustShow: ["glass"] });
     const embedder = fakeEmbedder({
-      [bankCard(stored)]: axis(0),
+      [storedCard(stored)]: axis(0),
       [bankCard(plain)]: axis(0, 0.3),
       [bankCard(other)]: axis(0, 0.3),
     });
@@ -316,5 +325,33 @@ describeDb("worker picture library", () => {
       band: "ks3",
     });
     expect(row?.useCount).toBe(0);
+  });
+
+  test("the stored card and depicts hold only what the judge saw, not the request", async () => {
+    const request = brief({ mustShow: ["ice cubes", "meltwater", "3 glasses"] });
+    const judged = storedCard(request);
+    const embedder = fakeEmbedder({ [judged]: axis(0) });
+    const { library } = setup(embedder);
+    library.rememberBank(request, placed);
+    await library.drain();
+    expect(embedder.calls).toEqual([judged]);
+    const [row] = await findBankImagesByTags(db, {
+      subject: "ice cubes melting",
+      orientation: "portrait",
+      band: "ks3",
+    });
+    expect(row?.caption).toBe("Ice cubes melting: ice cubes");
+    expect(row?.depicts).toEqual(["ice cubes"]);
+    // An embedding lookup asking for an item the judge never saw is not served.
+    const asks = brief({ subject: "melting ice", mustShow: ["meltwater"] });
+    const lookup = fakeEmbedder({ [bankCard(asks)]: axis(0, 0.1) });
+    const reader = createLibrary({
+      db,
+      storage: memoryStorage(),
+      embedder: lookup,
+      workspaceId: WS_B,
+      logger: memoryLogger().logger,
+    });
+    expect(await reader.lookupBank(asks, { signal })).toBeUndefined();
   });
 });

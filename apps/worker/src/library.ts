@@ -243,10 +243,16 @@ export function createLibrary(options: CreateLibraryOptions): Library {
     if (!ext) return;
     const id = ids();
     const key = bankStorageKey(id, ext);
-    const card = bankCard(brief);
+    // Only what the judge confirmed is stored and compared (a lab bank that stored the writer's
+    // request as the caption reused a poor photo that merely matched its own request): `depicts`
+    // is the judge's `visible`, and the card is the subject (the judge passed `onSubject`) with
+    // those items, never the brief's unconfirmed `mustShow`.
+    const depicts = [
+      ...new Set(photo.evidence.visible.map((v) => v.replace(/\s+/g, " ").trim())),
+    ].filter(Boolean);
+    const card = bankCard({ subject: brief.subject, mustShow: depicts });
     const embedding = await embedWithin(card, 10_000);
     await storage.put(key, bytes, { contentType: mime });
-    const seen = new Set(photo.evidence.visible.map((v) => v.trim().toLowerCase()));
     const row = await insertBankImage(db, {
       id,
       storageKey: key,
@@ -257,7 +263,7 @@ export function createLibrary(options: CreateLibraryOptions): Library {
       orientation: brief.orientation,
       subject,
       bands: [band],
-      depicts: brief.mustShow.filter((m) => seen.has(m.trim().toLowerCase())),
+      depicts,
       style: "photo",
       alt: photo.alt,
       source: photo.source,
