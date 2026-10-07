@@ -256,9 +256,18 @@ export function drawFractionShapes(s: FractionShapes, x: Ctx, w: number, h: numb
     const x0 = i * (colW + gap) + (colW - W) / 2;
     const y0 = (roomH - H) / 2 + 2;
     const { parts, outline } = partsOf(sh, x0, y0, W, H);
+    // Fill and boundary are separate marks: a look that drops the outline of a filled shape
+    // (flat) would otherwise erase the cuts, and A, B and C would read as whole shapes. Each part's
+    // boundary is an open ink line on a ground-coloured halo, so a cut between two shaded parts shows.
     parts.forEach((d, j) => {
       out.push(
         `<path d="${d}" fill="${j < sh.shaded ? shade : blank}" stroke="${x.c.ink}" stroke-width="${cutW}" stroke-linejoin="round"/>`,
+      );
+    });
+    parts.forEach((d) => {
+      out.push(
+        `<path d="${d}" fill="none" stroke="${x.c.bg}" stroke-width="${n(cutW + 2.5)}" stroke-linejoin="round"/>`,
+        `<path d="${d}" fill="none" stroke="${x.c.ink}" stroke-width="${cutW}" stroke-linejoin="round"/>`,
       );
     });
     out.push(

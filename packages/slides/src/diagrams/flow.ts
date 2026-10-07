@@ -15,6 +15,8 @@ type Box = { cx: number; cy: number; w: number; h: number };
 function boxLines(x: Ctx, b: Box, label: string, f: number): string[] | undefined {
   const room = Math.max(1, Math.floor((b.h - f * 0.5) / (f * 1.2)));
   const lines = wrap(label, x, b.w - f * 0.9, Math.min(3, room), f, WEIGHT.name);
+  // A single word longer than the box comes back whole from wrap: it would spill, so it does not fit.
+  if (lines.some((l) => textWidth(l, x, f, WEIGHT.name) > b.w - f * 0.9 + 0.5)) return undefined;
   return lines[lines.length - 1]?.endsWith("…") ? undefined : lines;
 }
 
@@ -91,13 +93,38 @@ export function graphLayers(k: number, links: GLink[]): { layer: number[]; back:
   return { layer, back };
 }
 
+type Rect = { x0: number; y0: number; x1: number; y1: number };
+
+/** Two rects overlap by more than a hair (with `pad` clear room round each). */
+const hits = (a: Rect, b: Rect, pad = 0) =>
+  a.x0 < b.x1 + pad && b.x0 < a.x1 + pad && a.y0 < b.y1 + pad && b.y0 < a.y1 + pad;
+
+/** A straight segment as a thin rect (axis-aligned links only; a slanted one is skipped). */
+const segRect = (x1: number, y1: number, x2: number, y2: number): Rect | undefined =>
+  Math.abs(x1 - x2) < 1 || Math.abs(y1 - y2) < 1
+    ? {
+        x0: Math.min(x1, x2) - 1.5,
+        x1: Math.max(x1, x2) + 1.5,
+        y0: Math.min(y1, y2) - 1.5,
+        y1: Math.max(y1, y2) + 1.5,
+      }
+    : undefined;
+
+/** `k` evenly spaced ports along a side from `a` to `b` (one port: the middle). */
+const ports = (k: number, a: number, b: number) =>
+  Array.from({ length: k }, (_, i) => (k === 1 ? (a + b) / 2 : a + ((b - a) * i) / (k - 1)));
+
 /**
  * Round 8 (DIAGRAM-SOURCE B4): a flow as a small graph. Boxes stand in layers left to right (or
  * top to bottom in a tall zone) by their longest path from a start; a branch is one box with its
- * cases stacked in the next layer; a link back to an earlier box is a curve under the boxes, a
- * loop is an arc over its box, and an "out" link is an arrow leaving the box downward with its
- * words at its end. Each box is drawn once. A graph that does not fit at a readable size is a
- * fault (the slide falls back), never drawn small.
+ * cases stacked in the next layer. Wide: a link back is a dashed curve under the boxes, a loop an
+ * arc over its box, an "out" link an arrow down to its words. Tall: links back curve round the
+ * left with their words outside the curve, "out" links leave to the right with their words after
+ * the arrow, a loop is an arc over the right of its box. Every link meets a box at its own port, so
+ * no arrowhead lands on another link's line, and every word, box and straight line is checked for
+ * overlaps: a layout with any overlap tries a smaller size or the other direction. Each box is drawn
+ * once. A graph that does not fit at a readable size is a fault (the slide falls back), never drawn
+ * small.
  */
 function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
   const { c } = x;
@@ -120,23 +147,30 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
   for (const tall of w / h >= 1.1 ? [false, true] : [true, false])
     for (let fs = x.fs; fs >= x.minFs; fs -= 1) {
       const noteFs = Math.max(sub(fs), x.minFs);
-      const wordW = (t?: string) =>
-        Math.max(0, ...(t ?? "").split(/\s+/).map((wd) => textWidth(wd, x, noteFs, WEIGHT.label)));
+      const lw = (t: string) => textWidth(t, x, noteFs, WEIGHT.label);
+      const wordW = (t?: string) => Math.max(0, ...(t ?? "").split(/\s+/).map(lw));
+      const oneLine = (t?: string) => (t ? lw(t) : 0);
       const fwdWord = Math.max(0, ...fwd.map((l) => wordW(l.label)));
-      // Along the flow: the gap between layers holds the forward links' words.
-      const gapMain = Math.max(fs * 2, tall ? noteFs * 2.6 : fwdWord + 16);
-      const gapCross = fs * 1.1;
       const loopRoom = loops.length ? fs * 1.6 + noteFs * 1.3 : 0;
-      const outRoom = outs.length ? fs * 1.8 + noteFs * 2.5 : 0;
-      const backRoom = backs.length
-        ? fs * 1.2 + (backs.some((b) => b.label) ? noteFs * 1.3 : 0)
-        : 0;
-      const lanes = tall ? nl : most;
+      // Along the flow: the gap between layers holds the forward links' words (and, tall, a loop).
+      const gapMain = Math.max(fs * 2, tall ? Math.max(noteFs * 2.6, loopRoom + 6) : fwdWord + 16);
+      const gapCross = fs * 1.1;
+      const outRoom = !tall && outs.length ? fs * 1.8 + noteFs * 2.5 : 0;
+      const backRoom =
+        !tall && backs.length
+          ? fs * 1.2 +
+            (backs.length - 1) * fs * 0.5 +
+            (backs.some((b) => b.label) ? noteFs * 1.3 : 0)
+          : 0;
+      // Tall: the room left of the boxes for links back and their words, right for "out" links.
+      const backWord = Math.max(0, ...backs.map((l) => oneLine(l.label)));
+      const outWord = Math.max(0, ...outs.map((l) => oneLine(l.label)));
+      const leftRoom = tall && backs.length ? backWord + fs * 1.4 + backs.length * fs * 0.6 : 0;
+      const rightRoom = tall && outs.length ? fs * 2 + outWord + 8 : 0;
       const across = tall ? most : nl;
-      // Box width: across the zone's width, by layer (wide) or by the widest row (tall).
       const bw = Math.min(
         tall
-          ? (w - gapCross * (across - 1) - (outs.length ? fs * 3 : 0)) / across
+          ? (w - leftRoom - rightRoom - gapCross * (across - 1)) / across
           : (w - gapMain * (nl - 1)) / nl,
         fs * 12,
       );
@@ -152,29 +186,26 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
       const bh = Math.max(...lines.map((l) => (l as string[]).length)) * fs * 1.2 + fs * 0.7;
       const linkWords = (t?: string, room = bw) =>
         t ? wrap(t, x, room, 2, noteFs, WEIGHT.label) : undefined;
-      if (
-        [...links].some(
-          (l) =>
-            l.label &&
-            linkWords(l.label, tall ? w / 2 : Math.max(gapMain - 8, bw))
-              ?.at(-1)
-              ?.endsWith("…"),
-        )
-      )
-        continue;
+      const fwdRoom = tall ? w / 2 : Math.max(gapMain - 8, bw);
+      if (fwd.some((l) => l.label && linkWords(l.label, fwdRoom)?.at(-1)?.endsWith("…"))) continue;
       const stackH = tall ? nl * bh + (nl - 1) * gapMain : most * bh + (most - 1) * gapCross;
-      const totalH = stackH + loopRoom + outRoom + backRoom;
+      const totalH =
+        stackH +
+        (tall ? (loops.length && layer[loops[0]?.from ?? 0] === 0 ? loopRoom : 0) : loopRoom) +
+        outRoom +
+        backRoom;
       if (totalH > h) continue;
-      void lanes;
       // Positions.
       const boxes: Box[] = Array(k);
-      const top = inset + (h - totalH) / 2 + loopRoom;
+      const top = inset + (h - totalH) / 2 + (tall ? totalH - stackH : loopRoom);
+      const left = inset + leftRoom;
+      const midW = w - leftRoom - rightRoom;
       cols.forEach((col, li) => {
         col.forEach((node, j) => {
           if (tall) {
             const rowW = col.length * bw + (col.length - 1) * gapCross;
             boxes[node] = {
-              cx: inset + (w - rowW) / 2 + j * (bw + gapCross) + bw / 2,
+              cx: left + (midW - rowW) / 2 + j * (bw + gapCross) + bw / 2,
               cy: top + li * (bh + gapMain) + bh / 2,
               w: bw,
               h: bh,
@@ -191,15 +222,77 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
           }
         });
       });
-      const out: string[] = [];
-      const style = { fs: noteFs, fill: c.ink, weight: WEIGHT.label, halo: c.bg };
-      const target = (b: Box) => ({
+      const rectOf = (b: Box): Rect => ({
         x0: b.cx - b.w / 2,
         y0: b.cy - b.h / 2,
         x1: b.cx + b.w / 2,
         y1: b.cy + b.h / 2,
       });
-      for (const l of fwd) {
+      // Ports: each link end on a box's side (wide: the bottom; tall: left for links back, right
+      // for "out" links) gets its own place, ordered by where the link goes.
+      const side: Map<number, { key: string; toward: number }[]> = new Map();
+      const want = (box: number, key: string, toward: number) => {
+        const l = side.get(box) ?? [];
+        l.push({ key, toward });
+        side.set(box, l);
+      };
+      backs.forEach((l, bi) => {
+        const a = boxes[l.from] as Box;
+        const b = boxes[l.to as number] as Box;
+        want(l.from, `b${bi}s`, tall ? b.cy : b.cx);
+        want(l.to as number, `b${bi}e`, tall ? a.cy : a.cx);
+      });
+      if (!tall)
+        outs.forEach((l, oi) => {
+          want(l.from, `o${oi}`, (boxes[l.from] as Box).cx);
+        });
+      const port = new Map<string, number>();
+      for (const [bi, l] of side) {
+        const b = boxes[bi] as Box;
+        const o = [...l].sort((p, q) => p.toward - q.toward);
+        const span = tall ? b.h * 0.3 : b.w * 0.3;
+        const at = ports(o.length, (tall ? b.cy : b.cx) - span, (tall ? b.cy : b.cx) + span);
+        o.forEach((p, i) => {
+          port.set(p.key, at[i] as number);
+        });
+      }
+      const out: string[] = [];
+      const rec0 = x.rec?.length ?? 0;
+      const strokes0 = x.strokes?.length ?? 0;
+      const arrows0 = x.arrows?.length ?? 0;
+      const labels: { r: Rect; own: string }[] = [];
+      const lines2: { r: Rect; own: string }[] = [];
+      const style = { fs: noteFs, fill: c.ink, weight: WEIGHT.label, halo: c.bg };
+      const lab = (
+        own: string,
+        px: number,
+        py: number,
+        wl: string[],
+        o: { anchor?: "start" | "middle" | "end"; v?: "top" | "bottom" | "middle" } = {},
+      ) => {
+        const lh = 1.2 * noteFs;
+        const block = (wl.length - 1) * lh;
+        const t0 =
+          o.v === "top"
+            ? py + noteFs * 0.8
+            : o.v === "bottom"
+              ? py - block - noteFs * 0.25
+              : py - block / 2 + noteFs * 0.35;
+        const bwl = Math.max(...wl.map(lw));
+        const a = o.anchor ?? "middle";
+        const x0 = a === "middle" ? px - bwl / 2 : a === "end" ? px - bwl : px;
+        labels.push({
+          r: { x0, x1: x0 + bwl, y0: t0 - noteFs * 0.8, y1: t0 + block + noteFs * 0.25 },
+          own,
+        });
+        out.push(text(x, px, py, wl, { ...o, ...style }));
+      };
+      const seg = (own: string, x1: number, y1: number, x2: number, y2: number) => {
+        const r = segRect(x1, y1, x2, y2);
+        if (r) lines2.push({ r, own });
+      };
+      const target = rectOf;
+      fwd.forEach((l, fi) => {
         const a = boxes[l.from] as Box;
         const b = boxes[l.to as number] as Box;
         const [x1, y1] = edge(a, b.cx, b.cy, 4);
@@ -207,73 +300,105 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         out.push(arrow(x1, y1, x2, y2, c.ink, STROKE.line));
         x.strokes?.push([x1, y1, x2, y2]);
         x.arrows?.push({ tip: [x2, y2], target: target(b) });
-        const wl = linkWords(l.label, tall ? w / 2 : gapMain - 8);
+        seg(`f${fi}`, x1, y1, x2, y2);
+        const wl = linkWords(l.label, fwdRoom);
+        // Tall: the words stand right of the arrow, or left when a loop's arc is over the right
+        // of the box it points to (and so clear of the links back curving round the left).
         if (wl)
-          out.push(
-            tall
-              ? text(x, (x1 + x2) / 2 + 8, (y1 + y2) / 2, wl, { anchor: "start", ...style })
-              : text(x, (x1 + x2) / 2, Math.min(y1, y2) - 5, wl, { v: "bottom", ...style }),
-          );
-      }
+          if (tall && loops.some((o) => o.from === l.to))
+            lab(`f${fi}`, (x1 + x2) / 2 - 8, (y1 + y2) / 2, wl, { anchor: "end" });
+          else if (tall) lab(`f${fi}`, (x1 + x2) / 2 + 8, (y1 + y2) / 2, wl, { anchor: "start" });
+          else lab(`f${fi}`, (x1 + x2) / 2, Math.min(y1, y2) - 5, wl, { v: "bottom" });
+      });
       const floor = top + stackH;
       backs.forEach((l, bi) => {
         const a = boxes[l.from] as Box;
         const b = boxes[l.to as number] as Box;
         const head = fs * 0.7;
+        const ps = port.get(`b${bi}s`) as number;
+        const pe = port.get(`b${bi}e`) as number;
         if (tall) {
-          const qx = inset + 2 + bi * fs * 0.6;
           const sx = a.cx - a.w / 2 - 4;
           const ex = b.cx - b.w / 2 - 4;
+          // The curve's leftmost point stands just right of its words.
+          const xm = inset + backWord + fs * 0.6 + (backs.length - 1 - bi) * fs * 0.6;
+          const qx = 2 * xm - (sx + ex - head * 0.8) / 2;
           out.push(
-            `<path d="M${n(sx)},${n(a.cy)} Q${n(qx)},${n((a.cy + b.cy) / 2)} ${n(ex - head * 0.8)},${n(b.cy)}" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}" stroke-dasharray="7 5"/>`,
-            arrowHead(ex, b.cy, ex - head, b.cy, head, c.ink),
+            `<path d="M${n(sx)},${n(ps)} Q${n(qx)},${n((ps + pe) / 2)} ${n(ex - head * 0.8)},${n(pe)}" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}" stroke-dasharray="7 5"/>`,
+            arrowHead(ex, pe, ex - head, pe, head, c.ink),
           );
-          x.arrows?.push({ tip: [ex, b.cy], target: target(b) });
-          const wl = linkWords(l.label, w / 3);
-          if (wl) out.push(text(x, qx + 6, (a.cy + b.cy) / 2, wl, { anchor: "start", ...style }));
+          x.arrows?.push({ tip: [ex, pe], target: target(b) });
+          const wl = linkWords(l.label, backWord + 1);
+          if (wl) lab(`b${bi}`, xm - 6, (ps + pe) / 2, wl, { anchor: "end" });
         } else {
           const sy = a.cy + a.h / 2 + 4;
           const ey = b.cy + b.h / 2 + 4;
           const qy = floor + fs * 1.0 + bi * fs * 0.5;
           out.push(
-            `<path d="M${n(a.cx)},${n(sy)} C${n(a.cx)},${n(qy)} ${n(b.cx)},${n(qy)} ${n(b.cx)},${n(ey + head * 0.8)}" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}" stroke-dasharray="7 5"/>`,
-            arrowHead(b.cx, ey, b.cx, ey + head, head, c.ink),
+            `<path d="M${n(ps)},${n(sy)} C${n(ps)},${n(qy)} ${n(pe)},${n(qy)} ${n(pe)},${n(ey + head * 0.8)}" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}" stroke-dasharray="7 5"/>`,
+            arrowHead(pe, ey, pe, ey + head, head, c.ink),
           );
-          x.arrows?.push({ tip: [b.cx, ey], target: target(b) });
-          const wl = linkWords(l.label, Math.abs(a.cx - b.cx));
-          if (wl) out.push(text(x, (a.cx + b.cx) / 2, qy - 2, wl, { v: "middle", ...style }));
+          x.arrows?.push({ tip: [pe, ey], target: target(b) });
+          const wl = linkWords(l.label, Math.max(Math.abs(ps - pe) - 8, fs * 3));
+          // The curve's lowest point is 3/4 of the way to qy.
+          if (wl) lab(`b${bi}`, (ps + pe) / 2, sy + (qy - sy) * 0.75, wl, { v: "middle" });
         }
       });
-      for (const l of loops) {
+      loops.forEach((l, li) => {
         const b = boxes[l.from] as Box;
         const r = fs * 0.75;
         const y0 = b.cy - b.h / 2;
-        const xa = b.cx - b.w * 0.22;
-        const xb = b.cx + b.w * 0.22;
+        const xa = tall ? b.cx + b.w * 0.12 : b.cx - b.w * 0.22;
+        const xb = tall ? b.cx + b.w * 0.4 : b.cx + b.w * 0.22;
         const head = fs * 0.6;
         out.push(
           `<path d="M${n(xa)},${n(y0 - 3)} C${n(xa)},${n(y0 - r * 2.2)} ${n(xb)},${n(y0 - r * 2.2)} ${n(xb)},${n(y0 - 3 - head * 0.8)}" fill="none" stroke="${c.ink}" stroke-width="${STROKE.line}"/>`,
           arrowHead(xb, y0 - 3, xb, y0 - 3 - head, head, c.ink),
         );
         x.arrows?.push({ tip: [xb, y0 - 3], target: target(b) });
+        lines2.push({ r: { x0: xa - 2, x1: xb + head, y0: y0 - r * 1.75, y1: y0 }, own: `l${li}` });
+        // Tall: the words stand right of the arc, clear of the forward arrow's words on the left.
         if (l.label)
-          out.push(text(x, b.cx, y0 - r * 1.75 - 2, [l.label], { v: "bottom", ...style }));
-      }
-      for (const l of outs) {
+          if (tall)
+            lab(`l${li}`, xb + head * 0.6 + 6, y0 - r * 1.4, [l.label], { anchor: "start" });
+          else lab(`l${li}`, (xa + xb) / 2, y0 - r * 1.75 - 2, [l.label], { v: "bottom" });
+      });
+      outs.forEach((l, oi) => {
         const b = boxes[l.from] as Box;
-        const sx = tall ? b.cx + b.w / 2 + 4 : b.cx;
-        const sy = tall ? b.cy : b.cy + b.h / 2 + 4;
-        const ex = tall ? Math.min(inset + w - 2, sx + fs * 2.4) : sx;
+        const same = outs.filter((o) => o.from === l.from);
+        const si = same.indexOf(l);
+        const sx = tall ? b.cx + b.w / 2 + 4 : (port.get(`o${oi}`) as number);
+        const sy = tall
+          ? (ports(same.length, b.cy - b.h * 0.25, b.cy + b.h * 0.25)[si] as number)
+          : b.cy + b.h / 2 + 4;
+        const ex = tall ? sx + fs * 1.8 : sx;
         const ey = tall ? sy : Math.max(sy + fs * 1.4, floor + backRoom + fs * 1.4);
         out.push(arrow(sx, sy, ex, ey, c.muted, STROKE.line));
         x.strokes?.push([sx, sy, ex, ey]);
-        const wl = linkWords(l.label, tall ? fs * 4 : bw);
+        seg(`o${oi}`, sx, sy, ex, ey);
+        const wl = linkWords(l.label, tall ? outWord + 1 : bw);
         if (wl)
-          out.push(
-            tall
-              ? text(x, ex, ey - fs * 0.6, wl, { v: "bottom", anchor: "end", ...style })
-              : text(x, ex, ey + 4, wl, { v: "top", ...style }),
-          );
+          if (tall) lab(`o${oi}`, ex + 6, ey, wl, { anchor: "start", v: "middle" });
+          else lab(`o${oi}`, ex, ey + 4, wl, { v: "top" });
+      });
+      // Every word clear of every box, every other word and every other link's line, inside the zone.
+      const boxRects = boxes.map(rectOf);
+      const clash = labels.some(
+        (a, i) =>
+          a.r.x0 < 0 ||
+          a.r.x1 > fullW ||
+          a.r.y0 < 0 ||
+          a.r.y1 > fullH ||
+          boxRects.some((b) => hits(a.r, b, 2)) ||
+          labels.some((o, j) => j > i && hits(a.r, o.r, 3)) ||
+          lines2.some((o) => o.own !== a.own && hits(a.r, o.r, 1)),
+      );
+      if (clash) {
+        // A rejected layout leaves no trace in the checks' records.
+        if (x.rec) x.rec.length = rec0;
+        if (x.strokes) x.strokes.length = strokes0;
+        if (x.arrows) x.arrows.length = arrows0;
+        continue;
       }
       f.steps.forEach((s, i) => {
         const b = boxes[i];
@@ -496,17 +621,28 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
 function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   const { c, fs } = x;
   const k = f.steps.length;
-  const bw = Math.min(w * (k <= 4 ? 0.42 : 0.36), fs * 11);
+  const base = Math.min(w * (k <= 4 ? 0.42 : 0.36), fs * 11);
   const bh = Math.min(h * 0.22, fs * 3.6);
-  // An inset, so the boxes' strokes never clip at the slot's edge.
-  const rx = (w - bw) / 2 - 4;
-  const ry = (h - bh) / 2 - 4;
   const cx = w / 2;
   const cy = h / 2;
-  const boxes: Box[] = f.steps.map((_, i) => {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / k;
-    return { cx: cx + rx * Math.cos(a), cy: cy + ry * Math.sin(a), w: bw, h: bh };
-  });
+  const ring = (bw: number): Box[] => {
+    // An inset, so the boxes' strokes never clip at the slot's edge.
+    const rx = (w - bw) / 2 - 4;
+    const ry = (h - bh) / 2 - 4;
+    return f.steps.map((_, i) => {
+      const a = -Math.PI / 2 + (i * 2 * Math.PI) / k;
+      return { cx: cx + rx * Math.cos(a), cy: cy + ry * Math.sin(a), w: bw, h: bh };
+    });
+  };
+  // A box widens (up to about half the zone) before a long word ("Condensation") spills over it.
+  const labels = f.steps.map((s) => s.label);
+  const fitsIn = (bs: Box[]) => {
+    const f0 = boxSize(x, bs, labels);
+    return labels.every((l, i) => boxLines(x, bs[i] as Box, l, f0));
+  };
+  const widest = Math.max(base, w * (k <= 4 ? 0.48 : 0.4));
+  let boxes = ring(base);
+  for (let i = 1; i <= 4 && !fitsIn(boxes); i++) boxes = ring(base + ((widest - base) * i) / 4);
   const out: string[] = [];
   const small = Math.max(sub(fs), x.minFs);
   boxes.forEach((b, i) => {

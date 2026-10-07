@@ -223,8 +223,10 @@ export function drawLineGraph(g: LineGraph, x: Ctx, w: number, h: number): strin
   }
   // Axes, with the axis a zero crosses where it crosses.
   const baseY = Y(g.y.min <= 0 && g.y.max >= 0 ? 0 : g.y.min);
+  // Modern looks let the gridlines stand for the y axis; a graph with no ticks (qualitative, an
+  // energy profile) has no gridlines, so it keeps the axis line.
   out.push(
-    modern
+    modern && yt.length > 0
       ? ""
       : `<line x1="${n(left)}" y1="${n(top)}" x2="${n(left)}" y2="${n(top + ph)}" stroke="${c.ink}" stroke-width="2.5"/>`,
     `<line x1="${n(left)}" y1="${n(top + ph)}" x2="${n(left + pw)}" y2="${n(top + ph)}" stroke="${c.ink}" stroke-width="2.5"/>`,

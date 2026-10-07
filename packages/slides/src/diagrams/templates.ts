@@ -166,6 +166,61 @@ function scatter(state: "solid" | "liquid" | "gas", k: number): Pt[] {
   return out;
 }
 
+/**
+ * `k` particle centres (radius `r`, unit box) round a lump: about half of them (at least one)
+ * resting on its top or against its sides, the rest on a staggered grid through the liquid above,
+ * every pair at least a particle apart, deterministic.
+ */
+function roundLump(
+  k: number,
+  r: number,
+  lump: { x0: number; y0: number; x1: number; y1: number },
+): Pt[] {
+  const d = 2 * r * 1.08;
+  const on: Pt[] = [];
+  // The lump's top, centre outwards, then its two sides on the floor.
+  const topY = lump.y0 - r - 0.004;
+  const mid = (lump.x0 + lump.x1) / 2;
+  const across = Math.max(1, Math.floor((lump.x1 - lump.x0) / d));
+  for (let i = 0; i < across; i++) {
+    const o = Math.ceil(i / 2) * (i % 2 ? -1 : 1);
+    on.push([mid + (o + (across % 2 ? 0 : 0.5)) * d, topY]);
+  }
+  const sideY = Math.min(lump.y1 - r, 1 - r - 0.01);
+  on.splice(1, 0, [lump.x0 - r - 0.004, sideY], [lump.x1 + r + 0.004, sideY]);
+  const touching = Math.min(on.length, Math.max(1, Math.round(k / 2)));
+  const out: Pt[] = on.slice(0, touching);
+  const clear = (p: Pt) => out.every((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) >= d);
+  // The liquid: a fine grid of candidate spots clear of the walls and of the lump (and of the
+  // particles touching it); the spacing comes from the pick below, not the grid.
+  const free: Pt[] = [];
+  const near = (p: Pt) => {
+    const dx = Math.max(lump.x0 - p[0], 0, p[0] - lump.x1);
+    const dy = Math.max(lump.y0 - p[1], 0, p[1] - lump.y1);
+    return Math.hypot(dx, dy) < r * 1.05;
+  };
+  for (let y = r * 1.15; y <= 1 - r - 0.01; y += d / 3)
+    for (let px = r * 1.15; px <= 1 - r * 1.15; px += d / 3) if (!near([px, y])) free.push([px, y]);
+  // Each next particle takes the free spot furthest from those placed (spread, not a clump).
+  const left = free.filter(clear);
+  while (out.length < k && left.length) {
+    let best = 0;
+    let far = -1;
+    left.forEach((p, i) => {
+      const dmin = Math.min(...out.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1])));
+      if (dmin > far + 1e-9) {
+        far = dmin;
+        best = i;
+      }
+    });
+    const [p] = left.splice(best, 1);
+    if (p && clear(p)) out.push(p);
+  }
+  for (const p of on.slice(touching)) if (out.length < k && clear(p)) out.push(p);
+  while (out.length < k) out.push(out[out.length - 1] ?? [0.5, 0.5]);
+  return out;
+}
+
 function panels(s: Particles): Panel[] {
   const one = (p: Pt) => ({ at: p });
   if (s.show === "compare" && s.panels) {
@@ -405,6 +460,17 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
           out.push(text(x, lx + lw / 2, ly + lh / 2, [s.lump], { fs: lf, fill: x.c.ink }));
         else bad(x, "the lump's name does not fit on it");
       }
+      // The particles round the lump: some touching its surface (top and sides), the rest spread
+      // through the liquid above it, none overlapping (BAKEOFF round 8: a clump, none at the surface).
+      const at = roundLump(p.dots.length, rc / ib, {
+        x0: (lx - ix) / ib,
+        y0: (ly - iy) / ib,
+        x1: (lx + lw - ix) / ib,
+        y1: (ly + lh - iy) / ib,
+      });
+      p.dots.forEach((d, j) => {
+        d.at = at[j] as Pt;
+      });
     }
     if (p.squash) {
       // Round 8: the piston: a bar on the lowered lid and an arrow pushing down onto it.
@@ -423,7 +489,6 @@ export function drawParticles(s: Particles, x: Ctx, w: number, h: number): strin
       );
     }
     for (const d of p.dots) {
-      if (p.solid) d.at = [d.at[0], d.at[1] * (1 - LUMP)];
       out.push(
         `<circle cx="${n(ix + d.at[0] * ib)}" cy="${n(iy + d.at[1] * ib)}" r="${n(rc)}" fill="${d.second ? x.c.accent2 : x.c.accent}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}"/>`,
       );
@@ -1037,20 +1102,6 @@ function breakMark(x: Ctx, cx: number, cy: number, vertical: boolean): string {
   return gap + sl(-g) + sl(g);
 }
 
-/** The gaps a dated timeline caps (longer than three times the median gap): each gets a break. */
-function cappedGaps(s: Timeline): Set<number> {
-  const g = yearGaps(s);
-  if (!g) return new Set();
-  const med = median(g);
-  return new Set(g.flatMap((v, i) => (v > 3 * med ? [i] : [])));
-}
-
-const median = (v: number[]) => {
-  const o = [...v].sort((a, b) => a - b);
-  const m = Math.floor(o.length / 2);
-  return o.length % 2 ? (o[m] as number) : ((o[m - 1] as number) + (o[m] as number)) / 2;
-};
-
 /** The year gaps between events, or undefined when a date names no year or runs backwards. */
 function yearGaps(s: Timeline): number[] | undefined {
   // Round 8: months and days count (two events in "January 1923" and "November 1923" are not one point).
@@ -1060,18 +1111,71 @@ function yearGaps(s: Timeline): number[] | undefined {
   return g.some((v) => v < 0) ? undefined : g;
 }
 
-/** Event x positions from `a` to `b` spaced by date (see `drawTimeline`), or undefined. */
-function datedXs(s: Timeline, a: number, b: number): number[] | undefined {
+/**
+ * Event x positions from `a` to `b` spaced by date, and the gaps drawn broken, or undefined.
+ * BAKEOFF round 8 (55 BC, 54 BC, AD 43 drew one year as wide as twenty): every unbroken gap is to
+ * one scale. When that scale would set two events closer than `minPx`, the longest gaps are broken
+ * (a break mark, the gap drawn short) one at a time, and the rest are drawn at the smallest scale
+ * that keeps the closest pair `minPx` apart, so a cluster stays a cluster. Never evenly.
+ */
+function datedXs(
+  s: Timeline,
+  a: number,
+  b: number,
+  minPx: number,
+): { xs: number[]; breaks: Set<number> } | undefined {
   const g = yearGaps(s);
   if (!g || g.every((v) => v === 0)) return undefined;
-  const med = Math.max(median(g), 1e-9);
-  const capped = g.map((v) => Math.min(v, 3 * med));
-  const mean = capped.reduce((p, q) => p + q, 0) / capped.length;
-  const wts = capped.map((v) => Math.max(v, mean * 0.75));
-  const total = wts.reduce((p, q) => p + q, 0);
-  const out = [a];
-  for (const v of wts) out.push((out[out.length - 1] as number) + ((b - a) * v) / total);
-  return out;
+  const L = b - a;
+  const at = (scale: (v: number, i: number) => number) => {
+    const out = [a];
+    g.forEach((v, i) => {
+      out.push((out[out.length - 1] as number) + scale(v, i));
+    });
+    return out;
+  };
+  const total = g.reduce((p, q) => p + q, 0);
+  const least = (vs: number[]) => Math.min(...vs.filter((v) => v > 0));
+  if (least(g) * (L / total) >= minPx) return { xs: at((v) => (L * v) / total), breaks: new Set() };
+  const order = g.map((v, i) => [v, i] as const).sort((p, q) => q[0] - p[0]);
+  const breaks = new Set<number>();
+  for (const [v, i] of order) {
+    const rest = g.filter((_, j) => j !== i && !breaks.has(j));
+    if (!rest.some((r) => r > 0)) break;
+    // Only a gap far longer than every gap left unbroken is worth a break.
+    if (v < 4 * Math.max(...rest)) break;
+    breaks.add(i);
+    const U = rest.reduce((p, q) => p + q, 0);
+    const scale = minPx / least(rest);
+    const bw = (L - scale * U) / breaks.size;
+    if (bw >= Math.max(3 * minPx, scale * Math.max(...rest)))
+      return { xs: at((u, j) => (breaks.has(j) ? bw : u * scale)), breaks };
+  }
+  // No break helps: one scale throughout, the labels spread on leaders.
+  return { xs: at((v) => (L * v) / total), breaks: new Set() };
+}
+
+/**
+ * Label centres for events at `xs` on one side of the line, widths `bw`, kept `gap` apart and
+ * inside [lo, hi]: each as near its event as it can stand (a leader joins them), or undefined.
+ */
+function spread(xs: number[], bw: number[], gap: number, lo: number, hi: number) {
+  const c = xs.map((v, i) =>
+    Math.max(lo + (bw[i] as number) / 2, Math.min(hi - (bw[i] as number) / 2, v)),
+  );
+  for (let i = 1; i < c.length; i++)
+    c[i] = Math.max(
+      c[i] as number,
+      (c[i - 1] as number) + ((bw[i - 1] as number) + (bw[i] as number)) / 2 + gap,
+    );
+  for (let i = c.length - 1; i >= 0; i--) {
+    const cap =
+      i === c.length - 1
+        ? hi - (bw[i] as number) / 2
+        : (c[i + 1] as number) - ((bw[i + 1] as number) + (bw[i] as number)) / 2 - gap;
+    c[i] = Math.min(c[i] as number, cap);
+  }
+  return c.every((v, i) => v - (bw[i] as number) / 2 >= lo - 0.5) ? c : undefined;
 }
 
 export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string {
@@ -1082,8 +1186,10 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
   const modern = look().preset !== "current";
   // Modern looks: events stand by date (a long gap capped at three times the median and marked
   // with a break, a short one held to three quarters of the mean gap), evenly only when that will not fit.
-  const dated = modern ? datedXs(s, pad + slot / 2, w - pad - slot / 2) : undefined;
+  const span = modern ? datedXs(s, pad + x.fs * 1.2, w - pad - x.fs * 1.6, x.fs * 1.5) : undefined;
+  const dated = span?.xs;
   let xs = even;
+  let mids: number[] = [];
   const colW = Math.min(slot * 2 - 10, w * 0.42);
   const stem = 0.9 * x.fs;
   type Fit = {
@@ -1100,7 +1206,8 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
     Math.max(bw / 2 + edge, Math.min(w - bw / 2 - edge, cx));
   // DIAGRAM-AUDIT look #7: many events go down the slot at a readable size before crowding across it.
   const floor = k > 5 ? Math.max(TYPE_FLOOR, x.fs - 4) : TYPE_FLOOR;
-  for (const cand of dated ? [dated, even] : [even])
+  // Dated events are never spaced evenly: a dated line that will not fit reads downwards instead.
+  for (const cand of dated ? [dated] : [even])
     for (let fs = x.fs; fs >= floor && !fit; fs -= 1) {
       for (const share of modern ? [1, 0.82, 0.66, 0.54] : [1, 0.82, 0.66]) {
         if (fit) break;
@@ -1123,6 +1230,30 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
         const down = Math.max(0, ...bs.filter((_, i) => i % 2 === 1).map((b) => b.bh));
         const per = s.period ? 1.1 * fs + 0.9 * fs : 0;
         if (up + down + 2 * stem + per + 12 > h) continue;
+        // Dated: each side's labels spread apart on leaders, as near their events as they can.
+        if (cand === dated) {
+          const m: number[] = [];
+          let ok = true;
+          for (const side of [0, 1]) {
+            const ids = bs.map((_, i) => i).filter((i) => i % 2 === side);
+            const c = spread(
+              ids.map((i) => cand[i] as number),
+              ids.map((i) => (bs[i] as Fit["blocks"][number]).bw),
+              0.8 * fs,
+              edge,
+              w - edge,
+            );
+            if (!c) ok = false;
+            else
+              ids.forEach((i, j) => {
+                m[i] = c[j] as number;
+              });
+          }
+          if (!ok) continue;
+          mids = m;
+          fit = { fs, blocks: bs, up, down, per };
+          continue;
+        }
         // Neighbours on the same side, where they are drawn (edge labels move in), keep a clear gap.
         const clash = bs.some((b, i) => {
           const o = bs[i + 2];
@@ -1135,7 +1266,7 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
         fit = { fs, blocks: bs, up, down, per };
       }
     }
-  if (fit && modern && xs !== dated) xs = even;
+
   if (!fit) return drawTimelineDown(s, x, w, h);
   const { fs, blocks, up, down, per } = fit;
   const total = up + down + 2 * stem + per;
@@ -1165,15 +1296,17 @@ export function drawTimeline(s: Timeline, x: Ctx, w: number, h: number): string 
       }),
     );
   }
-  for (const i of modern && xs === dated ? cappedGaps(s) : longGaps(s))
+  for (const i of dated && xs === dated ? (span?.breaks ?? []) : longGaps(s))
     out.push(breakMark(x, ((xs[i] as number) + (xs[i + 1] as number)) / 2, lineY, false));
   blocks.forEach((b, i) => {
     const cx = xs[i] as number;
     const above = i % 2 === 0;
-    const mid = midOf(cx, b.bw);
+    const mid = xs === dated ? (mids[i] ?? cx) : midOf(cx, b.bw);
     const y0 = above ? lineY - stem - b.bh : lineY + stem;
+    // The stem is a leader: it runs from the event to its words where they stand.
+    const lx = Math.max(mid - b.bw / 2 + 4, Math.min(mid + b.bw / 2 - 4, cx));
     out.push(
-      `<line x1="${n(cx)}" y1="${n(lineY)}" x2="${n(cx)}" y2="${n(above ? lineY - stem + 3 : lineY + stem - 3)}" stroke="${x.c.muted}" stroke-width="2"/>`,
+      `<line x1="${n(cx)}" y1="${n(lineY)}" x2="${n(lx)}" y2="${n(above ? lineY - stem + 3 : lineY + stem - 3)}" stroke="${x.c.muted}" stroke-width="2"/>`,
     );
     out.push(
       `<circle cx="${n(cx)}" cy="${n(lineY)}" r="${n(Math.max(6, fs * 0.32))}" fill="${x.c.accent}" stroke="${x.c.bg}" stroke-width="2"/>`,
