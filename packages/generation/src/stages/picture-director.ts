@@ -282,7 +282,8 @@ interface Ask {
 
 /** The slot's plan from the director's answer; none when there is no usable answer. */
 export function planPicture(d: PictureDirection | undefined, ask: Ask): PicturePlan {
-  if (!d || d.route === "none") return { kind: "none" };
+  // Round 8: the director's veto (its reason to show nothing) is enforced here, never decided.
+  if (!d || d.route === "none" || d.veto?.trim()) return { kind: "none" };
   const base = { named: ask.named, ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}) };
   const counted = countOk(d.count) ? d.count : undefined;
   // FIX1: a photo framed as a count only when there is something to count. A pair (an adult and
@@ -447,7 +448,12 @@ export async function findDirected(args: {
     args.onOutcome?.({
       director: direction?.route ?? "failed",
       via: "none",
-      reason: direction ? "director-none" : "director-failed",
+      reason: !direction
+        ? "director-failed"
+        : direction.veto?.trim()
+          ? "director-veto"
+          : "director-none",
+      ...(direction?.veto?.trim() ? { veto: direction.veto.trim() } : {}),
     });
     return undefined;
   }
@@ -547,9 +553,12 @@ export interface PictureOutcome {
   via: string;
   route?: string;
   period?: string;
+  /** Round 8: the director's reason to show no picture, when it vetoed one. */
+  veto?: string;
   /** Why the slot is empty: the director gave nothing, a real thing missed with no fallback, or generation was refused (cap, judge, or error). */
   reason?:
     | "director-none"
+    | "director-veto"
     | "director-failed"
     | "real-miss-no-fallback"
     | "generation-refused-or-failed";

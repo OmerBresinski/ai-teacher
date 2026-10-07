@@ -312,6 +312,30 @@ export function toInput(
   }
 }
 
+/**
+ * Round 8 (subject judges, round7/SUBJECT-JUDGES.md, MFL-JUDGE.md): the subject's own specialist
+ * practice, one short block per subject family (prompts/shared/subjects/<family>.txt), appended
+ * after the shared system text so the cached prefix stays the same across subjects. A subject
+ * with no block gets nothing.
+ */
+const SUBJECT_FAMILY: [RegExp, string][] = [
+  [/math|algebra|geometry|statistic|numeracy/i, "maths"],
+  [/scien|physic|chemi|biolog/i, "science"],
+  [/histor/i, "history"],
+  [/geograph/i, "geography"],
+  [/english|literature|drama/i, "english"],
+  [
+    /french|spanish|german|italian|mandarin|chinese|latin|language|mfl|hindi|urdu|arabic/i,
+    "languages",
+  ],
+  [/psycholog|sociolog|economics|politic/i, "social-sciences"],
+];
+export function subjectBlock(subject: string | undefined): string {
+  const fam = SUBJECT_FAMILY.find(([re]) => re.test(subject ?? ""))?.[1];
+  const f = fam && `${BAKEOFF}/prompts/shared/subjects/${fam}.txt`;
+  return f && existsSync(f) ? `\n${readFileSync(f, "utf8").trim()}\n` : "";
+}
+
 export const armT: ArmPlugin = {
   id: "T",
   prompt(brief) {
@@ -319,7 +343,7 @@ export const armT: ArmPlugin = {
     const dir = `${BAKEOFF}/prompts/T`;
     if (existsSync(`${dir}/system.${k}.txt`) && existsSync(`${dir}/schema.${k}.json`))
       return {
-        system: readFileSync(`${dir}/system.${k}.txt`, "utf8"),
+        system: readFileSync(`${dir}/system.${k}.txt`, "utf8") + subjectBlock(brief.subject),
         schema: JSON.parse(readFileSync(`${dir}/schema.${k}.json`, "utf8")),
         model: "gpt-6.1-sol",
         effort: "low",
