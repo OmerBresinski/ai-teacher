@@ -250,7 +250,7 @@ describe("illustrate", () => {
         visible: [],
         count: "one",
         alt: "Photo p2",
-        promptVersion: "pick-or-requery-photo.v18",
+        promptVersion: "pick-or-requery-photo.v19",
         thumbnail: second.src.tiny,
       },
     });
@@ -268,7 +268,7 @@ describe("illustrate", () => {
     });
     expect(deps.progress.at(-1)?.message).toBe("Pictures placed");
     expect(state.lesson.generation?.promptVersions.generated).toContain(
-      "pick-or-requery-photo.v18",
+      "pick-or-requery-photo.v19",
     );
     expect(state.lesson.generation?.usage.calls).toBe(1);
   });
@@ -426,7 +426,7 @@ describe("illustrate", () => {
       visible: ["petals"],
       count: "one",
       alt: "Photo A",
-      promptVersion: "pick-or-requery-photo.v18",
+      promptVersion: "pick-or-requery-photo.v19",
       thumbnail: `data:image/png;base64,${PNG}`,
     });
 

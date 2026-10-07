@@ -38,6 +38,9 @@ export type PickOrRequeryInput = {
   avoid?: string[] | undefined;
   /** Every query already searched, so a requery never repeats one. */
   queries: string[];
+  /** v19 (BAKEOFF round 9): the lesson's picture style; the judge holds the picture to it, so an
+   * illustration lesson's painted pictures are not refused as "not a photograph". Default photo. */
+  pictureStyle?: "photo" | "illustration";
   candidates: { id: string; alt: string; thumbnail: string }[];
 };
 
@@ -166,30 +169,34 @@ const EXAMPLE_REQUERY: PickOrRequery = {
 };
 
 export const pickOrRequeryPrompt = {
-  version: "pick-or-requery-photo.v18",
+  version: "pick-or-requery-photo.v19",
   system: [
-    "You choose the photograph for one slide of a school lesson from search results. You see each candidate photograph (numbered to match its id) and its caption, which is its source's own record (title, description, date).",
+    "You choose the picture for one slide of a school lesson from its candidates. You see each candidate picture (numbered to match its id) and its caption, which is its source's own record (title, description, date).",
     "",
-    "A good photograph for the slide is an example of the wanted subject itself, as this lesson means the word, seen whole and plainly; it shows the required items clearly enough for a class to see them on a projector; it shows what the wanted description states; and nothing in it belongs to another time or place than the slide's. A missing picture is better than a wrong one.",
+    "A good picture for the slide suits the lesson's picture style: in a photo lesson a photograph, or a painting, print or reproduction of a real thing from the past; in an illustration lesson a painted picture, or a photograph or reproduction of a real named thing. It is an example of the wanted subject itself, as this lesson means the word, seen whole and plainly; it shows the required items clearly enough for a class to see them on a projector; it shows what the wanted description states; and nothing in it belongs to another time or place than the slide's. A missing picture is better than a wrong one.",
     "",
     "Rules:",
     HOUSE_RULES,
     "Answer:",
-    '- `pick`: the id of the one candidate that is a good photograph for the slide, exactly as written after "id" in its line; the plainest when several are, and the earlier when two are equal. Null when none is.',
-    "- `onSubject`: true when the main thing in the picked photograph is the wanted subject itself: the same kind of animal, plant, object, place or event, near the centre, as the slide teaches it. A similar-looking kind, a related scene or object, a model or reconstruction of a real thing, or a place as it looks today when the slide is about its past, is not the subject.",
+    '- `pick`: the id of the one candidate that is a good picture for the slide, exactly as written after "id" in its line; the plainest when several are, and the earlier when two are equal. Null when none is.',
+    "- `onSubject`: true when the main thing in the picked picture is the wanted subject itself: the same kind of animal, plant, object, place or event, near the centre, as the slide teaches it. A similar-looking kind, a related scene or object, a model or reconstruction of a real object, or a place as it looks today when the slide is about its past, is not the subject.",
     "- `kindMatches`: when the wanted subject or an item names a sex, an age or a variety, true when the picked subject is that one, judged on the features that tell them apart (name the feature in `why`); null when none is named.",
     "- `clear`: true when a class of this year group can make out the subject and the required items: nothing stands in front of them, the frame keeps what pupils need of them, the subject fills a good share of the picture, and for primary-age pupils it stands out from everything else. A check you are unsure of counts as passed.",
-    "- `fits`: true when the picked photograph is what the slide wants: the required items as worded (every one when the list says so, otherwise at least one) and the relations the wanted description states. A young one shown with an adult of its kind is the same kind with the same colouring and markings. A pose or angle in the wording is a framing hint. Refuse only for a miss you can name.",
+    "- `fits`: true when the picked picture is what the slide wants: the required items as worded (every one when the list says so, otherwise at least one) and the relations the wanted description states. A young one shown with an adult of its kind is the same kind with the same colouring and markings. A pose or angle in the wording is a framing hint. Refuse only for a miss you can name.",
     "- `why`: one sentence naming what you saw that decided your answer.",
-    "- `visible`: the required items you can see in the picked photograph, each copied exactly as listed. Who, where and when come from its caption, not the picture. `count`: whether it shows one of the subject or several. `boxes`: where each visible item sits, as fractions of the width and height from the left and top edges (0 to 1).",
-    "- `query`: when no candidate is a good photograph, one better standalone search: two to four plain words naming the subject itself, with the lesson's context, and none of the searches already tried. Null when you cannot think of a materially better one.",
+    "- `visible`: the required items you can see in the picked picture, each copied exactly as listed. Who, where and when come from its caption, not the picture. `count`: whether it shows one of the subject or several. `boxes`: where each visible item sits, as fractions of the width and height from the left and top edges (0 to 1).",
+    "- `query`: when no candidate is a good picture, one better standalone search: two to four plain words naming the subject itself, with the lesson's context, and none of the searches already tried. Null when you cannot think of a materially better one.",
     "",
     "Answer as JSON in one of these shapes:",
     example(EXAMPLE),
     example(EXAMPLE_REQUERY),
   ].join("\n"),
   user(input: PickOrRequeryInput): string {
-    const parts = [`Lesson: ${input.lessonTitle}`, `Topic the teacher asked for: ${input.topic}`];
+    const parts = [
+      `Lesson: ${input.lessonTitle}`,
+      `Picture style: ${input.pictureStyle ?? "photo"}`,
+      `Topic the teacher asked for: ${input.topic}`,
+    ];
     if (input.answers && Object.keys(input.answers).length > 0) {
       parts.push("The teacher also said:");
       for (const [q, a] of Object.entries(input.answers)) parts.push(`  ${q}: ${a}`);

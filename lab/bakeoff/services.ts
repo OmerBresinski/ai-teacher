@@ -41,7 +41,6 @@ import {
   diagramJsonSchema,
   drawerJsonSchema,
   dropNulls,
-  limitLines,
   MEANING_SCHEMAS,
   meaningFaults,
   mendSpec,
@@ -50,11 +49,18 @@ import {
   withAskedCounts,
   withLongLabels,
 } from "../../packages/slides/src/diagrams/index";
+import {
+  type DiagramSlot,
+  slotLimit,
+  slotLimitLine,
+} from "../../packages/slides/src/diagrams/limits";
+import { fromMeaning } from "../../packages/slides/src/diagrams/meaning";
 // Round 3 fix: the drawer's own schema, not generation's mirror. The mirror's particles `show`
 // had only states/diffusion/dissolving (no compare or collision) and no cubes kind, so the spec
 // writer could not ask for y11 s8's "faster particles at a higher temperature".
 import { DiagramSpecSchema } from "../../packages/slides/src/diagrams/schema";
-import { placePhoto } from "../../packages/slides/src/templates/index";
+import { atFullSize, layoutTemplate, placePhoto } from "../../packages/slides/src/templates/index";
+import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { createStorage } from "../../packages/storage/src/index";
 import { locale, localise } from "./locale";
 
@@ -753,63 +759,92 @@ export function pictureService(opts: {
       }
       return r.photo;
     };
-    const photo = (await findDirected({
-      bank: images.bank as never,
-      ask: {
-        subject: request,
-        named: ask.named ? plainSubject(ask.shows).slice(0, 60) : null,
-        // Round 8: the slide's own request is the picture's spec; the director only adds searches.
-        writer: {
-          shows: ask.shows,
-          mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
-          subject: ask.named ? "named" : "generic",
-        },
-      },
-      brief: b as never,
-      slide: ask.slide,
-      lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
-      country: locale().country,
-      index: ask.index,
-      stock: stock as never,
-      judgeMade: (brief: unknown, made: { dataUrl?: string; src?: string }, reuse?: boolean) => {
-        if (!made.dataUrl) return Promise.resolve(true);
-        let seen: { why?: string; fits?: boolean } | undefined;
-        return judgeMade({
-          lesson: pickerLesson(lesson, ask.index) as never,
-          index: ask.index,
-          brief: brief as never,
-          deps: deps as never,
-          dataUrl: made.dataUrl,
-          ...(reuse ? { reuse } : {}),
-          onVerdict: (v: { boxes?: Box4[]; why?: string | null; fits?: boolean }) => {
-            madeBoxes = v.boxes;
-            seen = { why: v.why ?? undefined, fits: v.fits };
-          },
-        }).then((ok) => {
-          // A refused generated (or library) picture stays in the store; log it for review.
-          if (!ok)
-            appendFileSync(
-              `${opts.runDir}/log.jsonl`,
-              `${JSON.stringify({ t: Date.now(), ev: "rejected", key: ask.key, request: request, src: made.src, check: reuse ? "reuse judge" : "picture judge", fits: seen?.fits, why: seen?.why })}\n`,
-            );
-          return ok;
-        });
-      },
-      deps: deps as never,
-      ...(look ? { look } : {}),
-      ...(direct ? { direct } : {}),
-      onOutcome: (o: object) =>
-        appendFileSync(
-          `${opts.runDir}/log.jsonl`,
-          `${JSON.stringify({ t: Date.now(), ev: "picture-outcome", key: ask.key, ...o })}\n`,
-        ),
-    }).catch((e: unknown) => {
+    // Round 9 (regression audit Q5, y6 "Locate South America"): a map is a real source, never a
+    // made picture the director then vetoes as "schematic". It is searched as a named thing first
+    // (Commons and Pexels through the stock judge); the director runs only when none is found.
+    const mapFirst = isMapRequest(ask.shows)
+      ? ((await stock({ ...b, specific: true }).catch(() => undefined)) as
+          | {
+              src: string;
+              alt?: string;
+              about?: string;
+              source?: { provider?: string };
+              boxes?: Box4[];
+            }
+          | undefined)
+      : undefined;
+    if (mapFirst)
       appendFileSync(
         `${opts.runDir}/log.jsonl`,
-        `${JSON.stringify({ t: Date.now(), ev: "picture-error", key: ask.key, err: String(e).slice(0, 300) })}\n`,
+        `${JSON.stringify({ t: Date.now(), ev: "picture-map-source", key: ask.key, src: mapFirst.src, provider: mapFirst.source?.provider })}\n`,
       );
-      return undefined;
-    })) as
+    const photo = (
+      mapFirst
+        ? { ...mapFirst, alt: mapFirst.alt ?? ask.shows, look: "photo" as const }
+        : await findDirected({
+            bank: images.bank as never,
+            ask: {
+              subject: request,
+              named: ask.named ? plainSubject(ask.shows).slice(0, 60) : null,
+              // Round 8: the slide's own request is the picture's spec; the director only adds searches.
+              writer: {
+                shows: ask.shows,
+                mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
+                subject: ask.named ? "named" : "generic",
+              },
+            },
+            brief: b as never,
+            slide: ask.slide,
+            lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+            country: locale().country,
+            index: ask.index,
+            stock: stock as never,
+            judgeMade: (
+              brief: unknown,
+              made: { dataUrl?: string; src?: string },
+              reuse?: boolean,
+            ) => {
+              if (!made.dataUrl) return Promise.resolve(true);
+              let seen: { why?: string; fits?: boolean } | undefined;
+              return judgeMade({
+                lesson: pickerLesson(lesson, ask.index) as never,
+                index: ask.index,
+                brief: brief as never,
+                deps: deps as never,
+                dataUrl: made.dataUrl,
+                ...(reuse ? { reuse } : {}),
+                // Round 9 (audit cause 5): the judge holds the picture to the lesson's style.
+                pictureStyle: ask.style ?? "photo",
+                onVerdict: (v: { boxes?: Box4[]; why?: string | null; fits?: boolean }) => {
+                  madeBoxes = v.boxes;
+                  seen = { why: v.why ?? undefined, fits: v.fits };
+                },
+              }).then((ok) => {
+                // A refused generated (or library) picture stays in the store; log it for review.
+                if (!ok)
+                  appendFileSync(
+                    `${opts.runDir}/log.jsonl`,
+                    `${JSON.stringify({ t: Date.now(), ev: "rejected", key: ask.key, request: request, src: made.src, check: reuse ? "reuse judge" : "picture judge", fits: seen?.fits, why: seen?.why })}\n`,
+                  );
+                return ok;
+              });
+            },
+            deps: deps as never,
+            ...(look ? { look } : {}),
+            ...(direct ? { direct } : {}),
+            onOutcome: (o: object) =>
+              appendFileSync(
+                `${opts.runDir}/log.jsonl`,
+                `${JSON.stringify({ t: Date.now(), ev: "picture-outcome", key: ask.key, ...o })}\n`,
+              ),
+          }).catch((e: unknown) => {
+            appendFileSync(
+              `${opts.runDir}/log.jsonl`,
+              `${JSON.stringify({ t: Date.now(), ev: "picture-error", key: ask.key, err: String(e).slice(0, 300) })}\n`,
+            );
+            return undefined;
+          })
+    ) as
       | {
           src: string;
           alt: string;
@@ -929,6 +964,7 @@ export function pictureService(opts: {
         brief: brief as never,
         deps: deps as never,
         dataUrl: url,
+        pictureStyle: a.style ?? "photo",
         onVerdict: (v: { boxes?: Box4[]; why?: string | null }) => {
           boxes[k] = v.boxes;
           panelWhy[k] = v.why ?? undefined;
@@ -1247,7 +1283,15 @@ export type DiagramAsk = {
   /** Round 8 (DIAGRAM-SOURCE C2.5): the slide's ask line for this figure, what pupils do with it. */
   task?: string;
   /** Round 8 (dataflow audit D): where the drawing goes, like a picture call's zone. */
-  slot?: { placement: "beside text" | "across the slide"; w: number; h: number };
+  slot?: {
+    placement: "beside text" | "across the slide";
+    w: number;
+    h: number;
+    name?: DiagramSlot;
+  };
+  /** Round 9: the key stage and theme the slide renders at (the slot's limits and the fit check). */
+  stage?: string;
+  theme?: string;
 };
 /** The diagram spec prompt: BAKEOFF/prompts/shared/diagram-spec.txt when the prompt agent has written it, else SOL-SIMPLE's. */
 function diagramSystem(): string {
@@ -1267,7 +1311,9 @@ function diagramSystem(): string {
     `${ROUNDS}/SOL-SIMPLE/prompts/diagram-spec.txt`,
   ]) {
     const head = read(f);
-    if (head) return `${head}\n\n${contract}\n\n${limitLines()}`;
+    // Round 9: no slot-free limits block (it told the drawer 6 boxes where 3 fit beside text); each
+    // request carries its own slot's measured limits (`slotLimitLine`).
+    if (head) return `${head}\n\n${contract}`;
   }
   throw new Error("no diagram spec prompt");
 }
@@ -1330,6 +1376,105 @@ export async function fillPartialSet<A, R>(
   );
 }
 
+/** Round 9: a picture request for a map (searched as a real source first). */
+export const isMapRequest = (shows: string) => /\bmaps?\b/i.test(shows);
+
+/** Round 9: each kind's main list in the drawer's schema (meaning form where the drawer fills one). */
+export const MAIN_LIST: Record<string, string> = {
+  flow: "nodes",
+  cycle: "steps",
+  timeline: "events",
+  table: "rows",
+  "labelled-diagram": "labels",
+  "bar-chart": "bars",
+  pie: "slices",
+  venn: "items",
+  layers: "layers",
+  river: "labels",
+  particles: "panels",
+  "fraction-shapes": "shapes",
+  "line-graph": "annotations",
+};
+/** A schema node, through a nullable anyOf, as the object/array it is (undefined when neither). */
+const unwrap = (n: unknown): Record<string, unknown> | undefined => {
+  const o = n as Record<string, unknown> | undefined;
+  if (!o) return undefined;
+  if (Array.isArray(o.anyOf))
+    return (o.anyOf as Record<string, unknown>[]).find((x) => x.type && x.type !== "null");
+  return o;
+};
+/**
+ * Round 9 (regression audit cause 3, drawer inflation): the drawer's strict schema with its main
+ * list capped at the slot's measured count and, when the writer named the parts, at that many
+ * (a flow's labels are its boxes then its arrow words, so never fewer boxes than asked); a title is
+ * null only. Line-graph notes are capped at the labels beyond the two axes. Never throws.
+ */
+export function capDrawerSchema(
+  schema: Record<string, unknown>,
+  kind: string,
+  slotItems: number | undefined,
+  labels: number,
+): Record<string, unknown> {
+  const out = JSON.parse(JSON.stringify(schema)) as Record<string, unknown>;
+  const props = out.properties as Record<string, unknown> | undefined;
+  if (!props) return out;
+  if ("title" in props) props.title = { type: "null" };
+  const field = MAIN_LIST[kind];
+  const list = field ? unwrap(props[field]) : undefined;
+  if (list && list.type === "array") {
+    const asked = kind === "line-graph" ? Math.max(0, labels - 2) : labels;
+    const caps = [
+      slotItems,
+      asked > 0 ? asked : undefined,
+      list.maxItems as number | undefined,
+    ].filter((x): x is number => typeof x === "number" && x > 0);
+    const min = (list.minItems as number | undefined) ?? 0;
+    if (caps.length) list.maxItems = Math.max(min, Math.min(...caps));
+    if (kind === "line-graph" && asked === 0) list.maxItems = 0;
+  }
+  return out;
+}
+/** Round 9: parts the drawer added beyond the request ("" when none): a title, or more items than labels. */
+export function addedParts(spec: unknown, kind: string, labels: readonly string[]): string {
+  const s = (spec ?? {}) as Record<string, unknown>;
+  const out: string[] = [];
+  if (typeof s.title === "string" && s.title.trim())
+    out.push("it adds a title the request did not ask for");
+  const field = MAIN_LIST[kind];
+  const list = field ? s[field] : undefined;
+  const asked = kind === "line-graph" ? Math.max(0, labels.length - 2) : labels.length;
+  if (Array.isArray(list) && labels.length && list.length > asked)
+    out.push(`it has ${list.length} ${field} where the request names ${asked}`);
+  return out.join("; ");
+}
+/** Round 9: why the spec does not draw in its own slot on its slide's theme ("" when it does). */
+export function slotFault(spec: unknown, ask: DiagramAsk): string {
+  if (!ask.slot) return "";
+  const name = ask.slot.name ?? "side";
+  try {
+    const r = withKeyStage(ask.stage ?? "ks3", () =>
+      atFullSize(() =>
+        layoutTemplate(
+          {
+            template: name === "full" ? "big-diagram" : "diagram-text",
+            heading: "Heading",
+            lead: "What this shows.",
+            points: ["One point", "Another point"],
+            figure: { diagram: fromMeaning(spec) },
+          } as never,
+          getTheme(ask.theme ?? "studio", ask.stage),
+          (ask.stage ?? "ks3") as never,
+        ),
+      ),
+    ) as { diagram?: string[] };
+    return r.diagram?.length
+      ? `it does not fit its slot (${ask.slot.w} by ${ask.slot.h} points): ${r.diagram.slice(0, 2).join("; ")}`
+      : "";
+  } catch (e) {
+    return `it does not draw: ${String(e).slice(0, 120)}`;
+  }
+}
+
 /** Why a spec doesn't draw, in a line ("" when it does): the schema's issues as path: message. */
 export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): string {
   if (parses(out)) return "";
@@ -1359,11 +1504,21 @@ async function specCalls(
   const { $schema: _draft, ...open } = drawerJsonSchema(
     ask.kind as Parameters<typeof drawerJsonSchema>[0],
   );
-  const schema = strictForm(open) as object;
+  // Round 9: the slot's measured count and the request's own parts bound the main list in the
+  // schema, and no title can be sent (the slide's heading names it).
+  const schema = capDrawerSchema(
+    strictForm(open) as Record<string, unknown>,
+    ask.kind,
+    slotLimit(ask.kind, ask.stage ?? "ks3", ask.slot?.name ?? "side")?.items,
+    ask.labels.length,
+  );
   const slot = ask.slot
     ? `\nSlot: ${ask.slot.placement}, ${Math.round(ask.slot.w)} by ${Math.round(ask.slot.h)} points`
     : "";
-  const user = `${ask.yearGroup}\nKind: ${ask.kind}${slot}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}${ask.task ? `\nTask: ${ask.task}` : ""}\n\nThe slide:\n${ask.words}`;
+  const stage = ask.stage ?? "ks3";
+  const slotName = ask.slot?.name ?? "side";
+  const limit = slotLimitLine(ask.kind, stage, slotName);
+  const user = `${ask.yearGroup}\nKind: ${ask.kind}${slot}${limit ? `\n${limit}` : ""}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}${ask.task ? `\nTask: ${ask.task}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const r = await chat({
@@ -1395,7 +1550,10 @@ async function specCalls(
     // Round 8: a meaning-form spec's faults are said in its own fields (meaning.ts).
     fault = r.out
       ? meaningFaults(meaningKind ? sent : r.out) ||
-        diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
+        diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o))) ||
+        // Round 9: nothing beyond the request, and it must draw in its own slot (one retry).
+        addedParts(sent, ask.kind, ask.labels) ||
+        slotFault(r.out, ask)
       : "no output";
     log({
       ev: "diagram-call",

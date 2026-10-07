@@ -411,12 +411,10 @@ export const armT: ArmPlugin = {
     void opts;
     const drop = (t: unknown) => str(t);
     const POINTS = /$^/;
-    // Round 8 (audit 9): a dropped figure's labels keep teaching: they stay on the slide as a point.
-    const labels = ["figure", "diagram", "picture"]
-      .map((k) => (s as S)[k] as S | null | undefined)
-      .flatMap((f) => (f && Array.isArray(f.labels) ? (f.labels as unknown[]).map(str) : []))
-      .filter((l) => l.trim() && !/^[A-Z?]$|^\d+$/.test(l.trim()));
-    const kept = labels.length >= 2 ? [labels.join("; ")] : [];
+    // Round 9 (regression audit cause 4): no "a; b; c" label string. A diagram's labels mean
+    // something only in its geometry; the slide is rewritten to stand alone instead (harness
+    // `fallback`, one small call), never padded with the figure's labels.
+    const kept: string[] = [];
     const { figure: _f, picture: _p, ...rest } = s as S;
     const tpl = String(s.template);
     return {

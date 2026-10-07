@@ -10,8 +10,11 @@ export type Locale = {
   yearWord: string;
   /** Spelling and search locale: "en-GB", "en-IN", "en-US". */
   spelling: string;
-  /** "GBP", "INR". */
+  /** Round 9 (audit cause 7): the symbol prompts and slides write, "£", "₹" (never the ISO code:
+   * "GBP 48" made y5's bar part "12 GBP" too wide and read as a code, not money). */
   currency: string;
+  /** The ISO 4217 code, for anything that needs it (prices, APIs); never filled into prompts as money. */
+  currencyCode: string;
   /** "metric", "imperial". */
   units: string;
 };
@@ -21,7 +24,8 @@ export const ENGLAND: Locale = {
   curriculum: "the National Curriculum for England",
   yearWord: "Year",
   spelling: "en-GB",
-  currency: "GBP",
+  currency: "£",
+  currencyCode: "GBP",
   units: "metric",
 };
 
@@ -30,7 +34,8 @@ export const INDIA: Locale = {
   curriculum: "CBSE",
   yearWord: "Class",
   spelling: "en-IN",
-  currency: "INR",
+  currency: "₹",
+  currencyCode: "INR",
   units: "metric",
 };
 

@@ -4,6 +4,7 @@
 // bun lab/bakeoff/diagram-kinds.ts <prompts/shared/diagram-kinds.json>
 import { writeFileSync } from "node:fs";
 import { DIAGRAM_KINDS, drawerJsonSchema, LIMITS } from "../../packages/slides/src/diagrams/index";
+import { SLOT_LIMITS } from "../../packages/slides/src/diagrams/limits";
 
 export function diagramKindsFile() {
   return {
@@ -11,6 +12,8 @@ export function diagramKindsFile() {
     kinds: DIAGRAM_KINDS,
     // Round 8: the one limits table; make_visuals.py and schema_parts.py read it.
     limits: LIMITS,
+    // Round 9: what draws in each slot (side, full) per key-stage group; make_visuals.py's Fits.
+    slotLimits: SLOT_LIMITS,
     // Round 8: the drawer fills each kind's meaning form (meaning.ts) where one exists.
     specSchemas: Object.fromEntries(DIAGRAM_KINDS.map((k) => [k, drawerJsonSchema(k)])),
   };

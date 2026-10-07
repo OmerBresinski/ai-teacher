@@ -7,6 +7,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
+import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { type Locale, setLocale } from "./locale";
@@ -256,18 +257,27 @@ export function keepAsksHonest(
 }
 
 /** A failed diagram may become a picture of the same thing unless it is data or a schematic. */
-/** Round 8: a diagram call's task line and slot (the zone sizes are the slide layouts' own). */
-export function diagramContext(s: Record<string, unknown> | undefined): {
+/**
+ * Round 8: a diagram call's task line and slot. Round 9 (regression audit cause 3): the slot is the
+ * box the layout really gives (limits.ts slotBox, measured from layoutTemplate: 348 x 284 beside
+ * text, 788 x 223-235 across), not the 403 x 378 / 844 x 380 round 8 told the drawer.
+ */
+export function diagramContext(
+  s: Record<string, unknown> | undefined,
+  stage = "ks3",
+): {
   task?: string;
-  slot: { placement: "beside text" | "across the slide"; w: number; h: number };
+  slot: { placement: "beside text" | "across the slide"; w: number; h: number; name: DiagramSlot };
 } {
-  const across = ["big-visual", "big-diagram"].includes(String(s?.template ?? ""));
+  const name = slotOf(String(s?.template ?? ""));
   const f = (s?.figure ?? s?.diagram) as { ask?: unknown } | undefined;
   return {
     ...(f && typeof f.ask === "string" && f.ask.trim() ? { task: f.ask } : {}),
-    slot: across
-      ? { placement: "across the slide", w: 844, h: 380 }
-      : { placement: "beside text", w: 403, h: 378 },
+    slot: {
+      placement: name === "full" ? "across the slide" : "beside text",
+      ...slotBox(stage, name),
+      name,
+    },
   };
 }
 
@@ -298,16 +308,121 @@ export function layoutsFor(menu: string, template: string): string {
 }
 
 /**
- * Round 8 (dataflow audit C): a check's fault in the repair prompt's terms and units: which slot
- * and about how many lines over, never "text column 354/328pt". A line is taken as 1.2 x the
- * body size of a KS3 theme (about 34 pt); the count is said as "about".
+ * Round 9 (regression audit cause 4/5): the fault a stand-alone or reroute call is given: which
+ * figure is missing, what it was to show and, for a diagram, its parts, so the slide can carry that
+ * content in words (or a readable layout) with no line pointing at it.
  */
-export function repairTerms(fault: string): string {
+export function lostFault(
+  f: { type: string; kind?: string; shows: string; labels?: string[] },
+  why?: string,
+): string {
+  const what = f.type === "diagram" ? `${f.kind ?? "diagram"} diagram` : "picture";
+  const parts = f.labels?.length ? `; its parts: ${f.labels.join(", ")}` : "";
+  const because = why ? ` (${why})` : "";
+  return `missing: the ${what} of "${f.shows}" cannot be shown${because}${parts}; the slide must stand alone without it`;
+}
+
+/** Round 9: catalogue/fit.json, the measured characters per field (lab/bakeoff/fit-table.ts). */
+type FitVariant = {
+  label: string;
+  counts: Record<string, number>;
+  figure: boolean;
+  keyCards?: boolean;
+  chars: number;
+  instruction?: number;
+  charsNoInstruction?: number;
+  stem?: number;
+  keyLabel?: number;
+  columnLabel?: number;
+};
+type FitGroup = {
+  heading: number;
+  formula: number;
+  formulaBesideFigure: number;
+  layouts: Record<string, { fields: string[]; variants: FitVariant[] }>;
+};
+let fitCache: Record<string, FitGroup> | undefined;
+export function fitTable(): Record<string, FitGroup> {
+  if (!fitCache) {
+    const f = `${BAKEOFF}/catalogue/fit.json`;
+    fitCache = existsSync(f)
+      ? (JSON.parse(readFileSync(f, "utf8")) as { groups: Record<string, FitGroup> }).groups
+      : {};
+  }
+  return fitCache;
+}
+
+/**
+ * Round 9: each text field over its measured limit, as `field: N characters, room M (K over)`. The
+ * slide's way of filling its layout is matched by its item count and figure (the smallest room of
+ * the ways that hold that count, so the repair aims under every one of them).
+ */
+export function charsOver(slide: unknown, stage: string): string[] {
+  const s = (slide ?? {}) as Record<string, unknown>;
+  const F = fitTable()[stage];
+  const L = F?.layouts[String(s.template)];
+  if (!F || !L) return [];
+  const listKey = ["points", "questions", "options", "columns", "sequence"].find((k) =>
+    Array.isArray(s[k]),
+  );
+  const items = listKey ? (s[listKey] as unknown[]) : [];
+  const fig = !!(s.figure ?? s.picture);
+  const countKey: Record<string, string> = {
+    options: "options",
+    columns: "columns",
+    sequence: "sequence",
+    questions: "questions",
+    points: "points",
+  };
+  const fitting = L.variants.filter(
+    (v) =>
+      v.chars > 0 &&
+      v.figure === fig &&
+      (listKey ? (v.counts[countKey[listKey] ?? listKey] ?? 0) >= items.length : true),
+  );
+  const v =
+    fitting.sort((a, b) => (a.counts[listKey ?? ""] ?? 0) - (b.counts[listKey ?? ""] ?? 0))[0] ??
+    L.variants.filter((x) => x.chars > 0).sort((a, b) => a.chars - b.chars)[0];
+  if (!v) return [];
+  const hasIns = typeof s.instruction === "string" && s.instruction.trim().length > 0;
+  const room = hasIns ? v.chars : (v.charsNoInstruction ?? v.chars);
+  const out: string[] = [];
+  const over = (field: string, text: unknown, cap: number | undefined) => {
+    const t = typeof text === "string" ? text : "";
+    if (cap && t.length > cap)
+      out.push(`${field}: ${t.length} characters, room ${cap} (${t.length - cap} over)`);
+  };
+  over("heading", s.heading, F.heading);
+  if (typeof s.lead === "string") over("lead", s.lead, room);
+  if (typeof s.instruction === "string") over("instruction", s.instruction, v.instruction);
+  if (typeof s.stem === "string") over("stem", s.stem, v.stem);
+  if (typeof s.formula === "string")
+    over("formula", s.formula, fig ? F.formulaBesideFigure : F.formula);
+  items.forEach((it, k) => {
+    const o = (it ?? {}) as Record<string, unknown>;
+    const text = typeof it === "string" ? it : (o.text ?? o.caption);
+    over(`${listKey}[${k + 1}]`, text, room);
+    if (typeof o.label === "string")
+      over(`${listKey}[${k + 1}].label`, o.label, v.keyLabel ?? v.columnLabel);
+  });
+  return out;
+}
+
+/**
+ * Round 9 (regression audit cause 2b): a fit fault in the repair's own units: which field and how
+ * many characters over its measured room, never "about N lines" (round 8 said a 49 pt overflow was
+ * "about 1 line", and 31 of 35 rewords were reverted). A fault no field explains (a picture aspect,
+ * a heading wrap) keeps its slot name with the overflow said as a share of the room.
+ */
+export function repairTerms(fault: string, slide?: unknown, stage?: string): string {
   const m = /^(overflow|clipped): (.*?)\s*(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt\b(.*)$/.exec(fault);
   if (!m) return fault;
-  const over = Number(m[3]) - Number(m[4]);
-  const lines = Math.max(1, Math.round(over / 34));
-  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} runs about ${lines} line${lines > 1 ? "s" : ""} past its room${m[5] ?? ""}`;
+  const fields = slide && stage ? charsOver(slide, stage) : [];
+  if (fields.length) return `${m[1]}: ${fields.join("; ")}`;
+  const used = Number(m[3]);
+  const room = Number(m[4]);
+  const cut = Math.max(1, Math.ceil(((used - room) / used) * 100));
+  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} needs about ${cut}% fewer characters to fit${m[5] ?? ""}`;
 }
 
 export const pictureFallbackOk = (kind: string | undefined, _shows: string) =>
@@ -663,6 +778,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     });
     return pics.findSet(asks, lessonInfo);
   };
+  /** Round 9: why the director vetoed a picture, by visual key (the reroute call is told). */
+  const vetoed = new Map<string, string>();
   const landPhoto = (i: number, key: string, p: Promise<PhotoResult | undefined>) =>
     jobs.push(
       // A picture job never throws into the run (round 2): a failure is a failed picture.
@@ -673,8 +790,10 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         })
         .then((r0) => {
           const veto = r0 ? pictureVeto(r0) : undefined;
-          if (veto)
+          if (veto) {
+            vetoed.set(`${i}:${key}`, veto);
             log({ ev: "picture-veto", key: `${i}:${key}`, why: veto, request: r0?.request });
+          }
           const r = veto ? undefined : r0;
           visuals.set(`${i}:${key}`, r ? { status: "photo", photo: r } : { status: "failed" });
           // One picture at most once per lesson unless the same request asks for it (K's y1 smoke:
@@ -734,7 +853,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       labels: a.labels,
       words,
       yearGroup: brief.yearGroup,
-      ...diagramContext(plan.slides[i] as Record<string, unknown> | undefined),
+      ...diagramContext(plan.slides[i] as Record<string, unknown> | undefined, brief.keyStage),
+      stage: brief.keyStage,
+      theme: themeId,
     };
     log({ ev: "diagram-start", key: k, kind: a.kind });
     jobs.push(
@@ -1363,7 +1484,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   const path = new Map<number, string>();
   const repairOne = async (
     c: CheckResult,
-    mode: "fit" | "stand-alone" = "fit",
+    mode: "fit" | "stand-alone" | "reroute" = "fit",
   ): Promise<boolean> => {
     if (!existsSync(repairSys) || !existsSync(repairSchema)) return false;
     const system = readFileSync(repairSys, "utf8");
@@ -1389,8 +1510,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const menu = existsSync(`${armDir}/layouts.${stageKey}.txt`)
       ? layoutsFor(readFileSync(`${armDir}/layouts.${stageKey}.txt`, "utf8"), own)
       : "";
-    const hasDiagram = ask.some((a) => a.type === "diagram");
-    const faultLines = c.faults.map(repairTerms);
+    // Round 9: a reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
+    const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
+    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey));
     const u = tpl
       ? fillTemplate(tpl, brief, {
           context: user,
@@ -1412,7 +1534,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       : `${user}\n\nSlide ${i + 1}:\n${JSON.stringify(plan.slides[i])}\n\nWhat the check found:\n${[...c.faults, ...found].map((f) => `- ${f}`).join("\n")}`;
     let out: unknown;
     let usd = 0;
-    if (o.replayRepair || (mode === "stand-alone" && o.replay)) {
+    if (o.replayRepair || (mode !== "fit" && o.replay)) {
       out = mode === "fit" ? recorded.get(i + 1) : undefined;
       if (!out) return false;
     } else {
@@ -1456,7 +1578,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       ? []
       : // Round 6 run (y4 s3/s10 rejected for losing "look, closely"): a stand-alone rewrite loses
         // the pointing words by design, so neither the figure nor those words count against it.
-        verdict.why.filter((w) => mode !== "stand-alone" || !/^lost (the|\d+ of)/.test(w));
+        verdict.why.filter((w) => mode === "fit" || !/^lost (the|\d+ of)/.test(w));
     if (why.length) {
       log({
         ev: "repair-rejected",
@@ -1477,7 +1599,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
     const worse =
-      mode === "stand-alone"
+      mode !== "fit"
         ? now.some((f) => /^(dangling|unanswerable):/.test(f))
         : [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
     if (worse) restore(i, before, n0, saved);
@@ -1551,9 +1673,38 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     // stage below rewrites them (a call) before it strips them.
     const words = arm.asWords?.(s, { keepPointing: true });
     if (words && JSON.stringify(words) !== JSON.stringify(s)) await swapSlide(i, words);
-    path.set(i, "words");
+    // Round 9 (regression audit cause 4): the slide is rewritten to stand alone in one small call
+    // (gpt-6-luna, low): no line may point at the missing figure, and tabular content becomes a
+    // readable layout. The figure is named in the fault so its content can be carried in words.
+    const ok =
+      !o.noRepair && (await repairOne({ slide: i + 1, faults: [lostFault(dAsk)] }, "stand-alone"));
+    path.set(i, ok ? "words-rewrite" : "words");
+  };
+  // Round 9 (regression audit cause 5): a picture the director vetoed or no source found is
+  // rerouted in one small call: a diagram of a supported kind when one shows it, else the slide
+  // rewritten to stand alone. Only the slide's own figure (not a compare card or sequence panel).
+  const pictureLost = async (i: number) => {
+    if (path.has(i) || i < 2) return;
+    const lost = (asks.get(i) ?? []).find(
+      (a): a is Extract<VisualAsk, { type: "photo" }> =>
+        a.type === "photo" &&
+        !a.set &&
+        !a.fixedShape &&
+        visuals.get(`${i}:${a.key}`)?.status === "failed",
+    );
+    if (!lost || o.noRepair) return;
+    const why = vetoed.get(`${i}:${lost.key}`);
+    const ok = await repairOne(
+      { slide: i + 1, faults: [lostFault({ type: "photo", shows: lost.shows }, why)] },
+      "reroute",
+    );
+    const drew = (asks.get(i) ?? []).some(
+      (a) => a.type === "diagram" && visuals.get(`${i}:${a.key}`)?.status === "diagram",
+    );
+    path.set(i, ok ? (drew ? "picture-to-diagram" : "picture-rewrite") : "picture-lost");
   };
   await Promise.all(Array.from({ length: n }, (_, i) => fallback(i)));
+  await Promise.all(Array.from({ length: n }, (_, i) => pictureLost(i)));
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
   // ── e2. round 6: visual or rewrite. Words that point at a visual the slide does not show (r5 y2
   // s3/s5, y4 s4, y12 s7) are rewritten to stand alone; failing that, the pointing sentences go.
