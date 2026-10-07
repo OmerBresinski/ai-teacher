@@ -20,6 +20,7 @@ export const AB_ARMS = [
   "b2-a3",
   "k1",
   "base3",
+  "b3-r2",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -29,7 +30,14 @@ export const STAGES = ["KS1", "KS2", "KS3-5"] as const;
 /** What each arm changes on top of round 5 (code side). */
 export const AB_CONFIG: Record<
   AbArm,
-  { ask: boolean; kinds: string[]; meaningKinds: string[]; delta: string; fixes?: boolean }
+  {
+    ask: boolean;
+    kinds: string[];
+    meaningKinds: string[];
+    delta: string;
+    fixes?: boolean;
+    r2?: boolean;
+  }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
   a1: { ask: false, kinds: [], meaningKinds: [], delta: "C1 specialist moves (prompt only)" },
@@ -75,6 +83,17 @@ export const AB_CONFIG: Record<
     fixes: true,
     delta: "D11a base: base2 + K1 + K3 (incomplete writer fails) + seeded hinge shuffle",
   },
+  // D11 R2 (RADICAL.md): structured kinds are per-kind spec defs the writer fills; code draws them.
+  // Prompt text is base3's until the prompt-engineer rewrites the diagram section.
+  "b3-r2": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta:
+      "base3 + R2: writer spec defs per kind and slot (SLOT_LIMITS caps), code draws, drawer fallback",
+  },
 };
 /** The arm each arm is diffed against, and the arm whose delta it must reproduce (D4). */
 export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }>> = {
@@ -86,6 +105,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   "b2-a3": { ref: "base2", same: ["base", "a3"] },
   k1: { ref: "base2" },
   base3: { ref: "k1" },
+  "b3-r2": { ref: "base3" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -95,6 +115,8 @@ export function setAbArm(a: AbArm | undefined) {
 }
 export const abArm = () => current;
 /** D11 correctness fixes (K3 incomplete-writer failure, seeded hinge shuffle): base3 onwards only. */
+/** R2: the writer's own diagram specs are drawn by code (b3-r2). */
+export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
 export const abFixes = () => (current ? Boolean(AB_CONFIG[current].fixes) : false);
 
 /** Round 5 as recorded: system length (JS chars) per stage in round5 request.json, and the T pin. */
@@ -144,7 +166,12 @@ export function menuKinds(system: string): string[] {
 /** The diagram kind enum a writer schema offers. */
 export function schemaKinds(schema: Record<string, unknown>): string[] {
   const defs = schema.$defs as Record<string, { properties?: { kind?: { enum?: string[] } } }>;
-  return defs?.diagram?.properties?.kind?.enum ?? [];
+  if (defs?.diagram) return defs.diagram.properties?.kind?.enum ?? [];
+  // R2: the per-kind spec defs (dg-<kind>-<slot>) and the freeform def's kinds.
+  const kinds = new Set<string>(defs?.["diagram-freeform"]?.properties?.kind?.enum ?? []);
+  for (const [n, d] of Object.entries(defs ?? {}))
+    if (n.startsWith("dg-")) for (const k of d.properties?.kind?.enum ?? []) kinds.add(k);
+  return [...kinds];
 }
 
 /**

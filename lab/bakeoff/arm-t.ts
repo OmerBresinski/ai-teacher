@@ -9,7 +9,8 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
-import { abArm, abFiles } from "./ab/arms";
+import { abArm, abFiles, abR2 } from "./ab/arms";
+import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
 import { BAKEOFF, ROUNDS } from "./services";
@@ -31,6 +32,20 @@ const pts = (v: unknown): TemplatePoint[] =>
         return label ? { label, text: str(o.text) } : str(o.text);
       })
     : [];
+/** R2 (b3-r2): a structured figure is the writer's own spec; its words stand in for labels. */
+function r2Ask(key: string, f: Record<string, unknown>): VisualAsk | undefined {
+  const spec = abR2() ? writerSpecOf(f) : undefined;
+  if (!spec) return undefined;
+  return {
+    key,
+    type: "diagram",
+    kind: String(f.kind),
+    shows: String(f.shows ?? ""),
+    labels: labelsOf(spec),
+    spec,
+  };
+}
+
 const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" in (f as object);
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
@@ -387,7 +402,13 @@ export const armT: ArmPlugin = {
     return figs.map(
       ({ key, f }): VisualAsk =>
         isDia(f)
-          ? { key, type: "diagram", kind: f.kind, shows: f.shows, labels: f.labels ?? [] }
+          ? (r2Ask(key, f as unknown as Record<string, unknown>) ?? {
+              key,
+              type: "diagram",
+              kind: f.kind,
+              shows: f.shows,
+              labels: f.labels ?? [],
+            })
           : {
               key,
               type: "photo",

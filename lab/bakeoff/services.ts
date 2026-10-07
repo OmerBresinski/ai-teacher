@@ -1303,6 +1303,8 @@ export type DiagramAsk = {
   /** Round 9: the key stage and theme the slide renders at (the slot's limits and the fit check). */
   stage?: string;
   theme?: string;
+  /** R2 (b3-r2): the writer's own spec; code draws it, or the drawer gets it as its request. */
+  spec?: unknown;
 };
 /** The diagram spec prompt: BAKEOFF/prompts/shared/diagram-spec.txt when the prompt agent has written it, else SOL-SIMPLE's. */
 function diagramSystem(): string {
@@ -1337,6 +1339,24 @@ export async function diagramSpec(
     (o) => o.shape.kind.value === ask.kind,
   );
   if (!kindSchema) return undefined;
+  // R2 (b3-r2): the writer's spec is drawn with no call when it parses and fits its slot; otherwise
+  // the existing drawer call gets it as its request (a fallback, not a new stage).
+  if (ask.spec !== undefined) {
+    const { acceptWriterSpec } = await import("./ab/r2");
+    const r = acceptWriterSpec(ask.spec, ask);
+    log({
+      ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
+      key: ask.key,
+      kind: ask.kind,
+      ...(r.fault ? { fault: r.fault } : {}),
+    });
+    if (r.spec) return r.spec;
+    const { spec, ...rest } = ask;
+    ask = {
+      ...rest,
+      shows: `${ask.shows}\nThe writer's spec, which did not draw (${r.fault}): ${JSON.stringify(spec)}`,
+    };
+  }
   return guarded(
     ledger,
     `diagram ${ask.key}`,

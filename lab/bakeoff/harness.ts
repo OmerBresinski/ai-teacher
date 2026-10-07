@@ -93,7 +93,15 @@ export type VisualAsk =
       /** The set shows one subject at stages (false: different things compared). */
       sameSubject?: boolean;
     }
-  | { key: string; type: "diagram"; kind: string; shows: string; labels: string[] };
+  | {
+      key: string;
+      type: "diagram";
+      kind: string;
+      shows: string;
+      labels: string[];
+      /** R2 (b3-r2): the writer's own spec, drawn by code when it parses and fits. */
+      spec?: unknown;
+    };
 
 /** What the harness knows about one visual when it materialises a slide. */
 export type VisualState =
@@ -1119,6 +1127,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       kind: a.kind,
       shows: a.shows,
       labels: a.labels,
+      ...(a.spec ? { spec: a.spec } : {}),
       words,
       yearGroup: brief.yearGroup,
       ...diagramContext(plan.slides[i] as Record<string, unknown> | undefined, brief.keyStage),

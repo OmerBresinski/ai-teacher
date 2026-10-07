@@ -66,6 +66,10 @@ for (const a of AB_ARMS) {
     const sk = schemaKinds(schema);
     const miss = sk.filter((k) => !mk.includes(k));
     const extra = mk.filter((k) => !sk.includes(k));
+    // R2 adds equal-groups and fraction-shapes as spec defs; its menu text is base3's until the
+    // prompt-engineer rewrites the diagram section, so only those two may be schema-only there.
+    if (AB_CONFIG[a].r2)
+      miss.splice(0, miss.length, ...miss.filter((k) => !AB_CONFIG[a].kinds.includes(k)));
     if (miss.length || extra.length)
       fail(`${a} ${st}: menu vs schema kinds: schema only [${miss}], menu only [${extra}]`);
     if (/\{\{/.test(localise(system))) fail(`${a} ${st}: unfilled token`);
@@ -230,6 +234,9 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
     const jd = jsonDiff(b.schema, r.schema);
     if (a === "base2" && (sd.del.length || sd.add.length || jd.length || b.system !== r.system))
       fail(`base2 ${id}: differs from a1`);
+    // R2: the system text is base3's; only the diagram defs change.
+    if (a === "b3-r2" && (b.system !== r.system || jd.some((l) => !/^\$\.\$defs\./.test(l))))
+      fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
     if (a === "base3" && (jd.length || b.system !== r.system))
       fail(`base3 ${id}: its request differs from k1 (base3 is k1's files + code fixes)`);
     // D11: K1 changes only the flow's minItems and maxItems; the system text is byte for byte base2's.
