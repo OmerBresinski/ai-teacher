@@ -108,6 +108,8 @@ export type LessonEditorProps = {
    */
   onFactsChanged?: (factIds: string[]) => void;
   onRegenerate?: (target: RegenerateTarget, instruction: string | undefined) => void;
+  /** Edit with a prompt, fast path (TEACH-97 part d). Absent → no "Edit with a prompt" button. */
+  onPromptEdit?: ProposalsApi["onPromptEdit"];
   busySlideIds?: ReadonlySet<Id>;
   proposalsBusy?: boolean;
   editorRef?: Ref<LessonEditorHandle>;
@@ -154,6 +156,7 @@ export function LessonEditor({
   onNewWorksheet,
   onFactsChanged,
   onRegenerate,
+  onPromptEdit,
   busySlideIds,
   proposalsBusy = false,
   editorRef,
@@ -172,7 +175,8 @@ export function LessonEditor({
   const [helpOpen, setHelpOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [factsOpen, setFactsOpen] = useState(false);
-  const proposalsEnabled = onFactsChanged !== undefined || onRegenerate !== undefined;
+  const proposalsEnabled =
+    onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined;
   // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
   const reservedFactIds = useMemo(
     () =>
@@ -185,12 +189,21 @@ export function LessonEditor({
         ? {
             onFactsChanged,
             onRegenerate,
+            onPromptEdit,
             busySlideIds: busySlideIds ?? NO_PROPOSALS.busySlideIds,
             busy: proposalsBusy,
             reservedFactIds,
           }
         : NO_PROPOSALS,
-    [proposalsEnabled, onFactsChanged, onRegenerate, busySlideIds, proposalsBusy, reservedFactIds],
+    [
+      proposalsEnabled,
+      onFactsChanged,
+      onRegenerate,
+      onPromptEdit,
+      busySlideIds,
+      proposalsBusy,
+      reservedFactIds,
+    ],
   );
   const [canvasFocused, setCanvasFocused] = useState(false);
 

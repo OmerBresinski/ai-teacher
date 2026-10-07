@@ -58,6 +58,7 @@ import { healthRoutes } from "./routes/health";
 import { helloRoutes } from "./routes/hello";
 import { imageRoutes } from "./routes/images";
 import { jobRoutes } from "./routes/jobs";
+import { lessonEditRoutes } from "./routes/lesson-edit";
 import { lessonRoutes } from "./routes/lessons";
 import { MAIL_ASSETS_PREFIX, mailAssetRoutes } from "./routes/mail-assets";
 import { meRoutes } from "./routes/me";
@@ -271,6 +272,7 @@ function buildApp({
   // `/lessons/*` also matches `/lessons`, which would charge a brief twice.
   app.use("/lessons/:id/cascade", rateLimitByWorkspace(aiLimiter));
   app.use("/lessons/:id/regenerate", rateLimitByWorkspace(aiLimiter));
+  app.use("/lessons/:id/edit", rateLimitByWorkspace(aiLimiter));
   // The plan routes (ADR 0029 item 7): a re-plan and a confirmation each start a pipeline job.
   app.use("/lessons/:id/plan", rateLimitByWorkspace(aiLimiter));
   app.use("/lessons/:id/generate", rateLimitByWorkspace(aiLimiter));
@@ -327,7 +329,8 @@ function buildApp({
         },
       }),
     )
-    .route("/", briefRoutes(ai));
+    .route("/", briefRoutes(ai))
+    .route("/", lessonEditRoutes(db.unsafeDb, ai));
 
   // TEACH-22/121: test-only routes, outside the RPC contract (`AppType` stays clean). The seed
   // route writes into the caller's Workspace, so it sits behind the same guards as `/documents`.

@@ -1,4 +1,4 @@
-import type { Id } from "@tj/domain/documents";
+import type { Id, RichDoc, Slide } from "@tj/domain/documents";
 import { createContext, useContext } from "react";
 import type { RegenerateTarget } from "./use-editor-session";
 
@@ -9,7 +9,20 @@ import type { RegenerateTarget } from "./use-editor-session";
  * "changing…" overlay on the navigator thumbs while a job is in flight; `busy` the panel's spinner.
  */
 
+/** What the editor sends for an edit with a prompt (TEACH-97 part d): the slide as it is now. */
+export type PromptEditRequest = { slide: Slide; elementId: Id; instruction: string };
+
+/**
+ * The answer: the box's new doc and a one-line summary to apply as one undo step, or a reason in
+ * teacher words and no change (rulings 172, 173).
+ */
+export type PromptEditAnswer =
+  | { action: "edit"; doc: RichDoc; summary: string }
+  | { action: "refuse" | "escalate" | "no-change" | "failed"; reason: string };
+
 export type ProposalsApi = {
+  /** Edit with a prompt, fast path: the app calls `POST /lessons/:id/edit`. Absent → no button. */
+  onPromptEdit?: (request: PromptEditRequest) => Promise<PromptEditAnswer>;
   /** The facts whose text changed, coalesced; the app enqueues `lesson.cascade`. */
   onFactsChanged?: (factIds: string[]) => void;
   /** The teacher confirmed the regenerate dialog; the app enqueues `lesson.regenerate`. */

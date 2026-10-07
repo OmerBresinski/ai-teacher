@@ -25,6 +25,7 @@ import { EmptyLesson } from "@/components/empty-lesson";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
+import { usePromptEdit } from "@/hooks/use-prompt-edit";
 import { useProposalJobs } from "@/hooks/use-proposal-jobs";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { rememberTheme } from "@/lib/brief-memory";
@@ -148,6 +149,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // handle as one undo step.
   const editorRef = useRef<LessonEditorHandle | null>(null);
   const proposals = useProposalJobs(lessonId, editorRef, worksheetId);
+  const onPromptEdit = usePromptEdit(lessonId);
 
   // Ruling 123: a theme picked while the lesson is being made. The lesson is locked until Ready
   // (ADR 0024 §18), so the pick is shown on the slides here, kept across a reload for this tab,
@@ -264,6 +266,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       initialSlideId={viewedSlideId ?? undefined}
       onFactsChanged={proposals.onFactsChanged}
       onRegenerate={proposals.onRegenerate}
+      onPromptEdit={onPromptEdit}
       busySlideIds={proposals.busySlideIds}
       proposalsBusy={proposals.busy}
       images={images}
