@@ -57,6 +57,24 @@ export function isSameSubjectSet(shows: string[], always = false): boolean {
   return [...(first ?? [])].some((w) => rest.every((r) => r.has(w)));
 }
 
+/**
+ * One picture of a set made alone (the lab's partial-set fallback, round 4): the panel's own
+ * request as a single image, in the set's look. Code's frame, written from the set frame's own
+ * sentences (prompt agent to own): it is not a strip, so a request naming two subjects ("an adult
+ * dog beside a puppy") is one scene, never two panels (round 4 y1 s4/s5 came out as diptychs when
+ * the one-panel set frame was used).
+ */
+export function soloImagePrompt(shows: string, look?: LessonLook): string {
+  const body = [
+    `One single photograph, not divided into panels: ${shows.replace(/\s+/g, " ").trim().replace(/\.$/, "")}.`,
+    "Every subject whole, on a plain light background.",
+    "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
+  ].join("\n");
+  if (look?.style === "illustration")
+    return lessonIllustrationPrompt(body.replace("photograph", "picture"), look);
+  return housePhoto(look) ? housePhotoPrompt(body, look) : body;
+}
+
 /** One strip for the set: wide enough that each panel holds a whole subject. */
 export function setSize(n: number): ImageSize {
   return n >= 3 ? "2048x1152" : "1536x1024";

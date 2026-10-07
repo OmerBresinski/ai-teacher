@@ -241,3 +241,74 @@ test("a long diagram moved full width joins key-card points as words, never [obj
   const src = await Bun.file(`${import.meta.dir}/arm-t.ts`).text();
   expect(src).not.toContain('lead: [lead, ...pts(s.points)].filter(Boolean).join(" ")');
 });
+
+describe("round 4 sheet faults", () => {
+  test("y11 s6: a table that cannot draw keeps its data as lines", async () => {
+    const { tableLines } = await import("./harness");
+    const labels = [
+      "Thiosulfate/cm³",
+      "Water/cm³",
+      "Time/s",
+      "40",
+      "0",
+      "20",
+      "30",
+      "10",
+      "27",
+      "20",
+      "20",
+      "40",
+      "10",
+      "30",
+      "80",
+    ];
+    expect(tableLines(undefined, { labels })).toEqual([
+      "Thiosulfate/cm³: 40 · Water/cm³: 0 · Time/s: 20",
+      "Thiosulfate/cm³: 30 · Water/cm³: 10 · Time/s: 27",
+      "Thiosulfate/cm³: 20 · Water/cm³: 20 · Time/s: 40",
+      "Thiosulfate/cm³: 10 · Water/cm³: 30 · Time/s: 80",
+    ]);
+    const spec = { status: "diagram", spec: { header: ["a", "b"], rows: [["1", "2"]] } };
+    expect(tableLines(spec as never, {})).toEqual(["a: 1 · b: 2"]);
+    const { armT } = await import("./arm-t");
+    expect(
+      armT.asTableText?.(
+        { template: "big-visual", heading: "Read the results", lead: "Identify the trend." },
+        ["x"],
+      ),
+    ).toEqual({
+      template: "explain",
+      heading: "Read the results",
+      lead: "Identify the trend.",
+      points: ["x"],
+    });
+  });
+  test("y1 objectives: the pupil word limit is the slide's measured room, not 8", async () => {
+    const { pupilWordLimit } = await import("./harness");
+    const n2 = pupilWordLimit("ks1", 2);
+    expect(n2).toBeGreaterThanOrEqual(15);
+    expect(pupilWordLimit("ks1", 3)).toBeLessThan(n2);
+  });
+  test("y11 s3: a long discussion prompt steps down to lead size and fits its panel", async () => {
+    const { layoutTemplate } = await import("../../packages/slides/src/templates/index");
+    const { getTheme } = await import("../../packages/slides/src/themes");
+    const lead =
+      "Two mixtures have different sodium thiosulfate concentrations but the same temperature, total volume and hydrochloric acid concentration. Which cross will disappear first? Explain your prediction.";
+    const r = layoutTemplate(
+      { template: "discussion", heading: "Make a prediction", lead },
+      getTheme("studio", "ks4"),
+      "ks4",
+    );
+    expect(r.over).toEqual([]);
+    const p = r.slide.elements.find((e) => (e as { name?: string }).name === "Prompt") as {
+      y: number;
+    };
+    expect(p.y).toBeGreaterThanOrEqual(160);
+  });
+  test("y1 s4/s5: a solo panel is asked as one picture, never as panels", async () => {
+    const { soloImagePrompt } = await import("../../packages/generation/src/stages/picture-set");
+    const p = soloImagePrompt("an adult dog sitting beside a puppy");
+    expect(p).toContain("not divided into panels");
+    expect(p).not.toMatch(/side-by-side panels|Left to right/);
+  });
+});

@@ -313,6 +313,10 @@ export const armT: ArmPlugin = {
     const r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
     return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
   },
+  asTableText(raw, lines) {
+    const s = normalise(raw);
+    return { template: "explain", heading: str(s.heading), lead: str(s.lead), points: lines };
+  },
   asPicture(raw) {
     // Round 2: a diagram of a real thing that could not draw becomes a picture of the same thing.
     const s = { ...raw };

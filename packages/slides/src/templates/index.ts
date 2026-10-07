@@ -1252,16 +1252,21 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           figurePanel(c, input.figure);
         } else {
           // No figure: the prompt is the focal element, large, on the wash panel.
+          // Round 4 (y11 s3 ran out of its panel at display size): the prompt steps down to the
+          // lead size before it is marked over, and never starts above the panel.
           const w = 680;
-          const h = measure(c, prompt, "heading", w) + 2 * 40;
+          const fits = (role: "heading" | "lead") =>
+            measure(c, prompt, role, w) + 2 * 40 <= G.band.h;
+          const role = fits("heading") ? "heading" : "lead";
+          const h = measure(c, prompt, role, w) + 2 * 40;
           box(c, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h }, wash(theme));
           if (h > G.band.h) c.over.push(`discussion ${h}/${G.band.h}pt`);
           text(
             c,
             prompt,
-            "heading",
-            { x: G.margin + 76, y: bandMid - h / 2 + 40, w },
-            { color: theme.colors.ink, weight: 600, name: "Prompt" },
+            role,
+            { x: G.margin + 76, y: Math.max(G.band.y + 40, bandMid - h / 2 + 40), w },
+            { color: theme.colors.ink, weight: role === "heading" ? 600 : 700, name: "Prompt" },
           );
         }
         break;

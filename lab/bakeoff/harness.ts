@@ -148,6 +148,11 @@ export interface ArmPlugin {
   words(slide: Record<string, unknown>): string;
   /** Round 2: the slide with its failed diagram turned into a picture request of the same thing (or undefined). */
   asPicture?(slide: Record<string, unknown>): Record<string, unknown> | undefined;
+  /** Round 4: a table that cannot draw, as words that keep its data (one line per row). */
+  asTableText?(
+    slide: Record<string, unknown>,
+    lines: string[],
+  ): Record<string, unknown> | undefined;
   /** Optional: a provisional slide from its flow entry alone (Greg 6 Oct, decision a), replaced when its content arrives. */
   placeholder?(flow: FlowEntry, ctx: Omit<MaterialiseCtx, "visual">): Materialised;
   /** Optional: the objectives slide from approved objectives (two-phase runs), before the design call answers. */
@@ -168,11 +173,55 @@ export function objectiveCount(b: Brief): string {
   return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three or four";
 }
 
+/**
+ * A table's data as lines, "Header: cell · Header: cell", from its drawn-or-not spec, else from
+ * the ask's labels when they divide into whole rows of the header's length (header first).
+ */
+export function tableLines(v: VisualState | undefined, ask: { labels?: string[] }): string[] {
+  const spec = (v as { spec?: { header?: string[]; rows?: string[][] } } | undefined)?.spec;
+  let header = spec?.header;
+  let rows = spec?.rows;
+  if (!rows?.length) {
+    const l = ask.labels ?? [];
+    const cols = l.findIndex((x) => /^[\d.,−-]+$/.test(x.trim()));
+    if (cols > 0 && (l.length - cols) % cols === 0) {
+      header = l.slice(0, cols);
+      rows = [];
+      for (let k = cols; k < l.length; k += cols) rows.push(l.slice(k, k + cols));
+    }
+  }
+  return (rows ?? []).map((r) =>
+    r.map((cell, k) => (header?.[k] ? `${header[k]}: ${cell}` : cell)).join(" · "),
+  );
+}
+
 /** A step the run can't go on without: waits for other holds to release, then throws past the cap. */
 async function mustHold(ledger: Ledger, what: string, est: number) {
   const held = await ledger.holdWhenFree(what, est);
   if (!held) throw new Error(`cap $${ledger.capUsd} would be passed by ${what} (held $${est})`);
   return held;
+}
+
+/**
+ * The pupil line's word limit (round 4 fix, y1 "Compare size, body covering: cat, kitten, hen,
+ * chick."): the objectives slide's measured room for this many objectives at this key stage
+ * (`catalogue/T.json` objectives variant, maxCharsPerItem ÷ 6, prompts CHANGELOG 41). The fixed
+ * 8/10/12 words it replaces gave KS1 two objectives 8 words where the slide holds about 20.
+ */
+export function pupilWordLimit(stage: Stage, n: number, catalogue = `${BAKEOFF}/catalogue/T.json`) {
+  const key = stage === "ks1" ? "KS1" : stage === "ks2" ? "KS2" : "KS3-5";
+  try {
+    const c = JSON.parse(readFileSync(catalogue, "utf8")) as {
+      templates: {
+        id: string;
+        capacity?: Record<string, { variants: { label: string; maxCharsPerItem: number }[] }>;
+      }[];
+    };
+    const o = c.templates.find((t) => t.id === "objectives");
+    const v = o?.capacity?.[key]?.variants.find((x) => x.label === `${n} objectives`);
+    if (v?.maxCharsPerItem) return Math.max(6, Math.floor(v.maxCharsPerItem / 6));
+  } catch {}
+  return OBJECTIVES_CONFIG.pupilMaxWords[stage];
 }
 
 export type FillExtras = {
@@ -765,7 +814,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         existsSync(userFile)
           ? fillTemplate(readFileSync(userFile, "utf8"), brief, {
               objectives,
-              maxWords: OBJECTIVES_CONFIG.pupilMaxWords[brief.keyStage],
+              maxWords: pupilWordLimit(brief.keyStage, objectives.length),
             })
           : `${brief.yearGroup} ${brief.subject}: ${brief.topic}\n\nTeacher objectives:\n${teacherLines}`;
       // Built inside the promise chain: a template fault falls back to teacher wording, never kills the run.
@@ -1221,6 +1270,15 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         return;
       }
       restore(i, s, n0, saved);
+    }
+    // Round 4 (y11 s6 "Read the results" lost its data table and asked for a trend from nothing):
+    // a table is words already, so one that cannot draw keeps its data as text lines.
+    const t = tableLines(visuals.get(`${i}:${dAsk.key}`), dAsk);
+    const asText = dAsk.kind === "table" && t.length ? arm.asTableText?.(s, t) : undefined;
+    if (asText) {
+      await swapSlide(i, asText);
+      path.set(i, "table-text");
+      return;
     }
     path.set(i, "words");
   };

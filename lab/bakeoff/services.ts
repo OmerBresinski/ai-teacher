@@ -33,6 +33,7 @@ import {
   isHistoricalSet,
   setImagePrompt,
   setSize,
+  soloImagePrompt,
 } from "../../packages/generation/src/stages/picture-set";
 import * as im from "../../packages/images/src/index";
 import { parseDiagram, withLongLabels } from "../../packages/slides/src/diagrams/index";
@@ -971,9 +972,10 @@ export function pictureService(opts: {
     const solo = async (a: PhotoAsk, k: number): Promise<PhotoResult | undefined> => {
       try {
         const made = await gen.generate({
-          prompt: setImagePrompt([a.shows], look, true),
+          prompt: soloImagePrompt(a.shows, look),
           size: setSize(1),
         } as never);
+        // One picture, not a strip: cropped to the card's shape, never split.
         const panel = im.splitPanels(made.bytes, 1, aspect)[0] ?? made.bytes;
         const url = `data:image/png;base64,${Buffer.from(panel).toString("base64")}`;
         const bx: (Box4[] | undefined)[] = [];

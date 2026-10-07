@@ -176,6 +176,13 @@ function renderedTextFaults() {
   const R = root.b;
   const els = Array.from(root.r.querySelectorAll("[data-element-id]")) as HTMLElement[];
   const blocks: { id: string; text: string; rects: DOMRect[] }[] = [];
+  // Round 4 (y11 s3): a panel is a sibling shape the text sits on, not an ancestor, so "cut by
+  // its box" never saw text running out of its wash panel. Panels: wordless, drawn elements
+  // smaller than the slide; a text belongs to the smallest panel holding its first line's start.
+  const panels = els
+    .filter((e) => !e.closest("svg") && !(e.innerText ?? "").trim())
+    .map((e) => e.getBoundingClientRect())
+    .filter((b) => b.width > 40 && b.height > 30 && b.width * b.height < 0.9 * R.width * R.height);
   for (const el of els) {
     if (el.closest("svg")) continue;
     const text = (el.innerText ?? "").trim().replace(/\s+/g, " ");
@@ -203,6 +210,26 @@ function renderedTextFaults() {
         break;
       }
     }
+    const first = rects[0];
+    const panel = first
+      ? panels
+          .filter(
+            (b) =>
+              first.left >= b.left - TOL &&
+              first.right <= b.right + TOL &&
+              first.top >= b.top - TOL &&
+              first.top <= b.bottom,
+          )
+          .sort((a, z) => a.width * a.height - z.width * z.height)[0]
+      : undefined;
+    if (
+      panel &&
+      rects.some(
+        (q) =>
+          q.bottom > panel.bottom + TOL || q.top < panel.top - TOL || q.right > panel.right + TOL,
+      )
+    )
+      out.overflow.push(`"${label}" runs out of its panel`);
     blocks.push({ id: el.dataset.elementId ?? "", text: label, rects });
   }
   for (let i = 0; i < blocks.length; i++)
