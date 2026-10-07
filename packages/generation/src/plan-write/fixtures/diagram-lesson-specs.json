@@ -1,0 +1,1887 @@
+[
+  {
+    "name": "r2 T-y5-s3",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "A bar of 20 in four parts of 5, one shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 5,
+              "label": "5",
+              "shaded": true
+            },
+            {
+              "value": 5,
+              "label": "5"
+            },
+            {
+              "value": 5,
+              "label": "5"
+            },
+            {
+              "value": 5,
+              "label": "5"
+            }
+          ],
+          "total": "20 altogether"
+        }
+      ],
+      "combined": "1/4"
+    }
+  },
+  {
+    "name": "r2 T-y5-s4",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "A bar of 24 in six parts of 4, one shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 4,
+              "label": "4",
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "label": "4"
+            },
+            {
+              "value": 4,
+              "label": "4"
+            },
+            {
+              "value": 4,
+              "label": "4"
+            },
+            {
+              "value": 4,
+              "label": "4"
+            },
+            {
+              "value": 4,
+              "label": "4"
+            }
+          ],
+          "total": "24 altogether",
+          "label": "1/6"
+        }
+      ],
+      "combined": "1/6 = 4"
+    }
+  },
+  {
+    "name": "r2 T-y5-s6",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "30 in five parts of 6, three shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6"
+            },
+            {
+              "value": 6,
+              "label": "6"
+            }
+          ],
+          "total": "30 altogether"
+        }
+      ],
+      "combined": "3/5 = 18"
+    }
+  },
+  {
+    "name": "r2 T-y5-s7",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "28 in four parts of 7, three shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7"
+            }
+          ],
+          "total": "28 altogether"
+        }
+      ],
+      "combined": "3/4 = 21"
+    }
+  },
+  {
+    "name": "r2 T-y5-s9",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "35 books as five parts of 7, two shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            }
+          ],
+          "total": "35 altogether",
+          "label": "35 books"
+        }
+      ],
+      "title": "Books in all",
+      "combined": "14 adventure"
+    }
+  },
+  {
+    "name": "r2 K-y5-s3",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "24 in four parts of 6, first shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 6,
+              "label": "6; ¼",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6"
+            },
+            {
+              "value": 6,
+              "label": "6"
+            },
+            {
+              "value": 6,
+              "label": "6"
+            }
+          ],
+          "total": "24",
+          "label": "Whole"
+        }
+      ],
+      "title": "Find ¼ of 24",
+      "combined": "¼ of 24=6"
+    }
+  },
+  {
+    "name": "r2 K-y5-s4",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "35 split into five, one shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 7,
+              "label": "?",
+              "shaded": true
+            },
+            {
+              "value": 7
+            },
+            {
+              "value": 7
+            },
+            {
+              "value": 7
+            },
+            {
+              "value": 7
+            }
+          ],
+          "total": "35",
+          "label": "⅕ of 35"
+        }
+      ],
+      "title": "Find ⅕ of 35",
+      "combined": "35 ÷ 5"
+    }
+  },
+  {
+    "name": "r2 K-y5-s6",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "24 in four parts of 6, three shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6"
+            }
+          ],
+          "total": "24",
+          "label": "24"
+        }
+      ],
+      "title": "From ¼ to ¾",
+      "combined": "¾=3×6=18"
+    }
+  },
+  {
+    "name": "r2 K-y5-s7",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "35 in five parts of 7, three shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            }
+          ],
+          "total": "35",
+          "label": "Whole=35"
+        }
+      ],
+      "title": "Three fifths of 35",
+      "combined": "⅗ = 21"
+    }
+  },
+  {
+    "name": "r2 K-y5-s10",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "32 pupils in eight parts of 4, five shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 4,
+              "label": "4",
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "label": "4",
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "label": "4",
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "label": "4",
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "label": "4",
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "label": "4"
+            },
+            {
+              "value": 4,
+              "label": "4"
+            },
+            {
+              "value": 4,
+              "label": "4"
+            }
+          ],
+          "total": "32 pupils",
+          "label": "Whole"
+        }
+      ],
+      "title": "Pupils who walk",
+      "combined": "⅝ walk"
+    }
+  },
+  {
+    "name": "r2 K-y9-s3",
+    "ks": "ks3",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "Five loaves at 2 marks become one loaf at 10 marks",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 2,
+              "shaded": true
+            },
+            {
+              "value": 2,
+              "shaded": true
+            },
+            {
+              "value": 2,
+              "shaded": true
+            },
+            {
+              "value": 2,
+              "shaded": true
+            },
+            {
+              "value": 2,
+              "shaded": true
+            }
+          ],
+          "total": "5 loaves",
+          "label": "Before 2m"
+        },
+        {
+          "parts": [
+            {
+              "value": 10,
+              "shaded": true
+            }
+          ],
+          "total": "1 loaf",
+          "label": "After 10m"
+        }
+      ],
+      "title": "Illustrative example",
+      "combined": "Same money: 10"
+    },
+    "refused": "its totals are not the sums of their parts: the drawer refuses a bar model that reads wrong (r3)"
+  },
+  {
+    "name": "r2 R-y5-s4",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "35 in five parts of 7, one shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 7,
+              "label": "7",
+              "shaded": true
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            }
+          ],
+          "total": "35 altogether"
+        }
+      ],
+      "combined": "⅕"
+    }
+  },
+  {
+    "name": "r2 R-y5-s6",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "24 in four parts of 6, three shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6",
+              "shaded": true
+            },
+            {
+              "value": 6,
+              "label": "6"
+            }
+          ],
+          "total": "24 altogether"
+        }
+      ],
+      "title": "Three quarters of 24",
+      "combined": "¾ = 18"
+    }
+  },
+  {
+    "name": "r2 R-y5-s7",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "40 in five parts of 8, two shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 8,
+              "label": "8",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "8",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "8"
+            },
+            {
+              "value": 8,
+              "label": "8"
+            },
+            {
+              "value": 8,
+              "label": "8"
+            }
+          ],
+          "total": "40 altogether"
+        }
+      ],
+      "combined": "⅖ = 16"
+    }
+  },
+  {
+    "name": "r2 R-y5-s10",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "32 pupils in eight parts, three shaded",
+      "bars": [
+        {
+          "parts": [
+            {
+              "value": 4,
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "shaded": true
+            },
+            {
+              "value": 4,
+              "shaded": true
+            },
+            {
+              "value": 4
+            },
+            {
+              "value": 4
+            },
+            {
+              "value": 4
+            },
+            {
+              "value": 4
+            },
+            {
+              "value": 4
+            }
+          ],
+          "total": "32 pupils",
+          "label": "3 parts walk"
+        }
+      ],
+      "title": "Pupils who walk",
+      "combined": "12 pupils"
+    }
+  },
+  {
+    "name": "r2 T-y11-s10",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Gas volume curves A and B",
+      "x": {
+        "label": "Time / s",
+        "min": 0,
+        "max": 60
+      },
+      "y": {
+        "label": "Gas volume / cm³",
+        "min": 0,
+        "max": 60
+      },
+      "series": [
+        {
+          "points": [[0, 0], [10, 36], [20, 54], [30, 60], [40, 60], [50, 60], [60, 60]],
+          "style": "line",
+          "label": "A"
+        },
+        {
+          "points": [[0, 0], [10, 24], [20, 40], [30, 50], [40, 56], [50, 60], [60, 60]],
+          "style": "line",
+          "label": "B"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 10,
+          "y": 36,
+          "label": "Faster initially"
+        },
+        {
+          "x": 30,
+          "y": 60,
+          "label": "Plateau"
+        }
+      ],
+      "title": "Reaction progress"
+    }
+  },
+  {
+    "name": "r2 K-y11-s11",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Gas volume curves A and B with an initial tangent",
+      "x": {
+        "label": "Time / s",
+        "min": 0,
+        "max": 60
+      },
+      "y": {
+        "label": "Gas volume / cm³",
+        "min": 0,
+        "max": 60
+      },
+      "series": [
+        {
+          "points": [[0, 0], [10, 36], [20, 52], [30, 60], [40, 60], [50, 60], [60, 60]],
+          "style": "line",
+          "label": "A"
+        },
+        {
+          "points": [[0, 0], [10, 22], [20, 38], [30, 48], [40, 55], [50, 60], [60, 60]],
+          "style": "line",
+          "label": "B"
+        },
+        {
+          "points": [[0, 0], [5, 25]],
+          "style": "tangent",
+          "label": "Initial tangent"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 30,
+          "y": 60,
+          "label": "Plateau"
+        }
+      ],
+      "title": "Gas volume against time"
+    }
+  },
+  {
+    "name": "r2 K-y11-s12",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Curves X and Y level off",
+      "x": {
+        "label": "Time / s",
+        "min": 0,
+        "max": 60
+      },
+      "y": {
+        "label": "Gas volume / cm³",
+        "min": 0,
+        "max": 60
+      },
+      "series": [
+        {
+          "points": [[0, 0], [10, 25], [20, 36], [30, 40], [60, 40]],
+          "style": "line",
+          "label": "X"
+        },
+        {
+          "points": [[0, 0], [10, 15], [20, 26], [30, 34], [40, 38], [50, 40], [60, 40]],
+          "style": "line",
+          "label": "Y"
+        }
+      ],
+      "annotations": [],
+      "title": "Gas volume against time"
+    }
+  },
+  {
+    "name": "r2 T-y11-s11",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Tangent at 20 s through (0,14) and (40,66)",
+      "x": {
+        "label": "Time / s",
+        "min": 0,
+        "max": 60
+      },
+      "y": {
+        "label": "Gas volume / cm³",
+        "min": 0,
+        "max": 70
+      },
+      "series": [
+        {
+          "points": [[0, 0], [10, 24], [20, 40], [30, 50], [40, 56], [50, 60], [60, 60]],
+          "style": "line",
+          "label": "Gas volume"
+        },
+        {
+          "points": [[0, 14], [40, 66]],
+          "style": "tangent",
+          "label": "Tangent at 20 s"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 0,
+          "y": 14,
+          "label": "(0, 14)"
+        },
+        {
+          "x": 20,
+          "y": 40,
+          "label": "Tangent at 20 s"
+        },
+        {
+          "x": 40,
+          "y": 66,
+          "label": "(40, 66)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R-y11-s11",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Tangent at 40 s; plateau",
+      "x": {
+        "label": "Time / s",
+        "min": 0,
+        "max": 120
+      },
+      "y": {
+        "label": "Gas volume / cm³",
+        "min": 0,
+        "max": 70
+      },
+      "series": [
+        {
+          "points": [[0, 0], [20, 18], [40, 32], [60, 42], [80, 48], [100, 50], [120, 50]],
+          "style": "line",
+          "label": "Gas volume"
+        },
+        {
+          "points": [[0, 4], [80, 60]],
+          "style": "tangent",
+          "label": "Tangent at 40 s"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 40,
+          "y": 32,
+          "label": "Tangent at 40 s"
+        },
+        {
+          "x": 100,
+          "y": 50,
+          "label": "Plateau"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 K-y11-s7",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Energy profiles with and without a catalyst",
+      "x": {
+        "label": "Reaction progress",
+        "min": 0,
+        "max": 4
+      },
+      "y": {
+        "label": "Energy",
+        "min": 0,
+        "max": 10
+      },
+      "series": [
+        {
+          "points": [[0, 2], [1, 8], [2, 5], [3, 1], [4, 1]],
+          "style": "line",
+          "label": "Without catalyst"
+        },
+        {
+          "points": [[0, 2], [1, 5], [2, 3], [3, 1], [4, 1]],
+          "style": "line",
+          "label": "With catalyst"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 0,
+          "y": 2,
+          "label": "Reactants"
+        },
+        {
+          "x": 1,
+          "y": 8,
+          "label": "Higher activation energy"
+        },
+        {
+          "x": 1,
+          "y": 5,
+          "label": "Lower activation energy"
+        },
+        {
+          "x": 4,
+          "y": 1,
+          "label": "Products"
+        }
+      ],
+      "title": "Catalysts lower the energy barrier"
+    }
+  },
+  {
+    "name": "r2 T-y11-s6",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "Uncatalysed pathway peaks higher than the catalysed one",
+      "x": {
+        "label": "Reaction progress",
+        "min": 0,
+        "max": 10
+      },
+      "y": {
+        "label": "Energy",
+        "min": 0,
+        "max": 10
+      },
+      "series": [
+        {
+          "points": [[0, 2], [3, 9], [6, 3], [8, 1.5], [10, 1]],
+          "style": "line",
+          "label": "Without catalyst"
+        },
+        {
+          "points": [[0, 2], [3, 5.5], [6, 3], [8, 1.5], [10, 1]],
+          "style": "line",
+          "label": "With catalyst"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 0,
+          "y": 2,
+          "label": "Reactants"
+        },
+        {
+          "x": 3,
+          "y": 9,
+          "label": "Higher Ea"
+        },
+        {
+          "x": 3,
+          "y": 5.5,
+          "label": "Lower Ea"
+        },
+        {
+          "x": 10,
+          "y": 1,
+          "label": "Products"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 T-y9-s9",
+    "ks": "ks3",
+    "spec": {
+      "kind": "flow",
+      "alt": "Policy changes that restored confidence",
+      "steps": [
+        {
+          "label": "Resistance ends: September",
+          "arrow": "allows"
+        },
+        {
+          "label": "Government reduces spending",
+          "arrow": "supports"
+        },
+        {
+          "label": "Rentenmark introduced: November",
+          "arrow": "with"
+        },
+        {
+          "label": "Strict limits on new money",
+          "arrow": "build"
+        },
+        {
+          "label": "Confidence returned",
+          "arrow": "and"
+        },
+        {
+          "label": "Prices stabilise"
+        }
+      ],
+      "title": "Policy changes restored confidence"
+    }
+  },
+  {
+    "name": "r2 R-y9-s4",
+    "ks": "ks3",
+    "spec": {
+      "kind": "flow",
+      "alt": "Costs of passive resistance",
+      "steps": [
+        {
+          "label": "Workers stop work",
+          "arrow": "so"
+        },
+        {
+          "label": "Production falls",
+          "arrow": "so"
+        },
+        {
+          "label": "Tax income falls",
+          "arrow": "while"
+        },
+        {
+          "label": "Government still pays workers",
+          "arrow": "so"
+        },
+        {
+          "label": "Government needs more money"
+        }
+      ],
+      "title": "Costs of passive resistance"
+    }
+  },
+  {
+    "name": "r2 T-y10-s3",
+    "ks": "ks4",
+    "spec": {
+      "kind": "flow",
+      "alt": "Prospero's claims over Ariel and Caliban",
+      "steps": [
+        {
+          "label": "Prospero",
+          "arrow": "over Ariel"
+        },
+        {
+          "label": "Rescue used as a debt",
+          "arrow": "claims"
+        },
+        {
+          "label": "Ariel",
+          "arrow": "over Caliban"
+        },
+        {
+          "label": "Claimed rule of the island",
+          "arrow": "claims"
+        },
+        {
+          "label": "Caliban"
+        }
+      ],
+      "title": "Prospero’s claims"
+    }
+  },
+  {
+    "name": "r2 K-y10-s3",
+    "ks": "ks4",
+    "spec": {
+      "kind": "flow",
+      "alt": "Prospero delegates power to Ariel",
+      "steps": [
+        {
+          "label": "Prospero commands",
+          "arrow": "orders"
+        },
+        {
+          "label": "Ariel creates the tempest",
+          "arrow": "drives"
+        },
+        {
+          "label": "Passengers reach the island",
+          "arrow": "then"
+        },
+        {
+          "label": "Ariel separates the groups"
+        }
+      ],
+      "title": "Delegated power"
+    }
+  },
+  {
+    "name": "r2 T-y7-s8",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Solid to liquid to gas as energy is transferred",
+      "show": "states",
+      "states": ["solid", "liquid", "gas"],
+      "motion": true,
+      "arrows": ["Melting", "Boiling"],
+      "title": "Energy transferred to a substance"
+    }
+  },
+  {
+    "name": "r2 T-y7-s9",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Gas to liquid to solid as energy is transferred to the surroundings",
+      "show": "states",
+      "states": ["gas", "liquid", "solid"],
+      "motion": true,
+      "arrows": ["Condensing", "Freezing"]
+    }
+  },
+  {
+    "name": "r2 T-y7-s3",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Solid particles",
+      "show": "states",
+      "states": ["solid"],
+      "motion": true,
+      "notes": ["Vibrate around fixed points"],
+      "title": "Solid particles"
+    }
+  },
+  {
+    "name": "r2 T-y7-s4",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Liquid particles",
+      "show": "states",
+      "states": ["liquid"],
+      "motion": true,
+      "notes": ["Close; irregular; move past"],
+      "title": "Liquid particles"
+    }
+  },
+  {
+    "name": "r2 T-y7-s5",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Gas particles",
+      "show": "states",
+      "states": ["gas"],
+      "motion": true,
+      "notes": ["Rapid movement"],
+      "title": "Gas particles"
+    }
+  },
+  {
+    "name": "r2 K-y7-s3",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "A model of matter",
+      "show": "states",
+      "states": ["solid", "liquid", "gas"],
+      "motion": true,
+      "notes": [
+        "regular, touching; vibrating",
+        "irregular, close; moving",
+        "widely spaced; moving"
+      ],
+      "title": "A model of matter"
+    }
+  },
+  {
+    "name": "r2 K-y7-s7",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Shape and volume",
+      "show": "states",
+      "states": ["solid", "liquid", "gas"],
+      "motion": false,
+      "notes": ["Fixed shape", "Takes container’s shape", "Fills container"],
+      "title": "Shape and volume"
+    }
+  },
+  {
+    "name": "r2 K-y7-s9",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Melting and freezing",
+      "show": "states",
+      "states": ["solid", "liquid"],
+      "motion": true,
+      "notes": ["Fixed, still vibrating", "Move past one another"],
+      "arrows": ["Melting: in"],
+      "title": "Melting and freezing"
+    }
+  },
+  {
+    "name": "r2 R-y7-s8",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "Melting",
+      "show": "states",
+      "states": ["solid", "liquid"],
+      "motion": true,
+      "notes": ["Vibrate in fixed positions", "Move past one another"],
+      "arrows": ["Melting"]
+    }
+  },
+  {
+    "name": "r2 T-y9-s6",
+    "ks": "ks3",
+    "spec": {
+      "kind": "table",
+      "alt": "Berlin bread prices in 1923",
+      "header": ["Month in 1923", "Price in marks"],
+      "rows": [
+        ["January", "250"],
+        ["July", "3,465"],
+        ["September", "1,512,000"],
+        ["November", "201,000,000,000"]
+      ]
+    }
+  },
+  {
+    "name": "r2 T-y11-s8",
+    "ks": "ks4",
+    "spec": {
+      "kind": "table",
+      "alt": "Measurements over time",
+      "header": ["Time / s", "Gas volume / cm³", "Reactant mass / g"],
+      "rows": [["10", "12", "5.0"], ["40", "72", "3.8"]],
+      "title": "Measurements over time"
+    }
+  },
+  {
+    "name": "r2 R-y11-s12",
+    "ks": "ks4",
+    "spec": {
+      "kind": "table",
+      "alt": "Gas volume results",
+      "header": ["Time / s", "A: gas / cm³", "B: gas / cm³"],
+      "rows": [
+        ["0", "0", "0"],
+        ["20", "18", "30"],
+        ["40", "32", "44"],
+        ["60", "42", "49"],
+        ["100", "50", "50"]
+      ],
+      "title": "Gas volume results"
+    }
+  },
+  {
+    "name": "r2 R1-y5-s3",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "One fifth of 40",
+      "title": "One fifth of 40",
+      "bars": [
+        {
+          "label": "1/5",
+          "parts": [
+            {
+              "value": 8,
+              "shaded": true
+            },
+            {
+              "value": 8
+            },
+            {
+              "value": 8
+            },
+            {
+              "value": 8
+            },
+            {
+              "value": 8
+            }
+          ],
+          "total": "40"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y5-s4",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "40 in five parts of 8",
+      "bars": [
+        {
+          "label": "40",
+          "parts": [
+            {
+              "value": 8,
+              "label": "8",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "8"
+            },
+            {
+              "value": 8,
+              "label": "8"
+            },
+            {
+              "value": 8,
+              "label": "8"
+            },
+            {
+              "value": 8,
+              "label": "8"
+            }
+          ],
+          "total": "40"
+        }
+      ],
+      "combined": "1/5 = 8"
+    }
+  },
+  {
+    "name": "r2 R1-y5-s6",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "three fifths of 40",
+      "bars": [
+        {
+          "label": "Total",
+          "parts": [
+            {
+              "value": 8,
+              "label": "8",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "8",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "8",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "8"
+            },
+            {
+              "value": 8,
+              "label": "8"
+            }
+          ],
+          "total": "40"
+        }
+      ],
+      "combined": "3/5 = 24"
+    }
+  },
+  {
+    "name": "r2 R1-y5-s8",
+    "ks": "ks2",
+    "spec": {
+      "kind": "bar-model",
+      "alt": "3/7 of 56",
+      "title": "3/7 of 56",
+      "bars": [
+        {
+          "label": "3/7",
+          "parts": [
+            {
+              "value": 8,
+              "label": "?",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "?",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "?",
+              "shaded": true
+            },
+            {
+              "value": 8,
+              "label": "?"
+            },
+            {
+              "value": 8,
+              "label": "?"
+            },
+            {
+              "value": 8,
+              "label": "?"
+            },
+            {
+              "value": 8,
+              "label": "?"
+            }
+          ],
+          "total": "56"
+        }
+      ],
+      "combined": "3/7"
+    }
+  },
+  {
+    "name": "r2 R1-y7-s9",
+    "ks": "ks3",
+    "spec": {
+      "kind": "flow",
+      "alt": "heating",
+      "steps": [
+        {
+          "label": "Solid",
+          "arrow": "Heating"
+        },
+        {
+          "label": "Liquid",
+          "arrow": "Melting"
+        },
+        {
+          "label": "Gas"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y7-s10",
+    "ks": "ks3",
+    "spec": {
+      "kind": "flow",
+      "alt": "cooling",
+      "steps": [
+        {
+          "label": "Gas",
+          "arrow": "Condensation"
+        },
+        {
+          "label": "Liquid",
+          "arrow": "Freezing"
+        },
+        {
+          "label": "Solid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y7-s3",
+    "ks": "ks3",
+    "spec": {
+      "kind": "particles",
+      "alt": "liquid water",
+      "states": ["liquid"],
+      "notes": ["Particle model; one particle"],
+      "title": "Liquid water",
+      "motion": true
+    }
+  },
+  {
+    "name": "r2 R1-y10-s5",
+    "ks": "ks4",
+    "spec": {
+      "kind": "flow",
+      "alt": "Caliban coerced",
+      "steps": [
+        {
+          "label": "Command: fetch fuel",
+          "arrow": "threatens"
+        },
+        {
+          "label": "Refusal risks magical pain",
+          "arrow": "pressures"
+        },
+        {
+          "label": "Pressure to obey"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y10-s3",
+    "ks": "ks4",
+    "spec": {
+      "kind": "flow",
+      "alt": "Prospero's orders",
+      "steps": [
+        {
+          "label": "Prospero",
+          "arrow": "orders"
+        },
+        {
+          "label": "Ariel"
+        },
+        {
+          "label": "Storm: separates passengers"
+        },
+        {
+          "label": "Music: leads Ferdinand"
+        },
+        {
+          "label": "Fine clothes: distract Caliban’s group"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y9-s4",
+    "ks": "ks3",
+    "spec": {
+      "kind": "flow",
+      "alt": "resistance to inflation",
+      "steps": [
+        {
+          "label": "Ruhr occupied"
+        },
+        {
+          "label": "Workers refuse to work"
+        },
+        {
+          "label": "Output and tax income fall"
+        },
+        {
+          "label": "Government pays striking workers"
+        },
+        {
+          "label": "More money printed"
+        },
+        {
+          "label": "More money; fewer goods"
+        },
+        {
+          "label": "Prices soar; mark loses value"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s3",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "collisions",
+      "show": "collision",
+      "outcomes": ["bounces", "reacts"],
+      "captions": ["Not enough energy", "Enough energy"],
+      "notes": ["No reaction", "Successful collision"]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s4",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "temperature",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "gas",
+          "count": 10,
+          "speed": "slow"
+        },
+        {
+          "state": "gas",
+          "count": 10,
+          "speed": "fast"
+        }
+      ],
+      "captions": ["Lower temperature", "Higher temperature"]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s5",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "concentration",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "liquid",
+          "count": 8,
+          "extra": 3
+        },
+        {
+          "state": "liquid",
+          "count": 8,
+          "extra": 8
+        }
+      ],
+      "captions": ["Lower concentration", "Higher concentration"],
+      "key": ["Water", "Acid"]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s6",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "pressure",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "gas",
+          "count": 10,
+          "room": "large"
+        },
+        {
+          "state": "gas",
+          "count": 10,
+          "room": "small"
+        }
+      ],
+      "captions": ["Lower pressure", "Higher pressure"]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s8",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "energy profile",
+      "x": {
+        "label": "Reaction progress",
+        "min": 0,
+        "max": 10
+      },
+      "y": {
+        "label": "Energy",
+        "min": 0,
+        "max": 100
+      },
+      "series": [
+        {
+          "label": "Without catalyst",
+          "points": [[0, 30], [3, 85], [6, 40], [10, 15]]
+        },
+        {
+          "label": "With catalyst",
+          "points": [[0, 30], [3, 55], [6, 35], [10, 15]]
+        }
+      ],
+      "annotations": [
+        {
+          "x": 0,
+          "y": 30,
+          "label": "Reactants"
+        },
+        {
+          "x": 3,
+          "y": 85,
+          "label": "Activation energy"
+        },
+        {
+          "x": 3,
+          "y": 55,
+          "label": "Activation energy"
+        },
+        {
+          "x": 10,
+          "y": 15,
+          "label": "Products"
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s10",
+    "ks": "ks4",
+    "spec": {
+      "kind": "line-graph",
+      "alt": "gradient",
+      "x": {
+        "label": "Time / s",
+        "min": 0,
+        "max": 120,
+        "step": 20
+      },
+      "y": {
+        "label": "Gas volume / cm³",
+        "min": 0,
+        "max": 60,
+        "step": 20
+      },
+      "series": [
+        {
+          "label": "A",
+          "points": [[0, 0], [20, 40], [40, 55], [60, 60], [120, 60]]
+        },
+        {
+          "label": "B",
+          "points": [[0, 0], [20, 20], [40, 36], [60, 48], [80, 56], [100, 60], [120, 60]]
+        },
+        {
+          "label": "Tangent at 20 s",
+          "points": [[10, 30], [30, 50]],
+          "style": "tangent"
+        }
+      ],
+      "annotations": [
+        {
+          "x": 20,
+          "y": 40,
+          "label": "Tangent at 20 s"
+        }
+      ],
+      "intervals": [
+        {
+          "from": 20,
+          "to": 40,
+          "label": "Run = 20 s",
+          "y": 30
+        }
+      ]
+    }
+  },
+  {
+    "name": "r2 R1-y11-s9",
+    "ks": "ks4",
+    "spec": {
+      "kind": "table",
+      "alt": "two experiments",
+      "title": "Two experiments",
+      "header": ["Gas time / s", "Gas volume / cm³", "Mass time / s", "Mass / g"],
+      "rows": [["0", "0", "0", "50.0"], ["30", "60", "30", "49.4"]]
+    }
+  },
+  {
+    "name": "r2 R1-y9-s6",
+    "ks": "ks3",
+    "spec": {
+      "kind": "table",
+      "alt": "marks per dollar",
+      "title": "Marks per US dollar, 1923",
+      "header": ["Month in 1923", "Marks for US$1"],
+      "rows": [["January", "18,000"], ["July", "350,000"], ["November", "4,200,000,000,000"]]
+    }
+  },
+  {
+    "name": "r3 y11-s3",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "collisions",
+      "show": "dissolving",
+      "captions": ["Insufficient energy", "Sufficient energy"],
+      "notes": ["No reaction", "Reaction"],
+      "key": ["Reactants", "Product"]
+    }
+  },
+  {
+    "name": "r3 y11-s4",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "temperature",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "gas",
+          "count": 12
+        },
+        {
+          "state": "gas",
+          "count": 12
+        }
+      ],
+      "captions": ["Lower temperature", "Higher temperature"],
+      "notes": ["Equal particles, equal volume", "Equal particles, equal volume"],
+      "arrows": ["heating"],
+      "motion": true
+    }
+  },
+  {
+    "name": "r3 y11-s5",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "concentration",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "liquid",
+          "count": 8,
+          "extra": 3
+        },
+        {
+          "state": "liquid",
+          "count": 8,
+          "extra": 7
+        }
+      ],
+      "captions": ["Lower concentration", "Higher concentration"],
+      "key": ["Reactant particles", "Other particles"]
+    }
+  },
+  {
+    "name": "r3 y11-s10",
+    "ks": "ks4",
+    "spec": {
+      "kind": "labelled-diagram",
+      "alt": "flask on a balance",
+      "canvas": "square",
+      "shapes": [
+        {
+          "type": "rect",
+          "x": 15,
+          "y": 80,
+          "w": 70,
+          "h": 12,
+          "fill": "muted"
+        },
+        {
+          "type": "polygon",
+          "points": [[40, 30], [60, 30], [60, 45], [75, 78], [25, 78], [40, 45]],
+          "fill": "surface"
+        },
+        {
+          "type": "rect",
+          "x": 25,
+          "y": 62,
+          "w": 50,
+          "h": 16,
+          "fill": "accent2"
+        },
+        {
+          "type": "rect",
+          "x": 42,
+          "y": 22,
+          "w": 16,
+          "h": 9,
+          "fill": "surface"
+        },
+        {
+          "type": "line",
+          "points": [[50, 20], [52, 12], [48, 6]],
+          "dashed": true
+        },
+        {
+          "type": "circle",
+          "cx": 88,
+          "cy": 60,
+          "r": 8,
+          "fill": "none"
+        }
+      ],
+      "labels": [
+        {
+          "text": "Escaping carbon dioxide",
+          "at": [50, 8]
+        },
+        {
+          "text": "Loose cotton wool",
+          "at": [58, 26]
+        },
+        {
+          "text": "Acid and marble",
+          "at": [50, 70]
+        },
+        {
+          "text": "Balance",
+          "at": [50, 86]
+        },
+        {
+          "text": "Stopwatch",
+          "at": [88, 60]
+        }
+      ]
+    }
+  },
+  {
+    "name": "r4 y11-temperature",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "Gas particles at 20 °C and 80 °C",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "gas",
+          "count": 10,
+          "energy": 20
+        },
+        {
+          "state": "gas",
+          "count": 10,
+          "energy": 80
+        }
+      ],
+      "captions": ["20 °C", "80 °C"],
+      "notes": ["Slower", "Faster"]
+    }
+  },
+  {
+    "name": "r4 y11-collision",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "Collisions with and without enough energy",
+      "show": "collision",
+      "outcomes": ["bounces", "reacts"],
+      "captions": ["Low energy", "High energy"]
+    }
+  },
+  {
+    "name": "r4 y11-concentration",
+    "ks": "ks4",
+    "spec": {
+      "kind": "particles",
+      "alt": "Lower and higher concentration",
+      "show": "compare",
+      "panels": [
+        {
+          "state": "liquid",
+          "count": 9,
+          "extra": 3
+        },
+        {
+          "state": "liquid",
+          "count": 9,
+          "extra": 9
+        }
+      ],
+      "captions": ["Dilute", "Concentrated"],
+      "key": ["Water", "Acid"]
+    }
+  },
+  {
+    "name": "r4 y11-surface-area",
+    "ks": "ks4",
+    "spec": {
+      "kind": "cubes",
+      "alt": "One cube beside the same volume cut into eight small cubes",
+      "split": 2,
+      "areas": true
+    }
+  }
+]

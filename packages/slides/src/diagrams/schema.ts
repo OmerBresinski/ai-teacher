@@ -7,8 +7,10 @@
  */
 import { z } from "zod";
 import { BarChartSchema, CarrollSchema, PieSchema, VennSchema } from "./charts";
+import { pair } from "./pair";
 
 const label = (max: number) => z.string().trim().min(1).max(max);
+
 const finite = z.number().finite();
 const tone = z.enum(["accent", "accent2", "muted", "surface", "none"]);
 
@@ -95,10 +97,7 @@ const Axis = z
 
 const Series = z.object({
   label: label(20).optional(),
-  points: z
-    .array(z.tuple([finite, finite]))
-    .min(2)
-    .max(40),
+  points: z.array(pair(finite)).min(2).max(40),
   /** `tangent`: a thin dashed guide line touching the curve, drawn under the data (UX ruling 155). */
   style: z.enum(["line", "bars", "tangent"]).default("line"),
   axis: z.enum(["left", "right"]).default("left"),
@@ -199,7 +198,7 @@ export const FlowSchema = z
 // ─── labelled diagram ───────────────────────────────────────────────────────────────────────
 
 const coord = z.number().min(0).max(160);
-const pt = z.tuple([coord, coord]);
+const pt = pair(coord);
 
 const Shape = z.discriminatedUnion("type", [
   z.object({
@@ -389,7 +388,7 @@ export const ParticlesSchema = z
     /** Movement marks: vibration in a solid, short arrows in a liquid or gas. */
     motion: z.boolean().default(false),
     /** For diffusion and dissolving: what the two colours are (a key under the panels). */
-    key: z.tuple([label(18), label(18)]).optional(),
+    key: pair(label(18)).optional(),
   })
   .refine(
     (p) => p.show !== "states" || new Set(p.states).size === p.states.length,
@@ -590,21 +589,7 @@ export const TEMPLATE_KINDS = [
   "cubes",
 ] as const;
 
-export const DIAGRAM_KINDS: DiagramKind[] = [
-  "bar-model",
-  "line-graph",
-  "flow",
-  "labelled-diagram",
-  "number-line",
-  "table",
-  "particles",
-  "hydrograph",
-  "timeline",
-  "layers",
-  "cycle",
-  "river",
-  "bar-chart",
-  "pie",
-  "venn",
-  "carroll",
-];
+/** Every kind, read off the union (one list, so a new kind cannot be left out). */
+export const DIAGRAM_KINDS: DiagramKind[] = (
+  DiagramSpecSchema.options as unknown as { shape: { kind: { value: DiagramKind } } }[]
+).map((o) => o.shape.kind.value);

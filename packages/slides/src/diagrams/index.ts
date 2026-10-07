@@ -38,7 +38,9 @@ export {
   simplerDiagrams,
   withTangents,
 } from "./normalise";
+export { DIAGRAM_SAMPLES } from "./samples";
 export * from "./schema";
+export { TEMPLATE_SPECS } from "./template-specs";
 
 /** The modern looks' inset between a drawing and its zone's left and right edges, in points. */
 export const DRAW_INSET = 4;
@@ -753,3 +755,13 @@ export function sparseDrawing(
 
 export { type DrawnDiagram, drawDiagram, readabilityFaults } from "./draw";
 export { figureGeometryFaults } from "./geometry";
+export {
+  DiagramWireSchema,
+  diagramJsonSchema,
+  diagramWireSchema,
+  dropNulls,
+  openaiForm,
+  openaiSchemaFaults,
+  relaxed,
+  strictForm,
+} from "./wire";
