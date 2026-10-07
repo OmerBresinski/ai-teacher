@@ -225,21 +225,38 @@ export function measureFit() {
       (h) => clean(g, () => input(explain, explain.variants[0] as Variant, 10, h, 0)),
       160,
     );
+    const headingOne = Math.min(heading, oneLine(g, G.width, "heading"));
     const layouts: Record<string, unknown> = {};
     for (const [w, ids] of Object.entries(WRITER)) {
-      const docs = ids.map((id) => byId.get(id) as Doc);
+      // Round 9 (prompt audit 7): an exit ticket takes a figure like the other question layouts
+      // (the renderer lays it out the same way); its doc lists no such way, so it is measured here.
+      const docs = ids.map((id) => {
+        const d = byId.get(id) as Doc;
+        if (id !== "exit-ticket" || d.variants.some((v) => v.figure)) return d;
+        const fig = (byId.get("practice") as Doc).variants.filter((v) => v.figure);
+        return { ...d, variants: [...d.variants, ...fig] } as Doc;
+      });
       const labels = [...new Set(docs.flatMap((d) => d.variants.map((v) => v.label)))];
       const variants = labels.map((label) => {
         const vs = docs.flatMap((d) =>
           d.variants.filter((v) => v.label === label).map((v) => [d, v] as const),
         );
         const figure = !!vs[0]?.[1].figure;
+        // Round 9 (prompt audit 7): a way that only fits under a one-line heading (2 compare
+        // cards with pictures: the picture falls under 4:3) is measured, and offered, with one.
+        let hd = heading;
+        const fitAt = (h: number) =>
+          Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, h, 0)))));
+        if (fitAt(heading) < MIN_ITEM)
+          for (let h = headingOne; h >= 12; h -= 4)
+            if (fitAt(h) >= Math.min(MIN_ITEM, 20)) {
+              hd = h;
+              break;
+            }
         // Round 9 (coordinator): a question slide with a figure whose questions would get under
         // MIN_ITEM characters with an instruction line has no instruction line (KS1-2 held 22-24).
         const fit = (insN: number) =>
-          Math.min(
-            ...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, heading, insN)))),
-          );
+          Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, hd, insN)))));
         const ins0 = QUESTIONS.has(w) ? oneLine(g, figure ? G.left.w : 760) : 0;
         const n0 = fit(ins0);
         const noIns = QUESTIONS.has(w) && figure && n0 < MIN_ITEM && fit(0) >= MIN_ITEM;
@@ -255,7 +272,7 @@ export function measureFit() {
             ...vs.flatMap(([d, v]) =>
               (["first", "lead"] as const).map((mode) => {
                 LONG = mode;
-                const r = largest((k) => clean(g, () => input(d, v, k, heading, insN)));
+                const r = largest((k) => clean(g, () => input(d, v, k, hd, insN)));
                 LONG = "all";
                 return r || 240;
               }),
@@ -263,9 +280,7 @@ export function measureFit() {
           );
         // A question slide without its instruction line has that line's room for its questions.
         const bare = ins
-          ? Math.min(
-              ...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, heading, 0)))),
-            )
+          ? Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, hd, 0)))))
           : 0;
         const v0 = vs[0]?.[1] as Variant;
         return {
@@ -279,6 +294,7 @@ export function measureFit() {
           ...(ins ? { instruction: ins, charsNoInstruction: bare } : {}),
           ceiling: n ? ceilingOf(ins) : 0,
           ...(noIns ? { noInstruction: true } : {}),
+          ...(hd !== heading ? { headingMax: hd } : {}),
           ...(ins ? { ceilingNoInstruction: bare ? ceilingOf(0) : 0 } : {}),
           ...(w === "hinge" && n ? { stem: Math.round(n * 1.6) } : {}),
           ...(v0.keyCards ? { keyLabel: KEY_LABEL } : {}),

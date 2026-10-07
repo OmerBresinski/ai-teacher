@@ -507,6 +507,8 @@ export type PhotoAsk = {
   style?: "photo" | "illustration";
   slide: { heading: string; text: string; point: string };
   index: number;
+  /** Round 9 (coordinator F): the writer's flow look names a picture, so the director cannot veto it. */
+  final?: boolean;
 };
 export type PhotoResult = {
   /** The request text the picture director was given. */
@@ -791,6 +793,7 @@ export function pictureService(opts: {
                 shows: ask.shows,
                 mustShow: ask.mustSee.length ? ask.mustSee : mustShowOf(request),
                 subject: ask.named ? "named" : "generic",
+                ...(ask.final ? { final: true } : {}),
               },
             },
             brief: b as never,
@@ -1394,7 +1397,32 @@ export const MAIN_LIST: Record<string, string> = {
   particles: "panels",
   "fraction-shapes": "shapes",
   "line-graph": "annotations",
+  "number-line": "points",
+  carroll: "cells",
 };
+/** Round 9 (coordinator 7): kinds whose count is a number, capped at the slot's measured count. */
+const COUNT_FIELD: Record<string, string[]> = {
+  "equal-groups": ["groups"],
+  cubes: ["split"],
+  "bar-model": ["bars", "parts"],
+};
+/**
+ * Round 9 (coordinator 7): kinds whose main list is one item per requested label, so the drawer
+ * uses exactly the requested labels (no more, no fewer). A flow's labels are its boxes then its
+ * arrow words, and a table's are cell words, so those are capped above only (a table by its rows
+ * at the slot's measured rows of 3 columns, never by its labels).
+ */
+export const EXACT_LABELS = new Set([
+  "labelled-diagram",
+  "pie",
+  "bar-chart",
+  "layers",
+  "river",
+  "cycle",
+  "timeline",
+]);
+const asked = (kind: string, labels: number) =>
+  kind === "line-graph" ? Math.max(0, labels - 2) : kind === "table" ? 0 : labels;
 /** A schema node, through a nullable anyOf, as the object/array it is (undefined when neither). */
 const unwrap = (n: unknown): Record<string, unknown> | undefined => {
   const o = n as Record<string, unknown> | undefined;
@@ -1404,10 +1432,10 @@ const unwrap = (n: unknown): Record<string, unknown> | undefined => {
   return o;
 };
 /**
- * Round 9 (regression audit cause 3, drawer inflation): the drawer's strict schema with its main
- * list capped at the slot's measured count and, when the writer named the parts, at that many
- * (a flow's labels are its boxes then its arrow words, so never fewer boxes than asked); a title is
- * null only. Line-graph notes are capped at the labels beyond the two axes. Never throws.
+ * Round 9 (regression audit cause 3, drawer inflation; coordinator 7): the drawer's strict schema
+ * with its main list capped at the slot's measured count and at the requested labels, and for
+ * EXACT_LABELS kinds held to exactly that many; count fields (groups, split, parts) capped at the
+ * slot's count; a title is null only. Never throws.
  */
 export function capDrawerSchema(
   schema: Record<string, unknown>,
@@ -1422,19 +1450,39 @@ export function capDrawerSchema(
   const field = MAIN_LIST[kind];
   const list = field ? unwrap(props[field]) : undefined;
   if (list && list.type === "array") {
-    const asked = kind === "line-graph" ? Math.max(0, labels - 2) : labels;
+    const want = asked(kind, labels);
     const caps = [
       slotItems,
-      asked > 0 ? asked : undefined,
+      want > 0 ? want : undefined,
       list.maxItems as number | undefined,
     ].filter((x): x is number => typeof x === "number" && x > 0);
     const min = (list.minItems as number | undefined) ?? 0;
     if (caps.length) list.maxItems = Math.max(min, Math.min(...caps));
-    if (kind === "line-graph" && asked === 0) list.maxItems = 0;
+    if (kind === "line-graph" && want === 0) list.maxItems = 0;
+    if (EXACT_LABELS.has(kind) && want > 0)
+      list.minItems = Math.max(min, Math.min(want, list.maxItems as number));
+  }
+  const path = COUNT_FIELD[kind];
+  if (path && slotItems) {
+    let node: Record<string, unknown> | undefined = { properties: props };
+    for (const [k, key] of path.entries()) {
+      const p = (node?.properties as Record<string, unknown> | undefined)?.[key];
+      const u = unwrap(p);
+      if (!u) break;
+      if (k === path.length - 1) {
+        if (u.type === "integer" || u.type === "number")
+          u.maximum = Math.max(
+            (u.minimum as number | undefined) ?? 0,
+            Math.min(slotItems, (u.maximum as number | undefined) ?? slotItems),
+          );
+        else if (u.type === "array")
+          u.maxItems = Math.min(slotItems, (u.maxItems as number | undefined) ?? slotItems);
+      } else node = u.type === "array" ? unwrap(u.items) : u;
+    }
   }
   return out;
 }
-/** Round 9: parts the drawer added beyond the request ("" when none): a title, or more items than labels. */
+/** Round 9: parts the drawer added or left out ("" when none): a title, or a count off the request. */
 export function addedParts(spec: unknown, kind: string, labels: readonly string[]): string {
   const s = (spec ?? {}) as Record<string, unknown>;
   const out: string[] = [];
@@ -1442,9 +1490,11 @@ export function addedParts(spec: unknown, kind: string, labels: readonly string[
     out.push("it adds a title the request did not ask for");
   const field = MAIN_LIST[kind];
   const list = field ? s[field] : undefined;
-  const asked = kind === "line-graph" ? Math.max(0, labels.length - 2) : labels.length;
-  if (Array.isArray(list) && labels.length && list.length > asked)
-    out.push(`it has ${list.length} ${field} where the request names ${asked}`);
+  const want = asked(kind, labels.length);
+  if (Array.isArray(list) && want > 0 && list.length > want)
+    out.push(`it has ${list.length} ${field} where the request names ${want}`);
+  if (Array.isArray(list) && want > 0 && EXACT_LABELS.has(kind) && list.length < want)
+    out.push(`it has ${list.length} ${field} where the request names ${want}`);
   return out.join("; ");
 }
 /** Round 9: why the spec does not draw in its own slot on its slide's theme ("" when it does). */

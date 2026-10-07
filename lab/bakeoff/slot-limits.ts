@@ -50,7 +50,15 @@ const sample = (kind: string) =>
  */
 const PROBES: Record<
   string,
-  { noun: string; min: number; max: number; cmin: number; spec: (k: number, c: number) => unknown }
+  {
+    noun: string;
+    min: number;
+    max: number;
+    cmin: number;
+    /** Round 9 (review N2): the count the label limit is measured at, when not the most items. */
+    charsAt?: number;
+    spec: (k: number, c: number) => unknown;
+  }
 > = {
   flow: {
     noun: "boxes",
@@ -106,6 +114,7 @@ const PROBES: Record<
     min: 1,
     max: 12,
     cmin: 3,
+    charsAt: 4,
     spec: (k, c) => ({
       kind: "bar-model",
       alt: "x",
@@ -156,6 +165,31 @@ const PROBES: Record<
       states: ["solid", "liquid", "gas"].slice(0, k),
       notes: Array.from({ length: k }, (_, i) => text(c, i)),
     }),
+  },
+  // Round 9 (coordinator 7): number-line points (labelled values on -5..5) and cubes' split.
+  "number-line": {
+    noun: "marked points",
+    min: 1,
+    max: 8,
+    cmin: 3,
+    spec: (k, c) => ({
+      kind: "number-line",
+      alt: "x",
+      min: -5,
+      max: 5,
+      step: 1,
+      points: Array.from({ length: k }, (_, i) => ({
+        value: -5 + Math.round(((i + 1) * 10) / (k + 1)),
+        label: text(c, i),
+      })),
+    }),
+  },
+  cubes: {
+    noun: "cubes along each edge",
+    min: 2,
+    max: 4,
+    cmin: 0,
+    spec: (k) => ({ ...(sample("cubes") ?? {}), split: k }),
   },
   "equal-groups": {
     noun: "groups",
@@ -300,13 +334,17 @@ export function measure() {
           items && p.cmin
             ? Math.max(
                 0,
-                most(p.cmin, 60, (c) => draws(p.spec(items, c), g, slot), 2),
+                most(
+                  p.cmin,
+                  60,
+                  (c) => draws(p.spec(Math.min(items, p.charsAt ?? items), c), g, slot),
+                  2,
+                ),
               )
             : 0;
         out[kind] = { items, ...(p.cmin ? { chars } : {}), noun: p.noun };
       }
       out.hydrograph = { items: draws(sample("hydrograph"), g, slot) ? 1 : 0, noun: "graph" };
-      out.cubes = { items: draws(sample("cubes"), g, slot) ? 1 : 0, noun: "pair of solids" };
       limits[g][slot] = out;
     }
   }

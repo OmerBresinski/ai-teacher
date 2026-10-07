@@ -110,7 +110,12 @@ describe("round 9: fit faults in characters", () => {
   test("the repair is told which field and how many characters over", () => {
     const f = repairTerms("overflow: questions 354/328pt", slide, "KS3-5");
     expect(f).toMatch(/^overflow: questions\[1\]: 300 characters, room \d+ \(\d+ over\)/);
-    expect(f).toContain("all the slide's text:");
+    const full = repairTerms(
+      "overflow: questions 354/328pt",
+      { ...slide, questions: ["x".repeat(220), "y".repeat(220), "z".repeat(220)] },
+      "KS3-5",
+    );
+    expect(full).toContain("all the slide's text:");
     expect(charsOver({ ...slide, questions: ["Short?"] }, "KS3-5")).toEqual([]);
   });
   test("a fault no field explains is said as a share, never 'about N lines'", () => {
@@ -129,5 +134,126 @@ describe("round 9: pictures and locale", () => {
     expect(localise("money uses {{locale.currency}}", ENGLAND)).toBe("money uses £");
     expect(localise("{{locale.currency}}", INDIA)).toBe("₹");
     expect(ENGLAND.currencyCode).toBe("GBP");
+  });
+});
+
+describe("round 9 review: restaging, look and exact labels", () => {
+  test("a sequence kind that cannot be restaged becomes its parts as steps, one per line", () => {
+    const { fixedFallback } = require("./harness");
+    const r = fixedFallback(
+      {
+        template: "visual-text",
+        heading: "Why prices rose",
+        lead: "Look at the chain.",
+        points: [],
+      },
+      { type: "diagram", kind: "flow" },
+      ["Ruhr occupied", "Workers strike", "Money printed"],
+      5,
+    );
+    expect(r.how).toBe("sequence-as-steps");
+    expect(r.slide.points).toEqual(["Ruhr occupied", "Workers strike", "Money printed"]);
+    expect(JSON.stringify(r.slide)).not.toContain(";");
+  });
+  test("any other kind drops its figure and the sentences that point at it", () => {
+    const { fixedFallback } = require("./harness");
+    const r = fixedFallback(
+      {
+        template: "visual-text",
+        heading: "Maps",
+        lead: "Look at the map. The Amazon is the largest rainforest.",
+        points: ["Trace the river to the sea.", "It holds 10% of species."],
+        figure: { shows: "map" },
+      },
+      { type: "photo" },
+      [],
+      0,
+    );
+    expect(r.how).toBe("figure-dropped");
+    expect(r.slide.template).toBe("explain");
+    expect(r.slide.lead).toBe("The Amazon is the largest rainforest.");
+    expect(r.slide.points).toEqual(["It holds 10% of species."]);
+    expect(r.slide.figure).toBeNull();
+  });
+  test("a look that names a picture adds one when the slide asks for none", () => {
+    const { withLook } = require("./harness");
+    const r = withLook(
+      { template: "explain", heading: "H", lead: "L", points: [] },
+      { kind: "picture", shows: "a frog on a lily pad" },
+    );
+    expect(r.how).toBe("explain-to-visual-text");
+    expect(r.slide.figure.shows).toBe("a frog on a lily pad");
+    expect(
+      withLook({ template: "explain", heading: "H" }, { kind: "none", shows: null }).how,
+    ).toBeUndefined();
+  });
+  test("exact labels: a cycle holds exactly the requested stages; a table is not capped by its labels", () => {
+    const cyc = {
+      type: "object",
+      properties: { steps: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 5 } },
+    };
+    const c = capDrawerSchema(cyc, "cycle", 5, 4) as {
+      properties: { steps: { minItems: number; maxItems: number } };
+    };
+    expect([c.properties.steps.minItems, c.properties.steps.maxItems]).toEqual([4, 4]);
+    expect(addedParts({ steps: ["a", "b", "c"] }, "cycle", ["a", "b", "c", "d"])).toContain(
+      "3 steps where the request names 4",
+    );
+    const tab = { type: "object", properties: { rows: { type: "array", items: {}, maxItems: 8 } } };
+    expect(
+      (capDrawerSchema(tab, "table", 6, 3) as { properties: { rows: { maxItems: number } } })
+        .properties.rows.maxItems,
+    ).toBe(6);
+    const eg = {
+      type: "object",
+      properties: { groups: { type: "integer", minimum: 2, maximum: 10 } },
+    };
+    expect(
+      (capDrawerSchema(eg, "equal-groups", 8, 0) as { properties: { groups: { maximum: number } } })
+        .properties.groups.maximum,
+    ).toBe(8);
+  });
+  test("a restage may lose its figure and pointing words, never an item", () => {
+    const { judgeRepair } = require("./repair");
+    const before = {
+      template: "practice",
+      heading: "Q",
+      questions: ["One?", "Two?"],
+      figure: { kind: "table", shows: "t" },
+    };
+    const lost = judgeRepair(
+      before,
+      { template: "practice", heading: "Q", questions: ["One?"], figure: null },
+      [],
+      { restage: true },
+    );
+    expect(lost.ok).toBe(false);
+    const ok = judgeRepair(
+      before,
+      { template: "practice", heading: "Q", questions: ["One?", "Two?"], figure: null },
+      [],
+      { restage: true },
+    );
+    expect(ok.ok).toBe(true);
+  });
+});
+
+describe("round 9 review: the writer's picture decision is final for the director", () => {
+  test("a veto becomes the plain route; illustration lessons never get stock photos for generic subjects", () => {
+    const { finalDirection } = require("../../packages/generation/src/stages/picture-director");
+    const ask = {
+      text: "a frog",
+      named: null,
+      writer: { shows: "a frog", mustShow: ["frog"], final: true },
+      look: { style: "illustration" },
+    };
+    const d = finalDirection({ route: "pexels", veto: "schematic", pictures: [] }, ask);
+    expect(d.route).toBe("library-or-generate");
+    expect(d.pictures[0].shows).toBe("a frog");
+    expect(
+      finalDirection(undefined, { ...ask, named: "Amazon river", look: undefined }).route,
+    ).toBe("commons");
+    const free = { route: "none", pictures: [] };
+    expect(finalDirection(free, { ...ask, writer: { ...ask.writer, final: false } })).toBe(free);
   });
 });

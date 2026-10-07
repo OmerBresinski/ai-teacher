@@ -44,7 +44,13 @@ export function figuresOf(
   return out;
 }
 
-const words = (t: string) =>
+/** Words that point at a figure (round 9: a restaged slide may lose them). */
+export const POINTING_WORDS = new Set(
+  "look at see trace the diagram graph map picture chart table shown shows below above here this photo image figure".split(
+    " ",
+  ),
+);
+export const words = (t: string) =>
   t
     .toLowerCase()
     .replace(/\*\*/g, "")
@@ -82,7 +88,14 @@ export function judgeRepair(
   before: S,
   after: S,
   toNotes: string[] = [],
-  opts: { diagramFault?: boolean; fit?: boolean } = {},
+  opts: {
+    diagramFault?: boolean;
+    fit?: boolean;
+    /** Round 9 (review S2): a stand-alone or reroute rewrite, which may drop its figure. */
+    restage?: boolean;
+    /** Words that may go (the lost figure's own words and the words that pointed at it). */
+    exempt?: ReadonlySet<string>;
+  } = {},
 ): Verdict {
   const why: string[] = [];
   if (NEVER.has(String(after.template))) why.push(`became a ${after.template} slide`);
@@ -99,7 +112,7 @@ export function judgeRepair(
       (g) =>
         sameFigure(f, g) || (opts.diagramFault && f.type === "diagram" && g.type === "diagram"),
     );
-    if (k < 0) why.push(`lost the ${f.type} "${f.shows.slice(0, 40)}"`);
+    if (k < 0 && !opts.restage) why.push(`lost the ${f.type} "${f.shows.slice(0, 40)}"`);
     else free.splice(k, 1);
   }
   // Cards and sequence steps carry a picture each or none (round 2 y9 s6: a compare with a picture
@@ -122,6 +135,15 @@ export function judgeRepair(
       if (texts[k]?.trim() && !ENDS.test(texts[k] ?? "") && CONTINUES.test(texts[k + 1] ?? ""))
         why.push(`a sentence is split across ${key}[${k}] and ${key}[${k + 1}]`);
   }
+  // Round 9 (review S2, coordinator 4): a restaged slide loses no question, option, point, card or
+  // panel (a fit repair has the same rule below).
+  const itemCount = (x: S) =>
+    ["points", "questions", "options", "columns", "sequence"].reduce(
+      (a, k) => a + (Array.isArray(x[k]) ? (x[k] as unknown[]).length : 0),
+      0,
+    );
+  if (opts.restage && itemCount(after) < itemCount(before))
+    why.push(`dropped ${itemCount(before) - itemCount(after)} of ${itemCount(before)} items`);
   // Round 8 (audit 4): a fit repair says the slide in fewer words or re-lays it out; it never moves
   // teaching to the notes, and it keeps every item (point, question, option, card). Rewording is
   // allowed, so the word-loss rule below does not apply to it (it shipped y9 s9's overflow).
@@ -142,7 +164,7 @@ export function judgeRepair(
     ...figuresOf(after).flatMap((f) => words(f.shows)),
   ]);
   const had = [...new Set(textSlots(before).flatMap((s) => words(s.text)))];
-  const lost = had.filter((w) => !kept.has(w));
+  const lost = had.filter((w) => !kept.has(w) && !opts.exempt?.has(w));
   if (had.length && lost.length / had.length > 0.1)
     why.push(`lost ${lost.length} of ${had.length} words (${lost.slice(0, 5).join(", ")})`);
   return why.length ? { ok: false, why } : { ok: true };

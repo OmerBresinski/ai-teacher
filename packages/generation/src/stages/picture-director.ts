@@ -277,11 +277,44 @@ interface Ask {
   aspect?: number;
   look?: LessonLook;
   /** Round 8: the writer's own picture spec (kept as the picture's shows and must-see). */
-  writer?: { shows: string; mustShow: string[] };
+  writer?: { shows: string; mustShow: string[]; final?: boolean };
+}
+
+/**
+ * BAKEOFF round 9 (coordinator F): when the writer's visual decision is final (its flow look names
+ * a picture), the director picks the source and the picture but cannot return none: a veto, a
+ * "none" route or a failed call becomes the plain route for the subject. A real, named subject goes
+ * to Commons; a generic one in an illustration lesson to the library or a generated illustration,
+ * never stock photos; otherwise the director's route, or Pexels. Without `final`, unchanged.
+ */
+export function finalDirection(
+  d: PictureDirection | undefined,
+  ask: Ask,
+): PictureDirection | undefined {
+  const w = ask.writer;
+  if (!w?.final) return d;
+  const illustrated = ask.look?.style === "illustration";
+  const stuck =
+    !d || d.route === "none" || d.route === "code" || !!d.veto?.trim() || !d.pictures?.length;
+  let route: PictureDirection["route"] = stuck ? (ask.named ? "commons" : "pexels") : d.route;
+  if (!ask.named && illustrated && route === "pexels") route = "library-or-generate";
+  if (!stuck && route === d?.route) return d;
+  const pictures = d?.pictures?.length
+    ? d.pictures
+    : [
+        {
+          shows: w.shows,
+          mustShow: w.mustShow,
+          queries: [ask.named ?? w.shows],
+          imagePrompt: w.shows,
+        },
+      ];
+  return { ...(d ?? {}), route, pictures, veto: null } as unknown as PictureDirection;
 }
 
 /** The slot's plan from the director's answer; none when there is no usable answer. */
-export function planPicture(d: PictureDirection | undefined, ask: Ask): PicturePlan {
+export function planPicture(d0: PictureDirection | undefined, ask: Ask): PicturePlan {
+  const d = finalDirection(d0, ask);
   // Round 8: the director's veto (its reason to show nothing) is enforced here, never decided.
   if (!d || d.route === "none" || d.veto?.trim()) return { kind: "none" };
   const base = { named: ask.named, ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}) };

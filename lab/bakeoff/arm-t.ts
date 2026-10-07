@@ -535,10 +535,10 @@ export const armT: ArmPlugin = {
   },
   placeholder(f, ctx) {
     // Provisional from the flow entry alone: its job as the heading, the layout shape its
-    // look_at implies, picture slots open (their pictures are already being found).
-    const slot = { photo: PLACEHOLDER_IMAGE, alt: f.look_at?.shows ?? "" };
+    // look implies, picture slots open (their pictures are already being found).
+    const slot = { photo: PLACEHOLDER_IMAGE, alt: f.look?.shows ?? "" };
     const heading = f.does;
-    const kind = f.look_at?.kind;
+    const kind = f.look?.kind;
     const input: TemplateInput =
       kind === "picture"
         ? { template: "picture-text", heading, figure: slot }
@@ -552,7 +552,7 @@ export const armT: ArmPlugin = {
             ? {
                 template: "diagram-text",
                 heading,
-                figure: { ...slot, alt: `Diagram: ${f.look_at?.shows ?? ""}` },
+                figure: { ...slot, alt: `Diagram: ${f.look?.shows ?? ""}` },
               }
             : { template: "explain", heading, lead: "" };
     const r = layoutTemplate(input, ctx.theme, ctx.stage);

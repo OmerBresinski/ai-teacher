@@ -13,7 +13,14 @@ import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./
 import { type Locale, setLocale } from "./locale";
 import { OBJECTIVES_CONFIG, objectivesCall, pupilCall, pupilSchema } from "./objectives";
 import { PartialJson, type Path } from "./partial";
-import { judgeRepair, repairable, sameFigure, teaching } from "./repair";
+import {
+  judgeRepair,
+  POINTING_WORDS,
+  repairable,
+  sameFigure,
+  teaching,
+  words as wordsOf,
+} from "./repair";
 import {
   coverage,
   lessonNotes,
@@ -115,7 +122,8 @@ export type Design = { theme?: string; picture_style?: "photo" | "illustration" 
 export type FlowEntry = {
   slide: number;
   does: string;
-  look_at?: { kind: string; shows: string | null };
+  /** Round 9: the writer's visual decision for the slide (schema `look`: kind and what it shows). */
+  look?: { kind: string; shows: string | null };
 };
 export type Plan = {
   design?: Design;
@@ -123,7 +131,7 @@ export type Plan = {
   flow?: {
     slide: number;
     does: string;
-    look_at?: { kind: string; shows: string | null };
+    look?: { kind: string; shows: string | null };
     /** Round 4: the objective numbers this slide teaches or checks. */
     teaches?: number[];
   }[];
@@ -417,11 +425,165 @@ export function charsOver(slide: unknown, stage: string): string[] {
     if (typeof o.label === "string")
       over(`${listKey}[${k + 1}].label`, o.label, v.keyLabel ?? v.columnLabel, false);
   });
+  // Round 9 (prompt audit 6): the figure's ask, or its ask_without when the figure is not shown,
+  // is on the slide too; the longer counts toward the total.
+  all += Math.max(
+    0,
+    ...["figure", "picture", "diagram"].flatMap((k) => {
+      const f = s[k] as Record<string, unknown> | null | undefined;
+      return f && typeof f === "object" ? [str(f.ask).length, str(f.ask_without).length] : [];
+    }),
+  );
   if (all > lim.total)
     out.push(
       `all the slide's text: ${all} characters, room ${lim.total} (${all - lim.total} over)`,
     );
   return out;
+}
+
+/** Whether a writer slide asks for any picture or diagram (its figure, a card's or a panel's). */
+export function asksVisual(s: Record<string, unknown>): boolean {
+  if (["figure", "picture", "diagram"].some((k) => s[k] && typeof s[k] === "object")) return true;
+  const cards = [...((s.columns as unknown[]) ?? []), ...((s.sequence as unknown[]) ?? [])];
+  return cards.some(
+    (c) => !!c && typeof c === "object" && !!(c as Record<string, unknown>).picture,
+  );
+}
+/** Layouts that take one picture in their own field: `figure` or `picture`. */
+const FIGURE_FIELD: Record<string, string> = {
+  "visual-text": "figure",
+  "big-visual": "figure",
+  steps: "figure",
+  "question-set": "figure",
+  practice: "figure",
+  "exit-ticket": "figure",
+  discussion: "picture",
+  title: "picture",
+};
+/**
+ * Round 9 (coordinator 6): a slide the flow's `look` says shows a picture, but which asks for
+ * none, gets that picture from look's `shows` phrase (an explain slide becomes visual-text, its
+ * picture beside the same words). A diagram look needs a kind the flow does not give, so it is only
+ * reported (look-unmet). Never throws.
+ */
+export function withLook(
+  s: Record<string, unknown>,
+  look: { kind: string; shows: string | null } | undefined,
+): { slide: Record<string, unknown>; how?: string } {
+  if (!look || look.kind !== "picture" || !look.shows?.trim() || asksVisual(s)) return { slide: s };
+  const tpl = String(s.template);
+  const pic = {
+    shows: look.shows,
+    must_see: [look.shows],
+    subject: "generic",
+    ask: null,
+    ask_without: null,
+  };
+  if (tpl === "explain")
+    return { slide: { ...s, template: "visual-text", figure: pic }, how: "explain-to-visual-text" };
+  const field = FIGURE_FIELD[tpl];
+  return field ? { slide: { ...s, [field]: pic }, how: `${field}-from-look` } : { slide: s };
+}
+
+/**
+ * Round 9 (review B2): the room a slide has, in the writer's units, for a stand-alone or reroute
+ * call: each item, all the text, the instruction, for the slide's layout without its figure.
+ */
+export function roomLine(slide: unknown, stage: string): string {
+  const s = { ...((slide ?? {}) as Record<string, unknown>) };
+  for (const k of ["figure", "picture", "diagram"]) s[k] = null;
+  const F = fitTable()[stage];
+  const L = F?.layouts[String(s.template)];
+  if (!F || !L) return "";
+  const listKey = ["points", "questions", "options", "columns", "sequence"].find((k) =>
+    Array.isArray(s[k]),
+  );
+  const n = listKey ? (s[listKey] as unknown[]).length : 0;
+  const v = L.variants
+    .filter((x) => x.chars > 0 && !x.figure && (x.limit || x.chars))
+    .sort(
+      (a, b) => Math.max(0, ...Object.values(a.counts)) - Math.max(0, ...Object.values(b.counts)),
+    )
+    .find((x) => Math.max(0, ...Object.values(x.counts)) >= n);
+  const lim = v?.limit;
+  if (!lim) return "";
+  return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+}
+
+/** Round 9: points over the room, summed over a slide's overflow faults ("overflow: x 354/328pt"). */
+export function overflowPt(faults: string[]): number {
+  let t = 0;
+  for (const f of faults) {
+    const m = /^(?:overflow|clipped): .*?(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt/.exec(f);
+    if (m) t += Math.max(0, Number(m[1]) - Number(m[2]));
+  }
+  return t;
+}
+export const OVERFLOW = /^(overflow|clipped|cut):/;
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+/** A request's content words, sorted (two requests for the same subject compare equal). */
+export const plainWords = (t: string) =>
+  [...new Set(t.toLowerCase().match(/[a-z]{4,}/g) ?? [])].sort().join(" ");
+
+/**
+ * Round 9 (review S1, coordinator 3): the fixed fallback when a restaging call fails or is
+ * rejected. A sequence kind's parts become the slide's steps, in order, one part per line; any
+ * other kind's figure is dropped and code removes the sentences that point at it.
+ */
+export const SEQUENCE_KINDS = new Set(["flow", "cycle", "timeline"]);
+const POINTING =
+  /\b(look at|looking at|trace|see|the (?:diagram|graph|map|picture|chart|table|photo|image|figure|timeline|flow)|shown (?:here|below|above)|in the (?:picture|diagram|graph|map))\b/i;
+export function stripPointing(text: string): string {
+  const parts = text.match(/[^.?!]+[.?!]*\s*/g) ?? [text];
+  return parts
+    .filter((p) => !POINTING.test(p))
+    .join("")
+    .trim();
+}
+export function fixedFallback(
+  slide: Record<string, unknown>,
+  lost: { type: string; kind?: string; labels?: string[] },
+  parts: string[],
+  maxSteps: number,
+): { slide: Record<string, unknown>; how: string } {
+  const heading = String(slide.heading ?? "");
+  if (
+    lost.type === "diagram" &&
+    SEQUENCE_KINDS.has(lost.kind ?? "") &&
+    parts.length >= 2 &&
+    parts.length <= maxSteps
+  )
+    return {
+      slide: { template: "steps", heading, points: parts, figure: null },
+      how: "sequence-as-steps",
+    };
+  const out: Record<string, unknown> = { ...slide, figure: null, picture: null, diagram: null };
+  for (const k of ["lead", "instruction", "stem", "prompt"])
+    if (typeof out[k] === "string") out[k] = stripPointing(out[k] as string);
+  for (const k of ["points", "questions"])
+    if (Array.isArray(out[k]))
+      out[k] = (out[k] as unknown[])
+        .map((p) =>
+          typeof p === "string"
+            ? stripPointing(p)
+            : p && typeof p === "object" && typeof (p as { text?: unknown }).text === "string"
+              ? { ...(p as object), text: stripPointing((p as { text: string }).text) }
+              : p,
+        )
+        .filter((p) => (typeof p === "string" ? p.trim() : true));
+  const tpl = String(out.template);
+  if (
+    [
+      "visual-text",
+      "big-visual",
+      "diagram-text",
+      "picture-text",
+      "big-diagram",
+      "big-picture",
+    ].includes(tpl)
+  )
+    out.template = "explain";
+  return { slide: out, how: "figure-dropped" };
 }
 
 /**
@@ -763,6 +925,10 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       slide: { heading: words.heading, text: words.text, point: words.point ?? "" },
       index: i,
       ...(signal ? { signal } : {}),
+      // Round 9 (coordinator F): the flow's look named a picture: the director must find one.
+      ...(/^picture/.test(plan.flow?.find((x) => x.slide === i + 1)?.look?.kind ?? "")
+        ? { final: true }
+        : {}),
     };
     log({ ev: "picture-start", key: k, shows: a.shows, aspect: a.aspect });
     return pics.find(ask, lessonInfo);
@@ -961,6 +1127,15 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       void first;
       // Round 6: no em dashes on slides (Greg 1 Oct; r5 y8).
       s = slideNoEmDash(s);
+      // Round 9 (coordinator 6): the flow's look is the writer's visual decision. A slide whose
+      // look names a picture but which asks for none gets the picture from look's phrase.
+      const look = plan.flow?.find((x) => x.slide === idx + 1)?.look;
+      const added = withLook(s, look);
+      if (added.how) {
+        log({ ev: "look-added", slide: idx + 1, how: added.how, shows: look?.shows });
+        s = added.slide;
+      } else if (look && look.kind !== "none" && !asksVisual(s))
+        log({ ev: "look-unmet", slide: idx + 1, kind: look.kind, shows: look.shows });
       plan.slides[idx] = s;
       firstSlides.set(idx, s);
       const as = withKeyStage(brief.keyStage, () => arm.visuals(s, idx, { ...base, plan }));
@@ -1363,6 +1538,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
 
   // ── e. one bounded repair: failing slides only, one call each, one round ──
   const repairSys = `${shared}/repair.txt`;
+  /** Round 9 (review B1): the stand-alone and reroute prompt (prompt-engineer's). */
+  const restageSys = `${shared}/restage.txt`;
   // The arm's per-stage repair schema and layouts menu (prompts/<arm>/repair-schema.<stage>.json, layouts.<stage>.txt).
   const stageKey =
     arm.promptStage?.(brief) ??
@@ -1501,9 +1678,19 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   const repairOne = async (
     c: CheckResult,
     mode: "fit" | "stand-alone" | "reroute" = "fit",
+    ro: {
+      /** A reason to reject the call's slide (the reroute's same-picture guard). */
+      guard?: (after: Record<string, unknown>) => string | undefined;
+      /** Words the restaged slide may lose (the figure's own and its pointing words). */
+      exempt?: ReadonlySet<string>;
+      /** Fit: keep a reword that cut the overflow without clearing it (the measure-and-retry loop). */
+      keepPartial?: boolean;
+    } = {},
   ): Promise<boolean> => {
-    if (!existsSync(repairSys) || !existsSync(repairSchema)) return false;
-    const system = readFileSync(repairSys, "utf8");
+    // Round 9 (review B1): restaging (stand-alone, reroute) has its own prompt, never repair.txt.
+    const sysFile = mode === "fit" ? repairSys : restageSys;
+    if (!existsSync(sysFile) || !existsSync(repairSchema)) return false;
+    const system = readFileSync(sysFile, "utf8");
     const i = c.slide - 1;
     const ask = asks.get(i) ?? [];
     const found = ask
@@ -1529,6 +1716,11 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     // Round 9: a reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
     const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey));
+    // Round 9 (review B2): a restaging call is told its room in characters.
+    if (mode !== "fit") {
+      const room = roomLine(plan.slides[i], stageKey);
+      if (room) faultLines.push(room);
+    }
     const u = tpl
       ? fillTemplate(tpl, brief, {
           context: user,
@@ -1588,13 +1780,12 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
       fit: mode === "fit" && c.faults.some((f) => /^(overflow|clipped|cut|overlap):/.test(f)),
+      // Round 9 (review S2): a restaged slide may lose its figure and the words that pointed at
+      // it, never a question, an item or the slide's other words.
+      ...(mode !== "fit" ? { restage: true, exempt: ro.exempt ?? POINTING_WORDS } : {}),
     });
-    // A stand-alone rewrite drops the visual that is not there: losing it is the point.
-    const why = verdict.ok
-      ? []
-      : // Round 6 run (y4 s3/s10 rejected for losing "look, closely"): a stand-alone rewrite loses
-        // the pointing words by design, so neither the figure nor those words count against it.
-        verdict.why.filter((w) => mode === "fit" || !/^lost (the|\d+ of)/.test(w));
+    const guarded0 = ro.guard?.(o2.slide);
+    const why = [...(verdict.ok ? [] : verdict.why), ...(guarded0 ? [guarded0] : [])];
     if (why.length) {
       log({
         ev: "repair-rejected",
@@ -1614,20 +1805,45 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     // notes call): to_notes alone must not raise an "unanswered" fault and revert the repair.
     const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
+    const fresh = [...kinds(now)].filter((k) => !was.has(k));
     const worse =
       mode !== "fit"
         ? now.some((f) => /^(dangling|unanswerable):/.test(f))
-        : [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
+        : ro.keepPartial
+          ? // Round 9 (review S6): a first reword that cut the overflow is kept for the second.
+            fresh.length > 0 || overflowPt(now) >= overflowPt(c.faults)
+          : [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
     if (worse) restore(i, before, n0, saved);
     else if (c.faults.some((f) => f.startsWith("diagram:"))) path.set(i, "diagram-repaired");
     log({ ev: "repair", slide: i + 1, mode, usd, ok: true, fix: o2.fix, reverted: worse, now });
     return !worse;
   };
+  /**
+   * Round 9 (review S6, coordinator 8): measure and retry. An overflowing slide gets at most two
+   * rewords; a first that cut the overflow is kept, re-measured, and the second is told exactly
+   * which fields are still over and by how many characters. Other faults get the one repair.
+   */
+  const fitLoop = async (c: CheckResult): Promise<boolean> => {
+    if (!c.faults.some((f) => OVERFLOW.test(f))) return repairOne(c);
+    const first = await repairOne(c, "fit", { keepPartial: true });
+    const i = c.slide - 1;
+    const left = (check()[i]?.faults ?? []).filter((f) => OVERFLOW.test(f));
+    if (!left.length) return first;
+    const again = await repairOne(
+      {
+        slide: c.slide,
+        faults: [...left, "still over after one reword: cut the characters given above"],
+      },
+      "fit",
+    );
+    log({ ev: "fit-retry", slide: c.slide, first, again, left });
+    return again;
+  };
   if (!o.noRepair && failing.length) {
     if (!existsSync(repairSys) || !existsSync(repairSchema))
       log({ ev: "repair-skipped", why: "no repair prompt yet", failing: failing.length });
     else {
-      await Promise.all(failing.map((c) => repairOne(c)));
+      await Promise.all(failing.map((c) => fitLoop(c)));
       mark("repaired");
     }
   }
@@ -1635,7 +1851,78 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
   // thing (the picture director, the diagram's `shows` as the request); else words only.
   // Round 3 profile (R2 y11: checks at 51 s, done at 100 s): the slides' fallbacks ran one after
   // another; they run side by side now.
-  const fallback = async (i: number) => {
+  /**
+   * Round 9 (review B2, S1; coordinator 2-3): restage a slide whose figure cannot be shown. One
+   * call (restage.txt) with the slide's room; a result that overflows gets the fit loop; the final
+   * measured check decides. A failed, rejected or still-overflowing call falls to the fixed
+   * fallback in code, and if that overflows, to the slide with its figure and pointing sentences
+   * removed. Every outcome is logged.
+   */
+  const restage = async (
+    i: number,
+    lost: { type: string; kind?: string; shows: string; labels?: string[]; key?: string },
+    mode: "stand-alone" | "reroute",
+    why?: string,
+    guard?: (after: Record<string, unknown>) => string | undefined,
+  ): Promise<string> => {
+    const orig = plan.slides[i] as Record<string, unknown>;
+    const exempt = new Set([
+      ...POINTING_WORDS,
+      ...wordsOf(lost.shows),
+      ...(lost.labels ?? []).flatMap((l) => wordsOf(l)),
+    ]);
+    const over = () => (check()[i]?.faults ?? []).filter((f) => OVERFLOW.test(f));
+    if (!o.noRepair) {
+      const ok = await repairOne({ slide: i + 1, faults: [lostFault(lost, why)] }, mode, {
+        guard,
+        exempt,
+      });
+      if (ok) {
+        const left = over();
+        if (left.length) await fitLoop({ slide: i + 1, faults: left } as CheckResult);
+        if (!over().length) return mode === "reroute" ? "rerouted" : "rewrite";
+        log({ ev: "restage-overflow", slide: i + 1, mode, left: over() });
+      }
+    }
+    // The fixed fallback, from the slide as it was before the call.
+    const v = lost.key ? visuals.get(`${i}:${lost.key}`) : undefined;
+    const spec = (v?.status === "diagram" ? v.spec : undefined) as
+      | Record<string, unknown>
+      | undefined;
+    const fromSpec = (spec?.nodes ?? spec?.steps ?? spec?.events) as unknown[] | undefined;
+    const parts = (fromSpec ?? lost.labels ?? [])
+      .map((p) =>
+        typeof p === "string"
+          ? p
+          : [
+              str((p as Record<string, unknown>).date),
+              str((p as Record<string, unknown>).text ?? (p as Record<string, unknown>).label),
+            ]
+              .filter(Boolean)
+              .join(": "),
+      )
+      .filter((p) => p.trim());
+    const maxSteps = Math.max(
+      0,
+      ...(fitTable()[stageKey]?.layouts.steps?.variants ?? [])
+        .filter((x) => x.chars > 0 && !x.figure)
+        .map((x) => x.counts.points ?? 0),
+    );
+    const n0 = notes.get(i);
+    const fb = fixedFallback(orig, lost, parts, maxSteps);
+    let saved = await swapSlide(i, fb.slide);
+    if (!over().length) {
+      log({ ev: "restage-fallback", slide: i + 1, mode, how: fb.how });
+      return fb.how;
+    }
+    restore(i, orig, n0, saved);
+    const strip = fixedFallback(orig, { type: "photo" }, [], 0);
+    saved = await swapSlide(i, strip.slide);
+    log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip", overflow: over() });
+    void saved;
+    return "strip";
+  };
+  const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
       | Extract<VisualAsk, { type: "diagram" }>
       | undefined;
@@ -1665,7 +1952,8 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     }
     // Then a picture of the same thing: any kind that shows a thing or process (particles, flow,
     // cycle, layers...), not only concrete ones; data kinds (graphs, tables) cannot be pictures.
-    const pic = pictureFallbackOk(dAsk.kind, dAsk.shows) ? arm.asPicture?.(s) : undefined;
+    const pic =
+      !fo.noPicture && pictureFallbackOk(dAsk.kind, dAsk.shows) ? arm.asPicture?.(s) : undefined;
     if (pic) {
       const n0 = notes.get(i);
       const saved = await swapSlide(i, pic);
@@ -1692,9 +1980,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     // Round 9 (regression audit cause 4): the slide is rewritten to stand alone in one small call
     // (gpt-6-luna, low): no line may point at the missing figure, and tabular content becomes a
     // readable layout. The figure is named in the fault so its content can be carried in words.
-    const ok =
-      !o.noRepair && (await repairOne({ slide: i + 1, faults: [lostFault(dAsk)] }, "stand-alone"));
-    path.set(i, ok ? "words-rewrite" : "words");
+    path.set(i, `words-${await restage(i, dAsk, "stand-alone")}`);
   };
   // Round 9 (regression audit cause 5): a picture the director vetoed or no source found is
   // rerouted in one small call: a diagram of a supported kind when one shows it, else the slide
@@ -1708,16 +1994,33 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
         !a.fixedShape &&
         visuals.get(`${i}:${a.key}`)?.status === "failed",
     );
-    if (!lost || o.noRepair) return;
+    if (!lost) return;
     const why = vetoed.get(`${i}:${lost.key}`);
-    const ok = await repairOne(
-      { slide: i + 1, faults: [lostFault({ type: "photo", shows: lost.shows }, why)] },
+    // Round 9 (review B1): a reroute that asks for the vetoed picture again is rejected and the
+    // slide goes to the stand-alone rewrite.
+    const same = (after: Record<string, unknown>) => {
+      const again = (arm.visuals(after, i, { ...base, plan }) as VisualAsk[]).some(
+        (a) =>
+          a.type === "photo" &&
+          (sameFigure({ type: "photo", shows: a.shows }, { type: "photo", shows: lost.shows }) ||
+            plainWords(a.shows) === plainWords(lost.shows)),
+      );
+      return again ? "re-asks the picture that could not be shown" : undefined;
+    };
+    let how = await restage(
+      i,
+      { type: "photo", shows: lost.shows, key: lost.key },
       "reroute",
+      why,
+      same,
     );
-    const drew = (asks.get(i) ?? []).some(
-      (a) => a.type === "diagram" && visuals.get(`${i}:${a.key}`)?.status === "diagram",
-    );
-    path.set(i, ok ? (drew ? "picture-to-diagram" : "picture-rewrite") : "picture-lost");
+    // Round 9 (coordinator 5): a diagram the reroute asked for goes through the drawer, its one
+    // retry and the fit checks like any other (never back to a picture).
+    if (how === "rerouted" && (asks.get(i) ?? []).some((a) => a.type === "diagram")) {
+      await fallback(i, { noPicture: true });
+      how = `to-${path.get(i) ?? "diagram"}`;
+    }
+    path.set(i, `picture-${how}`);
   };
   await Promise.all(Array.from({ length: n }, (_, i) => fallback(i)));
   await Promise.all(Array.from({ length: n }, (_, i) => pictureLost(i)));
