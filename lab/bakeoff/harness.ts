@@ -1340,7 +1340,9 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     // A stand-alone rewrite drops the visual that is not there: losing it is the point.
     const why = verdict.ok
       ? []
-      : verdict.why.filter((w) => mode !== "stand-alone" || !w.startsWith("lost the"));
+      : // Round 6 run (y4 s3/s10 rejected for losing "look, closely"): a stand-alone rewrite loses
+        // the pointing words by design, so neither the figure nor those words count against it.
+        verdict.why.filter((w) => mode !== "stand-alone" || !/^lost (the|\d+ of)/.test(w));
     if (why.length) {
       log({
         ev: "repair-rejected",
