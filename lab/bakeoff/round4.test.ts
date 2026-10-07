@@ -174,3 +174,39 @@ describe("partial-set fallback (y1 round 3 cat and sheep)", () => {
     expect(out).toEqual([undefined, undefined, "c"]);
   });
 });
+
+describe("arm T: equation-hero (round 4 final schema)", () => {
+  const eq = {
+    template: "equation-hero",
+    heading: "Calculate the acceleration",
+    lead: null,
+    formula: "a = Δv ÷ t",
+    points: ["a = (12 − 4) m/s ÷ 4 s", "a = 2 m/s²"],
+    figure: {
+      kind: "line-graph",
+      shows: "Velocity rising over 4 s",
+      labels: ["time (s)", "velocity (m/s)"],
+    },
+  };
+  test("asks for its diagram, lays the formula out, and its words include the formula", async () => {
+    const { armT } = await import("./arm-t");
+    const { getTheme, withKeyStage } = await import("../../packages/slides/src/themes");
+    const theme = getTheme("studio", "ks4");
+    const asks = withKeyStage("ks4", () =>
+      armT.visuals(eq, 4, { brief: {}, theme, stage: "ks4", plan: { slides: [] } } as never),
+    );
+    expect(asks).toEqual([expect.objectContaining({ type: "diagram", kind: "line-graph" })]);
+    const m = withKeyStage("ks4", () =>
+      armT.materialise(eq, {
+        brief: {} as never,
+        theme: getTheme("studio", "ks4"),
+        stage: "ks4",
+        index: 4,
+        plan: { slides: [] },
+        visual: () => ({ status: "failed" }),
+      } as never),
+    );
+    expect(m.slide.elements.some((e) => (e as { name?: string }).name === "Formula")).toBe(true);
+    expect(armT.words(eq)).toContain("a = Δv ÷ t");
+  });
+});
