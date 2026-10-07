@@ -85,6 +85,13 @@
       "when": 1790950583862,
       "tag": "0011_magic_link_sends",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791395418746,
+      "tag": "0012_workspace_country",
+      "breakpoints": true
     }
   ]
 }

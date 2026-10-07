@@ -51,6 +51,7 @@ import {
   findWorksheetForGeneration,
   forWorkspace,
   getDocument,
+  getWorkspaceCountry,
   isUniqueViolation,
   listWorksheetsOfLesson,
   putDocumentAsJob,
@@ -470,7 +471,9 @@ export function lessonRoutes(
             return c.json(answer, 202);
           }
         }
-        const lesson = lessonFromBrief(input, newId<LessonId>(), new Date());
+        // TEACH-33 part b: the account's country now; the lesson keeps it if the setting changes.
+        const country = await getWorkspaceCountry(unsafeDb, workspaceId);
+        const lesson = lessonFromBrief(input, newId<LessonId>(), new Date(), country);
         const sourceIds = input.sourceIds ?? [];
         const create = async () => {
           try {

@@ -3,6 +3,7 @@ import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema, DEFAULT_SLIDE_COUN
 import { guarded } from "./identifier-guard";
 import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
 import { FactIdSchema } from "./lesson-facts";
+import { type Country, DEFAULT_COUNTRY, localeFor } from "./locale";
 import { DEFAULT_THEME_ID } from "./theme";
 import { PRACTICE_MINUTES_OPTIONS, type RecipeId } from "./worksheet";
 
@@ -178,10 +179,16 @@ export function defaultDurationMin(ageBand: AgeBand | undefined): number {
 /**
  * The empty lesson the brief becomes: canonical Lesson fields from the request, `ageBand` derived
  * from the year group when not given, `durationMin` defaulted by key stage, `slideCount` to
- * `DEFAULT_SLIDE_COUNT`, `title` from the topic.
+ * `DEFAULT_SLIDE_COUNT`, `title` from the topic, and `country` (the account's, TEACH-33 part b) with
+ * the `language` it implies unless the request names one.
  * Pure, so `POST /lessons`, the brief screen and the Studio entry all apply the same defaults.
  */
-export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date): Lesson {
+export function lessonFromBrief(
+  input: CreateLesson,
+  lessonId: string,
+  now: Date,
+  country: Country = DEFAULT_COUNTRY,
+): Lesson {
   const ageBand = input.ageBand ?? deriveAgeBand(input.yearGroup);
   const durationMin = input.brief.durationMin ?? defaultDurationMin(ageBand);
   const at = now.toISOString();
@@ -197,7 +204,8 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     yearGroup: input.yearGroup,
     ageBand,
     readingLevel: input.readingLevel,
-    language: input.language ?? "en-GB",
+    language: input.language ?? localeFor(country).language,
+    country,
     brief: {
       ...input.brief,
       durationMin,

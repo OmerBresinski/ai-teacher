@@ -296,3 +296,13 @@ The evidence is in `docs/security/auth-edge.md`.
    the two mail bounds are Railway variables. Live on 2 Oct 2026: `AUTH_IP_HEADER=x-real-ip` and
    `ANONYMOUS_SIGNINS_PER_IP_DAILY=20`; the mail bounds are unset, so the defaults (5 and 300)
    apply. The probes on both production hosts are in `docs/security/auth-edge.md`.
+
+## Amendment (TEACH-33 part b, 7 Oct 2026): the account's country
+
+The account's country (UX ruling 183) is a column on the personal Workspace, `workspaces.country`
+(text, default `'england'`, migration `0012_workspace_country.sql`), not on better-auth's `users`
+table: the Workspace is the account in the MVP, every request already resolves it, and `users` is
+better-auth's schema. It is read and written through `getWorkspaceCountry` / `setWorkspaceCountry`
+(`@tj/db`) behind `GET` / `PATCH /me/settings`. `POST /lessons` copies it onto the new Lesson
+(`Lesson.country`); generation reads the lesson's own country through `localeFor`
+(`@tj/domain/documents`), so a later change of setting never rewrites a saved lesson.

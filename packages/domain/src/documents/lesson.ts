@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type Brief, BriefSchema } from "./brief";
 import { type Generation, GenerationSchema } from "./generation";
 import { type LessonFacts, LessonFactsSchema } from "./lesson-facts";
+import { type Country, CountrySchema } from "./locale";
 import { DocumentParseError, describeIssues, migrate } from "./migrate";
 import { type Id, type Slide, SlideSchema } from "./slide";
 import { type SourceRef, SourceRefSchema } from "./source-ref";
@@ -41,6 +42,12 @@ export type Lesson = {
   readingLevel?: string;
   /** BCP-47 tag for spellcheck and hyphenation; "en-GB" unless the teacher says otherwise. */
   language?: string;
+  /**
+   * TEACH-33 part b (ruling 183): the account's country when the lesson was created; it sets the
+   * spelling, currency and units generation writes with. Missing means England (lessons saved
+   * before), and changing the account's country never rewrites it.
+   */
+  country?: Country;
   /**
    * TD item 5 (ADR 0021 §4): the furthest slide shown in present mode, written on exit. Optional
    * so no stored lesson needs a migration.
@@ -106,6 +113,7 @@ export const LessonSchema = z.object({
   yearGroup: z.string().optional(),
   readingLevel: z.string().optional(),
   language: z.string().optional(),
+  country: CountrySchema.optional(),
   // TD item 5 (ADR 0021 §4).
   reachedSlideId: z.string().optional(),
   taughtAt: z.string().optional(),

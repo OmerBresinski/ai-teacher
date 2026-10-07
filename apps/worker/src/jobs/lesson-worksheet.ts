@@ -11,6 +11,7 @@ import type { JobId, LessonId } from "@tj/domain";
 import {
   type Lesson,
   type LessonFacts,
+  localeFor,
   parseLesson,
   parseWorksheet,
   type Worksheet,
@@ -96,6 +97,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         now: () => new Date(),
         ids: uid,
         context: { lessonId, jobId },
+        locale: localeFor(lesson.country),
         ...effortOverride(deps.reasoningEffort),
       };
       const persist = async (worksheet: Worksheet): Promise<string> => {

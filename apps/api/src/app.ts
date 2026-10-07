@@ -61,6 +61,7 @@ import { jobRoutes } from "./routes/jobs";
 import { lessonRoutes } from "./routes/lessons";
 import { MAIL_ASSETS_PREFIX, mailAssetRoutes } from "./routes/mail-assets";
 import { meRoutes } from "./routes/me";
+import { settingsRoutes } from "./routes/settings";
 import { sourceRoutes } from "./routes/sources";
 import { testRoutes, testRoutesEnabled } from "./routes/test-routes";
 import { type ExtractionRunner, InProcessExtractionRunner } from "./sources/runner";
@@ -284,6 +285,7 @@ function buildApp({
     .route("/", helloRoutes)
     .route("/", authProviderRoutes(auth))
     .route("/", meRoutes())
+    .route("/", settingsRoutes(db.unsafeDb))
     .route("/", devJobRoutes(eventsRuntime))
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))

@@ -24,6 +24,7 @@ export * from "./identifier-guard";
 export * from "./lesson";
 export * from "./lesson-facts";
 export * from "./links";
+export * from "./locale";
 export * from "./migrate";
 export * from "./objectives";
 export {

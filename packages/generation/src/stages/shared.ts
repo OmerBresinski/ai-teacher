@@ -407,6 +407,7 @@ export function audienceOf(lesson: Lesson): Audience {
     ageBand: lesson.ageBand,
     readingLevel: lesson.readingLevel,
     language: lesson.language,
+    country: lesson.country,
     classContext: lesson.brief?.classContext,
   };
 }

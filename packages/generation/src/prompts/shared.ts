@@ -1,4 +1,12 @@
-import type { Brief, FigureRef, LessonFacts } from "@tj/domain/documents";
+import {
+  type Brief,
+  type Country,
+  type FigureRef,
+  type LessonFacts,
+  type Locale,
+  localeFor,
+  speaksLikeEngland,
+} from "@tj/domain/documents";
 import type { LessonShape, ObjectiveVerb, PriorConfidence } from "../shapes";
 
 /*
@@ -81,6 +89,18 @@ export function houseRules(...keys: HouseRule[]): string {
 /** All four, for the steps that write pupil text and echo fact ids. */
 export const HOUSE_RULES = houseRules("british", "names", "pitch", "factRefs");
 
+/**
+ * TEACH-33 part b (ruling 183): the system prompt in the lesson's locale, by token substitution
+ * only — "British English" becomes the country's spelling and "UK teacher" its teacher. England
+ * and the other UK nations get the text unchanged, so their prompts keep their pinned hashes.
+ */
+export function localiseSystem(system: string, locale: Locale | undefined): string {
+  if (!locale || speaksLikeEngland(locale)) return system;
+  return system
+    .replaceAll("British English", locale.spelling)
+    .replaceAll("UK teacher", locale.teacher);
+}
+
 /** The starter's retrieval questions (lab, C1): earlier learning the lesson opens with. */
 export type Retrieval = { question: string; answer: string }[];
 
@@ -101,8 +121,24 @@ export type Audience = {
   ageBand?: string | undefined;
   readingLevel?: string | undefined;
   language?: string | undefined;
+  /** TEACH-33 part b: the lesson's country; missing is England. */
+  country?: Country | undefined;
   classContext?: Brief["classContext"] | undefined;
 };
+
+/**
+ * The country's money and measures under the Language line (TEACH-33 part b). Nothing for a
+ * locale that writes like England, so those briefs read exactly as before.
+ */
+function localeLines(locale: Locale): string[] {
+  if (speaksLikeEngland(locale)) return [];
+  const units = locale.units === "metric" ? "metric" : "US customary";
+  return [
+    `Country: ${locale.label}`,
+    `Currency: ${locale.currency.symbol} (${locale.currency.name})`,
+    `Units: ${units}`,
+  ];
+}
 
 export function audienceBlock(a: Audience): string {
   const lines = [
@@ -110,6 +146,7 @@ export function audienceBlock(a: Audience): string {
     `Year group: ${a.yearGroup ?? "not given"}${a.ageBand ? ` (${a.ageBand})` : ""}`,
     `Reading level: ${a.readingLevel ?? a.yearGroup ?? "the year group"}`,
     `Language: ${a.language ?? "en-GB"}`,
+    ...localeLines(localeFor(a.country)),
   ];
   const cc = a.classContext;
   if (cc?.sizeBand) lines.push(`Class size: ${cc.sizeBand}`);

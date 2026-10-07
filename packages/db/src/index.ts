@@ -80,3 +80,4 @@ export {
   type TenantUpdate,
   type WorkspaceDb,
 } from "./tenant";
+export { getWorkspaceCountry, setWorkspaceCountry } from "./workspace-settings";

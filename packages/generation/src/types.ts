@@ -4,6 +4,7 @@ import type {
   GenerationStage,
   Lesson,
   LessonFacts,
+  Locale,
   SourceLocator,
   SourceRef,
   Worksheet,
@@ -145,6 +146,11 @@ export interface PipelineDeps {
     documentUpdatedAt?: string,
   ) => Promise<void>;
   context: PipelineContext;
+  /**
+   * The lesson's locale (TEACH-33 part b, `localeFor(lesson.country)`): every system prompt is
+   * sent through `localiseSystem` with it. Absent: England's wording, as before.
+   */
+  locale?: Locale;
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
   /**

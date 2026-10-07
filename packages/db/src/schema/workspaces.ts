@@ -17,6 +17,8 @@ import { users } from "./auth";
  *   `name` field (F17 owns display name, plan and members). The database is the superset: F17
  *   adds the field to the schema when it lands. Do not "fix" the mismatch by adding it to
  *   `@tj/domain` here.
+ * - `country` is the account-level setting the personal Workspace carries (TEACH-33 part b): the
+ *   personal Workspace is the account in the MVP, and it is the row every request already has.
  */
 export const workspaces = pgTable(
   "workspaces",
@@ -26,6 +28,12 @@ export const workspaces = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /**
+     * TEACH-33 part b (ruling 183): the account's country, one of `COUNTRIES` in `@tj/domain`
+     * (read through `localeFor`, which treats anything else as England). Text, not an enum, so a
+     * new country is a code change only.
+     */
+    country: text("country").notNull().default("england"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

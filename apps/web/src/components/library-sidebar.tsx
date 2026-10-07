@@ -16,6 +16,7 @@ import { authClient } from "@/lib/auth";
 import { libraryQueries, librarySelectors } from "@/lib/library";
 import { sessionBoundary } from "@/lib/session-boundary";
 import { usePreference } from "@/lib/use-preference";
+import { CountryMenu } from "./country-menu";
 import { ThemeMenu } from "./theme-menu";
 
 /** Stable client storage contract (apps/web/AGENTS.md); "1" collapsed, anything else expanded. */
@@ -125,6 +126,7 @@ export function LibrarySidebar({
             </SidebarItem>
           ) : null}
           <ThemeMenu />
+          <CountryMenu />
           <SidebarItem icon={SIGN_OUT_ICON} onClick={() => void signOut()}>
             Sign out
           </SidebarItem>

@@ -218,6 +218,39 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
     return row?.data;
   };
 
+  test("TEACH-33 part b: a new lesson takes the account's country; saved lessons keep theirs", async () => {
+    const settings = (method: "GET" | "PATCH", body?: unknown) =>
+      app.request("/me/settings", {
+        method,
+        headers: headers(wsA, { "content-type": "application/json" }),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    const ws = forWorkspace(unsafeDb, wsA);
+    const lessonOf = async (res: Response) => {
+      const { lessonId } = (await res.json()) as { lessonId: LessonId };
+      return (await getDocument(ws, lessonId))?.body as Lesson;
+    };
+    try {
+      expect(await (await settings("GET")).json()).toEqual({ country: "england" });
+      const before = await lessonOf(await postLesson(wsA, { brief: { topic: "Money" } }));
+      expect(before).toMatchObject({ country: "england", language: "en-GB" });
+
+      const patched = await settings("PATCH", { country: "india" });
+      expect(patched.status).toBe(200);
+      expect(await (await settings("GET")).json()).toEqual({ country: "india" });
+      const after = await lessonOf(await postLesson(wsA, { brief: { topic: "Money" } }));
+      expect(after).toMatchObject({ country: "india", language: "en-IN" });
+      // The earlier lesson is untouched by the change.
+      expect(((await getDocument(ws, before.id))?.body as Lesson | undefined)?.country).toBe(
+        "england",
+      );
+
+      expect((await settings("PATCH", { country: "atlantis" })).status).toBe(400);
+    } finally {
+      await settings("PATCH", { country: "england" });
+    }
+  });
+
   test("202 { lessonId, jobId, revision: 1 }: the row carries the brief, defaults, plan and lock; the job clears it", async () => {
     const res = await postLesson(wsA, {
       brief: { topic: "Fractions of amounts" },

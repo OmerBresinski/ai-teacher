@@ -3,6 +3,7 @@ import { forWorkspace, getDocument } from "@tj/db";
 import type { JobResult, LessonId, ProposalTarget, WorkspaceId } from "@tj/domain";
 import {
   type Lesson,
+  localeFor,
   parseLesson,
   parseStoredWorksheet,
   type Worksheet,
@@ -83,6 +84,7 @@ export async function runProposalJob<J extends JobResult["job"]>(
     },
     onProgress: async () => {},
     context: { lessonId: ctx.payload.lessonId, jobId },
+    locale: localeFor(loaded.lesson.country),
   };
   let result: Awaited<ReturnType<typeof proposeFor>>;
   try {

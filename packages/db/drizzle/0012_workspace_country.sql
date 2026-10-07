@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "country" text DEFAULT 'england' NOT NULL;

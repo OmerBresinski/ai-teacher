@@ -213,7 +213,8 @@ the same input with the same message. `lessonFromBrief()` applies the defaults t
 `ageBand` from the year group (`deriveAgeBand`: Reception → `eyfs`, Year 1–2 → `ks1`, 3–6 → `ks2`,
 7–9 → `ks3`, 10–11 → `ks4`, 12–13 → `post16`), `durationMin` from the age band
 (`defaultDurationMin`: 30 / 45 / 60), `title` = the topic cut to 80 characters, `themeId` =
-`DEFAULT_THEME_ID`, `language` = `en-GB`, `slides: []`. The handler then mints the job id, inserts
+`DEFAULT_THEME_ID`, `country` = the account's (`workspaces.country`, TEACH-33 part b) and
+`language` = that country's tag (`en-GB` for England) unless the body names one, `slides: []`. The handler then mints the job id, inserts
 the row with `generating_job_id = jobId` **first** (so a fast worker always finds a lock to clear),
 enqueues `lesson.plan { lessonId, revision: 1, stopAfter: "planned" }` under that id — removing the
 row again if the enqueue fails — and answers `202 { lessonId, jobId, revision: 1 }`. The body also

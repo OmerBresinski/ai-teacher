@@ -21,6 +21,7 @@ import {
 import { z } from "zod";
 import { CallTimeout, withCallDeadline } from "./call-deadline";
 import type { PromptName } from "./prompts";
+import { localiseSystem } from "./prompts/shared";
 import { type JsonRepairKind, repairJsonText } from "./repair-json";
 import {
   BudgetExceeded,
@@ -68,7 +69,10 @@ export const REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh"] as c
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 export interface CallStructuredOptions<I, T> {
-  deps: Pick<PipelineDeps, "ai" | "budget" | "signal" | "logger" | "context" | "effortFor">;
+  deps: Pick<
+    PipelineDeps,
+    "ai" | "budget" | "signal" | "logger" | "context" | "effortFor" | "locale"
+  >;
   stage: StageName;
   cls: ModelClass;
   effort: ReasoningEffort;
@@ -385,7 +389,7 @@ export async function callStructured<I, T>(
       const result = await withCallDeadline(deps.signal, timeoutMs, (abortSignal) =>
         generateText({
           model,
-          system: prompt.system,
+          system: localiseSystem(prompt.system, deps.locale),
           ...userTurn(text, images),
           output,
           abortSignal,

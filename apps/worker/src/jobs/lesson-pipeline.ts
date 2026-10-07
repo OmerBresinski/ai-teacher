@@ -7,7 +7,7 @@ import {
   type WorkspaceDb,
 } from "@tj/db";
 import type { JobId, LessonId, WorkspaceId } from "@tj/domain";
-import { type Lesson, parseLesson } from "@tj/domain/documents";
+import { type Lesson, type Locale, localeFor, parseLesson } from "@tj/domain/documents";
 import {
   BudgetExceeded,
   InputRejected,
@@ -65,12 +65,16 @@ export interface LessonJobSpec {
  * The pipeline's image collaborator (Images project): Pexels search plus bucket store, closed
  * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements.
  */
-function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
+function imagePlacer(
+  deps: WorkerDeps,
+  workspaceId: WorkspaceId,
+  locale: Locale,
+): PipelineDeps["images"] {
   const images = deps.images;
   if (!images) return undefined;
   return {
     search: (query, opts) =>
-      images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
+      images.client.search({ query, ...opts, locale: locale.language }).then((page) => page.photos),
     store: (photo, target) =>
       storePhoto({
         photo,
@@ -101,6 +105,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       throw new NonRetryableError("AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)");
     }
     const priorUsage = stored.generation?.usage;
+    // TEACH-33 part b: the lesson's own country, set when it was created; never the account's now.
+    const locale = localeFor(stored.country);
     const pipelineDeps: PipelineDeps = {
       ai: deps.ai,
       budget: createBudget(deps.caps, { spent: priorUsage }),
@@ -121,7 +127,8 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
-      images: imagePlacer(deps, workspaceId),
+      locale,
+      images: imagePlacer(deps, workspaceId, locale),
     };
     let final: PipelineState;
     try {
