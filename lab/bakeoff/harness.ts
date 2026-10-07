@@ -252,6 +252,60 @@ export function keepAsksHonest(
 }
 
 /** A failed diagram may become a picture of the same thing unless it is data or a schematic. */
+/** Round 8: a diagram call's task line and slot (the zone sizes are the slide layouts' own). */
+export function diagramContext(s: Record<string, unknown> | undefined): {
+  task?: string;
+  slot: { placement: "beside text" | "across the slide"; w: number; h: number };
+} {
+  const across = ["big-visual", "big-diagram"].includes(String(s?.template ?? ""));
+  const f = (s?.figure ?? s?.diagram) as { ask?: unknown } | undefined;
+  return {
+    ...(f && typeof f.ask === "string" && f.ask.trim() ? { task: f.ask } : {}),
+    slot: across
+      ? { placement: "across the slide", w: 844, h: 380 }
+      : { placement: "beside text", w: 403, h: 378 },
+  };
+}
+
+/** Round 8: the layouts a slide may switch to in a fit repair (same job, other room). */
+export const SWITCH: Record<string, string[]> = {
+  "visual-text": ["big-visual", "steps", "explain"],
+  "big-visual": ["visual-text"],
+  explain: ["visual-text", "steps"],
+  steps: ["visual-text", "explain"],
+  compare: ["visual-text", "explain"],
+  "equation-hero": ["steps"],
+  "picture-sequence": ["compare"],
+  discussion: ["question-set"],
+  "question-set": ["practice"],
+  practice: ["question-set"],
+  "exit-ticket": [],
+  hinge: [],
+};
+
+/** The layouts menu cut to the header, the slide's own layout and those it may switch to. */
+export function layoutsFor(menu: string, template: string): string {
+  const keep = new Set([template, ...(SWITCH[template] ?? [])]);
+  return menu
+    .split("\n")
+    .filter((l, k) => k === 0 || keep.has(/^- ([a-z-]+):/.exec(l)?.[1] ?? ""))
+    .join("\n")
+    .trim();
+}
+
+/**
+ * Round 8 (dataflow audit C): a check's fault in the repair prompt's terms and units: which slot
+ * and about how many lines over, never "text column 354/328pt". A line is taken as 1.2 x the
+ * body size of a KS3 theme (about 34 pt); the count is said as "about".
+ */
+export function repairTerms(fault: string): string {
+  const m = /^(overflow|clipped): (.*?)\s*(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt\b(.*)$/.exec(fault);
+  if (!m) return fault;
+  const over = Number(m[3]) - Number(m[4]);
+  const lines = Math.max(1, Math.round(over / 34));
+  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} runs about ${lines} line${lines > 1 ? "s" : ""} past its room${m[5] ?? ""}`;
+}
+
 export const pictureFallbackOk = (kind: string | undefined, _shows: string) =>
   !!kind && !DATA_KINDS.has(kind) && !MEANING_KINDS.has(kind);
 /** Round 8: code-drawn kinds whose meaning a picture cannot carry (counts, shares, states, links). */
@@ -347,7 +401,7 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
         .join("\n");
     if (expr.startsWith("context block")) return x.context ?? "";
     if (expr.startsWith("for each final slide")) return String(x.slidesAsShown ?? "");
-    if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] }, null, 1);
+    if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] });
     if (expr in x) return String(x[expr]);
     const v = get(expr);
     if (v === undefined) throw new Error(`template: no value for {{${expr}}}`);
@@ -675,6 +729,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       labels: a.labels,
       words,
       yearGroup: brief.yearGroup,
+      ...diagramContext(plan.slides[i] as Record<string, unknown> | undefined),
     };
     log({ ev: "diagram-start", key: k, kind: a.kind });
     jobs.push(
@@ -1323,21 +1378,27 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
       return v?.status === "photo" ? [`${a.key}: ${v.photo.about ?? v.photo.alt}`] : [];
     });
     const tpl = existsSync(repairUser) ? readFileSync(repairUser, "utf8") : "";
+    // Round 8 (dataflow audit C): the repair sees its slide's layout, the layouts it may switch to
+    // and, only when the slide has a diagram, the diagram kinds; faults in its own terms.
+    const own = String((plan.slides[i] as Record<string, unknown>)?.template ?? "");
+    const menu = existsSync(`${armDir}/layouts.${stageKey}.txt`)
+      ? layoutsFor(readFileSync(`${armDir}/layouts.${stageKey}.txt`, "utf8"), own)
+      : "";
+    const hasDiagram = ask.some((a) => a.type === "diagram");
+    const faultLines = c.faults.map(repairTerms);
     const u = tpl
       ? fillTemplate(tpl, brief, {
           context: user,
           N: i + 1,
-          [String(tpl.match(/\{\{(the diagram kinds[^}]*)\}\}/)?.[1] ?? "-")]: diagramKinds(),
-          "the arm's layouts menu for this key stage: <arm>/layouts.<stage>.txt": existsSync(
-            `${armDir}/layouts.${stageKey}.txt`,
-          )
-            ? readFileSync(`${armDir}/layouts.${stageKey}.txt`, "utf8").trim()
+          [String(tpl.match(/\{\{(the diagram kinds[^}]*)\}\}/)?.[1] ?? "-")]: hasDiagram
+            ? diagramKinds()
             : "",
+          "the arm's layouts menu for this key stage: <arm>/layouts.<stage>.txt": menu,
           "the slide's JSON exactly as the main call wrote it": JSON.stringify(plan.slides[i]),
           [String(tpl.match(/\{\{(one line per placed picture[^}]*)\}\}/)?.[1] ?? "-")]:
             placed.length ? placed.join("\n") : "none",
           [String(tpl.match(/\{\{(one line per fault[^}]*)\}\}/)?.[1] ?? "-")]: [
-            ...c.faults,
+            ...faultLines,
             ...found,
           ]
             .sort()
@@ -1383,6 +1444,7 @@ export async function runLesson(o: RunOpts): Promise<RunResult> {
     const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(String);
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
+      fit: mode === "fit" && c.faults.some((f) => /^(overflow|clipped|cut|overlap):/.test(f)),
     });
     // A stand-alone rewrite drops the visual that is not there: losing it is the point.
     const why = verdict.ok

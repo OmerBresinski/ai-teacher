@@ -82,7 +82,7 @@ export function judgeRepair(
   before: S,
   after: S,
   toNotes: string[] = [],
-  opts: { diagramFault?: boolean } = {},
+  opts: { diagramFault?: boolean; fit?: boolean } = {},
 ): Verdict {
   const why: string[] = [];
   if (NEVER.has(String(after.template))) why.push(`became a ${after.template} slide`);
@@ -121,6 +121,20 @@ export function judgeRepair(
     for (let k = 0; k + 1 < texts.length; k++)
       if (texts[k]?.trim() && !ENDS.test(texts[k] ?? "") && CONTINUES.test(texts[k + 1] ?? ""))
         why.push(`a sentence is split across ${key}[${k}] and ${key}[${k + 1}]`);
+  }
+  // Round 8 (audit 4): a fit repair says the slide in fewer words or re-lays it out; it never moves
+  // teaching to the notes, and it keeps every item (point, question, option, card). Rewording is
+  // allowed, so the word-loss rule below does not apply to it (it shipped y9 s9's overflow).
+  if (opts.fit) {
+    if (toNotes.some((t) => t.trim())) why.push("moved slide words to the notes");
+    const items = (x: S) =>
+      ["points", "questions", "options", "columns", "sequence"].reduce(
+        (a, k) => a + (Array.isArray(x[k]) ? (x[k] as unknown[]).length : 0),
+        0,
+      );
+    if (items(after) < items(before))
+      why.push(`dropped ${items(before) - items(after)} of ${items(before)} items`);
+    return why.length ? { ok: false, why } : { ok: true };
   }
   const kept = new Set([
     ...textSlots(after).flatMap((s) => words(s.text)),

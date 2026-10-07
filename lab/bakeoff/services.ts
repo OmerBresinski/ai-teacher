@@ -38,6 +38,9 @@ import {
 import * as im from "../../packages/images/src/index";
 import {
   diagramJsonSchema,
+  drawerJsonSchema,
+  limitLines,
+  meaningFaults,
   mendSpec,
   parseDiagram,
   withLongLabels,
@@ -1222,16 +1225,31 @@ export type DiagramAsk = {
   labels: string[];
   words: string;
   yearGroup: string;
+  /** Round 8 (DIAGRAM-SOURCE C2.5): the slide's ask line for this figure, what pupils do with it. */
+  task?: string;
+  /** Round 8 (dataflow audit D): where the drawing goes, like a picture call's zone. */
+  slot?: { placement: "beside text" | "across the slide"; w: number; h: number };
 };
 /** The diagram spec prompt: BAKEOFF/prompts/shared/diagram-spec.txt when the prompt agent has written it, else SOL-SIMPLE's. */
 function diagramSystem(): string {
+  // Round 8 (C2.4-5): the prompt owner's v2 drawer text and contract when present; the limits
+  // block is generated from the one limits table (limits.ts), never typed.
+  const read = (f: string) => {
+    try {
+      return readFileSync(f, "utf8").trim();
+    } catch {
+      return undefined;
+    }
+  };
+  const contract = read(`${BAKEOFF}/prompts/shared/diagram-contract.v2.txt`) ?? DIAGRAM_CONTRACT;
   for (const f of [
+    `${BAKEOFF}/prompts/shared/diagram-spec.v2.txt`,
     `${BAKEOFF}/prompts/shared/diagram-spec.txt`,
     `${ROUNDS}/SOL-SIMPLE/prompts/diagram-spec.txt`,
-  ])
-    try {
-      return `${readFileSync(f, "utf8").trim()}\n\n${DIAGRAM_CONTRACT}`;
-    } catch {}
+  ]) {
+    const head = read(f);
+    if (head) return `${head}\n\n${contract}\n\n${limitLines()}`;
+  }
   throw new Error("no diagram spec prompt");
 }
 export async function diagramSpec(
@@ -1316,8 +1334,11 @@ async function specCalls(
   // r5: the one wire schema, derived from the drawer's (`diagramJsonSchema`); `kindSchema` only
   // says the kind exists.
   void kindSchema;
-  const schema = diagramJsonSchema(ask.kind as Parameters<typeof diagramJsonSchema>[0]);
-  const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
+  const schema = drawerJsonSchema(ask.kind as Parameters<typeof drawerJsonSchema>[0]);
+  const slot = ask.slot
+    ? `\nSlot: ${ask.slot.placement}, ${Math.round(ask.slot.w)} by ${Math.round(ask.slot.h)} points`
+    : "";
+  const user = `${ask.yearGroup}\nKind: ${ask.kind}${slot}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}${ask.task ? `\nTask: ${ask.task}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const r = await chat({
@@ -1336,8 +1357,9 @@ async function specCalls(
     // Round 6: a spec's optional decoration that cannot stand is mended in code (mendSpec).
     if (r.out) r.out = mendSpec(r.out);
     // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).
+    // Round 8: a meaning-form spec's faults are said in its own fields (meaning.ts).
     fault = r.out
-      ? diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
+      ? meaningFaults(r.out) || diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o)))
       : "no output";
     log({
       ev: "diagram-call",
