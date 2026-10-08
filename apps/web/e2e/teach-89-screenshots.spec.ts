@@ -4,8 +4,13 @@ test("capture TEACH-89 shell states", async ({ signedInPage: { page } }) => {
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
   await page.screenshot({ path: "/tmp/teach-89-home-light.png", fullPage: true });
 
-  await page.getByRole("button", { name: "Theme" }).click();
-  await page.getByRole("menuitemradio", { name: "Dark" }).click();
+  // The theme is set only on /settings (TEACH-33 part a); set it the way the app stores it.
+
+  await page.evaluate(() => localStorage.setItem("tj-theme", "dark"));
+
+  await page.reload();
+
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({ path: "/tmp/teach-89-home-dark.png", fullPage: true });
 
   await page.goto("/lessons");

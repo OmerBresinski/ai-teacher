@@ -111,8 +111,11 @@ test.describe("series detail", () => {
     await page.goto(paths.series("series-romans"));
     await expect(page.getByRole("heading", { name: "The Romans" })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/series/:id");
-    await page.getByRole("button", { name: "Theme" }).click();
-    await page.getByRole("menuitemradio", { name: "Dark" }).click();
+    // The theme is set only on /settings (TEACH-33 part a); set it the way the app stores it.
+    await page.evaluate(() => localStorage.setItem("tj-theme", "dark"));
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.getByRole("heading", { name: "The Romans" })).toBeVisible();
     await page.waitForTimeout(400);
     await expectNoSeriousA11yViolations(page, "/series/:id (dark)");
   });
