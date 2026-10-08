@@ -106,7 +106,7 @@ export function labelGapFaults(rec: DrawnText[], fallbackFs = 18): string[] {
 /** Schema caps: what a slide can show and a Year 1 class can count. */
 export const STRIPS_LIMITS = {
   rows: { min: 2, max: 4 },
-  units: { min: 4, max: 24 },
+  units: { min: 2, max: 24 },
   labelChars: 14,
   unitChars: 10,
   keyChars: 12,
@@ -122,6 +122,11 @@ export const StripsSchema = z
     units: z.number().int().min(STRIPS_LIMITS.units.min).max(STRIPS_LIMITS.units.max),
     /** The unit's name, plural, for the count at the right ("hours"). */
     unit: short(STRIPS_LIMITS.unitChars),
+    /**
+     * What a whole row stands for, in `unit`s (24 hours). Absent: 24 when the unit is hours (a row is
+     * a day, so 12 two-hour units count 2 hours each), else one unit each.
+     */
+    whole: z.number().positive().max(1000).nullable().optional(),
     /** The key's words for a light and a dark unit (default "day" and "night"). */
     key: z
       .object({ light: short(STRIPS_LIMITS.keyChars), dark: short(STRIPS_LIMITS.keyChars) })
@@ -179,6 +184,17 @@ const moonMark = (cx: number, cy: number, r: number, fill: string) =>
   // A crescent: the outer circle's left arc, back along a smaller offset arc.
   `<path d="M${n(cx + r * 0.3)},${n(cy - r * 0.95)} A${n(r)},${n(r)} 0 1 0 ${n(cx + r * 0.3)},${n(cy + r * 0.95)} A${n(r * 0.78)},${n(r * 0.78)} 0 0 1 ${n(cx + r * 0.3)},${n(cy - r * 0.95)} Z" fill="${fill}"/>`;
 
+/** What one drawn unit counts, in the spec's `unit`s. */
+export function unitValue(s: Pick<Strips, "units" | "unit" | "whole">): number {
+  const whole = s.whole ?? (/^hours?$/i.test(s.unit.trim()) ? 24 : s.units);
+  return whole / s.units;
+}
+/** A row's count at the right: its shaded units times what each counts ("16 hours", "4.8 hours"). */
+export function stripCount(s: Pick<Strips, "units" | "unit" | "whole">, light: number): string {
+  const v = Math.round(light * unitValue(s) * 10) / 10;
+  return `${v} ${s.unit}`;
+}
+
 /** The first light unit of a row: its own start, or centred. */
 export const lightStart = (units: number, r: { light: number; start?: number | null }) =>
   r.start ?? Math.floor((units - r.light) / 2);
@@ -190,35 +206,54 @@ export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, 
   // Slack on the measured words, so a fallback font never pushes them off the drawing.
   const slack = 1.2;
   const labelW = slack * Math.max(...s.rows.map((r) => textWidth(r.label, x, fs, WEIGHT.name)));
-  const counts = s.rows.map((r) => `${r.light} ${s.unit}`);
+  const counts = s.rows.map((r) => stripCount(s, r.light));
   const countW = slack * Math.max(...counts.map((t) => textWidth(t, x, fs, 700)));
-  const stripW = w - labelW - countW - pad * 2;
-  const gap = Math.max(1, Math.min(4, (stripW / s.units) * 0.1));
-  const u = (stripW - gap * (s.units - 1)) / s.units;
+  // Beside: name | strip | count on one line. Stacked (a narrow slot): the name and count on a line
+  // over a full-width strip, so the units keep their width.
+  const besideW = w - labelW - countW - pad * 2;
+  const unitW = (sw: number) => {
+    const g = Math.max(1, Math.min(4, (sw / s.units) * 0.1));
+    return { gap: g, u: (sw - g * (s.units - 1)) / s.units };
+  };
+  const stacked = unitW(besideW).u < 10;
+  const stripW = stacked ? w : besideW;
+  const { gap, u } = unitW(stripW);
   if (u < 6) {
     x.faults?.push(`the strips' ${s.units} units are too narrow for the space`);
     return "";
   }
+  const lineH = stacked ? fs * 1.35 : 0;
   const key = s.key ?? { light: "day", dark: "night" };
   const keyH = fs * 1.8;
   const rowGap = fs * 0.7;
   const rh = Math.min(
     Math.max(u * 2.2, fs * 1.8),
     fs * 3,
-    (h - keyH - rowGap * s.rows.length) / s.rows.length,
+    (h - keyH - rowGap * s.rows.length) / s.rows.length - lineH,
   );
   if (rh < fs * 1.1) {
     x.faults?.push("the strips' rows do not fit the space");
     return "";
   }
-  const totalH = s.rows.length * rh + (s.rows.length - 1) * rowGap + rowGap + keyH;
+  const totalH = s.rows.length * (lineH + rh) + (s.rows.length - 1) * rowGap + rowGap + keyH;
   const oy = (h - totalH) / 2;
-  const x0 = labelW + pad;
+  const x0 = stacked ? 0 : labelW + pad;
   const mr = Math.min(u, rh) * 0.3;
   const out: string[] = [];
   s.rows.forEach((r, i) => {
-    const y = oy + i * (rh + rowGap);
-    out.push(text(x, labelW, y + rh / 2, [r.label], { anchor: "end", weight: WEIGHT.name, fs }));
+    const top = oy + i * (lineH + rh + rowGap);
+    const y = top + lineH;
+    if (stacked)
+      out.push(
+        text(x, 0, top + lineH / 2, [r.label], { anchor: "start", weight: WEIGHT.name, fs }),
+        text(x, w, top + lineH / 2, [counts[i] as string], {
+          anchor: "end",
+          weight: WEIGHT.value,
+          fs,
+        }),
+      );
+    else
+      out.push(text(x, labelW, y + rh / 2, [r.label], { anchor: "end", weight: WEIGHT.name, fs }));
     const st = lightStart(s.units, r);
     for (let k = 0; k < s.units; k++) {
       const light = k >= st && k < st + r.light;
@@ -233,16 +268,17 @@ export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, 
             : moonMark(ux + u / 2, y + rh / 2, mr * 1.3, col.moon),
         );
     }
-    out.push(
-      text(x, x0 + stripW + pad, y + rh / 2, [counts[i] as string], {
-        anchor: "start",
-        weight: WEIGHT.value,
-        fs,
-      }),
-    );
+    if (!stacked)
+      out.push(
+        text(x, x0 + stripW + pad, y + rh / 2, [counts[i] as string], {
+          anchor: "start",
+          weight: WEIGHT.value,
+          fs,
+        }),
+      );
   });
   // The key under the strips: one sun unit, one moon unit, each with its word.
-  const ky = oy + s.rows.length * (rh + rowGap) + rowGap * 0.2;
+  const ky = oy + s.rows.length * (lineH + rh + rowGap) + rowGap * 0.2;
   const ks = Math.min(keyH * 0.8, fs * 1.4);
   const lw = textWidth(key.light, x, fs, WEIGHT.label);
   const dw = textWidth(key.dark, x, fs, WEIGHT.label);

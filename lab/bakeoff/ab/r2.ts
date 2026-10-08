@@ -29,7 +29,7 @@ import {
   MAIN_LIST,
   slotFault,
 } from "../services";
-import { AB, STAGES } from "./arms";
+import { AB, abPolish, STAGES } from "./arms";
 
 /** RADICAL §R2: the structured kinds the writer specs itself. */
 export const R2_KINDS = [
@@ -151,7 +151,9 @@ export function r2WriterSchema(base: J, stage: StageGroup): J {
 
 /** The writer's spec on a diagram figure, or undefined for a freeform `{kind, shows, labels}` figure. */
 export function writerSpecOf(f: J): J | undefined {
-  if (!(R2_KINDS as readonly string[]).includes(String(f.kind))) return undefined;
+  // polish arm: the strips kind (renderer switch on) is a writer spec too.
+  const strips = abPolish() && f.kind === "strips";
+  if (!strips && !(R2_KINDS as readonly string[]).includes(String(f.kind))) return undefined;
   if (
     Array.isArray(f.labels) &&
     Object.keys(f).every((k) => ["kind", "shows", "labels"].includes(k))

@@ -1505,6 +1505,21 @@ export async function diagramSpec(
     const { spec: _spec, lib: _lib, ...rest } = ask;
     ask = { ...rest, kind: r.fallbackKind };
   }
+  // polish arm: strips is not a DiagramSpecSchema kind (no drawer knows it). The writer's spec is
+  // checked and drawn like any R2 spec (parseDiagram reads it with the renderer switch on); a fault
+  // leaves the slide without the diagram, as an unknown kind did.
+  if (abPolish() && ask.kind === "strips") {
+    if (ask.spec === undefined) return undefined;
+    const { acceptWriterSpec } = await import("./ab/r2");
+    const r = acceptWriterSpec(ask.spec, ask);
+    log({
+      ev: r.spec ? "r2-spec-drawn" : "r2-spec-fault",
+      key: ask.key,
+      kind: ask.kind,
+      ...(r.fault ? { fault: r.fault } : {}),
+    });
+    return r.spec;
+  }
   const kindSchema = (DiagramSpecSchema.options as { shape: { kind: { value: string } } }[]).find(
     (o) => o.shape.kind.value === ask.kind,
   );
