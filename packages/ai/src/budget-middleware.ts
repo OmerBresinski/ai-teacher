@@ -19,8 +19,27 @@ export class UnestimableCallError extends Error {
 const count = (value: number | undefined): value is number =>
   Number.isSafeInteger(value) && (value ?? -1) >= 0;
 
+/**
+ * How long a streamed call may wait with no read pending before its reservation is marked
+ * uncertain. The clock only runs while the reader is not asking for a part: a slow provider (the
+ * writer reasoning before its first token) holds a read open and is bounded by the call deadlines
+ * (180 s / 300 s), not by this. 300 s sits above both, so a live reader is never cut off.
+ */
+export const STREAM_IDLE_MS = 300_000;
+
+export type GenerationBudgetOptions = {
+  /** Idle limit for a streamed call with no read pending; defaults to `STREAM_IDLE_MS`. */
+  streamIdleMs?: number;
+};
+
 /** Provider boundary: SDK asset preparation precedes this; output validation follows it. */
-export function withGenerationBudget(model: LanguageModel, modelId: string, budget: Budget) {
+export function withGenerationBudget(
+  model: LanguageModel,
+  modelId: string,
+  budget: Budget,
+  options: GenerationBudgetOptions = {},
+) {
+  const streamIdleMs = options.streamIdleMs ?? STREAM_IDLE_MS;
   // ADR 0018 forbids model-router strings; never fall through to an unbudgeted provider.
   if (typeof model === "string") throw new UnestimableCallError();
   return wrapLanguageModel({
@@ -30,7 +49,9 @@ export function withGenerationBudget(model: LanguageModel, modelId: string, budg
       // reservation is taken before dispatch and held while the stream is open, so a concurrent
       // call sees it, and it settles from the stream's `finish` part. A stream that errors, is
       // cancelled or aborted, or ends without complete usage leaves its reservation uncertain
-      // (ADR 0025 §15); a complete `finish` arriving later still settles it once.
+      // (ADR 0025 §15); a complete `finish` arriving later still settles it once. So does a stream
+      // nobody reads: after `streamIdleMs` with no read pending it is marked uncertain and lets go
+      // of the abort listener, rather than holding its reservation for the life of the process.
       wrapStream: async ({ doStream, params }) => {
         params.abortSignal?.throwIfAborted();
         const estimate = estimatePreparedCall(modelId, params);
@@ -53,14 +74,25 @@ export function withGenerationBudget(model: LanguageModel, modelId: string, budg
           throw error;
         }
         const reader = result.stream.getReader();
+        let idle: ReturnType<typeof setTimeout> | undefined;
+        const stopIdle = () => clearTimeout(idle);
         const end = () => {
+          stopIdle();
           uncertain();
           release();
         };
+        const startIdle = () => {
+          stopIdle();
+          idle = setTimeout(end, streamIdleMs);
+          // An unread stream must not keep the process alive on its own.
+          (idle as { unref?: () => void }).unref?.();
+        };
+        startIdle();
         return {
           ...result,
           stream: new ReadableStream({
             async pull(controller) {
+              stopIdle();
               let next: Awaited<ReturnType<typeof reader.read>>;
               try {
                 next = await reader.read();
@@ -88,6 +120,10 @@ export function withGenerationBudget(model: LanguageModel, modelId: string, budg
                 } else uncertain();
               } else if (part.type === "error") uncertain();
               controller.enqueue(part);
+              if (settled) {
+                stopIdle();
+                release();
+              } else startIdle();
             },
             async cancel(reason) {
               end();

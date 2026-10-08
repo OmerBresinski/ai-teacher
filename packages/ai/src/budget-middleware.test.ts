@@ -310,6 +310,50 @@ describe("streamed calls (the lesson writer on gpt-6.1-sol)", () => {
     expect(budget.totals().calls).toBe(1);
   });
 
+  test("a stream nobody reads is marked uncertain after the idle limit and lets go of its abort listener", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const model = withGenerationBudget(stub.model, sol, budget, { streamIdleMs: 20 });
+    const abort = new AbortController();
+    let removed = 0;
+    const remove = abort.signal.removeEventListener.bind(abort.signal);
+    abort.signal.removeEventListener = ((...args: Parameters<typeof remove>) => {
+      removed++;
+      remove(...args);
+    }) as typeof remove;
+    const { stream } = await model.doStream({ ...params, abortSignal: abort.signal });
+    expect(budget.totals().reserved?.calls).toBe(1);
+    await Bun.sleep(60);
+    expect(budget.totals().uncertain?.calls).toBe(1);
+    expect(budget.totals().reserved).toBeUndefined();
+    expect(removed).toBe(1);
+    // A late, complete finish still settles it, once.
+    stub.push(finish());
+    stub.close();
+    await drain(stream);
+    expect(budget.totals().uncertain).toBeUndefined();
+    expect(budget.totals().calls).toBe(1);
+    expect(budget.totals().costUsd).toBeGreaterThan(0);
+  });
+
+  test("a read left pending on a slow provider is not idle: the reservation stays held", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const model = withGenerationBudget(stub.model, sol, budget, { streamIdleMs: 20 });
+    const { stream } = await model.doStream(params);
+    const reader = stream.getReader();
+    await reader.read();
+    await reader.read();
+    const pending = reader.read();
+    await Bun.sleep(60);
+    expect(budget.totals().reserved?.calls).toBe(1);
+    expect(budget.totals().uncertain).toBeUndefined();
+    stub.push(finish());
+    expect((await pending).value).toMatchObject({ type: "finish" });
+    expect(budget.totals().calls).toBe(1);
+    expect(budget.totals().reserved).toBeUndefined();
+  });
+
   test("an already-aborted signal dispatches nothing and reserves nothing", async () => {
     const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
     const stub = stubStream();
