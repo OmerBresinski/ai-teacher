@@ -2,7 +2,8 @@
 // through director v11 and v12 in the director's own call shape (callStructured, gpt-6-luna small,
 // effort low, single-slot call). Scores route against each case's expect; writes every answer so the
 // v12 stage image prompts can be read for their stated features, breed and scale.
-// PAID: about $0.0003 per call, 2 versions x 39 cases x reps. Not run by the prompt engineer.
+// v12 is also scored on its `stage` field against each case's expectStage (8 Oct).
+// PAID: about $0.0003 per call, 2 versions x 42 cases x reps. Not run by the prompt engineer.
 // Usage: CAP=0.10 bun lab/bakeoff/ab/direval.ts [reps=1] [out]
 import { appendFileSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -16,6 +17,7 @@ import {
 } from "../../../packages/generation/src/prompts/picture-director";
 import {
   PICTURE_DIRECTOR_VERSION_V12,
+  PictureDirectorSchemaV12,
   pictureDirectorPromptV12,
 } from "../../../packages/generation/src/prompts/picture-director-v12";
 import { AB } from "./arms";
@@ -44,10 +46,16 @@ const spent = () => {
 };
 const quiet = pino({ level: "silent" });
 const versions = [
-  { v: PICTURE_DIRECTOR_VERSION, build: pictureDirectorPrompt },
-  { v: PICTURE_DIRECTOR_VERSION_V12, build: pictureDirectorPromptV12 },
+  { v: PICTURE_DIRECTOR_VERSION, build: pictureDirectorPrompt, schema: PictureDirectorSchema },
+  {
+    v: PICTURE_DIRECTOR_VERSION_V12,
+    build: pictureDirectorPromptV12,
+    schema: PictureDirectorSchemaV12,
+  },
 ];
 const score: Record<string, Record<string, [number, number]>> = {};
+// v12 only (8 Oct): its `stage` against the case's expectStage, the field the y1fix bank rule reads.
+const stageScore: Record<string, [number, number]> = {};
 for (let rep = 0; rep < reps; rep++)
   for (const V of versions) {
     if (spent() > CAP) {
@@ -75,7 +83,7 @@ for (let rep = 0; rep < reps; rep++)
             effort: "low",
             prompt: { version: V.v, system: built.system, user: () => built.user },
             input: c.input,
-            schema: PictureDirectorSchema,
+            schema: V.schema as typeof PictureDirectorSchema,
             maxOutputTokens: 3000,
           });
           d = call.output;
@@ -89,9 +97,17 @@ for (let rep = 0; rep < reps; rep++)
         const s = g[c.group];
         s[0] += ok ? 1 : 0;
         s[1] += 1;
+        const stageOk =
+          V.v === PICTURE_DIRECTOR_VERSION_V12 ? d.stage === c.expectStage : undefined;
+        if (stageOk !== undefined) {
+          if (!stageScore[c.group]) stageScore[c.group] = [0, 0];
+          const t = stageScore[c.group];
+          t[0] += stageOk ? 1 : 0;
+          t[1] += 1;
+        }
         appendFileSync(
           out,
-          `${JSON.stringify({ rep, version: V.v, id: c.id, group: c.group, expect: c.expect, route: d.route, ok, pictures: d.pictures, error: d.error })}\n`,
+          `${JSON.stringify({ rep, version: V.v, id: c.id, group: c.group, expect: c.expect, route: d.route, ok, stage: d.stage, expectStage: c.expectStage, stageOk, pictures: d.pictures, error: d.error })}\n`,
         );
       }),
     );
@@ -103,4 +119,10 @@ for (const [v, g] of Object.entries(score))
       .map(([k, [a, n]]) => `${k} ${a}/${n}`)
       .join("  "),
   );
+console.log(
+  `${PICTURE_DIRECTOR_VERSION_V12} stage`,
+  Object.entries(stageScore)
+    .map(([k, [a, n]]) => `${k} ${a}/${n}`)
+    .join("  "),
+);
 console.log(`spent $${spent().toFixed(4)}`);

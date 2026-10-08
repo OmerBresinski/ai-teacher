@@ -12,8 +12,13 @@
  * subjects stay commons (unchanged). No example animals or plants in the text (memory
  * image-prompts-are-prompts).
  */
+import { z } from "zod";
 import { DIAGRAM_KINDS } from "../plan-write/diagram-spec";
-import { type PictureDirectorInput, pictureDirectorPrompt } from "./picture-director";
+import {
+  type PictureDirectorInput,
+  PictureDirectorSchema,
+  pictureDirectorPrompt,
+} from "./picture-director";
 
 export const PICTURE_DIRECTOR_VERSION_V12 = "picture-director.v12";
 
@@ -36,7 +41,15 @@ Each picture has:
 
 For pupils up to Year 6, choose a picture a young pupil takes in at a glance: one subject, or the few the slide needs, filling the frame on a plain, uncluttered background rather than a busy scene; the queries ask for that view and the imagePrompt describes it. Apparatus, equipment or an object is shown on its own, with no people or hands, unless the slide is about how it is used.
 
-When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
+When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply. stage is true when the slide needs the age, stage or sex case above: an unnamed living thing at a particular age, growth stage or sex, or a set showing one at different stages. Otherwise it is false, as for a grown living thing as it is usually photographed.`;
+
+/**
+ * v12's answer: v11's fields plus `stage` (8 Oct), true only for the age, stage or sex case. The y1fix
+ * bank rule keys on it, so a generic picture on library-or-generate still reuses a stock bank row.
+ * v11 keeps its own schema, byte-exact.
+ */
+export const PictureDirectorSchemaV12 = PictureDirectorSchema.extend({ stage: z.boolean() });
+export type PictureDirectionV12 = z.infer<typeof PictureDirectorSchemaV12>;
 
 /** v11's user turn, unchanged; only the system text differs. */
 export function pictureDirectorPromptV12(input: PictureDirectorInput): {

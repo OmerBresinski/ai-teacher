@@ -21,7 +21,11 @@ const generated = {
   dataUrl: "data:image/png;base64,AAAA",
   style: "photo",
 };
-const hen = (stageBank: boolean) => {
+// A director v12 answer on library-or-generate; `stage` is the only signal the bank rule reads.
+const run = (
+  stageBank: boolean,
+  d: { stage: boolean; subject: string; shows: string; mustShow: string[]; imagePrompt: string },
+) => {
   const calls: string[] = [];
   return findDirected({
     bank: {
@@ -36,7 +40,7 @@ const hen = (stageBank: boolean) => {
       },
       reject: async () => undefined,
     } as never,
-    ask: { subject: "A partly grown female chicken with developing wing feathers", named: null },
+    ask: { subject: d.subject, named: null },
     brief: { request: "partly grown hen", mustShow: [] } as never,
     slide: { heading: "Growing up" },
     lesson: { title: "Animals and their young", yearGroup: "Year 1" },
@@ -51,21 +55,33 @@ const hen = (stageBank: boolean) => {
     direct: async () =>
       ({
         route: "library-or-generate",
+        stage: d.stage,
         named: null,
         period: null,
         count: null,
         pictures: [
-          {
-            shows: "A partly grown hen with developing wing feathers and patches of down",
-            mustShow: ["developing wing feathers", "patches of down"],
-            queries: ["young hen"],
-            imagePrompt: "A partly grown hen, half feathered, patches of down, short tail",
-          },
+          { shows: d.shows, mustShow: d.mustShow, queries: [], imagePrompt: d.imagePrompt },
         ],
       }) as never,
     stageBank,
   }).then((out) => ({ out, calls }));
 };
+const hen = (stageBank: boolean) =>
+  run(stageBank, {
+    stage: true,
+    subject: "A partly grown female chicken with developing wing feathers",
+    shows: "A partly grown hen with developing wing feathers and patches of down",
+    mustShow: ["developing wing feathers", "patches of down"],
+    imagePrompt: "A partly grown hen, half feathered, patches of down, short tail",
+  });
+const classroom = (stageBank: boolean) =>
+  run(stageBank, {
+    stage: false,
+    subject: "Children sitting on a carpet listening to their teacher",
+    shows: "A class of young children on a carpet listening to their teacher",
+    mustShow: ["children on carpet", "teacher reading"],
+    imagePrompt: "A primary classroom, children sitting on a carpet facing their teacher",
+  });
 
 describe("y1fix bank rule", () => {
   test("the y1 hen request never reuses the banked Pexels 'young chicken'; it is generated", async () => {
@@ -75,6 +91,11 @@ describe("y1fix bank rule", () => {
     // Without the rule (every other arm) the stock row is reused, as in b3-r2-1 s12.
     const off = await hen(false);
     expect(off.out?.src).toBe(bankedPexels.src);
+  });
+  test("a generic classroom scene (stage false, library-or-generate) still reuses the stock bank row", async () => {
+    const on = await classroom(true);
+    expect(on.out?.src).toBe(bankedPexels.src);
+    expect(on.calls).toEqual(["lookup"]);
   });
   test("a stage request reuses only a generated row made for a stage request", () => {
     expect(stageReuseOk({ stage: true }, { source: { provider: "pexels" } as never })).toBe(false);

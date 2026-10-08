@@ -18,6 +18,8 @@ import {
 } from "../prompts/picture-director";
 import {
   PICTURE_DIRECTOR_VERSION_V12,
+  type PictureDirectionV12,
+  PictureDirectorSchemaV12,
   pictureDirectorPromptV12,
 } from "../prompts/picture-director-v12";
 import type { PlacedPhoto } from "./illustrate";
@@ -46,6 +48,11 @@ const directorPrompt = (input: PictureDirectorInput) =>
   directorVersion === PICTURE_DIRECTOR_VERSION_V12
     ? pictureDirectorPromptV12(input)
     : pictureDirectorPrompt(input);
+/** v12 answers with `stage` as well; v11's schema is unchanged. */
+const directorSchema = () =>
+  directorVersion === PICTURE_DIRECTOR_VERSION_V12
+    ? PictureDirectorSchemaV12
+    : PictureDirectorSchema;
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
 
@@ -63,7 +70,7 @@ export async function directPicture(
       effort: "low",
       prompt: { version: directorVersion, system: built.system, user: () => built.user },
       input,
-      schema: PictureDirectorSchema,
+      schema: directorSchema(),
       maxOutputTokens: 3000,
     });
     return call.output;
@@ -76,6 +83,10 @@ export async function directPicture(
 /** The batched answer: one direction per slot, by the slot's id. */
 export const PictureDirectorBatchSchema = z.object({
   slots: z.array(PictureDirectorSchema.extend({ id: z.string() })),
+});
+/** BAKEOFF dir-stage: v12's batch, each slot with `stage`. */
+const PictureDirectorBatchSchemaV12 = z.object({
+  slots: z.array(PictureDirectorSchemaV12.extend({ id: z.string() })),
 });
 
 /** The batched user turn: the lesson once, then each slot's slide and request under its id. */
@@ -118,7 +129,10 @@ export async function directPictures(
       effort: "low",
       prompt: { version: `${directorVersion}-batch`, system, user: () => user },
       input: slots,
-      schema: PictureDirectorBatchSchema,
+      schema:
+        directorVersion === PICTURE_DIRECTOR_VERSION_V12
+          ? PictureDirectorBatchSchemaV12
+          : PictureDirectorBatchSchema,
       maxOutputTokens: 3000 * Math.min(slots.length, 6),
     });
     for (const { id, ...direction } of call.output.slots) out.set(id, direction);
@@ -424,9 +438,9 @@ export async function findDirected(args: {
    */
   allPictures?: boolean;
   /**
-   * BAKEOFF y1fix bank rule: the director's library-or-generate route on an unnamed generic picture is
-   * a stage request (director v12 sends living things at an age, stage or sex there), so the bank
-   * lookup skips stock rows and generated rows not made for a stage request.
+   * BAKEOFF y1fix bank rule: a picture director v12 marks `stage` (a living thing at a particular age,
+   * stage or sex) is a stage request, so the bank lookup skips stock rows and generated rows not made
+   * for a stage request. Any other picture, whatever its route, reuses bank rows as before.
    */
   stageBank?: boolean;
 }): Promise<DirectedPhoto | undefined> {
@@ -536,15 +550,12 @@ export async function findDirected(args: {
   };
 }
 
-/** BAKEOFF y1fix: a stage request is the director's library-or-generate route for an unnamed generic photo. */
-export function isStageRequest(d: PictureDirection | undefined, plan: PicturePlan): boolean {
-  return (
-    d?.route === "library-or-generate" &&
-    plan.kind === "photo" &&
-    plan.request.route === "generic" &&
-    !plan.request.draw &&
-    !plan.request.named
-  );
+/** BAKEOFF y1fix: a stage request is an unnamed photo the director (v12) marked `stage`. */
+export function isStageRequest(
+  d: (PictureDirection & Partial<Pick<PictureDirectionV12, "stage">>) | undefined,
+  plan: PicturePlan,
+): boolean {
+  return d?.stage === true && plan.kind === "photo" && !plan.request.draw && !plan.request.named;
 }
 
 /** BAKEOFF b4-r1t3: the director's pictures after the first, each fetched as its own one-picture slot. */
