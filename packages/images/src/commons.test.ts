@@ -258,9 +258,8 @@ describe("Commons busy replies (maxlag, 429, Retry-After)", () => {
     expect(waits.every((w) => w < 1000)).toBe(true);
   });
 
-  test("the User-Agent names DayBack and the site", () => {
-    expect(COMMONS_USER_AGENT).toContain("DayBack");
-    expect(COMMONS_USER_AGENT).toContain("https://dayback.app");
-    expect(COMMONS_USER_AGENT).not.toMatch(/teachdeck/i);
+  test("the User-Agent names Dayback and the site as its contact, with no personal email", () => {
+    expect(COMMONS_USER_AGENT).toBe("DaybackLessonPictures/1.0 (https://dayback.app)");
+    expect(COMMONS_USER_AGENT).not.toMatch(/@|teachdeck/i);
   });
 });

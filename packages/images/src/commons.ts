@@ -17,8 +17,8 @@ import type { PhotoResult } from "./pexels";
 
 const API_URL = "https://commons.wikimedia.org/w/api.php";
 /** Wikimedia asks for a descriptive agent with a way to reach the operator. */
-// The contact email Omer supplies goes after the URL; until then the site is the contact.
-export const COMMONS_USER_AGENT = "DayBackLessonPhotos/0.1 (https://dayback.app) @tj/images";
+// Wikimedia's User-Agent policy accepts a URL as the contact; no personal email.
+export const COMMONS_USER_AGENT = "DaybackLessonPictures/1.0 (https://dayback.app)";
 /** The rendition width asked for; smaller renditions are derived from its thumb URL. */
 const LARGE_WIDTH = 1280;
 // Wikimedia's thumbnail host serves only its standard widths (20, 40, 60, 120, 250, 330, 500, 960,
