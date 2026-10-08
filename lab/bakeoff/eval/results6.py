@@ -10,6 +10,8 @@ import json, os, glob, re, subprocess, statistics as st
 # Tracked on lab/ab as lab/bakeoff/eval/results6.py (eval v4); the run data stays in the BAKEOFF round folder.
 B = os.environ.get("BAKEOFF", "/Users/gregwallace/Documents/experiments/ai-teacher/scratchpad/quality-prd/lab/rounds/BAKEOFF"); AB = f"{B}/ab"
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ab"))
+from lessongate import lesson_gate  # D36 (9 Oct): the hard lesson rule, shared with ab/gate.sh
 ARMS = sys.argv[1].split(","); REPS = sys.argv[2].split(",")
 RECALL = re.compile(r"recall|retriev|remember|last lesson|earlier (learning|lesson)|already know|review|recap", re.I)
 TWIN = re.compile(r"your turn|try (one|it|this|a similar)|on (their|your) own|near-identical|similar (question|problem|one|example)|twin|independent(ly)? (try|practice)", re.I)
@@ -51,7 +53,7 @@ for a in ARMS:
         for les in done:
             if not os.path.lexists(f"{comp}/{les}"): os.symlink(f"{d}/{les}", f"{comp}/{les}")
         m = json.loads(subprocess.run(["python3", f"{B}/ab/metrics.py", comp], capture_output=True, text=True).stdout) if done else {}
-        reader, objc = [], []
+        reader, objc, d36 = [], [], []
         plan = dict(recall=0, twin=0, misc=0, pred=0, ask=0, vis=0, teach=0, chars=0, lessons=0)
         for les in done:
             e = f"{B}/eval/out/AB-{r}/{les}"
@@ -68,6 +70,7 @@ for a in ARMS:
             except Exception as ex:
                 objc.append(0.0); objmiss.append(f"{r} {les}")
                 print(f"WARNING: {r} {les}: no readable objectives.json ({type(ex).__name__}); counted as 0", file=sys.stderr)
+            d36.append(lesson_gate(f"{d}/{les}", e))
             w = writer(f"{d}/{les}")
             if not w: continue
             plan["lessons"] += 1
@@ -87,11 +90,14 @@ for a in ARMS:
             "shipped overflow per slide": rate("shippedOverflow"),
             "text-only per teaching slide": rate("textOnlyTeach", "teach"),
             "label strings": m.get("labelStrings"),
-            "dangling sentences (fixed check, D8)": m.get("dangling"),
-            "dangling slides (fixed check)": len({(x["lesson"], x["slide"]) for x in m.get("danglingList", [])}) if m else None,
+            "dangling slides (metrics v2)": m.get("dangling"),
             "dangling per slide": rate("dangling"),
             "reader quiz score": st.mean(reader) if reader else None,
-            "objectives taught and checked": st.mean(objc) if objc else None,
+            "D36 hard: lessons passing (every objective taught + a hinge or exit-ticket check)": sum(x["passed"] for x in d36),
+            "D36 hard: lessons with every objective taught": sum(x["allTaught"] for x in d36),
+            "D36 hard: lessons with a hinge or exit-ticket check": sum(x["lessonCheck"] for x in d36),
+            "D36 soft: objectives with a check slide": st.mean(x["objectivesChecked"] for x in d36) if d36 else None,
+            "objectives taught and checked (soft, pre-D36 measure)": st.mean(objc) if objc else None,
             "plan: recall opener (lessons)": plan["recall"], "plan: worked-example twin (lessons)": plan["twin"],
             "plan: misconception slide (lessons)": plan["misc"], "plan: prediction slide (lessons)": plan["pred"],
             "plan: ask filled (visuals)": plan["ask"],
@@ -126,6 +132,7 @@ for k in metrics:
     out.append("")
 out += [f"Objectives evaluator: {', '.join(sorted(objv)) or 'none'}."
         + (f" Missing objectives.json (counted as 0): {', '.join(objmiss)}." if objmiss else ""), ""]
+out += ["D36 (9 Oct): an arm passes only when every finished lesson in every rep passes the hard rows (lessons passing = lessons finished). The per-objective check is a soft score, compared but never a pass rule. Text-only per teaching slide is 1 - visuals shown (metrics v2) and is reported, not gated.", ""]
 out += ["Plan counts are keyword reads of the writer's flow and slides (results.py); a blind judge should confirm them.", ""]
 open(f"{AB}/{sys.argv[3]}", "w").write("\n".join(out))
 print("\n".join(out[:20]))
