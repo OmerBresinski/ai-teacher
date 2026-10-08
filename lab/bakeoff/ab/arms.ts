@@ -56,6 +56,9 @@ export const AB_ARMS = [
   "match6",
   "stage6",
   "gas8",
+  "base7",
+  "base7c",
+  "base7d",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -108,6 +111,8 @@ export const AB_CONFIG: Record<
     stage6?: boolean;
     /** gas8 (#8): a gas volume beyond the stated reactants, a negative or a solid in cm³ is repaired. */
     gas8?: boolean;
+    /** base6c/base7c: the writer's first slide (the hook) ships before the objectives slide (title, hook, objectives). */
+    hookFirst?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -566,6 +571,66 @@ export const AB_CONFIG: Record<
     gas8: true,
     delta: "base4 + impossible gas data flagged to repair once, else rescaled in code",
   },
+  // base7 (9 Oct, combined candidate, arms3/base7/DIFF.md): base6b's code (titleSub off, snug nodes)
+  // + exit1 (exitTicket) + faults-3-6-8's labels3, orphan6, match6, stage6, gas8 (tightened) + chalkie
+  // figureSync (every printed number) and plotZone. Prompts = exit1's byte for byte (prompts/base7).
+  base7: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    snugNodes: true,
+    exitTicket: true,
+    labels3: true,
+    orphan6: true,
+    match6: true,
+    stage6: true,
+    gas8: true,
+    figureSync: true,
+    plotZone: true,
+    delta:
+      "base6b + exit1 + labels3, orphan6, match6, stage6, gas8, figureSync, plotZone (code); exit1's prompts",
+  },
+  // ===== OPENER SLOT (base7): one of these two joins base7 once blind14/15 are judged (D43). =====
+  // base7c = hook: base6c's opener line (prompts/base7c/shared/opener.txt) + hookFirst.
+  base7c: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    snugNodes: true,
+    exitTicket: true,
+    labels3: true,
+    orphan6: true,
+    match6: true,
+    stage6: true,
+    gas8: true,
+    figureSync: true,
+    plotZone: true,
+    hookFirst: true,
+    delta: "base7 + base6c's hook opener line (prompt) + hookFirst (code)",
+  },
+  // base7d = retrieval: base6d's in-lesson retrieval line (prompts/base7d/shared/opener.txt), base7's code.
+  base7d: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    snugNodes: true,
+    exitTicket: true,
+    labels3: true,
+    orphan6: true,
+    match6: true,
+    stage6: true,
+    gas8: true,
+    figureSync: true,
+    plotZone: true,
+    delta: "base7 + base6d's in-lesson retrieval line (prompt)",
+  },
+  // ===== end OPENER SLOT =====
 };
 /** The arm each arm is diffed against, and the arm whose delta it must reproduce (D4). */
 export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }>> = {
@@ -609,6 +674,9 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   match6: { ref: "base4" },
   stage6: { ref: "base4" },
   gas8: { ref: "base4" },
+  base7: { ref: "exit1" },
+  base7c: { ref: "base7" },
+  base7d: { ref: "base7" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -656,6 +724,16 @@ export const abFigureSync = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].f
 export const abNotesAlt = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].notesAlt) : false);
 /** Chalkie fix 3b: big-visual plots fill the visual zone (plotzone). */
 export const abPlotZone = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].plotZone) : false);
+/** base6c/base7c: the hook (the writer's first slide) goes before the objectives slide. */
+export const abHookFirst = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].hookFirst) : false);
+/** Title, objectives, hook, ... -> title, hook, objectives, ... (only when slide 2 is the objectives slide "s2"
+ * and slide 3 is the writer's first slide "s3"; anything else is returned unchanged). */
+export function hookFirstOrder<T extends { id?: string }>(slides: T[]): T[] {
+  if (slides.length < 3 || slides[1]?.id !== "s2" || slides[2]?.id !== "s3") return slides;
+  return [slides[0] as T, slides[2] as T, slides[1] as T, ...slides.slice(3)];
+}
+/** Arms whose user turn gives the writer one slide fewer and no exit-ticket line (exit1's user.txt). */
+export const EXIT_TICKET_ARMS: readonly string[] = ["exit1", "base7", "base7c", "base7d"];
 /** labels3: the particles label mend (packages/slides diagrams/labels3.ts). */
 export const abLabels3 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].labels3) : false);
 export const abOrphan6 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].orphan6) : false);

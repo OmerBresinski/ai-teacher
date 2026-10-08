@@ -22,7 +22,8 @@ test("only the gas8 arm turns the check on", () => {
   expect(abGas8()).toBe(false);
   setAbCodeArm("gas8");
   expect(abGas8()).toBe(true);
-  for (const [a, c] of Object.entries(AB_CONFIG)) if (a !== "gas8") expect(c.gas8).toBeUndefined();
+  for (const [a, c] of Object.entries(AB_CONFIG))
+    if (a !== "gas8" && !["base7", "base7c", "base7d"].includes(a)) expect(c.gas8).toBeUndefined();
 });
 
 test("R4 y11 under the first rule (least): 48, 54 and 72 cm³ are beyond 0.040 g (at most 39 cm³)", () => {

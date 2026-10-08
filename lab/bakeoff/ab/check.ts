@@ -22,6 +22,7 @@ import {
   abFiles,
   CODE_PINNED,
   codeOnlyFault,
+  EXIT_TICKET_ARMS,
   menuKinds,
   PICTURE_VERSIONS,
   pinOf,
@@ -167,17 +168,16 @@ for (const a of AB_ARMS) {
       schema: p.schema,
     };
     // exit1: the writer is given one slide fewer (code adds the exit ticket) and no exit-ticket line.
-    const r5user =
-      a === "exit1"
-        ? r5.user
-            .replace(
-              `Slides: ${brief.slides.min} to ${brief.slides.max}`,
-              `Slides: ${brief.slides.min - 1} to ${brief.slides.max - 1}`,
-            )
-            .replace(/\nExit ticket: [^\n]*/, "")
-        : r5.user;
-    if (a === "exit1" && (r5user === r5.user || /Exit ticket/.test(req.user)))
-      fail(`exit1 ${id}: user turn does not shift the slide range or still names the exit ticket`);
+    const r5user = EXIT_TICKET_ARMS.includes(a)
+      ? r5.user
+          .replace(
+            `Slides: ${brief.slides.min} to ${brief.slides.max}`,
+            `Slides: ${brief.slides.min - 1} to ${brief.slides.max - 1}`,
+          )
+          .replace(/\nExit ticket: [^\n]*/, "")
+      : r5.user;
+    if (EXIT_TICKET_ARMS.includes(a) && (r5user === r5.user || /Exit ticket/.test(req.user)))
+      fail(`${a} ${id}: user turn does not shift the slide range or still names the exit ticket`);
     if (req.user !== r5user) fail(`${a} ${id}: user turn differs from round 5's`);
     if (a === "base") {
       const failsBefore = bad;
@@ -407,6 +407,31 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
         fail(
           `exit1 ${id}: changes more than the exit-ticket sentence, menu line and field (${stray.slice(0, 2).join("; ")})`,
         );
+    }
+    // base7 (arms3/base7/DIFF.md): code-only on exit1, so its request is exit1's byte for byte.
+    if (a === "base7" && (jd.length || b.system !== r.system))
+      fail(
+        `base7 ${id}: its request differs from exit1 (base7 is exit1's prompts + code switches)`,
+      );
+    // base7c / base7d (the opener slot): base7 with exactly base6c's / base6d's opener-slot change.
+    if (a === "base7c" || a === "base7d") {
+      const was =
+        "Open with a slide pupils can answer without anything taught before this lesson: a prediction, a puzzle or something to look at and notice, with a picture where it helps.";
+      const now =
+        a === "base7c"
+          ? "Make the first slide after the objectives its own hook slide, not the title: a short, concrete scenario with a title that names it and a question pupils can answer or predict without anything taught before this lesson, with a picture where it helps; return to that scenario on a later slide once pupils can answer it properly."
+          : `${was} Once the lesson's second idea is taught, add a short slide where pupils recall the first idea from this lesson, with the answers in the speaker notes, not on the slide; never ask about earlier lessons.`;
+      const out = sd.del[0] ?? "";
+      const inn = sd.add[0] ?? "";
+      if (
+        jd.length ||
+        sd.del.length !== 1 ||
+        sd.add.length !== 1 ||
+        !out.includes(was) ||
+        !inn.includes(now) ||
+        inn.replace(now, "\0") !== out.replace(was, "\0")
+      )
+        fail(`${a} ${id}: changes more than the opener slot`);
     }
     if (a === "base4" && (jd.length || b.system !== r.system))
       fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);

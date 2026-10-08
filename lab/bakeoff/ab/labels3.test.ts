@@ -77,7 +77,8 @@ describe("labels3 switch", () => {
     setAbCodeArm("labels3");
     expect(abLabels3()).toBe(true);
     for (const a of Object.keys(AB_CONFIG))
-      if (a !== "labels3") expect(AB_CONFIG[a as keyof typeof AB_CONFIG].labels3).toBeUndefined();
+      if (a !== "labels3" && !["base7", "base7c", "base7d"].includes(a))
+        expect(AB_CONFIG[a as keyof typeof AB_CONFIG].labels3).toBeUndefined();
   });
 });
 

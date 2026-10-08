@@ -25,7 +25,7 @@ describe("switches", () => {
       expect([abOrphan6(), abMatch6(), abStage6()].filter(Boolean)).toHaveLength(1);
     }
     for (const [a, c] of Object.entries(AB_CONFIG))
-      if (!["orphan6", "match6", "stage6"].includes(a))
+      if (!["orphan6", "match6", "stage6", "base7", "base7c", "base7d"].includes(a))
         expect(Boolean(c.orphan6 || c.match6 || c.stage6)).toBe(false);
   });
 });

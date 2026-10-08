@@ -20,6 +20,7 @@ import {
   abFiles,
   abFixes,
   abGas8,
+  abHookFirst,
   abMatch6,
   abNotesAlt,
   abObjRetry,
@@ -27,6 +28,7 @@ import {
   abR1t,
   abR1t2,
   abShared,
+  hookFirstOrder,
   sha,
 } from "./ab/arms";
 import { localAlt, localiseSlideAlts, slideWords } from "./ab/caption";
@@ -982,6 +984,9 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     if (abCaptions())
       for (const [k, sl] of slides.entries())
         slides[k] = localiseSlideAlts(sl, locale().country, brief.topic);
+    // base6c/base7c: title, hook, objectives (Chalkie's order). Only the saved order changes; every
+    // earlier step still sees the objectives at index 1. The exit ticket stays last either way.
+    const shipped = abHookFirst() ? hookFirstOrder(slides) : slides;
     writeJson(lessonFile, {
       version: 1,
       id: lessonId,
@@ -995,7 +1000,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       language: brief.language,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      slides,
+      slides: shipped,
       ...(plan.exitTicket ? { exitTicket: plan.exitTicket } : {}),
       bakeoff: { arm: arm.id, brief: brief.id, objectives: plan.objectives ?? [] },
     });
@@ -2237,18 +2242,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       mark("repaired");
     }
   }
-  // chalkie-gap Y5-B: after repair, every drawn figure is checked against its slide's words; one
-  // that disagrees is dropped (failed), so the fallback below restages the slide without it.
-  if (abFigureSync()) await settle();
-  for (const [k, v] of abFigureSync() ? visuals : []) {
-    if (v.status !== "diagram") continue;
-    const i = Number(k.split(":")[0]);
-    const why = figureTextMismatch(v.spec, plan.slides[i] as Record<string, unknown> | undefined);
-    if (!why) continue;
-    log({ ev: "figure-text-mismatch", slide: i + 1, key: k, why, dropped: true });
-    visuals.set(k, { status: "failed" });
-    relay(i, "figure-text-mismatch");
-  }
+  // gas8 runs before figure-sync (base7), so figure-sync checks each figure against the rescaled
+  // words and a rescale can never leave a figure printing the old volumes.
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum.
   // One factor for the whole lesson, so volumes compared across slides keep their order.
@@ -2264,6 +2259,18 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
       log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
     }
+  // chalkie-gap Y5-B: after repair, every drawn figure is checked against its slide's words; one
+  // that disagrees is dropped (failed), so the fallback below restages the slide without it.
+  if (abFigureSync()) await settle();
+  for (const [k, v] of abFigureSync() ? visuals : []) {
+    if (v.status !== "diagram") continue;
+    const i = Number(k.split(":")[0]);
+    const why = figureTextMismatch(v.spec, plan.slides[i] as Record<string, unknown> | undefined);
+    if (!why) continue;
+    log({ ev: "figure-text-mismatch", slide: i + 1, key: k, why, dropped: true });
+    visuals.set(k, { status: "failed" });
+    relay(i, "figure-text-mismatch");
+  }
   // A diagram that still cannot draw: a picture of the same thing when it is a real, concrete
   // thing (the picture director, the diagram's `shows` as the request); else words only.
   // Round 3 profile (R2 y11: checks at 51 s, done at 100 s): the slides' fallbacks ran one after
