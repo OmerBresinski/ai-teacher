@@ -11,6 +11,7 @@ import {
   toast,
 } from "@tj/ui";
 import { Info } from "lucide-react";
+import { isCropped } from "../../export/credits";
 import { ImageCreditText } from "../../images/ImageCreditText";
 import { REPORT_FAILED_MESSAGE, REPORT_REASONS, REPORTED_MESSAGE } from "../../images/image-report";
 import type { ImageSearchClient, ReportReason } from "../../images/image-search";
@@ -44,7 +45,7 @@ export function ImageCreditBadge({
     if (!images || !element.source) return;
     try {
       await images.report({
-        photo: { provider: "pexels", id: element.source.id },
+        photo: { provider: element.source.provider, id: element.source.id },
         reason,
         context: "placed",
         ...(lessonId === undefined ? {} : { lessonId }),
@@ -91,6 +92,7 @@ export function ImageCreditBadge({
               source={element.source}
               credit={element.credit}
               creditUrl={element.creditUrl}
+              cropped={isCropped(element)}
             />
             {element.source && images ? (
               <DropdownMenu>

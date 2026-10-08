@@ -95,8 +95,10 @@ const PickBody = z.strictObject({
 });
 
 const ReportBody = z.strictObject({
-  provider: z.literal("pexels"),
-  id: z.string().min(1).max(32),
+  /** A placed picture may be a Commons file or a generated one (TEACH-251). */
+  provider: z.enum(["pexels", "commons", "generated"]),
+  // Commons ids are `commons-<pageid>`; a generated picture's id is a UUID.
+  id: z.string().min(1).max(64),
   reason: z.enum(["unsuitable", "wrong-subject", "other"]),
   context: z.enum(["search", "placed"]),
   lessonId: z.uuid().optional(),
@@ -106,6 +108,11 @@ export function imageRoutes(
   images: PexelsClient | undefined,
   limiter: RateLimiter,
   storage: StorageAdapter | undefined,
+  /**
+   * Whether the lesson a report names belongs to the caller's workspace (TEACH-251). A report
+   * naming another workspace's lesson is refused (404), so a report can't probe lesson ids.
+   */
+  lessonInWorkspace?: (workspaceId: string, lessonId: string) => Promise<boolean>,
 ) {
   return new Hono<AppEnv>()
     .get(
@@ -256,6 +263,12 @@ export function imageRoutes(
         // teacher searched a lot first. Nothing is stored or fetched — one log line.
         const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
         const { provider, id, reason, context, lessonId } = c.req.valid("json");
+        if (
+          lessonId !== undefined &&
+          lessonInWorkspace &&
+          !(await lessonInWorkspace(workspaceId, lessonId))
+        )
+          throw new HTTPException(404, { message: "Lesson not found." });
         c.get("logger").warn(
           { provider, photoId: id, reason, context, lessonId, workspaceId },
           "image reported",

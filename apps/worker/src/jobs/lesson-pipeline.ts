@@ -18,7 +18,7 @@ import {
   runLessonPipeline,
   StageFailure,
 } from "@tj/generation";
-import { storePhoto } from "@tj/images";
+import { commonsSearch, createCommonsClient, storePhoto } from "@tj/images";
 import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
@@ -69,15 +69,20 @@ export interface LessonJobSpec {
 function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
   const images = deps.images;
   if (!images) return undefined;
+  // One Commons client per job (TEACH-251): its searches and file downloads share one polite
+  // queue. Only the writer planner's picture director searches Commons; objectives-first never does.
+  const commons = createCommonsClient();
   return {
     search: (query, opts) =>
       images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
+    searchCommons: commonsSearch(commons),
     store: (photo, target) =>
       storePhoto({
         photo,
         target,
         storage: images.storage,
         workspaceId,
+        commons,
       }),
   };
 }

@@ -15,9 +15,6 @@ import { resolveImageSrc } from "../images/resolve-src";
 import { imageCredentials } from "./image-credentials";
 import { slugify } from "./json";
 
-// The credits picture's renderer rides in this chunk: only a PNG run ever draws it (TEACH-161).
-export { CreditsSlide, type CreditsSlideProps } from "./CreditsSlide";
-
 /** The three sizes the export dialog offers. 2x is 1920x1080. */
 export type PngScale = 1 | 2 | 3;
 
@@ -85,9 +82,4 @@ export async function captureSlidePng(
 /** `the-water-cycle-3.png` for a zero-based slide index (TeachDeck's `${slug}-${index}.png`). */
 export function pngFilename(lesson: { title: string }, index: number): string {
   return `${slugify(lesson.title)}-${index + 1}.png`;
-}
-
-/** The credits picture after the last slide: `<slug>-credits.png` (TEACH-161). */
-export function pngCreditsFilename(lesson: { title: string }): string {
-  return `${slugify(lesson.title)}-credits.png`;
 }

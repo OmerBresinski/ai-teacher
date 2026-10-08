@@ -1,7 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import type { ImageElement, Lesson } from "@tj/domain/documents";
 import { lesson as baseLesson, creditedLesson, imageElement } from "@tj/domain/documents/fixtures";
-import { creditSegments, IMAGE_CREDITS_TITLE, imageCredits } from "./credits";
+import {
+  creditSegments,
+  GENERATED_CREDIT,
+  IMAGE_CREDITS_TITLE,
+  imageCredits,
+  isCropped,
+  photoCredit,
+} from "./credits";
 
 /* TEACH-161 rows 1–3: the credits list the three lesson exporters share. */
 
@@ -101,5 +108,138 @@ describe("creditSegments", () => {
     expect(creditSegments({ key: "k", text: "Cat by Kit", links: [] })).toEqual([
       { text: "Cat by Kit" },
     ]);
+  });
+});
+
+/* TEACH-251 part b: Commons and generated credits, "cropped" for an attribution licence. */
+describe("photoCredit and Commons in the credits list", () => {
+  const commons = (licence: string) =>
+    ({
+      provider: "commons",
+      id: "commons-1004",
+      pageUrl: "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_at_Greenhead.jpg",
+      photographer: "Ada Lovelace",
+      photographerUrl: "https://commons.wikimedia.org/wiki/User:Ada",
+      author: "Ada Lovelace",
+      licence,
+      licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_at_Greenhead.jpg",
+    }) as const;
+
+  it("a Commons photo credits as title, author, licence, linking the file page and the deed", () => {
+    expect(photoCredit(commons("CC BY-SA 4.0"))).toEqual({
+      key: "commons:commons-1004",
+      text: "Hadrian's Wall at Greenhead, Ada Lovelace, CC BY-SA 4.0",
+      links: [
+        {
+          label: "Hadrian's Wall at Greenhead",
+          href: "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_at_Greenhead.jpg",
+        },
+        { label: "CC BY-SA 4.0", href: "https://creativecommons.org/licenses/by-sa/4.0" },
+      ],
+    });
+  });
+
+  it("a cropped CC BY or BY-SA photo says cropped; public domain does not need to", () => {
+    expect(photoCredit(commons("CC BY 4.0"), { cropped: true }).text).toBe(
+      "Hadrian's Wall at Greenhead, Ada Lovelace, CC BY 4.0, cropped",
+    );
+    expect(photoCredit(commons("Public domain"), { cropped: true }).text).not.toContain("cropped");
+  });
+
+  it("a Fill (cover) picture counts as cropped; a whole (contain) one does not", () => {
+    expect(isCropped({ fit: "cover" })).toBe(true);
+    expect(isCropped({ fit: "contain" })).toBe(false);
+    expect(isCropped({ fit: "contain", crop: { x: 0, y: 0, w: 1, h: 1 } })).toBe(true);
+  });
+
+  it("the deck's credits list Commons (cropped when filled) and generated pictures", () => {
+    const list = imageCredits(
+      deck(
+        imageElement("a", { fit: "cover", source: commons("CC BY-SA 4.0") }),
+        imageElement("b", {
+          fit: "contain",
+          source: {
+            provider: "generated",
+            id: "0b0b0000-0000-4000-8000-00000000ba4c",
+            pageUrl: "https://dayback.app",
+            photographer: "",
+            photographerUrl: "https://dayback.app",
+          },
+        }),
+      ),
+    );
+    expect(list.map((c) => c.text)).toEqual([
+      "Hadrian's Wall at Greenhead, Ada Lovelace, CC BY-SA 4.0, cropped",
+      "The picture on slide 1 was generated for this lesson.",
+    ]);
+    // The PDF and PPTX runs link the title and the licence in place.
+    expect(
+      creditSegments(list[0] as never)
+        .filter((s) => s.href)
+        .map((s) => s.text),
+    ).toEqual(["Hadrian's Wall at Greenhead", "CC BY-SA 4.0"]);
+  });
+
+  it("an imported Commons source with a refused address keeps its text, without the link", () => {
+    const bad = {
+      ...commons("CC BY 4.0"),
+      sourceUrl: "javascript:alert(1)",
+      pageUrl: "javascript:x",
+    };
+    const c = photoCredit(bad);
+    expect(c.links.some((l) => l.href.startsWith("javascript"))).toBe(false);
+  });
+
+  it("a picture cropped on any slide is credited as cropped, in its first place", () => {
+    const list = imageCredits(
+      deck(
+        imageElement("a", { fit: "contain", source: commons("CC BY 4.0") }),
+        imageElement("b", { fit: "contain", source: commons("CC BY 4.0") }),
+        imageElement("c", { fit: "cover", source: commons("CC BY 4.0") }),
+      ),
+    );
+    expect(list).toHaveLength(1);
+    expect(list[0]?.text).toBe("Hadrian's Wall at Greenhead, Ada Lovelace, CC BY 4.0, cropped");
+  });
+
+  it("generated pictures collapse into one line naming their slides; each info dot keeps its own", () => {
+    const gen = (id: string) => ({
+      provider: "generated" as const,
+      id,
+      pageUrl: "https://dayback.app",
+      photographer: "",
+      photographerUrl: "https://dayback.app",
+    });
+    const slide = (id: string, els: ImageElement[]) => ({
+      id,
+      kind: "content" as const,
+      elements: els,
+    });
+    const lesson: Lesson = {
+      ...baseLesson(),
+      slides: [
+        slide("s1", [imageElement("a", { source: gen("g1") })]),
+        slide("s2", [imageElement("b", { source: commons("CC0") })]),
+        slide("s3", [
+          imageElement("c", { source: gen("g2") }),
+          imageElement("d", { source: gen("g3") }),
+        ]),
+        slide("s4", [imageElement("e", { source: gen("g4") })]),
+        slide("s5", []),
+        slide("s6", []),
+        slide("s7", []),
+        slide("s8", [imageElement("f", { source: gen("g5") })]),
+      ],
+    };
+    expect(imageCredits(lesson).map((c) => c.text)).toEqual([
+      "Pictures on slides 1, 3, 4 and 8 were generated for this lesson.",
+      "Hadrian's Wall at Greenhead, Ada Lovelace, CC0",
+    ]);
+    // A range export names only its slides, by their deck numbers.
+    expect(imageCredits(lesson, [2, 3]).map((c) => c.text)).toEqual([
+      "Pictures on slides 3 and 4 were generated for this lesson.",
+    ]);
+    expect(photoCredit(gen("g1")).text).toBe(GENERATED_CREDIT);
   });
 });

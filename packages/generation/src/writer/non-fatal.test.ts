@@ -14,11 +14,13 @@ const WRITER = readdirSync(join(SRC, "writer"))
   .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "services.ts")
   .map((f) => `writer/${f}`);
 /**
- * The picture modules (TEACH-251 part b) are moving onto the helper on their own branch; until
- * then their bare catches may only go down. Whoever lands second sets these to 0.
+ * The writer planner's picture director (TEACH-251 part b) has none. illustrate.ts and
+ * photo-bank.ts belong to objectives-first, prod's default pipeline, where a budget stop is no
+ * picture rather than a stop; moving them would change current behaviour (Tech debt ticket), so
+ * their bare catches may only go down.
  */
 const PICTURE_BARE: Record<string, number> = {
-  "stages/picture-director.ts": 5,
+  "stages/picture-director.ts": 0,
   "stages/illustrate.ts": 8,
   "stages/photo-bank.ts": 10,
 };

@@ -1,6 +1,7 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { getTheme } from "@tj/slides/themes";
+import { pointOf } from "../stages/picture-director";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { writerDrawerSystem } from "./diagram-contract.gen";
@@ -131,6 +132,20 @@ export type WriterRun = {
   drawDiagrams?: { callDrawer: DrawerCall };
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
+  /**
+   * A slide's visuals as soon as it is parsed, with the words a picture is chosen for (TEACH-251:
+   * the picture director starts placing them off the writing clock).
+   */
+  onAsks?: (
+    index: number,
+    asks: VisualAsk[],
+    slide: { heading: string; text: string; point: string },
+  ) => void;
+  /**
+   * Awaited before the editable deck is laid out (TEACH-251: the pictures settle). Every slide is
+   * laid out again afterwards, so no slot is left an open placeholder.
+   */
+  beforeEditable?: () => Promise<void>;
 };
 export type WriterSlide = Pick<Slide, "kind" | "elements" | "background"> & {
   id: string;
@@ -268,6 +283,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
     plan.slides[idx] = s;
     asks.set(idx, visualsOf(s, idx, { ...base, plan }));
+    run.onAsks?.(idx, asks.get(idx) ?? [], {
+      heading: String(s.heading ?? ""),
+      text: wordsOf(s as S),
+      point: pointOf(s as S),
+    });
     relay(idx);
   }
   // ── diagrams (TEACH-247, R2): every diagram asked for, drawn before editable ──
@@ -332,6 +352,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     return slides;
   };
+  if (run.beforeEditable) {
+    await run.beforeEditable();
+    // The settled pictures (or their absence) replace the open slots.
+    for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
+  }
   await run.onEditable?.(deck());
 
   // ── pupil wording: one small call after editable fills slide 2; any line missing keeps the

@@ -5,7 +5,7 @@
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
 
-import type { ImageBrief, Lesson } from "@tj/domain/documents";
+import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
@@ -17,6 +17,7 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PipelineDeps } from "../types";
+import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
   type PlacedPhoto,
@@ -42,22 +43,25 @@ export async function directPicture(
   deps: DirectorDeps,
 ): Promise<PictureDirection | undefined> {
   const built = pictureDirectorPrompt(input);
-  try {
-    const call = await callStructured({
-      deps,
-      stage: "illustrate",
-      cls: "small",
-      effort: "low",
-      prompt: { version: PICTURE_DIRECTOR_VERSION, system: built.system, user: () => built.user },
-      input,
-      schema: PictureDirectorSchema,
-      maxOutputTokens: 3000,
-    });
-    return call.output;
-  } catch (error) {
-    if ((error instanceof Error && error.name === "AbortError") || deps.signal.aborted) throw error;
-    return undefined;
-  }
+  return nonFatal(
+    async () => {
+      const call = await callStructured({
+        deps,
+        stage: "illustrate",
+        cls: "small",
+        effort: "low",
+        prompt: { version: PICTURE_DIRECTOR_VERSION, system: built.system, user: () => built.user },
+        input,
+        schema: PictureDirectorSchema,
+        maxOutputTokens: 3000,
+      });
+      return call.output;
+    },
+    () => {
+      if (deps.signal.aborted) throw deps.signal.reason;
+      return undefined;
+    },
+  );
 }
 
 /** The batched answer: one direction per slot, by the slot's id. */
@@ -97,21 +101,25 @@ export async function directPictures(
   const out = new Map<string, PictureDirection>();
   if (slots.length === 0) return out;
   const user = pictureDirectorBatchUser(slots);
-  try {
-    const call = await callStructured({
-      deps,
-      stage: "illustrate",
-      cls: "small",
-      effort: "low",
-      prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
-      input: slots,
-      schema: PictureDirectorBatchSchema,
-      maxOutputTokens: 3000 * Math.min(slots.length, 6),
-    });
-    for (const { id, ...direction } of call.output.slots) out.set(id, direction);
-  } catch (error) {
-    if ((error instanceof Error && error.name === "AbortError") || deps.signal.aborted) throw error;
-  }
+  // A failed batch leaves every slot to its own call; a stop is rethrown.
+  await nonFatal(
+    async () => {
+      const call = await callStructured({
+        deps,
+        stage: "illustrate",
+        cls: "small",
+        effort: "low",
+        prompt: { version: `${PICTURE_DIRECTOR_VERSION}-batch`, system, user: () => user },
+        input: slots,
+        schema: PictureDirectorBatchSchema,
+        maxOutputTokens: 3000 * Math.min(slots.length, 6),
+      });
+      for (const { id, ...direction } of call.output.slots) out.set(id, direction);
+    },
+    () => {
+      if (deps.signal.aborted) throw deps.signal.reason;
+    },
+  );
   return out;
 }
 
@@ -130,7 +138,24 @@ export function createDirectorBatcher(
     done: (d: Promise<PictureDirection | undefined>) => void;
   }[] = [];
   let n = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // A cancelled job stops the pending batch: the timer is cleared and every queued slot is told.
+  deps.signal.addEventListener(
+    "abort",
+    () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      const batch = queue;
+      queue = [];
+      const stop = Object.assign(new Error("The picture director was stopped."), {
+        name: "AbortError",
+      });
+      for (const slot of batch) slot.done(Promise.reject(stop));
+    },
+    { once: true },
+  );
   const flush = () => {
+    timer = undefined;
     const batch = queue;
     queue = [];
     const answers = directPictures(batch, deps, system);
@@ -139,7 +164,7 @@ export function createDirectorBatcher(
   };
   return (input) =>
     new Promise((resolve) => {
-      if (queue.length === 0) setTimeout(flush, windowMs);
+      if (queue.length === 0) timer = setTimeout(flush, windowMs);
       queue.push({ id: `p${++n}`, input, done: resolve });
     });
 }
@@ -469,10 +494,12 @@ export async function findDirected(args: {
       queries: artefactQueries(req.text, req.period),
       specific: true,
     };
-    const got = await args.stock(artefact).catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") throw error;
-      return undefined;
-    });
+    const got = await args.stock(artefact).catch(
+      whenNonFatal(() => {
+        if (deps.signal.aborted) throw deps.signal.reason;
+        return undefined;
+      }),
+    );
     if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
   }
   log({ via: out.via, ms: out.ms });
@@ -602,8 +629,9 @@ export function writerAskBrief(ask: WriterPictureAsk): ImageBrief {
 
 /**
  * One writer picture: a map searched as a named thing first, else the director (batched when
- * `direct` is a batcher) and the ladder with `pickDirectedPhoto` as the stock path. Nothing here
- * fails the lesson: a budget stop, an error or a refusal leaves the placeholder.
+ * `direct` is a batcher) and the ladder with `pickDirectedPhoto` as the stock path. A provider
+ * error or a refusal is no picture (undefined); a budget stop or a cancel (`isFatal`) is rethrown,
+ * so the writer stage fails or cancels instead of saving a deck without its pictures.
  */
 export async function placeWriterPicture(args: {
   ask: WriterPictureAsk;
@@ -635,40 +663,318 @@ export async function placeWriterPicture(args: {
       images: args.images,
       deps,
       taken,
-    }).catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") throw error;
-      deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "stock failed");
-      return { outcome: "empty" as const };
-    });
+      // A budget stop or a cancel is never a missing picture: it stops the lesson.
+    }).catch(
+      whenNonFatal((error: unknown) => {
+        if (deps.signal.aborted) throw deps.signal.reason;
+        deps.logger.info(
+          { stage: "illustrate", slideIndex: ask.index, err: error },
+          "stock failed",
+        );
+        return { outcome: "empty" as const };
+      }),
+    );
     return r.outcome === "placed" ? r.photo : undefined;
   };
-  try {
-    if (isMapRequest(ask.shows)) {
-      const map = await stock({ ...b, specific: true });
-      if (map) {
-        args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
-        return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
+  return nonFatal(
+    async (): Promise<DirectedPhoto | undefined> => {
+      if (isMapRequest(ask.shows)) {
+        const map = await stock({ ...b, specific: true });
+        if (map) {
+          args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
+          return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
+        }
       }
-    }
-    return await findDirected({
-      bank: args.bank ?? STOCK_ONLY_BANK,
-      ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
-      brief: b,
-      slide: ask.slide,
-      lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
-      country: args.country,
-      index: ask.index,
-      stock,
-      // A made picture is judged when the generator lands (TEACH-237); none is made before.
-      judgeMade: async () => false,
-      deps,
-      ...(args.look ? { look: args.look } : {}),
-      ...(args.direct ? { direct: args.direct } : {}),
-      ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
+      return await findDirected({
+        bank: args.bank ?? STOCK_ONLY_BANK,
+        ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
+        brief: b,
+        slide: ask.slide,
+        lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+        country: args.country,
+        index: ask.index,
+        stock,
+        // A made picture is judged when the generator lands (TEACH-237); none is made before.
+        judgeMade: async () => false,
+        deps,
+        ...(args.look ? { look: args.look } : {}),
+        ...(args.direct ? { direct: args.direct } : {}),
+        ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
+      });
+    },
+    (error) => {
+      if (deps.signal.aborted) throw deps.signal.reason;
+      deps.logger.info(
+        { stage: "illustrate", slideIndex: ask.index, err: error },
+        "picture failed",
+      );
+      return undefined;
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// The writer stage's pictures (TEACH-251 part b): every photo ask placed off the writing clock,
+// read by the stage as a visual state. A teacher never sees a placeholder: once `settle` returns
+// (all placements done, or the deadline passed) no ask is pending, and an ask with no picture is
+// `failed`, so the stage lays the slide out text-only (or keeps its code-drawn figure).
+// ---------------------------------------------------------------------------------------------
+
+/** A photo ask as the writer stage reads it off a slide (`materialise.ts` `VisualAsk`). */
+export interface WriterPhotoAsk {
+  key: string;
+  type: "photo";
+  shows: string;
+  mustSee: string[];
+  named: boolean;
+  aspect?: number;
+  fixedShape?: boolean;
+  /** A same-subject set's panel: made together by the generator (TEACH-237), not searched. */
+  set?: string;
+}
+
+/** What the stage lays a picture slot out with (`materialise.ts` `VisualState`, photo part). */
+export type WriterPictureState =
+  | { status: "pending" }
+  | { status: "failed" }
+  | {
+      status: "photo";
+      photo: {
+        src: string;
+        alt: string;
+        aspect: number;
+        request?: string;
+        subjects?: { name: string; x: number; y: number; w: number; h: number }[];
+        about?: string;
+      };
+    };
+
+/** Why a slot has no picture, for the stage's reroute call and the run log. */
+export type WriterPictureMiss =
+  | PictureOutcome["reason"]
+  | "set-not-searched"
+  | "deadline"
+  | "error";
+
+export interface WriterPictures {
+  /** Start placing one ask (idempotent per slide and key). */
+  start(index: number, ask: WriterPhotoAsk, slide: SlideForPicture): void;
+  /** The ask's state now. After `settle`, never `pending`. */
+  state(index: number, key: string): WriterPictureState;
+  /** Wait for every started ask, at most `deadlineMs`; an ask still running counts as failed. */
+  settle(deadlineMs?: number): Promise<void>;
+  /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
+  vetoed(index: number, key: string): string | undefined;
+  /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
+  sources(): ReadonlyMap<string, PhotoSource>;
+}
+
+/** The longest the stage waits for pictures before laying the deck out without them. */
+export const WRITER_PICTURE_DEADLINE_MS = 45_000;
+
+const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
+  "director-none": "The picture director chose no picture for this slide.",
+  "director-failed": "The picture director could not be reached.",
+  "real-miss-no-fallback": "No real photograph of this was found, and none is generated for it.",
+  "generation-refused-or-failed": "No suitable picture was found.",
+  "set-not-searched": "Picture sets are made by the generator, which is not on yet.",
+  deadline: "The picture search ran out of time.",
+  error: "The picture search failed.",
+};
+
+export function createWriterPictures(opts: {
+  lesson: Lesson;
+  country: string;
+  images: DirectedPlacer;
+  deps: PipelineDeps;
+  direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
+  /** The batched director's system prompt: the batcher is made here, on the placements' signal. */
+  batchSystem?: string;
+  bank?: PictureBank;
+  look?: LessonLook;
+  style?: "photo" | "illustration";
+  onOutcome?: (key: string, o: PictureOutcome) => void;
+}): WriterPictures {
+  type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
+  // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
+  const stopper = new AbortController();
+  const signal = AbortSignal.any([opts.deps.signal, stopper.signal]);
+  const deps: PipelineDeps = { ...opts.deps, signal };
+  const direct =
+    opts.direct ?? (opts.batchSystem ? createDirectorBatcher(deps, opts.batchSystem) : undefined);
+  /** A budget stop or a cancel seen by any placement; `settle` rethrows it. */
+  let fatal: unknown;
+  const slots = new Map<string, Slot>();
+  const taken = new Set<string>();
+  const sources = new Map<string, PhotoSource>();
+  const id = (index: number, key: string) => `${index}:${key}`;
+  let settled = false;
+  return {
+    start(index, ask, slide) {
+      const k = id(index, ask.key);
+      if (slots.has(k)) return;
+      if (ask.set) {
+        slots.set(k, {
+          state: { status: "failed" },
+          miss: "set-not-searched",
+          done: Promise.resolve(),
+        });
+        return;
+      }
+      const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
+      let reason: PictureOutcome["reason"];
+      const request = [ask.shows, ...ask.mustSee].join(". ");
+      slot.done = placeWriterPicture({
+        ask: {
+          key: ask.key,
+          shows: ask.shows,
+          mustSee: ask.mustSee,
+          named: ask.named,
+          ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}),
+          slide,
+          index,
+          ...(opts.style ? { style: opts.style } : {}),
+        },
+        lesson: opts.lesson,
+        country: opts.country,
+        images: opts.images,
+        deps,
+        taken,
+        ...(direct ? { direct } : {}),
+        ...(opts.bank ? { bank: opts.bank } : {}),
+        ...(opts.look ? { look: opts.look } : {}),
+        onOutcome: (o) => {
+          reason = o.reason;
+          opts.onOutcome?.(ask.key, o);
+        },
+      }).then(
+        (photo) => {
+          if (slot.state.status !== "pending") return;
+          if (!photo) {
+            slot.state = { status: "failed" };
+            slot.miss = reason ?? "generation-refused-or-failed";
+            return;
+          }
+          const aspect = (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1;
+          sources.set(photo.src, photo.source);
+          type Box = { item: string; left: number; top: number; right: number; bottom: number };
+          // As base4: only boxes with area become subjects.
+          const boxes = (photo as { boxes?: Box[] }).boxes?.filter(
+            (b) => b.right > b.left && b.bottom > b.top,
+          );
+          slot.state = {
+            status: "photo",
+            photo: {
+              src: photo.src,
+              alt: photo.alt,
+              aspect,
+              request,
+              ...((photo as { about?: string }).about
+                ? { about: (photo as { about?: string }).about }
+                : {}),
+              ...(boxes?.length
+                ? {
+                    subjects: boxes.map((b) => ({
+                      name: b.item,
+                      x: b.left,
+                      y: b.top,
+                      w: b.right - b.left,
+                      h: b.bottom - b.top,
+                    })),
+                  }
+                : {}),
+            },
+          };
+        },
+        // A rejection here is a stop (placeWriterPicture's nonFatal rethrows only those) or the
+        // deadline's own abort: it is kept, and settle rethrows a stop.
+        (error: unknown) => {
+          if (slot.state.status !== "pending") return;
+          slot.state = { status: "failed" };
+          // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
+          if (stopper.signal.aborted && !opts.deps.signal.aborted) {
+            slot.miss = "deadline";
+            return;
+          }
+          if (isFatal(error) || opts.deps.signal.aborted) {
+            fatal ??= error;
+            stopper.abort();
+            return;
+          }
+          slot.miss = "error";
+        },
+      );
+      if (settled) slot.state = { status: "failed" };
+      slots.set(k, slot);
+    },
+    state(index, key) {
+      const slot = slots.get(id(index, key));
+      // An ask never started is not searched: after settle it is failed, never a placeholder.
+      if (!slot) return settled ? { status: "failed" } : { status: "pending" };
+      return slot.state;
+    },
+    async settle(deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let onAbort: (() => void) | undefined;
+      const deadline = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, deadlineMs);
+        // A cancel ends the wait at once.
+        onAbort = () => resolve();
+        opts.deps.signal.addEventListener("abort", onAbort, { once: true });
+      });
+      await Promise.race([Promise.all([...slots.values()].map((s) => s.done)), deadline]);
+      if (timer) clearTimeout(timer);
+      if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
+      // Placements still running stop spending (the deadline or the cancel).
+      stopper.abort();
+      if (opts.deps.signal.aborted)
+        throw Object.assign(new Error("The lesson was stopped while its pictures were placed."), {
+          name: "AbortError",
+          cause: opts.deps.signal.reason,
+        });
+      if (fatal !== undefined) throw fatal;
+      settled = true;
+      for (const slot of slots.values())
+        if (slot.state.status === "pending") {
+          slot.state = { status: "failed" };
+          slot.miss = "deadline";
+        }
+    },
+    vetoed(index, key) {
+      const slot = slots.get(id(index, key));
+      return slot?.miss ? MISS_LINE[slot.miss] : undefined;
+    },
+    sources: () => sources,
+  };
+}
+
+type ElementWithSource = { type: string; src?: string; source?: PhotoSource; children?: unknown[] };
+
+/**
+ * Credits onto a laid-out deck (TEACH-251 part b): each image element showing a placed picture
+ * gets that picture's `source`, so the editor's info dot, the report action and every export
+ * credit it truly (Pexels, Commons with its licence, or generated).
+ */
+export function withPhotoSources<T extends { elements: unknown[] }>(
+  slides: T[],
+  sources: ReadonlyMap<string, PhotoSource>,
+): T[] {
+  const tag = (els: unknown[]): unknown[] =>
+    els.map((raw) => {
+      const el = raw as ElementWithSource;
+      if (el.type === "group" && Array.isArray(el.children))
+        return { ...el, children: tag(el.children) };
+      const source = el.type === "image" && el.src ? sources.get(el.src) : undefined;
+      return source && !el.source ? { ...el, source } : el;
     });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") throw error;
-    deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "picture failed");
-    return undefined;
+  return slides.map((s) => ({ ...s, elements: tag(s.elements) }));
+}
+
+/** The line a writer slide asks pupils to look with (its figure's `ask`, else its lead), as base4 read it. */
+export function pointOf(s: Record<string, unknown>): string {
+  for (const k of ["figure", "picture", "diagram"]) {
+    const f = s[k] as { ask?: unknown } | null | undefined;
+    if (f && typeof f.ask === "string" && f.ask.trim()) return f.ask;
   }
+  return typeof s.lead === "string" ? s.lead : typeof s.ask === "string" ? s.ask : "";
 }

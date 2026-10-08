@@ -370,6 +370,53 @@ describe("LineToolbar (row 2)", () => {
   });
 });
 
+describe("ImageToolbar credit (TEACH-251)", () => {
+  test("a Commons picture's More drawer credits title, author and licence, cropped when filled", async () => {
+    const lesson = chromeLesson();
+    Object.assign(first(lesson, 5), {
+      fit: "cover",
+      source: {
+        provider: "commons",
+        id: "commons-1004",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall.jpg",
+        photographer: "Velella",
+        photographerUrl: "https://commons.wikimedia.org/wiki/User:Velella",
+        author: "Velella",
+        licence: "CC BY-SA 3.0",
+        licenceUrl: "https://creativecommons.org/licenses/by-sa/3.0",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall.jpg",
+      },
+    });
+    const { container } = renderEditor(lesson);
+    clickAt(container, 550, 330);
+    fireEvent.click(within(toolbar("Image")).getByRole("button", { name: "More" }));
+    const more = await screen.findByRole("dialog", { name: "More" });
+    expect(more.textContent).toContain("Hadrian's Wall, Velella, CC BY-SA 3.0, cropped");
+    expect(more.textContent).not.toContain("Pexels");
+    expect(within(more).getByRole("link", { name: "CC BY-SA 3.0" }).getAttribute("href")).toBe(
+      "https://creativecommons.org/licenses/by-sa/3.0",
+    );
+  });
+
+  test("a generated picture is credited as generated", async () => {
+    const lesson = chromeLesson();
+    Object.assign(first(lesson, 5), {
+      source: {
+        provider: "generated",
+        id: "0b0b0000-0000-4000-8000-00000000ba4c",
+        pageUrl: "https://dayback.app",
+        photographer: "",
+        photographerUrl: "https://dayback.app",
+      },
+    });
+    const { container } = renderEditor(lesson);
+    clickAt(container, 550, 330);
+    fireEvent.click(within(toolbar("Image")).getByRole("button", { name: "More" }));
+    const more = await screen.findByRole("dialog", { name: "More" });
+    expect(more.textContent).toContain("Picture generated for this lesson");
+  });
+});
+
 describe("ImageToolbar (row 3)", () => {
   test("fit and alt text write the element; Replace opens the panel in replace mode", async () => {
     const { container, read } = renderEditor(chromeLesson());
