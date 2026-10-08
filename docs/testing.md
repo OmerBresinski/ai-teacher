@@ -191,11 +191,17 @@ The opt-in screenshot specs (`*-screenshots.spec.ts`) are left out of the run un
 
 Fixtures (`e2e/fixtures.ts`) — import `test`/`expect` from here:
 
-- `signedInPage` → `{ page, email }` for a brand-new user, sitting on `/` with a real session.
-  Implementation: `POST /auth/sign-in/magic-link` like the form does, read the link back from
-  `GET /__test/last-magic-link`, `page.goto(link)`.
-- `signIn(page, request, email?, callbackPath?)`, `requestMagicLink`, `lastMagicLink`,
-  `uniqueEmail()` (the e2e database is not truncated; every test uses its own address).
+- `signedInPage` → `{ page, email, ids, paths }` for a brand-new user, sitting on `/` with a real
+  session and the demo library seeded (`ids` maps demo keys to the server's uuids, `paths` builds
+  routes from them; `test.use({ seed: false })` starts from an empty Workspace). Implementation
+  (`signInByApi`): `POST /auth/sign-in/magic-link` like the form does, read the link back from
+  `GET /__test/last-magic-link`, spend its token with `GET /auth/magic-link/verify` through
+  `page.request` (the browser context's cookie jar), `POST /__test/seed-library`, then one
+  `page.goto("/")`.
+- `signIn(page, request, email?, callbackPath?)` signs in through the screens (confirm page and
+  its Sign in button) for the specs about signing in; `requestMagicLink`, `lastMagicLink`,
+  `uniqueEmail()` (the e2e database is not truncated; every test uses its own address, and the
+  e2e api raises `MAGIC_LINK_SENDS_DAILY_CAP` so repeated local runs stay under it).
 
 Specs:
 
