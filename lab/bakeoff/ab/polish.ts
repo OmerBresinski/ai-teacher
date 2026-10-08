@@ -184,3 +184,38 @@ export const imageTokens = (w: number, h: number) =>
 /** A frame scaled to `long` px on its long side, at aspect w:h. */
 export const scaledTo = (w: number, h: number, long: number) =>
   w >= h ? [long, Math.round((long * h) / w)] : [Math.round((long * w) / h), long];
+
+// ─── protected labels (D31: "mes parents" was dropped from the y8 family tree) ─────────────────
+
+type Obj = { teacher?: string; pupil?: string };
+const KEY_TERM_FIELDS = ["keyTerms", "key_terms", "keywords", "vocabulary", "terms"];
+/** Every string under `v` (a slide's words), skipping the figure and picture specs. */
+function wordsOf(v: unknown, out: string[] = []): string[] {
+  if (typeof v === "string") out.push(v);
+  else if (Array.isArray(v)) for (const x of v) wordsOf(x, out);
+  else if (v && typeof v === "object")
+    for (const [k, x] of Object.entries(v))
+      if (!["figure", "picture", "pictures", "template", "kind"].includes(k)) wordsOf(x, out);
+  return out;
+}
+/**
+ * The text a diagram label on `slide` must not be dropped against: the lesson's objectives (teacher
+ * and pupil wording), its key terms (key-card labels and any key-term list on any slide), and the
+ * slide's own words outside its figure.
+ */
+export function protectSources(
+  slide: Record<string, unknown>,
+  plan: { objectives?: Obj[]; slides?: (Record<string, unknown> | undefined)[] },
+): string[] {
+  const out: string[] = [];
+  for (const o of plan.objectives ?? []) out.push(o.teacher ?? "", o.pupil ?? "");
+  for (const s of plan.slides ?? []) {
+    if (!s) continue;
+    for (const f of KEY_TERM_FIELDS) wordsOf(s[f], out);
+    for (const p of Array.isArray(s.points) ? s.points : [])
+      if (p && typeof p === "object" && typeof (p as Obj & { label?: unknown }).label === "string")
+        out.push((p as { label: string }).label);
+  }
+  wordsOf(slide, out);
+  return out.filter((t) => t.trim());
+}

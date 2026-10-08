@@ -5,13 +5,18 @@ import { drawDiagram } from "../../../packages/slides/src/diagrams/draw";
 import {
   clashPair,
   dropLabels,
+  isProtectedLabel,
+  type LabelEvent,
   onLabelDrop,
   setDiagramPolish,
+  withDiagramPolish,
+  withProtectedText,
 } from "../../../packages/slides/src/diagrams/polish";
 import { atFullSize, layoutTemplate } from "../../../packages/slides/src/templates/index";
 import { getTheme, withKeyStage } from "../../../packages/slides/src/themes";
 import { slideWord } from "../render";
 import { AB, AB_CONFIG, AB_REF, abFiles, pinFaults } from "./arms";
+import { protectSources } from "./polish";
 
 const RUNS = `${AB}/runs`;
 afterEach(() => {
@@ -127,5 +132,92 @@ describe("blank render guard (D30, y1fix-1 slide 10)", () => {
       expect(slideWord(l.slides[9])).toBe(want);
     }
     expect(slideWord({ elements: [] })).toBeUndefined();
+  });
+});
+
+describe("protected labels (D31: 'mes parents' dropped from the y8 tree)", () => {
+  test("matched by meaning: case, accents, ligatures, plurals, joined parts", () => {
+    const obj = ["Identify family members using mon père, ma mère, ma sœur, mes parents"];
+    expect(isProtectedLabel("Mes Parents", obj)).toBe(true);
+    expect(isProtectedLabel("ma soeur", obj)).toBe(true);
+    expect(isProtectedLabel("mon pere / my father", obj)).toBe(true);
+    expect(isProtectedLabel("Camille", obj)).toBe(false);
+    expect(isProtectedLabel("100", ["100 cm³"])).toBe(false); // a tick number never
+    expect(isProtectedLabel("the", ["the cat"])).toBe(false);
+    expect(isProtectedLabel("Conical flasks", ["a conical flask"])).toBe(true);
+  });
+  test("protectSources: objectives, key cards, the slide's words, never its figure", () => {
+    const slide = { heading: "Les membres", figure: { labels: ["Camille"] } };
+    const plan = {
+      objectives: [{ teacher: "use mes parents", pupil: "" }],
+      slides: [{ points: [{ label: "grand-mère", text: "x" }] }],
+    };
+    const src = protectSources(slide, plan);
+    expect(src).toContain("use mes parents");
+    expect(src).toContain("grand-mère");
+    expect(src).toContain("Les membres");
+    expect(src.join(" ")).not.toContain("Camille");
+  });
+  const tree = (run: string) => {
+    const dir = `${RUNS}/${run}/T/y8-french-my-family`;
+    const spec = readFileSync(`${dir}/diagrams.jsonl`, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((x) => JSON.parse(x))
+      .filter((d) => d.key === "2:diagram")
+      .pop()?.spec;
+    const objectives = JSON.parse(readFileSync(`${dir}/objectives.json`, "utf8")).objectives;
+    return { spec, objectives };
+  };
+  const draw = (spec: unknown, protect: string[]) =>
+    withProtectedText(protect, () =>
+      withKeyStage("ks3" as never, () =>
+        drawDiagram(spec, getTheme("studio", "ks3" as never), { x: 0, y: 0, w: 470, h: 330 }),
+      ),
+    );
+  test("polish-1 tree: 'mes parents' is refitted, never dropped; unprotected still drops", () => {
+    setDiagramPolish(true, "label");
+    const ev: LabelEvent[] = [];
+    onLabelDrop((e) => ev.push(e));
+    const { spec, objectives } = tree("polish-1");
+    const before = draw(spec, []);
+    const after = draw(
+      spec,
+      objectives.map((o: { teacher: string }) => o.teacher),
+    );
+    expect(after.ok).toBe(true);
+    if (after.ok) {
+      expect(after.droppedLabels ?? []).toEqual([]);
+      expect(decodeURIComponent(String(after.element.src))).toContain("mes parents");
+    }
+    expect(ev.filter((e) => e.outcome === "drop" || e.outcome === undefined).length).toBe(
+      before.ok ? (before.droppedLabels?.length ?? 0) : 0,
+    );
+  });
+  test("two protected labels that cannot both fit: base4's drawing, logged", () => {
+    setDiagramPolish(true, "label");
+    const ev: LabelEvent[] = [];
+    onLabelDrop((e) => ev.push(e));
+    const { spec, objectives } = tree("polish2-2");
+    const dir = `${RUNS}/polish2-2/T/y8-french-my-family`;
+    const ws = JSON.parse(JSON.parse(readFileSync(`${dir}/main.json`, "utf8")).text).slides[0];
+    const input = {
+      template: "diagram-text",
+      heading: String(ws.heading),
+      figure: { diagram: spec },
+    };
+    const t = getTheme("studio", "ks3" as never);
+    const lay = () =>
+      withKeyStage("ks3" as never, () =>
+        atFullSize(() => layoutTemplate(input as never, t, "ks3" as never)),
+      ) as { diagram?: string[] };
+    const r = withProtectedText(
+      objectives.map((o: { teacher: string }) => o.teacher),
+      lay,
+    );
+    const base4 = withDiagramPolish(false, lay);
+    expect(Boolean(r.diagram)).toBe(Boolean(base4.diagram));
+    expect(ev.some((e) => e.outcome === "base4")).toBe(true);
+    expect(ev.some((e) => e.outcome === "drop")).toBe(false);
   });
 });

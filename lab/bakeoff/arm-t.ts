@@ -2,6 +2,7 @@
 // Prompt and schema: BAKEOFF/prompts/T/{system,schema}.<KS1|KS2|KS3-5>.{txt,json} (the prompt agent's),
 // else SOL-SIMPLE's arm T as a stand-in.
 import { existsSync, readFileSync } from "node:fs";
+import { withProtectedText } from "../../packages/slides/src/diagrams/polish";
 import { PLACEHOLDER_IMAGE } from "../../packages/slides/src/layouts";
 import {
   type Figure,
@@ -10,7 +11,7 @@ import {
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
 import { abArm, abFiles, abLib, abPolish, abR1t3, abR2 } from "./ab/arms";
-import { polishTitleLead } from "./ab/polish";
+import { polishTitleLead, protectSources } from "./ab/polish";
 import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
 import type { ArmPlugin, Brief, MaterialiseCtx, VisualAsk } from "./harness";
@@ -496,20 +497,9 @@ export const armT: ArmPlugin = {
     );
   },
   materialise(s, ctx) {
-    let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
-    // Round 7: a diagram the layout dropped is missing: the slide is laid out again with its
-    // `ask_without` lines (the drawer's reasons are kept for the checks).
-    if (r.diagram?.length) {
-      const why = r.diagram;
-      const missing = new Set(
-        ["picture", "diagram", "figure"].filter((k) => ctx.visual(k).status === "diagram"),
-      );
-      r = {
-        ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage),
-        diagram: why,
-      };
-    }
-    return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
+    // D31: a diagram label carrying an objective word, a key term or the slide's own words is never
+    // dropped for a clash (read only under polish2's per-label gate).
+    return withProtectedText(protectSources(s, ctx.plan), () => materialiseT(s, ctx));
   },
   asWords(raw, opts) {
     // Round 7: the slide has lost its visual, so every ask line is its stand-alone form.
@@ -709,3 +699,21 @@ export const armT: ArmPlugin = {
     return parts.filter(Boolean).join("\n");
   },
 };
+
+/** materialise without the D31 protected-label scope. */
+function materialiseT(s: S, ctx: MaterialiseCtx) {
+  let r = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage);
+  // Round 7: a diagram the layout dropped is missing: the slide is laid out again with its
+  // `ask_without` lines (the drawer's reasons are kept for the checks).
+  if (r.diagram?.length) {
+    const why = r.diagram;
+    const missing = new Set(
+      ["picture", "diagram", "figure"].filter((k) => ctx.visual(k).status === "diagram"),
+    );
+    r = {
+      ...layoutTemplate(toInput(s, ctx, false, missing), ctx.theme, ctx.stage),
+      diagram: why,
+    };
+  }
+  return { slide: r.slide, over: r.over, ...(r.diagram ? { diagram: r.diagram } : {}) };
+}

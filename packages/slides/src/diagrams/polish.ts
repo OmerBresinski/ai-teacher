@@ -44,11 +44,21 @@ export function setDiagramPolish(v: boolean, labelGate: LabelGate = "diagram"): 
 }
 export const labelGate = (): LabelGate => gate;
 /** Where a dropped label is reported (run.ts points it at the run log). */
-let dropSink: (e: { label: string; clash: string; alt: string }) => void = () => {};
+/**
+ * A label clash outcome: `drop` (an unprotected label left out), `refit` (a protected label moved
+ * so nothing went) or `base4` (a protected label could not be placed: base4's drawing instead).
+ */
+export type LabelEvent = {
+  label: string;
+  clash: string;
+  alt: string;
+  outcome?: "drop" | "refit" | "base4";
+};
+let dropSink: (e: LabelEvent) => void = () => {};
 export function onLabelDrop(f: typeof dropSink): void {
   dropSink = f;
 }
-export const reportLabelDrop = (e: { label: string; clash: string; alt: string }) => dropSink(e);
+export const reportLabelDrop = (e: LabelEvent) => dropSink(e);
 
 /** The label pair a clash fault names (`the labels "a" and "b" touch|overlap`), else undefined. */
 export function clashPair(fault: string): [string, string] | undefined {
@@ -85,6 +95,61 @@ export function dropLabels(svg: string, labels: string[]): { svg: string; droppe
   );
   return { svg: out, dropped };
 }
+// ─── protected labels (polish2 fix, D31) ──────────────────────────────────────────────────────
+
+/**
+ * The text a label must not be dropped against: the lesson's objectives and key terms and the
+ * slide's own words. Set around one slide's layout (synchronous), empty otherwise.
+ */
+let protectText: string[] = [];
+export const protectedText = (): string[] => protectText;
+export function withProtectedText<T>(texts: string[], f: () => T): T {
+  const was = protectText;
+  protectText = texts.filter((t) => typeof t === "string" && t.trim());
+  try {
+    return f();
+  } finally {
+    protectText = was;
+  }
+}
+
+const LIGATURES: Record<string, string> = { œ: "oe", æ: "ae", ß: "ss", ø: "o", đ: "d", ł: "l" };
+const FILLER = new Set(["the", "a", "an", "of", "and", "le", "la", "les", "l", "de", "du", "des"]);
+/** Words of `t` for meaning matches: no case, accents, ligatures or punctuation; plurals as singular. */
+export function termWords(t: string): string[] {
+  return t
+    .toLowerCase()
+    .replace(/[œæßøđł]/g, (c) => LIGATURES[c] ?? c)
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/['’‘`]/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => (w.length > 3 && /[^s]s$/.test(w) ? w.slice(0, -1) : w));
+}
+const containsRun = (hay: string[], needle: string[]) => {
+  if (!needle.length || needle.length > hay.length) return false;
+  for (let i = 0; i + needle.length <= hay.length; i++)
+    if (needle.every((w, k) => hay[i + k] === w)) return true;
+  return false;
+};
+/**
+ * Whether `label` carries a protected word: the label (or one part of a joined label, "mon frère ·
+ * ma sœur") appears word for word, ignoring case, accents and plurals, in any of `texts`. A label
+ * with no letter (a tick number) or only filler words is never protected.
+ */
+export function isProtectedLabel(label: string, texts: string[] = protectText): boolean {
+  if (!/\p{L}/u.test(label)) return false;
+  const hay = texts.map(termWords);
+  const parts = [label, ...label.split(/\s*[·•/;,&+|()]\s*|\s+(?:and|et|or|ou)\s+/i)];
+  return parts.some((p) => {
+    const w = termWords(p);
+    if (!w.length || w.every((x) => FILLER.has(x) || !/\p{L}/u.test(x))) return false;
+    return hay.some((h) => containsRun(h, w));
+  });
+}
+
 export const diagramPolish = (): boolean => on;
 /** Run `f` with the switch at `v`, then restore it (synchronous; tests and the before/after renders). */
 export function withDiagramPolish<T>(v: boolean, f: () => T): T {
