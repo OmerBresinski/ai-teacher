@@ -10,7 +10,7 @@ import { MEANING_SAMPLES } from "../diagrams/meaning-samples";
 import { DIAGRAM_SAMPLES } from "../diagrams/samples";
 import { TEMPLATE_SPECS } from "../diagrams/template-specs";
 import { getTheme } from "../themes";
-import { atFullSize, layoutTemplate } from "./index";
+import { layoutTemplate } from "./index";
 
 /** The writer's key-stage groups, their themes (prompts/shared/themes.txt) and the stages they cover. */
 export const GROUPS = {
@@ -251,7 +251,7 @@ function draws(spec: unknown, g: Group, slot: Slot): boolean {
   const drawn = fromMeaning(spec);
   return GROUPS[g].themes.every((th) =>
     GROUPS[g].stages.every((st) =>
-      atFullSize(() => {
+      (() => {
         try {
           const r = layoutTemplate(
             {
@@ -263,12 +263,13 @@ function draws(spec: unknown, g: Group, slot: Slot): boolean {
             } as never,
             getTheme(th),
             st as never,
+            { fullSize: true },
           ) as { diagram?: string[] };
           return !r.diagram?.length;
         } catch {
           return false;
         }
-      }),
+      })(),
     ),
   );
 }
@@ -285,20 +286,19 @@ function box(template: string, g: Group) {
   const spec = { kind: "cycle", alt: "x", steps: ["A", "B", "C"] };
   for (const th of GROUPS[g].themes)
     for (const st of GROUPS[g].stages) {
-      const r = atFullSize(() =>
-        layoutTemplate(
-          {
-            template,
-            heading: "Heading",
-            lead: LEAD,
-            points: ["One", "Two"],
-            questions: ["Q1", "Q2"],
-            formula: "a = b",
-            figure: { diagram: spec },
-          } as never,
-          getTheme(th),
-          st as never,
-        ),
+      const r = layoutTemplate(
+        {
+          template,
+          heading: "Heading",
+          lead: LEAD,
+          points: ["One", "Two"],
+          questions: ["Q1", "Q2"],
+          formula: "a = b",
+          figure: { diagram: spec },
+        } as never,
+        getTheme(th),
+        st as never,
+        { fullSize: true },
       ) as { slide: { elements: { type: string; name?: string; w?: number; h?: number }[] } };
       const e = r.slide.elements.find((x) => x.type === "image");
       if (e?.w && e.h) {

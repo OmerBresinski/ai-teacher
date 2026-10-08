@@ -21,7 +21,7 @@ import type {
 import { drawDiagram } from "../diagrams";
 import { uid } from "../factories";
 import { countLines } from "../text-measure";
-import { atKeyStage, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, typeScale } from "../themes";
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
@@ -150,7 +150,15 @@ export type TemplateResult = {
 /* ------------------------------------------------------------------ */
 
 type Role = keyof Scale;
-type Ctx = { t: Theme; s: Scale; over: string[]; els: SlideElement[]; fails?: string[] };
+type Ctx = {
+  t: Theme;
+  s: Scale;
+  over: string[];
+  els: SlideElement[];
+  fails?: string[];
+  /** The ladder off: a column fits only at full size (`LayoutOptions.fullSize`). */
+  fullSize?: boolean;
+};
 
 const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
 /** `a` over `b` at `k` (0..1): the wash of a hue on the ground. */
@@ -260,6 +268,18 @@ function box(
   return el;
 }
 
+/**
+ * A list marker's glyph: the scale's bodySmall step (21 at KS3, 28 at KS1), never under master's
+ * body floor (20), so the size stored is the size every renderer draws (a scale step at a stage;
+ * at or over the floor without one). `c.s.small` is the full scale's step on every ladder rung.
+ */
+const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
+/** The glyph's share of its disc: a bold numeral or letter, one or two characters. */
+const MARKER_GLYPH = 0.68;
+/** The marker disc's diameter: the lab's 1.25 body, grown so the glyph sits at `MARKER_GLYPH`. */
+const markerDisc = (c: Ctx) =>
+  Math.max(Math.round(c.s.body * 1.25), Math.ceil(markerSize(c) / MARKER_GLYPH));
+
 /** A filled disc with a centred numeral or letter (the homepage's list marker). */
 function disc(c: Ctx, label: string, x: number, y: number, d: number) {
   c.els.push({
@@ -275,7 +295,7 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number) {
     doc: doc(label),
     textStyle: {
       preset: "body",
-      fontSize: Math.round(d * 0.55),
+      fontSize: markerSize(c),
       fontWeight: 700,
       color: c.t.colors.onAccent,
       align: "center",
@@ -671,20 +691,6 @@ const RUNGS = [
   { space: 0.6, small: true },
 ] as const;
 type Rung = (typeof RUNGS)[number];
-let fullSizeOnly = false;
-/**
- * Lay out with the ladder off: a column fits only at full size. The catalogue's capacities are
- * measured this way (fit-first: the model plans to fit at full size; the ladder is a net).
- */
-export function atFullSize<T>(f: () => T): T {
-  const was = fullSizeOnly;
-  fullSizeOnly = true;
-  try {
-    return f();
-  } finally {
-    fullSizeOnly = was;
-  }
-}
 function ladder(
   c: Ctx,
   build: (r: Rung) => { blocks: Block[]; gap: number },
@@ -692,7 +698,7 @@ function ladder(
 ) {
   const limit = where.limit ?? G.band.h;
   const full = c.s;
-  const rungs = fullSizeOnly ? RUNGS.slice(0, 1) : RUNGS;
+  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
   for (const [k, r] of rungs.entries()) {
     c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
     const { blocks, gap } = build(r);
@@ -827,7 +833,7 @@ function numbered(
   ladder(
     c,
     (r) => {
-      const d = Math.round(c.s.body * 1.25);
+      const d = markerDisc(c);
       const indent = d + Math.round(c.s.body * 0.7);
       const pad = Math.round(c.s.body * (opts.ruled ? 0.6 : 0.35) * r.space);
       const blocks: Block[] = items.map((q, k) => {
@@ -1004,7 +1010,20 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   return out;
 }
 
-export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage): TemplateResult {
+export type LayoutOptions = {
+  /**
+   * Lay out with the ladder off: a column fits only at full size. The catalogue's capacities are
+   * measured this way (fit-first: the model plans to fit at full size; the ladder is a net).
+   */
+  fullSize?: boolean;
+};
+
+export function layoutTemplate(
+  input: TemplateInput,
+  theme: Theme,
+  stage: Stage,
+  opts: LayoutOptions = {},
+): TemplateResult {
   // Master's key stage travels with the theme (`atKeyStage`), not process-wide: the drawer reads it
   // off `c.t`.
   const c: Ctx = {
@@ -1013,6 +1032,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
     over: [],
     els: [],
     fails: [],
+    fullSize: opts.fullSize ?? false,
   };
   input = withoutFailedFigures(c, input);
   const tpl = input.template;
@@ -1023,8 +1043,8 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
     case "title": {
       // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
       // shape (no crop: a portrait archive photo keeps its faces); the title wraps in what is left.
-      background = { color: theme.colors.accent };
-      const on = theme.colors.onAccent;
+      background = { color: c.t.colors.accent };
+      const on = c.t.colors.onAccent;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
       let ph = 444;
@@ -1044,14 +1064,12 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
       // so a long title keeps stepping down (words whole) to the floor; only past it is it flagged.
       const height = () => {
         const t = Math.ceil(
-          countLines(input.heading, "title", theme, w, theme.weights.heading, size) *
-            size *
-            LH.title,
+          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) * size * LH.title,
         );
         return t + (input.lead ? 20 + measure(c, input.lead, "lead", w, 400) : 0);
       };
       const fits = () =>
-        countLines(input.heading, "title", theme, w, theme.weights.heading, size) <= (f ? 6 : 3) &&
+        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= (f ? 6 : 3) &&
         wordsFit(c, input.heading, "title", w, size) &&
         height() <= 444;
       const floor = Math.round(c.s.heading * 0.8);
@@ -1158,7 +1176,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           line,
           "body",
           { x: G.margin, y: bandBottom - lh + 14, w: G.width },
-          { color: theme.colors.muted, name: "Caption" },
+          { color: c.t.colors.muted, name: "Caption" },
         );
       break;
     }
@@ -1204,10 +1222,10 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const y = Math.max(top, Math.round((top + bottom) / 2 - h / 2));
         cols.forEach((col, k) => {
           const x = G.margin + k * (colW + gap);
-          box(c, { x, y, w: colW, h }, theme.colors.surface, {
-            stroke: theme.colors.line,
+          box(c, { x, y, w: colW, h }, c.t.colors.surface, {
+            stroke: c.t.colors.line,
             strokeWidth: 1,
-            radius: Math.min(theme.radius, 16),
+            radius: Math.min(c.t.radius, 16),
           });
           const band = { x: x + pad, y: y + pad, w: iw, h: bh };
           if (col.figure && "photo" in col.figure) photoBox(c, col.figure, band);
@@ -1217,7 +1235,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             col.label,
             "lead",
             { x: x + pad, y: band.y + band.h + 8, w: iw },
-            { color: theme.colors.accent, weight: 700, name: "Label" },
+            { color: c.t.colors.accent, weight: 700, name: "Label" },
           );
           if (col.text)
             text(
@@ -1225,7 +1243,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
               col.text,
               "body",
               { x: x + pad, y: lab.y + lab.h + 4, w: iw },
-              { color: theme.colors.ink, name: "Text" },
+              { color: c.t.colors.ink, name: "Text" },
             );
         });
         c.s = s0;
@@ -1240,7 +1258,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           "lead",
           { x: G.margin, y: G.band.y - 8, w: G.width },
           {
-            color: theme.colors.ink,
+            color: c.t.colors.ink,
             name: "Lead",
           },
         );
@@ -1262,17 +1280,17 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
       const y = leadH ? G.band.y - 8 + leadH : Math.max(G.band.y, Math.round(bandMid - h / 2 - 4));
       cols.forEach((col, k) => {
         const x = G.margin + k * (colW + gap);
-        box(c, { x, y, w: colW, h }, theme.colors.surface, {
-          stroke: theme.colors.line,
+        box(c, { x, y, w: colW, h }, c.t.colors.surface, {
+          stroke: c.t.colors.line,
           strokeWidth: 1,
-          radius: Math.min(theme.radius, 16),
+          radius: Math.min(c.t.radius, 16),
         });
         const lab = text(
           c,
           col.label,
           "lead",
           { x: x + pad, y: y + pad, w: colW - 2 * pad },
-          { color: theme.colors.accent, weight: 700, name: "Label" },
+          { color: c.t.colors.accent, weight: 700, name: "Label" },
         );
         if (col.text)
           text(
@@ -1280,7 +1298,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             col.text,
             "body",
             { x: x + pad, y: lab.y + lab.h + 10, w: colW - 2 * pad },
-            { color: theme.colors.ink, name: "Text" },
+            { color: c.t.colors.ink, name: "Text" },
           );
       });
       c.s = s0;
@@ -1305,7 +1323,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             line,
             "body",
             { x: G.margin, y: G.band.y + h + 14, w: G.width },
-            { color: theme.colors.muted, name: "Caption", align: "center" },
+            { color: c.t.colors.muted, name: "Caption", align: "center" },
           );
       } else if (f) figurePanel(c, f, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h - lh });
       break;
@@ -1334,7 +1352,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           s.caption,
           "body",
           { x, y: y + picH + 14, w },
-          { color: theme.colors.ink, weight: 600, align: "center", name: "Caption" },
+          { color: c.t.colors.ink, weight: 600, align: "center", name: "Caption" },
         );
         if (k < n - 1)
           c.els.push({
@@ -1347,7 +1365,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
             h: 20,
             from: { x: 0, y: 0.5 },
             to: { x: 1, y: 0.5 },
-            stroke: theme.colors.accent,
+            stroke: c.t.colors.accent,
             strokeWidth: 4,
             arrowEnd: true,
           } as SlideElement);
@@ -1389,7 +1407,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
         gap = Math.round(18 * r.space);
         pad = Math.max(10, Math.round(20 * r.space));
-        d = Math.round(c.s.body * 1.25);
+        d = markerDisc(c);
         sH = stem ? measure(c, stem, "lead", G.width) + Math.round(22 * r.space) : 0;
         g = grid(opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
         if (opts.length === 3) {
@@ -1408,17 +1426,17 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           stem,
           "lead",
           { x: G.margin, y, w: G.width },
-          { color: theme.colors.ink, name: "Stem" },
+          { color: c.t.colors.ink, name: "Stem" },
         );
         y += sH;
       }
       opts.forEach((o, k) => {
         const x = G.margin + (k % g.perRow) * (g.w + gap);
         const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
-        box(c, { x, y: yy, w: g.w, h: g.rowH }, theme.colors.surface, {
-          stroke: theme.colors.line,
+        box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
+          stroke: c.t.colors.line,
           strokeWidth: 1,
-          radius: Math.min(theme.radius, 16),
+          radius: Math.min(c.t.radius, 16),
           name: "Option",
         });
         disc(c, String.fromCharCode(65 + k), x + pad, yy + g.rowH / 2 - d / 2, d);
@@ -1428,7 +1446,7 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
           o,
           "body",
           { x: x + pad + d + 14, y: yy + g.rowH / 2 - th / 2, w: g.iw },
-          { color: theme.colors.ink, name: "Option text" },
+          { color: c.t.colors.ink, name: "Option text" },
         );
       });
       c.s = full;
@@ -1465,14 +1483,14 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const fits = (role: "heading" | "lead") => measure(c, prompt, role, w) + 2 * 40 <= G.band.h;
         const role = fits("heading") ? "heading" : "lead";
         const h = measure(c, prompt, role, w) + 2 * 40;
-        box(c, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h }, wash(theme));
+        box(c, { x: G.margin, y: G.band.y, w: G.width, h: G.band.h }, wash(c.t));
         if (h > G.band.h) c.over.push(`discussion ${h}/${G.band.h}pt`);
         text(
           c,
           prompt,
           role,
           { x: G.margin + 76, y: Math.max(G.band.y + 40, bandMid - h / 2 + 40), w },
-          { color: theme.colors.ink, weight: role === "heading" ? 600 : 700, name: "Prompt" },
+          { color: c.t.colors.ink, weight: role === "heading" ? 600 : 700, name: "Prompt" },
         );
       }
       break;

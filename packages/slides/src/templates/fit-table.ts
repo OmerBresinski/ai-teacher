@@ -9,7 +9,7 @@ import { writeFileSync } from "node:fs";
 import { countLines } from "../text-measure";
 import { getTheme } from "../themes";
 import { TEMPLATE_DOCS } from "./capacity";
-import { atFullSize, G, layoutTemplate, type TemplateInput, templateScale } from "./index";
+import { G, layoutTemplate, type TemplateInput, templateScale } from "./index";
 import { GROUPS } from "./slot-limits";
 
 const OUT = process.argv[2] ?? "fit.json";
@@ -142,14 +142,14 @@ const LADDER = true;
 const clean = (g: Group, make: () => TemplateInput) =>
   GROUPS[g].themes.every((th) =>
     GROUPS[g].stages.every((st) => {
-      const lay = () => {
+      const lay = (fullSize: boolean) => {
         try {
-          return layoutTemplate(make(), getTheme(th), st as never).over.length === 0;
+          return layoutTemplate(make(), getTheme(th), st as never, { fullSize }).over.length === 0;
         } catch {
           return false;
         }
       };
-      return LADDER ? lay() : atFullSize(lay);
+      return lay(!LADDER);
     }),
   );
 /**

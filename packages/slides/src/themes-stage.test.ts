@@ -80,7 +80,38 @@ describe("a theme bound to a key stage", () => {
   });
 });
 
+describe("only real key stages bind", () => {
+  test("Object.prototype names and other junk are not key stages", () => {
+    const chalk = getTheme("chalk");
+    for (const band of [
+      "constructor",
+      "toString",
+      "__proto__",
+      "hasOwnProperty",
+      "valueOf",
+      "",
+      "ks6",
+    ]) {
+      expect(getTheme("chalk", band)).toBe(chalk);
+      expect(atKeyStage(chalk, band)).toBe(chalk);
+      expect(typeScale(atKeyStage(chalk, band))).toBeUndefined();
+    }
+  });
+});
+
 describe("staged copies (master: no process-wide stage)", () => {
+  test("a spread copy of a staged theme keeps its stage", () => {
+    const ks1 = atKeyStage(getTheme("splash"), "ks1");
+    const copy = { ...ks1, colors: { ...ks1.colors, accent: "#000000" } };
+    expect(keyStageOf(copy)).toBe("ks1");
+    expect(typeScale(copy)?.body).toBe(33);
+    expect(keyStageOf({ ...getTheme("splash", "ks2") })).toBe("ks2");
+  });
+
+  test("restaging a staged theme reads the new stage", () => {
+    expect(keyStageOf(atKeyStage(getTheme("studio", "ks1"), "ks3"))).toBe("ks3");
+  });
+
   test("two jobs at different stages read their own scale side by side", () => {
     const studio = getTheme("studio");
     const a = atKeyStage(studio, "ks1");

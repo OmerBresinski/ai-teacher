@@ -9,7 +9,6 @@
 import type { Theme } from "@tj/domain/documents";
 import { countLines } from "../text-measure";
 import {
-  atFullSize,
   G,
   layoutTemplate,
   type Stage,
@@ -406,7 +405,7 @@ const FORMULA_SAMPLE = 16;
 export function measureTemplate(doc: TemplateDoc, theme: Theme, stage: Stage): Capacity {
   // Fit-first: measured at full size, ladder off (the ladder is a net, not capacity).
   const clean = (input: TemplateInput) =>
-    atFullSize(() => layoutTemplate(input, theme, stage).over.length === 0);
+    layoutTemplate(input, theme, stage, { fullSize: true }).over.length === 0;
   const headingMax = largest((n) =>
     clean({ ...inputFor(doc, doc.variants[0] as never, 10), heading: sample(n) }),
   );

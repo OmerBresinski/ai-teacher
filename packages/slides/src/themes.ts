@@ -393,13 +393,19 @@ export const BODY_SMALL = 0.85;
 /** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
 const DISPLAY_HEADING = 1.15;
 
-const STAGED = new WeakMap<Theme, KeyStage>();
+/** The key stages, as a set: `in` on `KEY_STAGE_TYPE` would also accept "constructor" or "toString". */
+const STAGES = new Set<string>(Object.keys(KEY_STAGE_TYPE));
 const asStage = (band: string | undefined | null): KeyStage | undefined => {
-  const k = (band ?? "").toLowerCase();
-  return k in KEY_STAGE_TYPE ? (k as KeyStage) : undefined;
+  const k = typeof band === "string" ? band.toLowerCase() : "";
+  return STAGES.has(k) ? (k as KeyStage) : undefined;
 };
+/**
+ * A theme read at a key stage carries the stage as a real field, so a spread copy downstream
+ * (`{ ...theme, colors }`) keeps it.
+ */
+type StagedTheme = Theme & { keyStage?: KeyStage };
 /** The key stage `t` is read at (undefined: the theme's own sizes). */
-export const keyStageOf = (t: Theme): KeyStage | undefined => STAGED.get(t);
+export const keyStageOf = (t: Theme): KeyStage | undefined => asStage((t as StagedTheme).keyStage);
 /**
  * `t` read at `band`'s key stage: a copy that carries the stage, the catalogue theme untouched.
  * An unknown band gives `t` itself (the theme's own sizes).
@@ -407,8 +413,7 @@ export const keyStageOf = (t: Theme): KeyStage | undefined => STAGED.get(t);
 export function atKeyStage(t: Theme, band: string | undefined | null): Theme {
   const ks = asStage(band);
   if (!ks) return t;
-  const staged = { ...t };
-  STAGED.set(staged, ks);
+  const staged: StagedTheme = { ...t, keyStage: ks };
   return staged;
 }
 
@@ -438,7 +443,7 @@ function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
 
 /** THE type scale at `t`'s key stage (`atKeyStage`). Undefined at no stage (the theme's own ladder). */
 export function typeScale(t: Theme): TypeScale | undefined {
-  const ks = STAGED.get(t);
+  const ks = keyStageOf(t);
   return ks ? scaleAt(t.sizes, ks) : undefined;
 }
 
