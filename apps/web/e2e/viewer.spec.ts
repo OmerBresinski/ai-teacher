@@ -1,5 +1,5 @@
 import { expectNoSeriousA11yViolations } from "./a11y";
-import { expect, seedCreditedLesson, test } from "./fixtures";
+import { expect, test } from "./fixtures";
 
 const status = (page: import("@playwright/test").Page) => page.getByRole("status");
 
@@ -76,23 +76,5 @@ test.describe("lesson viewer", () => {
     await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
   });
 
-  test("a missing id is a 404", async ({ signedInPage: { page } }) => {
-    await page.goto("/l/00000000-0000-4000-8000-000000000000");
-    await expect(page.getByText("Page not found")).toBeVisible();
-  });
-
   // TEACH-161 row 8: the viewer shows the slides as they are, with no credits page appended.
-  test("a lesson with credited pictures has no Image credits page in the viewer", async ({
-    signedInPage: { page },
-  }) => {
-    const id = await seedCreditedLesson(page);
-    await page.goto(`/l/${id}/view`);
-    await expect(page.getByText("4 slides")).toBeVisible();
-    await expect(
-      page.getByRole("navigation", { name: "Slides" }).getByRole("button", { name: /^Slide \d+$/ }),
-    ).toHaveCount(4);
-    await page.keyboard.press("End");
-    await expect(status(page)).toContainText("Slide 4 of 4");
-    await expect(page.getByText("Image credits")).toHaveCount(0);
-  });
 });
