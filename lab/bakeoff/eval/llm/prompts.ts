@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const VERSIONS = {
   answerable: "bake-answerable.v3",
-  objectives: "bake-objectives.v1",
+  objectives: "bake-objectives.v2",
   picq: "bake-picture-questions.v2",
   picvqa: "bake-picture-answer.v1",
   reader: "bake-reader-quiz.v1",
@@ -16,7 +16,8 @@ type Deck = any;
 type Slide = any;
 
 const head = (d: Deck) => `Year group: ${d.year}. Subject: ${d.subject}. Topic: ${d.title}.`;
-const qLine = (q: any) => `${q.id}: ${q.text}${q.options.length ? "\n" + q.options.map((o: string) => `  ${o}`).join("\n") : ""}`;
+const qLine = (q: any) =>
+  `${q.id}: ${q.text}${q.options.length ? "\n" + q.options.map((o: string) => `  ${o}`).join("\n") : ""}`;
 
 /* ---------- 1. Questions answerable from their own slide (text only, one call per lesson) ---------- */
 export const answerableSystem = `You check the questions on a lesson's question slides. A pupil sees one slide at a time. For each question, decide whether the material the question tells the pupil to use is on that same slide, and whether the slide already gives its answer away.
@@ -38,11 +39,22 @@ Two questions on one slide: "1. Name the young horse. 2. What will it grow into?
 export function answerableUser(d: Deck, slideText: (s: Slide) => string): string {
   const blocks = d.slides
     .filter((s: Slide) => s.questions.length)
-    .map((s: Slide) => `Slide ${s.n}\nOn the slide:\n${slideText(s)}\nQuestions:\n${s.questions.map(qLine).join("\n")}`);
+    .map(
+      (s: Slide) =>
+        `Slide ${s.n}\nOn the slide:\n${slideText(s)}\nQuestions:\n${s.questions.map(qLine).join("\n")}`,
+    );
   return `${head(d)}\n\n${blocks.join("\n\n")}`;
 }
 export const answerableSchema = z.object({
-  rows: z.array(z.object({ id: z.string(), material: z.string(), onSlide: z.enum(["yes", "no", "n/a"]), givenAwayBy: z.string(), givenAway: z.enum(["yes", "no"]) })),
+  rows: z.array(
+    z.object({
+      id: z.string(),
+      material: z.string(),
+      onSlide: z.enum(["yes", "no", "n/a"]),
+      givenAwayBy: z.string(),
+      givenAway: z.enum(["yes", "no"]),
+    }),
+  ),
 });
 
 /* ---------- 2. Objectives taught and checked (text only, one call per lesson) ---------- */
@@ -59,12 +71,17 @@ export function objectivesUser(d: Deck, slideText: (s: Slide) => string): string
   const objs = d.objectives.map((o: any) => `${o.id}: ${o.text}`).join("\n");
   const slides = d.slides
     .filter((s: Slide) => s.role === "teach" || s.role === "question")
-    .map((s: Slide) => `Slide ${s.n} (${s.role === "teach" ? "teaching" : "question"})\n${slideText(s)}${s.questions.length ? "\n" + s.questions.map((q: any) => q.text + (q.options.length ? " " + q.options.join(" ") : "")).join("\n") : ""}`);
+    .map(
+      (s: Slide) =>
+        `Slide ${s.n} (${s.role === "teach" ? "teaching" : "question"})\n${slideText(s)}${s.questions.length ? "\n" + s.questions.map((q: any) => q.text + (q.options.length ? " " + q.options.join(" ") : "")).join("\n") : ""}`,
+    );
   return `${head(d)}\n\nObjectives:\n${objs}\n\nSlides:\n\n${slides.join("\n\n")}`;
 }
 const cite = z.object({ slide: z.number().int(), quote: z.string() });
 export const objectivesSchema = z.object({
-  objectives: z.array(z.object({ id: z.string(), look: z.string(), taught: z.array(cite), checked: z.array(cite) })),
+  objectives: z.array(
+    z.object({ id: z.string(), look: z.string(), taught: z.array(cite), checked: z.array(cite) }),
+  ),
 });
 
 /* ---------- 3a. Picture questions (text only, one call per lesson; TIFA / Davidsonian decomposition) ---------- */
@@ -83,14 +100,28 @@ export function picqUser(d: Deck, slideText: (s: Slide) => string): string {
   const blocks: string[] = [];
   for (const s of d.slides)
     for (const p of s.pictures.filter((p: any) => !p.background))
-      blocks.push(`Picture ${p.id} (${p.kind}) on slide ${s.n}\nSlide text:\n${slideText({ ...s, pictures: [] })}\nRequest: ${p.request ?? p.alt ?? "(none)"}`.replace(/Request: $/, "Request: (none)"));
+      blocks.push(
+        `Picture ${p.id} (${p.kind}) on slide ${s.n}\nSlide text:\n${slideText({ ...s, pictures: [] })}\nRequest: ${p.request ?? p.alt ?? "(none)"}`.replace(
+          /Request: $/,
+          "Request: (none)",
+        ),
+      );
   return `${head(d)}\n\n${blocks.join("\n\n")}`;
 }
 export const picqSchema = z.object({
-  pictures: z.array(z.object({
-    id: z.string(),
-    questions: z.array(z.object({ id: z.string(), kind: z.enum(["subject", "attribute", "count", "relation", "label"]), question: z.string(), dependsOn: z.string().nullable() })),
-  })),
+  pictures: z.array(
+    z.object({
+      id: z.string(),
+      questions: z.array(
+        z.object({
+          id: z.string(),
+          kind: z.enum(["subject", "attribute", "count", "relation", "label"]),
+          question: z.string(),
+          dependsOn: z.string().nullable(),
+        }),
+      ),
+    }),
+  ),
 });
 
 /* ---------- 3b. Picture answers (vision, one call per picture, the picture cropped from the render) ---------- */
@@ -100,9 +131,12 @@ For each question, in order:
 - seen: what you see in the picture that bears on the question, in one short sentence. When the thing asked about is not visible, say so. For a count, count the things one by one here.
 - answer: "yes" when the picture clearly shows it; "no" when the picture shows otherwise or does not show it; "unsure" only when the picture is too small, cropped or unclear to tell.`;
 
-export const picvqaUser = (qs: { id: string; question: string }[]) => `Questions:\n${qs.map((q) => `${q.id}: ${q.question}`).join("\n")}`;
+export const picvqaUser = (qs: { id: string; question: string }[]) =>
+  `Questions:\n${qs.map((q) => `${q.id}: ${q.question}`).join("\n")}`;
 export const picvqaSchema = z.object({
-  answers: z.array(z.object({ id: z.string(), seen: z.string(), answer: z.enum(["yes", "no", "unsure"]) })),
+  answers: z.array(
+    z.object({ id: z.string(), seen: z.string(), answer: z.enum(["yes", "no", "unsure"]) }),
+  ),
 });
 
 /* ---------- 4a. Reader quiz (vision, one call per lesson: the teaching slides only) ---------- */
@@ -117,7 +151,9 @@ export function readerUser(d: Deck, shown: number[], qs: any[]): string {
   return `Year group: ${d.year}. Subject: ${d.subject}.\nThe images are slides ${shown.join(", ")}, in that order.\n\nQuestions:\n${qs.map(qLine).join("\n")}`;
 }
 export const readerSchema = z.object({
-  answers: z.array(z.object({ id: z.string(), slide: z.number().int(), seen: z.string(), answer: z.string() })),
+  answers: z.array(
+    z.object({ id: z.string(), slide: z.number().int(), seen: z.string(), answer: z.string() }),
+  ),
 });
 
 /* ---------- 4b. Marking the reader (text only, one call per lesson) ---------- */
@@ -129,15 +165,29 @@ For each question, in order:
 - supported: "yes" when the cited slide's content contains what the reader needed for that answer; "no" when the answer needs something the slide does not show, or no slide was cited.`;
 
 export function markUser(d: Deck, items: any[]): string {
-  return `${head(d)}\n\n` + items.map((it) =>
-    `Question ${it.id} (question ${it.pos} of ${it.of} on slide ${it.slide}): ${it.text}${it.options.length ? "\n  " + it.options.join("\n  ") : ""}
+  return (
+    `${head(d)}\n\n` +
+    items
+      .map(
+        (it) =>
+          `Question ${it.id} (question ${it.pos} of ${it.of} on slide ${it.slide}): ${it.text}${it.options.length ? "\n  " + it.options.join("\n  ") : ""}
 Teacher notes for slide ${it.slide}: ${it.notes || "(none)"}
 Revealed on the slide: ${it.revealed || "(nothing)"}
 Reader's answer: ${it.answer}
-Cited slide: ${it.cited ? `slide ${it.cited}\n${it.citedText}\nReader says they used: ${it.seen || "(nothing)"}` : "none"}`).join("\n\n");
+Cited slide: ${it.cited ? `slide ${it.cited}\n${it.citedText}\nReader says they used: ${it.seen || "(nothing)"}` : "none"}`,
+      )
+      .join("\n\n")
+  );
 }
 export const markSchema = z.object({
-  marks: z.array(z.object({ id: z.string(), key: z.string(), matchesKey: z.enum(["yes", "partly", "no", "n/a"]), supported: z.enum(["yes", "no"]) })),
+  marks: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      matchesKey: z.enum(["yes", "partly", "no", "n/a"]),
+      supported: z.enum(["yes", "no"]),
+    }),
+  ),
 });
 
 /* ---------- 5. Visual fit (text only, one call per lesson; reported, not a gate) ---------- */
@@ -157,16 +207,26 @@ Two boundary examples, on topics outside this lesson:
 - Year 11 slide "Malvolio's letter scene: the trick depends on his vanity" with a stock photo of a theatre stage: role "decorative".`;
 
 // seen: the picture-answer probe's (3b) "seen" sentences per picture id, when it has run.
-export function visualfitUser(d: Deck, slideText: (s: Slide) => string, seen: Record<string, string[]> = {}): string {
+export function visualfitUser(
+  d: Deck,
+  slideText: (s: Slide) => string,
+  seen: Record<string, string[]> = {},
+): string {
   const teach = d.slides.filter((s: Slide) => s.role === "teach");
   const bare = teach.filter((s: Slide) => !s.pictures.some((p: any) => !p.background));
   const pics: string[] = [];
   for (const s of d.slides.filter((s: Slide) => s.role === "teach" || s.role === "question"))
     for (const p of s.pictures.filter((p: any) => !p.background))
-      pics.push(`Picture ${p.id} (${p.kind}) on slide ${s.n}\nSlide text:\n${slideText({ ...s, pictures: [] })}\nAsked to show: ${p.request || "(not recorded)"}${seen[p.id]?.length ? `\nSeen in it: ${seen[p.id].join(" ")}` : ""}`);
+      pics.push(
+        `Picture ${p.id} (${p.kind}) on slide ${s.n}\nSlide text:\n${slideText({ ...s, pictures: [] })}\nAsked to show: ${p.request || "(not recorded)"}${seen[p.id]?.length ? `\nSeen in it: ${seen[p.id].join(" ")}` : ""}`,
+      );
   return `${head(d)}\n\nSlides with no picture:\n\n${bare.map((s: Slide) => `Slide ${s.n}\n${slideText(s)}`).join("\n\n") || "(none)"}\n\nPictures and diagrams:\n\n${pics.join("\n\n") || "(none)"}`;
 }
 export const visualfitSchema = z.object({
-  slides: z.array(z.object({ slide: z.number().int(), need: z.enum(["yes", "no"]), shows: z.string() })),
-  pictures: z.array(z.object({ id: z.string(), why: z.string(), role: z.enum(["teaches", "decorative"]) })),
+  slides: z.array(
+    z.object({ slide: z.number().int(), need: z.enum(["yes", "no"]), shows: z.string() }),
+  ),
+  pictures: z.array(
+    z.object({ id: z.string(), why: z.string(), role: z.enum(["teaches", "decorative"]) }),
+  ),
 });
