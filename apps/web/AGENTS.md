@@ -112,9 +112,10 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   candidate for `@tj/ui`; `theme-tiles.tsx` draws the title slide per theme with `LessonThumb`).
   Subject, year group and theme are remembered per browser (`lib/brief-memory.ts`). "New lesson"
   in the library navigates here (and preloads the chunk on hover); `NewDocumentDialog` stays only
-  for the page's "Blank lesson" action (the only blank-lesson entry point). e2e:
-  `brief` spec; `teach-177-screenshots` (opt-in) captures the brief; `/lessons/new` is in the
-  a11y route list.
+  for the page's "Blank lesson" action (the only blank-lesson entry point). Unit:
+  `lesson-brief.page.test.tsx` (focus, prefill, the guard, the materials dialog); e2e: `brief`
+  spec (planning and uploads end to end); `teach-177-screenshots` (opt-in) captures the brief;
+  `/lessons/new` is in the a11y route list.
 - `/worksheets/new?lesson=<id>` is the worksheet creation flow (`worksheet-create.route.ts` +
   `worksheet-create.page.tsx`, TEACH-184): Source (recent lessons, a search box, Blank) then Kind
   (the nine recipes as live miniatures built from the lesson's facts, or `DEMO_LESSON_FACTS` with
@@ -126,7 +127,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   with the class from `lib/brief-memory.ts`. "New worksheet" in the library and Home's tile, and
   the lesson editor's "Worksheet" action (`?lesson=`), all come here. Sheet headers call
   `estimateMinutes` and cards `minutesForMarks` (`@tj/editor/worksheet-metrics`), the same
-  rate and rounding, so a sheet of questions reads the same in both. e2e: `worksheet-create` spec;
+  rate and rounding, so a sheet of questions reads the same in both. Unit:
+  `worksheet-create.page.test.tsx` (Source, Kind, the keyboard path, example facts); e2e:
+  `worksheet-create` spec (rows 4 and 6 into the real editor, axe on both steps);
   `teach-184-screenshots` (opt-in); `/worksheets/new` is in the a11y route list.
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present
