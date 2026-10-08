@@ -126,7 +126,7 @@ test.describe("PowerPoint export", () => {
   });
 });
 
-// TEACH-161 rows 5–7: the credited lesson ends every PowerPoint and PNG export on "Image credits".
+// TEACH-161 rows 5–7, as TEACH-251 left them: PNG exports end on "Image credits"; PowerPoint does not.
 test.describe("image credits", () => {
   /** Collect downloads as they land; resolves once `count` have arrived. */
   const collect = (page: import("@playwright/test").Page, count: number) => {
@@ -162,7 +162,7 @@ test.describe("image credits", () => {
       () => (window as unknown as { __run: { labels: string[]; credits: string[] } }).__run,
     );
 
-  test("PowerPoint: the last slide is the credits slide, with the photographer as a link", async ({
+  test("PowerPoint: no credits slide; Pexels and Openverse pictures add nothing to the notes (TEACH-251)", async ({
     signedInPage: { page },
   }) => {
     const id = await seedCreditedLesson(page);
@@ -171,13 +171,17 @@ test.describe("image credits", () => {
     const download = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Export PowerPoint" }).click();
     const zip = await JSZip.loadAsync(readFileSync(await (await download).path()));
-    const slides = Object.keys(zip.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n));
-    expect(slides).toHaveLength(5);
-    const last = (await zip.file("ppt/slides/slide5.xml")?.async("string")) ?? "";
-    expect(last).toContain("Image credits");
-    expect(last).toContain("<a:hlinkClick");
-    const rels = (await zip.file("ppt/slides/_rels/slide5.xml.rels")?.async("string")) ?? "";
-    expect(rels).toContain('Target="https://www.pexels.com/@ada"');
+    const files = Object.keys(zip.files);
+    const slides = files.filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n));
+    expect(slides).toHaveLength(4);
+    const xml = await Promise.all(
+      files
+        .filter((n) => /^ppt\/(slides\/slide|notesSlides\/notesSlide)\d+\.xml$/.test(n))
+        .map((n) => zip.file(n)?.async("string") ?? ""),
+    );
+    expect(xml.some((x) => x.includes("Image credits") || x.includes("Picture credits"))).toBe(
+      false,
+    );
   });
 
   test("row 6: PNG of the whole deck downloads every slide, then <slug>-credits.png at 2x", {
