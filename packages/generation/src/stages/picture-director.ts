@@ -442,7 +442,7 @@ export async function findDirected(args: {
    * stage or sex) is a stage request, so the bank lookup skips stock rows and generated rows not made
    * for a stage request. Any other picture, whatever its route, reuses bank rows as before.
    */
-  stageBank?: boolean;
+  stageBank?: boolean | StageWords;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -484,7 +484,7 @@ export async function findDirected(args: {
     return undefined;
   }
   const req =
-    args.stageBank && isStageRequest(direction, plan)
+    args.stageBank && isStageRequest(direction, plan, args.stageBank)
       ? { ...plan.request, stage: true }
       : plan.request;
   const brief: ImageBrief =
@@ -554,9 +554,15 @@ export async function findDirected(args: {
 export function isStageRequest(
   d: (PictureDirection & Partial<Pick<PictureDirectionV12, "stage">>) | undefined,
   plan: PicturePlan,
+  rule: boolean | StageWords = true,
 ): boolean {
-  return d?.stage === true && plan.kind === "photo" && !plan.request.draw && !plan.request.named;
+  if (plan.kind !== "photo" || plan.request.draw || plan.request.named) return false;
+  if (d?.stage === true) return true;
+  // BAKEOFF stage6 (faults-3-6-8 #6c): director v11 marks no stage, so the request's words decide.
+  return typeof rule === "function" && rule([plan.request.text, ...plan.brief.mustShow].join(" "));
 }
+/** BAKEOFF stage6: reads a stage request from its words (director v11 has no `stage` field). */
+export type StageWords = (text: string) => boolean;
 
 /** BAKEOFF b4-r1t3: the director's pictures after the first, each fetched as its own one-picture slot. */
 async function directedTiles(
@@ -584,7 +590,7 @@ async function directedTiles(
         specific: plan.brief.specific || args.brief.specific === true,
       };
       const out = await findPicture(
-        args.stageBank && isStageRequest(one, plan)
+        args.stageBank && isStageRequest(one, plan, args.stageBank)
           ? { ...plan.request, stage: true }
           : plan.request,
         args.bank,

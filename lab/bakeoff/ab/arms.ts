@@ -52,6 +52,9 @@ export const AB_ARMS = [
   "exit1",
   "plotzone",
   "labels3",
+  "orphan6",
+  "match6",
+  "stage6",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -96,6 +99,12 @@ export const AB_CONFIG: Record<
     plotZone?: boolean;
     /** labels3 (faults-3-6-8 #3): spare diagram-spec labels never sit in literal particle slots. */
     labels3?: boolean;
+    /** orphan6 (#6a): a fit repair that moves a pictured item's only words drops the picture. */
+    orphan6?: boolean;
+    /** match6 (#6b): a several-thing slot ships only when the judge saw every must_see thing. */
+    match6?: boolean;
+    /** stage6 (#6c): an age, stage or sex request (by its words) never reuses stock bank rows. */
+    stage6?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -518,6 +527,33 @@ export const AB_CONFIG: Record<
     delta:
       "base4 + particles spec mend: no compare arrows, keys only for drawn kinds, no stray notes",
   },
+  orphan6: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    orphan6: true,
+    delta: "base4 + a fit repair that orphans a pictured item drops the picture",
+  },
+  match6: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    match6: true,
+    delta: "base4 + a several-thing picture slot ships only when visible covers every must_see",
+  },
+  stage6: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    stage6: true,
+    delta: "base4 + stage requests (by their words) never reuse stock or non-stage bank rows",
+  },
 };
 /** The arm each arm is diffed against, and the arm whose delta it must reproduce (D4). */
 export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }>> = {
@@ -557,6 +593,9 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   base6: { ref: "base4" },
   exit1: { ref: "base6" },
   labels3: { ref: "base4" },
+  orphan6: { ref: "base4" },
+  match6: { ref: "base4" },
+  stage6: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -606,6 +645,9 @@ export const abNotesAlt = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].not
 export const abPlotZone = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].plotZone) : false);
 /** labels3: the particles label mend (packages/slides diagrams/labels3.ts). */
 export const abLabels3 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].labels3) : false);
+export const abOrphan6 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].orphan6) : false);
+export const abMatch6 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].match6) : false);
+export const abStage6 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].stage6) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);

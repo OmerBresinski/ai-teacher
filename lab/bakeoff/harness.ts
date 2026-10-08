@@ -19,8 +19,10 @@ import {
   abFigureSync,
   abFiles,
   abFixes,
+  abMatch6,
   abNotesAlt,
   abObjRetry,
+  abOrphan6,
   abR1t,
   abR1t2,
   abShared,
@@ -30,6 +32,7 @@ import { localAlt, localiseSlideAlts, slideWords } from "./ab/caption";
 import { continueForFit } from "./ab/continue";
 import { exitTicketSlide, type PlacedExitTicket, readExitTicket } from "./ab/exit-ticket";
 import { isQuestionSlide } from "./ab/lib";
+import { orphansAfterFit, unmatchedItems } from "./ab/pics6";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
@@ -1066,6 +1069,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
   const early = new Map<number, Promise<PhotoResult | undefined>>();
   /** Aborts an early flow job a slide doesn't take over (compare cards, sequences): no spend for nothing. */
   const earlyAbort = new Map<number, AbortController>();
+  /** match6 (faults-3-6-8 #6b): each picture slot's writer must_see, by visual key. */
+  const mustSeeAt = new Map<string, string[]>();
   const startPhoto = (
     i: number,
     a: Extract<VisualAsk, { type: "photo" }>,
@@ -1074,6 +1079,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
   ) => {
     const k = `${i}:${a.key}`;
     const fresh = o.freshSlides?.includes(i + 1);
+    mustSeeAt.set(k, a.mustSee);
     if (reused && !fresh) {
       // The flow's early job stands for the slide's first picture (it takes the job over).
       const first = [...reused.keys()].find(
@@ -1107,6 +1113,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     group: Extract<VisualAsk, { type: "photo" }>[],
     words: { heading: string; text: string },
   ) => {
+    for (const a of group) mustSeeAt.set(`${i}:${a.key}`, a.mustSee);
     if (reused && !o.freshSlides?.includes(i + 1))
       return Promise.resolve(group.map((a) => reused.get(`${i}:${a.key}`)));
     if (!pics) return;
@@ -1145,7 +1152,14 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
             vetoed.set(`${i}:${key}`, veto);
             log({ ev: "picture-veto", key: `${i}:${key}`, why: veto, request: r0?.request });
           }
-          const r = veto ? undefined : r0;
+          // match6: a several-thing slot ships its picture only when the judge saw every thing.
+          const unmatched =
+            abMatch6() && r0 && !veto
+              ? unmatchedItems(mustSeeAt.get(`${i}:${key}`) ?? [], seenOf(r0 as never))
+              : [];
+          if (unmatched.length)
+            log({ ev: "match6-drop", key: `${i}:${key}`, unmatched, request: r0?.request });
+          const r = veto || unmatched.length ? undefined : r0;
           visuals.set(`${i}:${key}`, r ? { status: "photo", photo: r } : { status: "failed" });
           // One picture at most once per lesson unless the same request asks for it (K's y1 smoke:
           // the title photo came back on another slide). The later slide loses it and falls back.
@@ -2151,6 +2165,16 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
         faults: c.faults,
       });
       return false;
+    }
+    // orphan6 (faults-3-6-8 #6a): a fit repair that moved the only words naming a pictured thing
+    // drops the picture, so a kept picture never shows an item the slide no longer asks about.
+    if (abOrphan6() && mode === "fit") {
+      const orphans = orphansAfterFit(o2.slide, moved);
+      if (orphans.length) {
+        o2.slide = { ...o2.slide, picture: null };
+        visuals.set(`${i}:picture`, { status: "failed" });
+        log({ ev: "orphan6-drop", slide: i + 1, orphans, moved });
+      }
     }
     const n0 = notes.get(i);
     const saved = await swapSlide(i, o2.slide);
