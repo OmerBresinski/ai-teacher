@@ -1,7 +1,7 @@
 /**
- * TEACH-193: worksheet cards paint the top of their own page 1, the meta line keeps the time
- * whole, Print opens the print route with `?auto=1` in a new tab, and marks print only with the
- * sheet's Marks switch on (UX rulings 31 and 60).
+ * TEACH-193: the card's meta line keeps the time whole, Print opens the print route with `?auto=1`
+ * in a new tab, and marks print only with the sheet's Marks switch on (UX rulings 31 and 60). The
+ * card painting its own page 1 is a unit test (`lesson-thumb.test.tsx`, TEACH-301).
  */
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";

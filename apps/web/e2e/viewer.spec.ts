@@ -75,6 +75,4 @@ test.describe("lesson viewer", () => {
     // Sidebar count moved from the seeded 10 to 11 (the count is in the link's accessible name).
     await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("11");
   });
-
-  // TEACH-161 row 8: the viewer shows the slides as they are, with no credits page appended.
 });

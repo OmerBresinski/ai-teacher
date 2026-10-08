@@ -16,6 +16,9 @@ test.describe("lesson brief", () => {
     signedInPage: { page },
   }) => {
     await page.goto("/lessons/new");
+    await expect(page).toHaveTitle("New lesson · DayBack");
+    // The intake sits outside the library shell.
+    await expect(page.getByRole("navigation", { name: "Library" })).toHaveCount(0);
     await page.getByRole("textbox", { name: "Topic", exact: true }).fill("Fractions of amounts");
     await page.getByRole("combobox", { name: "Year group" }).click();
     await page.getByRole("option", { name: "Year 5" }).click();

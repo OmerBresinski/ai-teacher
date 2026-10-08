@@ -152,9 +152,6 @@ test.describe("present mode", () => {
     await expect(readout).toHaveText(/00:5\d|0:5\d/);
   });
 
-  // TEACH-113: the remaining shortcut groups (Tools H/L, Screen C/F, Panels N/?) and the nested
-  // Escape order — sheet, then panel, then tool, then exit — over the real key handler.
-
   test("presenting from a series chains to the next lesson and exits to the series", async ({
     signedInPage: { page, paths },
   }) => {

@@ -15,7 +15,6 @@ import { expect, test } from "./fixtures";
 const MARKER = "auditXss";
 const PAYLOAD = `javascript:void(document.body.dataset.${MARKER}=String(1))`;
 
-/** The demo lesson with its first text element replaced by the poisoned link. */
 test.describe("rich-text link safety (TEACH-277)", () => {
   test("a stored javascript: link renders as plain text in view and present", async ({
     signedInPage: { page, paths },

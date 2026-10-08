@@ -3,10 +3,10 @@ import { expectNoSeriousA11yViolations, settled } from "./a11y";
 import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
- * Worksheet recipes (TEACH-183), rows 4, 5 and 7 of the acceptance table on the seeded sheet: the
- * "Add block" pill opens the dialog on Sections; Exit ticket appends as one undo step and focuses
- * its first block; `/exit` in the slash menu finds Exit ticket under Sections. The seeded sheet
- * has no lesson, so the cards show the placeholder build.
+ * Worksheet recipes (TEACH-183), row 5 of the acceptance table on the seeded sheet: Exit ticket
+ * appends as one undo step and focuses its first block (a real caret), with the open dialog's axe
+ * scan. Rows 4, 6 and 7 are unit tests in `@tj/editor` (TEACH-301). The seeded sheet has no
+ * lesson, so the cards show the placeholder build.
  */
 
 const EDITOR = (paths: SeededPaths) => paths.worksheet("fraction-practice");

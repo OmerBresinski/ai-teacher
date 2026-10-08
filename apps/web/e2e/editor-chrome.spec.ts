@@ -3,8 +3,8 @@ import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixt
 
 /*
  * The editor's contextual chrome (TEACH-105): the slide and element toolbars route with the
- * selection, a rail insert lands a selected element, the theme dialog switches the deck's theme,
- * and the More drawer's opacity slider is one undo step per drag.
+ * selection, a rail insert lands a selected element, and the More drawer's opacity slider is one
+ * undo step per drag. The theme dialog and Escape in a popover are unit tests (TEACH-301).
  */
 
 const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");

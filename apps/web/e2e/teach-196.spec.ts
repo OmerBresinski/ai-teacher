@@ -3,7 +3,8 @@ import { expect, test } from "./fixtures";
 
 /*
  * TEACH-196: the success criteria print in the self-assessment strip at the foot, under "Tick what
- * you can do now", and are typed into there. Nothing tick-able sits above the first task.
+ * you can do now". Nothing tick-able sits above the first task. Typing criteria into the strip is
+ * a unit test (`worksheet-editor.test.tsx`, TEACH-301).
  */
 
 const SHEET = "fraction-practice";

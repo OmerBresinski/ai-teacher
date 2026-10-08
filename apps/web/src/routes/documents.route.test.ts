@@ -33,6 +33,17 @@ async function loaderThrows(
   }
 }
 
+describe("document routes", () => {
+  it("a held id loads its document (the control for the not-found cases)", async () => {
+    const load = lessonEditorRoute.options.loader as (opts: unknown) => Promise<{ title: string }>;
+    const document = await load({
+      context: { queryClient: new QueryClient() },
+      params: { lessonId: "demo-water-cycle" },
+    });
+    expect(document.title).toBe("The water cycle");
+  });
+});
+
 describe("document routes with an id the Workspace does not hold", () => {
   it("the lesson and worksheet editor loaders throw notFound()", async () => {
     expect(isNotFound(await loaderThrows(lessonEditorRoute, { lessonId: MISSING }))).toBe(true);

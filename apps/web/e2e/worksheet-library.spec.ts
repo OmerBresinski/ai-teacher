@@ -1,18 +1,18 @@
 /**
- * The Worksheets library (TEACH-186): marks and minutes on every card, New worksheet in the page
- * header, the whole card face opening the sheet, and the four seeded sheets printing as real
- * content, one or two pages on A4 and on Letter, with the answer key derived from the answers.
+ * The Worksheets library (TEACH-186): the whole card face opening the sheet, and the four seeded
+ * sheets printing as real content, one or two pages on A4 and on Letter, with the answer key
+ * derived from the answers. The cards' minutes and New worksheet are unit tests (TEACH-301).
  */
 import type { Page } from "@playwright/test";
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-/** Key, title, a phrase only that sheet's paper carries, and the card's minutes (UX ruling 60). */
+/** Key, title, and a phrase only that sheet's paper carries. */
 const SHEETS = [
-  ["fraction-practice", "Fractions practice", "Worked example", "20 min"],
-  ["roman-source", "Roman source investigation", "Watling Street", "10 min"],
-  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant", "5 min"],
-  ["river-vocabulary", "River vocabulary", "tributary", "5 min"],
+  ["fraction-practice", "Fractions practice", "Worked example"],
+  ["roman-source", "Roman source investigation", "Watling Street"],
+  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant"],
+  ["river-vocabulary", "River vocabulary", "tributary"],
 ] as const;
 
 /** Content pages only: the answer key starts a fresh page and is not counted against the sheet. */

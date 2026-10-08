@@ -122,9 +122,12 @@ describe("real lesson intake", () => {
     search = { topic: "The water cycle" };
     show();
     expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("The water cycle");
-    // A prefilled topic never submits on its own (TEACH-309): nothing is posted before Next.
+    // A prefilled topic never submits on its own (TEACH-309): nothing is posted before Next, even
+    // after the async work an auto-submit would start has had time to run.
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    await new Promise((resolve) => setTimeout(resolve, 100));
     expect(fakeApi.requests.filter((r) => r.path === "/lessons")).toHaveLength(0);
+    expect(navigate).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(post().skipPlanning).toBe(false);
@@ -172,11 +175,16 @@ describe("real lesson intake", () => {
     });
     expect(await screen.findByRole("status")).toHaveTextContent(GUARD_MESSAGE);
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(fakeApi.requests.filter((r) => r.path === "/lessons")).toHaveLength(0);
-    expect(navigate).not.toHaveBeenCalled();
 
+    // The submit is async (an anonymous session first), so prove the guarded click sent nothing by
+    // what follows: a clean topic and Next post exactly once, with the clean topic.
     fireEvent.change(topic, { target: { value: "The water cycle" } });
     await waitFor(() => expect(screen.queryByText(GUARD_MESSAGE)).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+    const posts = fakeApi.requests.filter((r) => r.path === "/lessons" && r.method === "POST");
+    expect(posts).toHaveLength(1);
+    expect(post().brief.topic).toBe("The water cycle");
   });
 
   it("skip planning opens the real editor through the one-job path", async () => {

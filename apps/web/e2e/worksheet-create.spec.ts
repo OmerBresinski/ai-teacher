@@ -18,6 +18,7 @@ test.describe("worksheet creation", () => {
   }) => {
     // Source and Kind are scanned here; their other checks are unit tests (TEACH-301).
     await page.goto("/worksheets/new");
+    await expect(page).toHaveTitle("New worksheet · DayBack");
     await expect(page.getByRole("button", { name: /^The water cycle\./ })).toBeVisible();
     await expectNoSeriousA11yViolations(page, "/worksheets/new (Source)");
     await page.getByRole("button", { name: /^The water cycle\./ }).click();
