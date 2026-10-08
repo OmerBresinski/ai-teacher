@@ -54,6 +54,12 @@ const have = (a: AbArm) => STAGES.every((st) => existsSync(abFiles(a, st).system
 // 1-2. files
 for (const a of AB_ARMS) {
   if (!have(a)) {
+    // 9 Oct: an arm registered before its prompt folder exists is not built yet: it cannot run
+    // (run.ts pinFaults refuses it), so it no longer blocks the other arms' paid runs.
+    if (!existsSync(`${AB}/prompts/${a}`)) {
+      console.log("skip", `${a}: not built (no ab/prompts/${a}/ yet); it cannot run until it is`);
+      continue;
+    }
     fail(`${a}: system files missing in ab/prompts/${a}/ (prompt agent's)`);
     continue;
   }
