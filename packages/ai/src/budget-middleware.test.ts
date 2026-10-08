@@ -177,7 +177,13 @@ describe("prepared request estimates", () => {
         },
       ],
     };
-    for (const bare of ["gpt-6-luna", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
+    for (const bare of [
+      "gpt-6-luna",
+      "gpt-6.1-sol",
+      "gpt-5.6-luna",
+      "gpt-5.6-terra",
+      "gpt-5.6-sol",
+    ]) {
       const estimate = estimatePreparedCall(bare, withImage);
       expect(estimate).not.toBeNull();
       expect(estimate).toEqual(estimatePreparedCall(`openai/${bare}`, withImage));

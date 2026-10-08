@@ -342,6 +342,16 @@ describe("providerOptionsFor (the effort under every provider's namespace, ADR 0
     expect(sent).toEqual({ reasoningEffort: "none", strictJsonSchema: false });
   });
 
+  test("gpt-6.1-sol at `low` (the lab writer's call) sends that effort to OpenAI, pinned to OpenAI on the gateway", () => {
+    for (const id of ["openai/gpt-6.1-sol", "gpt-6.1-sol"]) {
+      const sent = providerOptionsFor(id, "low").providerOptions;
+      expect(sent?.openai).toEqual({ reasoningEffort: "low", strictJsonSchema: false });
+    }
+    expect(providerOptionsFor("openai/gpt-6.1-sol", "low").providerOptions?.gateway).toEqual({
+      only: ["openai"],
+    });
+  });
+
   test("A10: an Anthropic id gets no provider options at all", () => {
     expect(providerOptionsFor("us.anthropic.claude-sonnet-5", "low")).toEqual({});
   });
