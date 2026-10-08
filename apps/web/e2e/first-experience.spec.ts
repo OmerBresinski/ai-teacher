@@ -254,10 +254,14 @@ test.describe("first-experience design preview", () => {
       look();
     });
     await page.clock.runFor(2_000);
-    const sampled = await page.evaluate(
-      () =>
-        (window as unknown as { worksheetSeen: { seen: boolean; done: boolean } }).worksheetSeen,
-    );
+    const read = () =>
+      page.evaluate(
+        () =>
+          (window as unknown as { worksheetSeen: { seen: boolean; done: boolean } }).worksheetSeen,
+      );
+    // The last sample is the first frame at or after the 2 s mark: step a frame or two more.
+    for (let step = 0; step < 10 && !(await read()).done; step++) await page.clock.runFor(50);
+    const sampled = await read();
     expect(sampled.done).toBe(true);
     expect(sampled.seen).toBe(false);
     await expect(stage).toHaveAttribute("data-beat", "3", { timeout: 4_000 });
@@ -274,6 +278,9 @@ test.describe("first-experience design preview", () => {
   test("Check stays with the finished lesson until the teacher starts working", async ({
     page,
   }) => {
+    // The clock plays about 30 s of story here frame by frame (to ready, then 8 s more); on a CI
+    // runner shared by three workers that took over the default 30 s once (TEACH-190 part a).
+    test.slow();
     await page.clock.install();
     const preview = await openGenerating(page);
     await runUntilReady(page, preview);
@@ -284,7 +291,9 @@ test.describe("first-experience design preview", () => {
     await expect(preview).toHaveAttribute("data-story-finished", "false");
     await page.locator("[data-canvas]").click();
     await expect(preview).toHaveAttribute("data-story-finished", "true");
-    await expect(page.locator(".creation-generation-actor")).toHaveCount(0, { timeout: 3_000 });
+    // Check walks off: play its exit on the clock rather than wait for it in real time.
+    await page.clock.runFor(3_000);
+    await expect(page.locator(".creation-generation-actor")).toHaveCount(0);
   });
 
   test("the selected-theme callout under the stage opens the picker and re-themes made and arriving slides", async ({
