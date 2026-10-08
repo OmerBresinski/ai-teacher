@@ -2,7 +2,7 @@
 // bun lab/bakeoff/ab/gas8scan.ts [--show]
 import { readFileSync } from "node:fs";
 import { AB } from "./arms";
-import { gasFaults, gasMax } from "./gas8";
+import { gasFaults } from "./gas8";
 
 type J = Record<string, unknown>;
 /** Every string a shipped slide shows (text elements, tables), tags stripped; no image data. */
@@ -31,16 +31,16 @@ if (import.meta.main) {
     const hits = gasFaults(texts);
     const run = f.split("/")[0];
     if (hits.length) flagged++;
-    const most = gasFaults(texts, "most");
+    const most = gasFaults(texts, "least");
     if (most.length) strict++;
-    const lim = gasMax(texts);
+    const lim = hits.find((h) => h.vmax)?.vmax;
     console.log(
-      `${run.padEnd(14)} ${hits.length ? (most.length ? "FLAG" : "flag") : "ok  "} max ${lim ? `${Math.floor(lim.vmax)} cm³ (${lim.why})` : "-"}  ${hits.map((h) => `s${h.slide + 1} ${JSON.stringify(h.volumes)}`).join("; ")}`,
+      `${run.padEnd(14)} ${hits.length ? "FLAG" : most.length ? "was " : "ok  "} limit ${lim ? `${Math.floor(lim)} cm³` : "-"}  ${hits.map((h) => `s${h.slide + 1} ${JSON.stringify(h.volumes)}`).join("; ")}`,
     );
     if (process.argv.includes("--show"))
       for (const h of hits) console.log(`    s${h.slide + 1} ${h.fault}`);
   }
   console.log(
-    `SUMMARY ${flagged}/${files.length} y11 lessons flagged (rule least, the switch); ${strict}/${files.length} also under rule most (FLAG = certain)`,
+    `SUMMARY ${flagged}/${files.length} y11 lessons flagged (rule tied, the switch); ${strict}/${files.length} under the first rule least (was = no longer flagged)`,
   );
 }
