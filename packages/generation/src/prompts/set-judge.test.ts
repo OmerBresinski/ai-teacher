@@ -11,7 +11,8 @@ const pin = (f: string) => readFileSync(join(import.meta.dir, "base4-pins", f), 
 /** The base4 entries of the lab's ab/PINS.json for these two files (lab/ab 92f1b36d). */
 const LAB_PINS = {
   "set-judge.base4.txt": "e60d46928e7b84acc6e73257dac1f90c3286fc64e9fde1794efbabeca9b650d9",
-  "set-judge-schema.base4.json": "73eab1668569cefb9a2f9c2594d33eb7a848bd8ccab8a952f95a1a8154fdb3ad",
+  "set-judge-schema.base4.json.txt":
+    "73eab1668569cefb9a2f9c2594d33eb7a848bd8ccab8a952f95a1a8154fdb3ad",
 };
 
 describe("set judge pins", () => {
@@ -23,7 +24,7 @@ describe("set judge pins", () => {
     expect(sha(SET_JUDGE_SYSTEM)).toBe(LAB_PINS["set-judge.base4.txt"]);
   });
   test("the schema is the pinned JSON schema", () => {
-    const want = JSON.parse(pin("set-judge-schema.base4.json"));
+    const want = JSON.parse(pin("set-judge-schema.base4.json.txt"));
     const got = z.toJSONSchema(SetJudgeSchema) as Record<string, unknown>;
     expect(got.type).toBe(want.type);
     expect(got.required).toEqual(want.required);
