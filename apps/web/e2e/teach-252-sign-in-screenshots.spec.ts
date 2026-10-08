@@ -6,8 +6,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test, uniqueEmail } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
-
 const DESKTOP = { width: 1440, height: 1000 };
 const PHONE = { width: 390, height: 844 };
 

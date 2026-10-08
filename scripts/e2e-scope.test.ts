@@ -17,8 +17,13 @@ describe("docsOnly", () => {
         "apps/web/.agents/skills/tanstack-query/references/caching.ts",
         ".claude/skills/hono",
         "skills-lock.json",
+        "apps/web/skills-lock.json",
       ]),
     ).toBe(true);
+  });
+
+  test("source moved into docs/ runs the suite (detect diffs with --no-renames: both sides)", () => {
+    expect(docsOnly(["apps/web/src/lib/library.ts", "docs/library.ts"])).toBe(false);
   });
 
   test("one source file among the docs runs the suite", () => {

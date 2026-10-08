@@ -3,7 +3,6 @@ import type { Page } from "@playwright/test";
 import { generatedLesson, generatedWorksheet } from "@tj/domain/documents/fixtures";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 }, seed: false });
 
 async function seedGenerated(page: Page): Promise<string> {

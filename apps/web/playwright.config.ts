@@ -51,8 +51,8 @@ export default defineConfig({
   // real flake worth a look (the html report keeps the trace of the failed attempt).
   retries: CI ? 1 : 0,
   workers: CI ? 2 : undefined,
-  // CI runs the suite in four shards (ci.yml `e2e-shard`); each writes a blob report and the `e2e`
-  // job merges the failed shards' blobs into one HTML report.
+  // CI runs the suite in four shards (ci.yml `e2e-shard`); each writes a blob report and the
+  // `e2e-report` job merges the failed shards' blobs into one HTML report.
   reporter: CI ? [["github"], ["blob"]] : [["list"], ["html", { open: "never" }]],
   outputDir: "test-results",
   timeout: 30_000,
@@ -65,8 +65,8 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      // Screenshot specs are opt-in visual references. Leaving them out of the default run, rather
-      // than only skipping them, keeps their 60 skipped tests from weighing on the shard split.
+      // Screenshot specs are opt-in visual references (`TEACH_SCREENSHOTS=1`). Leaving them out of
+      // the default run, rather than skipping them, keeps them from weighing on the shard split.
       testIgnore: SCREENSHOTS ? /kit\.spec\.ts$/ : [/kit\.spec\.ts$/, /-screenshots\.spec\.ts$/],
       use: { ...devices["Desktop Chrome"] },
     },

@@ -5,7 +5,6 @@ import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 const HEADING = "By the end of this lesson I can";

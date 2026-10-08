@@ -1,8 +1,6 @@
 /** Local first-experience visual references. Opt-in with TEACH_SCREENSHOTS=1. */
 import { expect, test } from "@playwright/test";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
-
 async function settleFiniteAnimations(page: import("@playwright/test").Page) {
   await page.evaluate(() =>
     Promise.all(

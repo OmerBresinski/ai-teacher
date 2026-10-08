@@ -1,7 +1,6 @@
 /** TEACH-193 PR screenshots. Opt-in: `TEACH_SCREENSHOTS=1 … e2e/teach-193-screenshots.spec.ts`. */
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 test("captures the Worksheets grid and a sheet header with Marks off", async ({

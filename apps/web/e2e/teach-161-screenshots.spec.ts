@@ -2,7 +2,6 @@
 import { copyFileSync, writeFileSync } from "node:fs";
 import { expect, seedCreditedLesson, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 test("captures the PDF credits page, and saves the .pdf, .pptx and credits .png", async ({

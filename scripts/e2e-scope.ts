@@ -15,12 +15,12 @@ const SKILL_DIRS = new Set([".agents", ".claude", ".opencode"]);
 
 /** True when a change to `path` cannot affect what the e2e suite runs. */
 export function isDocPath(path: string): boolean {
-  if (path.startsWith("docs/") || path.endsWith(".md") || path === "skills-lock.json") return true;
+  if (path.startsWith("docs/") || path.endsWith(".md")) return true;
+  const segments = path.split("/");
+  // Each workspace with vendored skills has its own lock file next to its package.json.
+  if (segments.at(-1) === "skills-lock.json") return true;
   // Every segment but the last is a directory.
-  return path
-    .split("/")
-    .slice(0, -1)
-    .some((dir) => SKILL_DIRS.has(dir));
+  return segments.slice(0, -1).some((dir) => SKILL_DIRS.has(dir));
 }
 
 /** True when there is at least one changed path and every one is documentation. */

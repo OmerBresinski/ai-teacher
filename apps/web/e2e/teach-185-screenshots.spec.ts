@@ -4,7 +4,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 const shot = (name: string) => `/tmp/teach-185-${name}.png`;

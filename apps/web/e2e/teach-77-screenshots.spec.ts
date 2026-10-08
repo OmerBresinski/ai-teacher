@@ -9,7 +9,6 @@ import type { Lesson } from "@tj/domain/documents";
 import { drawFigure, FIGURE_RECT, getTheme, newLesson, newSlide } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.setTimeout(120_000);
 
