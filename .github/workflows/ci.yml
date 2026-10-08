@@ -136,7 +136,7 @@ jobs:
           --health-cmd "pg_isready -h localhost -U postgres -d teaching_journey"
           --health-interval 1s
           --health-timeout 5s
-          --health-retries 12
+          --health-retries 60
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/teaching_journey_test

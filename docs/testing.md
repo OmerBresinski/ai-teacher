@@ -84,9 +84,10 @@ See `apps/web/src/routes/sign-in.page.test.tsx` (module mocks), `apps/web/src/li
 
 ## Server tests and the database harness
 
-Integration tests connect to **`TEST_DATABASE_URL`** (default
+Integration tests derive their databases from **`TEST_DATABASE_URL`** (default
 `postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a
-test run cannot touch development data. The harness is `withTestDb()` from `@tj/db/testing`:
+test run cannot touch development data; each package connects to its own database (see "One
+database per package" below). The harness is `withTestDb()` from `@tj/db/testing`:
 
 ```ts
 import { afterAll, beforeEach, describe } from "bun:test";
@@ -113,8 +114,8 @@ What it guarantees:
   over every application table. Add new tenant tables there; `packages/db/src/schema.test.ts`
   reminds you.
 - **One database per package**: `withTestDb()` uses `<TEST_DATABASE_URL database>_<package
-  directory>` (`packageTestDatabaseUrl`, e.g. `teaching_journey_test_api`), creating it on first
-  use, so the packages turbo runs in parallel never truncate each other's rows. Until TEACH-190
+  name>` (`packageTestDatabaseUrl`, scope dropped, e.g. `teaching_journey_test_api` for `@tj/api`,
+  whichever folder of the package `bun test` runs from), creating it on first use, so the packages turbo runs in parallel never truncate each other's rows. Until TEACH-190
   part e they shared one database behind one lock and took turns. Processes of the same package
   are still serialised by a Postgres session-level advisory lock held until `close()`. **Always
   call `close()` in `afterAll`.** The base `TEST_DATABASE_URL` database must exist (compose and

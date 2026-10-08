@@ -4,7 +4,7 @@
  * Skips visibly when the database is unreachable.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { createDb, workspaces } from "@tj/db";
+import { workspaces } from "@tj/db";
 import { withTestDb } from "@tj/db/testing";
 import {
   JOB_PROGRESS_STAGES,
@@ -194,9 +194,8 @@ describeDb("/jobs and /events against Postgres + pg-boss", () => {
     return { res: app.request(path, { headers: headers(ws, extra), signal: ac.signal }), ac };
   }
   /**
-   * `workspaces.owner_user_id` gains a FK to `users` with TEACH-20 (better-auth). The shared
-   * compose test database may already carry that migration, so seed the owners when the table
-   * exists; a no-op before it lands.
+   * `workspaces.owner_user_id` has a FK to `users` since TEACH-20 (better-auth), so seed the
+   * owners when the table exists; a no-op on a schema from before it.
    */
   async function ensureOwnerUsers(ids: string[]) {
     const [row] = await sql<

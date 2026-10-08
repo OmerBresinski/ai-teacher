@@ -168,10 +168,11 @@ everywhere — React workspaces preload happy-dom + Testing Library from `@tj/co
 Playwright owns `e2e/**/*.spec.ts`), the `withTestDb()` harness and factories, the test-only magic-link capture
 route, running subsets, e2e locally, flake guidance.
 
-Integration tests use `TEST_DATABASE_URL` (default
+Integration tests derive their databases from `TEST_DATABASE_URL` (default
 `postgres://postgres:postgres@localhost:5432/teaching_journey_test`), never `DATABASE_URL`, so a test
-run cannot clobber your development data. The test database exists as long as the volume was created
-by our init script — if `doctor` reports it missing, run `bun run db:reset`. `bun run test` skips
+run cannot clobber your development data. Each package gets its own, `<that database>_<package>`
+(e.g. `teaching_journey_test_api`), created on first use. The base test database exists as long as
+the volume was created by our init script — if `doctor` reports it missing, run `bun run db:reset`. `bun run test` skips
 DB suites with a printed reason when the database is unreachable; `bun run test:db` sets
 `REQUIRE_TEST_DB=1` so they fail instead. `turbo.json` passes `DATABASE_URL`, `TEST_DATABASE_URL`
 and `REQUIRE_TEST_DB` through to the `test` task, so a value exported in the shell (as CI does)

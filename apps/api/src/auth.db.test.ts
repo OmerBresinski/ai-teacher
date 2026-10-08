@@ -311,7 +311,7 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       jobs: { db: db.unsafeDb } as JobsContext,
       logger: silentLogger,
       // Recheck the session every 200 ms instead of the production 15 s.
-      config: { heartbeatMs: 50, pollMs: 50, authorizationRecheckMs: 200 },
+      config: { heartbeatMs: 50, pollMs: 50, authorizationTiming: { recheckMs: 200 } },
     });
     const streamingApp = createApp({
       env: TEST_ENV,

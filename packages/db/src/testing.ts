@@ -1,4 +1,5 @@
-import { basename } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { newId, type UserId, type WorkspaceId } from "@tj/domain";
 import { sql as rawSql } from "drizzle-orm";
 import postgres from "postgres";
@@ -42,10 +43,10 @@ const migrated = new Set<string>();
  *
  * The connection targets a database derived from `TEST_DATABASE_URL` only, never `DATABASE_URL`,
  * so a test run cannot wipe development data. Each package gets its own database,
- * `<TEST_DATABASE_URL database>_<package directory>` (`packageTestDatabaseUrl`), created on first
- * use, so packages that turbo runs in parallel never truncate each other's rows. Test processes of
- * the same package are still serialised with an advisory lock held until `close()` — **always
- * call `close()` in `afterAll`**. Truncation covers every table in the schema; add new tenant
+ * `<TEST_DATABASE_URL database>_<package name>` (`packageTestDatabaseUrl`), created on first use,
+ * so packages that turbo runs in parallel never truncate each other's rows. Test processes of the
+ * same package are still serialised with an advisory lock held until `close()` — **always call
+ * `close()` in `afterAll`**. Truncation covers every table in the schema; add new tenant
  * tables to `truncateTenantTables` when they land (the invariant test in `schema.test.ts` reminds
  * you).
  */
@@ -107,31 +108,59 @@ function unavailable(reason: string): WithTestDbResult {
 
 /**
  * The test database for the package whose tests are running: `TEST_DATABASE_URL` with
- * `_<package directory>` appended to the database name (`teaching_journey_test_api` for
- * `apps/api`). `bun test` runs from the package directory under turbo, so the name follows the
- * package. Until TEACH-190 part e every package shared one database behind one advisory lock, and
- * the DB suites of @tj/api, @tj/db, @tj/jobs and @tj/worker took turns (35 to 55 s of waiting each
- * in CI).
+ * `_<package name>` appended to the database name, scope dropped (`teaching_journey_test_api` for
+ * `@tj/api`). The package is the nearest `package.json` at or above `cwd`, so `bun test` gives the
+ * same name from the package directory (as turbo runs it) or any folder inside it; without one,
+ * the directory name stands in. Until TEACH-190 part e every package shared one database behind
+ * one advisory lock, and the DB suites of @tj/api, @tj/db, @tj/jobs and @tj/worker took turns
+ * (35 to 55 s of waiting each in CI).
+ *
+ * Postgres cuts identifiers to 63 bytes, which could merge two packages into one database, so a
+ * long base name is shortened and the package suffix is always kept whole. The name stays in its
+ * URL form (percent-encoded, so one byte per character), as postgres.js sends the pathname to the
+ * server without decoding it.
  */
 export function packageTestDatabaseUrl(base: string, cwd: string = process.cwd()): string {
   const url = new URL(base);
-  const suffix = basename(cwd)
+  const suffix = `_${packageName(cwd)
+    .replace(/^@[^/]*\//, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_");
-  url.pathname = `/${url.pathname.slice(1)}_${suffix}`;
+    .replace(/[^a-z0-9]+/g, "_")}`;
+  const name = url.pathname.slice(1).slice(0, MAX_IDENTIFIER_BYTES - suffix.length);
+  url.pathname = `/${name}${suffix}`;
   return url.toString();
 }
 
+/** Postgres `NAMEDATALEN - 1`: longer identifiers are silently truncated. */
+const MAX_IDENTIFIER_BYTES = 63;
+
+/** `name` of the nearest `package.json` at or above `dir`, or the name of `dir` when none has one. */
+function packageName(dir: string): string {
+  for (let current = dir; ; current = dirname(current)) {
+    const manifest = join(current, "package.json");
+    if (existsSync(manifest)) {
+      const { name } = JSON.parse(readFileSync(manifest, "utf8")) as { name?: unknown };
+      if (typeof name === "string" && name !== "") return name;
+    }
+    if (dirname(current) === current) return basename(dir);
+  }
+}
+
+/** `duplicate_database`, and the catalog `unique_violation` a concurrent create can raise instead. */
+const DATABASE_EXISTS_CODES = new Set(["42P04", "23505"]);
+
 /** Creates `url`'s database through the `base` connection when it does not exist yet. */
 async function ensureDatabase(base: string, url: string): Promise<void> {
+  // The raw pathname, as postgres.js connects to it: lookup, create and connect agree.
   const name = new URL(url).pathname.slice(1);
   const admin = postgres(base, { max: 1, onnotice: () => undefined });
   try {
     const [row] = await admin`select 1 from pg_database where datname = ${name}`;
-    if (!row) await admin.unsafe(`create database "${name}"`);
+    if (!row) await admin.unsafe(`create database "${name.replaceAll('"', '""')}"`);
   } catch (err) {
     // Another process may create the same database between the check and the create.
-    if (!(err instanceof Error && /already exists/.test(err.message))) throw err;
+    const code = (err as { code?: unknown } | null)?.code;
+    if (typeof code !== "string" || !DATABASE_EXISTS_CODES.has(code)) throw err;
   } finally {
     await admin.end({ timeout: 5 });
   }
