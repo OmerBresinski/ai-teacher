@@ -43,6 +43,7 @@ export const AB_ARMS = [
   "locale2",
   "locale3",
   "base5",
+  "locale4",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -67,6 +68,8 @@ export const AB_CONFIG: Record<
     polish?: boolean;
     /** polish2 (D30): base4's judge input, a log-only colour gate, per-label clash fallback. */
     polish2?: boolean;
+    /** locale4: stock captions keep only the teacher's place (ab/caption.ts). */
+    captions?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -340,6 +343,22 @@ export const AB_CONFIG: Record<
     delta:
       "polish2 + locale3's country line (England byte-exact to polish2); recall clause removed, code title, cycle sizing, strips, protected labels never dropped",
   },
+  // locale4 (D33 open items, 9 Oct): base5 + stock captions lose a closing place phrase that is not
+  // the teacher's country and not named on the slide (ab/caption.ts). Prompts = base5's byte for
+  // byte: the objectives step already sees the country (base5 shared/objectives.txt carries
+  // {{locale.country}}, {{locale.setting}} and {{locale.placeShort}}).
+  locale4: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    polish2: true,
+    captions: true,
+    delta:
+      "base5 + picture captions and alt text drop a closing stock place name unless it is the teacher's country or the slide names it (code; prompts = base5)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -393,6 +412,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   polish: { ref: "base4" },
   polish2: { ref: "polish" },
   base5: { ref: "polish2" },
+  locale4: { ref: "base5" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -412,6 +432,7 @@ export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank
 /** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
 export const abPolish = () => (current ? Boolean(AB_CONFIG[current].polish) : false);
+export const abCaptions = () => (current ? Boolean(AB_CONFIG[current].captions) : false);
 export const abPolish2 = () => (current ? Boolean(AB_CONFIG[current].polish2) : false);
 export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
