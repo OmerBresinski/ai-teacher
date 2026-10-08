@@ -42,6 +42,7 @@ export const AB_ARMS = [
   "polish2",
   "locale2",
   "locale3",
+  "base5",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -323,6 +324,22 @@ export const AB_CONFIG: Record<
     delta:
       "locale + one short sentence: where the topic depends on place, use what is true in the country (no list); England byte-exact",
   },
+  // base5 (D32, D33, 9 Oct): base4 + recall clause removed (D28) + polish's code fixes (title
+  // subtitle, cycle box sizing, strips drawn, strips menu and schema) + polish2's label refit with
+  // protected labels never dropped (8a6a79a2) + locale3's country line. Not the 768 px judge; the
+  // colour gate logs only. Writer files = polish2's with locale3's delta on base4 merged in
+  // (England compiles byte for byte to polish2).
+  base5: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    polish2: true,
+    delta:
+      "polish2 + locale3's country line (England byte-exact to polish2); recall clause removed, code title, cycle sizing, strips, protected labels never dropped",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -375,6 +392,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   locale3: { ref: "locale2" },
   polish: { ref: "base4" },
   polish2: { ref: "polish" },
+  base5: { ref: "polish2" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
