@@ -81,9 +81,41 @@ describe.each(BUNDLES.map((b) => [b.id, b] as const))("writer bundle %s", (_id, 
 });
 
 describe("the shipped bundle", () => {
-  test("is base4, the evidence's pinned writer (T hash 18057b0c7aa8)", () => {
-    expect(WRITER_BUNDLE_ID).toBe("base4");
-    expect(writerBundle().tHash).toBe("18057b0c7aa8");
+  test("is base4f-p123, the evidence's pinned writer (T hash 8a0f9b4f6dde)", () => {
+    expect(WRITER_BUNDLE_ID).toBe("base4f-p123");
+    expect(writerBundle().tHash).toBe("8a0f9b4f6dde");
+  });
+
+  test("differs from base4 only by the three system lines, verbatim", () => {
+    const LINES: [string, string][] = [
+      [
+        "a first slide that recalls the earlier learning this lesson builds on;",
+        "a first slide that recalls what pupils of this age already know that this lesson builds on, answerable without any earlier lesson;",
+      ],
+      [
+        "explain why their gradients differ. At KS4",
+        "explain why their gradients differ. Every question and task needs only the words, structures and methods this lesson teaches or that pupils of this age already know. At KS4",
+      ],
+      [
+        "The exit ticket goes where the context says.",
+        "The exit ticket goes where the context says. Plan at least one hinge slide, after the idea it checks is taught.",
+      ],
+    ];
+    const a = writerBundle("base4") as unknown as Record<string, unknown>;
+    const b = writerBundle("base4f-p123") as unknown as Record<string, unknown>;
+    for (const k of Object.keys(a)) {
+      if (k === "id" || k === "pins" || k === "tHash") continue;
+      if (!k.startsWith("system")) {
+        expect(b[k]).toEqual(a[k]);
+        continue;
+      }
+      let want = a[k] as string;
+      for (const [from, to] of LINES) {
+        expect(want.split(from).length).toBe(2);
+        want = want.replace(from, to);
+      }
+      expect(b[k]).toBe(want);
+    }
   });
 });
 
