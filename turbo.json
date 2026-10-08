@@ -53,7 +53,7 @@
       "cache": false
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "//#typecheck:root"],
+      "dependsOn": ["transit", "//#typecheck:root"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/infra/env.contract.ts",

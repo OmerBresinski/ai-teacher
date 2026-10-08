@@ -265,8 +265,12 @@ that override generic skill advice. Sources, pinned commits, re-install commands
 (`moduleResolution: "bundler"`) all resolve this directly, so:
 
 - `typecheck` is `tsc --noEmit` in every workspace and does **not** depend on `^build`. In
-  `turbo.json` it has `dependsOn: ["^typecheck", "//#typecheck:root"]` so failures surface in the
-  package that owns them first (and so a dependency's changes invalidate dependents' caches).
+  `turbo.json` it has `dependsOn: ["transit", "//#typecheck:root"]`: the `transit` node (which
+  `test` uses too) puts every dependency's inputs into the cache key, so a change in `@tj/domain`
+  still re-typechecks its dependents, but the packages run at once instead of waiting for each
+  other (it was `^typecheck` until TEACH-190 part f, a chain that ran root, config, domain,
+  slides, generation, api, api-client and web one after another; 66 s in CI). The cost: a type
+  error in a shared package is also reported by every package that imports it.
 - `build` is only meaningful for **apps** (`apps/api` and `apps/worker` bundle with
   `bun build --target=bun`; `apps/web` with `vite build`) and for packages that opt in (e.g.
   `@tj/domain` may add a `tsup` build to verify tree-shaking). `build` keeps
