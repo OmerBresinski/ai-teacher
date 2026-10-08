@@ -23,6 +23,7 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { createGeneratingBank, savePicture } from "../picture-generator";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
 
 /**
@@ -66,6 +67,29 @@ export interface LessonJobSpec {
  * The pipeline's image collaborator (Images project): Pexels search plus bucket store, closed
  * over the job's Workspace. Absent without a Pexels key — illustrate then skips placements.
  */
+/**
+ * The writer planner's generator (TEACH-237): the director's bank and the set maker, saving to this
+ * workspace's images under the process's daily cap. Objectives-first never reads it.
+ */
+function pictureMaker(
+  deps: WorkerDeps,
+  workspaceId: WorkspaceId,
+  logger: PipelineDeps["logger"],
+): Pick<PipelineDeps, "pictureMaker"> {
+  const gen = deps.imageGeneration;
+  if (!gen || !deps.images) return {};
+  const save = savePicture(deps.images.storage, workspaceId);
+  return {
+    pictureMaker: {
+      bank: createGeneratingBank({ generator: gen.generator, cap: gen.cap, save, logger }),
+      generator: gen.generator,
+      save: (bytes) => save(bytes),
+      allow: (size) => gen.cap.allow(size),
+      spent: (usd) => gen.cap.spent(usd),
+    },
+  };
+}
+
 function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
   const images = deps.images;
   if (!images) return undefined;
@@ -128,6 +152,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
       images: imagePlacer(deps, workspaceId),
+      ...pictureMaker(deps, workspaceId, logger),
     };
     let final: PipelineState;
     try {

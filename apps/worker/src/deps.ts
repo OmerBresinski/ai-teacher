@@ -2,12 +2,18 @@ import { type CreatedAi, createAi } from "@tj/ai";
 import type { Db } from "@tj/db";
 import type { ReadableStorageAdapter, StorageAdapter } from "@tj/domain";
 import { type Planner, type ReasoningEffort, writerRoute } from "@tj/generation";
-import { createPexelsClient, type PexelsClient } from "@tj/images";
+import {
+  createOpenAiImageGenerator,
+  createPexelsClient,
+  type ImageGenerator,
+  type PexelsClient,
+} from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
 import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { createPerJobFakeAi } from "./fake-ai";
+import { createDailyImageCap, type DailyImageCap } from "./picture-generator";
 
 /**
  * Boot-owned dependencies every handler receives as `ctx.deps`. `db` is the same pooled Drizzle
@@ -38,6 +44,11 @@ export type WorkerDeps = {
   costWarnUsd?: number;
   storage: ReadableStorageAdapter;
   images?: { client: PexelsClient; storage: StorageAdapter };
+  /**
+   * The writer planner's picture generator (TEACH-237), when `OPENAI_API_KEY` is set. One daily
+   * cap (`IMAGE_GENERATION_DAILY_CAP_USD`) per worker process, shared by every job.
+   */
+  imageGeneration?: { generator: ImageGenerator; cap: DailyImageCap };
   jobs?: JobsContext;
 };
 
@@ -78,6 +89,14 @@ export function createWorkerDeps(
           storage: storage.adapter,
         }
       : undefined,
+    ...(env.OPENAI_API_KEY && env.AI_FAKE_SCRIPT !== "pipeline"
+      ? {
+          imageGeneration: {
+            generator: createOpenAiImageGenerator({ apiKey: env.OPENAI_API_KEY }),
+            cap: createDailyImageCap({ capUsd: env.IMAGE_GENERATION_DAILY_CAP_USD, logger }),
+          },
+        }
+      : {}),
     storageKind: storage.kind,
   };
 }

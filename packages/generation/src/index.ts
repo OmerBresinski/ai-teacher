@@ -108,6 +108,21 @@ export {
   WRITER_PLANNED_VERSION,
   type WriterStageName,
 } from "./stages/objectives-first";
+export type {
+  BankRequest,
+  MadePicture,
+  PictureBank,
+} from "./stages/photo-bank";
+export {
+  directedSetJudges,
+  GRID_SIZE,
+  makePictureSet,
+  type PictureSetDeps,
+  type SetAsk,
+  type SetPicture,
+  STRIP_ATTEMPTS,
+  setIsGenerated,
+} from "./stages/picture-set";
 export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";
 export {
   type ImpactSet,

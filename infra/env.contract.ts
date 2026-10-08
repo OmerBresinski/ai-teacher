@@ -747,6 +747,19 @@ const CONTRACT = [
       "Pexels API key for photo search. Read once at boot; when unset `GET /images/search` answers `503` and the pipeline skips placements instead of failing the boot. Set on Railway, never in git.",
   },
 
+  {
+    name: "IMAGE_GENERATION_DAILY_CAP_USD",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "number",
+    files: ["worker"],
+    description:
+      "Default 5. USD the picture generator may spend in one UTC day, per worker process (TEACH-237). Once spent, a picture slot routed to generation keeps its placeholder, no generation call is made, and one log line says so.",
+  },
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {
     name: "AI_LESSON_COST_CAP_USD",

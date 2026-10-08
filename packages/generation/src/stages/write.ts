@@ -87,6 +87,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         images,
         deps,
         batchSystem: PICTURE_DIRECTOR_BATCH_SYSTEM,
+        // TEACH-237: the generator, when the worker has one (OPENAI_API_KEY).
+        ...(deps.pictureMaker ? { maker: deps.pictureMaker } : {}),
         onOutcome: (key, o) =>
           deps.logger.info({ stage: "generate", picture: key, ...o }, "writer picture"),
       })

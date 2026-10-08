@@ -118,6 +118,15 @@ export const PRICES: Record<string, ModelPrice> = {
     cachedInputPerMTok: 0.1,
     cacheWriteInputPerMTok: 2.5,
   },
+  // The picture generator (TEACH-237, ruling 158 amended 5 Oct), quality low: $5 per million text
+  // input tokens and $30 per million image output tokens (verified, the same rates
+  // `imageCostUsd` in @tj/images prices a generation with). Image calls send no cached input; the
+  // cached row is OpenAI's text rate for the family. Never a text model: no `DEFAULT_MODEL_IDS` key.
+  "openai/gpt-image-2.5-sunburst": {
+    inputPerMTok: 5,
+    outputPerMTok: 30,
+    cachedInputPerMTok: 1.25,
+  },
   "google/gemini-3.8-flash": {
     inputPerMTok: 0.75,
     outputPerMTok: 3.75,

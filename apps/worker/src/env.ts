@@ -59,6 +59,11 @@ export const EnvSchema = z
      * (the step logs "images disabled"), never a boot failure.
      */
     PEXELS_API_KEY: optionalString,
+    /**
+     * TEACH-237: USD the picture generator may spend in one UTC day, in this worker. Once spent, a
+     * slot routed to generation keeps its placeholder and no generation call is made.
+     */
+    IMAGE_GENERATION_DAILY_CAP_USD: z.coerce.number().nonnegative().default(5),
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),

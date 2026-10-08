@@ -8,10 +8,11 @@ import type {
   SourceRef,
   Worksheet,
 } from "@tj/domain/documents";
-import type { PhotoResult, StoredPhoto } from "@tj/images";
+import type { ImageGenerator, ImageSize, PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 import type { ReasoningEffort } from "./call";
 import type { VerifyCorrection } from "./specs";
+import type { PictureBank } from "./stages/photo-bank";
 
 /*
  * The pipeline's contract with its host (ADR 0025 §17): everything the stages need arrives in
@@ -161,6 +162,11 @@ export interface PipelineDeps {
   context: PipelineContext;
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
+  /**
+   * The picture generator behind the writer planner's director (TEACH-237): its bank, and what a
+   * picture set is made with. Only the writer stage reads it; absent, nothing is generated.
+   */
+  pictureMaker?: PictureMaker;
   /**
    * Plan (skeleton, facts, Verify) runs on the `frontier` class for a lesson whose year group is
    * this number or above (TEACH-259; `AI_PLAN_FRONTIER_FROM_YEAR`). Unset: every Plan call is
@@ -317,4 +323,21 @@ export function abortError(signal: AbortSignal): Error {
  */
 export function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError(signal);
+}
+
+/**
+ * What the writer planner generates pictures with (TEACH-237). The worker closes it over the
+ * generator, the workspace's storage and the per-process daily cap.
+ */
+export interface PictureMaker {
+  /** The director's bank: generates a single picture at the slot's shape, under the cap. */
+  bank: PictureBank;
+  generator: Pick<ImageGenerator, "model" | "generate">;
+  /** Store one set panel's PNG; its public src. */
+  save(bytes: Uint8Array): Promise<{ id: string; src: string }>;
+  /** Sets of 3 or 4 as one 2x2 grid; absent, single pictures. */
+  grid?: boolean;
+  /** May one more generation of `size` run (the daily cap)? */
+  allow?(size: ImageSize): boolean | Promise<boolean>;
+  spent?(usd: number): void;
 }

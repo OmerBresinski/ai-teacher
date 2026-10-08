@@ -16,10 +16,11 @@ import {
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
-import type { PipelineDeps } from "../types";
+import type { PictureMaker, PipelineDeps } from "../types";
 import { isFatal, nonFatal, whenNonFatal } from "../writer/services";
 import {
   type DirectedPlacer,
+  judgeMadeDirected,
   type PlacedPhoto,
   pickDirectedPhoto,
   plainSubject,
@@ -34,6 +35,13 @@ import {
   REAL_FALLBACK,
   sharedVerdictCache,
 } from "./photo-bank";
+import {
+  directedSetJudges,
+  makePictureSet,
+  type SetAsk,
+  type SetPicture,
+  setIsGenerated,
+} from "./picture-set";
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
 
@@ -694,8 +702,19 @@ export async function placeWriterPicture(args: {
         country: args.country,
         index: ask.index,
         stock,
-        // A made picture is judged when the generator lands (TEACH-237); none is made before.
-        judgeMade: async () => false,
+        // A made picture is shown to judge v17 with the slot's brief (TEACH-237): the same bytes
+        // the slide shows. One with no bytes to show (a code-drawn count) is never judged here.
+        judgeMade: (brief, made, reuse) =>
+          made.dataUrl
+            ? judgeMadeDirected({
+                lesson,
+                index: ask.index,
+                brief,
+                deps,
+                dataUrl: made.dataUrl,
+                ...(reuse !== undefined ? { reuse } : {}),
+              })
+            : Promise.resolve(false),
         deps,
         ...(args.look ? { look: args.look } : {}),
         ...(args.direct ? { direct: args.direct } : {}),
@@ -777,7 +796,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   "director-failed": "The picture director could not be reached.",
   "real-miss-no-fallback": "No real photograph of this was found, and none is generated for it.",
   "generation-refused-or-failed": "No suitable picture was found.",
-  "set-not-searched": "Picture sets are made by the generator, which is not on yet.",
+  "set-not-searched": "Picture sets are made by the generator, which is not on.",
   deadline: "The picture search ran out of time.",
   error: "The picture search failed.",
 };
@@ -791,120 +810,228 @@ export function createWriterPictures(opts: {
   /** The batched director's system prompt: the batcher is made here, on the placements' signal. */
   batchSystem?: string;
   bank?: PictureBank;
+  /**
+   * The generator (TEACH-237): a set's panels are made together, and a generic single picture can
+   * be generated through `maker.bank`. Absent: a set keeps no picture (`set-not-searched`).
+   */
+  maker?: PictureMaker;
   look?: LessonLook;
   style?: "photo" | "illustration";
   onOutcome?: (key: string, o: PictureOutcome) => void;
 }): WriterPictures {
   type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
+  type Box = { item: string; left: number; top: number; right: number; bottom: number };
   // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
   const stopper = new AbortController();
   const signal = AbortSignal.any([opts.deps.signal, stopper.signal]);
   const deps: PipelineDeps = { ...opts.deps, signal };
   const direct =
     opts.direct ?? (opts.batchSystem ? createDirectorBatcher(deps, opts.batchSystem) : undefined);
+  const bank = opts.bank ?? opts.maker?.bank;
   /** A budget stop or a cancel seen by any placement; `settle` rethrows it. */
   let fatal: unknown;
   const slots = new Map<string, Slot>();
+  /** A slide's set panels, gathered until the slide's asks are all in (one microtask). */
+  const sets = new Map<string, { index: number; slide: SlideForPicture; asks: WriterPhotoAsk[] }>();
   const taken = new Set<string>();
   const sources = new Map<string, PhotoSource>();
   const id = (index: number, key: string) => `${index}:${key}`;
+  const requestOf = (ask: WriterPhotoAsk) => [ask.shows, ...ask.mustSee].join(". ");
   let settled = false;
+
+  /** A placed picture as the stage reads it: its OWN aspect (the ranged slots shape round it). */
+  const photoState = (
+    p: { src: string; alt: string; about?: string; boxes?: Box[] },
+    aspect: number,
+    request: string,
+  ): WriterPictureState => {
+    // As base4: only boxes with area become subjects.
+    const boxes = p.boxes?.filter((b) => b.right > b.left && b.bottom > b.top);
+    return {
+      status: "photo",
+      photo: {
+        src: p.src,
+        alt: p.alt,
+        aspect,
+        request,
+        ...(p.about ? { about: p.about } : {}),
+        ...(boxes?.length
+          ? {
+              subjects: boxes.map((b) => ({
+                name: b.item,
+                x: b.left,
+                y: b.top,
+                w: b.right - b.left,
+                h: b.bottom - b.top,
+              })),
+            }
+          : {}),
+      },
+    };
+  };
+
+  // A rejection is a stop (placeWriterPicture's nonFatal and makePictureSet rethrow only those) or
+  // the deadline's own abort: it is kept, and settle rethrows a stop.
+  const onError = (slot: Slot) => (error: unknown) => {
+    if (slot.state.status !== "pending") return;
+    slot.state = { status: "failed" };
+    // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
+    if (stopper.signal.aborted && !opts.deps.signal.aborted) {
+      slot.miss = "deadline";
+      return;
+    }
+    if (isFatal(error) || opts.deps.signal.aborted) {
+      fatal ??= error;
+      stopper.abort();
+      return;
+    }
+    slot.miss = "error";
+  };
+
+  /** One ask through the director and the ladder, into `slot`. */
+  const place = (slot: Slot, index: number, ask: WriterPhotoAsk, slide: SlideForPicture) => {
+    let reason: PictureOutcome["reason"];
+    return placeWriterPicture({
+      ask: {
+        key: ask.key,
+        shows: ask.shows,
+        mustSee: ask.mustSee,
+        named: ask.named,
+        ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}),
+        slide,
+        index,
+        ...(opts.style ? { style: opts.style } : {}),
+      },
+      lesson: opts.lesson,
+      country: opts.country,
+      images: opts.images,
+      deps,
+      taken,
+      ...(direct ? { direct } : {}),
+      ...(bank ? { bank } : {}),
+      ...(opts.look ? { look: opts.look } : {}),
+      onOutcome: (o) => {
+        reason = o.reason;
+        opts.onOutcome?.(ask.key, o);
+      },
+    }).then((photo) => {
+      if (slot.state.status !== "pending") return;
+      if (!photo) {
+        slot.state = { status: "failed" };
+        slot.miss = reason ?? "generation-refused-or-failed";
+        return;
+      }
+      sources.set(photo.src, photo.source);
+      slot.state = photoState(
+        photo as typeof photo & { about?: string; boxes?: Box[] },
+        (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1,
+        requestOf(ask),
+      );
+    }, onError(slot));
+  };
+
+  /**
+   * One slide's set, once its panels are all in: made together by the generator when it is a
+   * generic same-subject set, else each panel through the director's ladder (a named or
+   * historical set: Commons first, ruling 163).
+   */
+  const placeSet = (setId: string, finish: () => void) => {
+    const group = sets.get(setId);
+    sets.delete(setId);
+    const maker = opts.maker;
+    if (!group || !maker) return finish();
+    const panels = group.asks.map((a) => ({ ask: a, slot: slots.get(id(group.index, a.key)) }));
+    const asks: SetAsk[] = group.asks.map((a) => ({
+      key: a.key,
+      index: group.index,
+      shows: a.shows,
+      mustSee: a.mustSee,
+      named: a.named,
+      ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
+    }));
+    if (!setIsGenerated(asks, opts.lesson.subject ?? "")) {
+      void Promise.all(
+        panels.map(({ ask, slot }) =>
+          slot ? place(slot, group.index, ask, group.slide) : undefined,
+        ),
+      ).then(finish, finish);
+      return;
+    }
+    const set = (p: SetPicture | undefined, ask: WriterPhotoAsk, slot: Slot | undefined) => {
+      opts.onOutcome?.(ask.key, {
+        director: "set",
+        via: p ? "generated" : "none",
+        ...(p ? {} : { reason: "generation-refused-or-failed" as const }),
+      });
+      if (!slot || slot.state.status !== "pending") return;
+      if (!p) {
+        slot.state = { status: "failed" };
+        slot.miss = "generation-refused-or-failed";
+        return;
+      }
+      sources.set(p.src, p.source);
+      // The panel's own aspect, never the slot's.
+      slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
+    };
+    makePictureSet(
+      asks,
+      {
+        generator: maker.generator,
+        save: maker.save,
+        ...directedSetJudges(opts.lesson, deps),
+        ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
+        ...(maker.allow ? { allow: maker.allow } : {}),
+        ...(maker.spent ? { spent: maker.spent } : {}),
+        signal,
+        log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+      },
+      opts.look,
+    ).then(
+      (made) => {
+        for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
+        finish();
+      },
+      (error: unknown) => {
+        for (const { slot } of panels) if (slot) onError(slot)(error);
+        finish();
+      },
+    );
+  };
+
   return {
     start(index, ask, slide) {
       const k = id(index, ask.key);
       if (slots.has(k)) return;
-      if (ask.set) {
-        slots.set(k, {
-          state: { status: "failed" },
-          miss: "set-not-searched",
-          done: Promise.resolve(),
-        });
+      const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
+      if (settled) {
+        slot.state = { status: "failed" };
+        slots.set(k, slot);
         return;
       }
-      const slot: Slot = { state: { status: "pending" }, done: Promise.resolve() };
-      let reason: PictureOutcome["reason"];
-      const request = [ask.shows, ...ask.mustSee].join(". ");
-      slot.done = placeWriterPicture({
-        ask: {
-          key: ask.key,
-          shows: ask.shows,
-          mustSee: ask.mustSee,
-          named: ask.named,
-          ...(ask.aspect !== undefined ? { aspect: ask.aspect } : {}),
-          slide,
-          index,
-          ...(opts.style ? { style: opts.style } : {}),
-        },
-        lesson: opts.lesson,
-        country: opts.country,
-        images: opts.images,
-        deps,
-        taken,
-        ...(direct ? { direct } : {}),
-        ...(opts.bank ? { bank: opts.bank } : {}),
-        ...(opts.look ? { look: opts.look } : {}),
-        onOutcome: (o) => {
-          reason = o.reason;
-          opts.onOutcome?.(ask.key, o);
-        },
-      }).then(
-        (photo) => {
-          if (slot.state.status !== "pending") return;
-          if (!photo) {
-            slot.state = { status: "failed" };
-            slot.miss = reason ?? "generation-refused-or-failed";
-            return;
-          }
-          const aspect = (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1;
-          sources.set(photo.src, photo.source);
-          type Box = { item: string; left: number; top: number; right: number; bottom: number };
-          // As base4: only boxes with area become subjects.
-          const boxes = (photo as { boxes?: Box[] }).boxes?.filter(
-            (b) => b.right > b.left && b.bottom > b.top,
-          );
-          slot.state = {
-            status: "photo",
-            photo: {
-              src: photo.src,
-              alt: photo.alt,
-              aspect,
-              request,
-              ...((photo as { about?: string }).about
-                ? { about: (photo as { about?: string }).about }
-                : {}),
-              ...(boxes?.length
-                ? {
-                    subjects: boxes.map((b) => ({
-                      name: b.item,
-                      x: b.left,
-                      y: b.top,
-                      w: b.right - b.left,
-                      h: b.bottom - b.top,
-                    })),
-                  }
-                : {}),
-            },
-          };
-        },
-        // A rejection here is a stop (placeWriterPicture's nonFatal rethrows only those) or the
-        // deadline's own abort: it is kept, and settle rethrows a stop.
-        (error: unknown) => {
-          if (slot.state.status !== "pending") return;
-          slot.state = { status: "failed" };
-          // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
-          if (stopper.signal.aborted && !opts.deps.signal.aborted) {
-            slot.miss = "deadline";
-            return;
-          }
-          if (isFatal(error) || opts.deps.signal.aborted) {
-            fatal ??= error;
-            stopper.abort();
-            return;
-          }
-          slot.miss = "error";
-        },
-      );
-      if (settled) slot.state = { status: "failed" };
+      if (ask.set) {
+        if (!opts.maker) {
+          slots.set(k, {
+            state: { status: "failed" },
+            miss: "set-not-searched",
+            done: Promise.resolve(),
+          });
+          return;
+        }
+        // The stage hands a slide's asks over in one loop: the set is placed once they are all in.
+        const setId = id(index, ask.set);
+        const group = sets.get(setId);
+        if (group) {
+          group.asks.push(ask);
+          const first = slots.get(id(index, group.asks[0]?.key ?? ""));
+          slot.done = first?.done ?? Promise.resolve();
+        } else {
+          sets.set(setId, { index, slide, asks: [ask] });
+          slot.done = new Promise<void>((finish) => queueMicrotask(() => placeSet(setId, finish)));
+        }
+        slots.set(k, slot);
+        return;
+      }
+      slot.done = place(slot, index, ask, slide);
       slots.set(k, slot);
     },
     state(index, key) {
