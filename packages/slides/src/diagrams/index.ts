@@ -65,6 +65,7 @@ export {
   withTangents,
   yearOf,
 } from "./normalise";
+export { DIAGRAM_SAMPLES } from "./samples";
 export * from "./schema";
 export { TEMPLATE_SPECS } from "./template-specs";
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { THEMES } from "../themes";
-import { DIAGRAM_SAMPLES } from "./fixtures";
 import { renderDiagram } from "./index";
+import { DIAGRAM_SAMPLES } from "./samples";
 
 /*
  * Rulings 160 and 162: a diagram sits on the theme's ground. The particle states drew a grey

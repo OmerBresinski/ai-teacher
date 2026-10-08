@@ -5,8 +5,8 @@ Branch `port/p4-diagrams` from origin/master 1436c659. Source: lab/ab pin 92f1b3
 ## Ported
 - `packages/slides/src/diagrams/**` byte for byte from the pin (schema, wire, meaning kinds, flow graph, cubes, groups, fraction shapes, limits, drawer-strict schema, all renderers and their tests).
 - `@tj/slides/diagrams` subpath export; nothing added to the root barrel.
-- Renames (lab names out): `samples.ts` -> `fixtures.ts` (test and visual-page fixture, no longer exported from the index); `h1-specs.json` -> `writer-specs.fixture.json`. Lab tags stripped from comments (35 lines); 33 remain in test names and string literals.
-- Not ported, as the draft says: `round8.test.ts`, `g1.test.ts`, `h1.test.ts`, `meaning-samples.ts`.
+- `samples.ts` (`DIAGRAM_SAMPLES`, exported from the index as on lab) and `meaning-samples.ts` (`MEANING_SAMPLES`) keep their lab paths, because P2's `templates/slot-limits.ts` imports both. `round8.test.ts` is ported as `meaning-samples.test.ts` (18 tests). `h1-specs.json` is renamed `writer-specs.fixture.json`. The polish2 label-clash block in `drawDiagram` is not ported: it was not adopted, so this is base4 only. Lab tags stripped from comments (35 lines); 33 remain in test names and string literals.
+- Not ported: `g1.test.ts`, `h1.test.ts`.
 - `themes.ts`: an additive subset of the lab's key-stage type scale (`KeyStage`, `KEY_STAGE_TYPE`, `BODY_SMALL`, `keyStage`, `setKeyStage`, `withKeyStage`, `typeScale`). With no stage set (all of production), `typeScale` is undefined and nothing changes. The lab's proxied, stage-bound `THEMES` and `getTheme(id, ageBand)` are NOT ported; one test call changed from `getTheme("studio", "ks5")` to `getTheme("studio")` inside `withKeyStage("ks5")`.
 
 ## Held back, and why

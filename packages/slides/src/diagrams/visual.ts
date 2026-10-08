@@ -11,8 +11,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { THEMES } from "../themes";
-import { DIAGRAM_SAMPLES } from "./fixtures";
 import { renderDiagram } from "./index";
+import { DIAGRAM_SAMPLES } from "./samples";
 
 const FONTS = [
   "lexend",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { getTheme } from "../themes";
 import { drawnFill, sparseDrawing } from ".";
-import { DIAGRAM_SAMPLES } from "./fixtures";
+import { DIAGRAM_SAMPLES } from "./samples";
 
 /* lab/cand: a big diagram that leaves most of its full-width zone empty is sparse. */
 const FULL = { w: 844, h: 258 };

@@ -146,7 +146,7 @@ describe("DIAGRAM-AUDIT correctness guards", () => {
 });
 
 describe("DIAGRAM-AUDIT coverage kinds", () => {
-  const { DIAGRAM_SAMPLES } = require("./fixtures");
+  const { DIAGRAM_SAMPLES } = require("./samples");
   const { THEMES } = require("../themes");
   for (const k of [
     "bar-chart",

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme, withKeyStage } from "../themes";
-import { DIAGRAM_SAMPLES } from "./fixtures";
 import { drawDiagram, lastDiagramProbe, parseDiagram, readabilityFaults } from "./index";
+import { DIAGRAM_SAMPLES } from "./samples";
 import { TEMPLATE_SPECS } from "./template-specs";
 import H1 from "./writer-specs.fixture.json";
 

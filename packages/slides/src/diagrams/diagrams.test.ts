@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
-import { DIAGRAM_SAMPLES } from "./fixtures";
 import {
   DIAGRAM_KINDS,
   DiagramSpecSchema,
@@ -9,6 +8,7 @@ import {
   renderDiagram,
 } from "./index";
 import { resolveLabels } from "./labelled";
+import { DIAGRAM_SAMPLES } from "./samples";
 import { DEFAULT_DIAGRAM_PRESET, look } from "./style";
 import { context } from "./svg";
 

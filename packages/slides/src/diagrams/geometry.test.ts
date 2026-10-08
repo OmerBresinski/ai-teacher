@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { getTheme, THEMES, withKeyStage } from "../themes";
 import { DIAGRAM_ZONES } from "./capacity";
 import { FIGURE_TEMPLATES } from "./figures";
-import { DIAGRAM_SAMPLES } from "./fixtures";
 import {
   diagramGeometryFaults,
   figureGeometryFaults,
@@ -11,6 +10,7 @@ import {
   segmentsCross,
 } from "./geometry";
 import { diagramFaults, lastDiagramProbe, withLongLabels } from "./index";
+import { DIAGRAM_SAMPLES } from "./samples";
 import { type DiagramPreset, withDiagramPreset } from "./style";
 import { TEMPLATE_SPECS } from "./template-specs";
 import H1 from "./writer-specs.fixture.json";
