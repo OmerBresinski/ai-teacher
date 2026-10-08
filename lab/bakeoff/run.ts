@@ -12,6 +12,7 @@ import { useStageReuse } from "../../packages/generation/src/stages/photo-bank";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
 import { embedCostUsd, imageCostUsd } from "../../packages/images/src/index";
 import { setParticleLabelMend } from "../../packages/slides/src/diagrams/labels3";
+import { setReadGraph } from "../../packages/slides/src/diagrams/line-graph";
 import {
   onLabelDrop,
   setDiagramParts,
@@ -23,6 +24,7 @@ import {
   abPlotZone,
   abPolish,
   abPolish2,
+  abReadGraph,
   abSnugNodes,
   abStage6,
   isAbArm,
@@ -102,6 +104,8 @@ if (abPolish2()) {
 }
 // plotzone (chalkie fix 3b): independent of the polish parts above; off for every other arm.
 if (abPlotZone()) setPlotZone(true);
+// readGraph (base7, D44): graph paper and point dots on measured line graphs; off for every other arm.
+if (abReadGraph()) setReadGraph(true);
 // labels3 (faults-3-6-8 #3): the particles label mend, on its own.
 if (abLabels3()) setParticleLabelMend(true);
 // stage6 (faults-3-6-8 #6c, tightened 9 Oct): stage requests reuse by stageReuse, not y1fix's rule.

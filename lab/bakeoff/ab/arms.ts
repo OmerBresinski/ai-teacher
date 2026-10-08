@@ -113,6 +113,8 @@ export const AB_CONFIG: Record<
     gas8?: boolean;
     /** base6c/base7c: the writer's first slide (the hook) ships before the objectives slide (title, hook, objectives). */
     hookFirst?: boolean;
+    /** base7 (D44): measured line graphs get graph paper and point dots (line-graph.ts setReadGraph). */
+    readGraph?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -589,8 +591,9 @@ export const AB_CONFIG: Record<
     gas8: true,
     figureSync: true,
     plotZone: true,
+    readGraph: true,
     delta:
-      "base6b + exit1 + labels3, orphan6, match6, stage6, gas8, figureSync, plotZone (code); exit1's prompts",
+      "base6b + exit1 + labels3, orphan6, match6, stage6, gas8, figureSync, plotZone, readGraph (code); exit1's prompts",
   },
   // ===== OPENER SLOT (base7): one of these two joins base7 once blind14/15 are judged (D43). =====
   // base7c = hook: base6c's opener line (prompts/base7c/shared/opener.txt) + hookFirst.
@@ -609,6 +612,7 @@ export const AB_CONFIG: Record<
     gas8: true,
     figureSync: true,
     plotZone: true,
+    readGraph: true,
     hookFirst: true,
     delta: "base7 + base6c's hook opener line (prompt) + hookFirst (code)",
   },
@@ -628,6 +632,7 @@ export const AB_CONFIG: Record<
     gas8: true,
     figureSync: true,
     plotZone: true,
+    readGraph: true,
     delta: "base7 + base6d's in-lesson retrieval line (prompt)",
   },
   // ===== end OPENER SLOT =====
@@ -725,6 +730,8 @@ export const abNotesAlt = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].not
 /** Chalkie fix 3b: big-visual plots fill the visual zone (plotzone). */
 export const abPlotZone = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].plotZone) : false);
 /** base6c/base7c: the hook (the writer's first slide) goes before the objectives slide. */
+/** base7 (D44): readable graphs (graph paper, point dots). */
+export const abReadGraph = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].readGraph) : false);
 export const abHookFirst = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].hookFirst) : false);
 /** Title, objectives, hook, ... -> title, hook, objectives, ... (only when slide 2 is the objectives slide "s2"
  * and slide 3 is the writer's first slide "s3"; anything else is returned unchanged). */
