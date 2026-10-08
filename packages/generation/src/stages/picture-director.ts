@@ -17,6 +17,7 @@ import {
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
 import type { PipelineDeps } from "../types";
+import { isFatal } from "../writer/services";
 import {
   type DirectedPlacer,
   type PlacedPhoto,
@@ -55,7 +56,7 @@ export async function directPicture(
     });
     return call.output;
   } catch (error) {
-    if ((error instanceof Error && error.name === "AbortError") || deps.signal.aborted) throw error;
+    if (isFatal(error) || deps.signal.aborted) throw error;
     return undefined;
   }
 }
@@ -110,7 +111,7 @@ export async function directPictures(
     });
     for (const { id, ...direction } of call.output.slots) out.set(id, direction);
   } catch (error) {
-    if ((error instanceof Error && error.name === "AbortError") || deps.signal.aborted) throw error;
+    if (isFatal(error) || deps.signal.aborted) throw error;
   }
   return out;
 }
@@ -130,7 +131,24 @@ export function createDirectorBatcher(
     done: (d: Promise<PictureDirection | undefined>) => void;
   }[] = [];
   let n = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // A cancelled job stops the pending batch: the timer is cleared and every queued slot is told.
+  deps.signal.addEventListener(
+    "abort",
+    () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      const batch = queue;
+      queue = [];
+      const stop = Object.assign(new Error("The picture director was stopped."), {
+        name: "AbortError",
+      });
+      for (const slot of batch) slot.done(Promise.reject(stop));
+    },
+    { once: true },
+  );
   const flush = () => {
+    timer = undefined;
     const batch = queue;
     queue = [];
     const answers = directPictures(batch, deps, system);
@@ -139,7 +157,7 @@ export function createDirectorBatcher(
   };
   return (input) =>
     new Promise((resolve) => {
-      if (queue.length === 0) setTimeout(flush, windowMs);
+      if (queue.length === 0) timer = setTimeout(flush, windowMs);
       queue.push({ id: `p${++n}`, input, done: resolve });
     });
 }
@@ -470,7 +488,7 @@ export async function findDirected(args: {
       specific: true,
     };
     const got = await args.stock(artefact).catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") throw error;
+      if (isFatal(error) || deps.signal.aborted) throw error;
       return undefined;
     });
     if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
@@ -602,8 +620,9 @@ export function writerAskBrief(ask: WriterPictureAsk): ImageBrief {
 
 /**
  * One writer picture: a map searched as a named thing first, else the director (batched when
- * `direct` is a batcher) and the ladder with `pickDirectedPhoto` as the stock path. Nothing here
- * fails the lesson: a budget stop, an error or a refusal leaves the placeholder.
+ * `direct` is a batcher) and the ladder with `pickDirectedPhoto` as the stock path. A provider
+ * error or a refusal is no picture (undefined); a budget stop or a cancel (`isFatal`) is rethrown,
+ * so the writer stage fails or cancels instead of saving a deck without its pictures.
  */
 export async function placeWriterPicture(args: {
   ask: WriterPictureAsk;
@@ -636,7 +655,8 @@ export async function placeWriterPicture(args: {
       deps,
       taken,
     }).catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") throw error;
+      // A budget stop or a cancel is never a missing picture: it stops the lesson.
+      if (isFatal(error) || deps.signal.aborted) throw error;
       deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "stock failed");
       return { outcome: "empty" as const };
     });
@@ -667,7 +687,7 @@ export async function placeWriterPicture(args: {
       ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
     });
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") throw error;
+    if (isFatal(error) || deps.signal.aborted) throw error;
     deps.logger.info({ stage: "illustrate", slideIndex: ask.index, err: error }, "picture failed");
     return undefined;
   }
@@ -748,12 +768,22 @@ export function createWriterPictures(opts: {
   images: DirectedPlacer;
   deps: PipelineDeps;
   direct?: (input: PictureDirectorInput) => Promise<PictureDirection | undefined>;
+  /** The batched director's system prompt: the batcher is made here, on the placements' signal. */
+  batchSystem?: string;
   bank?: PictureBank;
   look?: LessonLook;
   style?: "photo" | "illustration";
   onOutcome?: (key: string, o: PictureOutcome) => void;
 }): WriterPictures {
   type Slot = { state: WriterPictureState; miss?: WriterPictureMiss; done: Promise<void> };
+  // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
+  const stopper = new AbortController();
+  const signal = AbortSignal.any([opts.deps.signal, stopper.signal]);
+  const deps: PipelineDeps = { ...opts.deps, signal };
+  const direct =
+    opts.direct ?? (opts.batchSystem ? createDirectorBatcher(deps, opts.batchSystem) : undefined);
+  /** A budget stop or a cancel seen by any placement; `settle` rethrows it. */
+  let fatal: unknown;
   const slots = new Map<string, Slot>();
   const taken = new Set<string>();
   const sources = new Map<string, PhotoSource>();
@@ -788,9 +818,9 @@ export function createWriterPictures(opts: {
         lesson: opts.lesson,
         country: opts.country,
         images: opts.images,
-        deps: opts.deps,
+        deps,
         taken,
-        ...(opts.direct ? { direct: opts.direct } : {}),
+        ...(direct ? { direct } : {}),
         ...(opts.bank ? { bank: opts.bank } : {}),
         ...(opts.look ? { look: opts.look } : {}),
         onOutcome: (o) => {
@@ -836,9 +866,19 @@ export function createWriterPictures(opts: {
             },
           };
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (slot.state.status !== "pending") return;
           slot.state = { status: "failed" };
+          // The deadline's own stop is a missing picture; the job's cancel or a budget stop is fatal.
+          if (stopper.signal.aborted && !opts.deps.signal.aborted) {
+            slot.miss = "deadline";
+            return;
+          }
+          if (isFatal(error) || opts.deps.signal.aborted) {
+            fatal ??= error;
+            stopper.abort();
+            return;
+          }
           slot.miss = "error";
         });
       if (settled) slot.state = { status: "failed" };
@@ -852,11 +892,24 @@ export function createWriterPictures(opts: {
     },
     async settle(deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
       let timer: ReturnType<typeof setTimeout> | undefined;
+      let onAbort: (() => void) | undefined;
       const deadline = new Promise<void>((resolve) => {
         timer = setTimeout(resolve, deadlineMs);
+        // A cancel ends the wait at once.
+        onAbort = () => resolve();
+        opts.deps.signal.addEventListener("abort", onAbort, { once: true });
       });
       await Promise.race([Promise.all([...slots.values()].map((s) => s.done)), deadline]);
       if (timer) clearTimeout(timer);
+      if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
+      // Placements still running stop spending (the deadline or the cancel).
+      stopper.abort();
+      if (opts.deps.signal.aborted)
+        throw Object.assign(new Error("The lesson was stopped while its pictures were placed."), {
+          name: "AbortError",
+          cause: opts.deps.signal.reason,
+        });
+      if (fatal !== undefined) throw fatal;
       settled = true;
       for (const slot of slots.values())
         if (slot.state.status === "pending") {

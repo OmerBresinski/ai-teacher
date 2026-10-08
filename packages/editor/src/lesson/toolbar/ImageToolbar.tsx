@@ -2,6 +2,8 @@ import type { ImageElement } from "@tj/domain/documents";
 import { IconButton, Input, Label, Popover, PopoverContent, PopoverTrigger } from "@tj/ui";
 import { Crop, Replace } from "lucide-react";
 import { memo, useId } from "react";
+import { isCropped } from "../../export/credits";
+import { ImageCreditText } from "../../images/ImageCreditText";
 import { Panel, PanelSeparator } from "../../kit/Panel";
 import { Segmented } from "../../kit/Segmented";
 import { normaliseHref } from "../../text/links";
@@ -32,7 +34,6 @@ export const ImageToolbar = memo(function ImageToolbar({
   // An imported lesson is untrusted JSON and could carry `javascript:` here, so the address goes
   // through the same gate as a typed link. No href, no anchor.
   const creditHref = element.creditUrl ? normaliseHref(element.creditUrl) : null;
-  const sourcePageHref = element.source?.pageUrl ? normaliseHref(element.source.pageUrl) : null;
 
   return (
     <Panel as="bar" role="toolbar" aria-label="Image" data-image-toolbar>
@@ -108,19 +109,8 @@ export const ImageToolbar = memo(function ImageToolbar({
           element.source ? (
             <div className="flex flex-col gap-1">
               <span className="text-eyebrow text-ink-3">Credit</span>
-              <p className="m-0 break-words text-ink-2 text-meta">
-                Photo by {element.source.photographer} on Pexels
-              </p>
-              {sourcePageHref ? (
-                <a
-                  href={sourcePageHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-meta text-primary hover:underline"
-                >
-                  View the original
-                </a>
-              ) : null}
+              {/* TEACH-251: the one credit wording (Pexels, Commons with its licence, generated). */}
+              <ImageCreditText source={element.source} cropped={isCropped(element)} />
             </div>
           ) : element.credit ? (
             <div className="flex flex-col gap-1">

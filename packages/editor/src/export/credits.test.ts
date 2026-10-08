@@ -190,4 +190,16 @@ describe("photoCredit and Commons in the credits list", () => {
     const c = photoCredit(bad);
     expect(c.links.some((l) => l.href.startsWith("javascript"))).toBe(false);
   });
+
+  it("a picture cropped on any slide is credited as cropped, in its first place", () => {
+    const list = imageCredits(
+      deck(
+        imageElement("a", { fit: "contain", source: commons("CC BY 4.0") }),
+        imageElement("b", { fit: "contain", source: commons("CC BY 4.0") }),
+        imageElement("c", { fit: "cover", source: commons("CC BY 4.0") }),
+      ),
+    );
+    expect(list).toHaveLength(1);
+    expect(list[0]?.text).toBe("Hadrian's Wall at Greenhead, Ada Lovelace, CC BY 4.0, cropped");
+  });
 });

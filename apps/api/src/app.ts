@@ -8,7 +8,7 @@
  */
 
 import type { CreatedAi } from "@tj/ai";
-import type { DbHandle } from "@tj/db";
+import { type DbHandle, forWorkspace, getDocument } from "@tj/db";
 import { type ReadableStorageAdapter, safeError } from "@tj/domain";
 import type { PexelsClient } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
@@ -114,6 +114,8 @@ export interface CreateAppOptions {
   images?: PexelsClient;
   /** Per-Workspace photo-search request limit; tests override the default config. */
   imageRateLimit?: Partial<RateLimitConfig>;
+  /** Tests: stands in for the report route's lesson-ownership lookup (the real one reads the db). */
+  lessonInWorkspace?: (workspaceId: string, lessonId: string) => Promise<boolean>;
   /** `POST /sources` per-Workspace limit (ADR 0027 §5); tests lower it. */
   sourceRateLimit?: Partial<RateLimitConfig>;
   /** The `lesson.worksheet` throttle slot (ADR 0030 item 8, 30 s); tests shorten it. */
@@ -141,6 +143,7 @@ function buildApp({
   worksheetSingletonS,
   extraction,
   ai,
+  lessonInWorkspace,
 }: CreateAppOptions) {
   const logger = injected ?? createLogger(env);
   const allowHeaderShim = env.ALLOW_WORKSPACE_HEADER_SHIM === "1";
@@ -288,7 +291,22 @@ function buildApp({
     .route("/", jobRoutes(eventsRuntime))
     .route("/", eventRoutes(eventsRuntime))
     .route("/", fileRoutes(storage))
-    .route("/", imageRoutes(images, imageLimiter, storage))
+    .route(
+      "/",
+      imageRoutes(
+        images,
+        imageLimiter,
+        storage,
+        lessonInWorkspace ??
+          (async (workspaceId, lessonId) => {
+            const row = await getDocument(
+              forWorkspace(db.unsafeDb, workspaceId as never),
+              lessonId,
+            );
+            return row !== null && row.kind === "lesson";
+          }),
+      ),
+    )
     .route(
       "/",
       sourceRoutes(

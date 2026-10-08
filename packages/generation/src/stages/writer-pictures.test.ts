@@ -4,9 +4,17 @@ import type { PhotoSource } from "@tj/domain/documents";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
+import { BudgetExceeded } from "../types";
 import type { DirectedPlacer } from "./illustrate";
-import { createWriterPictures, type WriterPhotoAsk, withPhotoSources } from "./picture-director";
+import {
+  createDirectorBatcher,
+  createWriterPictures,
+  type WriterPhotoAsk,
+  withPhotoSources,
+} from "./picture-director";
+import { DIRECTOR_FIXTURES } from "./picture-director.fixtures";
 
+const DIRECTOR_INPUT = DIRECTOR_FIXTURES[0]?.input as never;
 const PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
@@ -186,5 +194,85 @@ describe("writer pictures: a teacher never sees a placeholder", () => {
     expect(els[0]?.source?.provider).toBe("pexels");
     expect(els[1]?.children?.[0]?.source?.id).toBe("p7");
     expect(els[2]?.source).toBeUndefined();
+  });
+});
+
+describe("writer pictures: stops are never swallowed", () => {
+  const withSignal = (signal: AbortSignal) => ({
+    ...recordingDeps(createFakeAi({ script: [] })),
+    signal,
+  });
+
+  test("a budget stop in the director fails settle; the stage never saves a deck without pictures", async () => {
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => {
+        throw new BudgetExceeded("usd");
+      },
+    });
+    pictures.start(2, ask(), slide);
+    const err = await pictures.settle(1_000).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BudgetExceeded);
+  });
+
+  test("a cancel ends settle at once with an abort, and the running placement sees it", async () => {
+    const job = new AbortController();
+    let seen: AbortSignal | undefined;
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({}),
+      deps: withSignal(job.signal) as never,
+      direct: () => new Promise<PictureDirection | undefined>(() => {}),
+      onOutcome: () => {},
+    });
+    // The stock path reads the placements' signal: capture it through a search.
+    pictures.start(2, ask(), slide);
+    const settling = pictures.settle(60_000).catch((e: unknown) => e);
+    job.abort();
+    const err = (await settling) as Error;
+    expect(err.name).toBe("AbortError");
+    seen = job.signal;
+    expect(seen.aborted).toBe(true);
+  });
+
+  test("the deadline stops running placements (their signal aborts) and they count as failed", async () => {
+    let placementSignal: AbortSignal | undefined;
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: {
+        search: (_q: string, o: { signal: AbortSignal }) => {
+          placementSignal = o.signal;
+          return new Promise<PhotoResult[]>(() => {});
+        },
+        store: async (p: PhotoResult) => stored(p),
+      } as DirectedPlacer,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => direction({ route: "pexels", named: null }),
+    });
+    pictures.start(2, ask({ named: false }), slide);
+    await new Promise((r) => setTimeout(r, 5));
+    await pictures.settle(5);
+    expect(placementSignal?.aborted).toBe(true);
+    expect(pictures.state(2, "picture").status).toBe("failed");
+  });
+
+  test("a cancelled job clears the director batcher's timer and stops its queued slots", async () => {
+    const job = new AbortController();
+    const ai = createFakeAi({ script: [] });
+    const direct = createDirectorBatcher(
+      { ...recordingDeps(ai), signal: job.signal } as never,
+      "batched system",
+      50,
+    );
+    const asked = direct(DIRECTOR_INPUT).catch((e: unknown) => e);
+    job.abort();
+    expect(((await asked) as Error).name).toBe("AbortError");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(ai.calls).toHaveLength(0);
   });
 });

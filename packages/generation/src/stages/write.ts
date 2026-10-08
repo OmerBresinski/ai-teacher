@@ -9,7 +9,7 @@ import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
 import { writerBundleOf } from "./objectives-first";
-import { createDirectorBatcher, createWriterPictures, withPhotoSources } from "./picture-director";
+import { createWriterPictures, withPhotoSources } from "./picture-director";
 
 /*
  * The writer planner's generate step (TEACH-110 part b): the base4 lesson writer, with the
@@ -86,7 +86,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         country: locale().country,
         images,
         deps,
-        direct: createDirectorBatcher(deps, PICTURE_DIRECTOR_BATCH_SYSTEM),
+        batchSystem: PICTURE_DIRECTOR_BATCH_SYSTEM,
         onOutcome: (key, o) =>
           deps.logger.info({ stage: "generate", picture: key, ...o }, "writer picture"),
       })

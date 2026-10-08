@@ -57,7 +57,14 @@ export function imageCredits(lesson: Lesson, slideIndices?: readonly number[]): 
       const { source, credit } = image;
       if (source) {
         const line = photoCredit(source, { cropped: isCropped(image) });
-        if (seen.has(line.key)) continue;
+        if (seen.has(line.key)) {
+          // A picture shown cut down anywhere in the deck is credited as cropped.
+          if (isCropped(image)) {
+            const at = out.findIndex((c) => c.key === line.key);
+            if (at >= 0) out[at] = line;
+          }
+          continue;
+        }
         seen.add(line.key);
         out.push(line);
       } else if (credit?.trim()) {

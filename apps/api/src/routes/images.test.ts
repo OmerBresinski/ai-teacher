@@ -65,6 +65,8 @@ function makeFake(): { client: PexelsClient; state: FakeState } {
   return { client, state };
 }
 
+const OWN_LESSON = "0192f7a0-0000-7000-8000-000000000042";
+
 function appWith(
   client: PexelsClient | undefined,
   imageRateLimit?: Partial<RateLimitConfig>,
@@ -78,6 +80,8 @@ function appWith(
     images: client,
     imageRateLimit,
     storage,
+    // Only OWN_LESSON is in the caller's workspace.
+    lessonInWorkspace: async (_ws, lessonId) => lessonId === OWN_LESSON,
   });
 }
 
@@ -540,6 +544,16 @@ describe("POST /images/report", () => {
     const text = JSON.stringify(reported);
     expect(text).not.toContain("Ada");
     expect(text).not.toContain("river");
+  });
+
+  test("a report naming another workspace's lesson is refused 404 and not logged (TEACH-251)", async () => {
+    const { logger, lines } = captureLogger();
+    const res = await postReport(reportApp(logger), {
+      ...report,
+      lessonId: "0192f7a0-0000-7000-8000-0000000000ff",
+    });
+    expect(res.status).toBe(404);
+    expect(lines.some((l) => JSON.parse(l).msg === "image reported")).toBe(false);
   });
 
   test("a placed Commons file or generated picture can be reported (TEACH-251)", async () => {
