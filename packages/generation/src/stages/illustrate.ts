@@ -767,7 +767,11 @@ export async function pickDirectedPhoto(args: {
     return undefined;
   };
   // Ruling 139: a named, specific subject searches Commons first and falls back to Pexels.
+  // Ruling 163 (strict): a historical subject (a period) is Commons only. A stock photo is never
+  // its stand-in, so a Commons miss or failure leaves the slot empty.
+  const historical = real && !!brief.period;
   const commonsFirst = images.searchCommons !== undefined && real;
+  if (historical && !commonsFirst) return { outcome: "empty" };
   let source: PhotoSourceName = commonsFirst ? "commons" : "pexels";
   if (commonsFirst) {
     const got = await gather("commons").catch((error) => {
@@ -775,7 +779,11 @@ export async function pickDirectedPhoto(args: {
       deps.logger.warn({ stage: "illustrate", slideIndex: index, commons: "failed" });
       return "busy" as const;
     });
-    if (got === "busy" || candidates.length === 0) source = "pexels";
+    // The source follows the candidates: Commons stays the source while it gave any.
+    if (candidates.length === 0) {
+      if (historical) return got === "busy" ? { outcome: "busy" } : { outcome: "empty" };
+      source = "pexels";
+    }
   }
   if (source === "pexels" && candidates.length === 0) {
     if ((await gather("pexels")) === "busy") return { outcome: "busy" };
@@ -893,7 +901,10 @@ export async function pickDirectedPhoto(args: {
         deps.logger.warn({ stage: "illustrate", slideIndex: index, commons: "requery-failed" });
         return undefined;
       });
-      if (photos === undefined || photos === "busy") source = "pexels";
+      if (photos === undefined || photos === "busy") {
+        if (historical) return { outcome: "empty", judged: "query" };
+        source = "pexels";
+      }
     }
     if (source === "pexels") photos = await search(requery, "pexels");
     if (photos === "busy") return { outcome: "busy" };

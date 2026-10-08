@@ -1,0 +1,17 @@
+{
+  "source": "lab/ab 92f1b36d (base4); hashes are the base4 entries of the lab's ab/PINS.json (sha256)",
+  "labPins": {
+    "code:packages/generation/src/prompts/picture-director.ts": "53f0b15721f6c464f038b4d83bbeebd2c356daa3809a0cb55d18f72326657b3f",
+    "code:packages/generation/src/prompts/pick-or-requery-photo.ts": "4f5b71abd68491e25a81a3b3eee01544f39e3fa6906607a9429f75c6c3ef79d5",
+    "prompts/base4/shared/director-batch.txt": "efdd2f85036800273afb778dec26c208a874490c4acb53afdbeeeb24668a9133"
+  },
+  "files": {
+    "picture-director.v11.lab-source.txt": "code:packages/generation/src/prompts/picture-director.ts",
+    "pick-or-requery-photo.v17.lab-source.txt": "code:packages/generation/src/prompts/pick-or-requery-photo.ts",
+    "director-batch.base4.txt": "prompts/base4/shared/director-batch.txt"
+  },
+  "rendered": {
+    "picture-director.v11.system.txt": "the lab module's pictureDirectorPrompt({ aspect: 1, mustShow: [] }).system, rendered at 92f1b36d",
+    "pick-or-requery-photo.v17.system.txt": "the lab module's pickOrRequeryPrompt.system, rendered at 92f1b36d"
+  }
+}

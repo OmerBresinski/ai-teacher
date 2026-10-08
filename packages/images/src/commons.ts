@@ -105,12 +105,26 @@ export function stripHtml(html: string): string {
  * The licence class of a Commons `LicenseShortName`, or undefined when it is not one we reuse
  * (NC, ND, GFDL-only, fair use, "copyrighted", anything unrecognised).
  */
+const WORLDWIDE_PD = [
+  /^public domain$/,
+  /^public domain mark(?: \d(?:\.\d)?)?$/,
+  /^pdm(?: \d(?:\.\d)?)?$/,
+  /^pd old (?:70|100)(?: 1923)?$/,
+  /^pd (?:self|author|user)$/,
+];
+
+/** A US-only public domain template (`License` is the template name, e.g. `pd-us-expired`). */
+export function isUsOnlyPublicDomain(licenseTemplate: string): boolean {
+  return /^pd[-_ ]?us\b/i.test(licenseTemplate.trim());
+}
+
 export function licenceClass(shortName: string): CommonsLicence | undefined {
   const s = shortName.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (!s) return undefined;
   if (/\b(nc|nd|non ?commercial|no ?deriv)/.test(s)) return undefined;
-  if (s === "public domain" || s === "pd" || /^pd\b/.test(s) || s.startsWith("public domain"))
-    return "public-domain";
+  // Public domain worldwide only (ruling 139): the plain mark, life+70 or +100, or the author's
+  // own release. PD-US*, bare PD-old, PD-art and every other national or partial form is refused.
+  if (WORLDWIDE_PD.some((re) => re.test(s))) return "public-domain";
   if (/^cc0\b|^cc zero\b|^cc 0\b/.test(s)) return "cc0";
   const cc = /^cc by( sa)?(?: \d(?:\.\d)?)?(?: [a-z]{2,3}(?: [a-z]{2})?)?$/.exec(s);
   if (cc) return cc[1] ? "cc-by-sa" : "cc-by";
@@ -150,6 +164,10 @@ export function judgeCommonsFile(
   const restrictions = metaText(meta, "Restrictions");
   if (restrictions) return { ok: false, reason: `restricted (${restrictions})` };
   const shortName = metaText(meta, "LicenseShortName");
+  // "Public domain" is also the short name of PD-US files: the template decides.
+  const template = metaText(meta, "License");
+  if (isUsOnlyPublicDomain(shortName) || isUsOnlyPublicDomain(template))
+    return { ok: false, reason: `public domain in the US only (${template || shortName})` };
   const licence = licenceClass(shortName);
   if (!licence) return { ok: false, reason: `licence not reused (${shortName || "none"})` };
   const author = metaText(meta, "Artist") || metaText(meta, "Credit");
@@ -159,7 +177,7 @@ export function judgeCommonsFile(
     return { ok: false, reason: "file page is not https" };
   const licenceUrl = metaText(meta, "LicenseUrl");
   const credit: CommonsCredit = {
-    author: author || "Unknown author",
+    author: clipAuthor(author) || "Unknown author",
     licence: shortName,
     ...(licenceUrl.startsWith("http")
       ? { licenceUrl: licenceUrl.replace(/^http:/, "https:") }
@@ -167,6 +185,13 @@ export function judgeCommonsFile(
     sourceUrl: info.descriptionurl,
   };
   return { ok: true, licence, credit };
+}
+
+/** The longest author credit kept (some Artist fields hold whole biographies). */
+export const COMMONS_AUTHOR_MAX = 200;
+export function clipAuthor(author: string): string {
+  const a = author.replace(/\s+/g, " ").trim();
+  return a.length <= COMMONS_AUTHOR_MAX ? a : `${a.slice(0, COMMONS_AUTHOR_MAX - 1).trimEnd()}…`;
 }
 
 const DIAGRAM_MIME = new Set(["image/svg+xml", "image/png"]);
@@ -379,6 +404,11 @@ const SEARCH_TIMEOUT_MS = 20_000;
 
 export interface CommonsClient {
   search(params: CommonsSearchParams): Promise<CommonsPhoto[]>;
+  /**
+   * One Commons file download (upload.wikimedia.org) in the same serial queue as the searches,
+   * with the same User-Agent and busy retries (429 or 503 after `Retry-After`).
+   */
+  fetchFile(url: string, init?: { signal?: AbortSignal }): Promise<Response>;
 }
 
 export function createCommonsClient(
@@ -411,7 +441,22 @@ export function createCommonsClient(
     chain = run.catch(() => undefined);
     return run;
   };
+  const fetchFile = (url: string, init: { signal?: AbortSignal } = {}) =>
+    politely(async () => {
+      for (let attempt = 0; ; attempt++) {
+        const res = await fetchFn(url, {
+          headers: { "User-Agent": agent, "Api-User-Agent": agent },
+          ...(init.signal ? { signal: init.signal } : {}),
+        });
+        if (res.status !== 429 && res.status !== 503) return res;
+        const wait = retryAfterMs(res.headers.get("Retry-After"));
+        if (attempt >= COMMONS_BUSY_RETRIES || wait > COMMONS_MAX_RETRY_AFTER_MS)
+          throw new CommonsError(res.status, "Commons is busy", true);
+        await sleep(wait, init.signal);
+      }
+    });
   return {
+    fetchFile,
     search: ({ query, perPage = 20, allowDrawings, diagrams, signal, inline = 8 }) =>
       politely(async () => {
         const url = new URL(opts.apiUrl ?? API_URL);
@@ -438,7 +483,7 @@ export function createCommonsClient(
         p.set("iiurlwidth", String(LARGE_WIDTH));
         p.set(
           "iiextmetadatafilter",
-          "LicenseShortName|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
+          "LicenseShortName|License|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
         );
         // Busy (a `maxlag` error, 429 or 503) waits its `Retry-After` and tries again, up to
         // COMMONS_BUSY_RETRIES times; then it reports busy, never an empty search.

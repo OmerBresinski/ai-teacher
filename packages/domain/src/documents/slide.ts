@@ -462,7 +462,8 @@ export const PhotoSourceSchema = z.strictObject({
   pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
   photographer: z.string(),
   photographerUrl: z.string().refine(isLinkableHref, "photographerUrl must be an http(s) address"),
-  author: z.string().optional(),
+  /** Clipped at 200 characters by `@tj/images` (`COMMONS_AUTHOR_MAX`). */
+  author: z.string().max(200).optional(),
   licence: z.string().optional(),
   licenceUrl: z.string().refine(isLinkableHref, "licenceUrl must be an http(s) address").optional(),
   sourceUrl: z.string().refine(isLinkableHref, "sourceUrl must be an http(s) address").optional(),

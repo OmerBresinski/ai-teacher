@@ -469,7 +469,10 @@ export async function findDirected(args: {
       queries: artefactQueries(req.text, req.period),
       specific: true,
     };
-    const got = await args.stock(artefact).catch(() => undefined);
+    const got = await args.stock(artefact).catch((error: unknown) => {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return undefined;
+    });
     if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
   }
   log({ via: out.via, ms: out.ms });

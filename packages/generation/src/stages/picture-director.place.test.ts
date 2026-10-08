@@ -6,6 +6,7 @@ import { recordingDeps, sampleBriefLesson } from "../testing";
 import { type DirectedPlacer, directedGatePasses, pickDirectedPhoto } from "./illustrate";
 import type { BankRequest, PictureBank } from "./photo-bank";
 import {
+  findDirected,
   type PictureOutcome,
   placeWriterPicture,
   planPicture,
@@ -170,47 +171,77 @@ describe("ruling 163 under strict (placement)", () => {
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
   });
 
-  test("a historical event takes the illustration route, never photo style", async () => {
-    const { images } = placer({ commons: async () => [], pexels: async () => [] });
+  test("a historical event is real only: no stock fallback, zero generation calls", async () => {
+    const { images, calls } = placer({
+      commons: async () => [],
+      pexels: async () => [photo("p9")],
+    });
     const { bank, made } = spyBank();
     const outcomes: PictureOutcome[] = [];
-    await placeWriterPicture({
+    const event = direction({
+      route: "library-or-generate",
+      named: "event",
+      period: "England, 1066",
+      pictures: [
+        {
+          shows: "Norman soldiers landing at Pevensey in 1066",
+          mustShow: ["soldiers"],
+          queries: ["Norman landing 1066"],
+          imagePrompt: "Norman soldiers landing on a beach.",
+        },
+      ],
+    });
+    const plan = planPicture(event, {
+      text: "Norman soldiers landing at Pevensey in 1066",
+      named: null,
+      aspect: 0.89,
+    });
+    expect(plan.kind).toBe("photo");
+    if (plan.kind === "photo") {
+      expect(plan.request.route).toBe("real");
+      expect(plan.request.depicts).toBe(true);
+      expect(plan.request.realFallback).toBe("none");
+      expect(plan.request.style).toBeUndefined();
+      expect(plan.brief.period).toBe("England, 1066");
+    }
+    const got = await placeWriterPicture({
       ask: ask({ shows: "Norman soldiers landing at Pevensey in 1066", mustSee: [], named: false }),
       lesson: sampleBriefLesson(),
       country: "UK",
       images,
       deps: recordingDeps(createFakeAi({ script: [] })),
       bank,
-      direct: async () =>
-        direction({
-          route: "library-or-generate",
-          named: "event",
-          period: "England, 1066",
-          pictures: [
-            {
-              shows: "Norman soldiers landing at Pevensey in 1066",
-              mustShow: ["soldiers"],
-              queries: ["Norman landing 1066"],
-              imagePrompt: "Norman soldiers landing on a beach.",
-            },
-          ],
-        }),
+      direct: async () => event,
       onOutcome: (o) => outcomes.push(o),
     });
-    expect(outcomes[0]?.route).toBe("real");
-    // Ruling 163: a depicted past event is never generated as a photo; whatever reaches the
-    // generator for it is the illustration style.
-    for (const req of made) expect(req.style).toBe("illustration");
-    expect(outcomes[0]?.via).not.toBe("generated");
-    const plan = planPicture(
-      direction({ route: "library-or-generate", named: "event", period: "England, 1066" }),
-      { text: "Norman soldiers landing at Pevensey in 1066", named: null, aspect: 0.89 },
-    );
-    expect(plan.kind).toBe("photo");
-    if (plan.kind === "photo") {
-      expect(plan.request.realFallback).toBe("illustration");
-      expect(plan.request.style).toBe("illustration");
-    }
+    expect(got).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+    // Strict history never falls back to stock: Commons only, the artefact search included.
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((c) => c.startsWith("commons:"))).toBe(true);
+  });
+
+  test("a busy Commons for a historical person is no picture, never a Pexels stand-in", async () => {
+    const { images, calls } = placer({
+      commons: async () => {
+        throw new Error("Commons is busy");
+      },
+      pexels: async () => [photo("p8")],
+    });
+    const { bank, made } = spyBank();
+    const got = await placeWriterPicture({
+      ask: ask(),
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      bank,
+      direct: async () => direction({ named: "person", period: "Tudor England, 1509-1547" }),
+    });
+    expect(got).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(calls.some((c) => c.startsWith("pexels:"))).toBe(false);
   });
 });
 
@@ -303,5 +334,32 @@ describe("pickDirectedPhoto (judge v17, Commons first)", () => {
         query: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("findDirected aborts", () => {
+  test("an abort during the artefact search is rethrown, not swallowed as no picture", async () => {
+    let n = 0;
+    const abort = Object.assign(new Error("aborted"), { name: "AbortError" });
+    const run = findDirected({
+      bank: spyBank().bank,
+      ask: { subject: "Norman soldiers landing in 1066", named: null },
+      brief: writerAskBrief(ask({ shows: "Norman soldiers landing in 1066", named: false })),
+      slide: { heading: "1066" },
+      lesson: { title: "The Norman Conquest" },
+      country: "UK",
+      index: 0,
+      // The scene search misses; the artefact search is aborted.
+      stock: async () => {
+        n += 1;
+        if (n === 1) return undefined;
+        throw abort;
+      },
+      judgeMade: async () => false,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () => direction({ named: "event", period: "England, 1066" }),
+    });
+    await expect(run).rejects.toThrow("aborted");
+    expect(n).toBe(2);
   });
 });

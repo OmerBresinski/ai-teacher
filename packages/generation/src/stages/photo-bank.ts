@@ -35,7 +35,9 @@ export type HistoryPolicy = "strict" | "illustrate" | "labelled";
  * reconstruction" caption).
  */
 export const REAL_FALLBACK: Record<HistoryPolicy | "present", Record<NamedKind, RealFallback>> = {
-  strict: { event: "illustration", person: "none", work: "none", place: "none", object: "none" },
+  // An event's illustration fallback was unreachable under strict (a past event always depicts,
+  // and nothing is generated for one), so strict says what happens: no generated picture.
+  strict: { event: "none", person: "none", work: "none", place: "none", object: "none" },
   illustrate: {
     event: "illustration",
     person: "illustration",

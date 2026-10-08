@@ -74,13 +74,14 @@ describe("planPicture", () => {
     expect(p.request.route).toBe("real");
     expect(p.brief.queries).toEqual(["hyperinflation 1923", "Weimar inflation children"]);
     expect(p.brief.period).toBe("Germany, 1923");
-    expect(p.request.realFallback).toBe("illustration");
-    expect(p.request.imagePrompt).toContain("clearly a painting and not a photograph");
+    // Ruling 163 strict: a past event has no generated fallback at all.
+    expect(p.request.realFallback).toBe("none");
+    expect(p.request.style).toBeUndefined();
   });
 
   // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:
   // Commons first, and any generation is the painted illustration, never a photograph.
-  test("a historical subject on any route is Commons or an illustration, never a photo", () => {
+  test("a historical subject on any route is Commons or nothing, never generated", () => {
     const prev = process.env.HISTORY_POLICY;
     delete process.env.HISTORY_POLICY;
     try {
@@ -91,9 +92,9 @@ describe("planPicture", () => {
         });
         expect(p.request.route).toBe("real");
         expect(p.request.period).toBe("Germany, 1923");
-        expect(p.request.realFallback).toBe("illustration");
-        expect(p.request.style).toBe("illustration");
-        expect(p.request.imagePrompt).toContain("clearly a painting and not a photograph");
+        expect(p.request.realFallback).toBe("none");
+        expect(p.request.depicts).toBe(true);
+        expect(p.request.style).toBeUndefined();
       }
       const person = photoPlan(dir({ route: "commons", named: "person", period: "1920s" }));
       expect(person.request.realFallback).toBe("none");
@@ -186,7 +187,7 @@ describe("planPicture", () => {
     expect(historyPolicy(undefined)).toBe("strict");
     expect(historyPolicy("labelled")).toBe("labelled");
     expect(REAL_FALLBACK.strict).toEqual({
-      event: "illustration",
+      event: "none",
       person: "none",
       work: "none",
       place: "none",
@@ -394,14 +395,14 @@ describe("lesson look (dd-pics, 6 Oct)", () => {
     expect(p.request.style).toBeUndefined();
     expect(p.request.palette).toBeUndefined();
   });
-  test("ruling 163 unchanged: a historical event keeps the painted period prompt", () => {
+  test("ruling 163 strict: a historical event is real only, not the lesson's illustration look", () => {
     const p = photoPlan(dir({ route: "pexels", period: "Germany, 1923", named: "event" }), {
       ...ask,
       look,
     } as never);
     expect(p.request.route).toBe("real");
-    expect(p.request.style).toBe("illustration");
-    expect(p.request.imagePrompt).toContain("Germany, 1923");
+    expect(p.request.realFallback).toBe("none");
+    expect(p.request.style).toBeUndefined();
     expect(p.request.palette).toBeUndefined();
   });
   test("a photo lesson is unchanged", () => {
@@ -430,7 +431,8 @@ describe("generic: generate (house photo look)", () => {
       ...ask,
       look: house,
     } as never);
-    expect(hist.request.style).toBe("illustration");
+    expect(hist.request.style).toBeUndefined();
+    expect(hist.request.realFallback).toBe("none");
   });
 });
 
@@ -449,8 +451,8 @@ describe("ruling 163 ships in code", () => {
         text: "The Roman landing in Kent",
         named: null,
       });
-      expect(event.request.realFallback).toBe("illustration");
-      expect(event.request.style).toBe("illustration");
+      expect(event.request.realFallback).toBe("none");
+      expect(event.request.style).toBeUndefined();
     } finally {
       if (prev === undefined) delete process.env.HISTORY_POLICY;
       else process.env.HISTORY_POLICY = prev;

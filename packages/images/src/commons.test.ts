@@ -14,7 +14,13 @@ import {
 function page(
   n: number,
   licence: string,
-  over: { mime?: string; title?: string; artist?: string; restrictions?: string } = {},
+  over: {
+    mime?: string;
+    title?: string;
+    artist?: string;
+    restrictions?: string;
+    template?: string;
+  } = {},
 ) {
   const name = over.title ?? `Hadrian's Wall ${n}.jpg`;
   const file = name.replace(/ /g, "_");
@@ -39,6 +45,7 @@ function page(
             value: over.artist ?? '<a href="//commons.wikimedia.org/wiki/User:Ada">Ada</a>',
           },
           ...(over.restrictions ? { Restrictions: { value: over.restrictions } } : {}),
+          ...(over.template ? { License: { value: over.template } } : {}),
           ImageDescription: { value: "<p>A stretch of the wall near Housesteads</p>" },
         },
       },
@@ -61,9 +68,36 @@ describe("Commons licence filter", () => {
       "GFDL",
       "Fair use",
       "Copyrighted",
+      "PD-US",
+      "PD-US-expired",
+      "PD-US-no notice",
+      "PD-old",
+      "PD-old-auto",
+      "PD-Art",
+      "PD",
       "",
     ])
       expect(licenceClass(refused)).toBeUndefined();
+  });
+
+  test("worldwide public domain forms are reused", () => {
+    for (const pd of [
+      "Public domain",
+      "Public Domain Mark 1.0",
+      "PD-old-70",
+      "PD-self",
+      "PD-author",
+    ])
+      expect(licenceClass(pd)).toBe("public-domain");
+  });
+
+  test("a file whose template is PD-US is refused even when its short name is Public domain", () => {
+    for (const template of ["pd-us", "pd-us-expired", "PD-US-not renewed"]) {
+      const v = judgeCommonsFile(page(1, "Public domain", { template }));
+      expect(v.ok).toBe(false);
+      if (!v.ok) expect(v.reason).toContain("US only");
+    }
+    expect(judgeCommonsFile(page(1, "Public domain", { template: "pd-old-100" })).ok).toBe(true);
   });
 
   test("restrictions, non-photographs, maps and logos are refused", () => {
@@ -261,5 +295,44 @@ describe("Commons busy replies (maxlag, 429, Retry-After)", () => {
   test("the User-Agent names Dayback and the site as its contact, with no personal email", () => {
     expect(COMMONS_USER_AGENT).toBe("DaybackLessonPictures/1.0 (https://dayback.app)");
     expect(COMMONS_USER_AGENT).not.toMatch(/@|teachdeck/i);
+  });
+});
+
+describe("Commons file downloads", () => {
+  test("files share the search queue and a 429 is retried after Retry-After", async () => {
+    let calls = 0;
+    let inFlight = 0;
+    let peak = 0;
+    const waits: number[] = [];
+    let clock = 0;
+    const stub = (async () => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      calls += 1;
+      if (calls === 1) return new Response("", { status: 429, headers: { "Retry-After": "2" } });
+      return new Response(new Uint8Array([1]), { headers: { "content-type": "image/jpeg" } });
+    }) as unknown as typeof fetch;
+    const client = createCommonsClient({
+      fetch: stub,
+      now: () => clock,
+      sleep: async (ms) => {
+        waits.push(ms);
+        clock += ms;
+      },
+    });
+    const [a, b] = await Promise.all([
+      client.fetchFile("https://upload.wikimedia.org/a.jpg"),
+      client.fetchFile("https://upload.wikimedia.org/b.jpg"),
+    ]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(peak).toBe(1);
+    expect(waits).toContain(2000);
+  });
+
+  test("an Artist field past the cap is clipped in the credit", () => {
+    const v = judgeCommonsFile(page(1, "CC BY 4.0", { artist: "z".repeat(900) }));
+    expect(v.ok && v.credit.author.length).toBe(200);
   });
 });

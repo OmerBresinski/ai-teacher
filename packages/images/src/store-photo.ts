@@ -10,7 +10,7 @@
  */
 import { newId, type StorageAdapter, storageKey, type WorkspaceId } from "@tj/domain";
 import type { PhotoSource } from "@tj/domain/documents";
-import { COMMONS_USER_AGENT, type CommonsPhoto } from "./commons";
+import { COMMONS_USER_AGENT, type CommonsClient, type CommonsPhoto, clipAuthor } from "./commons";
 import type { PhotoResult } from "./pexels";
 
 export type PickTarget = "slide" | "worksheet";
@@ -68,6 +68,11 @@ export interface StorePhotoOptions {
   fetch?: typeof globalThis.fetch;
   /** Tests pass a fixed id; production mints one. */
   ids?: () => string;
+  /**
+   * The Commons client the searches ran on: a Commons file is downloaded in its serial queue,
+   * with its busy retries. Absent, the file is fetched directly with the same User-Agent.
+   */
+  commons?: Pick<CommonsClient, "fetchFile">;
 }
 
 export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhoto> {
@@ -82,11 +87,15 @@ export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhot
   const commons = (photo as Partial<CommonsPhoto>).provider === "commons";
   let res: Response;
   try {
-    res = await fetchFn(rendition, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      // Wikimedia's etiquette: a descriptive agent on every request, the file fetch included.
-      ...(commons ? { headers: { "User-Agent": COMMONS_USER_AGENT } } : {}),
-    });
+    const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+    res =
+      commons && options.commons
+        ? await options.commons.fetchFile(rendition, { signal })
+        : await fetchFn(rendition, {
+            signal,
+            // Wikimedia's etiquette: a descriptive agent on every request, the file fetch included.
+            ...(commons ? { headers: { "User-Agent": COMMONS_USER_AGENT } } : {}),
+          });
   } catch {
     throw new StorePhotoError("fetch_failed", "The photo could not be downloaded.");
   }
@@ -135,7 +144,7 @@ export async function storePhoto(options: StorePhotoOptions): Promise<StoredPhot
       // Commons (ruling 139): the reuse terms, kept for the export credit; never on a slide.
       ...(commons && (photo as CommonsPhoto).credit
         ? {
-            author: (photo as CommonsPhoto).credit.author,
+            author: clipAuthor((photo as CommonsPhoto).credit.author),
             licence: (photo as CommonsPhoto).credit.licence,
             ...((photo as CommonsPhoto).credit.licenceUrl
               ? { licenceUrl: (photo as CommonsPhoto).credit.licenceUrl }
