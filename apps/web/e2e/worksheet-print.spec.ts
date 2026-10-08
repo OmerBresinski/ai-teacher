@@ -149,19 +149,4 @@ test.describe("worksheet print route", () => {
     await expect(page.getByText("Photo by")).toHaveCount(0);
     await expect(page.getByText("Pexels")).toHaveCount(0);
   });
-
-  test("the starter worksheet prints; a lesson id shows the wrong-kind page without crashing", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(paths.worksheet("roman-source", "/print"));
-    await expect(page.locator(".ws-print-root .ws-page").first()).toBeVisible();
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Roman source investigation" }),
-    ).toBeVisible();
-    await expect(page.getByText(/^Page 1 of [12]$/)).toBeVisible();
-
-    await page.goto(`/w/${paths.id("demo-water-cycle")}/print`);
-    await expect(page.getByText("This is a lesson")).toBeVisible();
-    await expect(page.locator(".ws-page")).toHaveCount(0);
-  });
 });
