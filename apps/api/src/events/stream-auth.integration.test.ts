@@ -88,6 +88,8 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
         expect(text).not.toContain("synthetic-private-error");
         if (mode === "refused") expect(text).not.toContain("event: started");
         else if (mode !== "shutdown-race") expect(text).toContain("event: started");
+        // The stream ended on the throwing second lookup, not on the 500 ms maximum age.
+        if (mode === "lookup-failure") expect(calls).toBe(2);
         expect(releases).toBe(1);
         expect(runtime.openStreams(workspaceId)).toBe(0);
         expect(runtime.hub.size()).toBe(0);
