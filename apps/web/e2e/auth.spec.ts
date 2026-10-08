@@ -134,7 +134,7 @@ test.describe("auth", () => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.clock.install();
     await page.goto("/sign-in");
-    // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts),
+    // Slides and Worksheet climb out from behind the card on arrival,
     // Worksheet a beat after Slides: `cast-rig.ts` `enter` ends the climb 1.23 s after the stage
     // goes live (0.15 s delay, 0.18 s stagger, 0.9 s climb). Play that on the clock, then measure.
     await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");

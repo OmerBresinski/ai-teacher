@@ -1,94 +1,10 @@
 /**
- * The Worksheets library (TEACH-186): the whole card face opening the sheet, and the four seeded
- * sheets printing as real content, one or two pages on A4 and on Letter, with the answer key
- * derived from the answers. The cards' minutes and New worksheet are unit tests (TEACH-301).
+ * The Worksheets library (TEACH-186): the whole card face opens the sheet, and Print and the
+ * overflow menu do not. The cards' minutes and New worksheet are unit tests (TEACH-301).
  */
-import type { Page } from "@playwright/test";
-import { demoWorkspace } from "@tj/editor/starter";
-import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
-
-/** Key, title, and a phrase only that sheet's paper carries. */
-const SHEETS = [
-  ["fraction-practice", "Fractions practice", "Worked example"],
-  ["roman-source", "Roman source investigation", "Watling Street"],
-  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant"],
-  ["river-vocabulary", "River vocabulary", "tributary"],
-] as const;
-
-/** Content pages only: the answer key starts a fresh page and is not counted against the sheet. */
-const contentPages = (page: Page) =>
-  page.locator(".ws-print-root .ws-page:not(:has(.ws-key-title)):not(:has(.ws-key-entry))");
-
-/**
- * One or two content pages, no page ending on a heading, nothing reported as not fitting. The
- * self-assessment strip (TEACH-196) sits at the foot of the last of them; the seeds are sized so it
- * never needs a page of its own.
- */
-async function expectCleanPages(page: Page): Promise<void> {
-  await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
-  const pages = contentPages(page);
-  const count = await pages.count();
-  expect(count).toBeGreaterThanOrEqual(1);
-  expect(count).toBeLessThanOrEqual(2);
-  for (let i = 0; i < count; i += 1) {
-    // The last content block; the self-assessment strip sits below it at the foot (TEACH-196).
-    const last = pages.nth(i).locator(".ws-block:not(.ws-rag-slot)").last();
-    await expect(last.locator(".ws-h1, .ws-h2")).toHaveCount(0);
-  }
-  await expect(page.locator(".ws-print-hint")).toHaveCount(0);
-}
+import { expect, test } from "./fixtures";
 
 test.describe("worksheet library", () => {
-  test("row 1: each seeded sheet prints real content matching its title on one or two A4 pages", async ({
-    signedInPage: { page, paths },
-  }) => {
-    for (const [key, title, phrase] of SHEETS) {
-      await page.goto(paths.worksheet(key, "/print"));
-      await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
-      await expect(page.locator(".ws-print-root").getByText(phrase).first()).toBeVisible();
-      await expectCleanPages(page);
-      // A4 at 1:1 is 595pt = 793.33px wide.
-      const box = await contentPages(page).first().boundingBox();
-      expect(box && Math.abs(box.width - 793.33) < 1).toBe(true);
-    }
-    // The plant sheet carries its drawing inline, with alt text.
-    await page.goto(paths.worksheet("plant-labels", "/print"));
-    await expect(page.locator(".ws-print-root img[alt*='flowering plant']")).toBeVisible();
-  });
-
-  test("row 1: the same sheets on Letter, with the answer key derived from the answers", async ({
-    signedInPage: { page },
-  }) => {
-    const sheets = demoWorkspace(new Date())
-      .filter((document) => document.kind === "worksheet")
-      .map((document) => ({
-        ...document,
-        key: `${document.key}-letter`,
-        body: {
-          ...document.body,
-          id: `${document.key}-letter`,
-          pageSize: "Letter",
-          includeAnswerKey: true,
-        },
-      }));
-    const res = await page.request.post(`${E2E_API_URL}/__test/seed-library`, {
-      headers: { origin: E2E_WEB_URL },
-      data: { documents: sheets },
-    });
-    expect(res.ok(), `seed failed: ${res.status()} ${await res.text()}`).toBe(true);
-    const { ids } = (await res.json()) as { ids: Record<string, string> };
-    for (const sheet of sheets) {
-      await page.goto(`/w/${ids[sheet.key]}/print`);
-      await expect(page.getByRole("heading", { level: 1, name: sheet.body.title })).toBeVisible();
-      await expectCleanPages(page);
-      await expect(page.getByRole("heading", { level: 2, name: "Answer key" })).toBeVisible();
-      await expect(page.locator(".ws-key-entry").first()).toBeVisible();
-      // Letter at 1:1 is 612pt = 816px wide.
-      const box = await contentPages(page).first().boundingBox();
-      expect(box && Math.abs(box.width - 816) < 1).toBe(true);
-    }
-  });
-
   test("row 3: the card face opens the sheet; Print and the overflow menu do not", async ({
     signedInPage: { page, paths },
     context,

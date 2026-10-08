@@ -3,16 +3,14 @@ import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
- * The lesson editor on `/l/$lessonId` (TEACH-103): rows 1, 3, 4, 5, 9 and 11 of the acceptance
- * table with real pointer events, plus the fidelity addendum's computed-style checks against
- * TeachDeck's geometry (navigator 218 — TeachDeck's 212 plus 6px of air between number and thumb, rail 56, top bar 48, thumb 168x94, `--shadow-slide`, the
- * zoom cluster 16px in from the corner).
+ * The lesson editor on `/l/$lessonId` (TEACH-103), its critical workflows: the editor opens with
+ * every slide and Saved (row 1), slides reorder (row 9), and a rename autosaves to the library
+ * (row 11). The other rows were cut to keep e2e to the critical journeys (8 Oct 2026).
  */
 
 const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
 
 const frame = (page: Page) => page.locator("[data-slide-frame]");
-const stageElements = (page: Page) => page.locator("[data-slide-frame] [data-element-id]");
 const rows = (page: Page) => page.getByRole("listbox", { name: "Slides" }).getByRole("option");
 
 async function centre(locator: Locator) {
@@ -37,35 +35,6 @@ async function drag(
   await page.mouse.up();
 }
 
-/** The slide's scale on screen: frame width over its 960 logical points. */
-async function scaleOf(page: Page) {
-  const box = await frame(page).boundingBox();
-  if (!box) throw new Error("no frame");
-  return box.width / 960;
-}
-
-const leftOf = (el: Locator) =>
-  el.evaluate((n) => Number.parseFloat((n as HTMLElement).style.left));
-const sizeOf = (el: Locator) =>
-  el.evaluate((n) => ({
-    w: Number.parseFloat((n as HTMLElement).style.width),
-    h: Number.parseFloat((n as HTMLElement).style.height),
-  }));
-
-/** The browser's normalised rendering of a token, to compare with a computed style. */
-const resolved = (page: Page, value: string, property: "boxShadow" = "boxShadow") =>
-  page.evaluate(
-    ([v, p]) => {
-      const probe = document.createElement("div");
-      probe.style.setProperty(p === "boxShadow" ? "box-shadow" : p, v);
-      document.body.appendChild(probe);
-      const out = getComputedStyle(probe)[p as "boxShadow"];
-      probe.remove();
-      return out;
-    },
-    [value, property] as const,
-  );
-
 test.describe("lesson editor", () => {
   test("row 1: the editor opens with the title, every slide in the navigator, slide 1 at fit and Saved", {
     tag: "@smoke",
@@ -89,153 +58,6 @@ test.describe("lesson editor", () => {
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "/l/:id");
-  });
-
-  test("fidelity: TeachDeck's geometry to the pixel", async ({ signedInPage: { page, paths } }) => {
-    await page.goto(EDITOR(paths));
-    await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
-
-    const width = (sel: string) => page.locator(sel).evaluate((n) => getComputedStyle(n).width);
-    const height = (sel: string) => page.locator(sel).evaluate((n) => getComputedStyle(n).height);
-    expect(await width("[data-navigator]")).toBe("218px");
-    expect(await width("[data-insert-rail]")).toBe("56px");
-    expect(await height("[data-topbar]")).toBe("48px");
-
-    const activeThumb = rows(page).first().locator("[data-navigator-thumb]");
-    expect(await activeThumb.evaluate((n) => getComputedStyle(n).width)).toBe("168px");
-    expect(await activeThumb.evaluate((n) => getComputedStyle(n).height)).toBe("94px");
-    expect(await activeThumb.evaluate((n) => getComputedStyle(n).boxShadow)).toBe(
-      await resolved(page, "0 0 0 2px var(--primary)"),
-    );
-    expect(
-      await rows(page)
-        .nth(1)
-        .locator("[data-navigator-thumb]")
-        .evaluate((n) => getComputedStyle(n).boxShadow),
-    ).toBe(await resolved(page, "0 0 0 1px var(--border)"));
-
-    expect(await frame(page).evaluate((n) => getComputedStyle(n).boxShadow)).toBe(
-      await resolved(page, "var(--shadow-slide)"),
-    );
-    expect(await frame(page).evaluate((n) => getComputedStyle(n).borderRadius)).toBe("12px");
-
-    const cluster = page.locator("[data-canvas-footer]");
-    expect(await cluster.evaluate((n) => getComputedStyle(n).right)).toBe("16px");
-    expect(await cluster.evaluate((n) => getComputedStyle(n).bottom)).toBe("16px");
-    expect(await cluster.evaluate((n) => getComputedStyle(n).height)).toBe("32px");
-    // The slide action pill floats in the band above the slide, never nearer the top than 72px.
-    const pill = await page.locator("[data-slide-actions]").boundingBox();
-    expect(pill?.y ?? 0).toBeGreaterThanOrEqual(72);
-  });
-
-  test("row 3: dragging an element 40px right moves it 40/scale points, as one undo step", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await expect(frame(page)).toBeVisible();
-    const scale = await scaleOf(page);
-    // The title on slide 1: the largest text box, the easiest to hit.
-    const title = stageElements(page).filter({ hasText: "The water cycle" }).first();
-    const before = await leftOf(title);
-    const at = await centre(title);
-    // Straight along x so the vertical position, and every guide on that axis, stays put; snap is
-    // off by ⌘ during the drag so the pure delta is what lands.
-    await page.keyboard.down("Meta");
-    await drag(page, at, 40, 0);
-    await page.keyboard.up("Meta");
-
-    // The cache write lands on TanStack's notify tick, so read with a retrying poll.
-    await expect.poll(() => leftOf(title)).toBeCloseTo(before + 40 / scale, 1);
-    await expect(page.locator("[data-selection-frame]")).toBeVisible();
-    await expect(page.locator("[data-handle]")).toHaveCount(8);
-
-    const undo = page.getByRole("button", { name: "Undo" });
-    await expect(undo).toBeEnabled();
-    await undo.click();
-    await expect.poll(() => leftOf(title)).toBeCloseTo(before, 3);
-    await expect(undo).toBeDisabled();
-    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-  });
-
-  test("row 4: a drag near a sibling's edge snaps to it with a guide; snap off leaves it where it lands", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await expect(frame(page)).toBeVisible();
-    const scale = await scaleOf(page);
-    const title = stageElements(page).filter({ hasText: "The water cycle" }).first();
-    const before = await leftOf(title);
-    const at = await centre(title);
-
-    // 5 screen px is inside the 8px threshold: the left edge snaps back onto the caption's.
-    await page.mouse.move(at.x, at.y);
-    await page.mouse.down();
-    await page.mouse.move(at.x + 2, at.y);
-    await page.mouse.move(at.x + 5, at.y);
-    await expect(page.locator('[data-guide="x"]').first()).toBeVisible();
-    await page.mouse.up();
-    await expect.poll(() => leftOf(title)).toBeCloseTo(before, 3);
-
-    // Snap off from the canvas options, and the same drag lands 5/scale points over.
-    await page.getByRole("button", { name: "Canvas options" }).click();
-    await page.getByRole("menuitemcheckbox", { name: "Snap to guides" }).click();
-    await page.keyboard.press("Escape");
-    const again = await centre(title);
-    await page.mouse.move(again.x, again.y);
-    await page.mouse.down();
-    await page.mouse.move(again.x + 2, again.y);
-    await page.mouse.move(again.x + 5, again.y);
-    await expect(page.locator('[data-guide="x"]')).toHaveCount(0);
-    await page.mouse.up();
-    await expect.poll(() => leftOf(title)).toBeCloseTo(before + 5 / scale, 1);
-  });
-
-  test("row 5: a corner handle resizes; a shape is free without Shift and Shift locks the ratio on any handle", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await expect(frame(page)).toBeVisible();
-    const scale = await scaleOf(page);
-    // A fresh rectangle from the rail: shapes resize freely (images lock by default).
-    await page
-      .getByRole("toolbar", { name: "Insert" })
-      .getByRole("button", { name: "Shape" })
-      .click();
-    await page.getByRole("menuitem", { name: "Rectangle" }).click();
-    const rect = page.locator('[data-slide-frame] [data-element-type="shape"]').last();
-    await expect(page.locator("[data-selection-frame]")).toBeVisible();
-    const start = await sizeOf(rect);
-
-    // No Shift: the corner follows the pointer on both axes and the ratio changes; ⌘ keeps the
-    // edges from snapping to a neighbour on the way.
-    const se = await centre(page.locator('[data-handle="se"]'));
-    await page.keyboard.down("Meta");
-    await drag(page, se, 40, -20, 6);
-    await page.keyboard.up("Meta");
-    await expect.poll(async () => (await sizeOf(rect)).w).toBeCloseTo(start.w + 40 / scale, 0);
-    const free = await sizeOf(rect);
-    expect(free.h - start.h).toBeCloseTo(-20 / scale, 0);
-    expect(free.w / free.h).not.toBeCloseTo(start.w / start.h, 2);
-
-    // Shift on a corner keeps the ratio.
-    const se2 = await centre(page.locator('[data-handle="se"]'));
-    await page.keyboard.down("Shift");
-    await drag(page, se2, 60, 10, 6);
-    await page.keyboard.up("Shift");
-    await expect.poll(async () => (await sizeOf(rect)).w).toBeGreaterThan(free.w);
-    const locked = await sizeOf(rect);
-    expect(locked.w / locked.h).toBeCloseTo(free.w / free.h, 2);
-
-    // Shift on a side handle keeps it too: the width follows the pointer and the height scales
-    // with it, so both dimensions change.
-    const e = await centre(page.locator('[data-handle="e"]'));
-    await page.keyboard.down("Shift");
-    await drag(page, e, 60, 0, 6);
-    await page.keyboard.up("Shift");
-    await expect.poll(async () => (await sizeOf(rect)).w).toBeCloseTo(locked.w + 60 / scale, 0);
-    const both = await sizeOf(rect);
-    expect(both.h).toBeGreaterThan(locked.h);
-    expect(both.w / both.h).toBeCloseTo(locked.w / locked.h, 2);
   });
 
   test("row 9: ⌘↓ moves slide 2 down; dragging slide 1 below slide 3 reorders", async ({
@@ -298,23 +120,5 @@ test.describe("lesson editor", () => {
     await page.getByRole("button", { name: "Back to library" }).click();
     await expect(page).toHaveURL(/\/lessons$/);
     await expect(page.getByRole("link", { name: "Open Rain, rivers and seas" })).toBeVisible();
-  });
-
-  test("row 14: zoom shortcuts step through ZOOM_STEPS and ⌘⌥0 fits", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await expect(frame(page)).toBeVisible();
-    const readout = page.getByRole("button", { name: /^Zoom, \d+ percent$/ });
-    const fit = await frame(page).boundingBox();
-    await page.keyboard.press("Meta+0");
-    await expect(readout).toHaveAccessibleName("Zoom, 100 percent");
-    expect((await frame(page).boundingBox())?.width).toBeCloseTo(960, 0);
-    await page.keyboard.press("Meta+Equal");
-    await expect(readout).toHaveAccessibleName("Zoom, 150 percent");
-    await page.getByRole("button", { name: "Zoom out" }).click();
-    await expect(readout).toHaveAccessibleName("Zoom, 100 percent");
-    await page.keyboard.press("Meta+Alt+0");
-    expect((await frame(page).boundingBox())?.width).toBeCloseTo(fit?.width ?? 0, 0);
   });
 });

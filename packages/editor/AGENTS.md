@@ -183,10 +183,8 @@ the `@tj/slides` linter, `layout/tidy`, `layout/fit-plan`,
 `present/ink`, `present/present-reducer`, `present/timer`, `lesson/canvas/place-slide-actions`,
 `lesson/slide-commands`, `model/snapping`, `lesson/transform/{hit-test,resize}`); happy-dom cannot
 lay out text, so anything that measures runs against `layout/test-ruler.ts`. What needs a real
-caret, pointer or download is Playwright's, in `apps/web/e2e`: `editor*`, `present`, `export*`,
-`worksheet-editor`, `worksheet-print`, `handoff` (TeachDeck's handoff acceptance lines end to end:
-one full pointer flow, one keyboard-only flow, the 900×700 smoke) and `a11y` (every editor route in
-the three themes plus every overlay — one test per route: the full rules in light, then
-`switchTheme` to dark and high contrast for `THEME_RULES` only; route and overlay scans wait for
-their arrival animations to finish, or axe reads contrast through the fade). Route chunk ceilings
+caret, pointer or download was Playwright's; since 8 Oct 2026 only the critical journeys are
+(`docs/testing.md`, "Which level a test belongs at"), in `apps/web/e2e`: `editor`, `editor-text`,
+`editor-images`, `present*`, `export*`, `worksheet-editor`, `worksheet-print` and `handoff`
+(TeachDeck's full pointer flow end to end). Route chunk ceilings
 are pinned in `scripts/check-bundle-budget.ts` (ADR 0022 §8 amendment).

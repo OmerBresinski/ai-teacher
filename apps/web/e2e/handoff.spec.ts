@@ -9,13 +9,11 @@
  * > Edit/reload a worksheet; inspect PDF, PPTX, PNG, JSON and DOCX output where supported.
  * > Check light chrome, dark stage controls, narrow layouts and the recorded contrast issue.
  *
- * One full pointer flow through the editor, one keyboard-only flow, and the narrow-viewport smoke
- * for the editor and the worksheet. The feature specs (`editor*`, `present`, `export*`,
- * `worksheet-editor`, `a11y`) hold the row-by-row detail; these are the end-to-end walks.
+ * One full pointer flow through the editor, end to end. The keyboard-only flow and the
+ * narrow-viewport smoke were cut to keep e2e to the critical journeys (8 Oct 2026).
  */
 import { fileURLToPath } from "node:url";
 import type { Locator, Page } from "@playwright/test";
-import { expectNoSeriousA11yViolations } from "./a11y";
 import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixtures";
 
 const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
@@ -148,111 +146,5 @@ test.describe("handoff: the editor end to end", () => {
     await expect(stageElements(page).filter({ hasText: "The water cycle today" })).toHaveCount(1);
     await expect(rows(page).nth(1)).toHaveAttribute("aria-label", "Slide 2, True or false");
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-  });
-
-  test("keyboard only: insert, nudge, undo, help (focus restored, nested Escape), slides from the rail", {
-    tag: "@smoke",
-  }, async ({ signedInPage: { page, paths } }) => {
-    await page.goto(EDITOR(paths));
-    await expect(rows(page)).toHaveCount(7);
-    const count = await stageElements(page).count();
-
-    // The canvas has focus: `r` inserts a rectangle, selected.
-    await canvas(page).focus();
-    await page.keyboard.press("r");
-    await expect(stageElements(page)).toHaveCount(count + 1);
-    await expect(page.getByRole("toolbar", { name: "Shape" })).toBeVisible();
-    const rect = page.locator('[data-slide-frame] [data-element-type="shape"]').last();
-    const before = await leftOf(rect);
-    // Arrow nudges are one undo step per run.
-    for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
-    await expect.poll(() => leftOf(rect)).toBeCloseTo(before + 5, 0);
-    await page.keyboard.press("Shift+ArrowRight");
-    await expect.poll(() => leftOf(rect)).toBeCloseTo(before + 15, 0);
-    await page.keyboard.press("ControlOrMeta+z");
-    await expect.poll(() => leftOf(rect)).toBeCloseTo(before + 5, 0);
-
-    // `?` opens the help sheet over the selection; Escape closes the sheet first (the selection
-    // stays), and focus comes back to where it was; the next Escape clears the selection.
-    await page.keyboard.press("?");
-    const help = page.getByRole("dialog", { name: "Keyboard shortcuts" });
-    await expect(help).toBeVisible();
-    await expect(help.getByRole("heading", { name: "Keyboard shortcuts" })).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(help).toHaveCount(0);
-    await expect(page.locator("[data-selection-frame]")).toBeVisible();
-    await expect(canvas(page)).toBeFocused();
-    await page.keyboard.press("Escape");
-    await expect(page.locator("[data-selection-frame]")).toHaveCount(0);
-
-    // ⌘D on the canvas with nothing selected duplicates the slide; ⌘Z takes it back.
-    await page.keyboard.press("ControlOrMeta+d");
-    await expect(rows(page)).toHaveCount(8);
-    await page.keyboard.press("ControlOrMeta+z");
-    await expect(rows(page)).toHaveCount(7);
-
-    // The navigator rail: arrows move the active slide, Enter adds one of the same kind after it.
-    await rows(page).first().focus();
-    await page.keyboard.press("ArrowDown");
-    await expect(rows(page).nth(1)).toHaveAttribute("aria-selected", "true");
-    await expect(rows(page).nth(1)).toBeFocused();
-    const second = await rows(page).nth(1).getAttribute("aria-label");
-    await page.keyboard.press("Enter");
-    await expect(rows(page)).toHaveCount(8);
-    await expect(rows(page).nth(2)).toHaveAttribute("aria-selected", "true");
-    expect(await rows(page).nth(2).getAttribute("aria-label")).toBe(
-      second?.replace("Slide 2", "Slide 3") ?? "",
-    );
-    await page.keyboard.press("End");
-    await expect(rows(page).last()).toHaveAttribute("aria-selected", "true");
-    await page.keyboard.press("Home");
-    await expect(rows(page).first()).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
-  });
-
-  test("narrow viewport (900×700): the editor keeps its rail, navigator and a slide that fits", {
-    tag: "@smoke",
-  }, async ({ signedInPage: { page, paths } }) => {
-    await page.setViewportSize({ width: 900, height: 700 });
-    await page.goto(EDITOR(paths));
-    await expect(page.getByRole("heading", { level: 1, name: "The water cycle" })).toBeVisible();
-    await expect(page.getByRole("toolbar", { name: "Insert" })).toBeVisible();
-    await expect(rows(page).first()).toBeVisible();
-    const slide = await frame(page).boundingBox();
-    const area = await canvas(page).boundingBox();
-    if (!slide || !area) throw new Error("no layout");
-    expect(slide.width).toBeLessThanOrEqual(area.width + 1);
-    expect(slide.height).toBeLessThanOrEqual(area.height + 1);
-    expect(slide.x).toBeGreaterThanOrEqual(area.x - 1);
-    // No horizontal scroll: the chrome fits the window.
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
-    // The floating chrome still finds a place: the action pill is on screen and under the top bar.
-    const pill = await page.locator("[data-slide-actions]").boundingBox();
-    expect(pill?.y ?? 0).toBeGreaterThanOrEqual(72);
-    expect((pill?.x ?? 0) + (pill?.width ?? 0)).toBeLessThanOrEqual(900);
-    await expectNoSeriousA11yViolations(page, "/l/:id (900px)");
-  });
-
-  test("narrow viewport (900×700): the worksheet editor keeps the sheet and its toolbar in reach", {
-    tag: "@smoke",
-  }, async ({ signedInPage: { page, paths } }) => {
-    await page.setViewportSize({ width: 900, height: 700 });
-    await page.goto(paths.worksheet("fraction-practice"));
-    await expect(page.getByRole("textbox", { name: "Sheet title" })).toBeVisible();
-    const blocks = page.locator(".ws-column .ws-block:not(.ws-rag-slot)");
-    await expect(blocks).toHaveCount(9);
-    const sheet = await page.locator(".ws-column .ws-page").first().boundingBox();
-    if (!sheet) throw new Error("no sheet");
-    expect(sheet.x).toBeGreaterThanOrEqual(0);
-    expect(sheet.x + sheet.width).toBeLessThanOrEqual(900 + 1);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
-    // A block still selects and shows its toolbar at this width.
-    await blocks.first().click();
-    await expect(page.getByRole("toolbar").first()).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "/w/:id (900px)");
   });
 });

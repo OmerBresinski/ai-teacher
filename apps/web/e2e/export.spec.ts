@@ -1,11 +1,11 @@
 /**
  * Export phase E1 (TEACH-110; ADR 0023): the export dialog, the lesson print route
- * (`/l/:id/print`), the JSON download and the library Import. Rows 3, 4, 5, 6 and 8 of the ticket.
- * `window.print` and `window.open` are stubbed in `addInitScript` so nothing leaves the page.
+ * (`/l/:id/print`) with its credits page, the JSON round-trip and the library Import (rows 2, 3 and
+ * 8 of the ticket). `window.print` and `window.open` are stubbed in `addInitScript` so nothing
+ * leaves the page. The other rows were cut to keep e2e to the critical journeys (8 Oct 2026).
  */
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
-import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, seedCreditedLesson, test } from "./fixtures";
 
 declare global {
@@ -49,39 +49,6 @@ test.describe("lesson print route", () => {
     // Negative check: a second print call must not follow the first.
     await page.waitForTimeout(300);
     expect(await page.evaluate(() => window.__prints)).toBe(1);
-  });
-
-  test("row 4: ?handout=3 puts three slides on a page; ?slides=2-3 prints only those", async ({
-    signedInPage: { page, paths },
-  }) => {
-    const count = water().slides.length;
-    await page.goto(`${paths.lesson("demo-water-cycle", "/print")}?handout=3`);
-    const h3pages = page.locator(".td-print .td-handout3-page");
-    await expect(h3pages).toHaveCount(Math.ceil(count / 3));
-    await expect(h3pages.first().locator(".td-handout3-row")).toHaveCount(3);
-    await expect(h3pages.first().locator(".td-handout3-lines").first()).toBeVisible();
-
-    await page.goto(`${paths.lesson("demo-water-cycle", "/print")}?slides=2-3`);
-    const pages = page.locator(".td-print .td-print-page");
-    await expect(pages).toHaveCount(2);
-    await expect(pages.nth(0)).toHaveAttribute("data-slide-index", "2");
-    await expect(pages.nth(1)).toHaveAttribute("data-slide-index", "3");
-  });
-
-  test("row 5: a range past the end falls back to every slide; print media yields N pages", async ({
-    signedInPage: { page, paths },
-  }) => {
-    const count = water().slides.length;
-    await page.goto(`${paths.lesson("demo-water-cycle", "/print")}?slides=99`);
-    const pages = page.locator(".td-print .td-print-page");
-    await expect(pages).toHaveCount(count);
-    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
-
-    await page.emulateMedia({ media: "print" });
-    await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
-    await expect(pages.first()).toHaveCSS("box-shadow", "none");
-    const pdf = await page.pdf({ preferCSSPageSize: true });
-    expect(pdfPageCount(pdf)).toBe(count);
   });
 });
 
@@ -130,34 +97,6 @@ test.describe("lesson print image credits", () => {
     await expect(main.locator("[data-credits-page]")).toHaveCount(0);
     await expect(page.getByText("Image credits")).toHaveCount(0);
   });
-
-  test("the credits page takes the A4 page in the notes and 3-per-page layouts", async ({
-    signedInPage: { page },
-  }) => {
-    const id = await seedCreditedLesson(page);
-    await page.goto(`/l/${id}/print?notes=1`);
-    await expect(page.locator(".td-handout-page[data-credits-page]")).toHaveCount(1);
-    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
-    await page.emulateMedia({ media: "print" });
-    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(5);
-
-    await page.emulateMedia({ media: "screen" });
-    await page.goto(`/l/${id}/print?handout=3`);
-    await expect(page.locator(".td-handout3-page[data-credits-page]")).toHaveCount(1);
-    await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
-    await page.emulateMedia({ media: "print" });
-    expect(pdfPageCount(await page.pdf({ preferCSSPageSize: true }))).toBe(3);
-  });
-
-  test("the credits page passes axe in the three themes", async ({ signedInPage: { page } }) => {
-    const id = await seedCreditedLesson(page);
-    for (const theme of ["light", "dark", "high-contrast"] as const) {
-      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
-      await page.goto(`/l/${id}/print`);
-      await expect(page.getByRole("heading", { name: "Image credits" })).toBeVisible();
-      await expectNoSeriousA11yViolations(page, `/l/:id/print image credits (${theme})`);
-    }
-  });
 });
 
 test.describe("export dialog", () => {
@@ -188,48 +127,6 @@ test.describe("export dialog", () => {
     const opened = await page.evaluate(() => window.__opened);
     expect(opened).toEqual([
       `${paths.lesson("demo-water-cycle", "/print")}?auto=1&answers=1&slides=1-3%2C+5`,
-    ]);
-  });
-
-  test("row 6: JSON downloads <slug>.teachdeck.json that parses back to the lesson", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(paths.lesson("demo-water-cycle", "/view"));
-    await page.getByRole("button", { name: "Export", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Export" });
-    await dialog.getByRole("tab", { name: "JSON" }).click();
-    const download = page.waitForEvent("download");
-    await dialog.getByRole("button", { name: "Export JSON" }).click();
-    const file = await download;
-    expect(file.suggestedFilename()).toBe("the-water-cycle.teachdeck.json");
-    const path = await file.path();
-    const text = await (await import("node:fs/promises")).readFile(path, "utf8");
-    const parsed = JSON.parse(text) as { id: string; title: string; slides: unknown[] };
-    expect(parsed.title).toBe("The water cycle");
-    expect(parsed.id).toBe(paths.id("demo-water-cycle"));
-    expect(parsed.slides).toHaveLength(water().slides.length);
-  });
-
-  test("row 7: the worksheet editor exports JSON and its PDF tab opens the print route", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(paths.worksheet("fraction-practice"));
-    await page.getByRole("button", { name: "Export", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Export" });
-    await expect(dialog.getByRole("tab", { name: "Word" })).toBeEnabled();
-    await dialog.getByRole("tab", { name: "JSON" }).click();
-    const download = page.waitForEvent("download");
-    await dialog.getByRole("button", { name: "Export JSON" }).click();
-    expect((await download).suggestedFilename()).toBe("fractions-practice.worksheet.json");
-    await expect(dialog).toHaveCount(0);
-
-    // The dialog remembers its tab between opens; PDF is chosen again explicitly.
-    await page.getByRole("button", { name: "Export", exact: true }).click();
-    const reopened = page.getByRole("dialog", { name: "Export" });
-    await reopened.getByRole("tab", { name: "PDF" }).click();
-    await reopened.getByRole("button", { name: "Export PDF" }).click();
-    expect(await page.evaluate(() => window.__opened)).toEqual([
-      `${paths.worksheet("fraction-practice", "/print")}?auto=1`,
     ]);
   });
 });

@@ -1,12 +1,8 @@
 /**
- * `/w/$worksheetId/print` (TEACH-108): the paginated sheet, `?auto=1`, print media and the PDF
- * page count. The seeded `fraction-practice` and `roman-source` worksheets (TEACH-186) both ship
- * without an answer key, so its absence is what can be asserted here; the key itself is covered by
- * `packages/editor/src/worksheet/sheet.test.tsx` and `worksheet-library.spec.ts`.
+ * `/w/$worksheetId/print` (TEACH-108): the paginated sheet and `?auto=1` printing once. The seeded
+ * `fraction-practice` worksheet ships without an answer key, so its absence is what can be
+ * asserted here; the key itself is covered by `packages/editor/src/worksheet/sheet.test.tsx`.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { E2E_API_URL } from "../playwright.config";
 import { expectNoSeriousA11yViolations } from "./a11y";
 import { expect, test } from "./fixtures";
 
@@ -15,10 +11,6 @@ declare global {
     __prints?: number;
   }
 }
-
-/** Count the `/Type /Page` objects in a PDF (Chromium writes one per printed page). */
-const pdfPageCount = (pdf: Buffer) =>
-  (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
 
 test.describe("worksheet print route", () => {
   test("renders the demo worksheet as A4 pages with header, blocks and footer numbers", {
@@ -71,82 +63,5 @@ test.describe("worksheet print route", () => {
     // Negative check: a second print call must not follow the first.
     await page.waitForTimeout(500);
     expect(await page.evaluate(() => window.__prints)).toBe(1);
-  });
-
-  test("print media shows only the pages, and the PDF has one page per .ws-page", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(paths.worksheet("fraction-practice", "/print"));
-    const pages = page.locator(".ws-print-root .ws-page");
-    await expect(pages.first()).toBeVisible();
-    await expect(page.locator(".ws-print-root")).toHaveCSS("visibility", "visible");
-    const count = await pages.count();
-
-    await page.emulateMedia({ media: "print" });
-    // The paper is white regardless of theme; the preview canvas and shadows are gone.
-    await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
-    await expect(page.locator(".ws-print-root")).toHaveCSS("padding-top", "0px");
-    await expect(pages.first()).toHaveCSS("box-shadow", "none");
-    await expect(page.locator(".ws-measure")).toBeHidden();
-    // 210mm at 96dpi is 793.7px.
-    const box = await pages.first().boundingBox();
-    expect(box && Math.abs(box.width - 793.7) < 1.5).toBe(true);
-
-    const pdf = await page.pdf({ preferCSSPageSize: true });
-    expect(pdfPageCount(pdf)).toBe(count);
-  });
-
-  test("TEACH-160 row 6: a sourced image prints its picture and no credit text", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.route("**/documents/*", async (route) => {
-      const request = route.request();
-      if (
-        request.method() !== "GET" ||
-        !/\/documents\/[^/]+$/.test(new URL(request.url()).pathname)
-      ) {
-        return route.continue();
-      }
-      const response = await route.fetch();
-      const body = (await response.json()) as {
-        document?: { body?: { blocks?: unknown[] } };
-      };
-      body.document?.body?.blocks?.push({
-        id: "wb-img-1",
-        type: "image",
-        src: `${E2E_API_URL}/files/ws/images/leaf.jpg`,
-        alt: "Leaf",
-        widthPct: 60,
-        caption: "Figure 1",
-        source: {
-          provider: "pexels",
-          id: "leaf",
-          pageUrl: "https://www.pexels.com/photo/leaf/",
-          photographer: "Ada",
-          photographerUrl: "https://www.pexels.com/@ada",
-        },
-      });
-      return route.fulfill({
-        status: response.status(),
-        contentType: "application/json",
-        body: JSON.stringify(body),
-      });
-    });
-    await page.route(`${E2E_API_URL}/files/**`, (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "image/png",
-        body: readFileSync(
-          fileURLToPath(new URL("./fixtures/photo-3000x2000.png", import.meta.url)),
-        ),
-      }),
-    );
-    await page.goto(paths.worksheet("fraction-practice", "/print"));
-    const pages = page.locator(".ws-print-root .ws-page");
-    await expect(pages.first()).toBeVisible();
-    const figure = pages.locator("figure.ws-figure img").first();
-    await expect(figure).toHaveAttribute("src", `${E2E_API_URL}/files/ws/images/leaf.jpg`);
-    await expect(page.getByText("Photo by")).toHaveCount(0);
-    await expect(page.getByText("Pexels")).toHaveCount(0);
   });
 });

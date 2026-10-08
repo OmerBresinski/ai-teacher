@@ -41,13 +41,17 @@ ticket, **read the code paths it touches** — never describe them from memory o
   `user`; route modules must not leak Bun-only types into `AppType`; pino drops `undefined`.
 - Give a full acceptance table (setup → expected status/body/log lines), the test file names and
   the cases in each, and the exact PR title (≤ 100 chars, commitlint).
-- **Test level.** An acceptance row is a `bun test` by default (happy-dom and Testing Library,
-  `installFakeApi`, `renderEditor`/`renderWorksheetEditor`, route options called directly). It is a
-  Playwright test only when it needs one of: a journey across pages and the real api or worker; a
-  real caret, typing or selection in ProseMirror; a pointer drag or a hit by coordinates; layout
-  measurement or computed CSS; print media or a download; fullscreen or a new tab; sign-in, sessions
-  or cookies; an axe scan. A ticket that adds a Playwright test names which of these it needs.
-  (`docs/testing.md`, "Which level a test belongs at".)
+- **Test level.** No new e2e tests by default. Every acceptance row is a `bun test` (happy-dom and
+  Testing Library, `installFakeApi`, `renderEditor`/`renderWorksheetEditor`, route options called
+  directly), including rows about one screen's behaviour, its layout or its accessibility. A
+  Playwright test is added only when an absolutely critical flow ships: a journey a teacher cannot
+  work without (signing in, creating or generating a lesson, editing it, presenting, exporting or
+  printing, making a worksheet) that no `bun test` can cover. It is tagged `@smoke`. A few more
+  assertions in an existing e2e journey are fine when they add no test and no page load. A ticket
+  that adds a Playwright test names the critical flow and why a `bun test` cannot cover it; review
+  treats any other new Playwright test as a blocker. Opt-in `*-screenshots.spec.ts` files
+  (`TEACH_SCREENSHOTS=1`, never in CI) are not e2e tests under this rule. (`docs/testing.md`, "Which
+  level a test belongs at".)
 - Say what is out of scope and which ADR decides each design choice, so the implementor does not
   re-open it.
 

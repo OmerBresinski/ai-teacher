@@ -48,47 +48,35 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   (`demo-water-cycle`, `series-romans`, …) as ids.
 - `vercel-react-best-practices` includes Next.js-specific advice (RSC, `next/*`); it does not
   apply — this is a Vite SPA.
-- Tests: `bun test` + React Testing Library + happy-dom; Playwright + axe in `e2e/` (ADR 0014). Biome
-  `a11y` rules are errors. A new acceptance row is a `bun test` unless it needs what only a browser
-  gives; the list is in `docs/testing.md`, "Which level a test belongs at".
-  Specs: `auth` (magic link, and "Continue with Google" against an api
-  with Google off: `playwright.config.ts` blanks `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, which Bun
-  would otherwise load from `apps/api/.env`; TEACH-31), `library` (shell, cards, dialogs, keyboard-only flow,
-  narrow viewport), `series` (detail page incl. real-pointer drag), `viewer`, `present`, `editor`
-  (canvas drag/snap/resize, navigator reorder, autosave, the TeachDeck geometry checks),
-  `editor-text` (double-click to edit, Escape commits, toolbar, option label, Why? panel),
-  `editor-chrome` (toolbar routing, rail inserts, opacity drag, theme dialog), `editor-layout`
-  (lint badge + Tidy; the `electricity` seed is stored at `fitVersion: 0` so the fit migration
-  runs once when it is opened),   `editor-images` (upload/paste/drop, Pexels search and Replace;
-  `page.route` mocks `/images/search`, `/images/pick` and `/files/**`, never the network; fixture PNG in
-  `e2e/fixtures/`; the Photos-tab screenshot is opt-in via `TEACH_SCREENSHOTS=1`),
-  `worksheet-print` (pages/header/footer, `?auto=1` prints once — `window.print` is stubbed in
-  `addInitScript`, `emulateMedia("print")` + `page.pdf()` page count, the lesson-id wrong-kind
-  page), `worksheet-editor` (header + blocks + the print route's page count, a typing burst as one
-  undo step and its autosave, `/` → slash menu → Question, a real-pointer handle drag, Print opening
-  `/print?auto=1` in a new tab via `page.context().waitForEvent("page")`, wrong-kind both ways),
-  `a11y` (the fourteen signed-in library/document routes, one test each — eight shell, six
-  editor: `/l/:id`, `/view`, `/present`, `/print`, `/w/:id`, `/w/:id/print` — full rules in
-  light, then `switchTheme` to dark and high contrast for `THEME_RULES` only, plus every overlay
-  open: library dialogs and card menu,
-  text toolbar, shape toolbar + More drawer, theme dialog, export dialog on each tab, import
-  dialog, add-image panel on both tabs, the editor's `?` sheet, present mode's timer panel, notes
-  panel and shortcuts sheet, the worksheet slash menu, the facts panel and regenerate dialog, the
-  generating view and residual popover; `/sign-in` signed out in the three themes, idle, sent and
-  `?error=`; `/dev/jobs` once in light), `handoff`
-  (TeachDeck's `MONOREPO-HANDOFF.md` acceptance lines for the editor, TEACH-113: one full pointer
-  flow open → edit text → drag → resize → undo/redo → theme → layout → image → present → overview
-  → back, one keyboard-only flow with focus restoration and nested Escape, and the 900×700
-  narrow-viewport smoke for the lesson and worksheet editors), `kit` (opt-in,
-  `E2E_KIT=1`). `src/router.test.ts` pins the registered route set; `packages/ui/src/styles/contrast.test.ts`
-  pins token contrast. Workspaces start empty (ADR 0024 §16): `signedInPage` signs in through the api
+- Tests: `bun test` + React Testing Library + happy-dom; Playwright in `e2e/` (ADR 0014). Biome
+  `a11y` rules are errors. No new e2e test unless an absolutely critical flow ships
+  (`docs/testing.md`, "Which level a test belongs at"); the suite keeps the critical journeys only
+  (cut to 106 tests on 8 Oct 2026). Specs: `auth` (magic link, and "Continue with Google" against an
+  api with Google off: `playwright.config.ts` blanks `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`,
+  which Bun would otherwise load from `apps/api/.env`; TEACH-31), `session-isolation`,
+  `signed-out-first-lesson`, `library` (shell, cards, dialogs, keyboard-only flow, narrow viewport),
+  `series`, `viewer`, `present`, `present-one-click`, `present-refit`, `editor` (opens, navigator
+  reorder, rename autosave), `editor-text` (Escape commits one undo step, an AI text turning the
+  teacher's, toolbar Bold), `editor-images` (upload and Pexels search; `page.route` mocks
+  `/images/search`, `/images/pick` and `/files/**`, never the network; fixture PNG in
+  `e2e/fixtures/`), `export`, `export-pptx-png`, `export-docx`, `worksheet-print` (pages, header and
+  footer; `?auto=1` prints once, `window.print` stubbed in `addInitScript`), `worksheet-editor` (a
+  typing burst as one undo step and its autosave, `/` → slash menu → Question, Print opening
+  `/print?auto=1` in a new tab via `page.context().waitForEvent("page")`), `worksheet-create`,
+  `worksheet-recipes`, `worksheet-library`, `teach-195` (the answer key), `handoff` (TeachDeck's
+  `MONOREPO-HANDOFF.md` full pointer flow for the editor, TEACH-113: open → edit text → drag →
+  resize → undo/redo → theme → layout → image → present → overview → back), `jobs`,
+  `homepage-launch`, `rich-text-safety`, `kit` (opt-in, `E2E_KIT=1`). Some journeys run an axe scan
+  (`e2e/a11y.ts`); the per-route a11y suite was removed on 8 Oct 2026. `src/router.test.ts` pins the
+  registered route set; `packages/ui/src/styles/contrast.test.ts` pins token contrast.
+  Workspaces start empty (ADR 0024 §16): `signedInPage` signs in through the api
   (`signInByApi`, no confirm page), seeds `demoWorkspace()` through `POST /__test/seed-library`, opens
   `/` once and hands back `ids` / `paths` (`paths.lesson("demo-water-cycle")`,
   `paths.key(uuid)`); `test.use({ seed: false })` opts a spec out. Ids are server-minted uuids, so
   no spec hard-codes a document path. `editor-generating` covers the locked lesson (the generating shell, no
-  editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes —
-  the route needs a locked seed so it is not in `a11y`) and the brief → `/l/:id` flow;
-  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert; `teach-252-sign-in-screenshots` (opt-in) the DayBack `/sign-in` at 1440 in the three themes, a 390 phone, the sent state and `?error=INVALID_TOKEN`. `/sign-in` (TEACH-252) is one page for sign in and sign up, laid out like the homepage hero: one alert slot (sign-out notice, then send error, then Google start error, then `?error=`), legal links to `/homepage/terms/` and `/homepage/privacy/`, and the brand artwork in `components/brand/`: `DaybackMark` and the cast, the homepage hero's four characters around the card (`cast-artwork.tsx` converted from `homepage/src/hero-artwork.mjs`, `cast-rig.ts` a port of `hero-motion.js` plus gaze, smile and hop from `motion/cast.js`, mounted by `sign-in-cast.tsx`). The page passes the cast a mood (`idle`, `typing`, `sending`, `sent`, `error`, `leaving`) and what to look at; it is the first caller of `loadGsap()` (ADR 0028), and with reduced motion GSAP is never fetched and only the faces change. e2e: `sign-in-cast` (arrival, read-along, celebration, reduced motion).
+  editor, one skeleton rail row per `facts.outline` entry still to come, axe in the three themes)
+  and the brief → `/l/:id` flow;
+  `teach-169-screenshots` (opt-in, `TEACH_SCREENSHOTS=1`) captures that rail mid-generation; `teach-252-screenshots` (opt-in) the shell with an earlier slide chosen — the finished thumbs are buttons the canvas follows (TEACH-252). `teach-31-screenshots` (opt-in) `/sign-in` and its Google not-set-up alert; `teach-252-sign-in-screenshots` (opt-in) the DayBack `/sign-in` at 1440 in the three themes, a 390 phone, the sent state and `?error=INVALID_TOKEN`. `/sign-in` (TEACH-252) is one page for sign in and sign up, laid out like the homepage hero: one alert slot (sign-out notice, then send error, then Google start error, then `?error=`), legal links to `/homepage/terms/` and `/homepage/privacy/`, and the brand artwork in `components/brand/`: `DaybackMark` and the cast, the homepage hero's four characters around the card (`cast-artwork.tsx` converted from `homepage/src/hero-artwork.mjs`, `cast-rig.ts` a port of `hero-motion.js` plus gaze, smile and hop from `motion/cast.js`, mounted by `sign-in-cast.tsx`). The page passes the cast a mood (`idle`, `typing`, `sending`, `sent`, `error`, `leaving`) and what to look at; it is the first caller of `loadGsap()` (ADR 0028), and with reduced motion GSAP is never fetched and only the faces change.
   `generation` runs a lesson end to end over the fake
   worker (`playwright.config.ts` sets `AI_FAKE_SCRIPT=pipeline` and `AI_FAKE_DELAY_MS=250` on the
   e2e worker, so `POST /lessons` really generates — banner, slides arriving before the terminal
@@ -117,8 +105,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   in the library navigates here (and preloads the chunk on hover); `NewDocumentDialog` stays only
   for the page's "Blank lesson" action (the only blank-lesson entry point). Unit:
   `lesson-brief.page.test.tsx` (focus, prefill, the guard, the materials dialog); e2e: `brief`
-  spec (planning and uploads end to end); `teach-177-screenshots` (opt-in) captures the brief;
-  `/lessons/new` is in the a11y route list.
+  spec (planning and uploads end to end); `teach-177-screenshots` (opt-in) captures the brief.
 - `/worksheets/new?lesson=<id>` is the worksheet creation flow (`worksheet-create.route.ts` +
   `worksheet-create.page.tsx`, TEACH-184): Source (recent lessons, a search box, Blank) then Kind
   (the nine recipes as live miniatures built from the lesson's facts, or `DEMO_LESSON_FACTS` with
@@ -133,7 +120,7 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   rate and rounding, so a sheet of questions reads the same in both. Unit:
   `worksheet-create.page.test.tsx` (Source, Kind, the keyboard path, example facts); e2e:
   `worksheet-create` spec (rows 4 and 6 into the real editor, axe on both steps);
-  `teach-184-screenshots` (opt-in); `/worksheets/new` is in the a11y route list.
+  `teach-184-screenshots` (opt-in).
 - Document routes: `/l/$lessonId` is the editor (`lesson-editor.page.tsx`, `LessonEditor` from
   `@tj/editor/lesson`), `/l/$lessonId/view` the read-only viewer, `/l/$lessonId/present` present
   mode (`?from=edit|view` decides where exit lands). Each page imports `@tj/editor/styles/editor.css`.
