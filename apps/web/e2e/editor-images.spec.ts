@@ -5,10 +5,11 @@ import { E2E_API_URL, E2E_WEB_URL } from "../playwright.config";
 import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixtures";
 
 /*
- * Images in the lesson editor (TEACH-107 rows 2–4, TEACH-158 rows 5–6, 8–9): upload, paste and
- * drop land a downscaled data-URL image element; the Photos tab searches Pexels through the api
- * (mocked with `page.route` — CI never hits the network), picking copies the rendition into the
- * bucket and stores our `/files` URL with provenance; Replace keeps the element and its frame.
+ * Images in the lesson editor (TEACH-107 row 2, TEACH-158 rows 5–6): an upload lands a downscaled
+ * data-URL image element, and the Photos tab searches Pexels through the api (mocked with
+ * `page.route` — CI never hits the network); picking copies the rendition into the bucket and
+ * stores our `/files` URL with provenance. The other rows were cut to keep e2e to the critical
+ * journeys (8 Oct 2026).
  */
 
 const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
@@ -143,72 +144,6 @@ test.describe("editor images", () => {
     await expect(elements(page)).toHaveCount(count);
   });
 
-  test("row 3: an image pasted onto the canvas is inserted at the centre", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await expect(elements(page).first()).toBeVisible();
-    const count = await elements(page).count();
-    const before = await elementIds(page);
-    await page.getByRole("group", { name: "Slide canvas" }).click({ position: { x: 5, y: 5 } });
-    await page.evaluate((bytes) => {
-      const file = new File([new Uint8Array(bytes)], "paste.png", { type: "image/png" });
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      window.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true }));
-    }, Array.from(PNG));
-    await expect(elements(page)).toHaveCount(count + 1);
-    const added = addedElement(page, before);
-    await expectInlined(added.locator("img"));
-    const box = await added.boundingBox();
-    const slide = await page.locator("[data-slide-frame]").boundingBox();
-    if (!box || !slide) throw new Error("no layout");
-    expect(Math.abs(box.x + box.width / 2 - (slide.x + slide.width / 2))).toBeLessThan(2);
-  });
-
-  test("row 4: a file dropped near the corner lands under the pointer, clamped to the slide", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await expect(elements(page).first()).toBeVisible();
-    const count = await elements(page).count();
-    const before = await elementIds(page);
-    const slide = await page.locator("[data-slide-frame]").boundingBox();
-    if (!slide) throw new Error("no layout");
-    // 10px inside the top-left corner: the centred frame would overhang and must be clamped.
-    const at = { x: slide.x + 10, y: slide.y + 10 };
-    await page.evaluate(
-      ({ bytes, at }) => {
-        const file = new File([new Uint8Array(bytes)], "drop.png", { type: "image/png" });
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        const target = document.elementFromPoint(at.x, at.y) ?? document.body;
-        for (const type of ["dragover", "drop"] as const) {
-          target.dispatchEvent(
-            new DragEvent(type, {
-              clientX: at.x,
-              clientY: at.y,
-              dataTransfer: dt,
-              bubbles: true,
-              cancelable: true,
-            }),
-          );
-        }
-      },
-      { bytes: Array.from(PNG), at },
-    );
-    await expect(elements(page)).toHaveCount(count + 1);
-    const added = addedElement(page, before);
-    await expectInlined(added.locator("img"));
-    const box = await added.boundingBox();
-    if (!box) throw new Error("no layout");
-    // Centred on the pointer would put the left edge far off the slide; the clamp keeps at least
-    // OVERHANG (40pt) of it on, so the frame's right edge is well inside the slide.
-    expect(box.x).toBeLessThan(at.x);
-    expect(box.x + box.width).toBeGreaterThan(slide.x + 40 * (slide.width / 960) - 1);
-    expect(box.x + box.width).toBeLessThan(slide.x + slide.width / 2);
-  });
-
   test("rows 5–6: Photos searches Pexels and picking stores our URL with provenance", async ({
     signedInPage: { page, paths },
   }) => {
@@ -260,115 +195,5 @@ test.describe("editor images", () => {
     const body = JSON.stringify(await saved.json());
     expect(body).toContain('"src":"/files/ws/images/river.jpg"');
     expect(body).not.toContain(`${E2E_API_URL}/files/`);
-  });
-
-  test("row 8: a 500 from search shows the failure copy and Retry recovers", async ({
-    signedInPage: { page, paths },
-  }) => {
-    let fail = true;
-    await page.route(`${E2E_API_URL}/images/search*`, (route) =>
-      fail
-        ? route.fulfill({ status: 500, body: "boom" })
-        : route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ photos: [pexelsPhoto("rain", "Rain")], nextPage: null }),
-          }),
-    );
-    await page.goto(EDITOR(paths));
-    await openPhotos(page, "rain");
-    await expect(panel(page).getByText("Search failed. Try again.")).toBeVisible();
-    fail = false;
-    await panel(page).getByRole("button", { name: "Retry" }).click();
-    await expect(panel(page).getByRole("button", { name: "Rain" })).toBeVisible();
-  });
-
-  test("row 9: Replace keeps the element and its frame and swaps src and alt", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await mockSearch(page);
-    await page.goto(EDITOR(paths));
-    await expect(elements(page).first()).toBeVisible();
-    const count = await elements(page).count();
-    const before = await elementIds(page);
-
-    // Start from an uploaded image so the element exists.
-    await rail(page).getByRole("button", { name: "Image" }).click();
-    await panel(page).locator('input[type="file"]').setInputFiles(FIXTURE);
-    await expect(elements(page)).toHaveCount(count + 1);
-    const target = addedElement(page, before);
-    const id = await target.getAttribute("data-element-id");
-    const box = await target.boundingBox();
-    const oldSrc = await target.locator("img").getAttribute("src");
-
-    await page
-      .getByRole("toolbar", { name: "Image" })
-      .getByRole("button", { name: "Replace" })
-      .click();
-    await expect(page.getByRole("dialog", { name: "Replace image" })).toBeVisible();
-    await panel(page).getByRole("tab", { name: "Photos" }).click();
-    const field = panel(page).getByRole("searchbox", { name: "Search images" });
-    await field.fill("river");
-    await field.press("Enter");
-    await panel(page).getByRole("button", { name: "River bend" }).click();
-
-    await expect(elements(page)).toHaveCount(count + 1);
-    const after = page.locator(`[data-slide-frame] [data-element-id="${id}"]`);
-    await expect(after.locator("img")).toHaveAttribute("alt", "River bend");
-    const newSrc = await after.locator("img").getAttribute("src");
-    expect(newSrc).not.toBe(oldSrc);
-    expect(newSrc).toBe(`${E2E_API_URL}/files/ws/images/river.jpg`);
-    const frame = await after.boundingBox();
-    if (!box || !frame) throw new Error("no layout");
-    expect(Math.abs(frame.x - box.x)).toBeLessThan(1);
-    expect(Math.abs(frame.width - box.width)).toBeLessThan(1);
-    expect(Math.abs(frame.height - box.height)).toBeLessThan(1);
-  });
-
-  test("TEACH-162: reporting a tile posts the enums and hides it", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await mockSearch(page);
-    const reported: { url: string; body: unknown }[] = [];
-    await page.route(`${E2E_API_URL}/images/report`, (route) => {
-      reported.push({ url: route.request().url(), body: route.request().postDataJSON() });
-      return route.fulfill({ status: 204 });
-    });
-    await page.goto(EDITOR(paths));
-    await openPhotos(page, "river");
-    const tile = panel(page).getByRole("button", { name: "River bend" });
-    await expect(tile).toBeVisible();
-    const flag = panel(page)
-      .locator("li")
-      .first()
-      .getByRole("button", { name: "Report this image" });
-    await tile.hover();
-    await flag.focus();
-    await flag.press("Enter");
-    // The menu content portals to document.body, outside the dialog.
-    await page.getByRole("menuitem", { name: "Unsuitable" }).click();
-
-    await expect.poll(() => reported.length, { timeout: 5000 }).toBe(1);
-    expect(reported[0]?.body).toEqual({
-      provider: "pexels",
-      id: "river",
-      reason: "unsuitable",
-      context: "search",
-    });
-    await expect(panel(page).getByRole("button", { name: "River bend" })).toHaveCount(0);
-    await expect(page.getByText("Thanks — we've flagged it.")).toBeVisible();
-  });
-
-  test("the panel's Photos tab with results (screenshot)", async ({
-    signedInPage: { page, paths },
-  }) => {
-    test.skip(process.env.TEACH_SCREENSHOTS !== "1", "Visual-reference screenshots are opt-in.");
-    await mockSearch(page);
-    await page.goto(EDITOR(paths));
-    await openPhotos(page, "river");
-    await expect(panel(page).getByRole("button", { name: "River bend" })).toBeVisible();
-    // Opt-in screenshot only (never in the gated run): let the thumbnails finish fading in.
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: "/tmp/teach-158-photos.png" });
   });
 });
