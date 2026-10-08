@@ -57,3 +57,11 @@ describe("writer planner", () => {
     expect(slideRange(undefined)).toEqual({ min: 9, max: 12 });
   });
 });
+
+describe("the render binding's stamp prefix", () => {
+  test("@tj/slides gates on the writer's own version", async () => {
+    const { WRITER_STAMP_PREFIX } = await import("@tj/slides/themes");
+    expect(WRITER_VERSION.startsWith(WRITER_STAMP_PREFIX)).toBe(true);
+    expect(WRITER_PLANNED_VERSION.startsWith(WRITER_STAMP_PREFIX)).toBe(true);
+  });
+});

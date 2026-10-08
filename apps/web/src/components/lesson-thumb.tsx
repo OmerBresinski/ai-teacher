@@ -1,4 +1,4 @@
-import { getTheme, SlideFluid } from "@tj/editor/thumb";
+import { lessonTheme, SlideFluid } from "@tj/editor/thumb";
 import { WorksheetThumb } from "@tj/editor/worksheet-thumb";
 // Slide CSS, the paper and the twelve document fonts ride with the first chunk that paints a
 // thumbnail (the library route), not with the initial bundle (ADR 0022 §7-8).
@@ -19,7 +19,7 @@ export function LessonThumb({
   lesson: Pick<DocumentSummary, "themeId" | "title"> & Partial<Pick<DocumentSummary, "cover">>;
   className?: string;
 }) {
-  const theme = getTheme(lesson.themeId);
+  const theme = lessonTheme(lesson);
   if (lesson.cover && isWorksheetCover(lesson.cover)) {
     return (
       <div aria-hidden className={`relative size-full overflow-hidden ${className ?? ""}`}>

@@ -20,7 +20,7 @@ import {
 } from "@tj/slides";
 import { cloneSlide, docFromText, uid } from "../model/factories";
 import * as reducers from "../model/reducers";
-import { getTheme } from "../model/themes";
+import { lessonTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
 import { explanationReserve, reservedLines } from "./explanation";
 import {
@@ -765,7 +765,7 @@ export function tidySlide(
   const slide = lesson.slides.find((s) => s.id === slideId);
   if (!slide) return { lesson, outcome: EMPTY };
 
-  const theme = getTheme(lesson.themeId);
+  const theme = lessonTheme(lesson);
   const split = options.split ?? !isGeneratedSlide(slide);
   const { slides, results } = fitAndSplit(slide, theme, measure, split);
 

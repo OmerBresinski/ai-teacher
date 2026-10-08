@@ -1,4 +1,4 @@
-import { getTheme } from "@tj/editor";
+import { lessonTheme } from "@tj/editor";
 import { MobileSlideList } from "@tj/editor/lesson";
 import { Button, cn, IconButton } from "@tj/ui";
 import { ArrowLeft, Lock, Square } from "lucide-react";
@@ -27,7 +27,7 @@ export function MobileGeneratingShell({
   className,
   onViewSlide,
 }: Props) {
-  const theme = getTheme(lesson.themeId);
+  const theme = lessonTheme(lesson);
   const running = state.terminal === null;
   const count = lesson.slides.length;
   return (

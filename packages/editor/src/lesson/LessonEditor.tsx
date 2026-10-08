@@ -19,7 +19,7 @@ import { rethemeFromReducer } from "../layout/retheme";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import * as reducers from "../model/reducers";
-import { getTheme } from "../model/themes";
+import { lessonTheme } from "../model/themes";
 import { useAutosave } from "../model/use-autosave";
 import { useDocumentHistory } from "../model/use-document-history";
 import {
@@ -331,13 +331,18 @@ export function LessonEditor({
         const current = lessonRef.current;
         if (!current || current.themeId === themeId) return;
         h.flushTransactions();
-        h.dispatch(rethemeFromReducer, current, themeId, createMeasurer(getTheme(themeId)));
+        h.dispatch(
+          rethemeFromReducer,
+          current,
+          themeId,
+          createMeasurer(lessonTheme(current, themeId)),
+        );
       },
     }),
     [session],
   );
 
-  const theme = useMemo(() => getTheme(lesson?.themeId), [lesson?.themeId]);
+  const theme = useMemo(() => lessonTheme(lesson), [lesson]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
 
   /** Add an element to the active slide and select it — TeachDeck's `insertElement`. */

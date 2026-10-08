@@ -10,7 +10,7 @@ import {
 import { AppBar, AppBarGroup, AppBarTitle, Button, cn, IconButton, Skeleton, Switch } from "@tj/ui";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { getTheme } from "../model/themes";
+import { lessonTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideStatic } from "../slide/SlideStatic";
 import { SlideView } from "../slide/SlideView";
@@ -60,7 +60,7 @@ export function LessonViewer({
   exportSlot,
   pending,
 }: LessonViewerProps) {
-  const theme = getTheme(lesson.themeId);
+  const theme = lessonTheme(lesson);
   const [index, setIndex] = useState(0);
   const [step, setStep] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
