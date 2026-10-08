@@ -186,7 +186,7 @@ lay out text, so anything that measures runs against `layout/test-ruler.ts`. Wha
 caret, pointer or download is Playwright's, in `apps/web/e2e`: `editor*`, `present`, `export*`,
 `worksheet-editor`, `worksheet-print`, `handoff` (TeachDeck's handoff acceptance lines end to end:
 one full pointer flow, one keyboard-only flow, the 900×700 smoke) and `a11y` (every editor route
-in the three themes plus every overlay — the theme loop is `page.addInitScript` setting `tj-theme`
-before each `goto`, and an overlay is scanned after its arrival animation has finished, or axe reads
-contrast through the fade). Route chunk ceilings are pinned in `scripts/check-bundle-budget.ts`
+in the three themes plus every overlay — one test per route: the full rules in light, then
+`switchTheme` to dark and high contrast for the colour rules only (`COLOUR_RULES`), and every scan
+waits for the arrival animations to finish, or axe reads contrast through the fade). Route chunk ceilings are pinned in `scripts/check-bundle-budget.ts`
 (ADR 0022 §8 amendment).

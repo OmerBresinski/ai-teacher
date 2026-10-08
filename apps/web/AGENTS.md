@@ -65,9 +65,9 @@ Read the root [`AGENTS.md`](../../AGENTS.md) first. Scaffolded by TEACH-21.
   page), `worksheet-editor` (header + blocks + the print route's page count, a typing burst as one
   undo step and its autosave, `/` → slash menu → Question, a real-pointer handle drag, Print opening
   `/print?auto=1` in a new tab via `page.context().waitForEvent("page")`, wrong-kind both ways),
-  `a11y` (the thirteen signed-in library/document routes — seven shell, six editor: `/l/:id`,
-  `/view`, `/present`, `/print`, `/w/:id`, `/w/:id/print` — × the three themes via
-  `page.addInitScript` setting `tj-theme`, plus every overlay open: library dialogs and card menu,
+  `a11y` (the fourteen signed-in library/document routes, one test each — eight shell, six
+  editor: `/l/:id`, `/view`, `/present`, `/print`, `/w/:id`, `/w/:id/print` — full rules in light,
+  then `switchTheme` to dark and high contrast for `COLOUR_RULES` only, plus every overlay open: library dialogs and card menu,
   text toolbar, shape toolbar + More drawer, theme dialog, export dialog on each tab, import
   dialog, add-image panel on both tabs, the editor's `?` sheet, present mode's timer panel, notes
   panel and shortcuts sheet, the worksheet slash menu, the facts panel and regenerate dialog, the

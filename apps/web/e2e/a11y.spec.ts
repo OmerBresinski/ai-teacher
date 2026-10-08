@@ -1,8 +1,10 @@
 /**
  * Accessibility gate (F18-R09): axe on every route we ship, in each of the three themes, plus the
  * open state of every dialog and the card menu. Serious/critical violations fail; moderate/minor
- * are reported. The theme is set through `localStorage` before the pre-paint script runs
- * (`addInitScript` precedes every page script), so each scan sees the final colours.
+ * are reported. The light theme gets the full rule set; dark and high contrast run the colour
+ * rules only (`COLOUR_RULES`), since the theme changes nothing else. A page opens in its first
+ * theme through `localStorage` before the pre-paint script runs (`addInitScript` precedes every
+ * page script); the route tests then switch the open page with `switchTheme`.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,7 +18,13 @@ import {
   newLesson,
   newSlide,
 } from "@tj/editor/starter";
-import { expectNoSeriousA11yViolations, settled } from "./a11y";
+import {
+  type AppTheme,
+  COLOUR_RULES,
+  expectNoSeriousA11yViolations,
+  settled,
+  switchTheme,
+} from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test, uniqueEmail } from "./fixtures";
 
 test.describe("accessibility (axe)", () => {
@@ -41,6 +49,8 @@ test.describe("accessibility (axe)", () => {
   });
 
   const THEMES = ["light", "dark", "high-contrast"] as const;
+  /** Full rules in light; the colour rules alone in the other two themes. */
+  const scanFor = (theme: AppTheme) => (theme === "light" ? {} : { rules: COLOUR_RULES });
 
   // /sign-in (TEACH-252), signed out, in each theme: the idle form, the sent state and a failed
   // round trip's alert.
@@ -52,51 +62,79 @@ test.describe("accessibility (axe)", () => {
         page.getByRole("heading", { level: 1, name: "Welcome to DayBack" }),
       ).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      await expectNoSeriousA11yViolations(page, `/sign-in (${theme})`);
+      await expectNoSeriousA11yViolations(page, `/sign-in (${theme})`, undefined, scanFor(theme));
 
       await page.getByLabel("Email address").fill(uniqueEmail("a11y"));
       await page.getByRole("button", { name: "Email me a link" }).click();
       await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
-      await expectNoSeriousA11yViolations(page, `/sign-in sent (${theme})`);
+      await expectNoSeriousA11yViolations(
+        page,
+        `/sign-in sent (${theme})`,
+        undefined,
+        scanFor(theme),
+      );
 
       await page.goto("/sign-in?error=INVALID_TOKEN");
       await expect(page.getByRole("alert")).toBeVisible();
-      await expectNoSeriousA11yViolations(page, `/sign-in?error=INVALID_TOKEN (${theme})`);
+      await expectNoSeriousA11yViolations(
+        page,
+        `/sign-in?error=INVALID_TOKEN (${theme})`,
+        undefined,
+        scanFor(theme),
+      );
     });
   }
-  const ROUTES = (paths: SeededPaths): { path: string; ready: RegExp | string }[] => [
-    { path: "/", ready: "Home" },
-    { path: "/lessons", ready: "Lessons" },
-    { path: "/lessons/new", ready: "Let’s start with your idea." },
-    { path: "/worksheets", ready: "Worksheets" },
-    { path: "/worksheets/new", ready: "From a lesson" },
-    { path: "/series", ready: "Series" },
-    { path: "/settings", ready: "Account" },
-    { path: paths.series("series-romans"), ready: "The Romans" },
-    { path: paths.lesson("demo-water-cycle"), ready: "The water cycle" },
-    { path: paths.lesson("demo-water-cycle", "/view"), ready: /\d+ slides/ },
-    { path: paths.lesson("demo-water-cycle", "/present"), ready: "The water cycle" },
+  /** Every route we ship, by name; the path is built from the seeded ids inside the test. */
+  const ROUTES: { name: string; path: (paths: SeededPaths) => string; ready: RegExp | string }[] = [
+    { name: "/", path: () => "/", ready: "Home" },
+    { name: "/lessons", path: () => "/lessons", ready: "Lessons" },
+    { name: "/lessons/new", path: () => "/lessons/new", ready: "Let’s start with your idea." },
+    { name: "/worksheets", path: () => "/worksheets", ready: "Worksheets" },
+    { name: "/worksheets/new", path: () => "/worksheets/new", ready: "From a lesson" },
+    { name: "/series", path: () => "/series", ready: "Series" },
+    { name: "/settings", path: () => "/settings", ready: "Account" },
+    { name: "/series/:id", path: (p) => p.series("series-romans"), ready: "The Romans" },
+    { name: "/l/:id", path: (p) => p.lesson("demo-water-cycle"), ready: "The water cycle" },
+    {
+      name: "/l/:id/view",
+      path: (p) => p.lesson("demo-water-cycle", "/view"),
+      ready: /\d+ slides/,
+    },
+    {
+      name: "/l/:id/present",
+      path: (p) => p.lesson("demo-water-cycle", "/present"),
+      ready: "The water cycle",
+    },
     // The lesson print route (TEACH-110) paints paper-white pages whatever the theme.
-    { path: paths.lesson("demo-water-cycle", "/print"), ready: /Slide 1 of \d+|The water cycle/ },
-    { path: paths.worksheet("fraction-practice"), ready: "Fractions practice" },
+    {
+      name: "/l/:id/print",
+      path: (p) => p.lesson("demo-water-cycle", "/print"),
+      ready: /Slide 1 of \d+|The water cycle/,
+    },
+    { name: "/w/:id", path: (p) => p.worksheet("fraction-practice"), ready: "Fractions practice" },
     // The print route paints paper-white pages whatever the theme (print.css forces the sheet).
-    { path: paths.worksheet("fraction-practice", "/print"), ready: "Fractions practice" },
+    {
+      name: "/w/:id/print",
+      path: (p) => p.worksheet("fraction-practice", "/print"),
+      ready: "Fractions practice",
+    },
   ];
 
-  for (const theme of THEMES) {
-    test(`every route is clean in the ${theme} theme`, async ({
-      signedInPage: { page, paths },
-    }) => {
-      // Thirteen routes under one axe pass each. The Worksheets library and the creation flow paint
-      // whole sheets in their cards (TEACH-193, TEACH-184); the walk takes about 30 s on an idle
-      // machine, so the default budget has no headroom.
-      test.setTimeout(60_000);
-      await page.addInitScript((value) => localStorage.setItem("tj-theme", value), theme);
-      for (const route of ROUTES(paths)) {
-        await page.goto(route.path);
-        await expect(page.getByText(route.ready).first()).toBeVisible();
-        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-        await expectNoSeriousA11yViolations(page, `${route.path} (${theme})`);
+  // One test per route (TEACH-190 part a): the page opens once in the light theme for the full
+  // scan, then switches to dark and to high contrast for the colour rules.
+  for (const route of ROUTES) {
+    test(`${route.name} is clean in every theme`, async ({ signedInPage: { page, paths } }) => {
+      const path = route.path(paths);
+      await page.addInitScript(() => localStorage.setItem("tj-theme", "light"));
+      await page.goto(path);
+      await expect(page.getByText(route.ready).first()).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+      // Some pages arrive with a fade (the brief, the creation flow); axe reads contrast mid-fade.
+      await settled(page, "html");
+      await expectNoSeriousA11yViolations(page, `${path} (light)`);
+      for (const theme of ["dark", "high-contrast"] as const) {
+        await switchTheme(page, theme);
+        await expectNoSeriousA11yViolations(page, `${path} (${theme})`, undefined, scanFor(theme));
       }
     });
   }
@@ -127,7 +165,12 @@ test.describe("accessibility (axe)", () => {
       await page.goto(`/l/${ids.locked}`);
       await expect(page.getByTestId("generating-shell")).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      await expectNoSeriousA11yViolations(page, `generating view (${theme})`);
+      await expectNoSeriousA11yViolations(
+        page,
+        `generating view (${theme})`,
+        undefined,
+        scanFor(theme),
+      );
 
       await page.goto(`/l/${ids.generated}`);
       await page.getByRole("button", { name: /thing(s)? to check$/ }).click();
@@ -137,7 +180,12 @@ test.describe("accessibility (axe)", () => {
       await popover.evaluate((el) =>
         Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
       );
-      await expectNoSeriousA11yViolations(page, `residual popover (${theme})`);
+      await expectNoSeriousA11yViolations(
+        page,
+        `residual popover (${theme})`,
+        undefined,
+        scanFor(theme),
+      );
       await page.keyboard.press("Escape");
     }
   });
@@ -168,7 +216,12 @@ test.describe("accessibility (axe)", () => {
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await page.getByRole("button", { name: "Facts" }).click();
       await expect(page.getByRole("complementary", { name: "Facts" })).toBeVisible();
-      await expectNoSeriousA11yViolations(page, `facts panel (${theme})`);
+      await expectNoSeriousA11yViolations(
+        page,
+        `facts panel (${theme})`,
+        undefined,
+        scanFor(theme),
+      );
       await page
         .getByRole("listbox", { name: "Slides" })
         .getByRole("option")
@@ -180,7 +233,12 @@ test.describe("accessibility (axe)", () => {
       await dialog.evaluate((el) =>
         Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
       );
-      await expectNoSeriousA11yViolations(page, `regenerate dialog (${theme})`, '[role="dialog"]');
+      await expectNoSeriousA11yViolations(
+        page,
+        `regenerate dialog (${theme})`,
+        '[role="dialog"]',
+        scanFor(theme),
+      );
       await page.keyboard.press("Escape");
     }
   });
