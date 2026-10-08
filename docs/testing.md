@@ -214,7 +214,7 @@ must arrive).
 Running and debugging:
 
 ```sh
-bunx --bun playwright install chromium           # once per Playwright version (CI adds --with-deps)
+bunx --bun playwright install chromium           # once per Playwright version
 bun run test:e2e                                 # from the root, via turbo (build first)
 cd apps/web && bun --bun playwright test         # directly (the Playwright runner runs on Bun)
 cd apps/web && bun --bun playwright test auth    # one file
@@ -246,8 +246,9 @@ Traces and screenshots are kept for failures only; in CI a failed shard uploads 
 `test` job: Postgres service + `teaching_journey_test`, then `bun run test:db` (compose skipped
 under `CI=true`; `REQUIRE_TEST_DB=1`), coverage uploaded. e2e runs as four `e2e-shard` jobs at
 once, each with its own Postgres service + `teaching_journey_test`,
-`bunx --bun playwright install --with-deps --only-shell chromium` (browser cache keyed on the
-Playwright version) and `bun run test:e2e --shard=n/4` in `apps/web`; a failed shard uploads its
+`bunx --bun playwright install --only-shell chromium` (browser cache keyed on the Playwright
+version; no `--with-deps`, since the runner image has the libraries; the step names any linked
+library that goes missing and starts the shell once) and `bun run test:e2e --shard=n/4` in `apps/web`; a failed shard uploads its
 blob report. The `e2e` job is the one required check for all four: it passes when every shard
 passed or `detect` skipped them (a PR that changes only documentation, `scripts/e2e-scope.ts`).
 When a shard failed, the `e2e report` job merges the blob reports into one `playwright-report`

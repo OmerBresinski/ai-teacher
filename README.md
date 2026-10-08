@@ -441,8 +441,9 @@ gh api -X PUT repos/OmerBresinski/ai-teacher/branches/master/protection --input 
 ### Remote cache and secrets
 
 - **Turborepo remote cache** ([ADR 0002](docs/adr/0002-turborepo.md)): the workflow forwards
-  `TURBO_TOKEN` (repository secret) and `TURBO_TEAM` (repository variable). Both are empty until
-  the Vercel project exists (TEACH-21/ADR 0010); `turbo` then simply runs without a remote cache.
+  `TURBO_TOKEN` (repository secret, a team-scoped Vercel token) and `TURBO_TEAM` (repository
+  variable, `omerbresinskis-projects`), both set since 2026-10-08, so every job logs "Remote caching
+  enabled" and replays tasks whose inputs did not change (`infra/README.md` "Turbo remote cache").
   `TURBO_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1` are set for every job.
 - **Dependency graph / Dependabot alerts** are enabled on the repository (TEACH-23 turned them on
   via `gh api -X PUT repos/OmerBresinski/ai-teacher/vulnerability-alerts`); `dependency-review-action`
