@@ -90,6 +90,8 @@ if (!t.ok) console.warn(`skipping SSE authorization integration: ${t.reason}`);
         else if (mode !== "shutdown-race") expect(text).toContain("event: started");
         // The stream ended on the throwing second lookup, not on the 500 ms maximum age.
         if (mode === "lookup-failure") expect(calls).toBe(2);
+        // The body ends when the stream aborts; its `finally` releases the slot a tick later.
+        for (let i = 0; i < 100 && releases === 0; i++) await Bun.sleep(10);
         expect(releases).toBe(1);
         expect(runtime.openStreams(workspaceId)).toBe(0);
         expect(runtime.hub.size()).toBe(0);
