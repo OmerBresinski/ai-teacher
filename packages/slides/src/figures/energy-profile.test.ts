@@ -498,3 +498,13 @@ describe("energy-profile labels over their caps", () => {
     });
   }
 });
+
+describe("a zone too narrow for the labels", () => {
+  it("still draws, and never loops: empty names and a 160-wide zone", () => {
+    const values = { reactants: "", products: "", activationEnergy: -1, energyChange: 4 };
+    const started = performance.now();
+    const g = drawFigure("energy-profile", values, chalk, { x: 0, y: 0, w: 160, h: 300 });
+    expect(g.children.length).toBeGreaterThan(0);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+});

@@ -294,9 +294,13 @@ function drawEnergyProfile(
   while (!plan.fits) {
     const tallest = LABEL_KEYS.reduce((a, b) => (labels[b].lines > labels[a].lines ? b : a));
     if (labels[tallest].lines === 1) break;
-    maxLines[tallest] = labels[tallest].lines - 1;
+    const was = labels[tallest].lines;
+    maxLines[tallest] = was - 1;
     labels = fitAll();
     plan = layout(labels);
+    // A zone too narrow for even "…" on one line gives back as many lines as before; cutting
+    // again would loop for ever (a 160-wide zone hung the drawing), so stop and draw.
+    if (labels[tallest].lines >= was) break;
   }
   const { plotTop, axisY, plotBottom, height, beside, drawn, notToScale } = plan;
 
