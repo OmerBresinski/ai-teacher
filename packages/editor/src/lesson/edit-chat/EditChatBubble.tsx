@@ -3,7 +3,8 @@ import { useEffect, useRef } from "react";
 
 /*
  * The collapsed "Edit with Dayback" pane (TEACH-97): closing the pane never cancels a request; it
- * folds into this round button at the bottom right, over the canvas (the canvas keeps its width).
+ * folds into this round button at the bottom right, over the canvas and above the zoom controls
+ * (the canvas keeps its width).
  * It shows a quiet busy ring while a request is out (a still arc under reduced motion), then a
  * small dot when the answer lands while closed: the accent for a reply, the error colour for a
  * failure. Clicking it reopens the pane at that turn. The live region says when it is done.
@@ -49,7 +50,7 @@ export function EditChatBubble({
         data-edit-chat-bubble={state}
         aria-label={bubbleLabel(state)}
         onClick={onOpen}
-        className="fixed right-4 bottom-4 z-40 inline-flex size-14 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_10px_rgb(0_0_0/0.12)] transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 motion-reduce:transition-none motion-reduce:hover:scale-100"
+        className="fixed right-4 bottom-19 z-40 inline-flex size-14 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_10px_rgb(0_0_0/0.12)] transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 motion-reduce:transition-none motion-reduce:hover:scale-100"
       >
         <SlidesCharacter happy={state === "reply"} />
         {state === "working" ? (
