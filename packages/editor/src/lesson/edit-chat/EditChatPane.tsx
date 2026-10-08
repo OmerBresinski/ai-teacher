@@ -1,4 +1,9 @@
-import type { Slide, SlideElement, TextElement } from "@tj/domain/documents";
+import {
+  richDocToPlainText,
+  type Slide,
+  type SlideElement,
+  type TextElement,
+} from "@tj/domain/documents";
 import { Button, cn, IconButton, Spinner, Textarea } from "@tj/ui";
 import { ArrowUp, Sparkles, X } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,17 +19,19 @@ import {
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   type Alternative,
+  type BoxChange,
   canUndo,
-  changedSince,
   type EditScope,
   hasIdentifier,
   historyOf,
+  lateIsCurrent,
   readThread,
   resolveFollowUp,
   type Suggestion,
   scopeLabel,
   scopeOf,
   slideNumber,
+  splitLate,
   suggestionsFor,
   type Turn,
   writeThread,
@@ -50,8 +57,11 @@ const STOPPED = "Stopped. Nothing changed.";
 const FAILED = "That edit didn’t work. Try again.";
 const CHANGED_SINCE = "That text has changed since, so I left it as it is.";
 const TYPED_MEANWHILE = "You changed that text while I was working, so I kept yours.";
+const TYPED_IN_ONE = "You changed one of those boxes while I was working, so I kept yours.";
+const OUT_OF_DATE = "Out of date: that text has changed again.";
+const TRY_AGAIN = "Try again on your text";
 const IDENTIFIER =
-  "I can’t send that: it has an email address, an ID number or a pupil’s name in it. Take it out and try again.";
+  "To protect personal data, I can’t send email addresses, ID numbers or pupils’ names. Take it out and try again.";
 /** The server's instruction limit (`EDIT_INSTRUCTION_MAX`), as the composer's `maxLength`. */
 const INSTRUCTION_MAX = 500;
 const KEEP_SHORT = ". Keep it short.";
@@ -123,27 +133,9 @@ export function EditChatPane({
     setThread((all) => all.map((t) => (t.id === id ? patch(t) : t)));
   }, []);
 
-  /**
-   * Apply an answer's boxes as one undo step; returns the boxes before and after, or "changed"
-   * when the teacher edited one of them while the request was out (their text is kept).
-   */
-  const apply = useCallback(
-    (sent: Slide, answer: Extract<PromptEditAnswer, { action: "edit" }>) => {
-      const slideId = sent.id;
-      const slide = lessonRef.current.slides.find((s) => s.id === slideId);
-      if (!slide) return null;
-      const ids = answer.changes.map((c) => c.elementId);
-      if (changedSince(sent, slide, ids)) {
-        // Deleted since: nothing to write into. Edited since: never overwrite the teacher.
-        return ids.every((id) => !slide.elements.some((e) => e.id === id)) ? null : "changed";
-      }
-      const boxes = answer.changes.flatMap((c) => {
-        const el = slide.elements.find((e) => e.id === c.elementId);
-        return el?.type === "text"
-          ? [{ elementId: c.elementId, before: el.doc, after: c.doc }]
-          : [];
-      });
-      if (boxes.length === 0) return null;
+  /** Write boxes on a slide as one undo step (leaving an open text edit first). */
+  const write = useCallback(
+    (slideId: string, boxes: readonly BoxChange[]) => {
       // Leave an open text edit first, so the change is its own undo step (as `applyProposals`).
       const editing = readSession().editingTextId;
       if (editing && boxes.some((b) => b.elementId === editing)) actions.setEditingText(null);
@@ -157,9 +149,43 @@ export function EditChatPane({
       } finally {
         history.endTransaction();
       }
-      return boxes;
     },
     [actions, history, readSession],
+  );
+
+  /**
+   * Apply an answer's boxes as one undo step. A box the teacher typed in while the request was
+   * out is never overwritten: it comes back in `kept`, with the answer's text as a suggestion.
+   */
+  const apply = useCallback(
+    (sent: Slide, answer: Extract<PromptEditAnswer, { action: "edit" }>) => {
+      const slide = lessonRef.current.slides.find((s) => s.id === sent.id);
+      if (!slide) return null;
+      const { apply: boxes, kept } = splitLate(sent, slide, answer.changes);
+      if (boxes.length > 0) write(slide.id, boxes);
+      return { boxes, kept };
+    },
+    [write],
+  );
+
+  /** "Use this": the kept suggestion goes into its boxes, as one undo step, while still current. */
+  const applyLate = useCallback(
+    (turn: Turn) => {
+      const late = turn.late;
+      if (!late || !lateIsCurrent(lessonRef.current, late)) return;
+      write(late.slideId, late.boxes);
+      const n = slideNumber(lessonRef.current, late.slideId);
+      update(turn.id, (t) => ({
+        ...t,
+        reply: { kind: "edit", text: `Slide ${n}: ${late.summary}` },
+        change: {
+          slideId: late.slideId,
+          boxes: [...(t.change?.boxes ?? []), ...late.boxes],
+        },
+        late: { ...late, used: true },
+      }));
+    },
+    [write, update],
   );
 
   const undoTurn = useCallback(
@@ -304,27 +330,26 @@ export function EditChatPane({
       if (pending.current?.id !== id || controller.signal.aborted) return;
       pending.current = null;
       if (answer.action === "edit") {
-        const boxes = apply(slide, answer);
-        if (boxes === "changed") {
-          update(id, (t) => ({
-            ...t,
-            reply: {
-              kind: "refuse",
-              text: TYPED_MEANWHILE,
-              alternative: { label: "Try again on your text", instruction, scope: target },
-            },
-          }));
-          return;
-        }
-        if (!boxes) {
+        const result = apply(slide, answer);
+        if (!result || (result.boxes.length === 0 && result.kept.length === 0)) {
           update(id, (t) => ({ ...t, reply: { kind: "no-change", text: "No change." } }));
           return;
         }
+        const { boxes, kept } = result;
         const summary = answer.summary.trim() || "Changed the text.";
+        // Boxes the teacher typed in keep their text; the answer waits as a preview to use.
+        const late = kept.length > 0 ? { slideId: slide.id, summary, boxes: kept } : undefined;
+        const retry: Alternative | undefined = late
+          ? { label: TRY_AGAIN, instruction, scope: target }
+          : undefined;
         update(id, (t) => ({
           ...t,
-          reply: { kind: "edit", text: `Slide ${n}: ${summary}` },
-          change: { slideId: slide.id, boxes },
+          reply:
+            boxes.length > 0
+              ? { kind: "edit", text: `Slide ${n}: ${summary}`, alternative: retry }
+              : { kind: "refuse", text: TYPED_MEANWHILE, alternative: retry },
+          change: boxes.length > 0 ? { slideId: slide.id, boxes } : undefined,
+          late,
         }));
         return;
       }
@@ -403,6 +428,8 @@ export function EditChatPane({
             onShow={() => showOnSlide(t)}
             onStop={stop}
             onAlternative={(a) => void send(a.instruction, a.scope, a.label)}
+            onUseLate={() => applyLate(t)}
+            lateCurrent={t.late ? lateIsCurrent(lesson, t.late) : false}
             busy={busy}
           />
         ))}
@@ -480,6 +507,8 @@ function TurnItem({
   onShow,
   onStop,
   onAlternative,
+  onUseLate,
+  lateCurrent,
   busy,
 }: {
   turn: Turn;
@@ -487,9 +516,13 @@ function TurnItem({
   onShow: () => void;
   onStop: () => void;
   onAlternative: (a: Alternative) => void;
+  onUseLate: () => void;
+  /** Whether the kept suggestion can still be used (its boxes unchanged since it arrived). */
+  lateCurrent: boolean;
   busy: boolean;
 }) {
-  const { reply } = turn;
+  const { reply, late } = turn;
+  const pendingLate = late && !late.used ? late : undefined;
   return (
     <li className="flex flex-col gap-1.5" data-edit-turn={reply.kind}>
       <div className="flex flex-col items-end gap-0.5">
@@ -517,7 +550,11 @@ function TurnItem({
             {reply.text}
           </p>
         )}
-        {reply.kind === "edit" && turn.change ? (
+        {pendingLate && reply.kind === "edit" ? (
+          <p className="m-0 text-body">{TYPED_IN_ONE}</p>
+        ) : null}
+        {pendingLate ? <LatePreview boxes={pendingLate.boxes} current={lateCurrent} /> : null}
+        {reply.kind === "edit" && turn.change && !(pendingLate && lateCurrent) ? (
           <div className="flex gap-1.5">
             <Button
               type="button"
@@ -533,7 +570,26 @@ function TurnItem({
             </Button>
           </div>
         ) : null}
-        {reply.alternative ? (
+        {pendingLate ? (
+          <div className="flex flex-wrap gap-1.5">
+            {lateCurrent ? (
+              <Button type="button" variant="primary" size="xs" onClick={onUseLate}>
+                Use this
+              </Button>
+            ) : null}
+            {reply.alternative ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={busy}
+                onClick={() => reply.alternative && onAlternative(reply.alternative)}
+              >
+                {reply.alternative.label}
+              </Button>
+            ) : null}
+          </div>
+        ) : reply.alternative ? (
           <div className="min-w-0">
             {/* An offer is a sentence: it wraps inside the pane rather than running off it. */}
             <Button
@@ -551,5 +607,27 @@ function TurnItem({
         ) : null}
       </div>
     </li>
+  );
+}
+
+/**
+ * A kept late answer, quietly: the teacher's text as it is (struck through, muted) and the
+ * suggested text under it. Out of date once the box has changed again.
+ */
+function LatePreview({ boxes, current }: { boxes: readonly BoxChange[]; current: boolean }) {
+  return (
+    <div className="flex flex-col gap-1 text-meta" data-edit-late={current ? "current" : "stale"}>
+      {boxes.map((b) => (
+        <div key={b.elementId} className="flex flex-col gap-0.5">
+          <p className="m-0 text-ink-3 line-through" data-edit-late-before>
+            {richDocToPlainText(b.before)}
+          </p>
+          <p className={cn("m-0", current ? "text-foreground" : "text-ink-3")} data-edit-late-after>
+            {richDocToPlainText(b.after)}
+          </p>
+        </div>
+      ))}
+      {current ? null : <p className="m-0 text-ink-3">{OUT_OF_DATE}</p>}
+    </div>
   );
 }

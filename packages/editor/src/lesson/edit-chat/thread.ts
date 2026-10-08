@@ -36,6 +36,14 @@ export type Turn = {
   reply: { kind: ReplyKind; text: string; alternative?: Alternative | undefined };
   /** The applied change (reply kind "edit"). */
   change?: { slideId: Id; boxes: BoxChange[]; undone?: boolean | undefined } | undefined;
+  /**
+   * A late answer for boxes the teacher typed in while it was out: their text was kept, and the
+   * answer waits here as a preview they can still use. `before` is the teacher's text when it
+   * arrived, `after` the suggested text. Usable while every box still holds `before`.
+   */
+  late?:
+    | { slideId: Id; summary: string; boxes: BoxChange[]; used?: boolean | undefined }
+    | undefined;
 };
 
 export const THREAD_LIMIT = 50;
@@ -231,6 +239,43 @@ export function changedSince(sent: Slide, now: Slide, ids: readonly Id[]): boole
     const was = sent.elements.find((e) => e.id === id);
     const is = now.elements.find((e) => e.id === id);
     return was?.type !== "text" || is?.type !== "text" || !same(was.doc, is.doc);
+  });
+}
+
+/**
+ * Split a late answer by what the teacher did meanwhile: boxes still as sent can be applied;
+ * boxes they typed in are kept, with the answer's text as a suggestion (`before` = their text
+ * now); boxes deleted since are dropped.
+ */
+export function splitLate(
+  sent: Slide,
+  now: Slide,
+  changes: readonly { elementId: Id; doc: RichDoc }[],
+): { apply: BoxChange[]; kept: BoxChange[] } {
+  const apply: BoxChange[] = [];
+  const kept: BoxChange[] = [];
+  for (const c of changes) {
+    const was = sent.elements.find((e) => e.id === c.elementId);
+    const is = now.elements.find((e) => e.id === c.elementId);
+    if (is?.type !== "text") continue;
+    const box = { elementId: c.elementId, before: is.doc, after: c.doc };
+    if (was?.type === "text" && same(was.doc, is.doc)) apply.push(box);
+    else kept.push(box);
+  }
+  return { apply, kept };
+}
+
+/**
+ * Whether a kept suggestion can still be used: not used yet, and every box still holds the text
+ * the teacher had when it arrived. Any further change to a box puts it out of date.
+ */
+export function lateIsCurrent(lesson: Lesson, late: NonNullable<Turn["late"]>): boolean {
+  if (late.used) return false;
+  const slide = lesson.slides.find((s) => s.id === late.slideId);
+  if (!slide) return false;
+  return late.boxes.every((b) => {
+    const el = slide.elements.find((e) => e.id === b.elementId);
+    return el?.type === "text" && same(el.doc, b.before);
   });
 }
 

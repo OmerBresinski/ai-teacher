@@ -377,6 +377,130 @@ describe("late answers and rejected turns", () => {
     expect(richDocToPlainText((retry.slide.elements[0] as TextElement).doc)).toBe(typed);
   }, 15_000);
 
+  /** Ask on box 1, then type into it while the request is out; returns the typed text. */
+  async function typeWhileOut(t: ReturnType<typeof setup>) {
+    t.clickBox();
+    await t.say("Make it harder");
+    t.clickBox();
+    fireEvent.doubleClick(catcher(t.container), { clientX: 550, clientY: 100 });
+    await waitFor(() => expect(t.container.querySelector(".ProseMirror")).not.toBeNull(), {
+      timeout: 5_000,
+    });
+    const pm = t.container.querySelector(".ProseMirror") as HTMLElement & {
+      editor: { commands: { insertContent: (s: string) => void } };
+    };
+    act(() => pm.editor.commands.insertContent(" Mine."));
+    return {
+      typed: textOf(t.read()),
+      more: (s: string) => act(() => pm.editor.commands.insertContent(s)),
+    };
+  }
+
+  test("a kept late answer shows as a preview: the teacher's text, then the suggestion", async () => {
+    const d = deferred();
+    const t = setup(d.answer);
+    const { typed } = await typeWhileOut(t);
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [
+          { elementId: t.read().slides[0]?.elements[0]?.id as string, doc: docFromText("Late.") },
+        ],
+        summary: "Made it harder.",
+      });
+    });
+    const preview = t.pane().querySelector("[data-edit-late]") as HTMLElement;
+    expect(preview.dataset.editLate).toBe("current");
+    expect(preview.querySelector("[data-edit-late-before]")?.textContent).toBe(typed);
+    expect(preview.querySelector("[data-edit-late-after]")?.textContent).toBe("Late.");
+    expect(within(t.pane()).getByRole("button", { name: "Use this" })).toBeTruthy();
+    expect(within(t.pane()).getByRole("button", { name: "Try again on your text" })).toBeTruthy();
+    expect(textOf(t.read())).toBe(typed);
+  }, 15_000);
+
+  test("“Use this” applies the suggestion at once, as one undoable step", async () => {
+    const d = deferred();
+    const t = setup(d.answer);
+    const { typed } = await typeWhileOut(t);
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [
+          { elementId: t.read().slides[0]?.elements[0]?.id as string, doc: docFromText("Late.") },
+        ],
+        summary: "Made it harder.",
+      });
+    });
+    await act(async () => {
+      fireEvent.click(within(t.pane()).getByRole("button", { name: "Use this" }));
+    });
+    expect(textOf(t.read())).toBe("Late.");
+    expect(t.onPromptEdit).toHaveBeenCalledTimes(1);
+    expect(t.pane().querySelector("[data-edit-late]")).toBeNull();
+    expect(within(t.pane()).queryByRole("button", { name: "Use this" })).toBeNull();
+    expect(within(t.pane()).getByText("Slide 1: Made it harder.")).toBeTruthy();
+    // One step: a single undo puts the teacher's text back.
+    act(() => {
+      fireEvent.keyDown(window, { key: "z", metaKey: true });
+    });
+    expect(textOf(t.read())).toBe(typed);
+  }, 15_000);
+
+  test("the suggestion goes out of date once the box changes again", async () => {
+    const d = deferred();
+    const t = setup(d.answer);
+    const { more } = await typeWhileOut(t);
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [
+          { elementId: t.read().slides[0]?.elements[0]?.id as string, doc: docFromText("Late.") },
+        ],
+        summary: "Made it harder.",
+      });
+    });
+    expect(within(t.pane()).getByRole("button", { name: "Use this" })).toBeTruthy();
+    more(" Again.");
+    const preview = t.pane().querySelector("[data-edit-late]") as HTMLElement;
+    expect(preview.dataset.editLate).toBe("stale");
+    expect(preview.textContent).toContain("Out of date");
+    expect(within(t.pane()).queryByRole("button", { name: "Use this" })).toBeNull();
+    expect(within(t.pane()).getByRole("button", { name: "Try again on your text" })).toBeTruthy();
+    expect(textOf(t.read())).toContain("Again.");
+  }, 15_000);
+
+  test("a multi-box answer lands on the untouched box and previews only the touched one", async () => {
+    const lesson = textLesson();
+    const first = lesson.slides[0] as NonNullable<Lesson["slides"][number]>;
+    const other = { ...(first.elements[0] as TextElement), id: "other-box", y: 400 } as TextElement;
+    other.doc = docFromText("Other box.");
+    first.elements.push(other as SlideElement);
+    const d = deferred();
+    const t = setup(d.answer, lesson);
+    const { typed } = await typeWhileOut(t);
+    await act(async () => {
+      d.resolve({
+        action: "edit",
+        changes: [
+          { elementId: t.read().slides[0]?.elements[0]?.id as string, doc: docFromText("Late.") },
+          { elementId: "other-box", doc: docFromText("Other, harder.") },
+        ],
+        summary: "Made it harder.",
+      });
+    });
+    const now = t.read().slides[0]?.elements ?? [];
+    expect(textOf(t.read())).toBe(typed);
+    expect(richDocToPlainText((now[1] as TextElement).doc)).toBe("Other, harder.");
+    const afters = [...t.pane().querySelectorAll("[data-edit-late-after]")].map(
+      (e) => e.textContent,
+    );
+    expect(afters).toEqual(["Late."]);
+    await act(async () => {
+      fireEvent.click(within(t.pane()).getByRole("button", { name: "Use this" }));
+    });
+    expect(textOf(t.read())).toBe("Late.");
+  }, 15_000);
+
   test("an instruction with an identifier is answered in the pane and never sent", async () => {
     const { say, pane, onPromptEdit } = setup(() =>
       Promise.resolve({ action: "no-change", reason: "" }),
