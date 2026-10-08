@@ -6,7 +6,8 @@
 // 3. the compiled request (system as sent, schema, user turn with round 5's approved objectives) for
 //    the 6 A/B briefs in every arm -> BAKEOFF/ab/compiled/<arm>/<brief>.json; the user turn must equal
 //    round 5's request.json user; each arm is diffed against base (ab/compiled/DIFF.md).
-// --pin writes BAKEOFF/ab/PINS.json (sha256 of every arm file and the shared prompts) when all pass.
+// --pin merges into BAKEOFF/ab/PINS.json (sha256 of every arm file and the shared prompts) when all
+//    pass: only this worktree's built arms are added or updated; other entries are kept as they are.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { openaiSchemaFaults } from "../../../packages/slides/src/diagrams/wire";
 import { armT } from "../arm-t";
@@ -36,6 +37,7 @@ import {
   sharedReads,
   tPin,
 } from "./arms";
+import { mergePins } from "./pins-merge";
 
 const BAKEOFF = AB.replace(/\/ab$/, "");
 export const AB_BRIEFS = [
@@ -429,8 +431,11 @@ console.log(
 if (process.argv.includes("--pin")) {
   if (bad) fail("not pinning: fix the failures first");
   else {
+    // PINS.json is shared by every lab worktree: pin only this worktree's built arms (plus the head
+    // shared files they read and the pinned code) and keep every other entry (ab/pins-merge.ts).
     const pins: Record<string, string> = {};
     for (const a of AB_ARMS) {
+      if (!have(a)) continue;
       for (const st of STAGES)
         for (const f of Object.values(abFiles(a, st)))
           pins[f.slice(AB.length + 1)] = sha(readFileSync(f));
@@ -442,8 +447,10 @@ if (process.argv.includes("--pin")) {
       for (const { key, path } of sharedReads(a)) pins[key] = pinOf(path);
     }
     for (const f of CODE_PINNED) pins[`code:${f}`] = sha(readFileSync(`${REPO}/${f}`));
-    writeFileSync(`${AB}/PINS.json`, JSON.stringify(pins, null, 1));
-    ok(`pinned ${Object.keys(pins).length} files -> ${AB}/PINS.json`);
+    const r = mergePins(`${AB}/PINS.json`, pins);
+    ok(
+      `pinned ${Object.keys(pins).length} files (${r.added} added, ${r.updated} updated; ${r.total} pins in all, other worktrees' kept) -> ${AB}/PINS.json`,
+    );
   }
 }
 process.exit(bad ? 1 : 0);
