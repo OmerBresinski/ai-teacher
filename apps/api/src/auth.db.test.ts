@@ -352,6 +352,9 @@ describeDb("auth (magic link, sessions, requireSession, personal workspace)", ()
       }
       expect(controller.signal.aborted).toBe(false);
       expect(Date.now() - revokedAt).toBeLessThan(5_000);
+      // The body ends when the stream aborts; its `finally` releases the slot and unsubscribes a
+      // tick later, so wait (briefly) for that rather than read it at once.
+      for (let i = 0; i < 100 && runtime.openStreams(workspaceId) > 0; i++) await Bun.sleep(10);
       expect(runtime.openStreams(workspaceId)).toBe(0);
       expect(runtime.hub.size()).toBe(0);
     } finally {
