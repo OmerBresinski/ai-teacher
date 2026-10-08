@@ -4,6 +4,7 @@ import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
+import { writerBundleOf } from "./objectives-first";
 
 /*
  * The writer planner's generate step (TEACH-110 part b): the base4 lesson writer, with the
@@ -63,7 +64,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           findings: [],
         }),
         stage,
-        promptVersions: { ...(lesson.generation?.promptVersions ?? {}), generated: WRITER_VERSION },
+        promptVersions: {
+          ...(lesson.generation?.promptVersions ?? {}),
+          generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}`,
+        },
         usage: deps.budget.totals(),
       },
     }) as Lesson;
@@ -72,6 +76,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     out = await runWriter({
       brief: writerBrief(lesson),
       objectives,
+      bundle: writerBundleOf(lesson),
       services: aiWriterServices(deps),
       onEditable: async (slides) => {
         // Editable: every slide is laid out; the checkpoint stays at `planned` until the end.

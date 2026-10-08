@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { WRITER_BUNDLE_ID, WRITER_BUNDLES, type WriterBundle, writerBundle } from "./bundle";
 import { schemaText, type WriterStage } from "./schema";
-import * as P from "./writer-prompts.gen";
 
 /*
  * Pins (TEACH-110 part b, rows 1 and 2): every ported prompt file is the pinned bytes, and the
@@ -18,36 +18,46 @@ const SCHEMA_PINS: Record<WriterStage, string> = {
   "KS3-5": "f85239d5ad9cb42b956cfe7e1bf2362c770a5955cf6b30dc88f04d5ba23a0bce",
 };
 
-describe("writer prompt pins", () => {
-  test.each(Object.entries(P.WRITER_PROMPT_SHA256))("%s is the pinned bytes", (name, pin) => {
-    const text = (P as unknown as Record<string, string>)[name] as string;
+const BUNDLES = Object.values(WRITER_BUNDLES) as WriterBundle[];
+
+describe.each(BUNDLES.map((b) => [b.id, b] as const))("writer bundle %s", (_id, b) => {
+  test.each(Object.entries(b.pins))("%s is its pinned bytes", (name, pin) => {
+    const text = (b as unknown as Record<string, string>)[name] as string;
+    expect(typeof text).toBe("string");
     expect(sha(text)).toBe(pin.sha256);
   });
 
-  test("the schema builder gives the pinned schema at 9–12 on every stage", () => {
-    for (const st of STAGES) expect(sha(schemaText(st, { min: 9, max: 12 }))).toBe(SCHEMA_PINS[st]);
-  });
-
-  test("the writer hash (system text and schema, 3 stages) is the pinned 18057b0c7aa8", () => {
+  test("the writer hash (system text and schema, 3 stages, at 9–12) is the bundle's pinned one", () => {
     const system: Record<WriterStage, string> = {
-      KS1: P.systemKS1,
-      KS2: P.systemKS2,
-      "KS3-5": P.systemKS3_5,
+      KS1: b.systemKS1,
+      KS2: b.systemKS2,
+      "KS3-5": b.systemKS3_5,
     };
     const files: [string, string][] = STAGES.flatMap((st): [string, string][] => [
       [`T/system.${st}.txt`, system[st]],
-      [`T/schema.${st}.json`, schemaText(st, { min: 9, max: 12 })],
+      [`T/schema.${st}.json`, schemaText(st, { min: 9, max: 12 }, b)],
     ]);
     const h = createHash("sha256");
-    for (const [f, text] of files.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    for (const [f, text] of files.sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))) {
       h.update(f);
       h.update(text);
     }
-    expect(h.digest("hex").slice(0, 12)).toBe("18057b0c7aa8");
+    expect(h.digest("hex").slice(0, 12)).toBe(b.tHash);
   });
 
   test("nothing is appended to the system text", () => {
-    for (const t of [P.systemKS1, P.systemKS2, P.systemKS3_5]) expect(t).not.toContain("{{");
+    for (const t of [b.systemKS1, b.systemKS2, b.systemKS3_5]) expect(t).not.toContain("{{");
+  });
+});
+
+describe("the shipped bundle", () => {
+  test("is base4, the evidence's pinned writer (T hash 18057b0c7aa8)", () => {
+    expect(WRITER_BUNDLE_ID).toBe("base4");
+    expect(writerBundle().tHash).toBe("18057b0c7aa8");
+  });
+  test("its schema builder gives the pinned schema files at 9–12 on every stage", () => {
+    for (const st of STAGES)
+      expect(sha(schemaText(st, { min: 9, max: 12 }, writerBundle("base4")))).toBe(SCHEMA_PINS[st]);
   });
 });
 

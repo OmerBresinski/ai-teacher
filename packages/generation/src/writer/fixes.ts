@@ -1,6 +1,6 @@
+import { writerBundle } from "./bundle";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
-import { user as userTemplate } from "./writer-prompts.gen";
 
 /*
  * The writer stage's pure fixes, ported from the pinned harness (TEACH-110 part b): the
@@ -491,6 +491,10 @@ export function lookOf(
 }
 
 /** The writer's user turn: the pinned `user.txt` filled with the brief and the approved objectives. */
-export function contextBlock(b: Brief, objectives?: { teacher: string; pupil: string }[]): string {
-  return fillTemplate(userTemplate, b, objectives ? { objectives } : {});
+export function contextBlock(
+  b: Brief,
+  objectives?: { teacher: string; pupil: string }[],
+  user: string = writerBundle().user,
+): string {
+  return fillTemplate(user, b, objectives ? { objectives } : {});
 }

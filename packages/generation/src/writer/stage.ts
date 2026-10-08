@@ -1,5 +1,6 @@
 import type { Slide, Theme } from "@tj/domain/documents";
 import { getTheme } from "@tj/slides/themes";
+import { type WriterBundleId, writerBundle } from "./bundle";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import {
   asPicture,
@@ -71,7 +72,6 @@ import {
   WRITER_MODEL,
   type WriterServices,
 } from "./services";
-import * as P from "./writer-prompts.gen";
 
 /*
  * The lesson writer stage (TEACH-110 part b), ported from the pinned writer's run: one streamed
@@ -106,6 +106,8 @@ export type WriterRun = {
   recordedWriter?: { text: string; finishReason?: string | null };
   /** Why a placed picture was vetoed (the reroute call is told); the director's, TEACH-251. */
   vetoed?: (index: number, key: string) => string | undefined;
+  /** The writer prompt bundle; absent: the shipped one (`WRITER_BUNDLE_ID`). */
+  bundle?: WriterBundleId;
   /** The pupil-wording call for slide 2; `false` keeps the teacher's wording (the evidence runs). */
   pupilWording?: boolean;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
@@ -126,21 +128,23 @@ export type WriterOutput = {
 };
 
 /** The writer's system text for the brief's stage, exactly as pinned (nothing appended). */
-export function writerSystem(brief: Brief): string {
+export function writerSystem(brief: Brief, P = writerBundle()): string {
   const k = promptStage(brief.keyStage);
   return k === "KS1" ? P.systemKS1 : k === "KS2" ? P.systemKS2 : P.systemKS3_5;
 }
-const repairSchemaFor = (k: string) =>
-  JSON.parse(
-    k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
-  );
-const layoutsMenu = (k: string) =>
-  k === "KS1" ? P.layoutsKS1 : k === "KS2" ? P.layoutsKS2 : P.layoutsKS3_5;
-const baseVisuals = (k: string) =>
-  k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
 
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const { brief } = run;
+  const P = writerBundle(run.bundle);
+  const repairSchemaFor = (k: string) =>
+    JSON.parse(
+      k === "KS1" ? P.repairSchemaKS1 : k === "KS2" ? P.repairSchemaKS2 : P.repairSchemaKS3_5,
+    );
+  const layoutsMenu = (k: string) =>
+    k === "KS1" ? P.layoutsKS1 : k === "KS2" ? P.layoutsKS2 : P.layoutsKS3_5;
+  const baseVisuals = (k: string) =>
+    k === "KS1" ? P.baseVisualsKS1 : k === "KS2" ? P.baseVisualsKS2 : P.baseVisualsKS3_5;
+
   const log = (e: object) => run.services.log(e);
   // Every model call's texts go through the locale step (`{{locale.country}}` in notes.txt).
   const chat: WriterServices["chat"] = (r) =>
@@ -181,16 +185,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const user = contextBlock(
     brief,
     run.objectives.map((t) => ({ teacher: t, pupil: "" })),
+    P.user,
   );
   const stageKey = promptStage(brief.keyStage);
-  const schema = writerSchema(stageKey, brief.slides);
+  const schema = writerSchema(stageKey, brief.slides, P);
   const main = run.recordedWriter
     ? { usd: 0, ms: 0, ...run.recordedWriter }
     : await run.services.writer(
         {
           model: WRITER_MODEL,
           effort: WRITER_EFFORT,
-          system: writerSystem(brief),
+          system: writerSystem(brief, P),
           user: localise(user),
           schema,
           name: "lesson",

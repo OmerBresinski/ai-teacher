@@ -6,6 +6,7 @@ import { OUTLINE_FROM_FACTS_VERSION } from "../specs";
 import type { PipelineStageName } from "../types";
 import { STAGE_CHECKPOINT } from "../types";
 import { WRITER_VERSION } from "../writer/ai-services";
+import { WRITER_BUNDLE_ID, WRITER_BUNDLES, type WriterBundleId } from "../writer/bundle";
 
 /*
  * The objectives-first planner in production (TEACH-93, ADR 0033): which planner a lesson is on,
@@ -62,10 +63,19 @@ export const OBJECTIVES_FIRST_CHECKPOINT: Record<ObjectivesFirstStageName, Gener
   };
 
 /**
- * The writer planner's `planned` stamp (TEACH-110 part b): the writer's version, then the
- * objectives step's. It starts with the writer's version, so it is never read as objectives-first.
+ * The writer planner's `planned` stamp (TEACH-110 part b): the writer's version, the objectives
+ * step's, then the writer prompt bundle, so a lesson finishes on the bundle it was planned with. It starts with the writer's version, so it is never read as objectives-first.
  */
-export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${planObjectivesPrompt.version}`;
+export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${planObjectivesPrompt.version}+bundle-${WRITER_BUNDLE_ID}`;
+
+/** The writer bundle a writer lesson was planned with (its stamp's `bundle-<id>` part). */
+export function writerBundleOf(lesson: Lesson): WriterBundleId {
+  const part = lesson.generation?.promptVersions.planned
+    ?.split("+")
+    .find((x) => x.startsWith("bundle-"))
+    ?.slice("bundle-".length);
+  return part && part in WRITER_BUNDLES ? (part as WriterBundleId) : WRITER_BUNDLE_ID;
+}
 
 /** Whether a `promptVersions.planned` stamp was written by the writer planner. */
 export function isWriterStamp(planned: string | undefined): boolean {

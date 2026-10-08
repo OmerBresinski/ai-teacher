@@ -1,5 +1,4 @@
-import diagramDefs from "./diagram-defs.gen.json" with { type: "json" };
-import { capsKS1, capsKS2, capsKS3_5, diagramKinds } from "./writer-prompts.gen";
+import { type WriterBundle, writerBundle } from "./bundle";
 
 /*
  * The lesson writer's strict output schema, built in code (TEACH-110 part b). The base shape is
@@ -33,15 +32,18 @@ const obj = (props: J): J => ({
   properties: props,
 });
 
-const KINDS = (JSON.parse(diagramKinds) as { kinds: string[] }).kinds;
 const PIC: J = {
   shows: S(),
   must_see: arr(S(), 1, 4),
   subject: { type: "string", enum: ["named", "generic"] },
 };
-const visualDefs = (): J => ({
+const visualDefs = (b: WriterBundle): J => ({
   picture: obj(PIC),
-  diagram: obj({ kind: { type: "string", enum: KINDS }, shows: S(), labels: arr(S()) }),
+  diagram: obj({
+    kind: { type: "string", enum: (JSON.parse(b.diagramKinds) as { kinds: string[] }).kinds },
+    shows: S(),
+    labels: arr(S()),
+  }),
   figure: { anyOf: [REF("picture"), REF("diagram"), { type: "null" }] },
 });
 const THEMES = [
@@ -77,7 +79,8 @@ const front = (lo: number, hi: number): J => ({
   ),
 });
 
-const CAPS: Record<WriterStage, string> = { KS1: capsKS1, KS2: capsKS2, "KS3-5": capsKS3_5 };
+const capsOf = (b: WriterBundle, st: WriterStage) =>
+  st === "KS1" ? b.capsKS1 : st === "KS2" ? b.capsKS2 : b.capsKS3_5;
 /** The writer's layout menu, in schema order. */
 export const WRITER_TEMPLATES = [
   "title",
@@ -169,14 +172,14 @@ function templates(c: Record<string, number>): J {
 }
 
 /** The base shape (`make_schema.py`): `min`/`max` count the whole lesson. */
-function baseSchema(stage: WriterStage, lo: number, hi: number): J {
-  const T = templates(JSON.parse(CAPS[stage]) as Record<string, number>);
+function baseSchema(b: WriterBundle, stage: WriterStage, lo: number, hi: number): J {
+  const T = templates(JSON.parse(capsOf(b, stage)) as Record<string, number>);
   const teach = WRITER_TEMPLATES.filter((n) => n !== "title" && n !== "objectives");
   const schema = obj({
     ...front(lo - 2, hi - 2),
     slides: arr({ anyOf: teach.map(REF) }, lo - 2, hi - 2),
   });
-  schema.$defs = { ...visualDefs(), ...T };
+  schema.$defs = { ...visualDefs(b), ...T };
   const props = schema.properties as Record<string, J>;
   const flow = props.flow as J;
   flow.minItems = lo;
@@ -194,8 +197,8 @@ function baseSchema(stage: WriterStage, lo: number, hi: number): J {
 }
 
 /** The structured diagram step: each diagram slot takes the per-kind spec defs for its size. */
-function withDiagramSpecs(schema: J, stage: WriterStage): J {
-  const all = diagramDefs as unknown as Record<string, J | string[]>;
+function withDiagramSpecs(b: WriterBundle, schema: J, stage: WriterStage): J {
+  const all = b.diagramDefs as Record<string, J | string[]>;
   const specs = all[stage] as Record<string, J>;
   const order = all[`${stage}:order`] as string[];
   const defs = schema.$defs as Record<string, J>;
@@ -210,10 +213,17 @@ function withDiagramSpecs(schema: J, stage: WriterStage): J {
 }
 
 /** The writer's strict schema for a lesson of `min..max` slides at this stage. */
-export function writerSchema(stage: WriterStage, slides: { min: number; max: number }): J {
-  return withDiagramSpecs(baseSchema(stage, slides.min, slides.max), stage);
+export function writerSchema(
+  stage: WriterStage,
+  slides: { min: number; max: number },
+  b: WriterBundle = writerBundle(),
+): J {
+  return withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
 }
 
 /** The schema as the pinned file holds it (one-space indent, trailing newline). */
-export const schemaText = (stage: WriterStage, slides: { min: number; max: number }) =>
-  `${JSON.stringify(writerSchema(stage, slides), null, 1)}\n`;
+export const schemaText = (
+  stage: WriterStage,
+  slides: { min: number; max: number },
+  b: WriterBundle = writerBundle(),
+) => `${JSON.stringify(writerSchema(stage, slides, b), null, 1)}\n`;
