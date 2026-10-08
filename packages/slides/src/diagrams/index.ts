@@ -43,6 +43,7 @@ export {
   svgOfDataUrl,
   withBuilds,
 } from "./builds";
+export { pileSpec } from "./groups";
 export { mendParticleLabels, particleLabelFaults } from "./labels3";
 export {
   CHARS_PER_WORD,

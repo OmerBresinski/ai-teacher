@@ -34,6 +34,7 @@ import {
   fixedFallback,
   keepAsksHonest,
   layoutsFor,
+  linkSteps,
   lookOf,
   lostFault,
   OVERFLOW,
@@ -48,6 +49,7 @@ import {
   withLook,
   writerIncomplete,
 } from "./fixes";
+import { gasFaults, rescaleGas } from "./gas";
 import {
   judgeRepair,
   POINTING_WORDS,
@@ -78,6 +80,8 @@ import {
   renderedLines,
   repairObjectives,
 } from "./notes";
+import { pastedPictureList } from "./picture-checks";
+import { stripPointTasks } from "./point-guard";
 import { writerSchema } from "./schema";
 import {
   isFatal,
@@ -510,8 +514,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         }),
     );
     for (const [i, f] of dup) res[i]?.faults.push(f);
+    // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
+    for (const h of gasFaults(gasTexts()))
+      if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);
     return res;
   };
+  const gasTexts = () =>
+    Array.from({ length: n }, (_, i) => (plan.slides[i] ? wordsOf(plan.slides[i] as S) : ""));
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
 
@@ -706,6 +715,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // One at a time, in slide order: the replay and the live run see the same order.
   for (const c of failing) await fitLoop(c);
   void charsOver;
+  // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
+  // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
+  // whole lesson, so volumes compared across slides keep their order.
+  const gasHits = gasFaults(gasTexts());
+  const gasAll = gasHits.flatMap((x) => x.volumes);
+  for (const h of gasHits) {
+    if (!repairable(plan.slides[h.slide] as S, h.slide)) continue;
+    swapSlide(h.slide, rescaleGas(plan.slides[h.slide] as S, gasAll, h.vmax));
+    const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
+    log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
+  }
 
   // ── a figure that cannot be shown (FOR-CODE item 5) ──
   // A diagram fault went to repair once above; a diagram that still cannot draw becomes a picture
@@ -726,8 +746,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ...(lost.labels ?? []).flatMap((l) => wordsOfText(l)),
     ]);
     const over = () => (check()[i]?.faults ?? []).filter((f) => OVERFLOW.test(f));
+    // rerouteLists (BAKEOFF base4f): the rewrite may not paste the lost picture's subject list.
+    const guard2 =
+      lost.type === "photo"
+        ? (after: S) => pastedPictureList(orig, after, lost.shows ?? "") ?? guard?.(after)
+        : guard;
     const ok = await repairOne({ slide: i + 1, faults: [lostFault(lost, why)] }, mode, {
-      guard,
+      guard: guard2,
       exempt,
     });
     // A restaged slide is never sent back to repair (FOR-CODE item 5), not even for fit: one
@@ -749,6 +774,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
               .join(": "),
       )
       .filter((p) => p.trim());
+    // seqSteps (BAKEOFF base4f): a flow lost to words keeps what its arrows said; with no labelled
+    // links and the slide's own points to fall back on, the figure is dropped and the points stay.
+    if (lost.type === "diagram") {
+      const t = linkSteps(spec);
+      if (t.length >= 2) parts.splice(0, parts.length, ...t);
+      else if (Array.isArray(orig.points) && orig.points.length) parts.splice(0, parts.length);
+    }
     const maxSteps = Math.max(
       0,
       ...(fitTable()[stageKey]?.layouts.steps?.variants ?? [])
@@ -868,6 +900,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   for (let i = 0; i < n; i++) await fallback(i);
   for (let i = 0; i < n; i++) await pictureLost(i);
+  // pointGuard (BAKEOFF base4f, D47): the code backstop. A slide that still points at nothing
+  // (its picture lost, its rewrite still dangling) loses each pointing sentence and every question
+  // about a lettered or left/right shape; "Answer from memory." where a task is left. The title
+  // slide too. A strip that leaves the slide dangling is undone. (The lab ran its stand-alone
+  // rewrite first; this stage has no stand-alone pass, so the strip is the only step.)
+  const DANGLING = /^dangling:/;
+  for (let i = 0; i < n; i++) {
+    const s = plan.slides[i] as S | undefined;
+    if (!s || (i > 0 && !repairable(s, i))) continue;
+    if (!check()[i]?.faults.some((f) => DANGLING.test(f))) continue;
+    const { slide: stripped, removed } = stripPointTasks(s);
+    if (!removed.length) continue;
+    const n0 = notes.get(i);
+    const oldAsks = asks.get(i) ?? [];
+    swapSlide(i, stripped);
+    const left = check()[i]?.faults.some((f) => DANGLING.test(f));
+    if (left) restore(i, s, n0, oldAsks);
+    log({ ev: "point-guard", slide: i + 1, removed, how: left ? "left" : "point-strip" });
+  }
   for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
 
   // ── notes: one call on the final slides as shown, only placed visuals listed ──

@@ -2,6 +2,7 @@
 import type { Slide, SlideElement } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { cutSubjects, type SubjectBox } from "@tj/slides/templates";
+import { pointTaskFault } from "./point-guard";
 
 export type CheckResult = { slide: number; faults: string[] };
 type Box = { x: number; y: number; w: number; h: number };
@@ -99,6 +100,11 @@ export function checkSlide(a: {
   // Dangling: words that point at a picture with no picture on the slide.
   if (POINTING.test(a.words) && !s.elements.some(realPicture))
     faults.push(`dangling: "${a.words.match(POINTING)?.[0]}" with no picture on the slide`);
+  // pointGuard (BAKEOFF base4f, D47): "Point and say", "Look, choose", "shape A" with nothing there.
+  if (!s.elements.some(realPicture) && !faults.some((f) => f.startsWith("dangling:"))) {
+    const pt = pointTaskFault(a.words);
+    if (pt) faults.push(pt);
+  }
   // Referent: words that point at data, a
   // table or a graph need a drawn figure or the data itself (at least 4 numbers) on the slide.
   const referent = referentFault(a.words, s.elements.some(realPicture));
