@@ -11,14 +11,12 @@ import { type El, replayRun, savedSlides } from "./replay-fixture";
  *  - list-marker badges: part a lays the numeral badge at master's sizes (25 at KS2, 21 at KS3
  *    where the run had 14 to 20), which moves each marker's box and its item's x and width by a
  *    few points. Those slides are compared on everything but marker and item geometry;
- *  - y11 slide 4: its labelled diagram could not be drawn and the run fell back to a picture of
- *    the same thing. That fallback needs the picture director (TEACH-251) and the drawer
- *    fallback chain (part d), so here the slide keeps its words without the picture.
+ *  - a run whose notes call was refused by its budget (y1) has empty notes here too.
  */
 
-const SKIP: Record<string, number[]> = { "y11-chemistry-rates-of-reaction": [3] };
+const SKIP: Record<string, number[]> = {};
 /** The marker badge and the text laid against it (items, options, a question set's instruction). */
-const BADGE_ALIGNED = new Set(["Marker", "Item", "Option text", "Instruction"]);
+const BADGE_ALIGNED = new Set(["Marker", "Item", "Option text", "Instruction", "Rule"]);
 const plain = (d: unknown): string => {
   const n = d as { text?: string; content?: unknown[] } | undefined;
   return n?.text ?? (n?.content ?? []).map(plain).join(" ");
@@ -30,35 +28,38 @@ const stable = (e: El, loose: boolean) => {
   return words;
 };
 
-describe.each(["y5-maths-fractions-of-amounts", "y11-chemistry-rates-of-reaction"])(
-  "replay %s",
-  (b) => {
-    test("the stage reproduces the saved slides", async () => {
-      const out = await replayRun(b);
-      const saved = savedSlides(b);
-      expect(out.slides.length).toBe(saved.length);
-      out.slides.forEach((s, i) => {
-        const want = saved[i] as El & { elements: El[]; notes?: string };
-        const got = s.elements as unknown as El[];
-        expect({ i, notes: s.notes }).toEqual({ i, notes: want.notes ?? "" });
-        if (SKIP[b]?.includes(i)) {
-          // The words are the run's, minus the picture.
-          const words = (els: El[]) =>
-            els.filter((e) => e.type === "text").map((e) => plain(e.doc));
-          expect({ i, words: words(got) }).toEqual({ i, words: words(want.elements) });
-          return;
-        }
-        const loose = got.some((e) => e.name === "Marker");
-        expect({ i, kind: s.kind, background: s.background }).toEqual({
-          i,
-          kind: want.kind as never,
-          background: want.background as never,
-        });
-        expect({ i, elements: got.map((e) => stable(e, loose)) }).toEqual({
-          i,
-          elements: want.elements.map((e) => stable(e, loose)),
-        });
+describe.each([
+  "y1-science-animals-young",
+  "y2-maths-halves-quarters",
+  "y5-maths-fractions-of-amounts",
+  "y8-french-my-family",
+  "y11-chemistry-rates-of-reaction",
+  "y12-psychology-multi-store-model",
+])("replay %s", (b) => {
+  test("the stage reproduces the saved slides", async () => {
+    const out = await replayRun(b);
+    const saved = savedSlides(b);
+    expect(out.slides.length).toBe(saved.length);
+    out.slides.forEach((s, i) => {
+      const want = saved[i] as El & { elements: El[]; notes?: string };
+      const got = s.elements as unknown as El[];
+      expect({ i, notes: s.notes }).toEqual({ i, notes: want.notes ?? "" });
+      if (SKIP[b]?.includes(i)) {
+        // The words are the run's, minus the picture.
+        const words = (els: El[]) => els.filter((e) => e.type === "text").map((e) => plain(e.doc));
+        expect({ i, words: words(got) }).toEqual({ i, words: words(want.elements) });
+        return;
+      }
+      const loose = got.some((e) => e.name === "Marker");
+      expect({ i, kind: s.kind, background: s.background }).toEqual({
+        i,
+        kind: want.kind as never,
+        background: want.background as never,
+      });
+      expect({ i, elements: got.map((e) => stable(e, loose)) }).toEqual({
+        i,
+        elements: want.elements.map((e) => stable(e, loose)),
       });
     });
-  },
-);
+  });
+});

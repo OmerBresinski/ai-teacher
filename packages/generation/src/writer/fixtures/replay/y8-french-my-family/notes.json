@@ -1,0 +1,88 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": null,
+      "misconceptions": null,
+      "background": "These objectives bring together family vocabulary, adjective agreement and a short piece of connected writing.",
+      "run": "Take about 1 minute to introduce the learning goals. Pupils read them silently, then name one thing they already know about describing family in French."
+    },
+    {
+      "n": 4,
+      "answers": null,
+      "misconceptions": "Pupils may choose mon or ma according to whether the speaker is a boy or a girl. The French noun decides: say mon père and ma mère, whoever is speaking.",
+      "background": "French possessive adjectives agree with the noun that follows, not with the person who owns it. Mes is used before plural nouns.",
+      "run": "Spend about 5 minutes listening and repeating together. Read aloud: « moi, mon père, ma mère, mon frère, ma sœur, mes parents, mes grands-parents ». Pause after each phrase for pupils to repeat, then repeat the sequence once more."
+    },
+    {
+      "n": 5,
+      "answers": [
+        "mon père",
+        "ma mère",
+        "mon frère",
+        "ma sœur",
+        "mes parents",
+        "mes grands-parents"
+      ],
+      "misconceptions": "Pupils may use mon for every male family member and ma for every female one. These words match the French noun: père and frère are masculine; mère and sœur are feminine; parents and grands-parents are plural, so use mes.",
+      "background": "Père and mère are the singular words for father and mother. Parents and grands-parents are plural forms.",
+      "run": "Allow about 4 minutes for pupils to say or write the matching phrases individually. Check the six answers as a class and ask pupils to explain why the possessive changes."
+    },
+    {
+      "n": 6,
+      "answers": ["C — mon, ma, mes"],
+      "misconceptions": "A uses mon for parents, but parents is plural and needs mes. B uses ma for père, but père is masculine. D uses mon for mère, but mère is feminine. The correct sequence is mon père, ma mère, mes parents.",
+      "background": "The speaker being a girl does not change the possessive adjective. The noun determines whether to use mon, ma or mes.",
+      "run": "Give pupils about 3 minutes to choose an option alone, then compare with a partner. Take a class vote and ask a pupil to justify the answer using each noun."
+    },
+    {
+      "n": 7,
+      "answers": null,
+      "misconceptions": "Pupils may use être for age, as in English, or give the adjective the wrong ending. In French, age uses avoir: il a treize ans. Match the adjective to the person: gentil and amusant for a boy; gentille and amusante for a girl.",
+      "background": "S’appeler means ‘to be called’. French uses avoir, literally ‘to have’, to state someone’s age. Many adjectives add -e in the feminine form.",
+      "run": "Spend about 5 minutes reading the two examples aloud. Pupils identify the name, age and personality detail in each, then practise reading one sentence each with a partner."
+    },
+    {
+      "n": 8,
+      "answers": [
+        "Mon frère s’appelle Hugo. Il a quatorze ans. Il est gentil.",
+        "Ma sœur s’appelle Inès. Elle a douze ans. Elle est amusante."
+      ],
+      "misconceptions": "Pupils may write il for the sister or elle for the brother; link il to Hugo and elle to Inès. They may also leave the adjective unchanged: use gentil for Hugo and amusante for Inès. Say il a / elle a for age, not il est / elle est.",
+      "background": "Quatorze and douze are the French words for 14 and 12. The adjective endings here match the gender of the person described.",
+      "run": "Give pupils about 7 minutes to write the two descriptions independently. Ask them to underline the name, age and personality phrase, then check the adjective endings with a partner."
+    },
+    {
+      "n": 9,
+      "answers": null,
+      "misconceptions": "Pupils may keep un or une after the negative, or omit de. In this construction, say je n’ai pas de frère and je n’ai pas de sœur. With an affirmative sentence, use un or une: j’ai un frère; j’ai une sœur.",
+      "background": "In French, the article usually changes to de after ne… pas when saying you do not have something. The phrase is pronounced as one unit: je n’ai pas de.",
+      "run": "Spend about 5 minutes reading the examples together. Pupils make one affirmative and one negative sentence about siblings, using the sentence pattern shown."
+    },
+    {
+      "n": 10,
+      "answers": null,
+      "misconceptions": "Pupils may write une after the negative, or use elle est for age. Keep de in je n’ai pas de frère, and use elle a douze ans for age. Gentille and amusante describe a feminine person.",
+      "background": "The text combines the negative sibling structure with the name, age and personality patterns practised earlier. Zoé is a feminine name, so the example uses elle and feminine adjective forms.",
+      "run": "Allow about 4 minutes for pupils to read the short text aloud in pairs. Ask them to identify its sibling sentences and the three details about the sister."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "J’ai un frère. Je n’ai pas de sœur. Mon frère s’appelle Sami. Il a treize ans. Il est gentil."
+      ],
+      "misconceptions": "Pupils may use je n’ai pas une sœur; after this negative use de: je n’ai pas de sœur. They may use elle for Sami or write est treize ans. Use il for Sami and il a treize ans for his age.",
+      "background": "Treize means 13. Sami is a boy’s name in this example, so the description uses il and the masculine form gentil.",
+      "run": "Give pupils about 8 minutes to write the sibling sentences and description independently. Have them check the pronoun, age verb and adjective ending before sharing with a partner."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "Example: J’ai un frère. Je n’ai pas de sœur. Mon frère s’appelle Adam. Il a douze ans. Il est gentil."
+      ],
+      "misconceptions": "Pupils may use the wrong possessive for the family noun, mismatch il or elle, use être for age, or forget the feminine adjective ending. Check that the possessive matches the noun, the pronoun matches the person, age uses a, and the adjective agrees: for example, ma sœur… elle est gentille.",
+      "background": "A short connected description can be built from familiar sentence patterns. Encourage pupils to use an imaginary family if they prefer not to write about their own.",
+      "run": "Allow about 12 minutes for pupils to write 5–6 sentences independently. They should include a sibling they have, one sibling type they do not have, and name, age and personality details for one family member. Invite confident pupils to complete the stretch by describing another person with a different pronoun."
+    }
+  ]
+}

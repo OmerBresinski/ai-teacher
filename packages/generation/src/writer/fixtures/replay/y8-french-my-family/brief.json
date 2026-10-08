@@ -1,0 +1,19 @@
+{
+  "id": "y8-french-my-family",
+  "topic": "Describing my family in French (French on the slides, with English support)",
+  "subject": "French",
+  "yearGroup": "Year 8",
+  "year": 8,
+  "keyStage": "ks3",
+  "theme": "studio",
+  "readingLevel": "Year 8",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "WIDE",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}

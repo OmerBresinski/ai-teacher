@@ -1,0 +1,134 @@
+{"ms":5,"ev":"save","why":"code title","slides":1}
+{"ms":21,"ev":"save","why":"objectives slide (recorded objectives, teacher wording)","slides":1}
+{"ms":7738,"ev":"design","theme":"splash","modelTheme":"playground","teacherTheme":null,"unknownTheme":false,"pictureStyle":"photo"}
+{"ms":7739,"ev":"save","why":"design","slides":1}
+{"ms":9685,"ev":"save","why":"placeholder s3","slides":3}
+{"ms":10618,"ev":"save","why":"placeholder s4","slides":4}
+{"ms":11641,"ev":"save","why":"placeholder s5","slides":5}
+{"ms":12505,"ev":"save","why":"placeholder s6","slides":6}
+{"ms":13387,"ev":"save","why":"placeholder s7","slides":7}
+{"ms":13993,"ev":"save","why":"placeholder s8","slides":8}
+{"ms":14843,"ev":"save","why":"placeholder s9","slides":9}
+{"ms":15715,"ev":"save","why":"placeholder s10","slides":10}
+{"ms":16635,"ev":"save","why":"placeholder s11","slides":11}
+{"ms":17784,"ev":"save","why":"placeholder s12","slides":12}
+{"ms":17791,"ev":"flow","n":12}
+{"ms":17791,"ev":"coverage-flow","untaught":[],"unchecked":[2],"missing":[2]}
+{"ms":19273,"ev":"picture-start","key":"0:picture","shows":"Four separate photographs of familiar adult animals","aspect":1}
+{"ms":19275,"ev":"save","why":"slide s1","slides":12}
+{"ms":21251,"ev":"picture-start","key":"2:picture","shows":"Four separate adult animal photographs in reading order: cow, sheep, hen, dog","aspect":1.2}
+{"ms":21251,"ev":"save","why":"slide s3","slides":12}
+{"ms":23617,"ev":"picture-start","key":"3:col.0","shows":"An adult cow beside a small calf","aspect":1.37}
+{"ms":23617,"ev":"picture-start","key":"3:col.1","shows":"An adult sheep beside a small lamb","aspect":1.37}
+{"ms":23618,"ev":"save","why":"slide s4","slides":12}
+{"ms":26009,"ev":"picture-start","key":"4:picture","shows":"Four equally sized separate photo panels: adult cow upper left, lamb upper right, adult sheep lower left, calf lower right; no connecting lines","aspect":1.2}
+{"ms":26011,"ev":"save","why":"slide s5","slides":12}
+{"ms":28192,"ev":"picture-start","key":"5:col.0","shows":"An adult hen beside a small chick","aspect":1.33}
+{"ms":28193,"ev":"picture-start","key":"5:col.1","shows":"An adult dog beside a small puppy","aspect":1.33}
+{"ms":28194,"ev":"save","why":"slide s6","slides":12}
+{"t":1791461705089,"ev":"rejected","key":"0:picture","request":"Four separate photographs of familiar adult animals. adult cow. adult sheep. adult hen. adult dog","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a118c4-ca60-775d-b11f-a60fb9fdd333.bin","check":"reuse judge","fits":false,"why":"The photo shows a full-bodied adult cow, but its coat has no clear markings and the background is not plain and uncluttered."}
+{"ms":30019,"ev":"picture-start","key":"6:picture","shows":"Four equally sized separate photo panels: adult hen upper left, puppy upper right, adult dog lower left, chick lower right; no connecting lines","aspect":1.2}
+{"ms":30020,"ev":"save","why":"slide s7","slides":12}
+{"ms":31773,"ev":"picture-start","key":"7:picture","shows":"A newly hatched female chick standing with its whole body visible","aspect":1.2}
+{"ms":31776,"ev":"save","why":"slide s8","slides":12}
+{"t":1791461710141,"ev":"picture-outcome","key":"3:col.1","director":"pexels","via":"library","route":"generic"}
+{"ms":34890,"ev":"picture-done","key":"3:col.1","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11782-7318-7782-86ee-602317d003fa.png","provider":"generated","id":"01a11782-7318-7781-827b-958f8495b1cb","style":"photo"}
+{"ms":34891,"ev":"save","why":"picture s4","slides":12}
+{"t":1791461711403,"ev":"picture-outcome","key":"3:col.0","director":"pexels","via":"library","route":"generic"}
+{"ms":36154,"ev":"picture-done","key":"3:col.0","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117d5-3f10-7163-a4c3-aae407c56225.bin","provider":"pexels","id":"12429216","style":"photo"}
+{"ms":36155,"ev":"save","why":"picture s4","slides":12}
+{"ms":36206,"ev":"look-unmet","slide":9,"kind":"picture-sequence","shows":"A female chick growing into a hen"}
+{"ms":36206,"ev":"picture-start","key":"8:seq.0","shows":"A newly hatched female chick, with soft down and no full adult feather covering, photographed at the same scale as the later stages","aspect":1.12,"set":"seq"}
+{"ms":36206,"ev":"picture-start","key":"8:seq.1","shows":"An older female chick of the same breed, larger with emerging wing feathers and some remaining down, not yet fully adult","aspect":1.12,"set":"seq"}
+{"ms":36206,"ev":"picture-start","key":"8:seq.2","shows":"A fully grown hen of the same breed, larger still and covered with adult feathers","aspect":1.12,"set":"seq"}
+{"ms":36207,"ev":"save","why":"slide s9","slides":12}
+{"t":1791461711473,"ev":"set-start","set":"8:seq.0+8:seq.1+8:seq.2","n":3,"aspect":1.12}
+{"ms":38144,"ev":"picture-start","key":"9:picture","shows":"Three separate photographs of one chicken breed at the same scale, arranged left to right as adult hen, newly hatched female chick, older female chick; no arrows","aspect":1.33}
+{"ms":38145,"ev":"save","why":"slide s10","slides":12}
+{"t":1791461714506,"ev":"picture-outcome","key":"5:col.1","director":"pexels","via":"library","route":"generic"}
+{"ms":39254,"ev":"picture-done","key":"5:col.1","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117a3-6550-771e-a9b8-0b92fa5b762a.png","provider":"generated","id":"01a117a3-6550-771d-b54f-66ac532089e3","style":"photo"}
+{"ms":39255,"ev":"save","why":"picture s6","slides":12}
+{"t":1791461715505,"ev":"picture-outcome","key":"5:col.0","director":"pexels","via":"library","route":"generic"}
+{"ms":40253,"ev":"picture-done","key":"5:col.0","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117d6-8c5c-747a-8912-6e68d4c437bd.png","provider":"generated","id":"01a117d6-8c5c-7479-bf39-5056c56e87a2","style":"photo"}
+{"ms":40253,"ev":"save","why":"picture s6","slides":12}
+{"ms":40691,"ev":"picture-start","key":"10:col.0","shows":"Close view of a newly hatched chick showing its down","aspect":1.37}
+{"ms":40691,"ev":"picture-start","key":"10:col.1","shows":"Close view of an adult hen showing its wing and body feathers","aspect":1.37}
+{"ms":40693,"ev":"save","why":"slide s11","slides":12}
+{"ms":42763,"ev":"picture-start","key":"11:picture","shows":"A partly grown female chicken with emerging wing feathers and visible remaining down, standing alone","aspect":1.2}
+{"ms":42766,"ev":"save","why":"slide s12","slides":12}
+{"ms":42882,"ev":"save","why":"all slides","slides":12}
+{"t":1791461718232,"ev":"picture-outcome","key":"0:picture","director":"pexels","via":"fetched","route":"generic"}
+{"ms":42989,"ev":"picture-done","key":"0:picture","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b70-78cd-7095-99ec-53f0c2be3345.jpg","provider":"pexels","id":"37383409","style":"photo"}
+{"ms":42989,"ev":"save","why":"picture s1","slides":12}
+{"t":1791461718426,"ev":"picture-outcome","key":"2:picture","director":"pexels","via":"fetched","route":"generic"}
+{"ms":43175,"ev":"picture-done","key":"2:picture","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b70-7997-77e1-b78c-aaecee856999.jpg","provider":"pexels","id":"7021727","style":"photo"}
+{"ms":43176,"ev":"save","why":"picture s3","slides":12}
+{"t":1791461723789,"ev":"picture-outcome","key":"7:picture","director":"pexels","via":"library","route":"generic"}
+{"ms":48537,"ev":"picture-done","key":"7:picture","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117db-ff88-7182-9337-72d7c369f90c.png","provider":"generated","id":"01a117db-ff88-7181-9a64-580c8ef896df","style":"photo"}
+{"ms":48538,"ev":"save","why":"picture s8","slides":12}
+{"t":1791461725103,"ev":"rejected","key":"4:picture","request":"Four equally sized separate photo panels: adult cow upper left, lamb upper right, adult sheep lower left, calf lower right; no connecting lines. adult cow. small lamb. adult sheep. small calf","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-8715-734d-8677-a82ad737a761.png","check":"picture judge","fits":false,"why":"The photo shows cats and dogs, not the required cow, calf, sheep and lamb."}
+{"t":1791461731695,"ev":"rejected","key":"11:picture","request":"A partly grown female chicken with emerging wing feathers and visible remaining down, standing alone. partly grown body. developing wing feathers. remaining soft fluff","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117a2-b995-73a3-8432-0f5162fcac87.bin","check":"reuse judge","fits":false,"why":"The young chicken has visible feathers, but no clear remaining soft fluff or evidence that it is female."}
+{"t":1791461731808,"ev":"rejected","key":"10:col.0","request":"Close view of a newly hatched chick showing its down. soft fluffy down. small chick wing","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117db-c157-73d5-8584-b33df003b63d.bin","check":"reuse judge","fits":false,"why":"The photo shows a fluffy chick, but its small wing is not clearly visible."}
+{"t":1791461731851,"ev":"rejected","key":"10:col.1","request":"Close view of an adult hen showing its wing and body feathers. overlapping adult feathers. long wing feathers","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a118c5-0f06-74af-9d5e-6a6bc44d6c41.bin","check":"reuse judge","fits":false,"why":"The photo shows an adult hen with overlapping body feathers, but its long wing feathers are not clearly visible."}
+{"t":1791461734902,"ev":"picture-outcome","key":"6:picture","director":"library-or-generate","via":"generated","route":"generic"}
+{"ms":59654,"ev":"picture-done","key":"6:picture","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-9dfa-74b2-b7f1-352cf86c68ce.png","provider":"generated","id":"01a11b70-9dfa-74b1-b955-e9fd8a3cc90f","style":"photo"}
+{"ms":59655,"ev":"save","why":"picture s7","slides":12}
+{"t":1791461741711,"ev":"rejected","key":"4:picture","request":"Four equally sized separate photo panels: adult cow upper left, lamb upper right, adult sheep lower left, calf lower right; no connecting lines. adult cow. small lamb. adult sheep. small calf","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-c72e-7708-8fc1-a0d528ba3756.png","check":"picture judge","fits":false,"why":"The photograph shows two dogs and two cats, not an adult cow, calf, adult sheep or lamb."}
+{"t":1791461741713,"ev":"picture-outcome","key":"4:picture","director":"library-or-generate","via":"none","route":"generic","reason":"generation-refused-or-failed"}
+{"ms":66448,"ev":"picture-done","key":"4:picture","ok":false}
+{"ms":66450,"ev":"save","why":"picture s5","slides":12}
+{"t":1791461745384,"ev":"picture-outcome","key":"10:col.0","director":"pexels","via":"fetched","route":"generic"}
+{"ms":70134,"ev":"picture-done","key":"10:col.0","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b70-e2cd-7707-9ece-f5f6195bfb82.jpg","provider":"pexels","id":"37818188","style":"photo"}
+{"ms":70135,"ev":"save","why":"picture s11","slides":12}
+{"t":1791461745646,"ev":"set-attempt","set":"8:seq.0+8:seq.1+8:seq.2","attempt":0,"usd":0.005565,"panels":[true,true,true],"same":true,"odd":[],"why":"All three panels show a whole female chicken progressing from downy hatchling through a partly feathered juvenile to an adult hen, with compatible brown-and-dark markings."}
+{"t":1791461745689,"ev":"set-done","set":"8:seq.0+8:seq.1+8:seq.2","placed":3,"of":3}
+{"ms":70424,"ev":"picture-done","key":"8:seq.0","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/sets/01a11b70-e3ee-722a-820d-66a0718b1aca.png","provider":"generated","id":"01a11b70-e3ee-722a-820d-66a0718b1aca","style":"photo"}
+{"ms":70425,"ev":"save","why":"picture s9","slides":12}
+{"ms":70425,"ev":"picture-done","key":"8:seq.1","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/sets/01a11b70-e3fd-7573-9c4f-ef7388698aac.png","provider":"generated","id":"01a11b70-e3fd-7573-9c4f-ef7388698aac","style":"photo"}
+{"ms":70425,"ev":"save","why":"picture s9","slides":12}
+{"ms":70425,"ev":"picture-done","key":"8:seq.2","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/sets/01a11b70-e40a-7403-a591-14e27960121a.png","provider":"generated","id":"01a11b70-e40a-7403-a591-14e27960121a","style":"photo"}
+{"ms":70426,"ev":"save","why":"picture s9","slides":12}
+{"t":1791461752478,"ev":"rejected","key":"9:picture","request":"Three separate photographs of one chicken breed at the same scale, arranged left to right as adult hen, newly hatched female chick, older female chick; no arrows. fully feathered hen. small fluffy chick. partly feathered youngster","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-df61-76ca-a44f-dc886955558a.png","check":"picture judge","fits":false,"why":"The photo shows a fully feathered hen, but no younger chickens are visible to check that they are the same kind and colouring."}
+{"t":1791461753239,"ev":"picture-outcome","key":"10:col.1","director":"pexels","via":"fetched","route":"generic"}
+{"ms":77989,"ev":"picture-done","key":"10:col.1","ok":true,"src":"/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b71-0184-76ce-a520-eb50e0e33188.jpg","provider":"pexels","id":"38323062","style":"photo"}
+{"ms":77990,"ev":"save","why":"picture s11","slides":12}
+{"t":1791461759421,"ev":"picture-outcome","key":"11:picture","director":"library-or-generate","via":"generated","route":"generic"}
+{"ms":84170,"ev":"picture-done","key":"11:picture","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b71-0033-70c9-854f-6bdd5569aa35.png","provider":"generated","id":"01a11b71-0033-70c8-aa2d-f1f2bbcbf9d1","style":"photo"}
+{"ms":84171,"ev":"save","why":"picture s12","slides":12}
+{"t":1791461768587,"ev":"rejected","key":"9:picture","request":"Three separate photographs of one chicken breed at the same scale, arranged left to right as adult hen, newly hatched female chick, older female chick; no arrows. fully feathered hen. small fluffy chick. partly feathered youngster","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b71-21a6-72e3-b7f7-934bb885defa.png","check":"picture judge","fits":false,"why":"The photo shows a fully feathered hen, but no younger chickens to show the same kind and colouring."}
+{"t":1791461768588,"ev":"picture-outcome","key":"9:picture","director":"library-or-generate","via":"none","route":"generic","reason":"generation-refused-or-failed"}
+{"ms":93323,"ev":"picture-done","key":"9:picture","ok":false}
+{"ms":93323,"ev":"save","why":"picture s10","slides":12}
+{"ms":93324,"ev":"save","why":"final s1","slides":12}
+{"ms":93325,"ev":"save","why":"final s3","slides":12}
+{"ms":93325,"ev":"save","why":"final s4","slides":12}
+{"ms":93326,"ev":"save","why":"final s5","slides":12}
+{"ms":93326,"ev":"save","why":"final s6","slides":12}
+{"ms":93326,"ev":"save","why":"final s7","slides":12}
+{"ms":93327,"ev":"save","why":"final s8","slides":12}
+{"ms":93327,"ev":"save","why":"final s9","slides":12}
+{"ms":93328,"ev":"save","why":"final s10","slides":12}
+{"ms":93328,"ev":"save","why":"final s11","slides":12}
+{"ms":93328,"ev":"save","why":"final s12","slides":12}
+{"ms":93332,"ev":"checks","failing":["s7: duplicate: repeats s5 (\"Find the young\", 73% alike); make it different or merge it into s5"],"count":{"slides":12,"min":9,"max":12,"inRange":true}}
+{"ms":95332,"ev":"save","why":"repair s7","slides":12}
+{"ms":95334,"ev":"repair","slide":7,"mode":"fit","usd":0.00012859000000000001,"ok":true,"fix":"reference","reverted":false,"now":[]}
+{"ms":99031,"ev":"diagram-start","key":"9:diagram","kind":"flow"}
+{"ms":2975,"ev":"diagram-call","key":"9:diagram","drawer":"round5","usd":0.0002155,"attempt":0,"fault":"links.0.label: too wide: it must wrap onto 2 lines of 140 points (about 25 characters); links.1.label: too wide: it must wrap onto 2 lines of 140 points (about 25 characters)","out":{"kind":"flow","title":"Chick growth","alt":"A chick grows in order from newly hatched chick to older chick to adult hen.","layout":"chain","steps":[{"label":"Newly hatched chick"},{"label":"Older chick"},{"label":"Hen"}],"links":[{"from":0,"to":1,"label":"grows bigger; feathers grow"},{"from":1,"to":2,"label":"fully grown; adult feathers"}]}}
+{"ms":4263,"ev":"diagram-call","key":"9:diagram","drawer":"round5","usd":0.0002804,"attempt":1,"fault":"links.0.label: too wide: it must wrap onto 2 lines of 140 points (about 25 characters); links.1.label: too wide: it must wrap onto 2 lines of 140 points (about 25 characters)","out":{"kind":"flow","title":"Chick growth","alt":"A chick grows from newly hatched to older chick to adult hen.","layout":"chain","steps":[{"label":"Newly hatched chick"},{"label":"Older chick"},{"label":"Hen"}],"links":[{"from":0,"to":1,"label":"Bigger; feathers grow"},{"from":1,"to":2,"label":"Fully grown; adult feathers"}]}}
+{"ms":106280,"ev":"diagram-done","key":"9:diagram","ok":false}
+{"ms":106281,"ev":"save","why":"diagram s10","slides":12}
+{"ms":106281,"ev":"save","why":"repair s10","slides":12}
+{"ms":106282,"ev":"save","why":"repair s5","slides":12}
+{"ms":106283,"ev":"repair","slide":10,"mode":"reroute","usd":0.00025164,"ok":true,"fix":"diagram","reverted":false,"now":[]}
+{"ms":106283,"ev":"repair","slide":5,"mode":"reroute","usd":0.00031314,"ok":true,"fix":"diagram","reverted":false,"now":[]}
+{"ms":106285,"ev":"diagram-start","key":"9:diagram","kind":"flow"}
+{"ms":5552,"ev":"diagram-call","key":"9:diagram","drawer":"round5","usd":0.0003345,"attempt":0}
+{"ms":111839,"ev":"diagram-done","key":"9:diagram","ok":true}
+{"ms":111856,"ev":"save","why":"diagram s10","slides":12}
+{"ms":111863,"ev":"save","why":"diagram retry s10","slides":12}
+{"ms":111863,"ev":"visual-path","slide":5,"path":"picture-rerouted"}
+{"ms":111863,"ev":"visual-path","slide":10,"path":"picture-to-diagram-retry"}
+{"ms":111868,"ev":"notes-refused"}
+{"ms":111868,"ev":"summary","dangling":[],"textOnlyTeach":0,"textOnlySlides":[],"visualPaths":{"5":"picture-rerouted","10":"picture-to-diagram-retry"},"askWithout":[],"capRefused":["lesson notes"]}
+{"ms":111869,"ev":"save","why":"done","slides":12}

@@ -1,0 +1,19 @@
+{
+  "id": "y12-psychology-multi-store-model",
+  "topic": "The multi-store model of memory (AQA A-level Psychology)",
+  "subject": "Psychology",
+  "yearGroup": "Year 12",
+  "year": 12,
+  "keyStage": "ks5",
+  "theme": "studio",
+  "readingLevel": "Year 12",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "WIDE",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}

@@ -2,25 +2,46 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { getTheme } from "@tj/slides/themes";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import {
+  asPicture,
+  asTableText,
+  asWords,
+  continueForFit,
+  pictureFallbackOk,
+  tableRows,
+} from "./fallbacks";
+import {
   applyRepair,
   asksVisual,
   type Brief,
   charsOver,
   contextBlock,
   fillTemplate,
+  fitTable,
+  fixedFallback,
   keepAsksHonest,
   layoutsFor,
   lookOf,
+  lostFault,
   OVERFLOW,
   overflowPt,
+  plainWords,
   promptStage,
+  pupilWordLimit,
   repairTerms,
+  roomLine,
   shuffleHinge,
   withCorrectLetter,
   withLook,
   writerIncomplete,
 } from "./fixes";
-import { judgeRepair, repairable, sameFigure, teaching } from "./guards";
+import {
+  judgeRepair,
+  POINTING_WORDS,
+  repairable,
+  sameFigure,
+  teaching,
+  words as wordsOfText,
+} from "./guards";
 import { localise } from "./locale";
 import {
   codeObjectives,
@@ -83,6 +104,10 @@ export type WriterRun = {
   visual?: (index: number, key: string, ask: VisualAsk) => VisualState;
   /** The writer's text, recorded (replay); absent: the streamed call. */
   recordedWriter?: { text: string; finishReason?: string | null };
+  /** Why a placed picture was vetoed (the reroute call is told); the director's, TEACH-251. */
+  vetoed?: (index: number, key: string) => string | undefined;
+  /** The pupil-wording call for slide 2; `false` keeps the teacher's wording (the evidence runs). */
+  pupilWording?: boolean;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
   onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
 };
@@ -214,16 +239,47 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     relay(idx);
   }
   const n = plan.slides.length;
+  /** Continuation slides laid after slide i (a last-resort strip's overflowing items). */
+  const continued = new Map<number, Materialised[]>();
   const deck = (): WriterSlide[] => {
     const slides: WriterSlide[] = [];
     for (let i = 0; i < Math.max(n, 2); i++) {
       const m = laid.get(i) ?? (i === 0 ? title : undefined);
       if (!m) continue;
       slides.push({ id: `s${i + 1}`, ...m.slide, notes: notes.get(i)?.notes ?? "" });
+      for (const [k, c] of (continued.get(i) ?? []).entries())
+        slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" });
     }
     return slides;
   };
   await run.onEditable?.(deck());
+
+  // ── pupil wording: one small call after editable fills slide 2; any line missing keeps the
+  // teacher's wording, so slide 2 is never short ──
+  if (run.pupilWording !== false) {
+    const objectives = plan.objectives ?? [];
+    const r = await chat({
+      model: SMALL_MODEL,
+      effort: "low",
+      system: P.pupilObjectives,
+      user: fillTemplate(P.pupilObjectivesUser, brief, {
+        objectives,
+        maxWords: pupilWordLimit(brief.keyStage, objectives.length),
+      }),
+      schema: JSON.parse(P.pupilObjectivesSchema),
+      name: "pupil_objectives",
+      maxTokens: 1500,
+    }).catch((e) => {
+      log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
+      return undefined;
+    });
+    const lines = (r?.out as { pupil?: unknown[] } | undefined)?.pupil ?? [];
+    objectives.forEach((o, k) => {
+      const line = lines[k];
+      if (typeof line === "string" && line.trim()) o.pupil = line.trim();
+    });
+    laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+  }
 
   // ── code checks ──
   const baseCheck = () =>
@@ -305,13 +361,35 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
     .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
   const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
+  /** How each slide's figure ended (diagram, picture, words-…), logged for the run. */
+  const path = new Map<number, string>();
+  const restore = (
+    i: number,
+    slide: S,
+    n0: { notes: string; answers: string[] } | undefined,
+    oldAsks: VisualAsk[],
+  ) => {
+    plan.slides[i] = slide;
+    if (n0) notes.set(i, n0);
+    else notes.delete(i);
+    asks.set(i, oldAsks);
+    relay(i);
+  };
   const diagramKinds = () =>
     baseVisuals(stageKey)
       .match(/Diagram kinds:[\s\S]*?(?=\n\s*\n|$)/)?.[0]
       .trim() ?? "";
   const repairOne = async (
     c: CheckResult,
-    ro: { keepPartial?: boolean } = {},
+    mode: "fit" | "stand-alone" | "reroute" = "fit",
+    ro: {
+      /** A reason to reject the call's slide (the reroute's same-picture guard). */
+      guard?: (after: S) => string | undefined;
+      /** Words the restaged slide may lose (the figure's own and its pointing words). */
+      exempt?: ReadonlySet<string>;
+      /** Fit: keep a reword that cut the overflow without clearing it. */
+      keepPartial?: boolean;
+    } = {},
   ): Promise<boolean> => {
     const i = c.slide - 1;
     const ask = asks.get(i) ?? [];
@@ -330,8 +408,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     });
     const tpl = P.repairUser;
     const own = String((plan.slides[i] as S)?.template ?? "");
-    const hasDiagram = ask.some((a) => a.type === "diagram");
+    // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
+    const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
     const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey));
+    // A restaging call is told its room in characters.
+    if (mode !== "fit") {
+      const room = roomLine(plan.slides[i], stageKey);
+      if (room) faultLines.push(room);
+    }
     const u = fillTemplate(tpl, brief, {
       context: user,
       N: i + 1,
@@ -356,7 +440,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const r = await chat({
       model: SMALL_MODEL,
       effort: "low",
-      system: P.repair,
+      // Restaging (stand-alone, reroute) has its own prompt, never repair.txt.
+      system: mode === "fit" ? P.repair : P.restage,
       user: u,
       schema: repairSchemaFor(stageKey),
       name: "slide",
@@ -377,9 +462,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),
       fit: false,
+      // A restaged slide may lose its figure and the words that pointed at it, never a question,
+      // an item or the slide's other words.
+      ...(mode !== "fit" ? { restage: true, exempt: ro.exempt ?? POINTING_WORDS } : {}),
     });
-    if (!verdict.ok) {
-      log({ ev: "repair-rejected", slide: i + 1, fix: o2.fix, why: verdict.why });
+    const guarded = ro.guard?.(o2.slide);
+    const why = [...(verdict.ok ? [] : verdict.why), ...(guarded ? [guarded] : [])];
+    if (why.length) {
+      log({ ev: "repair-rejected", slide: i + 1, mode, fix: o2.fix, why });
       return false;
     }
     const n0 = notes.get(i);
@@ -389,23 +479,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const now = (check()[i]?.faults ?? []).filter((f) => n0 || !f.startsWith("unanswered"));
     const was = kinds(c.faults);
     const fresh = [...kinds(now)].filter((k) => !was.has(k));
-    const worse = ro.keepPartial
-      ? fresh.length > 0 || overflowPt(now) >= overflowPt(c.faults)
-      : [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
-    if (worse) {
-      plan.slides[i] = before;
-      if (n0) notes.set(i, n0);
-      else notes.delete(i);
-      asks.set(i, oldAsks);
-      relay(i);
-    }
-    log({ ev: "repair", slide: i + 1, ok: true, fix: o2.fix, reverted: worse });
+    const worse =
+      mode !== "fit"
+        ? now.some((f) => /^(dangling|unanswerable):/.test(f))
+        : ro.keepPartial
+          ? fresh.length > 0 || overflowPt(now) >= overflowPt(c.faults)
+          : [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
+    if (worse) restore(i, before, n0, oldAsks);
+    else if (c.faults.some((f) => f.startsWith("diagram:"))) path.set(i, "diagram-repaired");
+    log({ ev: "repair", slide: i + 1, mode, ok: true, fix: o2.fix, reverted: worse });
     return !worse;
   };
   /** Measure and retry: an overflowing slide gets at most two rewords. */
   const fitLoop = async (c: CheckResult): Promise<boolean> => {
     if (!c.faults.some((f) => OVERFLOW.test(f))) return repairOne(c);
-    const first = await repairOne(c, { keepPartial: true });
+    const first = await repairOne(c, "fit", { keepPartial: true });
     const i = c.slide - 1;
     const left = (check()[i]?.faults ?? []).filter((f) => OVERFLOW.test(f));
     if (!left.length) return first;
@@ -417,6 +505,169 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // One at a time, in slide order: the replay and the live run see the same order.
   for (const c of failing) await fitLoop(c);
   void charsOver;
+
+  // ── a figure that cannot be shown (FOR-CODE item 5) ──
+  // A diagram fault went to repair once above; a diagram that still cannot draw becomes a picture
+  // of the same thing when it is a real thing, a table becomes words that keep its data, anything
+  // else is restaged to stand alone. A vetoed or missing picture goes straight to restage. A
+  // restaged figure is never sent back to repair. A slot still pending (a placeholder) is left.
+  const restage = async (
+    i: number,
+    lost: { type: string; kind?: string; shows: string; labels?: string[]; key?: string },
+    mode: "stand-alone" | "reroute",
+    why?: string,
+    guard?: (after: S) => string | undefined,
+  ): Promise<string> => {
+    const orig = plan.slides[i] as S;
+    const exempt = new Set([
+      ...POINTING_WORDS,
+      ...wordsOfText(lost.shows),
+      ...(lost.labels ?? []).flatMap((l) => wordsOfText(l)),
+    ]);
+    const over = () => (check()[i]?.faults ?? []).filter((f) => OVERFLOW.test(f));
+    const ok = await repairOne({ slide: i + 1, faults: [lostFault(lost, why)] }, mode, {
+      guard,
+      exempt,
+    });
+    if (ok) {
+      const left = over();
+      if (left.length) await fitLoop({ slide: i + 1, faults: left });
+      if (!over().length) return mode === "reroute" ? "rerouted" : "rewrite";
+      log({ ev: "restage-overflow", slide: i + 1, mode });
+    }
+    // The fixed fallback, from the slide as it was before the call.
+    const v = lost.key ? visualState(i)(lost.key) : undefined;
+    const spec = (v?.status === "diagram" ? v.spec : undefined) as S | undefined;
+    const fromSpec = (spec?.nodes ?? spec?.steps ?? spec?.events) as unknown[] | undefined;
+    const parts = (fromSpec ?? lost.labels ?? [])
+      .map((p) =>
+        typeof p === "string"
+          ? p
+          : [String((p as S).date ?? ""), String((p as S).text ?? (p as S).label ?? "")]
+              .filter(Boolean)
+              .join(": "),
+      )
+      .filter((p) => p.trim());
+    const maxSteps = Math.max(
+      0,
+      ...(fitTable()[stageKey]?.layouts.steps?.variants ?? [])
+        .filter((x) => x.chars > 0 && !x.figure)
+        .map((x) => x.counts.points ?? 0),
+    );
+    const n0 = notes.get(i);
+    const oldAsks = asks.get(i) ?? [];
+    const fb = fixedFallback(orig, lost, parts, maxSteps);
+    swapSlide(i, fb.slide);
+    if (!over().length) {
+      log({ ev: "restage-fallback", slide: i + 1, mode, how: fb.how });
+      return fb.how;
+    }
+    restore(i, orig, n0, oldAsks);
+    swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0).slide);
+    // The last resort never ships overflow: what still does not fit moves to continuation slides.
+    if (over().length) {
+      const fits = (sl: S) => {
+        const m = materialise(sl, {
+          ...base,
+          index: i,
+          plan,
+          visual: () => ({ status: "failed" }),
+        });
+        const f = checkSlide({
+          specs: [],
+          index: i,
+          slide: m.slide,
+          over: m.over ?? [],
+          questions: [],
+          answers: undefined,
+          notesChecked: true,
+          words: "",
+        });
+        return { ok: !f.faults.some((x) => OVERFLOW.test(x)), m };
+      };
+      const cont = continueForFit(plan.slides[i] as S, (sl) => fits(sl).ok);
+      if (cont) {
+        swapSlide(i, cont.first);
+        continued.set(
+          i,
+          cont.rest.map((sl) => fits(sl).m),
+        );
+        log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
+        return "strip-continued";
+      }
+    }
+    log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip" });
+    return "strip";
+  };
+  const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
+    const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
+      | Extract<VisualAsk, { type: "diagram" }>
+      | undefined;
+    if (!dAsk || path.has(i)) return;
+    const st = visualState(i)(dAsk.key).status;
+    if (st === "pending") return;
+    if (!laid.get(i)?.diagram?.length && st === "diagram") {
+      path.set(i, "diagram");
+      return;
+    }
+    const s = plan.slides[i] as S;
+    // A picture of the same thing: any kind that shows a thing or process, never data.
+    const pic = !fo.noPicture && pictureFallbackOk(dAsk.kind) ? asPicture(s) : undefined;
+    if (pic) {
+      const n0 = notes.get(i);
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, pic);
+      if ((asks.get(i) ?? []).some((a) => visualState(i)(a.key).status === "photo")) {
+        path.set(i, "picture");
+        return;
+      }
+      restore(i, s, n0, oldAsks);
+    }
+    // A table is words already: one that cannot draw keeps its data as text lines.
+    const t = tableRows(visualState(i)(dAsk.key), dAsk);
+    if (dAsk.kind === "table" && t.rows.length) {
+      swapSlide(i, asTableText(s, t));
+      path.set(i, "table-text");
+      return;
+    }
+    const words = asWords(s);
+    if (JSON.stringify(words) !== JSON.stringify(s)) swapSlide(i, words);
+    path.set(i, `words-${await restage(i, dAsk, "stand-alone")}`);
+  };
+  const pictureLost = async (i: number) => {
+    if (path.has(i) || i < 2) return;
+    const lost = (asks.get(i) ?? []).find(
+      (a): a is Extract<VisualAsk, { type: "photo" }> =>
+        a.type === "photo" && !a.set && !a.fixedShape && visualState(i)(a.key).status === "failed",
+    );
+    if (!lost) return;
+    // A reroute that asks for the picture that could not be shown again is rejected.
+    const same = (after: S) =>
+      visualsOf(after, i, { ...base, plan }).some(
+        (a) =>
+          a.type === "photo" &&
+          (sameFigure({ type: "photo", shows: a.shows }, { type: "photo", shows: lost.shows }) ||
+            plainWords(a.shows) === plainWords(lost.shows)),
+      )
+        ? "re-asks the picture that could not be shown"
+        : undefined;
+    let how = await restage(
+      i,
+      { type: "photo", shows: lost.shows, key: lost.key },
+      "reroute",
+      run.vetoed?.(i, lost.key),
+      same,
+    );
+    // A diagram the reroute asked for goes through the diagram path (never back to a picture).
+    if (how === "rerouted" && (asks.get(i) ?? []).some((a) => a.type === "diagram")) {
+      await fallback(i, { noPicture: true });
+      how = `to-${path.get(i) ?? "diagram"}`;
+    }
+    path.set(i, `picture-${how}`);
+  };
+  for (let i = 0; i < n; i++) await fallback(i);
+  for (let i = 0; i < n; i++) await pictureLost(i);
+  for (const [i, p] of path) log({ ev: "visual-path", slide: i + 1, path: p });
 
   // ── notes: one call on the final slides as shown, only placed visuals listed ──
   const placedLines = (i: number) =>

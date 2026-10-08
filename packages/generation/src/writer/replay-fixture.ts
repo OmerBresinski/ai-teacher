@@ -26,16 +26,16 @@ const jsonl = (b: string, f: string) =>
 
 export function replayServices(b: string): WriterServices {
   const repairs = jsonl(b, "repair.jsonl");
-  const notes = JSON.parse(read(b, "notes.json"));
+  // A run whose notes call the budget refused has no notes file: the call fails here too.
+  const notesText = read(b, "notes.json");
+  const notes = notesText.trim() ? JSON.parse(notesText) : null;
   return {
     log: () => {},
     writer: () => Promise.reject(new Error("the replay never calls the writer")),
     chat: async (r: ChatReq) => {
-      if (r.name === "notes") return { out: notes, usd: 0, ms: 0 };
+      if (r.name === "notes" && notes) return { out: notes, usd: 0, ms: 0 };
       if (r.name === "slide") {
-        const hit = repairs.find(
-          (x) => x.mode === "fit" && r.user.includes(JSON.stringify(x.input)),
-        );
+        const hit = repairs.find((x) => r.user.includes(JSON.stringify(x.input)));
         if (hit?.out) return { out: hit.out, usd: 0, ms: 0 };
       }
       throw new Error(`no recorded answer for ${r.name}`);
@@ -44,6 +44,12 @@ export function replayServices(b: string): WriterServices {
 }
 
 /** The run's pictures and drawings by `<slide>:<key>`, as its log and lesson recorded them. */
+const aspectOf = (el: El) => {
+  const box = Number(el.w) / Number(el.h);
+  const c = el.crop as { w: number; h: number } | undefined;
+  return c ? (box * c.h) / c.w : box;
+};
+
 export function recordedVisuals(b: string) {
   const lesson = JSON.parse(read(b, "lesson.json")) as { slides: { elements: El[] }[] };
   const bySrc = new Map<string, El>();
@@ -60,7 +66,8 @@ export function recordedVisuals(b: string) {
       const photo: PhotoResult = {
         src: String(el.src),
         alt: String(el.alt ?? ""),
-        aspect: Number(el.w) / Number(el.h),
+        // The photo's own shape: a cropped slot shows crop.w x crop.h of it.
+        aspect: aspectOf(el),
         request: String(el.request ?? ""),
         ...(el.subjects ? { subjects: el.subjects as PhotoResult["subjects"] } : {}),
       };

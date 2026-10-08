@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { replayRun, savedSlides } from "./replay-fixture";
 
-for (const b of ["y5-maths-fractions-of-amounts", "y11-chemistry-rates-of-reaction"]) {
+for (const b of [
+  "y1-science-animals-young",
+  "y2-maths-halves-quarters",
+  "y5-maths-fractions-of-amounts",
+  "y8-french-my-family",
+  "y11-chemistry-rates-of-reaction",
+  "y12-psychology-multi-store-model",
+]) {
   const out = await replayRun(b);
   const saved = savedSlides(b);
   console.log(b, "slides", out.slides.length, saved.length);

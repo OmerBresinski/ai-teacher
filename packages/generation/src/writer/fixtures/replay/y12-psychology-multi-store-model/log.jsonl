@@ -1,0 +1,75 @@
+{"ms":4,"ev":"save","why":"code title","slides":1}
+{"ms":13,"ev":"save","why":"objectives slide (recorded objectives, teacher wording)","slides":1}
+{"ms":12225,"ev":"design","theme":"studio","modelTheme":"studio","teacherTheme":null,"unknownTheme":false,"pictureStyle":"illustration"}
+{"ms":12227,"ev":"save","why":"design","slides":1}
+{"ms":14545,"ev":"save","why":"placeholder s3","slides":3}
+{"ms":15504,"ev":"save","why":"placeholder s4","slides":4}
+{"ms":16379,"ev":"save","why":"placeholder s5","slides":5}
+{"ms":17158,"ev":"save","why":"placeholder s6","slides":6}
+{"ms":17822,"ev":"save","why":"placeholder s7","slides":7}
+{"ms":18803,"ev":"save","why":"placeholder s8","slides":8}
+{"ms":19513,"ev":"save","why":"placeholder s9","slides":9}
+{"ms":20383,"ev":"save","why":"placeholder s10","slides":10}
+{"ms":21219,"ev":"save","why":"placeholder s11","slides":11}
+{"ms":21892,"ev":"save","why":"placeholder s12","slides":12}
+{"ms":21894,"ev":"flow","n":12}
+{"ms":21895,"ev":"coverage-flow","untaught":[],"unchecked":[],"missing":[]}
+{"ms":22758,"ev":"save","why":"slide s1","slides":12}
+{"ms":25819,"ev":"diagram-start","key":"2:diagram","kind":"table"}
+{"ms":25821,"ev":"save","why":"slide s3","slides":12}
+{"ms":25849,"ev":"r2-spec-drawn","key":"2:diagram","kind":"table"}
+{"ms":25849,"ev":"diagram-done","key":"2:diagram","ok":true}
+{"ms":25856,"ev":"save","why":"diagram s3","slides":12}
+{"ms":30078,"ev":"diagram-start","key":"3:diagram","kind":"flow"}
+{"ms":30079,"ev":"save","why":"slide s4","slides":12}
+{"ms":30092,"ev":"r2-spec-fault","key":"3:diagram","kind":"flow","fault":"it does not fit its slot (348 by 284 points): the flow does not fit its zone at a readable size"}
+{"ms":31540,"ev":"save","why":"slide s5","slides":12}
+{"ms":33849,"ev":"save","why":"slide s6","slides":12}
+{"ms":4043,"ev":"diagram-call","key":"3:diagram","drawer":"round5","usd":0.00025760000000000003,"attempt":0}
+{"ms":34139,"ev":"diagram-done","key":"3:diagram","ok":true}
+{"ms":34166,"ev":"save","why":"diagram s4","slides":12}
+{"ms":35700,"ev":"save","why":"slide s7","slides":12}
+{"ms":42481,"ev":"diagram-start","key":"7:diagram","kind":"line-graph"}
+{"ms":42483,"ev":"save","why":"slide s8","slides":12}
+{"ms":42499,"ev":"r2-spec-drawn","key":"7:diagram","kind":"line-graph"}
+{"ms":42500,"ev":"diagram-done","key":"7:diagram","ok":true}
+{"ms":42508,"ev":"save","why":"diagram s8","slides":12}
+{"ms":44298,"ev":"save","why":"slide s9","slides":12}
+{"ms":47683,"ev":"diagram-start","key":"9:diagram","kind":"flow"}
+{"ms":47684,"ev":"save","why":"slide s10","slides":12}
+{"ms":47688,"ev":"r2-spec-drawn","key":"9:diagram","kind":"flow"}
+{"ms":47688,"ev":"diagram-done","key":"9:diagram","ok":true}
+{"ms":47691,"ev":"save","why":"diagram s10","slides":12}
+{"ms":50030,"ev":"save","why":"slide s11","slides":12}
+{"ms":52471,"ev":"save","why":"slide s12","slides":12}
+{"ms":52593,"ev":"save","why":"all slides","slides":12}
+{"ms":52594,"ev":"save","why":"final s1","slides":12}
+{"ms":52604,"ev":"save","why":"final s3","slides":12}
+{"ms":52612,"ev":"save","why":"final s4","slides":12}
+{"ms":52613,"ev":"save","why":"final s5","slides":12}
+{"ms":52613,"ev":"save","why":"final s6","slides":12}
+{"ms":52613,"ev":"save","why":"final s7","slides":12}
+{"ms":52616,"ev":"save","why":"final s8","slides":12}
+{"ms":52616,"ev":"save","why":"final s9","slides":12}
+{"ms":52618,"ev":"save","why":"final s10","slides":12}
+{"ms":52618,"ev":"save","why":"final s11","slides":12}
+{"ms":52619,"ev":"save","why":"final s12","slides":12}
+{"ms":52622,"ev":"checks","failing":["s4: diagram: figure could not be drawn: the flow does not fit its zone at a readable size"],"count":{"slides":12,"min":9,"max":12,"inRange":true}}
+{"ms":56705,"ev":"diagram-start","key":"3:diagram","kind":"flow"}
+{"ms":4179,"ev":"diagram-call","key":"3:diagram","drawer":"round5","usd":0.0002425,"attempt":0}
+{"ms":60885,"ev":"diagram-done","key":"3:diagram","ok":true}
+{"ms":60891,"ev":"save","why":"diagram s4","slides":12}
+{"ms":60896,"ev":"save","why":"repair s4","slides":12}
+{"ms":60904,"ev":"save","why":"repair-reverted s4","slides":12}
+{"ms":60904,"ev":"repair","slide":4,"mode":"fit","usd":0.00035259,"ok":true,"fix":"diagram","reverted":true,"now":["diagram: figure could not be drawn: the flow does not fit its zone at a readable size"]}
+{"ms":60905,"ev":"save","why":"repair s4","slides":12}
+{"ms":64874,"ev":"repair-rejected","slide":4,"mode":"stand-alone","fix":"diagram","why":["lost 5 of 20 words (stores, are, linked, processes, for)"],"faults":["missing: the flow diagram of \"The multi-store model, including a rehearsal loop and retrieval from LTM to STM\" cannot be shown; its parts: Sensory register, STM, LTM, Attention, Maintenance rehearsal, Prolonged rehearsal, Retrieval; the slide must stand alone without it"]}
+{"ms":64875,"ev":"save","why":"repair s4","slides":12}
+{"ms":64877,"ev":"restage-fallback","slide":4,"mode":"stand-alone","how":"sequence-as-steps"}
+{"ms":64877,"ev":"visual-path","slide":3,"path":"diagram"}
+{"ms":64877,"ev":"visual-path","slide":8,"path":"diagram"}
+{"ms":64877,"ev":"visual-path","slide":10,"path":"diagram"}
+{"ms":64877,"ev":"visual-path","slide":4,"path":"words-sequence-as-steps"}
+{"ms":25437,"ev":"notes","attempt":0,"slides":10,"of":12,"usd":0.0011435}
+{"ms":90328,"ev":"summary","dangling":[],"textOnlyTeach":3,"textOnlySlides":[4,5,7],"visualPaths":{"3":"diagram","4":"words-sequence-as-steps","8":"diagram","10":"diagram"},"askWithout":[],"capRefused":[]}
+{"ms":90329,"ev":"save","why":"done","slides":12}

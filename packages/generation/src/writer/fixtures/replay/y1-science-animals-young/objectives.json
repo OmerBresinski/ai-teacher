@@ -1,0 +1,33 @@
+{
+  "objectives": [
+    {
+      "teacher": "Match cows and calves, sheep and lambs, hens and chicks, and dogs and puppies, naming each adult animal and its young.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Describe how a chick changes as it grows into a hen, including getting bigger and growing adult feathers.",
+      "pupil": ""
+    }
+  ],
+  "ran": "primary",
+  "model": "gpt-6.1-sol",
+  "usage": {
+    "prompt_tokens": 272,
+    "completion_tokens": 139,
+    "total_tokens": 411,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 73,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "usd": 0.001934,
+  "ms": 5637,
+  "firstTokenMs": 4523
+}

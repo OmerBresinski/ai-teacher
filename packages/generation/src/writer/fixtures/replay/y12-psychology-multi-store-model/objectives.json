@@ -1,0 +1,37 @@
+{
+  "objectives": [
+    {
+      "teacher": "Describe the coding, capacity and duration of the sensory register, short-term memory and long-term memory in Atkinson and Shiffrin’s multi-store model.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Explain how attention, maintenance rehearsal and retrieval transfer information between the stores in the multi-store model.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Evaluate the multi-store model using Glanzer and Cunitz’s serial position findings as supporting evidence and Shallice and Warrington’s case study of KF as a challenge to a single short-term memory store.",
+      "pupil": ""
+    }
+  ],
+  "ran": "primary",
+  "model": "gpt-6.1-sol",
+  "usage": {
+    "prompt_tokens": 280,
+    "completion_tokens": 186,
+    "total_tokens": 466,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 73,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "usd": 0.00242,
+  "ms": 5823,
+  "firstTokenMs": 3953
+}
