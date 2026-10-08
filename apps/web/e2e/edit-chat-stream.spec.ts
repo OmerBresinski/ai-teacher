@@ -42,6 +42,7 @@ test("ask, stream, result, undo", async ({ signedInPage: { page, paths } }) => {
   });
 
   const target = frame.getByText(/Where rain/);
+  await expect(target).toBeVisible();
   const before = await target.innerText();
   // The selection layer sits over the slide: click where the text is, as a teacher does.
   const box = await target.boundingBox();

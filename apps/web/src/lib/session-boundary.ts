@@ -4,7 +4,7 @@ import {
   QueryClient,
   type UseMutationOptions,
 } from "@tanstack/react-query";
-import { clearEditThreads } from "@tj/editor/starter";
+import { clearEditThreads } from "./edit-threads";
 
 export class SessionChangedError extends Error {
   constructor() {
