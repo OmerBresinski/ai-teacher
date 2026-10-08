@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import { BarChartSchema, CarrollSchema, PieSchema, VennSchema } from "./charts";
+import { particleLabelFaults } from "./labels3";
 import { captionRule, LIMITS, measuredLabel } from "./limits";
 import { pair } from "./pair";
 
@@ -443,7 +444,12 @@ export const ParticlesSchema = z
     "each state appears once, so the panels differ",
   )
   .refine((p) => p.show !== "compare" || !!p.panels, "compare needs panels")
-  .refine((p) => p.show !== "collision" || !!p.outcomes, "collision needs outcomes");
+  .refine((p) => p.show !== "collision" || !!p.outcomes, "collision needs outcomes")
+  // BAKEOFF labels3 step 4 (faults-3-6-8 #3): with the switch on, spare labels in literal slots are
+  // refused. Off (every other arm), this adds nothing.
+  .superRefine((p, ctx) => {
+    for (const message of particleLabelFaults(p)) ctx.addIssue({ code: "custom", message });
+  });
 
 export const HydrographSchema = z.object({
   kind: z.literal("hydrograph"),

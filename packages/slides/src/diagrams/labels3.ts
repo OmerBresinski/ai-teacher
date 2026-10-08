@@ -49,19 +49,24 @@ type P = {
   [k: string]: unknown;
 };
 
-/** The labels3 mend of one spec (identity unless the switch is on and the spec is particles). */
-export function mendParticleLabels(spec: unknown): unknown {
-  if (!on) return spec;
+/** The labels3 mend of one spec, and why each slot it cleared was wrong (for the refusal). */
+function inspect(spec: unknown): { out: unknown; why: string[] } {
   const s0 = spec as P;
-  if (!s0 || typeof s0 !== "object" || s0.kind !== "particles") return spec;
+  if (!s0 || typeof s0 !== "object" || s0.kind !== "particles") return { out: spec, why: [] };
   const s: P = { ...s0 };
+  const why: string[] = [];
   let changed = false;
   const compare = s.show === "compare" && Array.isArray(s.panels);
   if (compare && s.arrows !== undefined) {
+    if (s.arrows.length)
+      why.push(
+        "a compare draws no arrow between its panels (they are not a process): leave out `arrows`",
+      );
     delete s.arrows;
     changed = true;
   }
   if (typeof s.lump === "string" && DRAWING.test(s.lump)) {
+    why.push(`\`lump\` names the solid on the panel floor, never a drawing element ("${s.lump}")`);
     delete s.lump;
     changed = true;
   }
@@ -77,6 +82,11 @@ export function mendParticleLabels(spec: unknown): unknown {
     if (!aPart || !bPart || !secondKind) {
       // Only names of particles drawn in that key colour stay. A pair schema cannot hold one name,
       // so a key with fewer than two particle kinds goes, and the surface name moves to the lump.
+      why.push(
+        !secondKind && aPart && bPart
+          ? "`key` names two particle kinds, but no panel draws a second kind (`extra`): leave out `key`"
+          : `\`key\` names only particle kinds that are drawn, never a surface, lump or arrow (${JSON.stringify(s.key)}); name a solid in \`lump\``,
+      );
       if (!aPart) toLump(a);
       if (!bPart) toLump(b);
       delete s.key;
@@ -88,8 +98,25 @@ export function mendParticleLabels(spec: unknown): unknown {
     Array.isArray(s.notes) &&
     (s.notes.length !== (s.panels ?? []).length || s.notes.some((x) => SHARED.test(String(x))))
   ) {
+    why.push(
+      "`notes` holds exactly one note per panel, about that panel only; a fact true of every panel goes in the title",
+    );
     delete s.notes;
     changed = true;
   }
-  return changed ? s : spec;
+  return { out: changed ? s : spec, why };
+}
+
+/** The labels3 mend of one spec (identity unless the switch is on and the spec is particles). */
+export function mendParticleLabels(spec: unknown): unknown {
+  return on ? inspect(spec).out : spec;
+}
+
+/**
+ * labels3 step 4: why a particles spec as the model sent it puts labels in literal slots (empty when
+ * the switch is off). ParticlesSchema refuses on these, and the diagram-spec call is re-asked once
+ * with them; whatever is left after the retry is mended (mendParticleLabels), never drawn literally.
+ */
+export function particleLabelFaults(spec: unknown): string[] {
+  return on ? inspect(spec).why : [];
 }

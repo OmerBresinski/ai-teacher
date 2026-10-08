@@ -3,9 +3,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { drawDiagram } from "../../../packages/slides/src/diagrams/draw";
 import {
   mendParticleLabels,
+  particleLabelFaults,
   setParticleLabelMend,
 } from "../../../packages/slides/src/diagrams/labels3";
 import { mendSpec } from "../../../packages/slides/src/diagrams/normalise";
+import { ParticlesSchema } from "../../../packages/slides/src/diagrams/schema";
 import { THEMES } from "../../../packages/slides/src/themes";
 import { AB_CONFIG, abLabels3, setAbArm, setAbCodeArm } from "./arms";
 import { labelFaults } from "./labels3replay";
@@ -124,5 +126,23 @@ describe("labels3 mend (real cases)", () => {
     expect((mendSpec(s) as { key?: string[] }).key).toEqual(["Acid particles", "Water molecules"]);
     const d = { kind: "particles", show: "dissolving", key: ["Water", "Sugar"] };
     expect(mendParticleLabels(d)).toBe(d);
+  });
+});
+
+describe("labels3 step 4: the schema refuses spare labels in literal slots", () => {
+  test("off: ParticlesSchema accepts the real specs as before", () => {
+    for (const s of [R1_S9, R3_S8, R4_S9]) expect(ParticlesSchema.safeParse(s).success).toBe(true);
+    expect(particleLabelFaults(R4_S9)).toEqual([]);
+  });
+  test("on: each real spec is refused with the reason, and its mended form is accepted", () => {
+    setParticleLabelMend(true);
+    for (const s of [R1_S9, R3_S8, R4_S9]) {
+      const r = ParticlesSchema.safeParse(s);
+      expect(r.success).toBe(false);
+      expect(ParticlesSchema.safeParse(mendSpec(s)).success).toBe(true);
+    }
+    expect(particleLabelFaults(R1_S9).join(" ")).toContain("leave out `arrows`");
+    expect(particleLabelFaults(R3_S8).join(" ")).toContain("never a surface, lump or arrow");
+    expect(particleLabelFaults(R4_S9).join(" ")).toContain("one note per panel");
   });
 });

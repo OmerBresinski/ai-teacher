@@ -50,6 +50,7 @@ import {
   withAskedCounts,
   withLongLabels,
 } from "../../packages/slides/src/diagrams/index";
+import { particleLabelFaults } from "../../packages/slides/src/diagrams/labels3";
 import {
   type DiagramSlot,
   slotBox,
@@ -1952,7 +1953,10 @@ async function specCalls(
     // dd-diagrams2: labels a little over their limit parse as the slide will draw them (stretched).
     // Round 8: a meaning-form spec's faults are said in its own fields (meaning.ts).
     fault = r.out
-      ? meaningFaults(meaningKind ? sent : r.out) ||
+      ? // labels3 step 4: the spec as sent is refused for spare labels in literal particle slots and
+        // re-asked once; the retry's leftovers are mended (mendSpec), not refused again.
+        (attempt === 0 ? particleLabelFaults(sent).join("; ") : "") ||
+        meaningFaults(meaningKind ? sent : r.out) ||
         diagramFaultOf(r.out, (o) => withLongLabels(() => parseDiagram(o))) ||
         // Round 9: nothing beyond the request, and it must draw in its own slot (one retry).
         addedParts(sent, ask.kind, ask.labels) ||
