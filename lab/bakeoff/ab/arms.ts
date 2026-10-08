@@ -47,6 +47,8 @@ export const AB_ARMS = [
   "locale4",
   "base6",
   "base6sync",
+  "base6b",
+  "base6b-notes",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -83,6 +85,8 @@ export const AB_CONFIG: Record<
     snugNodes?: boolean;
     /** chalkie fix 1 (figure-sync.ts): repair redraws or drops a figure its new words contradict. */
     figureSync?: boolean;
+    /** base6b-notes: the notes call reads each placed diagram's alt text, not its raw label list. */
+    notesAlt?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -420,6 +424,30 @@ export const AB_CONFIG: Record<
     delta:
       "base6's code + repair redraws or drops a figure its rewritten words contradict (code only)",
   },
+  // base6b (8 Oct, rootcause/base6-loss.txt): code only, base6 with titleSub off and nothing else,
+  // so the writer's title lead (the opener) ships on slide 1. Run as `--arm base6 --code-arm base6b`.
+  base6b: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    snugNodes: true,
+    delta: "base6 with the code title subtitle off: the writer's slide 1 lead ships (code only)",
+  },
+  // base6b-notes (8 Oct, rootcause/base6-loss.txt cluster B): base6b + the notes call sees each
+  // placed diagram as its alt text. Changes the notes request, so it cannot replay offline.
+  "base6b-notes": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    snugNodes: true,
+    notesAlt: true,
+    delta:
+      "base6b + the notes call reads placed diagrams as their alt text, not raw labels (code only)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -517,6 +545,8 @@ export const abTitleSub = () =>
 export const abSnugNodes = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].snugNodes) : false);
 /** chalkie fix 1: figure-sync on repaired slides (base6sync). */
 export const abFigureSync = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].figureSync) : false);
+/** base6b-notes: the notes call's diagram line is the diagram's alt text. */
+export const abNotesAlt = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].notesAlt) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);

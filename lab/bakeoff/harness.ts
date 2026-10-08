@@ -18,6 +18,7 @@ import {
   abFigureSync,
   abFiles,
   abFixes,
+  abNotesAlt,
   abObjRetry,
   abR1t,
   abR1t2,
@@ -124,6 +125,23 @@ export type VisualAsk =
     };
 
 /** What the harness knows about one visual when it materialises a slide. */
+/**
+ * The notes call's line for a placed diagram. By default the ask's raw labels ("Time (s), 0, 10,
+ * 12, 22..."), which flatten a table or a set of shapes past reading (rootcause/base6-loss.txt
+ * cluster B: blank answer keys). With `alt` (base6b-notes), the drawn spec's alt text, which states
+ * the values; the labels stay as the fallback when the spec has no alt.
+ */
+export function notesDiagramLine(
+  kind: string | undefined,
+  labels: string[] | undefined,
+  spec: unknown,
+  alt: boolean,
+): string {
+  const s = spec as { alt?: unknown; drawn?: { alt?: unknown } } | undefined;
+  const text = alt ? String(s?.alt ?? s?.drawn?.alt ?? "").trim() : "";
+  return `Diagram (${kind}): ${text || (labels ?? []).join(", ")}`;
+}
+
 export type VisualState =
   | { status: "pending" }
   | { status: "failed" }
@@ -2441,7 +2459,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
           return [`Picture: ${placedPictureText(photo, a.shows)}`];
         }
         if (v?.status === "diagram" && a.type === "diagram")
-          return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
+          return [notesDiagramLine(a.kind, a.labels, v.spec, abNotesAlt())];
         return [];
       });
     // Title and objectives slides get no notes (audit d): they are left out of the call.

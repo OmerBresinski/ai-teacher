@@ -15,11 +15,13 @@ import {
   withDiagramPolish,
 } from "../../../packages/slides/src/diagrams/polish";
 import { getTheme, withKeyStage } from "../../../packages/slides/src/themes";
+import { notesDiagramLine } from "../harness";
 import {
   AB,
   AB_ARMS,
   AB_CONFIG,
   AB_REF,
+  abNotesAlt,
   abPolish,
   abPolish2,
   abSnugNodes,
@@ -77,6 +79,7 @@ describe("arm switches", () => {
   test("every other arm: titleSub = polish, snugNodes off, polish and polish2 unchanged", () => {
     for (const a of AB_ARMS) {
       setAbCodeArm(a);
+      if (a === "base6b" || a === "base6b-notes") continue; // the base6b block below
       if (a === "base6" || a === "base6sync") {
         expect([abTitleSub(), abSnugNodes(), abPolish(), abPolish2()]).toEqual([
           true,
@@ -151,5 +154,45 @@ describe("renderer parts", () => {
     withDiagramPolish(true, () => expect(polishGapGate()).toBe(true));
     withDiagramPolish(false, () => expect(polishNodes()).toBe(false));
     expect([polishNodes(), polishGapGate(), polishStrips()]).toEqual([true, false, false]);
+  });
+});
+
+describe("base6b", () => {
+  test("base6b = base6 with titleSub off, nothing else; base6b-notes = base6b + notesAlt", () => {
+    const { delta: _a, ...b6b } = AB_CONFIG.base6b;
+    const { delta: _b, titleSub, ...b6 } = AB_CONFIG.base6;
+    expect(titleSub).toBe(true);
+    expect(b6b).toEqual(b6);
+    const { delta: _c, notesAlt, ...n } = AB_CONFIG["base6b-notes"];
+    expect(notesAlt).toBe(true);
+    expect(n).toEqual(b6b);
+    for (const a of AB_ARMS) expect(Boolean(AB_CONFIG[a].notesAlt)).toBe(a === "base6b-notes");
+    for (const a of ["base6b", "base6b-notes"] as const) {
+      setAbCodeArm(a);
+      expect([abTitleSub(), abSnugNodes(), abPolish(), abPolish2(), abNotesAlt()]).toEqual([
+        false,
+        true,
+        false,
+        false,
+        a === "base6b-notes",
+      ]);
+    }
+  });
+  test("notes diagram line: raw labels by default, the spec's alt with notesAlt", () => {
+    const spec = {
+      kind: "table",
+      alt: "At 0 and 10 s, A gives 0 and 12 cm³; B gives 0 and 22 cm³.",
+    };
+    const labels = ["Time (s)", "A", "B", "0", "10", "12", "22"];
+    expect(notesDiagramLine("table", labels, spec, false)).toBe(
+      "Diagram (table): Time (s), A, B, 0, 10, 12, 22",
+    );
+    expect(notesDiagramLine("table", labels, spec, true)).toBe(`Diagram (table): ${spec.alt}`);
+    expect(notesDiagramLine("table", labels, { drawn: { alt: "x" } }, true)).toBe(
+      "Diagram (table): x",
+    );
+    expect(notesDiagramLine("table", labels, { alt: " " }, true)).toBe(
+      "Diagram (table): Time (s), A, B, 0, 10, 12, 22",
+    );
   });
 });
