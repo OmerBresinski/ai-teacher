@@ -60,6 +60,7 @@ describe("D18 structural arms", () => {
       questions: ["Which is the calf?"],
       instruction: "Point and say.",
       picture: tile,
+      tiles: [{ ...tile, shows: "a cow" }],
     });
     expect(flattenR1t({ template: "title", lead: { text: "Hi", needs_picture: false } }).lead).toBe(
       "Hi",

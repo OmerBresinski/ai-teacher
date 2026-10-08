@@ -291,6 +291,21 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       if (jd.some((l) => !/^\$\.\$defs\./.test(l)))
         fail(`b3-r2 ${id}: changes more than the schema's diagram defs`);
     }
+    if (a === "b4-r1t2" && (jd.length || b.system !== r.system))
+      fail(`b4-r1t2 ${id}: its request differs from b4-r1t (stage 2 is code only)`);
+    // b4-ex: only the two example lines (number-line, line-graph) may change; no schema path.
+    if (a === "b4-ex") {
+      const ex = (l: string) =>
+        l.startsWith('{"template":') && /"kind":"(number-line|line-graph)"/.test(l);
+      if (
+        jd.length ||
+        sd.del.length > 2 ||
+        sd.add.length > 2 ||
+        !sd.del.every(ex) ||
+        !sd.add.every(ex)
+      )
+        fail(`b4-ex ${id}: changes more than the number-line and line-graph example lines`);
+    }
     if (a === "base4" && (jd.length || b.system !== r.system))
       fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);
     if (a === "base3" && (jd.length || b.system !== r.system))

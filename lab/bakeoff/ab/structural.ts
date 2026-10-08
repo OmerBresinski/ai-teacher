@@ -127,7 +127,13 @@ export function flattenR1t(slide: J): J {
   if (out.lead !== undefined) out.lead = text(out.lead);
   if (Array.isArray(out.pictures)) {
     const { pictures, ...rest } = out;
-    return { ...rest, picture: (pictures as unknown[])[0] ?? null };
+    const tiles = pictures as unknown[];
+    // Stage 2 (b4-r1t2): the other tiles are fetched and judged too (keys tile.1..); no tile layout yet.
+    return {
+      ...rest,
+      picture: tiles[0] ?? null,
+      ...(tiles.length > 1 ? { tiles: tiles.slice(1) } : {}),
+    };
   }
   return out;
 }

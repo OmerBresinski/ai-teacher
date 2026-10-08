@@ -9,8 +9,9 @@ import type { Slide, Theme } from "@tj/domain/documents";
 import { renderDiagram } from "../../packages/slides/src/diagrams/index";
 import { type DiagramSlot, slotBox, slotOf } from "../../packages/slides/src/diagrams/limits";
 import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/themes";
-import { type AbArm, abArm, abFiles, abFixes, abR1t, abShared, sha } from "./ab/arms";
+import { type AbArm, abArm, abFiles, abFixes, abR1t, abR1t2, abShared, sha } from "./ab/arms";
 import { continueForFit } from "./ab/continue";
+import { applyStage2, covers, restageLayoutOnly } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
 import { type CheckResult, checkSlide, duplicateFaults, slideNoEmDash } from "./checks";
 import { type Locale, setLocale } from "./locale";
@@ -893,12 +894,15 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
   let title: Materialised | undefined;
   let flowSeen = 0;
 
+  /** R1 stage 2 (b4-r1t2): the writer's own slides (items and tiles), and the slides stage 2 removed. */
+  const rawR1t = new Map<number, Record<string, unknown>>();
+  const removedSlides = new Set<number>();
   const save = (why: string) => {
     const slides: Slide[] = [];
     const n = Math.max(plan.slides.length, plan.flow?.length ?? 0, flowSeen, 1);
     for (let i = 0; i < n; i++) {
       const m = laid.get(i) ?? (i === 0 ? title : undefined);
-      if (!m) continue;
+      if (!m || removedSlides.has(i)) continue;
       slides.push({ id: `s${i + 1}`, ...m.slide, notes: notes.get(i)?.notes ?? "" } as Slide);
       for (const [k, c] of (continued.get(i) ?? []).entries())
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" } as Slide);
@@ -1225,6 +1229,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       s = slideNoEmDash(s);
       // D11 fix (base3 onwards): the hinge's correct option lands at a seeded, uniform position.
       // b3-r1t (writer-only stage): items to text and the first tile as the picture, for the rest of the harness.
+      if (abR1t2()) rawR1t.set(idx, s);
       if (abR1t()) s = flattenR1t(s);
       if (abFixes()) s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? "")}`);
       // Round 9 (coordinator 6): the flow's look is the writer's visual decision. A slide whose
@@ -1646,6 +1651,67 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
   for (let i = 0; i < n; i++) relay(i, "final");
   mark("visualsDone");
 
+  // ── c2. R1 stage 2 (b4-r1t2): a picture counts as shown only when the judge's `visible` covers every
+  // must_see; items that need an unshown picture (or name a thing no picture on the slide shows) are dropped,
+  // an emptied check slide is removed, and its objectives go to the objective repair below.
+  if (abR1t2() && rawR1t.size) {
+    const shownAt = (num: number, k: number) => {
+      const i = num - 1;
+      const raw = rawR1t.get(i);
+      const pics = raw
+        ? Array.isArray(raw.pictures)
+          ? (raw.pictures as Record<string, unknown>[])
+          : [raw.picture ?? raw.figure]
+        : [];
+      const pic = pics[k] as Record<string, unknown> | undefined;
+      const v = visuals.get(
+        `${i}:${k === 0 ? (raw && "figure" in raw && raw.figure ? "figure" : "picture") : `tile.${k}`}`,
+      );
+      if (v?.status === "diagram") return true;
+      if (v?.status !== "photo" || !pic) return false;
+      const ev = (
+        (v.photo.source as { evidence?: { visible?: string[] } } | undefined)?.evidence?.visible ??
+        []
+      ).map(String);
+      const seen = [
+        ...ev,
+        v.photo.alt,
+        v.photo.about ?? "",
+        ...(v.photo.subjects ?? []).map((x) => x.name),
+      ];
+      return covers((pic.must_see as string[]) ?? [], seen);
+    };
+    const title0 = rawR1t.get(0) ?? (plan.slides[0] as Record<string, unknown>);
+    const writer = Array.from(
+      { length: Math.max(0, plan.slides.length - 2) },
+      (_, k) => rawR1t.get(k + 2) ?? (plan.slides[k + 2] as Record<string, unknown>),
+    );
+    const r = applyStage2(
+      { title: title0, slides: writer, flow: plan.flow as never },
+      shownAt,
+      plan.objectives?.length ?? 0,
+    );
+    for (const d of r.dropped) log({ ev: "stage2-drop", ...d });
+    const changed: [number, Record<string, unknown>][] = [
+      [0, r.title],
+      ...r.slides.map((x, j) => [j + 2, x] as [number, Record<string, unknown>]),
+    ];
+    for (const [k, raw] of changed) {
+      if (!r.dropped.some((d) => d.slide === k + 1)) continue;
+      // A title whose lead needed an unshown picture keeps its heading alone.
+      const lead = raw.lead as { text?: string } | null | undefined;
+      plan.slides[k] = flattenR1t(k === 0 && lead && !lead.text ? { ...raw, lead: null } : raw);
+      relay(k, "stage2");
+    }
+    for (const num of r.removed) {
+      removedSlides.add(num - 1);
+      for (const f of plan.flow ?? []) if (f.slide === num) f.teaches = [];
+      log({ ev: "stage2-removed", slide: num });
+    }
+    if (r.unchecked.length) log({ ev: "stage2-unchecked", objectives: r.unchecked });
+    save("stage 2");
+  }
+
   // ── d. code checks ──
   const check = () => {
     const out = baseCheck();
@@ -1936,6 +2002,8 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     }
     const before = plan.slides[i] as Record<string, unknown>;
     o2.slide = keepAsksHonest(before, o2.slide);
+    // R1 stage 2 (b4-r1t2): restage changes the layout and the figure, never the words.
+    if (abR1t2() && mode !== "fit") o2.slide = restageLayoutOnly(before, o2.slide);
     const moved = (Array.isArray(o2.to_notes) ? o2.to_notes : [o2.to_notes ?? ""]).map(String);
     const verdict = judgeRepair(before, o2.slide, moved, {
       diagramFault: c.faults.some((f) => f.startsWith("diagram:")),

@@ -81,6 +81,10 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
   (Array.isArray(s.sequence) ? s.sequence : []).forEach((x, n) => {
     if (isPic(x)) out.push({ key: `seq.${n}`, f: x });
   });
+  // R1 stage 2 (b4-r1t2): a question slide's other tiles, each its own picture.
+  (Array.isArray(s.tiles) ? s.tiles : []).forEach((x, n) => {
+    if (isPic(x)) out.push({ key: `tile.${n + 1}`, f: x });
+  });
   (Array.isArray(s.columns) ? s.columns : []).forEach((c, n) => {
     const p = (c as S)?.picture;
     if (isPic(p)) out.push({ key: `col.${n}`, f: p });

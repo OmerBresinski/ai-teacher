@@ -30,6 +30,8 @@ export const AB_ARMS = [
   "base4",
   "b4-r1t",
   "b4-ms",
+  "b4-r1t2",
+  "b4-ex",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -169,6 +171,26 @@ export const AB_CONFIG: Record<
     r2: true,
     delta: "base4 + a nullable misconception slot before the flow",
   },
+  // Round 6 (8 Oct): R1 stage 2 in code on b4-r1t's files; b4-ex = base4 with its two labels-only examples fixed.
+  "b4-r1t2": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    r1t: true,
+    r1t2: true,
+    delta:
+      "b4-r1t + R1 stage 2: judge-covered pictures only, drop needs_picture items, remove emptied checks, restage layout only",
+  },
+  "b4-ex": {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    delta: "base4 with the number-line and line-graph example slides in R2 spec form",
+  },
   // D11 R2 (RADICAL.md): structured kinds are per-kind spec defs the writer fills; code draws them.
   // Prompt text is base3's until the prompt-engineer rewrites the diagram section.
   "b3-r2": {
@@ -201,6 +223,8 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   base4: { ref: "b3-r2" },
   "b4-r1t": { ref: "base4" },
   "b4-ms": { ref: "base4" },
+  "b4-r1t2": { ref: "b4-r1t" },
+  "b4-ex": { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -211,6 +235,8 @@ export function setAbArm(a: AbArm | undefined) {
 export const abArm = () => current;
 /** D11 correctness fixes (K3 incomplete-writer failure, seeded hinge shuffle): base3 onwards only. */
 /** R1 stage 1 (b3-r1t): the writer's items and tiles are flattened for the harness (writer-only scoring). */
+/** R1 stage 2 (b4-r1t2): code drops pointing items whose picture is not shown. */
+export const abR1t2 = () => (current ? Boolean(AB_CONFIG[current].r1t2) : false);
 export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
 export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
