@@ -258,6 +258,15 @@ describe("N1/F1: a slide's role comes from what pupils do on it, not its kind", 
         ]),
       ),
     ).toBe("teach");
+    // R8T y1 s4: each text states the fact first, then sets the task.
+    expect(
+      objectivesRole(
+        slide(4, "content", [
+          el("Text", "A young cat is a kitten. Point to the kitten. Say its name."),
+          el("Text", "A young dog is a puppy. Point to the puppy. Say its name."),
+        ]),
+      ),
+    ).toBe("teach");
     expect(
       objectivesRole(
         slide(3, "diagram", [

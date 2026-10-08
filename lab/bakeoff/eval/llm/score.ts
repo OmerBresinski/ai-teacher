@@ -115,15 +115,16 @@ const NEUTRAL_NAMES =
   /^(heading|title|kind tag|label|key label|callout label|chunk label|card label|side panel label|table cell|table head)$/i;
 const sentences = (t: string) => t.split(/(?<=[.?!])\s+|\n+/).filter((x) => x.trim());
 /** The slide's first task text when its words are a pupil task: every text element that is not a heading, label or
- * cell holds a task sentence, and task sentences are more than half of its sentences. A slide that also states
+ * cell opens with a task sentence, and task sentences are more than half of its sentences. A slide that also states
  * content teaches: base5-1 y2 s6 (Lead "Share 10 counters…", Points "Each group has 5 counters."), a2-1 y1 s4
- * ("A calf is a young cow. Point to the cow, then the calf."), base4-4 y12 s3 (a table captioned "Compare the
+ * ("A calf is a young cow. Point to the cow, then the calf."; R8T y1 s4 likewise), base4-4 y12 s3 (a table captioned "Compare the
  * stores. Which holds the least information?"). A slide whose words are the task is where pupils answer: base5-1 y2
  * s4 ("Is each shaded part one half or one quarter? Explain how you know."). Every element is read (Caption, Point,
  * Lead, Prompt, Text, Item, Step and the rest), not only Lead/Prompt/Text as deck.py does. */
 export const pupilTask = (s: Slide) => {
   const els = s.texts.filter((t) => !NEUTRAL_NAMES.test((t.name ?? "").trim()));
-  if (!els.length || !els.every((t) => sentences(t.text).some(isTaskSentence))) return undefined;
+  if (!els.length || !els.every((t) => isTaskSentence(sentences(t.text)[0] ?? "")))
+    return undefined;
   const all = els.flatMap((t) => sentences(t.text));
   return all.filter(isTaskSentence).length * 2 > all.length ? els[0].text : undefined;
 };
