@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { PRODUCTION_API, runSmoke, SMOKE_TARGETS, siteSmokeCases, smokeCases } from "./smoke-prod";
+import {
+  DEFAULT_TARGET,
+  PRODUCTION_API,
+  PRODUCTION_WEB_ORIGIN,
+  runSmoke,
+  SMOKE_TARGETS,
+  siteSmokeCases,
+  smokeCases,
+} from "./smoke-prod";
 
 const WEB = "https://app.example.test";
 
@@ -251,8 +259,10 @@ describe("siteSmokeCases (TEACH-78)", () => {
 });
 
 describe("SMOKE_TARGETS", () => {
-  test("default stays on the live origins until the cutover; dayback is exact and https", () => {
-    expect(PRODUCTION_API).toBe("https://api.bresinski.org");
+  test("default is the dayback target; its origins are exact and https", () => {
+    expect(DEFAULT_TARGET).toBe("dayback");
+    expect(PRODUCTION_API).toBe("https://api.dayback.app");
+    expect(PRODUCTION_WEB_ORIGIN).toBe("https://teach.dayback.app");
     expect(SMOKE_TARGETS.dayback).toEqual({
       api: "https://api.dayback.app",
       webOrigin: "https://teach.dayback.app",
