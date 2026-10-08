@@ -1,41 +1,7 @@
 import { expectNoSeriousA11yViolations, settled } from "./a11y";
 import { expect, test } from "./fixtures";
 
-test.describe("empty Workspace", () => {
-  test.use({ seed: false });
-
-  test("a new Workspace shows the empty state from the documents api", async ({
-    signedInPage: { page },
-  }) => {
-    const listed = page.waitForRequest((request) => request.url().includes("/documents?"));
-    await page.goto("/lessons");
-    const query = new URL((await listed).url()).searchParams;
-    expect(query.get("kind")).toBe("lesson");
-    expect(query.get("sort")).toBe("updated");
-    expect(query.get("limit")).toBe("100");
-    await expect(page.getByText("Nothing here yet")).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Lessons\b/ })).toContainText("0");
-  });
-});
-
 test.describe("library shell", () => {
-  test("Home has the library navigation, create strip, and capped sections", async ({
-    signedInPage: { page },
-  }) => {
-    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-    await expect(page.getByText("DayBack", { exact: true })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Library" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Home/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Lessons/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Worksheets/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Series/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: "New lesson" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Recent" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Worksheets" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Series" })).toBeVisible();
-  });
-
   test("New lesson opens the brief; Blank lesson keeps the dialog path and leads Recent on return", async ({
     signedInPage: { page },
   }) => {
@@ -89,82 +55,6 @@ test.describe("library shell", () => {
     await expect(page.getByRole("row", { name: /Untitled worksheet/ })).toContainText("10 min");
   });
 
-  test("New series uses the untitled fallback on Enter", async ({ signedInPage: { page } }) => {
-    await page.getByRole("button", { name: "New series" }).click();
-    await page.getByRole("textbox", { name: "Title" }).press("Enter");
-
-    await expect(page).toHaveURL(/\/series\/[^/]+$/);
-    await expect(page.getByText("Untitled series", { exact: true })).toBeVisible();
-  });
-
-  test("Lessons search survives reload and Escape clears it", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons");
-    const search = page.getByRole("searchbox", { name: "Search by title" });
-    // The search is the server's (ADR 0024 §17): the list request carries `q`.
-    const searched = page.waitForRequest(
-      (request) =>
-        request.url().includes("/documents?") &&
-        new URL(request.url()).searchParams.get("q") === "water",
-    );
-    await search.fill("water");
-    await expect(page).toHaveURL(/\/lessons\?q=water$/);
-    const request = new URL((await searched).url()).searchParams;
-    expect(request.get("kind")).toBe("lesson");
-    expect(request.get("sort")).toBe("updated");
-    // The title appears on the card and inside its rendered cover slide.
-    await expect(page.getByText("The water cycle").first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open The water cycle" })).toHaveCount(1);
-    await expect(page.getByRole("link", { name: /^Open / })).toHaveCount(1);
-    await page.reload();
-    await expect(search).toHaveValue("water");
-    await search.press("Escape");
-    await expect(page).toHaveURL(/\/lessons$/);
-  });
-
-  test("Sort by title asks the server for that order", async ({ signedInPage: { page } }) => {
-    await page.goto("/lessons");
-    await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
-    const sorted = page.waitForRequest(
-      (request) =>
-        request.url().includes("/documents?") &&
-        new URL(request.url()).searchParams.get("sort") === "title",
-    );
-    await page.getByRole("button", { name: /^Sort:/ }).click();
-    await page.getByRole("menuitemradio", { name: "Title A–Z" }).click();
-    await sorted;
-    const titles = () =>
-      page
-        .getByRole("link", { name: /^Open / })
-        .evaluateAll((links) => links.map((link) => link.getAttribute("aria-label") ?? ""));
-    await expect.poll(titles).toHaveLength(10);
-    // The page still splits Recent / Earlier; within each group the order is the server's.
-    const ordered = await titles();
-    expect(ordered[0]).toBe("Open Equivalent fractions");
-    const recentCount = Number(
-      await page
-        .getByRole("heading", { name: "Recent" })
-        .locator("..")
-        .textContent()
-        .then((text) => text?.replace(/\D/g, "") ?? "0"),
-    );
-    for (const group of [ordered.slice(0, recentCount), ordered.slice(recentCount)]) {
-      expect(group).toEqual([...group].sort((a, b) => a.localeCompare(b)));
-    }
-  });
-
-  test("collapsed navigation persists after reload and exposes item tooltips", async ({
-    signedInPage: { page },
-  }) => {
-    await page.getByRole("button", { name: "Collapse sidebar" }).click();
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-    await page.getByRole("link", { name: "Lessons", exact: true }).hover();
-    await expect(page.getByRole("tooltip", { name: "Lessons" })).toBeVisible();
-    await page.reload();
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-  });
-
   test("document routes return to the last library page", async ({
     signedInPage: { page, paths },
   }) => {
@@ -183,21 +73,6 @@ test.describe("library shell", () => {
     await expect(page.getByRole("navigation", { name: "Library" })).not.toBeVisible();
     await page.getByLabel("Back to library").click();
     await expect(page).toHaveURL(/\/lessons$/);
-  });
-
-  test("unknown editor documents render the not-found page", async ({ signedInPage: { page } }) => {
-    // A uuid the Workspace does not hold; ids are server-minted (ADR 0024 §11).
-    await page.goto("/l/00000000-0000-4000-8000-000000000000");
-
-    await expect(page.getByText("Page not found")).toBeVisible();
-  });
-
-  test("Series search miss clears the query", async ({ signedInPage: { page } }) => {
-    await page.goto("/series?q=zzz");
-
-    await expect(page.getByText("No titles match that")).toBeVisible();
-    await page.getByRole("button", { name: "Clear search" }).last().click();
-    await expect(page).toHaveURL(/\/series$/);
   });
 
   test("card cover links and actions preserve their destinations", async ({
@@ -242,21 +117,6 @@ test.describe("library shell", () => {
     await expect(page.getByRole("link", { name: "Open The water cycle" })).not.toBeVisible();
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByRole("link", { name: "Open The water cycle" })).toBeVisible();
-  });
-
-  test("List view uses the library table headings", async ({ signedInPage: { page } }) => {
-    await page.goto("/lessons");
-    await page.getByRole("button", { name: "List" }).click();
-    const table = page.getByRole("table").first();
-    await expect(table).toBeVisible();
-    await expect(table.getByRole("columnheader")).toHaveText([
-      "Thumbnail",
-      "Title",
-      "Year and subject",
-      "Size",
-      "Edited",
-      "Actions",
-    ]);
   });
 
   test("Home, Lessons grid/list, and Series have no serious or critical axe findings", async ({

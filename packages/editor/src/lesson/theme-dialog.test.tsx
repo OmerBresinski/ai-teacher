@@ -19,7 +19,8 @@ describe("ThemeDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     const dialog = await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    expect(tiles.length).toBeGreaterThanOrEqual(6);
+    // Every catalogue theme, once (the slide theme catalogue has ten).
+    expect(tiles).toHaveLength(10);
     const paper = tiles.find((t) => t.getAttribute("data-theme-tile") === "playground");
     if (!paper) throw new Error("no playground tile");
     fireEvent.click(paper);

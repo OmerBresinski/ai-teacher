@@ -106,10 +106,23 @@ describe("WorksheetPrintPage", () => {
     }
   });
 
+  it("the starter worksheet prints as pages under its own title", async () => {
+    worksheetId = "roman-source";
+    const { container } = renderPage();
+    await whenSheetShown();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Roman source investigation" }),
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll(".ws-print-root .ws-page").length).toBeGreaterThan(0);
+    expect(screen.getByText(/^Page 1 of \d+$/)).toBeInTheDocument();
+    await settle();
+  });
+
   it("a lesson id on the print route shows WrongKindPage rather than crashing", async () => {
     worksheetId = "demo-water-cycle";
-    renderPage();
+    const { container } = renderPage();
     expect(await screen.findByText("This is a lesson")).toBeVisible();
+    expect(container.querySelectorAll(".ws-page")).toHaveLength(0);
     // Still chrome-free (ADR 0023 §2): no AppBar; the way back is a link under the message.
     expect(screen.queryByRole("banner")).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to the library" })).toBeNull();

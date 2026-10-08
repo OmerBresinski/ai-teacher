@@ -3,8 +3,8 @@ import { addedElement, elementIds, expect, type SeededPaths, test } from "./fixt
 
 /*
  * The editor's contextual chrome (TEACH-105): the slide and element toolbars route with the
- * selection, a rail insert lands a selected element, the theme dialog switches the deck's theme,
- * and the More drawer's opacity slider is one undo step per drag.
+ * selection, a rail insert lands a selected element, and the More drawer's opacity slider is one
+ * undo step per drag. The theme dialog and Escape in a popover are unit tests (TEACH-301).
  */
 
 const EDITOR = (paths: SeededPaths) => paths.lesson("demo-water-cycle");
@@ -111,47 +111,5 @@ test.describe("editor chrome", () => {
     await expect
       .poll(async () => shape.locator("svg [fill]").first().getAttribute("fill"))
       .not.toBe(target);
-  });
-
-  test("row 8: the theme dialog switches to Playground and the canvas follows", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    const root = page.locator("[data-slide-frame] [data-slide-root]");
-    const before = await root.evaluate((n) => getComputedStyle(n).backgroundColor);
-    await page.getByRole("button", { name: "Theme" }).click();
-    const dialog = page.getByRole("dialog", { name: "Theme" });
-    await expect(dialog.getByRole("radio")).toHaveCount(10);
-    await dialog.getByRole("radio", { name: "Playground" }).click();
-    await expect(dialog.getByRole("radio", { name: "Playground" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-    await expect
-      .poll(() => root.evaluate((n) => getComputedStyle(n).backgroundColor))
-      .not.toBe(before);
-    await dialog.getByRole("button", { name: "Done" }).click();
-    await expect(dialog).toHaveCount(0);
-    await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5_000 });
-  });
-
-  test("row 10: Escape closes a popover without deselecting", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(EDITOR(paths));
-    await page
-      .getByRole("toolbar", { name: "Insert" })
-      .getByRole("button", { name: "Shape" })
-      .click();
-    await page.getByRole("menuitem", { name: "Rectangle" }).click();
-    await page
-      .getByRole("toolbar", { name: "Shape" })
-      .getByRole("button", { name: "Label" })
-      .click();
-    await expect(page.getByRole("textbox", { name: "Label" })).toBeFocused();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("textbox", { name: "Label" })).toHaveCount(0);
-    await expect(page.locator("[data-selection-frame]")).toBeVisible();
-    await expect(page.getByRole("toolbar", { name: "Shape" })).toBeVisible();
   });
 });

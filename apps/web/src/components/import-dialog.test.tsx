@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { generatedLesson } from "@tj/domain/documents/fixtures";
 import { demoWorkspace } from "@tj/editor/starter";
 import { installFakeApi } from "@/test/fake-api";
 
@@ -108,6 +109,33 @@ describe("ImportDialog", () => {
     expect(toasts()[0]).toBe(
       "Could not import “new.teachdeck.json”. This file was made with a newer version of TeachDeck (document version 2).",
     );
+    expect(posts()).toHaveLength(0);
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("a lesson whose text links to javascript: is refused before any request (TEACH-277)", async () => {
+    const lesson = generatedLesson();
+    const text = lesson.slides[0]?.elements.find((el) => el.type === "text");
+    if (text?.type !== "text") throw new Error("fixture has no text element");
+    text.doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "AUDIT LINK",
+              marks: [{ type: "link", attrs: { href: "javascript:alert(1)", target: "_self" } }],
+            },
+          ],
+        },
+      ],
+    };
+    const { onOpenChange } = renderDialog();
+    drop([jsonFile("poisoned.teachdeck.json", lesson)]);
+    await waitFor(() => expect(toastSpy).toHaveBeenCalledTimes(1));
+    expect(toasts()[0]).toStartWith("Could not import “poisoned.teachdeck.json”.");
     expect(posts()).toHaveLength(0);
     expect(onOpenChange).not.toHaveBeenCalled();
   });

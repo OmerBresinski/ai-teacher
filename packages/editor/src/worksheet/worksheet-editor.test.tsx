@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides";
 import type { ImageSearchClient, PhotoResult, PickedPhoto } from "../images/image-search";
+import { demoWorksheet } from "../model/demo-worksheet";
 import { docFromText, uid } from "../model/factories";
 import { newBlock, numberQuestions, starterWorksheet } from "../model/worksheet-factories";
 import { answerKey } from "./answers";
@@ -31,6 +32,22 @@ const select = (container: HTMLElement, id: string) =>
   fireEvent.pointerDown(row(container, id), pointer(10, 10));
 
 const undo = () => fireEvent.keyDown(window, { key: "z", metaKey: true });
+
+const MATCHING_LINE =
+  "Match each item on the left to one on the right. Write the letter in the box.";
+
+/** Blocks > Matching from the gutter + of block 2, the demo sheet's "Worked example" heading. */
+async function insertMatchingAfterHeading(container: HTMLElement, heading: string) {
+  expect(row(container, heading)).toHaveTextContent("Worked example");
+  fireEvent.click(
+    within(row(container, heading)).getByRole("button", { name: "Insert a block below" }),
+  );
+  const dialog = await screen.findByRole("dialog", { name: "Add a block" });
+  fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Blocks" }));
+  fireEvent.click(within(dialog).getByRole("tab", { name: "Blocks" }));
+  await within(dialog).findByRole("region", { name: "Questions" });
+  fireEvent.click(within(dialog).getByRole("button", { name: /^Matching/ }));
+}
 
 describe("WorksheetEditor", () => {
   test("mounts the header and every block; a click selects a block and shows its toolbar", () => {
@@ -80,6 +97,28 @@ describe("WorksheetEditor", () => {
     expect(read().blocks.length).toBe(before + 1);
     expect(read().blocks[1]?.type).toBe("question");
     expect(screen.queryByRole("dialog", { name: "Add a block" })).toBeNull();
+  });
+
+  test("row 6: the gutter + of block 2 inserts the Matching section right after it", async () => {
+    const { container, read } = renderWorksheetEditor(demoWorksheet());
+    const before = read().blocks.map((b) => b.id);
+    const second = before[1];
+    if (!second) throw new Error("seed");
+    fireEvent.click(
+      within(row(container, second)).getByRole("button", { name: "Insert a block below" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Add a block" });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Matching\./ }));
+    expect(screen.queryByRole("dialog", { name: "Add a block" })).toBeNull();
+    // The instruction line, the matching block and the placeholder (TEACH-194 dropped the trailing
+    // word bank), right after block 2.
+    const after = read().blocks;
+    expect(after.length).toBe(before.length + 3);
+    expect(after.slice(0, 2).map((b) => b.id)).toEqual(before.slice(0, 2));
+    expect(after.slice(5).map((b) => b.id)).toEqual(before.slice(2));
+    expect(after.slice(2, 5).map((b) => b.type)).toEqual(["instructions", "matching", "paragraph"]);
+    expect(row(container, after[2]?.id ?? "")).toHaveTextContent(MATCHING_LINE);
+    expect(row(container, after[4]?.id ?? "")).toHaveTextContent("Generation writes this part");
   });
 
   test("the Add block pill appends a section as one undo step and focuses its first block", async () => {
@@ -738,5 +777,41 @@ describe("answers on the sheet (TEACH-195)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
     expect(within(dialog).getByText("Show answers on / off")).toBeInTheDocument();
     expect(within(dialog).getByText("Delete the selected block")).toBeInTheDocument();
+  });
+});
+
+describe("block guides (TEACH-194)", () => {
+  test("row 1: Matching after a heading gets the guide's instruction before it; one undo removes both", async () => {
+    const { container, read } = renderWorksheetEditor(demoWorksheet());
+    const before = read().blocks.length;
+    await insertMatchingAfterHeading(container, read().blocks[1]?.id ?? "");
+    const after = read().blocks;
+    expect(after.length).toBe(before + 2);
+    expect(after[2]?.type).toBe("instructions");
+    expect(row(container, after[2]?.id ?? "")).toHaveTextContent(MATCHING_LINE);
+    expect(after[3]?.type).toBe("matching");
+    expect(row(container, after[3]?.id ?? "").querySelector(".ws-match-row")).not.toBeNull();
+    undo();
+    expect(read().blocks.length).toBe(before);
+    expect(container.querySelector(".ws-column")).not.toHaveTextContent(MATCHING_LINE);
+  });
+
+  test("row 3: a matching block with two identical right sides shows the duplicate inline", async () => {
+    const { container, read } = renderWorksheetEditor(demoWorksheet());
+    await insertMatchingAfterHeading(container, read().blocks[1]?.id ?? "");
+    const matching = read().blocks[3]?.id ?? "";
+    expect(row(container, matching).querySelector(".ws-warning")).toBeNull();
+    for (const name of ["Match A", "Match B"]) {
+      const field = within(row(container, matching)).getByRole("textbox", { name });
+      field.textContent = "Rodent";
+      fireEvent.input(field);
+    }
+    await waitFor(() =>
+      expect(row(container, matching).querySelector(".ws-warning")).toHaveTextContent(
+        "“Rodent” appears twice on the right",
+      ),
+    );
+    // Only the selected block carries the hint; the sheet's other blocks show none.
+    expect(container.querySelectorAll(".ws-column .ws-warning")).toHaveLength(1);
   });
 });

@@ -1,40 +1,12 @@
 /**
- * TEACH-193: worksheet cards paint the top of their own page 1, the meta line keeps the time
- * whole, Print opens the print route with `?auto=1` in a new tab, and marks print only with the
- * sheet's Marks switch on (UX rulings 31 and 60).
+ * TEACH-193: the card's meta line keeps the time whole, Print opens the print route with `?auto=1`
+ * in a new tab, and marks print only with the sheet's Marks switch on (UX rulings 31 and 60). The
+ * card painting its own page 1 is a unit test (`lesson-thumb.test.tsx`, TEACH-301).
  */
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-const TITLES = [
-  "Fractions practice",
-  "Roman source investigation",
-  "Label a flowering plant",
-  "River vocabulary",
-] as const;
-
 test.describe("TEACH-193", () => {
-  test("row 1: each worksheet card shows its own page 1, not a letter", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/worksheets");
-    for (const title of TITLES) {
-      const card = page.locator("article", {
-        has: page.getByRole("link", { name: `Open ${title}` }),
-      });
-      const thumb = card.locator("[data-slot='card-thumbnail']");
-      await expect(thumb.locator(".ws-thumb .ws-page")).toHaveCount(1);
-      await expect(thumb.locator(".ws-title")).toHaveText(title);
-      await expect(thumb.locator(".font-display")).toHaveCount(0);
-      // Fitted to the card: the scaled page is as wide as the frame, and greyscale.
-      const frame = await thumb.boundingBox();
-      const pageBox = await thumb.locator(".ws-page").boundingBox();
-      if (!frame || !pageBox) throw new Error("no thumbnail boxes");
-      expect(Math.abs(pageBox.width - frame.width)).toBeLessThan(2);
-      await expect(thumb.locator(".ws-thumb")).toHaveCSS("filter", "grayscale(1)");
-    }
-  });
-
   test("row 2: a long subject truncates; the edited time stays whole", async ({
     signedInPage: { page },
   }) => {

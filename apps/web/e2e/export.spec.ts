@@ -329,24 +329,4 @@ test.describe("library Import", () => {
     expect(roundTripped.id).not.toBe(exported.id);
     expect(strip(roundTripped)).toEqual(strip(exported));
   });
-
-  test("row 9: a newer-version file is refused with TeachDeck's copy", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/lessons");
-    await page.getByRole("button", { name: "Import" }).click();
-    const dialog = page.getByRole("dialog", { name: "Import" });
-    await dialog.getByLabel("Import files").setInputFiles({
-      name: "future.teachdeck.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify({ ...generatedLesson(), version: 2 })),
-    });
-    await expect(
-      page.getByText("This file was made with a newer version of TeachDeck (document version 2).", {
-        exact: false,
-      }),
-    ).toBeVisible();
-    // Still open: nothing was imported.
-    await expect(dialog).toBeVisible();
-  });
 });

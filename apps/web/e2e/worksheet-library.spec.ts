@@ -1,18 +1,18 @@
 /**
- * The Worksheets library (TEACH-186): marks and minutes on every card, New worksheet in the page
- * header, the whole card face opening the sheet, and the four seeded sheets printing as real
- * content, one or two pages on A4 and on Letter, with the answer key derived from the answers.
+ * The Worksheets library (TEACH-186): the whole card face opening the sheet, and the four seeded
+ * sheets printing as real content, one or two pages on A4 and on Letter, with the answer key
+ * derived from the answers. The cards' minutes and New worksheet are unit tests (TEACH-301).
  */
 import type { Page } from "@playwright/test";
 import { demoWorkspace } from "@tj/editor/starter";
 import { E2E_API_URL, E2E_WEB_URL, expect, test } from "./fixtures";
 
-/** Key, title, a phrase only that sheet's paper carries, and the card's minutes (UX ruling 60). */
+/** Key, title, and a phrase only that sheet's paper carries. */
 const SHEETS = [
-  ["fraction-practice", "Fractions practice", "Worked example", "20 min"],
-  ["roman-source", "Roman source investigation", "Watling Street", "10 min"],
-  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant", "5 min"],
-  ["river-vocabulary", "River vocabulary", "tributary", "5 min"],
+  ["fraction-practice", "Fractions practice", "Worked example"],
+  ["roman-source", "Roman source investigation", "Watling Street"],
+  ["plant-labels", "Label a flowering plant", "Figure 1: a flowering plant"],
+  ["river-vocabulary", "River vocabulary", "tributary"],
 ] as const;
 
 /** Content pages only: the answer key starts a fresh page and is not counted against the sheet. */
@@ -89,24 +89,6 @@ test.describe("worksheet library", () => {
     }
   });
 
-  test("row 2: cards carry the minutes; New worksheet sits in the header and opens the flow", async ({
-    signedInPage: { page },
-  }) => {
-    await page.goto("/worksheets");
-    await expect(page.getByRole("heading", { level: 1, name: "Worksheets" })).toBeVisible();
-    for (const [, title, , effort] of SHEETS) {
-      const card = page.locator("article", {
-        has: page.getByRole("link", { name: `Open ${title}` }),
-      });
-      await expect(card).toContainText(effort);
-    }
-    const create = page.getByRole("button", { name: "New worksheet" });
-    await expect(create).toBeVisible();
-    await create.click();
-    await expect(page).toHaveURL(/\/worksheets\/new$/);
-    await expect(page.getByRole("heading", { level: 1, name: "New worksheet" })).toBeVisible();
-  });
-
   test("row 3: the card face opens the sheet; Print and the overflow menu do not", async ({
     signedInPage: { page, paths },
     context,
@@ -143,17 +125,5 @@ test.describe("worksheet library", () => {
     );
     await expect(page).toHaveURL(/\/worksheets$/);
     await printed.close();
-  });
-
-  test("row 4: Fractions practice belongs to Fractions of amounts", async ({
-    signedInPage: { page, paths },
-  }) => {
-    const res = await page.request.get(
-      `${E2E_API_URL}/documents/${paths.id("fraction-practice")}`,
-      { headers: { origin: E2E_WEB_URL } },
-    );
-    expect(res.ok(), `GET /documents/:id failed: ${res.status()}`).toBe(true);
-    const { document } = (await res.json()) as { document: { body: { lessonId?: string } } };
-    expect(document.body.lessonId).toBe(paths.id("demo-fractions"));
   });
 });

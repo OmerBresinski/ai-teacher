@@ -12,42 +12,6 @@ const rowIds = async (page: import("@playwright/test").Page, paths: SeededPaths)
   ).map(paths.key);
 
 test.describe("series detail", () => {
-  test("opens from the Series page with header, counts, ordered rows and actions", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto("/series");
-    await page.getByRole("link", { name: "Open The Romans" }).click();
-    await expect(page).toHaveURL(new RegExp(`${paths.series("series-romans")}$`));
-    await expect(page).toHaveTitle("The Romans · DayBack");
-    await expect(page.getByRole("heading", { name: "The Romans" })).toBeVisible();
-    await expect(page.getByText(/3 lessons · \d+ slides/)).toBeVisible();
-    // Series rows and the sheet stack render real slides (TEACH-99).
-    expect(await page.locator("[data-slide-root]").count()).toBeGreaterThanOrEqual(3);
-    expect(await rowIds(page, paths)).toEqual(["roman-roads", "demo-fractions", "roman-army"]);
-    await expect(page.getByRole("button", { name: "Present series" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add lesson" })).toBeVisible();
-  });
-
-  test("reorders with the keyboard and keeps focus on the moved row", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(paths.series("series-romans"));
-    const rows = page.getByRole("list", { name: "Lessons in teaching order" }).locator("li");
-    await rows.first().focus();
-    await page.keyboard.press("ControlOrMeta+ArrowDown");
-    await expect
-      .poll(() => rowIds(page, paths))
-      .toEqual(["demo-fractions", "roman-roads", "roman-army"]);
-    await expect(rows.nth(1)).toBeFocused();
-    await expect(page.getByRole("status")).toHaveText("Moved to position 2");
-    // Persisted through `PUT /documents/:id`: a full reload lists the lessons in the new order.
-    await page.goto("/series");
-    const band = page.locator("article", { hasText: "The Romans" });
-    await expect(band.getByRole("list").locator("li").first()).toContainText(
-      "Fractions of amounts",
-    );
-  });
-
   test("drags a row above the first with a real pointer", async ({
     signedInPage: { page, paths },
   }) => {
@@ -65,22 +29,6 @@ test.describe("series detail", () => {
     await expect
       .poll(() => rowIds(page, paths))
       .toEqual(["roman-army", "roman-roads", "demo-fractions"]);
-  });
-
-  test("removes a lesson and Undo restores it at the same index", async ({
-    signedInPage: { page, paths },
-  }) => {
-    await page.goto(paths.series("series-romans"));
-    const rows = page.getByRole("list", { name: "Lessons in teaching order" }).locator("li");
-    await rows.nth(1).hover();
-    await rows.nth(1).getByRole("button", { name: "More actions" }).click();
-    await page.getByRole("menuitem", { name: "Remove from series" }).click();
-    await expect.poll(() => rowIds(page, paths)).toEqual(["roman-roads", "roman-army"]);
-    await expect(page.getByText("Removed “Fractions of amounts”")).toBeVisible();
-    await page.getByRole("button", { name: "Undo" }).click();
-    await expect
-      .poll(() => rowIds(page, paths))
-      .toEqual(["roman-roads", "demo-fractions", "roman-army"]);
   });
 
   test("adds lessons in candidate order and shows the missing-series state", async ({

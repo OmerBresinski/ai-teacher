@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
@@ -38,6 +39,18 @@ describe("LessonViewer", () => {
       lesson.slides.length,
     );
     expect(status()).toBe(`Slide 1 of ${lesson.slides.length}`);
+  });
+
+  it("a lesson with credited pictures shows only its own slides: no Image credits page", () => {
+    const lesson = creditedLesson();
+    renderViewer({ lesson });
+    expect(screen.getByText(`${lesson.slides.length} slides`)).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /^Slide \d+$/ })).toHaveLength(
+      lesson.slides.length,
+    );
+    fireEvent.keyDown(window, { key: "End" });
+    expect(status()).toBe(`Slide ${lesson.slides.length} of ${lesson.slides.length}`);
+    expect(screen.queryByText("Image credits")).toBeNull();
   });
 
   it("ArrowRight/ArrowLeft walk steps then slides; Home and End jump", () => {

@@ -1,8 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ThemeProvider, TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
+import { installFakeApi } from "@/test/fake-api";
+
+const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let pathname = "/lessons";
 const navigate = mock();
@@ -51,6 +54,15 @@ describe("LibrarySidebar", () => {
     pathname = "/lessons";
     localStorage.clear();
     navigate.mockReset();
+    fakeApi.reset();
+  });
+
+  it("counts an empty Workspace's lessons as 0", async () => {
+    fakeApi.rows.clear();
+    renderSidebar();
+
+    const lessons = screen.getByRole("link", { name: /Lessons/ });
+    await waitFor(() => expect(lessons).toHaveTextContent(/^Lessons\s*0$/));
   });
 
   it("marks the current library branch active and persists collapse", async () => {
@@ -81,4 +93,5 @@ describe("LibrarySidebar", () => {
 
 afterAll(() => {
   mock.restore();
+  restoreFetch();
 });
