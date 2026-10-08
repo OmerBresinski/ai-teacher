@@ -1,0 +1,90 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": null,
+      "misconceptions": "Pupils may think the denominator tells them how many parts to take. It tells them how many equal groups to make; the numerator tells them how many groups to take. For ⅕, make 5 groups and take 1.",
+      "background": "A unit fraction has a numerator of 1. Dividing the whole amount by the denominator finds the size of one equal part.",
+      "run": "About 3 minutes. Explain the worked example, using the diagram to connect dividing by 5 with making 5 equal groups. Ask pupils to say what the 5 and the 1 mean."
+    },
+    {
+      "n": 4,
+      "answers": ["4"],
+      "misconceptions": "Pupils may mistake the denominator for the answer, or think they should multiply 24 by 6. The denominator gives the number of equal groups: 24 ÷ 6 = 4 in each group.",
+      "background": "This builds on sharing a whole number equally. The fraction ⅙ means one of 6 equal parts, so the amount in one part is 24 divided by 6.",
+      "run": "About 3 minutes. Work through the example as a class. Ask pupils to predict the size of each group, then use the diagram and division to check."
+    },
+    {
+      "n": 5,
+      "answers": [
+        "30 ÷ 6 = 5",
+        "36 ÷ 4 = 9",
+        "56 ÷ 8 = 7. Divide by 8 because the denominator tells us to make 8 equal parts."
+      ],
+      "misconceptions": "Pupils may multiply by the denominator or divide by the numerator. For a unit fraction, divide the whole amount by the denominator: for example, 56 ÷ 8 = 7.",
+      "background": "Each answer is a whole number, as required by the lesson objective. Encourage pupils to check that multiplying the answer by the denominator gives the original amount.",
+      "run": "About 5 minutes. Pupils work independently, writing each division and answer. Take answers together and ask a pupil to explain why the last calculation divides by 8."
+    },
+    {
+      "n": 6,
+      "answers": ["25"],
+      "misconceptions": "Pupils may stop after finding one sixth and answer 5, or multiply 30 by 5 before dividing. Find one part first, 30 ÷ 6 = 5, then take 5 parts: 5 × 5 = 25.",
+      "background": "For a non-unit fraction, divide by the denominator to find one equal part, then multiply by the numerator to find the required number of parts.",
+      "run": "About 4 minutes. Model the two steps and connect each step to the bar model. Ask pupils to explain what the 6 and the 5 represent."
+    },
+    {
+      "n": 7,
+      "answers": [
+        "⅚ of 30: 30 ÷ 6 = 5; 5 × 5 = 25.",
+        "¾ of 36: 36 ÷ 4 = 9; 9 × 3 = 27.",
+        "⅜ of 56: 56 ÷ 8 = 7; 7 × 3 = 21."
+      ],
+      "misconceptions": "Pupils may multiply by the denominator instead of the numerator, or give the one-part value as the final answer. The denominator finds one part; the numerator tells how many of those parts to take.",
+      "background": "The method works when the whole amount divides exactly by the denominator. Pupils can check each result by dividing the whole amount into the stated number of equal parts.",
+      "run": "About 6 minutes. Pupils solve the three examples independently, showing both steps. Pair them to compare methods, then take answers and reasoning as a class."
+    },
+    {
+      "n": 8,
+      "answers": ["The denominator, 3, tells us to divide. ⅔ of 18 is 18 ÷ 3 × 2 = 12."],
+      "misconceptions": "Sam uses the numerator, 2, as the divisor, giving 27. This reverses the roles of numerator and denominator. Thirds means 3 equal parts, so divide 18 by 3 first, then take 2 parts. Since ⅔ is less than 1, the answer must be less than 18.",
+      "background": "Estimating whether a fraction is less than or greater than one is a useful reasonableness check. Any proper fraction of a positive amount is smaller than the whole amount.",
+      "run": "About 4 minutes. Ask pupils to identify the correct divisor before evaluating Sam’s calculation. Discuss why 27 cannot be right, then complete the corrected calculation together."
+    },
+    {
+      "n": 9,
+      "answers": ["40 ÷ 8 × 3"],
+      "misconceptions": "40 ÷ 3 × 8 divides by the numerator and can give more than the whole. 40 ÷ 8 finds only one eighth, not three eighths. 40 ÷ 8 × 5 finds five eighths. The denominator 8 gives the divisor, and the numerator 3 gives the number of parts to take.",
+      "background": "The correct calculation gives 15: 40 ÷ 8 = 5, then 5 × 3 = 15. This is less than 40, as three eighths is less than one whole.",
+      "run": "About 4 minutes. Pupils choose a calculation independently, then compare with a partner and explain what each number represents. Confirm the correct calculation and its value."
+    },
+    {
+      "n": 10,
+      "answers": ["£21"],
+      "misconceptions": "Pupils may answer £7, which is one fifth rather than three fifths, or multiply £35 by 3 before dividing by 5. Find one fifth first, then multiply by 3. The cost must be less than £35.",
+      "background": "The same fraction method applies to money. Keep the unit in the answer; here each part is £7 and three parts cost £21.",
+      "run": "About 3 minutes. Read through the worked example and link the shaded parts to the multiplication by 3. Ask pupils to check that the cost is less than £35."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "£45 ÷ 5 × 3 = £27. The game costs £27.",
+        "48 cm ÷ 4 = 12 cm. The piece is 12 cm long.",
+        "800 ml ÷ 8 × 3 = 300 ml. Ben pours out 300 ml."
+      ],
+      "misconceptions": "For Leo’s problem, pupils may find one fifth (£9) and stop instead of taking three fifths. For Aisha’s problem, the unit fraction is one quarter, so divide by 4; do not multiply by 4. For Ben’s problem, divide by 8, not 3, because 8 is the denominator, then take 3 parts. Include the correct units in each answer.",
+      "background": "These problems use the same calculation with different units. Money answers should be in pounds, the ribbon answer in centimetres, and the juice answer in millilitres.",
+      "run": "About 7 minutes. Pupils work independently and write a calculation and an answer with its unit for each problem. Ask pairs to check one another’s divisor, multiplier and units before reviewing as a class."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "72 ÷ 8 × 5 = 45 photos.",
+        "96 ÷ 6 = 16 km.",
+        "Jo spends £30: £40 ÷ 4 × 3 = £30. Ali spends £35: £56 ÷ 8 × 5 = £35. Ali spends more, by £5."
+      ],
+      "misconceptions": "For the photos, pupils may divide by 5 instead of 8; the denominator is the divisor, and the numerator tells how many parts to take. For the route, pupils may multiply by 6 instead of dividing by 6 to find one sixth. In the stretch, comparing the fractions alone is not enough because the starting amounts differ. Calculate each spend: £30 and £35, so Ali spends £5 more.",
+      "background": "The stretch combines finding fractions of different whole amounts and comparing the resulting quantities. Photos are counted in whole numbers, and the route answer should retain the unit kilometres.",
+      "run": "About 8 minutes. Pupils solve the first two independently. Invite them to show both steps for the stretch and explain how they compared the amounts. Review answers and reasoning together."
+    }
+  ]
+}

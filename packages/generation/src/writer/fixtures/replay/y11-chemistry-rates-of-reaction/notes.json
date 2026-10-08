@@ -1,0 +1,85 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": [
+        "The flask with the more concentrated hydrochloric acid should produce 20 cm³ of gas first. Its greater concentration means more acid particles collide with the magnesium each second, so there are more successful collisions."
+      ],
+      "misconceptions": "Some pupils may predict that the more concentrated acid produces more total gas, rather than producing gas faster. Explain that concentration affects the rate; with equal magnesium masses and enough acid, the same amount of magnesium can produce the same final volume of hydrogen.",
+      "background": "This prediction links the practical comparison to collision theory: the independent variable is acid concentration, while magnesium mass, acid volume and temperature are kept the same.",
+      "run": "Give pupils 1 minute to think alone, then 2 minutes to explain their prediction to a partner. Take a few responses and ask pupils to justify them using particle collisions."
+    },
+    {
+      "n": 4,
+      "answers": null,
+      "misconceptions": "A bung fitted before timing starts can allow some gas to escape before measurement begins, making the recorded volume too low. Emphasise fitting the bung and starting the timer promptly. A leak also makes the measured gas volume unreliable.",
+      "background": "The reaction is Mg + 2HCl → MgCl₂ + H₂. The gas syringe measures hydrogen volume directly. Taking readings at regular intervals allows pupils to compare how quickly gas is produced.",
+      "run": "Spend about 5 minutes establishing the method. Ask pupils to identify how gas reaches the syringe and to rehearse the sequence in pairs. If carrying out the practical, demonstrate the setup and prompt pupils to record volumes every 10 seconds."
+    },
+    {
+      "n": 5,
+      "answers": null,
+      "misconceptions": "Changing magnesium mass as well as acid concentration would make it impossible to attribute a rate difference to concentration alone. A larger magnesium surface area can also increase rate. Explain that only the independent variable should change; control magnesium mass and surface area, acid volume and temperature. Hydrogen is flammable, so keep it away from flames.",
+      "background": "Repeating each concentration helps identify anomalous results and makes a mean rate more reliable. Using excess acid helps ensure magnesium is the limiting reactant, so differences in final gas volume are not caused by running out of acid.",
+      "run": "Allow about 4 minutes. In pairs, pupils identify the variable changed, the controls and the safety precautions. Take answers and check why each control matters."
+    },
+    {
+      "n": 6,
+      "answers": null,
+      "misconceptions": "Some pupils may divide by the final time without first finding the change in gas volume, or may give a rate in cm³ rather than cm³/s. Reinforce that mean rate is change in volume divided by change in time: (60 − 0) ÷ (40 − 0) = 1.5 cm³/s.",
+      "background": "This is the average rate across the chosen time interval, not the rate at every moment. The reaction is usually fastest near the start and slows as reactants are used up.",
+      "run": "Spend about 3 minutes modelling the subtraction of initial from final volume and time. Ask pupils to say the units aloud and check the calculation with the class."
+    },
+    {
+      "n": 7,
+      "answers": [
+        "80 ÷ 40 = 2 cm³/s.",
+        "60 ÷ 50 = 1.2 cm³/s.",
+        "The first reaction has the greater mean rate: 2 cm³/s is greater than 1.2 cm³/s."
+      ],
+      "misconceptions": "A larger final volume does not necessarily mean a faster reaction. Compare volume produced per second: the second reaction produces 60 cm³, but takes 50 seconds. Keep the units as cm³/s.",
+      "background": "Mean rate comparisons are only meaningful when the measured intervals are clear. Here each rate is calculated over its stated interval; the comparison is between those average rates.",
+      "run": "Give pupils about 5 minutes to calculate independently, showing working and units. Then have pairs compare answers and explain which rate is greater before checking as a class."
+    },
+    {
+      "n": 8,
+      "answers": null,
+      "misconceptions": "Pupils may think successful collisions are guaranteed whenever particles collide. Clarify that a collision must have enough energy to react; increasing concentration raises the frequency of collisions and therefore the number of successful collisions each second.",
+      "background": "Collision theory explains reaction rate in terms of the frequency of successful collisions. For magnesium reacting with hydrochloric acid, acid particles collide with the magnesium surface.",
+      "run": "Spend about 4 minutes talking through the particle explanation. Ask pupils to describe what changes between the two concentrations and connect that change to successful collisions each second."
+    },
+    {
+      "n": 9,
+      "answers": null,
+      "misconceptions": "Some pupils may think concentrated acid reacts faster because its particles move faster or have more kinetic energy. At the same temperature, average kinetic energy is unchanged; the higher concentration means more particles reach the magnesium surface each second.",
+      "background": "Temperature and concentration affect rate in different ways. Raising temperature increases average particle kinetic energy; raising concentration at the same temperature increases the number of particles per unit volume.",
+      "run": "Allow about 3 minutes. Ask pupils to explain which property stays the same and which changes, then correct any claim that concentration makes particles faster."
+    },
+    {
+      "n": 10,
+      "answers": ["B: There are more successful collisions each second."],
+      "misconceptions": "A says every collision reacts; many collisions lack enough energy. C says each particle has more energy; concentration does not increase average kinetic energy. D says particles move faster; at the same temperature their average speed is not increased by concentration. The correct explanation is B: more frequent collisions produce more successful collisions each second.",
+      "background": "This question checks the distinction between collision frequency and collision energy. The latter is affected by temperature, while concentration changes how many particles are available to collide.",
+      "run": "Give pupils about 3 minutes to choose an answer independently and justify it. Ask them to explain why one distractor is wrong before confirming B."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "24 ÷ 30 = 0.8 cm³/s for 0.5 mol/dm³ acid; 42 ÷ 30 = 1.4 cm³/s for 1.0 mol/dm³ acid.",
+        "The magnesium masses were different, so concentration was not the only variable. More magnesium can produce gas differently and changes the comparison; the results cannot show the effect of concentration alone.",
+        "Any two suitable controls: magnesium mass, magnesium surface area, acid volume or temperature. For a fair comparison, use the same value for each test.",
+        "With equal magnesium masses, excess acid and equal temperatures, the more concentrated acid should finish reacting sooner because its rate is higher. The final gas volume should be the same because the same amount of magnesium reacts and produces the same amount of hydrogen."
+      ],
+      "misconceptions": "Pupils may assume the larger gas volume at 30 seconds proves a larger final yield; it only shows more gas was collected by that time. The unequal magnesium masses also confound the comparison. Explain that a fair repeat must use equal magnesium masses and control other relevant variables.",
+      "background": "The gas volume at a fixed time can be used to compare mean rates, but it does not by itself establish the final yield. Magnesium and hydrochloric acid react in a 1:2 mole ratio, and the hydrogen yield depends on the limiting reactant.",
+      "run": "Allow about 8 minutes for pupils to calculate, evaluate the comparison and suggest controls. Invite pupils to attempt the stretch, then review answers and require them to justify the predicted final volume."
+    },
+    {
+      "n": 12,
+      "answers": ["(60 − 12) ÷ (40 − 0) = 48 ÷ 40 = 1.2 cm³/s."],
+      "misconceptions": "Pupils may use the overall curve’s start and end points instead of the stated tangent points. For an instantaneous rate, use the gradient of the tangent: change in volume divided by change in time.",
+      "background": "The gradient of a volume–time graph gives reaction rate. A tangent estimates the gradient at one instant, while a secant between two points on the curve gives a mean rate over an interval.",
+      "run": "Allow about 4 minutes for pupils who are ready for the extension. Ask them to use the tangent’s two points, show the gradient calculation and include cm³/s."
+    }
+  ]
+}

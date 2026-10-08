@@ -1,0 +1,37 @@
+{
+  "objectives": [
+    {
+      "teacher": "Calculate unit fractions of whole-number amounts by dividing by the denominator, where the answer is a whole number.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Calculate non-unit fractions of whole-number amounts by dividing by the denominator and multiplying by the numerator, where the answer is a whole number.",
+      "pupil": ""
+    },
+    {
+      "teacher": "Solve one-step word problems involving fractions of quantities, money and measures, where the answer is a whole number.",
+      "pupil": ""
+    }
+  ],
+  "ran": "primary",
+  "model": "gpt-6.1-sol",
+  "usage": {
+    "prompt_tokens": 272,
+    "completion_tokens": 83,
+    "total_tokens": 355,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "usd": 0.001374,
+  "ms": 2880,
+  "firstTokenMs": 1463
+}

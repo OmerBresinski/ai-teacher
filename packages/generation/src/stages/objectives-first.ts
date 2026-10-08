@@ -5,6 +5,7 @@ import { planTeachObjectivePrompt } from "../prompts/plan-teach-objective";
 import { OUTLINE_FROM_FACTS_VERSION } from "../specs";
 import type { PipelineStageName } from "../types";
 import { STAGE_CHECKPOINT } from "../types";
+import { WRITER_VERSION } from "../writer/ai-services";
 
 /*
  * The objectives-first planner in production (TEACH-93, ADR 0033): which planner a lesson is on,
@@ -14,8 +15,12 @@ import { STAGE_CHECKPOINT } from "../types";
  * half-way through the other planner.
  */
 
-export type Planner = "legacy" | "objectives-first";
-export const PLANNERS = ["legacy", "objectives-first"] as const satisfies readonly Planner[];
+export type Planner = "legacy" | "objectives-first" | "writer";
+export const PLANNERS = [
+  "legacy",
+  "objectives-first",
+  "writer",
+] as const satisfies readonly Planner[];
 
 /** The objectives step's stamp: the objectives are on the row, the facts and outline are not. */
 export const OBJECTIVES_FIRST_VERSION = planObjectivesPrompt.version;
@@ -56,6 +61,39 @@ export const OBJECTIVES_FIRST_CHECKPOINT: Record<ObjectivesFirstStageName, Gener
     repair: STAGE_CHECKPOINT.repair,
   };
 
+/**
+ * The writer planner's `planned` stamp (TEACH-110 part b): the writer's version, then the
+ * objectives step's. It starts with the writer's version, so it is never read as objectives-first.
+ */
+export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${planObjectivesPrompt.version}`;
+
+/** Whether a `promptVersions.planned` stamp was written by the writer planner. */
+export function isWriterStamp(planned: string | undefined): boolean {
+  return planned?.split("+")[0] === WRITER_VERSION;
+}
+
+/** The writer planner's steps: the input check, master's objectives step, then the writer. */
+export type WriterStageName = "check-input" | "objectives" | "write";
+export const WRITER_ORDER: readonly WriterStageName[] = ["check-input", "objectives", "write"];
+export const WRITER_CHECKPOINT: Record<WriterStageName, GenerationStage | null> = {
+  "check-input": null,
+  objectives: "planned",
+  write: "generated",
+};
+
+/**
+ * The first step still to run for a writer lesson: from the input check with no checkpoint; the
+ * writer once the objectives are on the row; nothing once the writer has finished. A `planned`
+ * row with no objectives (a re-plan emptied it) starts over.
+ */
+export function resumeFromWriter(lesson: Lesson): WriterStageName | null {
+  const done = lesson.generation?.stage;
+  if (!done) return "check-input";
+  if (done === "planned")
+    return (lesson.facts?.objectives.length ?? 0) > 0 ? "write" : "check-input";
+  return null;
+}
+
 /** Whether a `promptVersions.planned` stamp was written by the objectives-first planner. */
 export function isObjectivesFirstStamp(planned: string | undefined): boolean {
   if (planned === undefined) return false;
@@ -67,6 +105,7 @@ export function isObjectivesFirstStamp(planned: string | undefined): boolean {
  * the objectives prompt's version, else `legacy` (a legacy stamp, or none at all).
  */
 export function plannerOf(lesson: Lesson): Planner {
+  if (isWriterStamp(lesson.generation?.promptVersions.planned)) return "writer";
   return isObjectivesFirstStamp(lesson.generation?.promptVersions.planned)
     ? "objectives-first"
     : "legacy";

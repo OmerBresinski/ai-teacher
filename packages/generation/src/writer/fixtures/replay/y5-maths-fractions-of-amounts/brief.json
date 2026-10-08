@@ -1,0 +1,19 @@
+{
+  "id": "y5-maths-fractions-of-amounts",
+  "topic": "Fractions of amounts",
+  "subject": "Maths",
+  "yearGroup": "Year 5",
+  "year": 5,
+  "keyStage": "ks2",
+  "theme": "splash",
+  "readingLevel": "Year 5",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "ABLATE",
+  "tier": "standard",
+  "slides": {
+    "min": 9,
+    "max": 12
+  }
+}

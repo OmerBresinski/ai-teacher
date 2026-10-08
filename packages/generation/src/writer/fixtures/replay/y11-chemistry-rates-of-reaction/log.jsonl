@@ -1,0 +1,87 @@
+{"ms":5,"ev":"save","why":"code title","slides":1}
+{"ms":15,"ev":"save","why":"objectives slide (recorded objectives, teacher wording)","slides":1}
+{"ms":12635,"ev":"design","theme":"studio","modelTheme":"studio","teacherTheme":null,"unknownTheme":false,"pictureStyle":"photo"}
+{"ms":12637,"ev":"save","why":"design","slides":1}
+{"ms":14580,"ev":"save","why":"placeholder s3","slides":3}
+{"ms":15556,"ev":"save","why":"placeholder s4","slides":4}
+{"ms":16206,"ev":"save","why":"placeholder s5","slides":5}
+{"ms":16883,"ev":"save","why":"placeholder s6","slides":6}
+{"ms":17465,"ev":"save","why":"placeholder s7","slides":7}
+{"ms":18230,"ev":"save","why":"placeholder s8","slides":8}
+{"ms":19086,"ev":"save","why":"placeholder s9","slides":9}
+{"ms":19633,"ev":"save","why":"placeholder s10","slides":10}
+{"ms":20307,"ev":"save","why":"placeholder s11","slides":11}
+{"ms":21065,"ev":"save","why":"placeholder s12","slides":12}
+{"ms":21068,"ev":"flow","n":12}
+{"ms":21068,"ev":"coverage-flow","untaught":[],"unchecked":[2],"missing":[2]}
+{"ms":22496,"ev":"picture-start","key":"0:picture","shows":"Magnesium ribbon reacting with dilute hydrochloric acid in a flask","aspect":1}
+{"ms":22497,"ev":"save","why":"slide s1","slides":12}
+{"ms":23932,"ev":"save","why":"slide s3","slides":12}
+{"ms":27293,"ev":"diagram-start","key":"3:diagram","kind":"labelled-diagram"}
+{"ms":27295,"ev":"save","why":"slide s4","slides":12}
+{"ms":29057,"ev":"save","why":"slide s5","slides":12}
+{"ms":32009,"ev":"diagram-start","key":"5:figure","kind":"table"}
+{"ms":32011,"ev":"save","why":"slide s6","slides":12}
+{"ms":32036,"ev":"r2-spec-drawn","key":"5:figure","kind":"table"}
+{"ms":32037,"ev":"diagram-done","key":"5:figure","ok":true}
+{"ms":32042,"ev":"save","why":"diagram s6","slides":12}
+{"t":1791461707446,"ev":"picture-outcome","key":"0:picture","director":"library-or-generate","via":"library","route":"generic"}
+{"ms":32326,"ev":"picture-done","key":"0:picture","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a118bb-2d5f-7180-ad75-feb618cca9fb.png","provider":"generated","id":"01a118bb-2d5f-717f-add4-441ab731b8d3","style":"photo"}
+{"ms":32327,"ev":"save","why":"picture s1","slides":12}
+{"ms":6963,"ev":"diagram-call","key":"3:diagram","drawer":"round5","usd":0.00052358,"attempt":0}
+{"ms":34265,"ev":"diagram-done","key":"3:diagram","ok":true}
+{"ms":34341,"ev":"save","why":"diagram s4","slides":12}
+{"ms":34342,"ev":"save","why":"slide s7","slides":12}
+{"ms":36946,"ev":"diagram-start","key":"7:diagram","kind":"particles"}
+{"ms":36948,"ev":"save","why":"slide s8","slides":12}
+{"ms":40292,"ev":"diagram-start","key":"8:diagram","kind":"particles"}
+{"ms":40293,"ev":"save","why":"slide s9","slides":12}
+{"ms":41767,"ev":"save","why":"slide s10","slides":12}
+{"ms":6070,"ev":"diagram-call","key":"7:diagram","drawer":"round5","usd":0.00034030000000000003,"attempt":0,"fault":"notes: Too big: expected array to have <=3 items; key: Too small: expected array to have >=2 items","out":{"kind":"particles","alt":"Two equal-volume panels show twice as many acid particles beside identical magnesium surfaces in the higher-concentration panel, with matching motion arrows.","title":"Concentration and reaction rate","show":"compare","panels":[{"count":4,"speed":"slow","room":"small"},{"count":8,"speed":"slow","room":"small"}],"captions":["Lower concentration","Higher concentration"],"notes":["Same temperature","Same volume","More collisions","Faster reaction"],"lump":"Magnesium surface","motion":true,"key":["Acid particles"]}}
+{"ms":44984,"ev":"save","why":"slide s11","slides":12}
+{"ms":5530,"ev":"diagram-call","key":"8:diagram","drawer":"round5","usd":0.0003413,"attempt":0,"fault":"panels.1.count: Too big: expected number to be <=20; key: Too small: expected array to have >=2 items","out":{"kind":"particles","title":"More particles, not faster","alt":"Equal-sized panels show twice as many acid particles in the concentrated solution, with matching motion-arrow lengths and equal magnesium surfaces.","show":"compare","panels":[{"count":12,"speed":"slow","room":"small"},{"count":24,"speed":"slow","room":"small"}],"captions":["Dilute: 20 °C","Concentrated: 20 °C"],"notes":["Equal magnesium surfaces","Same average speed","More acid reach Mg/s"],"motion":true,"key":["Motion arrows"]}}
+{"ms":6533,"ev":"diagram-call","key":"7:diagram","drawer":"round5","usd":0.0003723,"attempt":1}
+{"ms":49564,"ev":"diagram-done","key":"7:diagram","ok":true}
+{"ms":49580,"ev":"save","why":"diagram s8","slides":12}
+{"ms":50717,"ev":"diagram-start","key":"11:diagram","kind":"line-graph"}
+{"ms":50718,"ev":"save","why":"slide s12","slides":12}
+{"ms":50726,"ev":"r2-spec-drawn","key":"11:diagram","kind":"line-graph"}
+{"ms":50726,"ev":"diagram-done","key":"11:diagram","ok":true}
+{"ms":50729,"ev":"save","why":"diagram s12","slides":12}
+{"ms":4903,"ev":"diagram-call","key":"8:diagram","drawer":"round5","usd":0.000292,"attempt":1}
+{"ms":50729,"ev":"diagram-done","key":"8:diagram","ok":true}
+{"ms":50736,"ev":"save","why":"diagram s9","slides":12}
+{"ms":50933,"ev":"save","why":"all slides","slides":12}
+{"ms":50934,"ev":"save","why":"final s1","slides":12}
+{"ms":50935,"ev":"save","why":"final s3","slides":12}
+{"ms":50976,"ev":"save","why":"final s4","slides":12}
+{"ms":50977,"ev":"save","why":"final s5","slides":12}
+{"ms":50982,"ev":"save","why":"final s6","slides":12}
+{"ms":50983,"ev":"save","why":"final s7","slides":12}
+{"ms":50992,"ev":"save","why":"final s8","slides":12}
+{"ms":50997,"ev":"save","why":"final s9","slides":12}
+{"ms":50997,"ev":"save","why":"final s10","slides":12}
+{"ms":50998,"ev":"save","why":"final s11","slides":12}
+{"ms":51000,"ev":"save","why":"final s12","slides":12}
+{"ms":51004,"ev":"checks","failing":["s4: diagram: figure could not be drawn: the label \"Hydrochloric acid\" sits across a line of the drawing; the labels \"Delivery tube\" and \"Conical flask\" touch","s6: overflow: equation column 395/328pt; clipped: \"Mean rate = 60 ÷ 40 = 1.5 cm³/\" runs off the slide","s9: overflow: text column 354/328pt"],"count":{"slides":12,"min":9,"max":12,"inRange":true}}
+{"ms":55660,"ev":"save","why":"repair s6","slides":12}
+{"ms":55663,"ev":"repair","slide":6,"mode":"fit","usd":0.00036709000000000004,"ok":true,"fix":"layout","reverted":false,"now":[]}
+{"ms":61022,"ev":"save","why":"repair s4","slides":12}
+{"ms":61062,"ev":"save","why":"repair-reverted s4","slides":12}
+{"ms":61062,"ev":"repair","slide":4,"mode":"fit","usd":0.00029169,"ok":true,"fix":"diagram","reverted":true,"now":["diagram: figure could not be drawn: the label \"Hydrochloric acid\" sits across a line of the drawing; the labels \"Delivery tube\" and \"Conical flask\" touch"]}
+{"ms":61675,"ev":"save","why":"repair s9","slides":12}
+{"ms":61676,"ev":"repair","slide":9,"mode":"fit","usd":0.00032499,"ok":true,"fix":"layout","reverted":false,"now":[]}
+{"ms":61678,"ev":"picture-start","key":"3:picture","shows":"A conical flask containing hydrochloric acid and magnesium, sealed with a bung; a delivery tube connects it to a horizontal clamped gas syringe whose plunger can move freely.","aspect":1.2}
+{"t":1791461750231,"ev":"rejected","key":"3:picture","request":"A conical flask containing hydrochloric acid and magnesium, sealed with a bung; a delivery tube connects it to a horizontal clamped gas syringe whose plunger can move freely.. Gas syringe. Clamp stand. Delivery tube. Bung","src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117d5-bc8a-710f-b035-37d6fecffa3a.png","check":"reuse judge","fits":false,"why":"The setup shows the required syringe, tube and bung, but the prominent stopwatch draws attention away from the requested apparatus."}
+{"t":1791461767557,"ev":"picture-outcome","key":"3:picture","director":"library-or-generate","via":"generated","route":"generic"}
+{"ms":92433,"ev":"picture-done","key":"3:picture","ok":true,"src":"/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b71-24c4-7544-828b-e4828a641425.png","provider":"generated","id":"01a11b71-24c4-7543-b96d-40340bd0a287","style":"photo"}
+{"ms":92435,"ev":"save","why":"picture s4","slides":12}
+{"ms":92436,"ev":"save","why":"repair s4","slides":12}
+{"ms":92436,"ev":"visual-path","slide":6,"path":"diagram"}
+{"ms":92436,"ev":"visual-path","slide":8,"path":"diagram"}
+{"ms":92436,"ev":"visual-path","slide":9,"path":"diagram"}
+{"ms":92436,"ev":"visual-path","slide":12,"path":"diagram"}
+{"ms":92436,"ev":"visual-path","slide":4,"path":"picture"}
+{"ms":23828,"ev":"notes","attempt":0,"slides":10,"of":12,"usd":0.0011225}
+{"ms":116275,"ev":"summary","dangling":[],"textOnlyTeach":1,"textOnlySlides":[5],"visualPaths":{"4":"picture","6":"diagram","8":"diagram","9":"diagram","12":"diagram"},"askWithout":[],"capRefused":[]}
+{"ms":116276,"ev":"save","why":"done","slides":12}
