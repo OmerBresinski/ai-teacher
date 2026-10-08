@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { queryCandidates } from "./query";
+import { anchorQueries, queryCandidates } from "./query";
 
 describe("queryCandidates", () => {
   test("three content words, then the drop-a-word retry", () => {
@@ -28,5 +28,25 @@ describe("queryCandidates", () => {
   test("a subject of only stop words falls back to the raw subject", () => {
     expect(queryCandidates({ subject: "The" })).toEqual(["The"]);
     expect(queryCandidates({ subject: "   " })).toEqual([]);
+  });
+});
+
+describe("anchorQueries (PHOTO-BANK round 2)", () => {
+  test("a year with the event word before it", () => {
+    expect(
+      anchorQueries(
+        "German children playing with bundles of worthless banknotes during the hyperinflation crisis of 1923",
+      ),
+    ).toEqual(["hyperinflation 1923"]);
+  });
+  test("two proper names together", () => {
+    expect(
+      anchorQueries(
+        "A theatre production of The Tempest showing Prospero holding a staff, with Ariel",
+      ),
+    ).toEqual(["Tempest Prospero"]);
+  });
+  test("a generic scene has no anchors", () => {
+    expect(anchorQueries("An adult dog and its puppy sitting side by side")).toEqual([]);
   });
 });

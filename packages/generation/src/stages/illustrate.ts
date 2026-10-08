@@ -15,6 +15,11 @@ import {
   pickOrRequerySchemaFor,
 } from "../prompts/pick-or-requery-photo";
 import {
+  type PickOrRequery as DirectedVerdict,
+  pickOrRequeryPrompt as directedJudgePrompt,
+  pickOrRequerySchemaFor as directedJudgeSchemaFor,
+} from "../prompts/pick-or-requery-photo-directed";
+import {
   SHORTLIST_MAX,
   shortlistPhotosPrompt,
   shortlistSchemaFor,
@@ -568,6 +573,25 @@ export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrR
   return brief.mustShow.length === 0 || itemsSeen(brief, verdict).length > 0;
 }
 
+/**
+ * The picture director's gate (the writer planner only; objectives-first keeps `gatePasses` and
+ * its judge): the subject, clearly, and the picture as a whole fits the request; a named sex, age
+ * or kind the picked subject is not (a cockerel for "hen") fails.
+ */
+export function directedGatePasses(
+  brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
+  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+): boolean {
+  if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
+  if (verdict.kindMatches === false) return false;
+  if (brief.mustShow.length === 0) return true;
+  // Items taken from the writer's request are the things the slide's words name (the sheep AND
+  // the lamb), so every one must be in view; a parts list needs one. A real thing's archive
+  // photograph (1923 Germany, a staging of The Tempest) is right with one item in view.
+  const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
+  return itemsSeen(brief, verdict).length >= need;
+}
+
 async function searchPortraits(
   images: PhotoPlacer,
   query: string,
@@ -599,4 +623,410 @@ async function store(
     source: { ...stored.source, evidence },
     evidence,
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The writer planner's photo search (TEACH-251): base4's placement, used only through the picture
+// director (`placeWriterPicture`). Objectives-first keeps `pickPhoto`, judge v7 and `gatePasses`.
+// ---------------------------------------------------------------------------------------------
+
+/** A Commons search as the director's stock path calls it. */
+export type CommonsSearch = (
+  query: string,
+  opts: { perPage: number; signal: AbortSignal },
+) => Promise<PhotoResult[]>;
+
+/** The photo placer with Commons beside Pexels (ruling 139). */
+export type DirectedPlacer = PhotoPlacer & { searchCommons?: CommonsSearch };
+
+/** A placed photo with what its source says it shows and where the judge saw each item. */
+export type DirectedPlacedPhoto = PlacedPhoto & {
+  about?: string;
+  boxes?: DirectedVerdict["boxes"];
+};
+
+type DirectedOutcome =
+  | { outcome: "placed"; photo: DirectedPlacedPhoto; judged: Judged }
+  | { outcome: "empty"; judged?: Judged }
+  | { outcome: "busy" };
+
+/**
+ * `{ pick, visible (≤ 4), count, query }` plus reasoning share one cap: Luna spent 143 of 192
+ * tokens reasoning on a six-photo pick, so 200 failed.
+ */
+const DIRECTED_JUDGE_TOKENS = 1500;
+/** A Commons photo up to 3:2 landscape is kept: the slot crops to cover. */
+const COMMONS_MAX_ASPECT = 1.5;
+/** A Commons photo is kept when its crop to the zone keeps at least this share of it. */
+const COMMONS_MIN_KEPT = 0.45;
+const COMMONS_PER_PAGE = 20;
+
+type PhotoSourceName = "pexels" | "commons";
+
+/**
+ * Whether a photo subject names a specific thing (ruling 139: Commons first): a capitalised word
+ * after the first, or two capitalised words at the start.
+ */
+export function isSpecificSubject(subject: string): boolean {
+  const words = subject.trim().split(/\s+/).filter(Boolean);
+  const cap = (w: string | undefined) => w !== undefined && /^[A-Z][a-z'’-]*[a-z]/.test(w);
+  if (cap(words[0]) && cap(words[1])) return true;
+  return words.slice(1).some((w) => cap(w));
+}
+
+/** The subject as a thing, not a request: no "A photograph of" preamble, no clipped last word. */
+export function plainSubject(subject: string, clipped = subject.length >= 60): string {
+  let s = subject
+    .trim()
+    .replace(
+      /^(?:an? |the )?(?:real |clear |close-up |colour )*(?:photograph|photo|picture|image)s? (?:of|showing) (?:an? |the )?/i,
+      "",
+    );
+  if (clipped) s = s.replace(/\s+\S{1,3}$/, "");
+  return s.trim() || subject.trim();
+}
+
+/** The Pexels orientation for a zone of `aspect` (width over height); portrait when unknown. */
+export function orientationFor(aspect?: number): "portrait" | "landscape" | "square" {
+  if (aspect === undefined) return "portrait";
+  return aspect < 0.92 ? "portrait" : aspect > 1.08 ? "landscape" : "square";
+}
+
+/** The centred crop of a photo to `aspect`, and the share of the photo it keeps. */
+export function cropToAspect(width: number, height: number, aspect: number) {
+  const w = Math.min(width, height * aspect);
+  const h = w / aspect;
+  return { x: (width - w) / 2, y: (height - h) / 2, w, h, kept: (w * h) / (width * height) };
+}
+
+/** The director's gate needs every item only for a generic request with several items. */
+function itemsSeenDirected(
+  brief: Pick<ImageBrief, "mustShow">,
+  verdict: Pick<DirectedVerdict, "visible">,
+): string[] {
+  const seen = new Set(verdict.visible.map(normaliseItem));
+  return brief.mustShow.filter((item) => seen.has(normaliseItem(item)));
+}
+
+/**
+ * One photo slot for the picture director: queries (named thing, director's searches, the lesson
+ * title for a real subject, fact hints, the subject), Commons first for a specific subject with
+ * Pexels as the fallback (a Commons error or busy reply, on the first search or the requery,
+ * never fails the slot), the shortlist with each query's first hit, judge v17 over the source
+ * records, `directedGatePasses`. Throws only a budget stop or an abort.
+ */
+export async function pickDirectedPhoto(args: {
+  lesson: Lesson;
+  index: number;
+  brief: ImageBrief;
+  slideBrief?: string;
+  images: DirectedPlacer;
+  deps: PipelineDeps;
+  /** Pages already placed in this lesson: a photo is never placed twice. */
+  taken?: Set<string>;
+  /** A library picture made for an earlier request, judged against this one. */
+  reuse?: boolean;
+}): Promise<DirectedOutcome> {
+  const brief = { ...args.brief, subject: plainSubject(args.brief.subject) };
+  const { images, deps, index, lesson } = args;
+  const taken = args.taken ?? new Set<string>();
+  const fresh = (photos: PhotoResult[]) => photos.filter((photo) => !taken.has(photo.pageUrl));
+  const candidates: PhotoResult[] = [];
+  const tried: string[] = [];
+  const topHits: PhotoResult[] = [];
+  const real = brief.specific ?? isSpecificSubject(brief.subject);
+  const queries = [
+    ...(brief.named ? [brief.named] : []),
+    ...(brief.queries ?? []),
+    ...(real && lesson.title ? queryCandidates({ subject: lesson.title }) : []),
+    ...factQueryHints(lesson, index),
+    ...queryCandidates(brief),
+  ].filter((q, i, all) => all.indexOf(q) === i);
+  const search = (query: string, source: PhotoSourceName) =>
+    searchDirected(images, query, deps.signal, source, brief.aspect);
+  const gather = async (source: PhotoSourceName): Promise<"busy" | undefined> => {
+    for (const query of queries) {
+      if (candidates.length >= MAX_CANDIDATES) break;
+      // Safety (TEACH-162): a blocked candidate searches nothing.
+      if (isBlockedQuery(query)) {
+        deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
+        continue;
+      }
+      if (!tried.includes(query)) tried.push(query);
+      const photos = await search(query, source);
+      if (photos === "busy") return "busy";
+      let kept = 0;
+      for (const photo of fresh(photos)) {
+        if (candidates.length >= MAX_CANDIDATES || kept >= PER_QUERY) break;
+        if (candidates.some((seen) => seen.id === photo.id)) continue;
+        if (kept === 0) topHits.push(photo);
+        candidates.push(photo);
+        kept += 1;
+      }
+    }
+    return undefined;
+  };
+  // Ruling 139: a named, specific subject searches Commons first and falls back to Pexels.
+  // Ruling 163 (strict): a historical subject (a period) is Commons only. A stock photo is never
+  // its stand-in, so a Commons miss or failure leaves the slot empty.
+  const historical = real && !!brief.period;
+  const commonsFirst = images.searchCommons !== undefined && real;
+  if (historical && !commonsFirst) return { outcome: "empty" };
+  let source: PhotoSourceName = commonsFirst ? "commons" : "pexels";
+  if (commonsFirst) {
+    const got = await gather("commons").catch((error) => {
+      rethrowStop(error);
+      deps.logger.warn({ stage: "illustrate", slideIndex: index, commons: "failed" });
+      return "busy" as const;
+    });
+    // The source follows the candidates: Commons stays the source while it gave any.
+    if (candidates.length === 0) {
+      if (historical) return got === "busy" ? { outcome: "busy" } : { outcome: "empty" };
+      source = "pexels";
+    }
+  }
+  if (source === "pexels" && candidates.length === 0) {
+    if ((await gather("pexels")) === "busy") return { outcome: "busy" };
+  }
+  deps.logger.info({
+    stage: "illustrate",
+    slideIndex: index,
+    source,
+    commonsFirst,
+    candidates: candidates.length,
+  });
+  if (tried.length === 0) return { outcome: "empty" };
+
+  const placeArgs: PlaceArgs = {
+    lesson,
+    slide: undefined,
+    slideBrief: args.slideBrief,
+    brief,
+    images,
+    deps,
+    index,
+  };
+  let pool = candidates;
+  for (let round = 0; round < MAX_JUDGE_CALLS; round++) {
+    const listed = await shortlistDirected(placeArgs, pool);
+    const shortlisted =
+      round === 0
+        ? [...listed, ...topHits.filter((t) => !listed.some((c) => c.id === t.id))].slice(
+            0,
+            SHORTLIST_MAX + 3,
+          )
+        : listed;
+    deps.logger.info({
+      stage: "illustrate",
+      slideIndex: index,
+      pool: pool.length,
+      shortlisted: listed.length,
+      topHits: shortlisted.length - listed.length,
+    });
+    // No caption names the subject: nothing to pick (no photo beats a wrong one). The judge is
+    // still asked, with no candidates, for one new search; on the last round there is none left.
+    const unlisted = pool.length > 0 && shortlisted.length === 0;
+    if (unlisted && round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
+    const verdict = await judgeDirected(placeArgs, shortlisted, tried, args.reuse);
+    deps.logger.info({
+      stage: "illustrate",
+      slideIndex: index,
+      verdict: {
+        pick: verdict.pick,
+        onSubject: verdict.onSubject,
+        clear: verdict.clear,
+        fits: verdict.fits,
+        visible: verdict.visible,
+        why: verdict.why,
+      },
+      shown: shortlisted.map((c) => ({ id: c.id, alt: c.alt.slice(0, 120) })),
+    });
+    // Only a photograph the judge was shown, and no other slide placed meanwhile, is placed.
+    const picked = verdict.pick
+      ? fresh(shortlisted).find((candidate) => candidate.id === verdict.pick)
+      : undefined;
+    if (picked && directedGatePasses(brief, verdict)) {
+      const evidence: PhotoEvidence = {
+        visible: verdict.visible,
+        count: verdict.count ?? "one",
+        alt: picked.alt,
+        promptVersion: directedJudgePrompt.version,
+        thumbnail: picked.src.tiny,
+      };
+      taken.add(picked.pageUrl);
+      const placed = await store(images, picked, brief, evidence);
+      const withAbout: DirectedPlacedPhoto = { ...placed, about: picked.about || picked.alt };
+      return {
+        outcome: "placed",
+        photo: verdict.boxes.length ? { ...withAbout, boxes: verdict.boxes } : withAbout,
+        judged: round === 0 ? "pick" : "query",
+      };
+    }
+    if (picked) {
+      deps.logger.info({
+        stage: "illustrate",
+        slideIndex: index,
+        gated: true,
+        nextCandidate: round < MAX_JUDGE_CALLS - 1 && shortlisted.length > 1,
+        offSubject: !verdict.onSubject,
+        unclear: !verdict.clear,
+        noneVisible: brief.mustShow.length > 0 && itemsSeenDirected(brief, verdict).length === 0,
+      });
+    }
+    // A pick the gate refused with no better search offered is struck off, and the judge looks
+    // again at the rest.
+    if (picked && !verdict.query && round < MAX_JUDGE_CALLS - 1) {
+      const rest = pool.filter((candidate) => candidate.id !== picked.id);
+      if (shortlisted.some((candidate) => candidate.id !== picked.id)) {
+        pool = rest;
+        continue;
+      }
+    }
+    const requery = verdict.query;
+    if (!requery || round === MAX_JUDGE_CALLS - 1) return { outcome: "empty", judged: "none" };
+    if (tried.some((query) => normaliseQuery(query) === normaliseQuery(requery))) {
+      deps.logger.info({ stage: "illustrate", slideIndex: index, repeatedQuery: true });
+      return { outcome: "empty", judged: "query" };
+    }
+    if (isBlockedQuery(requery)) {
+      deps.logger.info({ stage: "illustrate", slideIndex: index, blocked: true });
+      return { outcome: "empty", judged: "query" };
+    }
+    tried.push(requery);
+    // Commons failing during the requery falls back to Pexels (the old spike failed the slide).
+    let photos: PhotoResult[] | "busy" | undefined;
+    if (source === "commons") {
+      photos = await search(requery, "commons").catch((error) => {
+        rethrowStop(error);
+        deps.logger.warn({ stage: "illustrate", slideIndex: index, commons: "requery-failed" });
+        return undefined;
+      });
+      if (photos === undefined || photos === "busy") {
+        if (historical) return { outcome: "empty", judged: "query" };
+        source = "pexels";
+      }
+    }
+    if (source === "pexels") photos = await search(requery, "pexels");
+    if (photos === "busy") return { outcome: "busy" };
+    const unseen = fresh(photos ?? []);
+    if (unseen.length === 0) return { outcome: "empty", judged: "query" };
+    pool = unseen.slice(0, MAX_CANDIDATES);
+  }
+  return { outcome: "empty", judged: "none" };
+}
+
+function rethrowStop(error: unknown): void {
+  if (error instanceof BudgetExceeded) throw error;
+  if (error instanceof Error && error.name === "AbortError") throw error;
+}
+
+async function searchDirected(
+  images: DirectedPlacer,
+  query: string,
+  signal: AbortSignal,
+  source: PhotoSourceName,
+  aspect?: number,
+): Promise<PhotoResult[] | "busy"> {
+  if (source === "commons" && images.searchCommons) {
+    const photos = await images.searchCommons(query, { perPage: COMMONS_PER_PAGE, signal });
+    // With the zone's shape known (ruling 158), a photo is kept when its crop keeps most of it.
+    if (aspect !== undefined)
+      return photos.filter((c) => cropToAspect(c.width, c.height, aspect).kept >= COMMONS_MIN_KEPT);
+    return photos.filter((c) => c.width <= c.height * COMMONS_MAX_ASPECT);
+  }
+  try {
+    const orientation = orientationFor(aspect);
+    const photos = await images.search(query, { orientation, perPage: PER_PAGE, signal });
+    return photos.filter((c) =>
+      orientation === "portrait"
+        ? c.height > c.width
+        : orientation === "landscape"
+          ? c.width > c.height
+          : c.width <= c.height * 1.25 && c.height <= c.width * 1.25,
+    );
+  } catch (error) {
+    if (error instanceof PexelsError && error.status === 429) return "busy";
+    throw error;
+  }
+}
+
+/** The shortlist over the source records (Commons: title, description, date, categories). */
+async function shortlistDirected(args: PlaceArgs, pool: PhotoResult[]): Promise<PhotoResult[]> {
+  const { lesson, brief, deps } = args;
+  if (pool.length <= SHORTLIST_MAX) return pool;
+  try {
+    const call = await callStructured({
+      deps,
+      stage: "illustrate",
+      cls: "small",
+      effort: "low",
+      prompt: shortlistPhotosPrompt,
+      input: {
+        topic: lesson.brief?.topic ?? lesson.title,
+        subject: brief.request ?? brief.subject,
+        mustShow: brief.mustShow,
+        purpose: brief.purpose,
+        avoid: brief.avoid,
+        candidates: pool.map((c) => ({ id: c.id, alt: (c.about ?? c.alt).slice(0, 400) })),
+      },
+      schema: shortlistSchemaFor(pool.map((c) => c.id)),
+      maxOutputTokens: MAX_OUTPUT_TOKENS.shortlist,
+    });
+    const byId = new Map(pool.map((c) => [c.id, c]));
+    return call.output.ids.flatMap((id) => {
+      const c = byId.get(id);
+      return c ? [c] : [];
+    });
+  } catch (error) {
+    rethrowStop(error);
+    deps.logger.info(
+      { stage: "illustrate", slideIndex: args.index, err: error },
+      "shortlist failed",
+    );
+    return firstFew(pool);
+  }
+}
+
+/** Judge v17 over `pool`: thumbnails as image parts, each candidate's source record as text. */
+async function judgeDirected(
+  args: PlaceArgs,
+  pool: PhotoResult[],
+  tried: string[],
+  reuse?: boolean,
+): Promise<DirectedVerdict> {
+  const { lesson, slide, brief, deps } = args;
+  const facts = lesson.facts;
+  const call = await callStructured({
+    deps,
+    stage: "illustrate",
+    cls: "standard",
+    effort: "low",
+    prompt: directedJudgePrompt,
+    input: {
+      topic: lesson.brief?.topic ?? lesson.title,
+      answers: lesson.brief?.answers,
+      lessonTitle: lesson.title,
+      audience: audienceOf(lesson),
+      objectives: facts?.objectives.map((o) => o.text) ?? [],
+      vocabulary: facts?.vocabulary.map((v) => v.term) ?? [],
+      slideBrief: args.slideBrief ?? (slide ? slideText(slide) : brief.subject),
+      subject: brief.request ?? brief.subject,
+      mustShow: brief.mustShow,
+      needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
+      ...(brief.period ? { period: brief.period } : {}),
+      ...(reuse ? { reuse: true } : {}),
+      purpose: brief.purpose,
+      avoid: brief.avoid,
+      queries: tried,
+      candidates: pool.map((c) => ({
+        id: c.id,
+        alt: (c.about ?? c.alt).slice(0, 400),
+        thumbnail: c.src.tiny,
+      })),
+    },
+    schema: directedJudgeSchemaFor(brief),
+    maxOutputTokens: DIRECTED_JUDGE_TOKENS,
+    images: pool.map((c) => ({ id: c.id, url: c.src.tiny })),
+  });
+  return call.output;
 }

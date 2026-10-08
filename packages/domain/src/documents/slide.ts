@@ -161,7 +161,8 @@ export type TextElement = ElementBase & {
  * icon and the export credits page; `provider` widens only when a second provider ships.
  */
 export type PhotoSource = {
-  provider: "pexels";
+  /** `generated`: made by the picture library's image model (ruling 158). */
+  provider: "pexels" | "commons" | "generated";
   /** The provider's photo id. */
   id: string;
   /** The photo's page on the provider, http(s). */
@@ -169,6 +170,11 @@ export type PhotoSource = {
   photographer: string;
   /** The photographer's page on the provider, http(s). */
   photographerUrl: string;
+  /** Commons (ruling 139): the author as credited, the licence, its deed and the file page. */
+  author?: string;
+  licence?: string;
+  licenceUrl?: string;
+  sourceUrl?: string;
   /** What the picker saw in the photo (TEACH-220); absent on older placements. */
   evidence?: {
     visible: string[];
@@ -419,7 +425,7 @@ const TextElementSchema = z.object({
 // refused rather than silently trimmed. Both URLs render as anchors, hence the http(s) gate.
 /** What the picker saw in the photograph it chose (TEACH-220): the text is written to this. */
 /** Hosts a photo thumbnail may be fetched from on the pipeline's behalf, per provider. */
-export const THUMBNAIL_HOSTS: readonly string[] = ["images.pexels.com"];
+export const THUMBNAIL_HOSTS: readonly string[] = ["images.pexels.com", "upload.wikimedia.org"];
 
 export function isTrustedThumbnail(value: string): boolean {
   if (/^data:image\/[a-z0-9.+-]+[;,]/i.test(value)) return true;
@@ -451,11 +457,16 @@ export const PhotoEvidenceSchema = z.strictObject({
 export type PhotoEvidence = z.infer<typeof PhotoEvidenceSchema>;
 
 export const PhotoSourceSchema = z.strictObject({
-  provider: z.enum(["pexels"]),
+  provider: z.enum(["pexels", "commons", "generated"]),
   id: z.string().min(1),
   pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
   photographer: z.string(),
   photographerUrl: z.string().refine(isLinkableHref, "photographerUrl must be an http(s) address"),
+  /** Clipped at 200 characters by `@tj/images` (`COMMONS_AUTHOR_MAX`). */
+  author: z.string().max(200).optional(),
+  licence: z.string().optional(),
+  licenceUrl: z.string().refine(isLinkableHref, "licenceUrl must be an http(s) address").optional(),
+  sourceUrl: z.string().refine(isLinkableHref, "sourceUrl must be an http(s) address").optional(),
   /** Present on a photo the pipeline's judge chose by looking at it; absent on older placements. */
   evidence: PhotoEvidenceSchema.optional(),
 });

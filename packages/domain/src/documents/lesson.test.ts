@@ -347,14 +347,28 @@ describe("image source (Images project, Decision 5)", () => {
     expect(path).toEqual(["elements", 0, "source", "photographerUrl"]);
   });
 
-  test("provider is pexels only", () => {
+  test("provider is pexels or commons only", () => {
     const path = firstIssuePath(imageSlide({ source: { ...source, provider: "openverse" } }));
     expect(path).toEqual(["elements", 0, "source", "provider"]);
   });
 
   test("source is strict: an extra key is refused", () => {
-    const slide = imageSlide({ source: { ...source, licence: "x" } });
+    const slide = imageSlide({ source: { ...source, licenseName: "x" } });
     expect(SlideSchema.safeParse(slide).success).toBe(false);
+  });
+
+  test("a Commons source carries author, licence, licence URL and file page (ruling 139)", () => {
+    const commons = {
+      ...source,
+      provider: "commons",
+      author: "Ada",
+      licence: "CC BY-SA 4.0",
+      licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Wall.jpg",
+    };
+    expect(SlideSchema.safeParse(imageSlide({ source: commons })).success).toBe(true);
+    const bad = { ...commons, licenceUrl: "javascript:alert(1)" };
+    expect(SlideSchema.safeParse(imageSlide({ source: bad })).success).toBe(false);
   });
 
   test("credit, creditUrl and source can all be present", () => {

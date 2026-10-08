@@ -1,5 +1,26 @@
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {
+  COMMONS_AUTHOR_MAX,
+  COMMONS_BUSY_RETRIES,
+  COMMONS_MAX_RETRY_AFTER_MS,
+  COMMONS_USER_AGENT,
+  type CommonsClient,
+  type CommonsCredit,
+  CommonsError,
+  type CommonsLicence,
+  type CommonsPhoto,
+  type CommonsSearchParams,
+  clipAuthor,
+  commonsPhotosOf,
+  commonsSearch,
+  coordinatesOf,
+  createCommonsClient,
+  judgeCommonsFile,
+  licenceClass,
+  rankCommons,
+} from "./commons";
+export { type CountArray, countArraySvg } from "./count-array";
+export {
   type CreatePexelsClientOptions,
   createPexelsClient,
   type PexelsClient,
@@ -9,7 +30,7 @@ export {
   type PhotoResult,
   type PhotoSearchPage,
 } from "./pexels";
-export { normaliseQuery, queryCandidates } from "./query";
+export { anchorQueries, normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,
   MAX_PHOTO_BYTES,

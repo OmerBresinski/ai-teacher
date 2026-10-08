@@ -232,3 +232,65 @@ describe("storePhoto", () => {
     expect((error as Error).message).toBe("disk full");
   });
 });
+
+describe("storePhoto, Commons files", () => {
+  const commonsPhoto = (author: string) =>
+    ({
+      ...photo(),
+      id: "commons-1",
+      pageUrl: "https://commons.wikimedia.org/wiki/File:Wall.jpg",
+      src: {
+        large: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Wall.jpg",
+        medium: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Wall.jpg",
+        tiny: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Wall.jpg",
+      },
+      provider: "commons",
+      licenceClass: "cc-by-sa",
+      credit: {
+        author,
+        licence: "CC BY-SA 4.0",
+        licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Wall.jpg",
+      },
+    }) as PhotoResult;
+
+  test("a Commons file is downloaded through the client's queue, not a direct fetch", async () => {
+    const { storage } = memoryStorage();
+    const { fetch, seen } = stubFetch(threeHundredKb, "image/jpeg");
+    const viaQueue: string[] = [];
+    const stored = await storePhoto({
+      photo: commonsPhoto("Ada"),
+      target: "slide",
+      storage,
+      workspaceId: ws,
+      fetch,
+      commons: {
+        fetchFile: async (url) => {
+          viaQueue.push(url);
+          return new Response(threeHundredKb, { headers: { "content-type": "image/jpeg" } });
+        },
+      },
+    });
+    expect(viaQueue).toEqual(["https://upload.wikimedia.org/wikipedia/commons/a/ab/Wall.jpg"]);
+    expect(seen).toEqual([]);
+    expect(stored.source.provider).toBe("commons");
+    expect(stored.source.author).toBe("Ada");
+  });
+
+  test("a long author is clipped to 200 characters and the source still parses", async () => {
+    const { storage } = memoryStorage();
+    const { fetch } = stubFetch(threeHundredKb, "image/jpeg");
+    const stored = await storePhoto({
+      photo: commonsPhoto("x".repeat(5000)),
+      target: "slide",
+      storage,
+      workspaceId: ws,
+      fetch,
+    });
+    expect(stored.source.author?.length).toBe(200);
+    expect(PhotoSourceSchema.parse(stored.source).author?.length).toBe(200);
+    expect(PhotoSourceSchema.safeParse({ ...stored.source, author: "y".repeat(201) }).success).toBe(
+      false,
+    );
+  });
+});
