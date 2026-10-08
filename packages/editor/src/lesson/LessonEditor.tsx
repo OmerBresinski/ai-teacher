@@ -513,10 +513,14 @@ export function LessonEditor({
                             <aside data-editor-companion="desktop">{companion}</aside>
                           ) : null}
                           {factsOpen ? <FactsPanel onClose={() => setFactsOpen(false)} /> : null}
-                          {editChat.open ? (
+                          {/* The pane stays mounted: closed, it is the bubble (the way in), and a request in
+                              flight carries on (TEACH-97). */}
+                          {chatAvailable ? (
                             <EditChatPane
                               lessonId={lessonId}
+                              open={editChat.open}
                               onClose={editChat.toggle}
+                              onReopen={editChat.openAndFocus}
                               focusTick={chatFocusTick}
                             />
                           ) : null}

@@ -81,14 +81,18 @@ const edit = (req: PromptEditRequest, text: string, summary: string): PromptEdit
 });
 
 describe("Edit with Dayback pane", () => {
-  test("the top bar button opens and closes it; the state is remembered", () => {
+  test("closing folds it into the bubble, which opens it again; the state is remembered", () => {
     const { pane } = setup(() => Promise.resolve({ action: "no-change", reason: "No change." }));
     expect(pane()).toBeTruthy();
-    const toggle = screen.getByRole("button", { name: EDIT_CHAT_LABEL });
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(toggle);
+    // No top-bar button: the bubble is the way in.
+    expect(screen.queryByRole("button", { name: EDIT_CHAT_LABEL })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Edit with Dayback" })).toBeNull();
+    fireEvent.click(within(pane()).getByRole("button", { name: "Close Edit with Dayback" }));
     expect(screen.queryByRole("complementary", { name: EDIT_CHAT_LABEL })).toBeNull();
     expect(window.localStorage.getItem(PANE_OPEN_KEY)).toBe("0");
+    fireEvent.click(screen.getByRole("button", { name: "Open Edit with Dayback" }));
+    expect(pane()).toBeTruthy();
+    expect(window.localStorage.getItem(PANE_OPEN_KEY)).toBe("1");
   });
 
   test("the chip follows the selection, and removing it widens to the whole lesson", () => {
@@ -320,14 +324,18 @@ describe("late answers and rejected turns", () => {
     return { answer, resolve: (a: PromptEditAnswer) => resolve(a), signal: () => signal };
   }
 
-  test("closing the pane mid-request cancels it: the slide does not change, and the thread says so", async () => {
+  const bubble = () => screen.getByRole("button", { name: /^Dayback|^Open Edit with Dayback/ });
+
+  test("closing the pane mid-request carries on: the answer applies, and the bubble shows a dot", async () => {
     const d = deferred();
-    const { say, read, lesson } = setup(d.answer);
+    const { say, read, lesson, pane } = setup(d.answer);
     await say("Make it harder");
     const sent = read().slides[0] as NonNullable<Lesson["slides"][number]>;
-    fireEvent.click(screen.getByRole("button", { name: EDIT_CHAT_LABEL }));
+    fireEvent.click(within(pane()).getByRole("button", { name: "Close Edit with Dayback" }));
     expect(screen.queryByRole("complementary", { name: EDIT_CHAT_LABEL })).toBeNull();
-    expect(d.signal()?.aborted).toBe(true);
+    expect(d.signal()?.aborted).toBe(false);
+    expect(bubble().getAttribute("aria-label")).toBe("Dayback, working");
+    expect(document.activeElement).toBe(bubble());
     await act(async () => {
       d.resolve({
         action: "edit",
@@ -335,8 +343,60 @@ describe("late answers and rejected turns", () => {
         summary: "Made it harder.",
       });
     });
+    expect(textOf(read())).toBe("Harder.");
+    expect(bubble().getAttribute("aria-label")).toBe("Dayback, 1 new reply");
+    expect(bubble().querySelector("[data-edit-chat-dot='reply']")).toBeTruthy();
+    expect(document.querySelector("[data-edit-chat-announce]")?.getAttribute("role")).toBe(
+      "status",
+    );
+    expect(document.querySelector("[data-edit-chat-announce]")?.textContent).toBe(
+      "Dayback: Slide 1: Made it harder.",
+    );
+    expect(readThread(lesson.id).map((t) => t.reply.text)).toEqual(["Slide 1: Made it harder."]);
+    fireEvent.click(bubble());
+    expect(within(pane()).getByText("Slide 1: Made it harder.")).toBeTruthy();
+    expect(document.activeElement).toBe(
+      within(pane()).getByRole("textbox", { name: "What to change" }),
+    );
+    // Read: closing again shows the plain bubble, with no dot.
+    fireEvent.click(within(pane()).getByRole("button", { name: "Close Edit with Dayback" }));
+    expect(bubble().getAttribute("aria-label")).toBe("Open Edit with Dayback");
+    expect(bubble().querySelector("[data-edit-chat-dot]")).toBeNull();
+  });
+
+  test("a failure while closed shows a quiet error dot, and the pane explains on open", async () => {
+    const d = deferred();
+    const { say, read, pane } = setup(d.answer);
+    await say("Make it harder");
+    fireEvent.click(within(pane()).getByRole("button", { name: "Close Edit with Dayback" }));
+    await act(async () => {
+      d.resolve({ action: "failed", reason: "That edit didn’t work. Try again." });
+    });
     expect(textOf(read())).toBe(ORIGINAL);
-    expect(readThread(lesson.id).map((t) => t.reply.text)).toEqual(["Stopped. Nothing changed."]);
+    expect(bubble().getAttribute("aria-label")).toBe("Dayback, 1 new reply: that edit didn’t work");
+    expect(bubble().querySelector("[data-edit-chat-dot='failed']")).toBeTruthy();
+    expect(document.querySelector("[data-edit-chat-announce]")?.textContent).toBe(
+      "Dayback: that edit didn’t work.",
+    );
+    // The bubble is a real button: keyboard focus and Enter reopen the pane.
+    bubble().focus();
+    expect(document.activeElement).toBe(bubble());
+    await act(async () => {
+      fireEvent.click(document.activeElement as HTMLElement);
+    });
+    expect(within(pane()).getByRole("alert").textContent).toBe("That edit didn’t work. Try again.");
+  });
+
+  test("Stop in the pane still cancels, and closing afterwards shows no dot", async () => {
+    const d = deferred();
+    const { say, read, pane } = setup(d.answer);
+    await say("Make it harder");
+    fireEvent.click(within(pane()).getByRole("button", { name: "Stop" }));
+    expect(d.signal()?.aborted).toBe(true);
+    expect(within(pane()).getByText("Stopped. Nothing changed.")).toBeTruthy();
+    fireEvent.click(within(pane()).getByRole("button", { name: "Close Edit with Dayback" }));
+    expect(bubble().getAttribute("aria-label")).toBe("Open Edit with Dayback");
+    expect(textOf(read())).toBe(ORIGINAL);
   });
 
   test("a late answer never overwrites what the teacher typed meanwhile; it is offered again", async () => {

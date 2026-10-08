@@ -9,16 +9,7 @@ import {
   PopoverTrigger,
   Tooltip,
 } from "@tj/ui";
-import {
-  ArrowLeft,
-  ChevronDown,
-  FileText,
-  ListChecks,
-  Play,
-  Redo2,
-  Sparkles,
-  Undo2,
-} from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, ListChecks, Play, Redo2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { InlineTitle } from "../kit/InlineTitle";
 import { PanelSeparator } from "../kit/Panel";
@@ -27,7 +18,6 @@ import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
 import { enterPresentFullscreen } from "../present/use-fullscreen";
 import { useHistory, useLesson } from "./document-context";
-import { EDIT_CHAT_LABEL, useEditChat } from "./edit-chat/edit-chat-context";
 import { ThemeCallout } from "./ThemeDialog";
 import { useCompactChrome } from "./use-compact-chrome";
 import { useMobileEditor } from "./use-mobile-editor";
@@ -78,7 +68,6 @@ export function TopBar({
   const mobile = useMobileEditor();
   const { dispatch, undo, redo, canUndo, canRedo } = useHistory();
   const worksheetId = lesson.artefacts?.worksheetId;
-  const editChat = useEditChat();
 
   const present = async () => {
     // Before the await: the fullscreen request needs this click's gesture (ruling 104).
@@ -90,18 +79,6 @@ export function TopBar({
   const secondaryActions = (
     <>
       <QuietButton label="Share" hintLabel="Sharing is not available yet" />
-      {editChat.available ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-pressed={editChat.open}
-          data-edit-chat-toggle
-          onClick={editChat.toggle}
-        >
-          <Sparkles aria-hidden size={16} strokeWidth={1.5} />
-          {EDIT_CHAT_LABEL}
-        </Button>
-      ) : null}
       {onToggleFacts ? (
         <Button
           variant="ghost"

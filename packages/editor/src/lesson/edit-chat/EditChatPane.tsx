@@ -16,6 +16,7 @@ import {
   useSessionActions,
   useSessionRead,
 } from "../use-editor-session";
+import { type BubbleState, EditChatBubble } from "./EditChatBubble";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   type Alternative,
@@ -70,11 +71,17 @@ const newId = () => Math.random().toString(36).slice(2, 10);
 
 export function EditChatPane({
   lessonId,
+  open = true,
   onClose,
+  onReopen,
   focusTick,
 }: {
   lessonId: string;
+  /** Closed, the pane stays mounted (a request carries on) and shows as the bubble. */
+  open?: boolean;
   onClose: () => void;
+  /** The bubble's click: open the pane again. */
+  onReopen?: () => void;
   /** Bumped by `openAndFocus`: the composer takes the cursor. */
   focusTick: number;
 }) {
@@ -97,9 +104,9 @@ export function EditChatPane({
   lessonRef.current = lesson;
 
   useEffect(() => writeThread(lessonId, thread), [lessonId, thread]);
-  // Closing the pane (or leaving the editor) mid-request cancels it, so a late answer is never
-  // applied unseen: the slide stays as it was, and the stored turn reads back as "Stopped.
-  // Nothing changed." (`readThread`), which is then the truth (ruling 173).
+  // Closing the pane never cancels: it stays mounted as the bubble and the answer applies under
+  // the usual rules. Only Stop, or leaving the editor, cancels; a turn cut off by leaving reads
+  // back as "Stopped. Nothing changed." (`readThread`), which is then the truth (ruling 173).
   useEffect(
     () => () => {
       pending.current?.controller.abort();
@@ -127,7 +134,45 @@ export function EditChatPane({
   const scope: EditScope = widened ? {} : selectedScope;
   const chip = scopeLabel(lesson, scope, widened ? 1 : selection.length);
   const suggestions = draft.trim() === "" ? suggestionsFor(lesson, scope) : [];
-  const busy = thread.some((t) => t.reply.kind === "pending");
+  const pendingId = thread.find((t) => t.reply.kind === "pending")?.id;
+  const busy = pendingId !== undefined;
+
+  // An answer that lands while the pane is closed leaves a dot on the bubble; opening the pane
+  // shows that turn and clears it.
+  const [unread, setUnread] = useState<{ id: string; failed: boolean; text: string } | null>(null);
+  // Closed from the pane's own button: focus moves to the bubble rather than being lost.
+  const closedHere = useRef(false);
+  if (open) closedHere.current = false;
+  const openRef = useRef(open);
+  openRef.current = open;
+  const lastPending = useRef(pendingId);
+  useEffect(() => {
+    const was = lastPending.current;
+    lastPending.current = pendingId;
+    if (!was || was === pendingId || openRef.current) return;
+    const turn = thread.find((t) => t.id === was);
+    if (!turn || turn.reply.kind === "pending" || turn.reply.kind === "stopped") return;
+    const failed = turn.reply.kind === "failed";
+    setUnread({
+      id: was,
+      failed,
+      text: failed ? "Dayback: that edit didn’t work." : `Dayback: ${turn.reply.text}`,
+    });
+  }, [pendingId, thread]);
+  useEffect(() => {
+    if (!open || !unread) return;
+    list.current
+      ?.querySelector(`[data-edit-turn-id="${unread.id}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+    setUnread(null);
+  }, [open, unread]);
+  const bubble: BubbleState = busy
+    ? "working"
+    : unread
+      ? unread.failed
+        ? "failed"
+        : "reply"
+      : "idle";
 
   const update = useCallback((id: string, patch: (t: Turn) => Turn) => {
     setThread((all) => all.map((t) => (t.id === id ? patch(t) : t)));
@@ -396,108 +441,130 @@ export function EditChatPane({
   };
 
   return (
-    <aside
-      aria-label={EDIT_CHAT_LABEL}
-      data-edit-chat
-      className="flex w-(--edit-chat-width,360px) shrink-0 flex-col border-border border-l bg-card"
-    >
-      <header className="flex h-10 shrink-0 items-center gap-2 border-border border-b px-3">
-        <Sparkles aria-hidden size={16} strokeWidth={1.5} className="text-ink-3" />
-        <h2 className="m-0 font-semibold text-body">{EDIT_CHAT_LABEL}</h2>
-        <IconButton label="Close Edit with Dayback" size="sm" className="ml-auto" onClick={onClose}>
-          <X aria-hidden size={16} strokeWidth={1.5} />
-        </IconButton>
-      </header>
-      <ol
-        ref={list}
-        aria-label="Edits"
-        aria-live="polite"
-        className="m-0 flex flex-1 list-none flex-col gap-3 overflow-y-auto p-3"
+    <>
+      <aside
+        aria-label={EDIT_CHAT_LABEL}
+        data-edit-chat
+        hidden={!open}
+        className={cn(
+          "w-(--edit-chat-width,360px) shrink-0 flex-col border-border border-l bg-card",
+          open ? "flex" : "hidden",
+        )}
       >
-        {thread.length === 0 ? (
-          <li className="text-ink-3 text-meta">
-            Say what to change. Select a text box or a slide first, or ask about the slide you are
-            on.
-          </li>
-        ) : null}
-        {thread.map((t) => (
-          <TurnItem
-            key={t.id}
-            turn={t}
-            onUndo={() => undoTurn(t)}
-            onShow={() => showOnSlide(t)}
-            onStop={stop}
-            onAlternative={(a) => void send(a.instruction, a.scope, a.label)}
-            onUseLate={() => applyLate(t)}
-            lateCurrent={t.late ? lateIsCurrent(lesson, t.late) : false}
-            busy={busy}
-          />
-        ))}
-      </ol>
-      <form
-        onSubmit={submit}
-        className="flex shrink-0 flex-col gap-2 border-border border-t p-3"
-        data-edit-chat-composer
-      >
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            data-edit-chat-scope
-            className="inline-flex items-center gap-1 rounded-full border border-border bg-background py-0.5 pr-1 pl-2.5 text-meta"
-          >
-            {chip}
-            {scope.slideId ? (
-              <button
-                type="button"
-                aria-label={`Remove ${chip}: edit the whole lesson`}
-                className="inline-flex size-5 items-center justify-center rounded-full text-ink-3 hover:bg-muted hover:text-foreground"
-                onClick={() => setWidened(true)}
-              >
-                <X aria-hidden size={12} strokeWidth={1.75} />
-              </button>
-            ) : (
-              <span className="w-1.5" />
-            )}
-          </span>
-        </div>
-        {suggestions.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5" data-edit-chat-suggestions>
-            {suggestions.map((s: Suggestion) => (
-              <Button
-                key={s.label}
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                onClick={() => void send(s.instruction, scope, s.label)}
-              >
-                {s.label}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-        <div className="flex items-end gap-1.5">
-          <Textarea
-            ref={field}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void send(draft, scope);
-              }
+        <header className="flex h-10 shrink-0 items-center gap-2 border-border border-b px-3">
+          <Sparkles aria-hidden size={16} strokeWidth={1.5} className="text-ink-3" />
+          <h2 className="m-0 font-semibold text-body">{EDIT_CHAT_LABEL}</h2>
+          <IconButton
+            label="Close Edit with Dayback"
+            size="sm"
+            className="ml-auto"
+            onClick={() => {
+              closedHere.current = true;
+              onClose();
             }}
-            placeholder="Say what to change"
-            aria-label="What to change"
-            maxLength={500}
-            rows={2}
-            className="min-h-0 resize-none"
-          />
-          <IconButton label="Send" type="submit" disabled={busy || draft.trim() === ""}>
-            <ArrowUp aria-hidden size={18} strokeWidth={1.75} />
+          >
+            <X aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
-        </div>
-      </form>
-    </aside>
+        </header>
+        <ol
+          ref={list}
+          aria-label="Edits"
+          aria-live="polite"
+          className="m-0 flex flex-1 list-none flex-col gap-3 overflow-y-auto p-3"
+        >
+          {thread.length === 0 ? (
+            <li className="text-ink-3 text-meta">
+              Say what to change. Select a text box or a slide first, or ask about the slide you are
+              on.
+            </li>
+          ) : null}
+          {thread.map((t) => (
+            <TurnItem
+              key={t.id}
+              turn={t}
+              onUndo={() => undoTurn(t)}
+              onShow={() => showOnSlide(t)}
+              onStop={stop}
+              onAlternative={(a) => void send(a.instruction, a.scope, a.label)}
+              onUseLate={() => applyLate(t)}
+              lateCurrent={t.late ? lateIsCurrent(lesson, t.late) : false}
+              busy={busy}
+            />
+          ))}
+        </ol>
+        <form
+          onSubmit={submit}
+          className="flex shrink-0 flex-col gap-2 border-border border-t p-3"
+          data-edit-chat-composer
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              data-edit-chat-scope
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background py-0.5 pr-1 pl-2.5 text-meta"
+            >
+              {chip}
+              {scope.slideId ? (
+                <button
+                  type="button"
+                  aria-label={`Remove ${chip}: edit the whole lesson`}
+                  className="inline-flex size-5 items-center justify-center rounded-full text-ink-3 hover:bg-muted hover:text-foreground"
+                  onClick={() => setWidened(true)}
+                >
+                  <X aria-hidden size={12} strokeWidth={1.75} />
+                </button>
+              ) : (
+                <span className="w-1.5" />
+              )}
+            </span>
+          </div>
+          {suggestions.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5" data-edit-chat-suggestions>
+              {suggestions.map((s: Suggestion) => (
+                <Button
+                  key={s.label}
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void send(s.instruction, scope, s.label)}
+                >
+                  {s.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+          <div className="flex items-end gap-1.5">
+            <Textarea
+              ref={field}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  void send(draft, scope);
+                }
+              }}
+              placeholder="Say what to change"
+              aria-label="What to change"
+              maxLength={500}
+              rows={2}
+              className="min-h-0 resize-none"
+            />
+            <IconButton label="Send" type="submit" disabled={busy || draft.trim() === ""}>
+              <ArrowUp aria-hidden size={18} strokeWidth={1.75} />
+            </IconButton>
+          </div>
+        </form>
+      </aside>
+      {open ? null : (
+        <EditChatBubble
+          state={bubble}
+          announcement={unread?.text ?? ""}
+          takeFocus={closedHere.current}
+          onOpen={() => onReopen?.()}
+        />
+      )}
+    </>
   );
 }
 
@@ -524,7 +591,7 @@ function TurnItem({
   const { reply, late } = turn;
   const pendingLate = late && !late.used ? late : undefined;
   return (
-    <li className="flex flex-col gap-1.5" data-edit-turn={reply.kind}>
+    <li className="flex flex-col gap-1.5" data-edit-turn={reply.kind} data-edit-turn-id={turn.id}>
       <div className="flex flex-col items-end gap-0.5">
         <p className="m-0 max-w-[85%] rounded-lg bg-muted px-2.5 py-1.5 text-body">{turn.said}</p>
         <span className="text-ink-3 text-meta">{turn.scopeLabel}</span>

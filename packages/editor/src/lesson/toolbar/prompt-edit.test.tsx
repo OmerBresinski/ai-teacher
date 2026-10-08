@@ -41,7 +41,7 @@ describe("the text toolbar's sparkle", () => {
     clickBox(container);
     const bar = screen.getByRole("toolbar", { name: "Text" });
     expect(within(bar).queryByRole("button", { name: PROMPT_EDIT_LABEL })).toBeNull();
-    expect(screen.queryByRole("button", { name: EDIT_CHAT_LABEL })).toBeNull();
+    expect(screen.queryByRole("button", { name: new RegExp(EDIT_CHAT_LABEL) })).toBeNull();
   });
 
   test("opens the pane with the composer focused, and the open state is remembered", () => {

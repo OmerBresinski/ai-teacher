@@ -29,7 +29,7 @@ export function SaveIndicator({ autosave }: { autosave: SaveStateSource }) {
       data-save-state={state}
       data-tabular
       className={cn(
-        "mr-1 inline-flex items-center gap-1.5 text-meta",
+        "mr-1 inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-meta",
         failed ? "text-destructive" : "text-ink-3",
       )}
     >
