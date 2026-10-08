@@ -14,13 +14,14 @@ const WRITER = readdirSync(join(SRC, "writer"))
   .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "services.ts")
   .map((f) => `writer/${f}`);
 /**
- * The writer planner's picture director (TEACH-251 part b) has none. illustrate.ts and
+ * The writer planner's picture director (TEACH-251 part b) and its set maker (TEACH-237) have none. illustrate.ts and
  * photo-bank.ts belong to objectives-first, prod's default pipeline, where a budget stop is no
  * picture rather than a stop; moving them would change current behaviour (Tech debt ticket), so
  * their bare catches may only go down.
  */
 const PICTURE_BARE: Record<string, number> = {
   "stages/picture-director.ts": 0,
+  "stages/picture-set.ts": 0,
   "stages/illustrate.ts": 8,
   "stages/photo-bank.ts": 10,
 };

@@ -22,6 +22,7 @@ import {
 import { callStructured } from "../call";
 import { SET_JUDGE_TOKENS, SetJudgeSchema, setJudgePrompt } from "../prompts/set-judge";
 import type { PipelineDeps } from "../types";
+import { nonFatal, whenNonFatal } from "../writer/services";
 import { judgeMadeDirected, plainSubject } from "./illustrate";
 import { mustShowOf } from "./photo-bank";
 import {
@@ -339,23 +340,15 @@ export async function makePictureSet(
       ...(boxes?.length ? { boxes } : {}),
     };
   };
-  const rethrowAbort = (e: unknown) => {
-    if (e instanceof Error && e.name === "AbortError") throw e;
-  };
+  // A budget stop or an abort (`isFatal`) stops the set: no more paid pictures once the budget is gone.
   const judge = (a: SetAsk, url: string) =>
-    deps.judgePanel(a, url, slotAspect).catch((e): PanelVerdict => {
-      rethrowAbort(e);
-      return { ok: false };
-    });
+    deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
   deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, aspect: slotAspect });
 
   /** Panels judged alone and as a set; each passing panel placed. */
   const settle = async (panels: Uint8Array[], judged: PanelVerdict[], usd: number, set: string) => {
     const urls = panels.map(dataUrl);
-    const verdict = await deps.judgeSet(shows, urls).catch((e) => {
-      rethrowAbort(e);
-      return undefined;
-    });
+    const verdict = await deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined));
     const odd = new Set(verdict?.odd ?? []);
     const pass = judged.map((j, k) => j.ok && (!verdict || verdict.same || !odd.has(k)));
     deps.log({
@@ -376,12 +369,12 @@ export async function makePictureSet(
   };
 
   let first: (SetPicture | undefined)[] = asks.map(() => undefined);
-  try {
+  const attempt = async (): Promise<(SetPicture | undefined)[] | "none" | undefined> => {
     if (mode === "strip") {
       // Base4: one strip only (a second doubled the cost and failed the same way).
       for (let attempt = 0; attempt < STRIP_ATTEMPTS; attempt++) {
         const made = await generate(setImagePrompt(shows, look, same), setSize(asks.length));
-        if (!made) return asks.map(() => undefined);
+        if (!made) return "none";
         const panels = splitPanels(made.bytes, asks.length);
         const dup = duplicatePanels(panels);
         if (dup.length)
@@ -396,7 +389,7 @@ export async function makePictureSet(
       // One 2x2 grid; a set of 3 has a spare cell (its first picture again). Every cell is judged
       // against its picture; a picture takes its own cell when that passes, else its spare.
       const made = await generate(gridImagePrompt(shows, look, same), GRID_SIZE);
-      if (!made) return asks.map(() => undefined);
+      if (!made) return "none";
       const cells = splitGrid(made.bytes, 4, { cols: 2, rows: 2 });
       const n = asks.length;
       const all = await Promise.all(
@@ -420,7 +413,7 @@ export async function makePictureSet(
           return m ? m : undefined;
         }),
       );
-      if (made.every((m) => !m)) return asks.map(() => undefined);
+      if (made.every((m) => !m)) return "none";
       const panels = made.map((m) => m?.bytes ?? new Uint8Array());
       const judged = await Promise.all(
         asks.map((a, k) => (made[k] ? judge(a, dataUrl(panels[k] as Uint8Array)) : { ok: false })),
@@ -428,26 +421,30 @@ export async function makePictureSet(
       const usd = made.reduce((t, m) => t + (m?.costUsd ?? 0), 0);
       first = await settle(panels, judged, usd, `${setKey}#solo`);
     }
-  } catch (e) {
-    rethrowAbort(e);
+    return undefined;
+  };
+  const tried = await nonFatal(attempt, (e) => {
     deps.log({ ev: "set-error", set: setKey, mode, err: String(e).slice(0, 200) });
-  }
+    return undefined;
+  });
+  if (tried === "none") return asks.map(() => undefined);
   // Partial-set fallback (one regenerate per slot): each panel not placed is generated alone, same
   // request in the lesson's look, judged alone; placed panels are kept.
-  const solo = async (a: SetAsk, k: number): Promise<SetPicture | undefined> => {
-    try {
-      const made = await generate(soloImagePrompt(a.shows, look), setSize(1));
-      if (!made) return undefined;
-      const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
-      deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
-      if (!verdict.ok) return undefined;
-      return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
-    } catch (e) {
-      rethrowAbort(e);
-      deps.log({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
-      return undefined;
-    }
-  };
+  const solo = (a: SetAsk, k: number): Promise<SetPicture | undefined> =>
+    nonFatal(
+      async () => {
+        const made = await generate(soloImagePrompt(a.shows, look), setSize(1));
+        if (!made) return undefined;
+        const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
+        deps.log({ ev: "set-solo", set: setKey, key: a.key, ok: verdict.ok, usd: made.costUsd });
+        if (!verdict.ok) return undefined;
+        return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
+      },
+      (e) => {
+        deps.log({ ev: "set-solo-error", set: setKey, key: a.key, err: String(e).slice(0, 200) });
+        return undefined;
+      },
+    );
   const out = await Promise.all(asks.map((a, k) => first[k] ?? solo(a, k)));
   deps.log({ ev: "set-done", set: setKey, placed: out.filter(Boolean).length, of: asks.length });
   return out;

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { directedImagePrompt, encodePng, type ImageGenerator } from "@tj/images";
+import { BudgetExceeded } from "../types";
 import {
   gridImagePrompt,
   isHistoricalSet,
@@ -348,5 +349,52 @@ describe("the set flow", () => {
         "geography",
       ),
     ).toBe(false);
+  });
+});
+
+/* A budget stop is never a missing panel: it stops the set, so no more paid pictures are made. */
+describe("the set flow: a budget stop stops the set", () => {
+  const budget = () => new BudgetExceeded("usd");
+  test("in the panel judge: the set rejects and no solo is made", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])] });
+    f.deps.judgePanel = async () => {
+      throw budget();
+    };
+    await expect(makePictureSet(asks(2), f.deps)).rejects.toBeInstanceOf(BudgetExceeded);
+    expect(f.made()).toBe(1);
+  });
+  test("in the set judge: the set rejects and no solo is made", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])] });
+    f.deps.judgeSet = async () => {
+      throw budget();
+    };
+    await expect(makePictureSet(asks(2), f.deps)).rejects.toBeInstanceOf(BudgetExceeded);
+    expect(f.made()).toBe(1);
+  });
+  test("in a solo: the set rejects instead of leaving that slot empty", async () => {
+    const f = fakes({ strips: [stripPng([30, 50]), stripPng([60])], set: { same: true, odd: [] } });
+    let calls = 0;
+    f.deps.judgePanel = async (ask) => {
+      calls += 1;
+      // The strip's two panels are judged first (p1 fails); the third call is p1's solo.
+      if (calls === 3) throw budget();
+      return { ok: ask.key !== "p1" };
+    };
+    await expect(makePictureSet(asks(2), f.deps)).rejects.toBeInstanceOf(BudgetExceeded);
+    expect(f.made()).toBe(2);
+  });
+  test("in the solo generator: the set rejects", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])], panelOk: (a) => a.key !== "p1" });
+    const strip = f.deps.generator.generate;
+    let n = 0;
+    f.deps.generator = {
+      model: f.deps.generator.model,
+      generate: async (req) => {
+        n += 1;
+        if (n > 1) throw budget();
+        return strip(req);
+      },
+    };
+    await expect(makePictureSet(asks(2), f.deps)).rejects.toBeInstanceOf(BudgetExceeded);
   });
 });
