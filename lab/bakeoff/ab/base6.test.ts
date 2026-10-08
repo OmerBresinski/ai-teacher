@@ -80,6 +80,16 @@ describe("arm switches", () => {
     for (const a of AB_ARMS) {
       setAbCodeArm(a);
       if (a === "base6b" || a === "base6b-notes") continue; // the base6b block below
+      if (a === "exit1") {
+        // exit1 is base6b's code: base6 with titleSub off.
+        expect([abTitleSub(), abSnugNodes(), abPolish(), abPolish2()]).toEqual([
+          false,
+          true,
+          false,
+          false,
+        ]);
+        continue;
+      }
       if (a === "base6" || a === "base6sync") {
         expect([abTitleSub(), abSnugNodes(), abPolish(), abPolish2()]).toEqual([
           true,

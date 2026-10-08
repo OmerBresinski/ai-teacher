@@ -184,6 +184,15 @@ for (const id of briefs) {
     replay: streamReplay,
     noVisuals: flag("--no-visuals"),
     ...(opt("--reuse-visuals") ? { reuseVisuals: opt("--reuse-visuals") } : {}),
+    // exit1 code-only replay (ab/arms3/exit1/DIFF.md): recorded writers have no exit_ticket field.
+    ...(flag("--exit-fixture")
+      ? {
+          exitFixture: {
+            questions: ["Fixture question 1?", "Fixture question 2?", "Fixture question 3?"],
+          },
+        }
+      : {}),
+    ...(flag("--exit-on-slides") ? { exitOnSlides: true } : {}),
     ...(opt("--generic") === "generate" ? { generic: "generate" as const } : {}),
     ...(flag("--no-library") ? { noLibrary: true } : {}),
     ...(opt("--budget-dir") ? { budgetDir: String(opt("--budget-dir")) } : {}),

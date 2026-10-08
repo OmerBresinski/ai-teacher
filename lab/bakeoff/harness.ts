@@ -15,6 +15,7 @@ import {
   abCaptions,
   abCheckDef,
   abCodeArm,
+  abExitTicket,
   abFigureSync,
   abFiles,
   abFixes,
@@ -27,6 +28,7 @@ import {
 } from "./ab/arms";
 import { localAlt, localiseSlideAlts, slideWords } from "./ab/caption";
 import { continueForFit } from "./ab/continue";
+import { exitTicketSlide, type PlacedExitTicket, readExitTicket } from "./ab/exit-ticket";
 import { isQuestionSlide } from "./ab/lib";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
 import { flattenR1t } from "./ab/structural";
@@ -184,6 +186,8 @@ export type Plan = {
     teaches?: number[];
   }[];
   slides: (Record<string, unknown> | undefined)[];
+  /** exit1: the writer's exit_ticket as code placed it (ab/exit-ticket.ts). */
+  exitTicket?: PlacedExitTicket;
 };
 
 export interface ArmPlugin {
@@ -845,7 +849,14 @@ export function lookOf(
 }
 export function contextBlock(b: Brief, objectives?: { teacher: string; pupil: string }[]): string {
   const f = `${abShared() ?? `${BAKEOFF}/prompts/shared`}/user.txt`;
-  if (existsSync(f)) return fillTemplate(readFileSync(f, "utf8"), b, { objectives });
+  // exit1: code adds the exit-ticket slide inside the brief's count, so its user.txt gives the writer
+  // {{writerSlides.min}}..{{writerSlides.max}} (one fewer). Unused by every other arm's template.
+  if (existsSync(f))
+    return fillTemplate(readFileSync(f, "utf8"), b, {
+      objectives,
+      "writerSlides.min": b.slides.min - 1,
+      "writerSlides.max": b.slides.max - 1,
+    });
   return [
     `Topic: ${b.topic}`,
     `Subject: ${b.subject}`,
@@ -874,6 +885,10 @@ export type RunOpts = {
   replayRepair?: string;
   /** A/B (7 Oct): a run directory whose objectives.json holds the approved objectives to reuse. */
   objectivesFrom?: string;
+  /** exit1 code-only replay: the exit_ticket placed when the recorded writer has none (a fixture). */
+  exitFixture?: { questions: string[] };
+  /** exit1 code-only replay: place as on slides without changing the recorded user turn. */
+  exitOnSlides?: boolean;
   /** Skip pictures and diagrams (layout-only dry run). */
   noVisuals?: boolean;
   /** A/B round 3: run only the writer (main) call; save request.json, main.json, cost.json, then stop. */
@@ -976,6 +991,7 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       slides,
+      ...(plan.exitTicket ? { exitTicket: plan.exitTicket } : {}),
       bakeoff: { arm: arm.id, brief: brief.id, objectives: plan.objectives ?? [] },
     });
     log({ ev: "save", why, slides: slides.length });
@@ -1233,8 +1249,21 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
 
   // ── b. the streamed planning call ──
   const slideIndexOf = slideIndexer();
+  // exit1: the writer's exit_ticket (after its slides) becomes the last slide, through the slide path.
+  const placeExit = (v: unknown, how: "writer" | "fixture") => {
+    const et = readExitTicket(v);
+    if (!et || plan.exitTicket) return;
+    const planned = Math.max(plan.slides.length, 2);
+    const x = exitTicketSlide(et, Boolean(o.exitOnSlides ?? brief.exitTicketOnSlides), planned);
+    plan.exitTicket = x.placed;
+    plan.flow = [...(plan.flow ?? []), x.flow as NonNullable<Plan["flow"]>[number]];
+    flowSeen = Math.max(flowSeen, planned + 1);
+    log({ ev: "exit-ticket", how, ...x.placed });
+    onValue(["slides", planned - 2] as Parameters<typeof onValue>[0], x.slide);
+  };
   const onValue = (path: Path, v: unknown) => {
     const [top] = path;
+    if (top === "exit_ticket" && path.length === 1 && abExitTicket()) return placeExit(v, "writer");
     const idx = slideIndexOf(path, v);
     if (top === "design" && path.length === 1) {
       plan.design = v as Design;
@@ -1637,12 +1666,17 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     finishReason: "finishReason" in main ? (main.finishReason ?? null) : null,
   });
   mark("streamDone");
+  if (abExitTicket() && !plan.exitTicket) {
+    if (o.exitFixture) placeExit(o.exitFixture, "fixture");
+    else log({ ev: "exit-missing" });
+  }
   // K3 (base3 onwards): an incomplete writer output fails the run; it never ships a headings deck.
   const incomplete = abFixes()
     ? writerIncomplete({
         finishReason: "finishReason" in main ? main.finishReason : undefined,
         text: main.text,
-        minSlides: brief.slides.min,
+        // exit1: the writer plans one fewer; code adds the exit ticket.
+        minSlides: brief.slides.min - (abExitTicket() ? 1 : 0),
       })
     : undefined;
   if (incomplete) {

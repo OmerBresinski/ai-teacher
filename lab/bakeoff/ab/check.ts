@@ -166,7 +166,19 @@ for (const a of AB_ARMS) {
       system: localise(p.system),
       schema: p.schema,
     };
-    if (req.user !== r5.user) fail(`${a} ${id}: user turn differs from round 5's`);
+    // exit1: the writer is given one slide fewer (code adds the exit ticket) and no exit-ticket line.
+    const r5user =
+      a === "exit1"
+        ? r5.user
+            .replace(
+              `Slides: ${brief.slides.min} to ${brief.slides.max}`,
+              `Slides: ${brief.slides.min - 1} to ${brief.slides.max - 1}`,
+            )
+            .replace(/\nExit ticket: [^\n]*/, "")
+        : r5.user;
+    if (a === "exit1" && (r5user === r5.user || /Exit ticket/.test(req.user)))
+      fail(`exit1 ${id}: user turn does not shift the slide range or still names the exit ticket`);
+    if (req.user !== r5user) fail(`${a} ${id}: user turn differs from round 5's`);
     if (a === "base") {
       const failsBefore = bad;
       // The request as sent (after localise) against round 5's files, byte for byte.
@@ -262,7 +274,10 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
   for (const id of AB_BRIEFS) {
     const b = base[id] as Req;
     const r = reqs[a][id] as Req;
-    const other = (["model", "effort", "user"] as const).filter((k) => b[k] !== r[k]);
+    // exit1's user turn is checked against round 5's with its own two changes (above).
+    const other = (["model", "effort", "user"] as const).filter(
+      (k) => b[k] !== r[k] && !(a === "exit1" && k === "user"),
+    );
     if (other.length) fail(`${a} ${id}: ${other.join(", ")} differ from ${spec.ref}`);
     const sd = lineDiff(b.system, r.system);
     const jd = jsonDiff(b.schema, r.schema);
@@ -363,6 +378,35 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
         !inn.endsWith(`${anchor}${post}`)
       )
         fail(`base6 ${id}: changes more than base4's flow line (recall cut + opener slot)`);
+    }
+    // exit1 (rootcause/d36-ks1.txt): base6 with the flow line's exit-ticket sentence swapped for the
+    // exit_ticket field's one sentence, the slide menu's exit-ticket line removed, and schema paths only
+    // for the field, the menu entry and the one-fewer flow and slides bounds.
+    if (a === "exit1") {
+      const said = "The exit ticket goes where the context says.";
+      const line = "Write exit_ticket: 2 or 3 short questions";
+      const stray = jd.filter(
+        (l) =>
+          !/^\$\.(properties\.(exit_ticket|flow\.(minItems|maxItems)|slides\.(minItems|maxItems|items\.anyOf))|\$defs\.exit-ticket|required)\b/.test(
+            l,
+          ),
+      );
+      if (
+        stray.length ||
+        sd.del.length !== 2 ||
+        sd.add.length !== 1 ||
+        !sd.del.some((l) => l.includes(said)) ||
+        !sd.del.some((l) => l.startsWith("- exit-ticket:")) ||
+        !(sd.add[0] ?? "").includes(line) ||
+        (sd.add[0] ?? "") !==
+          (sd.del.find((l) => l.includes(said)) ?? "").replace(
+            said,
+            (sd.add[0] ?? "").slice((sd.add[0] ?? "").indexOf(line)),
+          )
+      )
+        fail(
+          `exit1 ${id}: changes more than the exit-ticket sentence, menu line and field (${stray.slice(0, 2).join("; ")})`,
+        );
     }
     if (a === "base4" && (jd.length || b.system !== r.system))
       fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);

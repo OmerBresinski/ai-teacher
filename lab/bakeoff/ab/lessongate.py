@@ -4,6 +4,9 @@ Hard rule, per lesson: every objective is taught (objectives.json: each objectiv
 AND the lesson has at least one lesson-level check where all pupils answer: a shipped slide planned as a
 hinge or exit ticket (the writer's template in main.json), or shipped with that kind when the plan does not
 line up with the deck. Discussion never counts (DISCUSSION_COUNTS_AS_CHECK=false).
+exit1 (rulings 141/148): a code-placed exit ticket also counts. lesson.json's `exitTicket` holds its 2-3
+questions and its slide: "Before you go" with the questions (onSlides), or ruling 141's closing slide
+pointing to the worksheet, which keeps the questions. That slide is not in the writer's plan.
 Soft score, reported and compared but never a pass rule: the share of objectives with a check slide
 (`checked` non-empty).
 A finished lesson with no readable objectives.json fails the hard rule and is listed (never dropped, F6).
@@ -32,10 +35,19 @@ def lesson_checks(r):
     slides = lesson.get("slides") or []
     try: plan = json.loads((load(f"{r}/main.json") or {})["text"]).get("slides") or []
     except Exception: plan = []
-    aligned = len(plan) == len(slides) - 2
+    et = lesson.get("exitTicket") if isinstance(lesson.get("exitTicket"), dict) else None
+    code_n = et.get("slide") if et else None
+    is_code = lambda i, sl: code_n is not None and (sl.get("id") == f"s{code_n}" if sl.get("id") else i + 1 == code_n)
+    shipped_code = [i for i, sl in enumerate(slides) if is_code(i, sl)]
+    aligned = len(plan) == len(slides) - 2 - len(shipped_code)
     out = []
     for i, sl in enumerate(slides):
         if i < 2: continue
+        if i in shipped_code:
+            q = et.get("questions") or []
+            if 2 <= len(q) <= 3 and (not et.get("onSlides") or str(sl.get("kind")) in LESSON_CHECK_KINDS):
+                out.append(i + 1)
+            continue
         tpl = str(plan[i - 2].get("template")) if aligned else None
         if tpl in LESSON_CHECK_TEMPLATES or (not aligned and str(sl.get("kind")) in LESSON_CHECK_KINDS) or str(sl.get("kind")) in ("exit-ticket", "exit"):
             out.append(i + 1)

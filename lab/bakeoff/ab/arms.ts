@@ -49,6 +49,7 @@ export const AB_ARMS = [
   "base6sync",
   "base6b",
   "base6b-notes",
+  "exit1",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -87,6 +88,8 @@ export const AB_CONFIG: Record<
     figureSync?: boolean;
     /** base6b-notes: the notes call reads each placed diagram's alt text, not its raw label list. */
     notesAlt?: boolean;
+    /** exit1 (rulings 141/148, rootcause/d36-ks1.txt): code places the writer's `exit_ticket` last. */
+    exitTicket?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -448,6 +451,22 @@ export const AB_CONFIG: Record<
     delta:
       "base6b + the notes call reads placed diagrams as their alt text, not raw labels (code only)",
   },
+  // exit1 (8 Oct, rootcause/d36-ks1.txt): base6b (base6 with titleSub off: the code subtitle deleted
+  // the writer's prediction opener) + the writer's top-level `exit_ticket` (2-3
+  // questions), placed by code as the last slide inside the slide count: "Before you go" with the
+  // questions when brief.exitTicketOnSlides (ruling 148), else ruling 141's closing slide pointing to
+  // the worksheet, the questions kept in lesson.json. The writer plans min-1..max-1 slides.
+  exit1: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    snugNodes: true,
+    exitTicket: true,
+    delta:
+      "base6b (base6 without titleSub) + writer exit_ticket field; code places it (Before you go, or ruling 141's worksheet pointer)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -504,6 +523,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   checkdef: { ref: "base5" },
   locale4: { ref: "base5" },
   base6: { ref: "base4" },
+  exit1: { ref: "base6" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -543,6 +563,8 @@ export const abTitleSub = () =>
     : false;
 /** Snug filled flow and cycle nodes alone (base6); polish arms get them through setDiagramPolish. */
 export const abSnugNodes = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].snugNodes) : false);
+/** exit1: code places the writer's exit_ticket as the lesson's last slide. */
+export const abExitTicket = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].exitTicket) : false);
 /** chalkie fix 1: figure-sync on repaired slides (base6sync). */
 export const abFigureSync = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].figureSync) : false);
 /** base6b-notes: the notes call's diagram line is the diagram's alt text. */
