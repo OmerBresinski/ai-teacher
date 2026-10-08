@@ -7,11 +7,14 @@ import { type LibDeps, libDiagram } from "./ab/lib";
 import { armT } from "./arm-t";
 import {
   barModelParams,
+  figureNumbers,
   figureTextMismatch,
   fractionsOf,
   numbersIn,
   rederiveFigure,
+  slideWords,
   specKey,
+  strayFigureNumbers,
   syncFigure,
 } from "./figure-sync";
 
@@ -64,9 +67,63 @@ describe("figure numbers against the slide's words", () => {
       bars: [{ total: "20", parts: Array(5).fill({ value: 1, label: "4" }) }],
     };
     expect(figureTextMismatch(drawn, REPAIRED)).toContain("draws 20");
+    // a total corrected to 30 that still prints parts of 4 is a stale label, not a fix
     expect(
       figureTextMismatch({ ...drawn, bars: [{ ...drawn.bars[0], total: "30" }] }, REPAIRED),
-    ).toBeUndefined();
+    ).toContain("prints 4");
+    const fixed = { total: "30", parts: Array(5).fill({ value: 1, label: "6" }) };
+    expect(figureTextMismatch({ ...drawn, bars: [fixed] }, REPAIRED)).toBeUndefined();
+  });
+  test("R3 s6 (base4-3): every number the redrawn figure prints is on the slide or worked from it", () => {
+    const before = {
+      template: "equation-hero",
+      heading: "Find ⅚ of 24",
+      formula: "⅚ of 24 = (24 ÷ 6) × 5",
+      points: ["One sixth: 24 ÷ 6 = 4", "Five sixths: 4 × 5 = 20"],
+      figure: {
+        kind: "bar-model",
+        shows: "Five of six equal parts of twenty-four are selected.",
+        alt: "A bar of twenty-four has six equal parts of four, with five parts shaded.",
+        title: "24 shared into 6",
+        bars: [
+          {
+            label: "24",
+            whole: 24,
+            parts: 6,
+            values: null,
+            shaded: 5,
+            unknown: "none",
+            unit: null,
+          },
+        ],
+        combined: false,
+      },
+    };
+    const repaired = {
+      template: "equation-hero",
+      heading: "Find ⅚ of 30",
+      formula: "⅚ of 30 = (30 ÷ 6) × 5",
+      points: ["One sixth: 30 ÷ 6 = 5", "Five sixths: 5 × 5 = 25"],
+      figure: {
+        kind: "bar-model",
+        shows: "Five of six equal parts of thirty are selected.",
+        labels: [],
+      },
+    };
+    const r = syncFigure(before, repaired);
+    expect(r.action).toBe("redrawn");
+    const f = r.slide.figure as J;
+    expect((f.bars as J[])[0]?.label).toBe("30");
+    expect(f.title).toBeNull();
+    // the scan: every printed number of the figure is a slide number or worked from one
+    const slideNums = numbersIn(slideWords(r.slide));
+    for (const { n } of figureNumbers(f))
+      expect(slideNums.includes(n) || [5, 6, 25].includes(n)).toBe(true);
+    expect(strayFigureNumbers(f, r.slide)).toEqual([]);
+    expect(figureTextMismatch(f, r.slide)).toBeUndefined();
+    // and the stale label alone is caught, even with the right whole
+    const stale = { ...f, bars: [{ ...(f.bars as J[])[0], label: "24" }] };
+    expect(figureTextMismatch(stale, r.slide)).toContain("prints 24");
   });
   test("the right bars on that deck's other slides pass (s9 ¾ of 24, s10 £30)", () => {
     const s9 = {

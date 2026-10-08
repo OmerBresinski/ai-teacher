@@ -15,7 +15,9 @@ import {
   setDiagramParts,
   setDiagramPolish,
 } from "../../packages/slides/src/diagrams/polish";
+import { setPlotZone } from "../../packages/slides/src/templates/index";
 import {
+  abPlotZone,
   abPolish,
   abPolish2,
   abSnugNodes,
@@ -93,6 +95,8 @@ if (abPolish2()) {
   // base6: only the snug filled nodes; base4's judge input, no photo gate, no gap gate, no strips.
   setDiagramParts({ nodes: true });
 }
+// plotzone (chalkie fix 3b): independent of the polish parts above; off for every other arm.
+if (abPlotZone()) setPlotZone(true);
 const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));

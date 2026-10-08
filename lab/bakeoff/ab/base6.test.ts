@@ -90,7 +90,7 @@ describe("arm switches", () => {
         ]);
         continue;
       }
-      if (a === "base6" || a === "base6sync") {
+      if (a === "base6" || a === "base6sync" || a === "plotzone") {
         expect([abTitleSub(), abSnugNodes(), abPolish(), abPolish2()]).toEqual([
           true,
           true,

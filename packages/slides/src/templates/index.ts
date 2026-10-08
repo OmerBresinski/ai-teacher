@@ -27,6 +27,16 @@ import { typeScale, withKeyStage } from "../themes";
 /* Geometry (960 x 540)                                                */
 /* ------------------------------------------------------------------ */
 
+let plotZone = false;
+/**
+ * Chalkie fix 3b (BAKEOFF A/B, rootcause/chalkie-gap.txt): a big-diagram graph or chart takes the
+ * whole visual zone instead of a panel at most 1.7 times as wide as it is tall. Off by default, so
+ * every other arm lays out byte for byte as before; run.ts sets it for an arm with `plotZone`.
+ */
+export function setPlotZone(v: boolean): void {
+  plotZone = v;
+}
+
 export const G = {
   margin: 64,
   right: 896,
@@ -1140,6 +1150,26 @@ export function layoutTemplate(input: TemplateInput, theme: Theme, stage: Stage)
         const plot = /graph|chart|profile|plot|axes/.test(kind);
         // Round 6 (r5 y12 s7): the caption runs the full width under a narrow plot; set at the
         // plot's width it took three lines and left the plot too flat to read.
+        // Chalkie fix 3b (A/B switch plotZone, off by default): a plot takes the whole visual zone,
+        // width and height; its words go to a caption strip in small type at the slide's foot (as
+        // Chalkie's graph slides do), which takes from the zone only what the foot cannot hold.
+        if (plot && plotZone) {
+          const ch = line ? measure(c, line, "small", G.width) : 0;
+          const foot = 540 - 16; // the strip's lowest baseline room on the 960 x 540 grid
+          const top = line ? Math.min(bandBottom + 10, foot - ch) : bandBottom + 10;
+          const ph = top - 10 - G.band.y;
+          if (ph < Math.round(G.band.h * 0.85)) c.over.push("plot under 85% of the zone height");
+          figurePanel(c, input.figure, { x: G.margin, y: G.band.y, w: G.width, h: ph });
+          if (line)
+            text(
+              c,
+              line,
+              "small",
+              { x: G.margin, y: top, w: G.width },
+              { color: theme.colors.muted, name: "Caption" },
+            );
+          break;
+        }
         const pw = plot ? Math.min(G.width, Math.round((G.band.h - lh) * 1.7)) : G.width;
         const ph = G.band.h - lh;
         figurePanel(c, input.figure, {

@@ -127,6 +127,56 @@ export function figureAmounts(spec: unknown): { kind: string; bars: Drawn } | un
 
 const has = (xs: number[], v: number) => xs.some((x) => Math.abs(x - v) < 1e-9);
 
+/** Figure fields whose text is not printed as a number on the drawing (or is rewritten from it). */
+const SKIP_TEXT = new Set(["kind", "alt", "shows", "unknown", "unit", "style", "show_count"]);
+/** Numeric fields the drawing prints as a number (counts such as parts and shaded draw segments). */
+const PRINTED_NUM = new Set(["whole", "values", "total", "each"]);
+/**
+ * Every number a figure prints (labels, totals, part labels, titles, braces, captions, answer text,
+ * printed numeric fields) with the key it sits under. The alt and shows are not drawn.
+ */
+export function figureNumbers(spec: unknown): { key: string; n: number }[] {
+  const out: { key: string; n: number }[] = [];
+  const walk = (v: unknown, key: string) => {
+    if (SKIP_TEXT.has(key)) return;
+    if (typeof v === "string") for (const n of numbersIn(v)) out.push({ key, n });
+    else if (typeof v === "number" && PRINTED_NUM.has(key) && Number.isFinite(v))
+      out.push({ key, n: v });
+    else if (Array.isArray(v)) for (const x of v) walk(x, key);
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v as J)) walk(x, k);
+  };
+  // A library model (lib arm) computes every printed number from its params: nothing to scan.
+  const s = spec as J | undefined;
+  if (s && typeof s === "object" && (s.libDrawn || s.model)) return out;
+  walk(spec, "");
+  return out;
+}
+
+/**
+ * The numbers a figure prints that are neither on the slide nor worked from it (a bar's part
+ * size, the shaded and unshaded amounts, the counts of parts and shaded parts).
+ */
+export function strayFigureNumbers(spec: unknown, slide: J | undefined): number[] {
+  const nums = numbersIn(slideWords(slide));
+  if (!nums.length) return [];
+  const ok = [...nums];
+  for (const b of figureAmounts(spec)?.bars ?? []) {
+    ok.push(b.whole);
+    if (b.parts) {
+      const part = b.whole / b.parts;
+      ok.push(b.parts, part);
+      if (b.shaded !== undefined) ok.push(b.shaded, b.shaded * part, (b.parts - b.shaded) * part);
+    }
+  }
+  return [
+    ...new Set(
+      figureNumbers(spec)
+        .map((x) => x.n)
+        .filter((n) => !has(ok, n)),
+    ),
+  ];
+}
+
 /**
  * Why a figure disagrees with its slide's words, or undefined when it agrees (or the check has
  * nothing to compare: a figure kind with no amounts, or words with no numbers).
@@ -150,6 +200,10 @@ export function figureTextMismatch(spec: unknown, slide: J | undefined): string 
       return `bar-model draws ${one.whole} in ${one.parts ?? "?"} parts; the words say ${f.n}/${f.d} of ${f.N}`;
     }
   }
+  // every number the figure prints (labels, totals, braces, captions) must come from the words
+  const stray = strayFigureNumbers(spec, slide);
+  if (stray.length)
+    return `${a.kind} prints ${stray.join(", ")}, not on the slide or worked from it`;
   return undefined;
 }
 
@@ -170,11 +224,30 @@ export function rederiveFigure(fig: J, slide: J): J | undefined {
   const old = (Array.isArray(fig.bars) && (fig.bars[0] as J)) || {};
   const unit = typeof old.unit === "string" ? old.unit : null;
   const u = (v: number) => (unit && /^[£$€]/.test(unit) ? `${unit}${v}` : `${v}`);
+  // Every printed text is regenerated from the words' numbers: a label that printed the old amount
+  // prints the new one; any other text carrying a number (title, brace, caption, answer) is dropped.
+  const oldWhole = figureAmounts(fig)?.bars[0]?.whole;
+  const relabel = (v: unknown): unknown => {
+    if (typeof v !== "string" || !numbersIn(v).length) return v ?? null;
+    const t = v.trim();
+    return oldWhole !== undefined &&
+      /^[£$€]?\s*\d[\d,]*(?:\.\d+)?$/.test(t) &&
+      leading(t) === oldWhole
+      ? t.replace(/\d[\d,]*(?:\.\d+)?/, String(N))
+      : null;
+  };
+  const scrubbed = Object.fromEntries(
+    Object.entries(fig).map(([k, v]) =>
+      k === "bars" || SKIP_TEXT.has(k) || typeof v !== "string" || !numbersIn(v).length
+        ? [k, v]
+        : [k, null],
+    ),
+  );
   return {
-    ...fig,
+    ...scrubbed,
     bars: [
       {
-        label: old.label ?? null,
+        label: relabel(old.label),
         whole: N,
         parts: d,
         values: null,

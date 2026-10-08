@@ -50,6 +50,7 @@ export const AB_ARMS = [
   "base6b",
   "base6b-notes",
   "exit1",
+  "plotzone",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -90,6 +91,8 @@ export const AB_CONFIG: Record<
     notesAlt?: boolean;
     /** exit1 (rulings 141/148, rootcause/d36-ks1.txt): code places the writer's `exit_ticket` last. */
     exitTicket?: boolean;
+    /** plotzone (chalkie fix 3b): a big-diagram graph or chart takes the whole visual zone. */
+    plotZone?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -467,6 +470,20 @@ export const AB_CONFIG: Record<
     delta:
       "base6b (base6 without titleSub) + writer exit_ticket field; code places it (Before you go, or ruling 141's worksheet pointer)",
   },
+  // plotzone (9 Oct, chalkie fix 3b, fault ledger #5a): code only, base6's switches + plotZone: a
+  // big-visual chart takes the whole visual zone, its words a caption strip. `--code-arm plotzone`.
+  plotzone: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    titleSub: true,
+    snugNodes: true,
+    plotZone: true,
+    delta:
+      "base6's code + a big-visual graph or chart fills the visual zone, words in a caption strip (code only)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -569,6 +586,8 @@ export const abExitTicket = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].e
 export const abFigureSync = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].figureSync) : false);
 /** base6b-notes: the notes call's diagram line is the diagram's alt text. */
 export const abNotesAlt = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].notesAlt) : false);
+/** Chalkie fix 3b: big-visual plots fill the visual zone (plotzone). */
+export const abPlotZone = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].plotZone) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);
