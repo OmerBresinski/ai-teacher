@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { THEMES } from "../themes";
-import { drawFigure, FIGURE_TEMPLATES, type FigureTemplateName } from "./index";
+import { drawFigure, FIGURE_TEMPLATES } from "./index";
+
+type FigureTemplateName = keyof typeof FIGURE_TEMPLATES;
 
 /**
  * Objectives-first's figures, frozen: the writer planner's drawer has its own figure templates

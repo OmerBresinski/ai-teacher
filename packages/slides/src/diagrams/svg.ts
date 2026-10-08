@@ -6,7 +6,7 @@
 import type { Theme } from "@tj/domain/documents";
 import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
-import { typeScale } from "../themes";
+import { type KeyStage, keyStageOf, typeScale } from "../themes";
 import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
 /** The colours a diagram draws in, all from the theme. */
@@ -27,6 +27,8 @@ export type Palette = {
 
 /** Everything a kind's renderer needs: palette, families, the label size. */
 export type Ctx = {
+  /** The key stage the drawing is read at (the theme's, `atKeyStage`); unset: the theme's own sizes. */
+  stage?: KeyStage;
   /** The smallest label the drawing may set: the stage's bodySmall step, or the type floor. */
   minFs: number;
   c: Palette;
@@ -149,6 +151,7 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
       line: t.colors.line,
       ...washes(t, surface, mix),
     },
+    ...(keyStageOf(t) ? { stage: keyStageOf(t) } : {}),
     dark: !!t.dark,
     finish: WARM_THEMES.has(t.id) ? "warm" : "refined",
     body: family(t.fonts.body),

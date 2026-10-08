@@ -90,7 +90,7 @@ describe("round 8 drawer fix", () => {
 
 test("a graph with two arrows out of one box draws (y12 multi-store, full zone)", async () => {
   const { fromMeaning, renderDiagram } = await import("./index");
-  const { getTheme, withKeyStage } = await import("../themes");
+  const { getTheme, atKeyStage } = await import("../themes");
   const spec = {
     kind: "flow",
     alt: "Memory stores.",
@@ -106,9 +106,10 @@ test("a graph with two arrows out of one box draws (y12 multi-store, full zone)"
       { from: 1, to: "out", label: "Displacement" },
     ],
   };
-  const svg = withKeyStage("ks5", () =>
-    renderDiagram(fromMeaning(spec) as never, getTheme("studio"), { w: 844, h: 380 }),
-  );
+  const svg = renderDiagram(fromMeaning(spec) as never, atKeyStage(getTheme("studio"), "ks5"), {
+    w: 844,
+    h: 380,
+  });
   expect(svg?.match(/<rect/g)?.length).toBe(3);
   expect(svg).toContain("displacement");
 });

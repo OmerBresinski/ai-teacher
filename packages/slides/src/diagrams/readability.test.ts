@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getTheme, withKeyStage } from "../themes";
+import { atKeyStage, getTheme } from "../themes";
 import { drawDiagram, lastDiagramProbe, parseDiagram, readabilityFaults } from "./index";
 import { DIAGRAM_SAMPLES } from "./samples";
 import { TEMPLATE_SPECS } from "./template-specs";
@@ -23,32 +23,32 @@ describe("dd-diagrams readability", () => {
   test("every spec, zone and key stage: never throws, and what draws reads cleanly", () => {
     const bad: string[] = [];
     let drawn = 0;
-    for (const ks of KS)
-      withKeyStage(ks, () => {
-        for (const [name, spec] of SPECS)
-          for (const [zn, z] of Object.entries(ZONES)) {
-            let r: ReturnType<typeof drawDiagram>;
-            try {
-              r = drawDiagram(spec, t, { x: 0, y: 0, ...z });
-            } catch (e) {
-              bad.push(`${ks} ${zn} ${name}: throws ${(e as Error).message}`);
-              continue;
-            }
-            if (!r.ok) {
-              expect(r.reasons.length).toBeGreaterThan(0);
-              continue;
-            }
-            drawn++;
-            // Re-checked independently: label size floor, no overlap, nothing clipped or cut,
-            // arrows at their boxes, axes over their data, plot aspect (the renderers' faults).
-            const f = readabilityFaults(r.spec, t, { ...z, fs: r.fs });
-            if (f.length) bad.push(`${ks} ${zn} ${name}: ${f.slice(0, 3).join("; ")}`);
-            const probe = lastDiagramProbe();
-            for (const b of probe?.rec ?? [])
-              if ((b.fs ?? 18) < 16) bad.push(`${ks} ${zn} ${name}: "${b.text}" at ${b.fs}`);
-            expect(svgOf(r.element.src as string)).toContain("<svg");
+    for (const ks of KS) {
+      const staged = atKeyStage(t, ks);
+      for (const [name, spec] of SPECS)
+        for (const [zn, z] of Object.entries(ZONES)) {
+          let r: ReturnType<typeof drawDiagram>;
+          try {
+            r = drawDiagram(spec, staged, { x: 0, y: 0, ...z });
+          } catch (e) {
+            bad.push(`${ks} ${zn} ${name}: throws ${(e as Error).message}`);
+            continue;
           }
-      });
+          if (!r.ok) {
+            expect(r.reasons.length).toBeGreaterThan(0);
+            continue;
+          }
+          drawn++;
+          // Re-checked independently: label size floor, no overlap, nothing clipped or cut,
+          // arrows at their boxes, axes over their data, plot aspect (the renderers' faults).
+          const f = readabilityFaults(r.spec, staged, { ...z, fs: r.fs });
+          if (f.length) bad.push(`${ks} ${zn} ${name}: ${f.slice(0, 3).join("; ")}`);
+          const probe = lastDiagramProbe();
+          for (const b of probe?.rec ?? [])
+            if ((b.fs ?? 18) < 16) bad.push(`${ks} ${zn} ${name}: "${b.text}" at ${b.fs}`);
+          expect(svgOf(r.element.src as string)).toContain("<svg");
+        }
+    }
     expect(bad).toEqual([]);
     // Most of the corpus still draws somewhere: refusing is the exception, not the rule.
     expect(drawn).toBeGreaterThan(SPECS.length * KS.length * 0.8);
@@ -66,7 +66,7 @@ describe("dd-diagrams readability", () => {
       ],
     ] as const) {
       const spec = { kind: "particles", alt: "x", states, arrows, motion: true };
-      const r = withKeyStage("ks3", () => drawDiagram(spec, t, { x: 0, y: 0, ...ZONES.half }));
+      const r = drawDiagram(spec, atKeyStage(t, "ks3"), { x: 0, y: 0, ...ZONES.half });
       expect(r.ok).toBe(true);
       if (!r.ok) continue;
       const svg = svgOf(r.element.src as string);
@@ -125,9 +125,11 @@ describe("dd-diagrams readability", () => {
       ],
       combined: "⅝ walk",
     };
-    const r = withKeyStage("ks2", () =>
-      drawDiagram(spec, getTheme("splash"), { x: 0, y: 0, ...ZONES.half }),
-    );
+    const r = drawDiagram(spec, atKeyStage(getTheme("splash"), "ks2"), {
+      x: 0,
+      y: 0,
+      ...ZONES.half,
+    });
     expect(r.ok).toBe(true);
     if (r.ok) expect(svgOf(r.element.src as string)).not.toContain("4; ⅛");
   });
@@ -137,17 +139,13 @@ describe("dd-diagrams readability", () => {
       Array.from({ length: k }, (_, i) => ({ label: `Step number ${i + 1} happens` }));
     // KS2 reads at most six steps (dd-diagrams2 caps: KS1 5, KS2 6, KS3 and up 8).
     const seven = { kind: "flow", alt: "x", steps: steps(7) };
-    const r = withKeyStage("ks2", () => drawDiagram(seven, t, { x: 0, y: 0, ...ZONES.band }));
+    const r = drawDiagram(seven, atKeyStage(t, "ks2"), { x: 0, y: 0, ...ZONES.band });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reasons.join(" ")).toContain("key stage");
     // KS3 adapts: seven steps draw as a two-row snake full width.
-    expect(withKeyStage("ks3", () => drawDiagram(seven, t, { x: 0, y: 0, ...ZONES.band })).ok).toBe(
-      true,
-    );
+    expect(drawDiagram(seven, atKeyStage(t, "ks3"), { x: 0, y: 0, ...ZONES.band }).ok).toBe(true);
     const four = { kind: "flow", alt: "x", steps: steps(4) };
-    expect(withKeyStage("ks3", () => drawDiagram(four, t, { x: 0, y: 0, ...ZONES.band })).ok).toBe(
-      true,
-    );
+    expect(drawDiagram(four, atKeyStage(t, "ks3"), { x: 0, y: 0, ...ZONES.band }).ok).toBe(true);
   });
 
   test("a line graph keeps a sane aspect and labels the top of its axis", () => {
@@ -176,13 +174,11 @@ describe("dd-diagrams readability", () => {
         },
       ],
     };
-    const r = withKeyStage("ks4", () => drawDiagram(g, t, { x: 0, y: 0, ...ZONES.band }));
+    const r = drawDiagram(g, atKeyStage(t, "ks4"), { x: 0, y: 0, ...ZONES.band });
     expect(r.ok).toBe(true);
     if (r.ok) expect(svgOf(r.element.src as string)).toMatch(/>60<\/tspan>[\s\S]*>60<\/tspan>/);
     // A band too short for any readable plot refuses rather than drawing a strip.
-    expect(withKeyStage("ks4", () => drawDiagram(g, t, { x: 0, y: 0, w: 788, h: 120 })).ok).toBe(
-      false,
-    );
+    expect(drawDiagram(g, atKeyStage(t, "ks4"), { x: 0, y: 0, w: 788, h: 120 }).ok).toBe(false);
   });
 
   test("an energy profile draws each Ea as a double arrow from the reactant level", () => {
@@ -216,7 +212,7 @@ describe("dd-diagrams readability", () => {
         { x: 3, y: 5.5, label: "Lower Ea" },
       ],
     };
-    const r = withKeyStage("ks4", () => drawDiagram(g, t, { x: 0, y: 0, ...ZONES.half }));
+    const r = drawDiagram(g, atKeyStage(t, "ks4"), { x: 0, y: 0, ...ZONES.half });
     expect(r.ok).toBe(true);
     if (r.ok)
       expect(
@@ -274,22 +270,22 @@ describe("dd-diagrams readability", () => {
             [f]: Array.from({ length: count }, (_, i) => relabel(items[i % items.length], text, i)),
           };
           for (const ks of KS)
-            for (const z of Object.values(ZONES))
-              withKeyStage(ks, () => {
-                n++;
-                try {
-                  const r = drawDiagram(spec, t, { x: 0, y: 0, ...z });
-                  if (!r.ok) {
-                    if (!r.reasons.length)
-                      bad.push(`${kind} ${count}x${chars} ${ks}: refused with no reason`);
-                    return;
-                  }
-                  const faults = readabilityFaults(r.spec, t, { ...z, fs: r.fs });
-                  if (faults.length) bad.push(`${kind} ${count}x${chars} ${ks}: ${faults[0]}`);
-                } catch (e) {
-                  bad.push(`${kind} ${count}x${chars} ${ks}: throws ${(e as Error).message}`);
+            for (const z of Object.values(ZONES)) {
+              const staged = atKeyStage(t, ks);
+              n++;
+              try {
+                const r = drawDiagram(spec, staged, { x: 0, y: 0, ...z });
+                if (!r.ok) {
+                  if (!r.reasons.length)
+                    bad.push(`${kind} ${count}x${chars} ${ks}: refused with no reason`);
+                  continue;
                 }
-              });
+                const faults = readabilityFaults(r.spec, staged, { ...z, fs: r.fs });
+                if (faults.length) bad.push(`${kind} ${count}x${chars} ${ks}: ${faults[0]}`);
+              } catch (e) {
+                bad.push(`${kind} ${count}x${chars} ${ks}: throws ${(e as Error).message}`);
+              }
+            }
         }
     }
     expect(n).toBeGreaterThan(800);
@@ -339,19 +335,19 @@ describe("dd-diagrams readability", () => {
         { text: "Stopwatch", at: [88, 60] },
       ],
     };
-    for (const ks of KS)
-      withKeyStage(ks, () => {
-        const r = drawDiagram(spec, t, { x: 0, y: 0, ...ZONES.half });
-        // y11 is KS4 (and KS3 type matches): it draws there; KS2's larger type may refuse, with a
-        // reason, but never draws a crossing.
-        if (ks !== "ks2") expect(r.ok).toBe(true);
-        if (!r.ok) expect(r.reasons.length).toBeGreaterThan(0);
-        if (r.ok)
-          expect(
-            readabilityFaults(r.spec, t, { ...ZONES.half, fs: r.fs }).filter((f) =>
-              f.includes("across a line"),
-            ),
-          ).toEqual([]);
-      });
+    for (const ks of KS) {
+      const staged = atKeyStage(t, ks);
+      const r = drawDiagram(spec, staged, { x: 0, y: 0, ...ZONES.half });
+      // y11 is KS4 (and KS3 type matches): it draws there; KS2's larger type may refuse, with a
+      // reason, but never draws a crossing.
+      if (ks !== "ks2") expect(r.ok).toBe(true);
+      if (!r.ok) expect(r.reasons.length).toBeGreaterThan(0);
+      if (r.ok)
+        expect(
+          readabilityFaults(r.spec, staged, { ...ZONES.half, fs: r.fs }).filter((f) =>
+            f.includes("across a line"),
+          ),
+        ).toEqual([]);
+    }
   });
 });

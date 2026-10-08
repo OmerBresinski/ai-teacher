@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getTheme, withKeyStage } from "../themes";
+import { atKeyStage, getTheme } from "../themes";
 import { diagramElement, diagramFaults, drawsAtBodySize, shownLabelSize } from "./index";
 
 /**
@@ -42,27 +42,25 @@ describe("bar models fill their zone at body size (KS2, Splash)", () => {
   });
   for (const cells of [2, 3, 4, 5, 6, 8, 10, 12])
     for (const label of ["6", "5 cm"])
-      test(`${cells} parts of "${label}": half zone at body size, else the full width`, () =>
-        withKeyStage("ks2", () => {
-          const t = getTheme("splash");
-          const spec = bar(cells, label);
-          const zone = drawsAtBodySize(spec, t, HALF) ? HALF : FULL;
-          // Ten or more parts of "5 cm" are past body size even across the slide: every label is
-          // still drawn, a step smaller (the largest zoom at which they all fit).
-          const body = cells >= 10 && label === "5 cm" ? 0.8 : 0.95;
-          if (body === 0.95) expect(drawsAtBodySize(spec, t, zone)).toBe(true);
-          const d = drawn(spec, zone);
-          // Spans most of its zone, every part labelled, labels at body size, bars readable.
-          expect(d.span).toBeGreaterThan(0.85);
-          expect(d.span).toBeLessThanOrEqual(1);
-          expect(d.svg.split(`>${label}</tspan>`).length - 1).toBe(cells);
-          expect(shownLabelSize(spec, t, zone)).toBeGreaterThanOrEqual(t.sizes.body * body);
-          expect(d.barH).toBeGreaterThan(t.sizes.body * 1.8);
-        }));
-  test("the y5 ribbon (eight parts of 5 cm) does not fit the half zone; the y5 counters do", () =>
-    withKeyStage("ks2", () => {
-      const t = getTheme("splash");
-      expect(drawsAtBodySize(bar(8, "5 cm"), t, HALF)).toBe(false);
-      expect(drawsAtBodySize(bar(4, "6", "Counters", "24"), t, HALF)).toBe(true);
-    }));
+      test(`${cells} parts of "${label}": half zone at body size, else the full width`, () => {
+        const t = atKeyStage(getTheme("splash"), "ks2");
+        const spec = bar(cells, label);
+        const zone = drawsAtBodySize(spec, t, HALF) ? HALF : FULL;
+        // Ten or more parts of "5 cm" are past body size even across the slide: every label is
+        // still drawn, a step smaller (the largest zoom at which they all fit).
+        const body = cells >= 10 && label === "5 cm" ? 0.8 : 0.95;
+        if (body === 0.95) expect(drawsAtBodySize(spec, t, zone)).toBe(true);
+        const d = drawn(spec, zone);
+        // Spans most of its zone, every part labelled, labels at body size, bars readable.
+        expect(d.span).toBeGreaterThan(0.85);
+        expect(d.span).toBeLessThanOrEqual(1);
+        expect(d.svg.split(`>${label}</tspan>`).length - 1).toBe(cells);
+        expect(shownLabelSize(spec, t, zone)).toBeGreaterThanOrEqual(t.sizes.body * body);
+        expect(d.barH).toBeGreaterThan(t.sizes.body * 1.8);
+      });
+  test("the y5 ribbon (eight parts of 5 cm) does not fit the half zone; the y5 counters do", () => {
+    const t = atKeyStage(getTheme("splash"), "ks2");
+    expect(drawsAtBodySize(bar(8, "5 cm"), t, HALF)).toBe(false);
+    expect(drawsAtBodySize(bar(4, "6", "Counters", "24"), t, HALF)).toBe(true);
+  });
 });

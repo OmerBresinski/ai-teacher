@@ -374,7 +374,8 @@ const BASE: Theme[] = [
  *              title, subtitle the theme's display stops at the stage; caption the theme's eyebrow
  *              stop at the stage
  *
- * The stage is set process-wide for a generation job (`setKeyStage` / `withKeyStage`). No stage:
+ * The stage travels with the theme: `atKeyStage(theme, band)` gives a copy of the theme read at
+ * that stage, so two jobs at different stages never share state. A catalogue theme has no stage:
  * the themes' own sizes, which is every lesson until the writer planner binds a stage to its themes.
  */
 export type KeyStage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
@@ -392,26 +393,23 @@ export const BODY_SMALL = 0.85;
 /** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
 const DISPLAY_HEADING = 1.15;
 
-let stage: KeyStage | undefined;
+const STAGED = new WeakMap<Theme, KeyStage>();
 const asStage = (band: string | undefined | null): KeyStage | undefined => {
   const k = (band ?? "").toLowerCase();
   return k in KEY_STAGE_TYPE ? (k as KeyStage) : undefined;
 };
-/** The key stage the type scale is read at now (undefined: the themes' own sizes). */
-export const keyStage = (): KeyStage | undefined => stage;
-/** Set the key stage the type scale is read at; an unknown band clears it. */
-export function setKeyStage(band: string | undefined | null): void {
-  stage = asStage(band);
-}
-/** `f` with the type scale read at `band`'s key stage; the stage before is restored. */
-export function withKeyStage<T>(band: string | undefined | null, f: () => T): T {
-  const was = stage;
-  stage = asStage(band);
-  try {
-    return f();
-  } finally {
-    stage = was;
-  }
+/** The key stage `t` is read at (undefined: the theme's own sizes). */
+export const keyStageOf = (t: Theme): KeyStage | undefined => STAGED.get(t);
+/**
+ * `t` read at `band`'s key stage: a copy that carries the stage, the catalogue theme untouched.
+ * An unknown band gives `t` itself (the theme's own sizes).
+ */
+export function atKeyStage(t: Theme, band: string | undefined | null): Theme {
+  const ks = asStage(band);
+  if (!ks) return t;
+  const staged = { ...t };
+  STAGED.set(staged, ks);
+  return staged;
 }
 
 export type TypeStep =
@@ -438,9 +436,10 @@ function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
   };
 }
 
-/** THE type scale at the current key stage. Undefined at no stage (the theme's own ladder). */
+/** THE type scale at `t`'s key stage (`atKeyStage`). Undefined at no stage (the theme's own ladder). */
 export function typeScale(t: Theme): TypeScale | undefined {
-  return stage ? scaleAt(t.sizes, stage) : undefined;
+  const ks = STAGED.get(t);
+  return ks ? scaleAt(t.sizes, ks) : undefined;
 }
 
 /** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */

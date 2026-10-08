@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getTheme, THEMES, withKeyStage } from "../themes";
+import { atKeyStage, getTheme, THEMES } from "../themes";
 import { DIAGRAM_ZONES } from "./capacity";
 import { FIGURE_TEMPLATES } from "./figures";
 import {
@@ -122,49 +122,46 @@ describe("DIAGRAM-MODERN geometry checks", () => {
     test(`the y11 catalysed profile draws clean in its full-width zone at KS3 and KS4 (${p})`, () => {
       withDiagramPreset(p, () => {
         for (const ks of ["ks3", "ks4"])
-          for (const id of KS_THEMES)
-            withKeyStage(ks, () => {
-              const t = getTheme(id);
-              const half = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, {
-                w: 363,
-                h: 378,
-              });
-              expect(figureGeometryFaults(half.children, t)).toContain(
-                "the plot is squeezed to a strip",
-              );
-              for (const size of [{ w: 844, h: 223 }, DIAGRAM_ZONES.full]) {
-                const d = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, size);
-                expect([ks, id, size.h, ...figureGeometryFaults(d.children, t)]).toEqual([
-                  ks,
-                  id,
-                  size.h,
-                ]);
-                const axis = d.children.find((c) => c.name === "Progress axis");
-                const legend = d.children.filter(
-                  (c) => c.type === "text" && /catalyst/.test(JSON.stringify(c.doc)),
-                );
-                expect(legend.length).toBe(2);
-                // Beside the plot: right of the progress axis's end, not under it.
-                for (const l of legend)
-                  expect(l.x).toBeGreaterThan((axis?.x ?? 0) + (axis?.w ?? 0));
-                const energy = d.children.find((c) => c.name === "Energy axis");
-                expect(energy?.h ?? 0).toBeGreaterThanOrEqual(size.h * PLOT_MIN);
-              }
+          for (const id of KS_THEMES) {
+            const t = atKeyStage(getTheme(id), ks);
+            const half = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, {
+              w: 363,
+              h: 378,
             });
+            expect(figureGeometryFaults(half.children, t)).toContain(
+              "the plot is squeezed to a strip",
+            );
+            for (const size of [{ w: 844, h: 223 }, DIAGRAM_ZONES.full]) {
+              const d = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, size);
+              expect([ks, id, size.h, ...figureGeometryFaults(d.children, t)]).toEqual([
+                ks,
+                id,
+                size.h,
+              ]);
+              const axis = d.children.find((c) => c.name === "Progress axis");
+              const legend = d.children.filter(
+                (c) => c.type === "text" && /catalyst/.test(JSON.stringify(c.doc)),
+              );
+              expect(legend.length).toBe(2);
+              // Beside the plot: right of the progress axis's end, not under it.
+              for (const l of legend) expect(l.x).toBeGreaterThan((axis?.x ?? 0) + (axis?.w ?? 0));
+              const energy = d.children.find((c) => c.name === "Energy axis");
+              expect(energy?.h ?? 0).toBeGreaterThanOrEqual(size.h * PLOT_MIN);
+            }
+          }
       });
     });
   test("a narrow zone packs the legend into rows under the plot", () => {
-    for (const id of KS_THEMES)
-      withKeyStage("ks4", () => {
-        const t = getTheme(id);
-        const d = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, DIAGRAM_ZONES.half);
-        const axis = d.children.find((c) => c.name === "Progress axis");
-        const legend = d.children.filter(
-          (c) => c.type === "text" && /catalyst/.test(JSON.stringify(c.doc)),
-        );
-        expect(legend.length).toBe(2);
-        for (const l of legend) expect(l.y).toBeGreaterThan((axis?.y ?? 0) + (axis?.h ?? 0));
-      });
+    for (const id of KS_THEMES) {
+      const t = atKeyStage(getTheme(id), "ks4");
+      const d = FIGURE_TEMPLATES["energy-profile"].draw(Y11 as never, t, DIAGRAM_ZONES.half);
+      const axis = d.children.find((c) => c.name === "Progress axis");
+      const legend = d.children.filter(
+        (c) => c.type === "text" && /catalyst/.test(JSON.stringify(c.doc)),
+      );
+      expect(legend.length).toBe(2);
+      for (const l of legend) expect(l.y).toBeGreaterThan((axis?.y ?? 0) + (axis?.h ?? 0));
+    }
   });
   test(`a plot under ${PLOT_MIN * 100}% of its figure's height is a fault`, () => {
     const t = getTheme("studio");
@@ -200,19 +197,20 @@ describe("DIAGRAM-MODERN geometry checks", () => {
       },
       { reactants: "", products: "", activationEnergy: -1, energyChange: 4 },
     ];
-    for (const ks of ["ks1", "ks2", "ks3", "ks4", "ks5"])
-      withKeyStage(ks, () => {
-        for (const t of THEMES.filter((x) => ["studio", "splash", "chalk"].includes(x.id)))
-          for (const p of ["flat"] as DiagramPreset[])
-            withDiagramPreset(p, () => {
-              for (const size of zones)
-                for (const v of specs) {
-                  const d = FIGURE_TEMPLATES["energy-profile"].draw(v as never, t, size);
-                  expect(d.children.length).toBeGreaterThan(0);
-                  expect(() => figureGeometryFaults(d.children, t)).not.toThrow();
-                }
-            });
-      });
+    for (const ks of ["ks1", "ks2", "ks3", "ks4", "ks5"]) {
+      for (const t0 of THEMES.filter((x) => ["studio", "splash", "chalk"].includes(x.id))) {
+        const t = atKeyStage(t0, ks);
+        for (const p of ["flat"] as DiagramPreset[])
+          withDiagramPreset(p, () => {
+            for (const size of zones)
+              for (const v of specs) {
+                const d = FIGURE_TEMPLATES["energy-profile"].draw(v as never, t, size);
+                expect(d.children.length).toBeGreaterThan(0);
+                expect(() => figureGeometryFaults(d.children, t)).not.toThrow();
+              }
+          });
+      }
+    }
   });
   // FIX-ENERGY: every saved diagram kind at every key-stage type size never throws, and draws clean
   // in the half zone or, stepping up, in the big one (the DIAGRAM-AUDIT real corpus is swept by the
@@ -220,24 +218,23 @@ describe("DIAGRAM-MODERN geometry checks", () => {
   test("every diagram kind at every key stage: never throws, clean in the half or the big zone", () => {
     const t0 = "studio";
     const bad: string[] = [];
-    for (const ks of ["ks1", "ks2", "ks4"])
-      withKeyStage(ks, () => {
-        const t = getTheme(t0);
-        withDiagramPreset("flat", () => {
-          for (const [name, spec] of SPECS) {
-            let half: string[];
-            let full: string[];
-            try {
-              half = diagramGeometryFaults(spec, t, DIAGRAM_ZONES.half);
-              full = half.length ? diagramGeometryFaults(spec, t, DIAGRAM_ZONES.full) : [];
-            } catch (e) {
-              bad.push(`${ks} ${name}: throws ${(e as Error).message}`);
-              continue;
-            }
-            if (full.length) bad.push(`${ks} ${name}: ${full.join("; ")}`);
+    for (const ks of ["ks1", "ks2", "ks4"]) {
+      const t = atKeyStage(getTheme(t0), ks);
+      withDiagramPreset("flat", () => {
+        for (const [name, spec] of SPECS) {
+          let half: string[];
+          let full: string[];
+          try {
+            half = diagramGeometryFaults(spec, t, DIAGRAM_ZONES.half);
+            full = half.length ? diagramGeometryFaults(spec, t, DIAGRAM_ZONES.full) : [];
+          } catch (e) {
+            bad.push(`${ks} ${name}: throws ${(e as Error).message}`);
+            continue;
           }
-        });
+          if (full.length) bad.push(`${ks} ${name}: ${full.join("; ")}`);
+        }
       });
+    }
     expect(bad).toEqual([]);
   });
   test("crossing leaders are caught, and a meander section's leaders never cross", () => {

@@ -2,7 +2,7 @@
  * Flows: a chain of steps laid out in rows that snake (left to right, then right to left, so every
  * arrow is a short straight one), or a cycle of three to six steps set clockwise round an ellipse.
  */
-import { type KeyStage, keyStage } from "../themes";
+import type { KeyStage } from "../themes";
 import { finishOf } from "./finish";
 import { LIMITS } from "./limits";
 import type { Flow } from "./schema";
@@ -566,7 +566,7 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
   const w = fullW - inset * 2;
   const h = fullH - inset * 2;
   const k = f.steps.length;
-  const cap = FLOW_STEP_CAP[keyStage() ?? "ks4"];
+  const cap = FLOW_STEP_CAP[x.stage ?? "ks4"];
   if (k > cap) x.faults?.push(`the flow has ${k} steps, past the ${cap} this key stage reads`);
   const plan = planChain(f, x, w, h);
   if (!plan) {
