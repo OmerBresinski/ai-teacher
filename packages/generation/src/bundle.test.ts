@@ -23,7 +23,9 @@ describe("@tj/generation", () => {
       minify: false,
       // `@mastra/core` is a runtime dependency of the worker image; it is not what this test is
       // about, and bundling it drags in optional peers. Everything `@tj/*` is bundled and checked.
-      external: ["@mastra/core", "@mastra/core/*", "ai", "pino", "zod", "nanoid"],
+      // happy-dom (the library models' DOM, TEACH-247 part h) is a runtime dependency too; its own
+      // CSSOM code names `cssRules`, which is not an editor stylesheet.
+      external: ["@mastra/core", "@mastra/core/*", "ai", "pino", "zod", "nanoid", "happy-dom"],
     });
     expect(result.success, result.logs.map((l) => l.message).join("\n")).toBe(true);
     expect(result.outputs).toHaveLength(1);

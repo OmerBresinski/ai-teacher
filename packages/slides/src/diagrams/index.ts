@@ -810,6 +810,8 @@ export function sparseDrawing(
 
 export { type DrawnDiagram, drawDiagram, readabilityFaults } from "./draw";
 export { figureGeometryFaults } from "./geometry";
+/** Label width from the font advance tables (the library renderer measures with it, TEACH-247 part h). */
+export { textWidth } from "./svg";
 export {
   DiagramWireSchema,
   diagramJsonSchema,

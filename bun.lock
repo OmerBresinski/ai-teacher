@@ -279,6 +279,7 @@
         "@tj/images": "workspace:*",
         "@tj/slides": "workspace:*",
         "ai": "7.0.114",
+        "happy-dom": "20.14.5",
         "pino": "10.3.1",
         "zod": "4.6.5",
       },

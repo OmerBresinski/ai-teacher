@@ -1,0 +1,6 @@
+Model: {{model}}
+Lesson: {{lesson}}
+Year group: {{year}}
+Intent: {{intent}}
+Slide's words:
+{{words}}

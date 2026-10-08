@@ -374,6 +374,16 @@ export function toInput(
  * words stand in for labels; a freeform figure keeps `{kind, shows, labels}` for the drawer.
  */
 function diagramVisualAsk(key: string, f: S): VisualAsk {
+  // A library model (TEACH-247 part h): the writer's intent is what it shows; code fills it.
+  if (f.kind === "model")
+    return {
+      key,
+      type: "diagram",
+      kind: "model",
+      shows: String(f.intent ?? ""),
+      labels: [],
+      spec: { model: f.model, intent: f.intent, alt: f.alt },
+    };
   const spec = writerSpecOf(f);
   const base = {
     key,

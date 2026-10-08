@@ -1,0 +1,7 @@
+Your parameters:
+{{params}}
+
+The model refused them. Each line is a parameter's path and what is wrong with it:
+{{refusals}}
+
+Return the parameters again with every reason fixed. Change only what a reason names, and whatever must change with it to keep the numbers consistent. If a reason can be fixed only by drawing something other than what the slide says, return the parameters unchanged.
