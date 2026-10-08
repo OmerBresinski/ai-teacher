@@ -191,7 +191,7 @@ Code and Cursor. Check your own tool list and map by **capability**, not by name
 Cost discipline still applies. The main agent's prompt is re-read on every turn, so each turn has a
 fixed cost regardless of how little it does. Batch independent tool calls into one message. Never
 spend a turn polling (CI, deploys, `sleep`) — `bun run land <pr>` does the whole wait-and-merge in
-one bash call. **Do not wait on CI in the foreground.** A full CI run is ~5 minutes (the four e2e
+one bash call. **Do not wait on CI in the foreground.** A full CI run is a few minutes (the six e2e
 shards set it) and a `BEHIND` PR pays it twice (rebase → second run). Start the landing in the background and
 carry on with the next unit of work:
 

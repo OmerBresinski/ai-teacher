@@ -401,13 +401,12 @@ Every job starts from the composite action [`.github/actions/setup`](.github/act
 | `tooling-smoke` | `bun run setup --ci && bun run doctor` against docker compose, then `bun run test:scripts` | the same commands (needs Docker) | yes |
 | `test` | `bun run test:db` against a `pgvector/pgvector:pg16` service with `teaching_journey` + `teaching_journey_test` (migrates, `REQUIRE_TEST_DB=1`), then `bun run eval:schema` (the free half of the F06 eval set, [`docs/eval.md`](docs/eval.md)); uploads `coverage/` on pushes to `master` only | `bun run test:db && bun run eval:schema` | yes |
 | `build` | `bun run build`; `bun run check:bundle-budget --markdown-out bundle-budget.md`; sticky PR comment `<!-- tj-bundle-budget -->` | `bun run build && bun run check:bundle-budget` | yes |
-| `e2e-shard` | four jobs at once (`e2e shard 1/4` … `4/4`), each with its own Postgres service + `teaching_journey_test`: Playwright's headless Chromium (cached) and `bun run test:e2e --shard=n/4` in `apps/web` (the suite builds web itself, so no turbo `build` first); a failed shard uploads its blob report. Skipped on a PR that changes only documentation (`detect`) | `cd apps/web && bunx --bun playwright test --shard=1/4` (needs the compose Postgres) | via `e2e` |
-| `e2e` | the required check for the shards: passes when `detect` succeeded and every shard passed or was skipped (`e2e report`, not required, merges a failed run's blob reports into one `playwright-report` artifact) | `bunx playwright install chromium && bun run test:e2e` (the whole suite, needs the compose Postgres) | yes |
+| `e2e-shard` | six jobs at once (`e2e shard 1/6` … `6/6`), each a required check by name and each with its own Postgres service + `teaching_journey_test`: Playwright's headless Chromium (cached) and `bun run test:e2e --shard=n/6` in `apps/web` (the suite builds web itself, so no turbo `build` first); a failed shard uploads its blob report and `e2e report` (not required) merges them into one `playwright-report` artifact. On a PR that changes only documentation each shard's Scope step (`scripts/e2e-scope.ts`) skips the suite and the shard passes | `cd apps/web && bunx --bun playwright test --shard=1/6` (needs the compose Postgres); the whole suite: `bunx playwright install chromium && bun run test:e2e` | yes |
 | `audit` | `bun audit --audit-level=high` (native in Bun 1.3.6); when npm's advisory endpoint is down it falls back to `osv-scanner` on `bun.lock`, failing only on high/critical; both skip the advisories in the job's `AUDIT_IGNORE` (each with a reason and a last day) until that day passes; `actions/dependency-review-action` with `fail-on-severity: high` on PRs | `bun audit --audit-level=high --ignore=<id>` for each `AUDIT_IGNORE` id (or `docker run --rm -v "$PWD:/src" -w /src ghcr.io/google/osv-scanner:v2.5.1 --lockfile=bun.lock`) | yes |
 | `secrets` | `gitleaks/gitleaks-action` over the full history (`fetch-depth: 0`) | `gitleaks git --redact .` (or `gitleaks protect --staged` via the pre-commit hook) | yes |
 | `docker-build-smoke` | `docker build .` -- skipped until a `Dockerfile` exists | `docker build .` | yes (once present) |
 | `Eval` (`eval.yml`) | `bun run eval:paid` on Bedrock — only on `workflow_dispatch` or the `run-eval` PR label; uploads `eval-<sha>` (and `eval-master-latest` from `master`), posts the totals + delta comment `<!-- tj-eval-results -->` ([`docs/eval.md`](docs/eval.md)) | `AWS_BEARER_TOKEN_BEDROCK=… bun run eval:paid` (spends up to `AI_EVAL_RUN_COST_CAP_USD`) | no |
-| `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`); on a PR, `scripts/e2e-scope.ts` reads the changed paths and turns the e2e shards off when all of them are documentation (`docs/`, Markdown, vendored agent skills) | `git diff --name-only --no-renames origin/master... \| bun scripts/e2e-scope.ts` | -- |
+| `detect` | probes for `apps/web/package.json` and `Dockerfile` so the optional jobs above can be skipped (`hashFiles()` is not allowed in job-level `if`) | -- | -- |
 
 ### `test` and `e2e` are blocking
 
@@ -421,14 +420,16 @@ silently un-gate them. The `build` job's bundle-budget step fails above 250 KB g
 
 Applied on 2026-09-04 after six consecutive green `test`/`e2e` runs. `required_linear_history` is
 on, so PRs must be **squash-merged** (`gh pr merge N --squash`); merge commits are rejected.
-`docker-build-smoke` is required because the `Dockerfile` now always exists. To re-apply or change:
+`docker-build-smoke` is required because the `Dockerfile` now always exists. Since TEACH-190 part d
+(2026-10-08) the six e2e shards are required by name instead of one `e2e` gate job; a PR that
+changes the shard count changes this list in the same PR. To re-apply or change:
 
 ```sh
 cat > /tmp/protection.json <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["quality", "tooling-smoke", "test", "build", "e2e", "audit", "secrets", "docker-build-smoke"]
+    "contexts": ["quality", "tooling-smoke", "test", "build", "e2e shard 1/6", "e2e shard 2/6", "e2e shard 3/6", "e2e shard 4/6", "e2e shard 5/6", "e2e shard 6/6", "audit", "secrets", "docker-build-smoke"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": { "required_approving_review_count": 0 },
