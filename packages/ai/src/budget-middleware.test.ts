@@ -1,10 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { generateText } from "ai";
+import { Writable } from "node:stream";
+import { generateText, streamText } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
+import pino from "pino";
 import { createBudget } from "./budget";
 import { estimatePreparedCall, MAX_IMAGE_INPUT_TOKENS, type PreparedCall } from "./budget-estimate";
 import { BudgetReservationError, withGenerationBudget } from "./budget-middleware";
 import { costUsd } from "./prices";
+import { createFakeAi } from "./testing";
 
 const id = "us.openai.gpt-5.6-terra";
 const params: PreparedCall = {
@@ -191,5 +194,211 @@ describe("prepared request estimates", () => {
     // Only the missing prefix is forgiven: other ids and other providers stay refused.
     for (const refused of ["gpt-6-sol", "gpt-4o", "google/gpt-6-luna", "openai.gpt-6-luna"])
       expect(estimatePreparedCall(refused, withImage)).toBeNull();
+  });
+});
+
+/** The lab writer's model: streamed, priced, text only. */
+const sol = "openai/gpt-6.1-sol";
+const usage = {
+  inputTokens: { total: 10_000, noCache: 8_000, cacheRead: 2_000, cacheWrite: 0 },
+  outputTokens: { total: 2_300, text: 2_000, reasoning: 300 },
+};
+const finish = (u: unknown = usage) =>
+  ({ type: "finish", finishReason: { unified: "stop", raw: undefined }, usage: u }) as never;
+
+/** A stubbed provider stream: the test pushes parts, finishes or fails it when it chooses. */
+function stubStream() {
+  let controller!: ReadableStreamDefaultController<unknown>;
+  let cancelled = false;
+  let dispatched = 0;
+  const model = new MockLanguageModelV4({
+    doStream: async () => {
+      dispatched++;
+      return {
+        stream: new ReadableStream({
+          start(c) {
+            controller = c as never;
+            c.enqueue({ type: "text-start", id: "t" });
+            c.enqueue({ type: "text-delta", id: "t", delta: "slide" });
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }) as never,
+      };
+    },
+  });
+  return {
+    model,
+    push: (part: unknown) => controller.enqueue(part),
+    close: () => controller.close(),
+    fail: (error: Error) => controller.error(error),
+    dispatched: () => dispatched,
+    cancelled: () => cancelled,
+  };
+}
+
+async function drain(stream: ReadableStream<unknown>) {
+  const parts: unknown[] = [];
+  const reader = stream.getReader();
+  for (;;) {
+    const next = await reader.read();
+    if (next.done) return parts;
+    parts.push(next.value);
+  }
+}
+
+describe("streamed calls (the lesson writer on gpt-6.1-sol)", () => {
+  test("reserve before dispatch, hold while open, settle from the finish part's usage", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const model = withGenerationBudget(stub.model, sol, budget);
+    const { stream } = await model.doStream(params);
+    expect(budget.totals().reserved?.calls).toBe(1);
+    expect(budget.totals().calls).toBe(0);
+    stub.push(finish());
+    stub.close();
+    const parts = await drain(stream);
+    expect(parts.map((p) => (p as { type: string }).type)).toEqual([
+      "text-start",
+      "text-delta",
+      "finish",
+    ]);
+    expect(budget.totals()).toEqual({
+      calls: 1,
+      inputTokens: 10_000,
+      outputTokens: 2_300,
+      costUsd: costUsd(sol, {
+        inputTokens: 10_000,
+        outputTokens: 2_300,
+        cachedInputTokens: 2_000,
+        cacheWriteInputTokens: 0,
+      }),
+    });
+  });
+
+  test("the cap holds mid-stream: an open stream's reservation refuses the next call, streamed or not", async () => {
+    const estimate = estimatePreparedCall(sol, params);
+    if (!estimate) throw new Error("fixture must be estimable");
+    const budget = createBudget({ capUsd: costUsd(sol, estimate) as number, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const model = withGenerationBudget(stub.model, sol, budget);
+    const { stream } = await model.doStream(params);
+    await expect(model.doStream(params)).rejects.toBeInstanceOf(BudgetReservationError);
+    await expect(model.doGenerate(params)).rejects.toBeInstanceOf(BudgetReservationError);
+    expect(stub.dispatched()).toBe(1);
+    stub.push(finish());
+    stub.close();
+    await drain(stream);
+    // Settled at the actual (smaller) usage, so the remainder admits nothing over the cap.
+    expect(budget.totals().reserved).toBeUndefined();
+    expect(budget.totals().calls).toBe(1);
+  });
+
+  test("an abort mid-stream leaves the reservation uncertain, and a late finish still settles it once", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const model = withGenerationBudget(stub.model, sol, budget);
+    const abort = new AbortController();
+    const { stream } = await model.doStream({ ...params, abortSignal: abort.signal });
+    abort.abort();
+    expect(budget.totals().uncertain?.calls).toBe(1);
+    stub.push(finish());
+    stub.close();
+    await drain(stream);
+    expect(budget.totals().uncertain).toBeUndefined();
+    expect(budget.totals().calls).toBe(1);
+  });
+
+  test("an already-aborted signal dispatches nothing and reserves nothing", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const model = withGenerationBudget(stub.model, sol, budget);
+    await expect(model.doStream({ ...params, abortSignal: AbortSignal.abort() })).rejects.toThrow();
+    expect(stub.dispatched()).toBe(0);
+    expect(budget.totals()).toEqual({ calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 });
+  });
+
+  test("a stream cancelled by its reader, one that errors and one that ends without usage stay uncertain", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+
+    const cancelled = stubStream();
+    const a = await withGenerationBudget(cancelled.model, sol, budget).doStream(params);
+    await a.stream.getReader().cancel("teacher left");
+    expect(cancelled.cancelled()).toBe(true);
+
+    const failed = stubStream();
+    const b = await withGenerationBudget(failed.model, sol, budget).doStream(params);
+    failed.fail(new Error("socket reset"));
+    await expect(drain(b.stream)).rejects.toThrow("socket reset");
+
+    const unfinished = stubStream();
+    const c = await withGenerationBudget(unfinished.model, sol, budget).doStream(params);
+    unfinished.push(finish({ inputTokens: {}, outputTokens: {} }));
+    unfinished.close();
+    await drain(c.stream);
+
+    expect(budget.totals().uncertain?.calls).toBe(3);
+    expect(budget.totals().calls).toBe(0);
+  });
+
+  test("a stream the estimate cannot bound is refused before dispatch, as a generate is", async () => {
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const stub = stubStream();
+    const withImage: PreparedCall = {
+      ...params,
+      prompt: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "file",
+              mediaType: "image/png",
+              data: { type: "data", data: new Uint8Array(8) },
+            },
+          ],
+        },
+      ],
+    };
+    await expect(
+      withGenerationBudget(stub.model, "gpt-4o", budget).doStream(withImage),
+    ).rejects.toThrow("could not be budgeted");
+    expect(stub.dispatched()).toBe(0);
+  });
+
+  test("through `ai.model` and `streamText`: one log line with the step, and the budget settled from it", async () => {
+    const lines: string[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _encoding, callback) {
+          lines.push(chunk.toString());
+          callback();
+        },
+      }),
+    );
+    const ai = createFakeAi({
+      logger,
+      modelIds: { frontier: sol },
+      usage: { inputTokens: 1_200, outputTokens: 300 },
+    });
+    const budget = createBudget({ capUsd: 1, capTokens: 1_000_000 });
+    const model = withGenerationBudget(
+      ai.model("frontier", { stage: "write", effort: "low" }),
+      sol,
+      budget,
+    );
+    // As with a generate, a stream with no output cap cannot be budgeted and is refused.
+    await streamText({ model, prompt: "brief", maxRetries: 0, maxOutputTokens: 4_000 }).text;
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0] ?? "").ai).toMatchObject({
+      modelId: sol,
+      stage: "write",
+      effort: "low",
+      inputTokens: 1_200,
+      outputTokens: 300,
+    });
+    expect(budget.totals()).toMatchObject({ calls: 1, inputTokens: 1_200, outputTokens: 300 });
+    expect(budget.totals().reserved).toBeUndefined();
   });
 });
