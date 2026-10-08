@@ -12,6 +12,7 @@ import { FIT_VERSION, getTheme, withKeyStage } from "../../packages/slides/src/t
 import {
   type AbArm,
   abArm,
+  abCaptions,
   abCheckDef,
   abCodeArm,
   abFiles,
@@ -22,6 +23,7 @@ import {
   abShared,
   sha,
 } from "./ab/arms";
+import { localAlt, localiseSlideAlts, slideWords } from "./ab/caption";
 import { continueForFit } from "./ab/continue";
 import { isQuestionSlide } from "./ab/lib";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
@@ -936,6 +938,10 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
         slides.push({ id: `s${i + 1}c${k + 1}`, ...c.slide, notes: "" } as Slide);
     }
     stampPictureSources(slides, visuals);
+    // locale4: stock captions keep only the teacher's place (ab/caption.ts).
+    if (abCaptions())
+      for (const [k, sl] of slides.entries())
+        slides[k] = localiseSlideAlts(sl, locale().country, brief.topic);
     writeJson(lessonFile, {
       version: 1,
       id: lessonId,
@@ -2374,7 +2380,19 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
         const v = visuals.get(`${i}:${a.key}`);
         // Round 5 (notes audit: marble chips described as magnesium): what the placed picture is,
         // its own alt and the subjects the judge saw in it, not what was asked for.
-        if (v?.status === "photo") return [`Picture: ${placedPictureText(v.photo, a.shows)}`];
+        if (v?.status === "photo") {
+          const photo =
+            abCaptions() && v.photo?.alt
+              ? {
+                  ...v.photo,
+                  alt: localAlt(v.photo.alt, {
+                    country: locale().country,
+                    context: `${slideWords(laid.get(i)?.slide)} ${a.shows} ${brief.topic}`,
+                  }),
+                }
+              : v.photo;
+          return [`Picture: ${placedPictureText(photo, a.shows)}`];
+        }
         if (v?.status === "diagram" && a.type === "diagram")
           return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
         return [];

@@ -44,6 +44,7 @@ export const AB_ARMS = [
   "locale3",
   "base5",
   "checkdef",
+  "locale4",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -72,6 +73,8 @@ export const AB_CONFIG: Record<
     objRetry?: boolean;
     /** checkdef: only hinge, question-set, practice and exit-ticket slides count as checks. */
     checkDef?: boolean;
+    /** locale4: stock captions keep only the teacher's place (ab/caption.ts). */
+    captions?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -363,6 +366,22 @@ export const AB_CONFIG: Record<
     delta:
       "base5 + checks defined: only question-set, practice, hinge or exit-ticket slides check (writer + objective-repair)",
   },
+  // locale4 (D33 open items, 9 Oct): base5 + stock captions lose a closing place phrase that is not
+  // the teacher's country and not named on the slide (ab/caption.ts). Prompts = base5's byte for
+  // byte: the objectives step already sees the country (base5 shared/objectives.txt carries
+  // {{locale.country}}, {{locale.setting}} and {{locale.placeShort}}).
+  locale4: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    polish2: true,
+    captions: true,
+    delta:
+      "base5 + picture captions and alt text drop a closing stock place name unless it is the teacher's country or the slide names it (code; prompts = base5)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -417,6 +436,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   polish2: { ref: "polish" },
   base5: { ref: "polish2" },
   checkdef: { ref: "base5" },
+  locale4: { ref: "base5" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -448,6 +468,7 @@ export const abStageBank = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].st
 /** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
 export const abPolish = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish) : false);
+export const abCaptions = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].captions) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);
