@@ -48,15 +48,29 @@ describe("arm checkdef", () => {
     });
 });
 
-describe("checkdef: generation's check slides = the evaluator's question kinds", () => {
-  // The objectives evaluator (v2, de1f06ac) takes each slide's role from eval/deck.py.
-  const deck = read(`${AB.replace(/\/ab$/, "")}/eval/deck.py`);
-  const m = deck.match(/^QUESTION_KINDS = \{([^}]*)\}/m);
-  const QUESTION_KINDS = new Set([...(m?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((x) => x[1]));
-  test("every writer template is a check exactly when its rendered kind is a question kind", () => {
+describe("checkdef: generation's check slides = the evaluator's check kinds", () => {
+  // Objectives evaluator v4 (lab/ab, bake-objectives.v4) takes a slide's role in eval/llm/score.ts (objectivesRole):
+  // a question kind (QUESTION_KINDS, the same set as eval/deck.py) always checks; a discussion slide checks only when
+  // DISCUSSION_COUNTS_AS_CHECK is true (default false, Greg to rule); any other slide checks only when its words are
+  // all a pupil task, which a template list cannot see, so those templates stay out of CHECKDEF_TEMPLATES.
+  const EVAL = `${AB.replace(/\/ab$/, "")}/eval`;
+  const kinds = (src: string, re: RegExp) =>
+    new Set([...(src.match(re)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((x) => x[1]));
+  const score = read(`${EVAL}/llm/score.ts`);
+  const QUESTION_KINDS = kinds(score, /export const QUESTION_KINDS = new Set\(\[([^\]]*)\]/);
+  const DISCUSSION = /export const DISCUSSION_COUNTS_AS_CHECK = true\b/.test(score);
+  test("the evaluator's question kinds are deck.py's", () => {
     expect(QUESTION_KINDS.size).toBeGreaterThan(0);
+    expect(QUESTION_KINDS).toEqual(
+      kinds(read(`${EVAL}/deck.py`), /^QUESTION_KINDS = \{([^}]*)\}/m),
+    );
+    expect(/export const DISCUSSION_COUNTS_AS_CHECK = (true|false)\b/.test(score)).toBe(true);
+  });
+  test("every writer template is a check exactly when its rendered kind always checks in the evaluator", () => {
+    const checks = (kind: string) =>
+      QUESTION_KINDS.has(kind) || (DISCUSSION && kind === "discussion");
     for (const [tpl, kind] of Object.entries(RENDERED_KIND))
-      expect([tpl, CHECKDEF_TEMPLATES.has(tpl)]).toEqual([tpl, QUESTION_KINDS.has(kind)]);
+      expect([tpl, CHECKDEF_TEMPLATES.has(tpl)]).toEqual([tpl, checks(kind)]);
     for (const tpl of CHECKDEF_TEMPLATES) expect(RENDERED_KIND[tpl]).toBeDefined();
   });
   test("checkDef coverage: a discussion slide no longer checks; the default still counts it", () => {
