@@ -364,6 +364,85 @@ const BASE: Theme[] = [
   },
 ];
 
+/**
+ * One type scale per key stage, read by the diagram drawer (`./diagrams`) so a drawing's labels
+ * follow the lesson's reading size:
+ *
+ *   body       KS1 33, KS2 29, KS3-5 25
+ *   bodySmall  one fixed step under body (0.85): diagram labels' floor (UX ruling 91)
+ *   heading    the theme's heading stop at the stage; headingDisplay the slide heading (x1.15);
+ *              title, subtitle the theme's display stops at the stage; caption the theme's eyebrow
+ *              stop at the stage
+ *
+ * The stage is set process-wide for a generation job (`setKeyStage` / `withKeyStage`). No stage:
+ * the themes' own sizes, which is every lesson until the writer planner binds a stage to its themes.
+ */
+export type KeyStage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
+type StageScale = { body: number; heading: number; caption: number };
+/** Body in slide points (960 wide); display stops multiply the theme's own. */
+export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
+  ks1: { body: 33, heading: 1.15, caption: 1.1 },
+  ks2: { body: 29, heading: 1.1, caption: 1.05 },
+  ks3: { body: 25, heading: 1.05, caption: 1 },
+  ks4: { body: 25, heading: 1.05, caption: 1 },
+  ks5: { body: 25, heading: 1.05, caption: 1 },
+};
+/** bodySmall = body x this: the one step under body. */
+export const BODY_SMALL = 0.85;
+/** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
+const DISPLAY_HEADING = 1.15;
+
+let stage: KeyStage | undefined;
+const asStage = (band: string | undefined | null): KeyStage | undefined => {
+  const k = (band ?? "").toLowerCase();
+  return k in KEY_STAGE_TYPE ? (k as KeyStage) : undefined;
+};
+/** The key stage the type scale is read at now (undefined: the themes' own sizes). */
+export const keyStage = (): KeyStage | undefined => stage;
+/** Set the key stage the type scale is read at; an unknown band clears it. */
+export function setKeyStage(band: string | undefined | null): void {
+  stage = asStage(band);
+}
+/** `f` with the type scale read at `band`'s key stage; the stage before is restored. */
+export function withKeyStage<T>(band: string | undefined | null, f: () => T): T {
+  const was = stage;
+  stage = asStage(band);
+  try {
+    return f();
+  } finally {
+    stage = was;
+  }
+}
+
+export type TypeStep =
+  | "title"
+  | "subtitle"
+  | "headingDisplay"
+  | "heading"
+  | "body"
+  | "bodySmall"
+  | "caption";
+export type TypeScale = Record<TypeStep, number>;
+
+function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
+  const k = KEY_STAGE_TYPE[ks];
+  const heading = Math.round(own.heading * k.heading);
+  return {
+    title: Math.round(own.title * k.heading),
+    subtitle: Math.round(own.subtitle * k.heading),
+    headingDisplay: Math.round(heading * DISPLAY_HEADING),
+    heading,
+    body: k.body,
+    bodySmall: Math.round(k.body * BODY_SMALL),
+    caption: Math.round(own.caption * k.caption),
+  };
+}
+
+/** THE type scale at the current key stage. Undefined at no stage (the theme's own ladder). */
+export function typeScale(t: Theme): TypeScale | undefined {
+  return stage ? scaleAt(t.sizes, stage) : undefined;
+}
+
 /** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
 export const THEMES: Theme[] = BASE;
 
