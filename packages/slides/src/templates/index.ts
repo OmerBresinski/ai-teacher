@@ -274,11 +274,11 @@ function box(
  * at or over the floor without one). `c.s.small` is the full scale's step on every ladder rung.
  */
 const markerSize = (c: Ctx) => Math.max(c.s.small, MIN_FONT_SIZE.body);
-/** The glyph's share of its disc: a bold numeral or letter, one or two characters. */
-const MARKER_GLYPH = 0.68;
-/** The marker disc's diameter: the lab's 1.25 body, grown so the glyph sits at `MARKER_GLYPH`. */
-const markerDisc = (c: Ctx) =>
-  Math.max(Math.round(c.s.body * 1.25), Math.ceil(markerSize(c) / MARKER_GLYPH));
+/**
+ * The marker disc's diameter, the lab's (1.25 body), so every capacity matches the lab's tables.
+ * The glyph fills more of it than the lab's 0.55 (0.68 at full size, up to 0.81 on the small rung).
+ */
+const markerDisc = (c: Ctx) => Math.round(c.s.body * 1.25);
 
 /** A filled disc with a centred numeral or letter (the homepage's list marker). */
 function disc(c: Ctx, label: string, x: number, y: number, d: number) {

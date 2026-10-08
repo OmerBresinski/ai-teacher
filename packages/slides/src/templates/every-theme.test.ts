@@ -82,7 +82,8 @@ describe("every writer template on every theme", () => {
               expect(resolveTextStyle(style, atKeyStage(theme, stage), "body").fontSize).toBe(
                 stored,
               );
-              expect(stored / e.h).toBeLessThanOrEqual(0.7);
+              // The glyph line (1.2 em) sits inside the disc.
+              expect(stored * 1.2).toBeLessThanOrEqual(e.h);
               markers++;
             }
     expect(markers).toBeGreaterThan(0);

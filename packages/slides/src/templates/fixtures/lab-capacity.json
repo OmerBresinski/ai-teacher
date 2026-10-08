@@ -1,0 +1,1654 @@
+{
+  "source": "lab/ab 46570198, lab/bakeoff/catalogue.ts",
+  "templates": [
+    {
+      "id": "title",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 16,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 86,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "with picture",
+              "counts": {},
+              "maxCharsPerItem": 130
+            },
+            {
+              "label": "no picture",
+              "counts": {},
+              "maxCharsPerItem": 240
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 16,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 92,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "with picture",
+              "counts": {},
+              "maxCharsPerItem": 154
+            },
+            {
+              "label": "no picture",
+              "counts": {},
+              "maxCharsPerItem": 240
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 16,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 112,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "with picture",
+              "counts": {},
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "no picture",
+              "counts": {},
+              "maxCharsPerItem": 240
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "objectives",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "2 objectives",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 124
+            },
+            {
+              "label": "3 objectives",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 48
+            },
+            {
+              "label": "4 objectives",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 44
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "2 objectives",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 144
+            },
+            {
+              "label": "3 objectives",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 100
+            },
+            {
+              "label": "4 objectives",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 54
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "2 objectives",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 224
+            },
+            {
+              "label": "3 objectives",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 118
+            },
+            {
+              "label": "4 objectives",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 64
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "explain",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 106
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 52
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 100
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 120
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 62
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 124
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 144
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 140
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 202
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 68
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "picture-text",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 164
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 40
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 22
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 40
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 212
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 54
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 26
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 54
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 62
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 86
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "diagram-text",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 164
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 40
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 22
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 40
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 212
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 54
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 26
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 54
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": {
+                "points": 0
+              },
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 62
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": {
+                "points": 1
+              },
+              "maxCharsPerItem": 86
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "big-picture",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "maxCharsPerItem": 106
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "maxCharsPerItem": 124
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "maxCharsPerItem": 142
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "big-diagram",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "maxCharsPerItem": 240
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "maxCharsPerItem": 124
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "maxCharsPerItem": 142
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "picture-sequence",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "2 pictures",
+              "counts": {
+                "sequence": 2
+              },
+              "maxCharsPerItem": 48
+            },
+            {
+              "label": "3 pictures",
+              "counts": {
+                "sequence": 3
+              },
+              "maxCharsPerItem": 30
+            },
+            {
+              "label": "4 pictures",
+              "counts": {
+                "sequence": 4
+              },
+              "maxCharsPerItem": 20
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "2 pictures",
+              "counts": {
+                "sequence": 2
+              },
+              "maxCharsPerItem": 56
+            },
+            {
+              "label": "3 pictures",
+              "counts": {
+                "sequence": 3
+              },
+              "maxCharsPerItem": 32
+            },
+            {
+              "label": "4 pictures",
+              "counts": {
+                "sequence": 4
+              },
+              "maxCharsPerItem": 20
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "2 pictures",
+              "counts": {
+                "sequence": 2
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "3 pictures",
+              "counts": {
+                "sequence": 3
+              },
+              "maxCharsPerItem": 40
+            },
+            {
+              "label": "4 pictures",
+              "counts": {
+                "sequence": 4
+              },
+              "maxCharsPerItem": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "compare",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "2 columns",
+              "counts": {
+                "columns": 2
+              },
+              "maxCharsPerItem": 164
+            },
+            {
+              "label": "3 columns",
+              "counts": {
+                "columns": 3
+              },
+              "maxCharsPerItem": 90
+            },
+            {
+              "label": "2 columns with pictures",
+              "counts": {
+                "columns": 2
+              },
+              "maxCharsPerItem": 30
+            },
+            {
+              "label": "3 columns with pictures",
+              "counts": {
+                "columns": 3
+              },
+              "maxCharsPerItem": 68
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "2 columns",
+              "counts": {
+                "columns": 2
+              },
+              "maxCharsPerItem": 208
+            },
+            {
+              "label": "3 columns",
+              "counts": {
+                "columns": 3
+              },
+              "maxCharsPerItem": 130
+            },
+            {
+              "label": "2 columns with pictures",
+              "counts": {
+                "columns": 2
+              },
+              "maxCharsPerItem": 32
+            },
+            {
+              "label": "3 columns with pictures",
+              "counts": {
+                "columns": 3
+              },
+              "maxCharsPerItem": 80
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "2 columns",
+              "counts": {
+                "columns": 2
+              },
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "3 columns",
+              "counts": {
+                "columns": 3
+              },
+              "maxCharsPerItem": 170
+            },
+            {
+              "label": "2 columns with pictures",
+              "counts": {
+                "columns": 2
+              },
+              "maxCharsPerItem": 80
+            },
+            {
+              "label": "3 columns with pictures",
+              "counts": {
+                "columns": 3
+              },
+              "maxCharsPerItem": 112
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "steps",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 steps",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 48
+            },
+            {
+              "label": "4 steps",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 44
+            },
+            {
+              "label": "5 steps",
+              "counts": {
+                "points": 5
+              },
+              "maxCharsPerItem": 0
+            },
+            {
+              "label": "3 steps with figure",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 22
+            },
+            {
+              "label": "4 steps with figure",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 20
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 steps",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 100
+            },
+            {
+              "label": "4 steps",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 54
+            },
+            {
+              "label": "5 steps",
+              "counts": {
+                "points": 5
+              },
+              "maxCharsPerItem": 48
+            },
+            {
+              "label": "3 steps with figure",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 44
+            },
+            {
+              "label": "4 steps with figure",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 26
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "3 steps",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 118
+            },
+            {
+              "label": "4 steps",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "5 steps",
+              "counts": {
+                "points": 5
+              },
+              "maxCharsPerItem": 58
+            },
+            {
+              "label": "3 steps with figure",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 62
+            },
+            {
+              "label": "4 steps with figure",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 34
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "equation-hero",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28,
+            "formula": 30,
+            "formulaBesideFigure": 16
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "formula + 2 lines",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 100
+            },
+            {
+              "label": "formula + 3 lines",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 54
+            },
+            {
+              "label": "formula + 4 lines",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 0
+            },
+            {
+              "label": "formula + 2 lines with figure",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 40
+            },
+            {
+              "label": "formula + 3 lines with figure",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 22
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28,
+            "formula": 36,
+            "formulaBesideFigure": 16
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "formula + 2 lines",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 118
+            },
+            {
+              "label": "formula + 3 lines",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 62
+            },
+            {
+              "label": "formula + 4 lines",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 56
+            },
+            {
+              "label": "formula + 2 lines with figure",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 48
+            },
+            {
+              "label": "formula + 3 lines with figure",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 24
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30,
+            "formula": 40,
+            "formulaBesideFigure": 16
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "formula + 2 lines",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 136
+            },
+            {
+              "label": "formula + 3 lines",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 74
+            },
+            {
+              "label": "formula + 4 lines",
+              "counts": {
+                "points": 4
+              },
+              "maxCharsPerItem": 72
+            },
+            {
+              "label": "formula + 2 lines with figure",
+              "counts": {
+                "points": 2
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "formula + 3 lines with figure",
+              "counts": {
+                "points": 3
+              },
+              "maxCharsPerItem": 32
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "hinge",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 options",
+              "counts": {
+                "options": 3
+              },
+              "maxCharsPerItem": 72
+            },
+            {
+              "label": "4 options",
+              "counts": {
+                "options": 4
+              },
+              "maxCharsPerItem": 48
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 options",
+              "counts": {
+                "options": 3
+              },
+              "maxCharsPerItem": 84
+            },
+            {
+              "label": "4 options",
+              "counts": {
+                "options": 4
+              },
+              "maxCharsPerItem": 56
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "3 options",
+              "counts": {
+                "options": 3
+              },
+              "maxCharsPerItem": 112
+            },
+            {
+              "label": "4 options",
+              "counts": {
+                "options": 4
+              },
+              "maxCharsPerItem": 98
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "question-set",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 44
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 0
+            },
+            {
+              "label": "3 questions with picture",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 22
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 56
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 52
+            },
+            {
+              "label": "3 questions with picture",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 44
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 120
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "3 questions with picture",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 62
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "practice",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 44
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 0
+            },
+            {
+              "label": "3 questions with picture",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 22
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 56
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 52
+            },
+            {
+              "label": "3 questions with picture",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 44
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 120
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 64
+            },
+            {
+              "label": "3 questions with picture",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 62
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "exit-ticket",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 54,
+            "lead": 50
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 44
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 0
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 62,
+            "lead": 58
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 56
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 52
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 72,
+            "lead": 68
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": {
+                "questions": 3
+              },
+              "maxCharsPerItem": 120
+            },
+            {
+              "label": "4 questions",
+              "counts": {
+                "questions": 4
+              },
+              "maxCharsPerItem": 64
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "discussion",
+      "capacity": {
+        "KS1": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 36,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "prompt alone",
+              "counts": {},
+              "maxCharsPerItem": 202
+            },
+            {
+              "label": "prompt with picture",
+              "counts": {},
+              "maxCharsPerItem": 164
+            }
+          ]
+        },
+        "KS2": {
+          "charsPerLine": {
+            "heading": 36,
+            "body": 28,
+            "lead": 28
+          },
+          "headingMax": 72,
+          "headingOneLine": 36,
+          "variants": [
+            {
+              "label": "prompt alone",
+              "counts": {},
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "prompt with picture",
+              "counts": {},
+              "maxCharsPerItem": 212
+            }
+          ]
+        },
+        "KS3-5": {
+          "charsPerLine": {
+            "heading": 40,
+            "body": 36,
+            "lead": 30
+          },
+          "headingMax": 86,
+          "headingOneLine": 40,
+          "variants": [
+            {
+              "label": "prompt alone",
+              "counts": {},
+              "maxCharsPerItem": 240
+            },
+            {
+              "label": "prompt with picture",
+              "counts": {},
+              "maxCharsPerItem": 240
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
