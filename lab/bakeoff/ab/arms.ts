@@ -4,7 +4,7 @@
 // (BAKEOFF/ab/prompts/<arm>/{T,shared}/; round 5 hash-proven, ab/PROMPTS.md), checked by ab/check.ts
 // and pinned in ab/PINS.json. Nothing is appended to the system text (no subject block in any arm).
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 // Not imported from services.ts (services imports this file; the constant would not be set yet).
 const BAKEOFF =
@@ -42,6 +42,7 @@ export const AB_ARMS = [
   "polish2",
   "locale2",
   "locale3",
+  "base5",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -323,6 +324,22 @@ export const AB_CONFIG: Record<
     delta:
       "locale + one short sentence: where the topic depends on place, use what is true in the country (no list); England byte-exact",
   },
+  // base5 (D32, D33, 9 Oct): base4 + recall clause removed (D28) + polish's code fixes (title
+  // subtitle, cycle box sizing, strips drawn, strips menu and schema) + polish2's label refit with
+  // protected labels never dropped (8a6a79a2) + locale3's country line. Not the 768 px judge; the
+  // colour gate logs only. Writer files = polish2's with locale3's delta on base4 merged in
+  // (England compiles byte for byte to polish2).
+  base5: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    polish: true,
+    polish2: true,
+    delta:
+      "polish2 + locale3's country line (England byte-exact to polish2); recall clause removed, code title, cycle sizing, strips, protected labels never dropped",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -375,6 +392,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   locale3: { ref: "locale2" },
   polish: { ref: "base4" },
   polish2: { ref: "polish" },
+  base5: { ref: "polish2" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -383,23 +401,35 @@ export function setAbArm(a: AbArm | undefined) {
   current = a;
 }
 export const abArm = () => current;
+/**
+ * Cache (ab/CACHE.md): `run.ts --code-arm <arm>` takes the code switches below (polish, polish2,
+ * fixes, r2...) from another arm while prompts, schemas and picture versions stay the run arm's, so a
+ * code-only A/B replays its base's writer from the cache.
+ */
+let codeArm: AbArm | undefined;
+export function setAbCodeArm(a: AbArm | undefined) {
+  codeArm = a;
+}
+const code = () => codeArm ?? current;
+/** The `--code-arm` in force, if any (request.json records it). */
+export const abCodeArm = () => codeArm;
 /** D11 correctness fixes (K3 incomplete-writer failure, seeded hinge shuffle): base3 onwards only. */
 /** R1 stage 1 (b3-r1t): the writer's items and tiles are flattened for the harness (writer-only scoring). */
 /** R1 stage 2 (b4-r1t2): code drops pointing items whose picture is not shown. */
-export const abR1t2 = () => (current ? Boolean(AB_CONFIG[current].r1t2) : false);
+export const abR1t2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t2) : false);
 /** b4-r1t3: every director picture fetched, several pictures laid out as tiles. */
-export const abR1t3 = () => (current ? Boolean(AB_CONFIG[current].r1t3) : false);
+export const abR1t3 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t3) : false);
 /** y1fix bank rule: stage requests never reuse stock bank rows. */
-export const abStageBank = () => (current ? Boolean(AB_CONFIG[current].stageBank) : false);
+export const abStageBank = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].stageBank) : false);
 /** lib: the writer's figure kind `model` is filled and drawn by the library (ab/lib.ts). */
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
-export const abPolish = () => (current ? Boolean(AB_CONFIG[current].polish) : false);
-export const abPolish2 = () => (current ? Boolean(AB_CONFIG[current].polish2) : false);
-export const abLib = () => (current ? Boolean(AB_CONFIG[current].lib) : false);
-export const abR1t = () => (current ? Boolean(AB_CONFIG[current].r1t) : false);
+export const abPolish = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish) : false);
+export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
+export const abLib = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].lib) : false);
+export const abR1t = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r1t) : false);
 /** R2: the writer's own diagram specs are drawn by code (b3-r2). */
-export const abR2 = () => (current ? Boolean(AB_CONFIG[current].r2) : false);
-export const abFixes = () => (current ? Boolean(AB_CONFIG[current].fixes) : false);
+export const abR2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].r2) : false);
+export const abFixes = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].fixes) : false);
 
 /** Round 5 as recorded: system length (JS chars) per stage in round5 request.json, and the T pin. */
 export const ROUND5_SYSTEM_CHARS: Record<(typeof STAGES)[number], number> = {
@@ -471,11 +501,12 @@ export function pinFaults(arm: AbArm): string[] {
       if (!existsSync(f)) out.push(`${key} missing (${k})`);
       else if (pins[key] !== sha(readFileSync(f))) out.push(`${key} differs from its pin`);
     }
-  for (const f of SHARED_PINNED) {
-    const path = `${AB}/prompts/${arm}/${f}`;
-    const key = path.slice(AB.length + 1);
-    if (existsSync(path) && pins[key] !== sha(readFileSync(path)))
-      out.push(`${key} differs from its pin`);
+  // Audit F8: every shared prompt the run reads, from wherever it is read (the arm's copy, or the
+  // head BAKEOFF/prompts/shared file outside git), pinned by hash; an absent file is pinned as absent.
+  for (const { key, path } of sharedReads(arm)) {
+    const now = pinOf(path);
+    if (!(key in pins)) out.push(`${key} has no pin (run check.ts --pin)`);
+    else if (pins[key] !== now) out.push(`${key} differs from its pin`);
   }
   // lib arm: a stand-in prompt (marked "[PLACEHOLDER") never goes to a paid run.
   for (const f of [
@@ -497,6 +528,9 @@ export const CODE_PINNED = [
   "packages/generation/src/prompts/picture-director.ts",
   "packages/generation/src/prompts/pick-or-requery-photo.ts",
   "packages/generation/src/prompts/shortlist-photos.ts",
+  // Audit F8: the versions judge20, dir-stage and y1fix run (ARM_PICTURE_VERSIONS).
+  "packages/generation/src/prompts/picture-director-v12.ts",
+  "packages/generation/src/prompts/pick-or-requery-photo-v20.ts",
 ];
 export const REPO = `${import.meta.dir}/../../..`;
 export const PICTURE_VERSIONS = {
@@ -513,6 +547,53 @@ export const pictureVersions = (a: AbArm | undefined) => ({
   ...PICTURE_VERSIONS,
   ...(a ? ARM_PICTURE_VERSIONS[a] : {}),
 });
+
+/**
+ * check.ts (audit F9): the failure line for a code-only arm whose writer request differs from its
+ * reference, named for the arm itself (it once printed "judge20" for dir-stage and "b4-r1t2" for
+ * b4-r1t3 and y1fix).
+ */
+export function codeOnlyFault(arm: string, id: string, differs: boolean): string | undefined {
+  if (!differs) return undefined;
+  if (arm === "judge20" || arm === "dir-stage")
+    return `${arm} ${id}: its request differs from base4 (${arm === "judge20" ? "the judge" : "the director"} is code only)`;
+  if (arm === "b4-r1t2" || arm === "b4-r1t3" || arm === "y1fix")
+    return `${arm} ${id}: its request differs from b4-r1t (${arm === "b4-r1t2" ? "stage 2" : arm} is code only)`;
+  return undefined;
+}
+
+/** The head shared prompt folder (outside git). */
+export const HEAD_SHARED = `${BAKEOFF}/prompts/shared`;
+/** Shared files read only from the head folder, whatever the arm (services.ts, arm-t.ts). */
+export const HEAD_ONLY = [
+  "shared/illustration-style.txt",
+  "shared/house-photo.txt",
+  "shared/diagram-contract.v2.txt",
+  "shared/diagram-spec.v2.txt",
+];
+/** A file's pin: its sha256, or "absent" (a file appearing later is a change too). */
+export const pinOf = (path: string) => (existsSync(path) ? sha(readFileSync(path)) : "absent");
+/**
+ * Every shared prompt file an arm's run reads, with its pin key (audit F8). A HEAD_ONLY file, the
+ * head subjects/ files and any SHARED_PINNED file the arm has no copy of are read from the head
+ * folder and keyed `head:prompts/shared/<f>`; an arm copy keeps its `prompts/<arm>/<f>` key.
+ */
+export function sharedReads(arm: AbArm): { key: string; path: string }[] {
+  const out: { key: string; path: string }[] = [];
+  const head = (f: string) => ({ key: `head:prompts/${f}`, path: `${BAKEOFF}/prompts/${f}` });
+  for (const f of [...new Set([...SHARED_PINNED, ...HEAD_ONLY])]) {
+    const own = `${AB}/prompts/${arm}/${f}`;
+    out.push(
+      !HEAD_ONLY.includes(f) && existsSync(own)
+        ? { key: own.slice(AB.length + 1), path: own }
+        : head(f),
+    );
+  }
+  if (existsSync(`${HEAD_SHARED}/subjects`))
+    for (const f of readdirSync(`${HEAD_SHARED}/subjects`).sort())
+      if (f.endsWith(".txt")) out.push(head(`shared/subjects/${f}`));
+  return out;
+}
 
 export const SHARED_PINNED = [
   "shared/user.txt",
@@ -539,4 +620,8 @@ export const SHARED_PINNED = [
   "shared/lib-fill.txt",
   "shared/lib-fill-user.txt",
   "shared/lib-repair-user.txt",
+  "shared/base-visuals.txt",
+  "shared/base-visuals.KS1.txt",
+  "shared/base-visuals.KS2.txt",
+  "shared/base-visuals.KS3-5.txt",
 ];

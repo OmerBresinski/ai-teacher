@@ -65,6 +65,7 @@ import { atFullSize, layoutTemplate, placePhoto } from "../../packages/slides/sr
 import { getTheme, withKeyStage } from "../../packages/slides/src/themes";
 import { createStorage } from "../../packages/storage/src/index";
 import { AB_CONFIG, type AbArm, abArm, abPolish, abR1t3, abShared, abStageBank } from "./ab/arms";
+import { callMeta } from "./ab/cache";
 import { locale, localise } from "./locale";
 
 export const ROUNDS =
@@ -109,6 +110,20 @@ export class Ledger {
   }
   get total() {
     return Object.values(this.parts).reduce((a, b) => a + b, 0);
+  }
+  /**
+   * cost.json's body: every booked part, the picture director's outside spend, and `total` as their
+   * sum. Every cost.json is written from this (audit F4: an incomplete writer's total was main only,
+   * dropping picture spend made while streaming, so run.sh's SPEND under-booked it).
+   */
+  costJson(extra: Record<string, unknown> = {}) {
+    const outside = this.outside();
+    const parts: Record<string, number> = {
+      ...this.parts,
+      ...(outside ? { picturesDirector: outside } : {}),
+    };
+    const total = Object.values(parts).reduce((a, b) => a + b, 0);
+    return { ...parts, total: Number(total.toFixed(7)), ...extra };
   }
   /**
    * Other runs sharing one budget (`shareBudget`): their committed spend, counted against this
@@ -354,24 +369,48 @@ function localiseReq<R extends { system?: unknown; user?: unknown }>(r: R): R {
   };
 }
 
-export async function chat(
-  r: ChatReq,
-): Promise<{ out: unknown; text: string; usage: Usage; usd: number; ms: number }> {
+/** What the A/B cache knows about a call before localising (its importers and stage labels). */
+const metaOf = (r: ChatReq) => ({
+  name: r.name,
+  model: r.model,
+  effort: r.effort,
+  system: r.system,
+  user: r.user,
+  schema: r.schema,
+});
+/** A cache hit (ab/cache.ts): the original usage, booked at $0. */
+const hitUsage = (res: Response): Usage | undefined =>
+  res.headers.get("x-ab-cache") === "hit"
+    ? (JSON.parse(res.headers.get("x-ab-cache-usage") ?? "null") ?? undefined)
+    : undefined;
+
+export async function chat(r: ChatReq): Promise<{
+  out: unknown;
+  text: string;
+  usage: Usage;
+  usd: number;
+  ms: number;
+  cached?: boolean;
+}> {
+  const meta = metaOf(r);
   r = localiseReq(r);
   const t0 = performance.now();
   // Round 3 (R2 y10: eleven notes calls hung ~80 s, then the socket closed): every call has a
   // deadline; a timed-out or dropped call is tried once more before it fails.
   const once = () =>
-    fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key(".dayback-openai-key")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body(r, false)),
-      signal: AbortSignal.timeout(r.timeoutMs ?? CHAT_TIMEOUT_MS),
-    });
+    callMeta.run(meta, () =>
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key(".dayback-openai-key")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body(r, false)),
+        signal: AbortSignal.timeout(r.timeoutMs ?? CHAT_TIMEOUT_MS),
+      }),
+    );
   const res = await once().catch(() => once());
+  const hit = hitUsage(res);
   const j = (await res.json()) as {
     choices?: { message: { content: string } }[];
     usage: Usage;
@@ -389,9 +428,10 @@ export async function chat(
   return {
     out,
     text,
-    usage: j.usage,
-    usd: usd(r.model, j.usage),
+    usage: hit ?? j.usage,
+    usd: hit ? 0 : usd(r.model, j.usage),
     ms: Math.round(performance.now() - t0),
+    ...(hit ? { cached: true } : {}),
   };
 }
 
@@ -406,7 +446,9 @@ export async function chatStream(
   ms: number;
   firstTokenMs: number;
   finishReason?: string;
+  cached?: boolean;
 }> {
+  const meta = metaOf(r);
   r = localiseReq(r);
   const t0 = performance.now();
   // Stalls and runaway whitespace abort the call (a strict-schema stream once went quiet for 10
@@ -422,15 +464,18 @@ export async function chatStream(
     if (r.signal.aborted) ac.abort(r.signal.reason);
     else r.signal.addEventListener("abort", () => ac.abort(r.signal?.reason), { once: true });
   }
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    signal: ac.signal,
-    headers: {
-      Authorization: `Bearer ${key(".dayback-openai-key")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body(r, true)),
-  });
+  const res = await callMeta.run(meta, () =>
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: ac.signal,
+      headers: {
+        Authorization: `Bearer ${key(".dayback-openai-key")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body(r, true)),
+    }),
+  );
+  const hit = hitUsage(res);
   if (!res.ok || !res.body)
     throw new Error(`openai ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const reader = res.body.getReader();
@@ -476,11 +521,12 @@ export async function chatStream(
   if (!usage) throw new Error("stream ended without usage");
   return {
     text,
-    usage,
-    usd: usd(r.model, usage),
+    usage: hit ?? usage,
+    usd: hit ? 0 : usd(r.model, usage),
     ms: Math.round(performance.now() - t0),
     firstTokenMs: first,
     finishReason,
+    ...(hit ? { cached: true } : {}),
   };
 }
 
