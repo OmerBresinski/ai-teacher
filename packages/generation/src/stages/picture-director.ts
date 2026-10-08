@@ -893,3 +893,12 @@ export function withPhotoSources<T extends { elements: unknown[] }>(
     });
   return slides.map((s) => ({ ...s, elements: tag(s.elements) }));
 }
+
+/** The line a writer slide asks pupils to look with (its figure's `ask`, else its lead), as base4 read it. */
+export function pointOf(s: Record<string, unknown>): string {
+  for (const k of ["figure", "picture", "diagram"]) {
+    const f = s[k] as { ask?: unknown } | null | undefined;
+    if (f && typeof f.ask === "string" && f.ask.trim()) return f.ask;
+  }
+  return typeof s.lead === "string" ? s.lead : typeof s.ask === "string" ? s.ask : "";
+}

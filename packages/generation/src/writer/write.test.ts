@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createFakeAi, type FakeCall } from "@tj/ai/testing";
 import type { Lesson } from "@tj/domain/documents";
+import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { WRITER_PLANNED_VERSION } from "../stages/objectives-first";
 import { write } from "../stages/write";
 import {
@@ -98,7 +99,13 @@ describe("a stop is never swallowed", () => {
     );
     const out = await write(initialState(planned()), deps);
     expect(out.lesson.generation?.stage).toBe("generated");
-    expect(out.lesson.slides.length).toBe(12);
+    // TEACH-251: with no image placer every picture slot fails, so its slide is restaged
+    // text-only (one overflowed into a continuation slide) and no placeholder ships.
+    expect(out.lesson.slides.filter((sl) => !/c\d+$/.test(sl.id)).length).toBe(12);
+    const srcs = out.lesson.slides.flatMap((sl) =>
+      sl.elements.flatMap((e) => (e.type === "image" ? [e.src] : [])),
+    );
+    expect(srcs).not.toContain(PLACEHOLDER_IMAGE);
   });
 
   test("a call's own deadline aborts it as a non-fatal timeout", async () => {

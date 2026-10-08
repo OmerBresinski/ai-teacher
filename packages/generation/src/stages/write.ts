@@ -1,11 +1,15 @@
 import type { Lesson, Slide } from "@tj/domain/documents";
+import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
+import { locale } from "../writer/locale";
 import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
+import type { DirectedPlacer } from "./illustrate";
 import { writerBundleOf } from "./objectives-first";
+import { createDirectorBatcher, createWriterPictures, withPhotoSources } from "./picture-director";
 
 /*
  * The writer planner's generate step (TEACH-110 part b): the base4 lesson writer, with the
@@ -72,6 +76,23 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         usage: deps.budget.totals(),
       },
     }) as Lesson;
+  // TEACH-251: the writer's pictures, placed off the writing clock by the batched director. With
+  // no image placer (no Pexels key) every photo slot is failed, so the slide is text-only.
+  const images = deps.images as DirectedPlacer | undefined;
+  const pictures = images
+    ? createWriterPictures({
+        lesson,
+        // As base4: the writer's locale (England until TEACH-33 part b sets the account's).
+        country: locale().country,
+        images,
+        deps,
+        direct: createDirectorBatcher(deps, PICTURE_DIRECTOR_BATCH_SYSTEM),
+        onOutcome: (key, o) =>
+          deps.logger.info({ stage: "generate", picture: key, ...o }, "writer picture"),
+      })
+    : undefined;
+  const credited = <T extends { elements: unknown[] }>(slides: T[]) =>
+    pictures ? withPhotoSources(slides, pictures.sources()) : slides;
   let out: Awaited<ReturnType<typeof runWriter>>;
   try {
     const services = aiWriterServices(deps);
@@ -83,9 +104,17 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // The writer's diagrams are drawn before editable: its own spec by code, else the drawer
       // call on the small model (TEACH-247).
       drawDiagrams: { callDrawer: (req) => services.chat({ ...req, model: SMALL_MODEL }) },
+      visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
+      ...(pictures ? { vetoed: pictures.vetoed } : {}),
+      onAsks: (i, asks, slide) => {
+        for (const a of asks) if (a.type === "photo") pictures?.start(i, a, slide);
+      },
+      beforeEditable: async () => {
+        await pictures?.settle();
+      },
       onEditable: async (slides) => {
         // Editable: every slide is laid out; the checkpoint stays at `planned` until the end.
-        const { updatedAt } = await deps.persist(toLesson(slides, "planned"));
+        const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned"));
         await deps.onProgress(70, "Slides written", "generate", updatedAt);
       },
     });
@@ -105,7 +134,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
     throw error;
   }
-  const done = toLesson(out.slides, "generated");
+  const done = toLesson(credited(out.slides), "generated");
   const { updatedAt } = await deps.persist(done);
   await deps.onProgress(100, "Lesson ready", "generate", updatedAt);
   return { ...state, lesson: done };

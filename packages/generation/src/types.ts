@@ -99,6 +99,14 @@ export interface PhotoPlacer {
     },
   ): Promise<PhotoResult[]>;
   store(photo: PhotoResult, target: "slide"): Promise<StoredPhoto>;
+  /**
+   * Wikimedia Commons search (ruling 139), used only by the writer planner's picture director
+   * (TEACH-251); objectives-first never calls it. Absent: every search is Pexels.
+   */
+  searchCommons?(
+    query: string,
+    opts: { perPage: number; signal: AbortSignal },
+  ): Promise<PhotoResult[]>;
 }
 
 /**
