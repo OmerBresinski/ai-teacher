@@ -114,9 +114,10 @@ export function getTerminalJobEvent(
 }
 
 /**
- * Whether the `queued` event `enqueue()` writes exists for `jobId` in `ws`. `enqueue` sends to
- * pg-boss before inserting `queued`, so a job may have `started` and still lack it (TEACH-82 X3);
- * ADR 0025 §24 keys the stale-lock window on this row specifically.
+ * Whether the `queued` event `enqueue()` writes exists for `jobId` in `ws`. Since TEACH-135 part b
+ * `enqueue` commits the pg-boss job and its `queued` row together; a job that `started` without one
+ * was enqueued before that (TEACH-82 X3). ADR 0025 §24 keys the stale-lock window on this row
+ * specifically.
  */
 export async function hasQueuedJobEvent(ws: WorkspaceDb, jobId: JobId): Promise<boolean> {
   const rows = await ws

@@ -449,10 +449,15 @@ describe("createLessonAndEnqueue when the enqueue fails", () => {
       if (sendResult === "throws") throw new Error("pg-boss down");
       return null;
     });
+    // `enqueue` sends inside a transaction (TEACH-135 part b); `send` throws or dedupes here, so the
+    // transaction body never reaches the `queued` insert.
     const jobs = {
       boss: { send, cancel: mock(async () => {}) },
       db: {},
-      sql: {},
+      sql: {
+        begin: async (body: (tx: unknown) => Promise<unknown>) => body({}),
+        options: { parsers: {}, serializers: {} },
+      },
     } as unknown as JobsContext;
     const runtime = createEventsRuntime({ jobs, logger: silentLogger });
     return { ws: scoped, runtime, send, created, deleted, sourceUpdates };

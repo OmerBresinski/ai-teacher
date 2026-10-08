@@ -5,13 +5,21 @@ import { ZodError } from "zod";
 import { enqueue } from "./enqueue";
 import type { JobsContext } from "./types";
 
-/** A boss whose `send` echoes the requested id, and db/sql stubs that throw if touched. */
+/**
+ * A boss whose `send` echoes the requested id, and db/sql stubs that throw if touched. `sql.begin`
+ * runs the transaction body on a connection whose queries throw "db touched", so the `queued`
+ * insert (after `send`) fails loudly and rolls the transaction back.
+ */
 function fakeCtx() {
   const send = mock(async (_name: string, _data: object, opts: { id: string }) => opts.id);
   const cancel = mock(async (_name: string, _id: string) => {});
   const boss = { send, cancel } as unknown as PgBoss;
   const db = new Proxy({}, { get: () => () => fail("db touched") }) as JobsContext["db"];
-  const sql = (() => fail("sql touched")) as unknown as JobsContext["sql"];
+  const connection = { unsafe: () => fail("db touched") };
+  const sql = Object.assign(() => fail("sql touched"), {
+    begin: async (body: (tx: unknown) => Promise<unknown>) => body(connection),
+    options: { parsers: {}, serializers: {} },
+  }) as unknown as JobsContext["sql"];
   return { ctx: { boss, db, sql } satisfies JobsContext, send, cancel };
 }
 function fail(msg: string): never {
@@ -50,10 +58,11 @@ describe("enqueue", () => {
 
   test("sends the parsed payload (defaults applied) under the minted job id", async () => {
     const { ctx, send } = fakeCtx();
-    // The event write happens after `send`; with the throwing db stub it fails loudly, which is
-    // enough to assert the pg-boss call shape here (the DB path is covered by integration tests).
+    // The `queued` insert happens after `send`, in the same transaction; with the throwing stub it
+    // fails loudly, which is enough to assert the pg-boss call shape here (the DB path is covered
+    // by integration tests).
     await expect(enqueue(ctx, "ping", { message: "hi" }, { workspaceId })).rejects.toThrow(
-      "db touched",
+      'insert into "job_events"',
     );
     expect(send).toHaveBeenCalledTimes(1);
     const [name, data, opts] = send.mock.calls[0] as unknown as [
@@ -69,20 +78,21 @@ describe("enqueue", () => {
     expect(opts.singletonKey).toBeUndefined();
   });
 
-  test("cancels the pg-boss job when the queued event cannot be written (no orphan)", async () => {
+  test("sends with the transaction as its executor and never cancels on a failed queued insert", async () => {
     const { ctx, send, cancel } = fakeCtx();
     await expect(enqueue(ctx, "ping", { message: "hi" }, { workspaceId })).rejects.toThrow(
-      "db touched",
+      'insert into "job_events"',
     );
-    const sentId = (send.mock.calls[0] as unknown as [string, object, { id: string }])[2].id;
-    expect(cancel).toHaveBeenCalledWith("ping", sentId);
+    const opts = (send.mock.calls[0] as unknown as [string, object, { db?: unknown }])[2];
+    expect(typeof (opts.db as { executeSql?: unknown } | undefined)?.executeSql).toBe("function");
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   test("uses the caller's job id when one is supplied", async () => {
     const { ctx, send } = fakeCtx();
     const id = newId<JobId>();
     await expect(enqueue(ctx, "ping", { message: "hi" }, { workspaceId, id })).rejects.toThrow(
-      "db touched",
+      'insert into "job_events"',
     );
     const [, data, opts] = send.mock.calls[0] as unknown as [
       string,
