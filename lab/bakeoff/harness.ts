@@ -19,6 +19,7 @@ import {
   abFigureSync,
   abFiles,
   abFixes,
+  abGas8,
   abMatch6,
   abNotesAlt,
   abObjRetry,
@@ -31,6 +32,7 @@ import {
 import { localAlt, localiseSlideAlts, slideWords } from "./ab/caption";
 import { continueForFit } from "./ab/continue";
 import { exitTicketSlide, type PlacedExitTicket, readExitTicket } from "./ab/exit-ticket";
+import { gasFaults, rescaleGas } from "./ab/gas8";
 import { isQuestionSlide } from "./ab/lib";
 import { orphansAfterFit, unmatchedItems } from "./ab/pics6";
 import { applyStage2, covers, restageLayoutOnly, seenOf } from "./ab/stage2";
@@ -1834,8 +1836,17 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
         }),
     );
     for (const [i, f] of dup) out[i]?.faults.push(f);
+    // gas8 (faults-3-6-8 #8): practical data the lesson's own stated quantities cannot give.
+    if (abGas8())
+      for (const h of gasFaults(gasTexts()))
+        if (repairable(plan.slides[h.slide] as Record<string, unknown>, h.slide))
+          out[h.slide]?.faults.push(h.fault);
     return out;
   };
+  const gasTexts = () =>
+    Array.from({ length: n }, (_, i) =>
+      plan.slides[i] ? arm.words(plan.slides[i] as Record<string, unknown>) : "",
+    );
   const baseCheck = () =>
     Array.from({ length: n }, (_, i) =>
       checkSlide({
@@ -2238,6 +2249,18 @@ export async function runLesson(o0: RunOpts): Promise<RunResult> {
     visuals.set(k, { status: "failed" });
     relay(i, "figure-text-mismatch");
   }
+  // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
+  // every claimed gas volume scaled under the stated reactant's maximum.
+  if (abGas8())
+    for (const h of gasFaults(gasTexts())) {
+      if (!repairable(plan.slides[h.slide] as Record<string, unknown>, h.slide)) continue;
+      await swapSlide(
+        h.slide,
+        rescaleGas(plan.slides[h.slide] as Record<string, unknown>, h.volumes, h.vmax),
+      );
+      const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
+      log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
+    }
   // A diagram that still cannot draw: a picture of the same thing when it is a real, concrete
   // thing (the picture director, the diagram's `shows` as the request); else words only.
   // Round 3 profile (R2 y11: checks at 51 s, done at 100 s): the slides' fallbacks ran one after
