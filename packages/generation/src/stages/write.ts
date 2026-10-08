@@ -85,7 +85,19 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       },
     });
   } catch (error) {
-    if (error instanceof WriterIncompleteError) throw new StageFailure("generate", error.message);
+    if (error instanceof WriterIncompleteError) {
+      // Nothing of the writer's output is saved; its cost is, so the retry's budget counts it.
+      await deps.persist({
+        ...lesson,
+        ...(lesson.generation
+          ? { generation: { ...lesson.generation, usage: deps.budget.totals() } }
+          : {}),
+      });
+      throw new StageFailure("generate", error.message, {
+        cause: error,
+        ...(error.deterministic ? { reason: "writer-length" as const } : {}),
+      });
+    }
     throw error;
   }
   const done = toLesson(out.slides, "generated");

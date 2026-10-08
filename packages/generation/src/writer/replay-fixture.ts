@@ -79,7 +79,10 @@ export function recordedVisuals(b: string) {
     out.get(`${i}:${key}`) ?? { status: "failed" };
 }
 
-export async function replayRun(b: string) {
+export async function replayRun(
+  b: string,
+  o: { services?: WriterServices; visual?: ReturnType<typeof recordedVisuals> } = {},
+) {
   const brief = JSON.parse(read(b, "brief.json")) as Brief;
   const objectives = (
     JSON.parse(read(b, "objectives.json")) as { objectives: { teacher: string }[] }
@@ -88,8 +91,8 @@ export async function replayRun(b: string) {
   return runWriter({
     brief,
     objectives,
-    services: replayServices(b),
-    visual: recordedVisuals(b),
+    services: o.services ?? replayServices(b),
+    visual: o.visual ?? recordedVisuals(b),
     recordedWriter: { text: main.text, finishReason: main.finishReason ?? null },
   });
 }

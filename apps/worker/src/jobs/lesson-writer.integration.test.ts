@@ -3,10 +3,13 @@
  * jobs against Postgres, with a fake answering by prompt version. The plan job stops at `planned`
  * stamped for the writer; the generate job runs the writer (a saved writer answer) to a finished
  * deck; the writer call goes to `gpt-6.1-sol` at low effort through the worker's route; a flip of
- * the flag back does not move a writer lesson off the writer. Skips visibly without a database.
+ * the flag back does not move a writer lesson off the writer. K3: an incomplete writer answer
+ * fails the job (pg-boss records it on the last attempt), saves no deck but keeps the call's cost,
+ * and the retry resumes at the writer; a `length` finish is not retried. Skips visibly without a
+ * database.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import type { FakeCall } from "@tj/ai/testing";
+import type { FakeCall, FakeReply } from "@tj/ai/testing";
 import { createDocument, forWorkspace, getDocument, setPlanRevisionAndLock } from "@tj/db";
 import { createTestUserWithWorkspace, withTestDb } from "@tj/db/testing";
 import {
@@ -25,6 +28,7 @@ import {
   writerRoute,
 } from "@tj/generation";
 import { labAi, romansLesson, writerFixture } from "@tj/generation/testing";
+import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { memoryStorage } from "../testing/memory-storage";
@@ -56,7 +60,14 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
       });
     return "{}";
   };
-  const ai = () => labAi({ extra: writerAnswers, route: writerRoute });
+  const ai = (lesson?: FakeReply) =>
+    labAi({
+      extra: (call) =>
+        lesson && call.context?.promptVersion === `${WRITER_VERSION}/lesson`
+          ? lesson
+          : writerAnswers(call),
+      route: writerRoute,
+    });
   const depsWith = (a: WorkerDeps["ai"], planner?: Planner): WorkerDeps => ({
     ai: a,
     db: unsafeDb,
@@ -108,6 +119,18 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     });
     expect(result.status).toBe("ok");
     return jobId;
+  }
+
+  async function planOnly() {
+    const { lessonId, jobId } = await newLesson();
+    await lessonPlanJob(
+      ctxFor<LessonPlanPayload>(
+        jobId,
+        { lessonId, revision: 1, stopAfter: "planned" },
+        depsWith(ai(), "writer"),
+      ) as never,
+    );
+    return { lessonId, planned: await row(lessonId) };
   }
 
   async function planAndGenerate(generatePlanner: Planner | undefined) {
@@ -164,5 +187,60 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(genAi.calls.filter((c) => c.modelId === "openai/gpt-6.1-sol")).toHaveLength(1);
     expect(done.lesson.generation?.stage).toBe("generated");
     expect(plannerOf(done.lesson)).toBe("writer");
+  });
+
+  test("K3: an incomplete answer fails the job, saves no deck, and the retry resumes at the writer", async () => {
+    const { lessonId, planned } = await planOnly();
+    const genJob = await confirm(lessonId);
+    const cut = ai({ text: fixture.main.slice(0, 400) });
+    const err = await lessonGenerateJob(
+      ctxFor(genJob, { lessonId, revision: 1 }, depsWith(cut, "writer")) as never,
+    ).catch((e: unknown) => e);
+    // Thrown, not swallowed: pg-boss retries it, and on the last attempt records the job failed.
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(NonRetryableError);
+    expect(String((err as Error).message)).toContain("writer output incomplete");
+    const after = await row(lessonId);
+    expect(after.lock).toBe(genJob);
+    // The job re-materialises the objectives slide (fresh ids); no writer slide was saved.
+    expect(after.lesson.slides.map((x) => x.kind)).toEqual(
+      planned.lesson.slides.map((x) => x.kind),
+    );
+    expect(after.lesson.generation?.stage).toBe("planned");
+    expect(after.lesson.generation?.usage?.calls).toBeGreaterThan(0);
+
+    // The retry (same job): no objectives call, straight to the writer, and the cost carries on.
+    const retry = ai();
+    await lessonGenerateJob(
+      ctxFor(genJob, { lessonId, revision: 1 }, depsWith(retry, "writer")) as never,
+    );
+    const versions = retry.calls.map((c) => c.context?.promptVersion ?? "");
+    expect(versions.some((v) => v.startsWith("plan-objectives"))).toBe(false);
+    expect(versions.filter((v) => v === `${WRITER_VERSION}/lesson`)).toHaveLength(1);
+    const done = await row(lessonId);
+    expect(done.lesson.generation?.stage).toBe("generated");
+    expect(done.lock).toBeNull();
+    expect(done.lesson.generation?.usage?.calls).toBeGreaterThan(
+      after.lesson.generation?.usage?.calls ?? 0,
+    );
+  });
+
+  test("K3: a length finish fails without a retry and releases the lock", async () => {
+    const { lessonId, planned } = await planOnly();
+    const genJob = await confirm(lessonId);
+    const err = await lessonGenerateJob(
+      ctxFor(
+        genJob,
+        { lessonId, revision: 1 },
+        depsWith(ai({ text: fixture.main, finishReason: "length" }), "writer"),
+      ) as never,
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NonRetryableError);
+    const after = await row(lessonId);
+    expect(after.lock).toBeNull();
+    // The job re-materialises the objectives slide (fresh ids); no writer slide was saved.
+    expect(after.lesson.slides.map((x) => x.kind)).toEqual(
+      planned.lesson.slides.map((x) => x.kind),
+    );
   });
 });

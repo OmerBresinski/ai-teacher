@@ -1,5 +1,5 @@
 import type { AiCallContext } from "@tj/ai";
-import { costUsd } from "@tj/ai";
+import { costUsd, withGenerationBudget } from "@tj/ai";
 import { generateText, jsonSchema, Output, streamText } from "ai";
 import { providerOptionsFor } from "../call";
 import type { PipelineDeps } from "../types";
@@ -12,6 +12,9 @@ import {
   type WriterServices,
 } from "./services";
 
+/** The output cap of a small call that names none (the notes for 20 slides fit well under it). */
+export const SMALL_CALL_MAX_TOKENS = 8000;
+
 /** The writer stage's prompt version, stamped on the lesson and carried on every call it makes. */
 export const WRITER_VERSION = "lesson-writer.v1";
 
@@ -22,7 +25,7 @@ export const WRITER_VERSION = "lesson-writer.v1";
  * resumes on the model it started with.
  */
 export function writerRoute(_cls: unknown, context: AiCallContext | undefined): string | undefined {
-  if (!context?.promptVersion?.startsWith(`${WRITER_VERSION}`)) return undefined;
+  if (!context?.promptVersion?.startsWith(`${WRITER_VERSION}/`)) return undefined;
   return context.stage === "write" ? WRITER_MODEL : SMALL_MODEL;
 }
 
@@ -52,14 +55,24 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
     log: (e) => deps.logger.info({ writer: e }, "writer stage"),
     async chat(r: ChatReq) {
       const t0 = Date.now();
-      const model = deps.ai.model("small", ctx("write-small", r.name, r.effort ?? "low"));
+      const c = ctx("write-small", r.name, r.effort ?? "low");
+      // Every call goes through the lesson's budget, like `callStructured`'s.
+      const model = withGenerationBudget(
+        deps.ai.model("small", c),
+        writerRoute("small", c) ?? deps.ai.modelId("small"),
+        deps.budget,
+      );
       const result = await generateText({
         model,
         system: r.system,
         prompt: r.user,
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
-        abortSignal: deps.signal,
-        ...(r.maxTokens ? { maxOutputTokens: r.maxTokens } : {}),
+        // A call's own deadline aborts it as a TimeoutError (non-fatal); a cancel stays fatal.
+        abortSignal: r.timeoutMs
+          ? AbortSignal.any([deps.signal, AbortSignal.timeout(r.timeoutMs)])
+          : deps.signal,
+        // The budget estimates a call from its output cap, so every call has one.
+        maxOutputTokens: r.maxTokens ?? SMALL_CALL_MAX_TOKENS,
         ...providerOptionsFor(r.model ?? SMALL_MODEL, r.effort ?? "low"),
       });
       return { out: result.output, usd: usdOf(SMALL_MODEL, result.usage), ms: Date.now() - t0 };
@@ -67,7 +80,12 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
     async writer(r: WriterReq, onDelta): Promise<WriterResult> {
       const t0 = Date.now();
       let firstTokenMs: number | undefined;
-      const model = deps.ai.model("frontier", ctx("write", r.name, r.effort));
+      const c = ctx("write", r.name, r.effort);
+      const model = withGenerationBudget(
+        deps.ai.model("frontier", c),
+        writerRoute("frontier", c) ?? deps.ai.modelId("frontier"),
+        deps.budget,
+      );
       const result = streamText({
         model,
         system: r.system,

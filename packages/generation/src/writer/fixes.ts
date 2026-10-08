@@ -48,6 +48,9 @@ export function writerIncomplete(o: {
   minSlides: number;
 }): string | undefined {
   if (o.finishReason === "length") return "finish_reason length (token limit)";
+  if (o.finishReason === "content-filter" || o.finishReason === "content_filter")
+    return "finish_reason content-filter";
+  if (o.finishReason === "error") return "finish_reason error";
   let out: { slides?: unknown[] };
   try {
     out = JSON.parse(o.text);

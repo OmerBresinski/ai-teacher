@@ -1,7 +1,7 @@
 // The writer stage's objective coverage and notes:
 // objective coverage from the flow's `teaches`, one targeted objective repair, and one notes call
 // per lesson on the slides as rendered.
-import type { ChatReq } from "./services";
+import { type ChatReq, isFatal } from "./services";
 
 /** Templates whose slide checks pupils rather than teaching them. */
 export const CHECK_TEMPLATES = new Set([
@@ -117,6 +117,7 @@ export async function repairObjectives(o: {
       strict: false,
     } as ChatReq)
     .catch((e) => {
+      if (isFatal(e)) throw e;
       o.log({ ev: "objective-repair-error", err: String(e).slice(0, 200) });
       return undefined;
     });
@@ -263,6 +264,7 @@ export async function lessonNotes(o: {
       for (const s of rows) if (Number.isInteger(s?.n) && !got.has(s.n)) got.set(s.n, s);
       o.log({ ev: "notes", attempt, slides: got.size, of: o.slides, usd: r.usd, ms: r.ms });
     } catch (e) {
+      if (isFatal(e)) throw e;
       o.log({ ev: "notes-error", attempt, err: String(e).slice(0, 200) });
     }
   }
@@ -287,6 +289,7 @@ export async function lessonNotes(o: {
       for (const s of rows) if (missing.includes(s?.n) && !got.has(s.n)) got.set(s.n, s);
       o.log({ ev: "notes-missing", asked: missing, got: rows.length, usd: r.usd, ms: r.ms });
     } catch (e) {
+      if (isFatal(e)) throw e;
       o.log({ ev: "notes-missing-error", asked: missing, err: String(e).slice(0, 200) });
     }
   }

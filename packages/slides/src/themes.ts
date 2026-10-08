@@ -572,7 +572,6 @@ export function getTheme(id: string | undefined | null, ageBand?: string | null)
   return b;
 }
 
-/** A lesson's theme at the lesson's own key stage. Nothing on master calls it yet (TEACH-110 part b). */
 /**
  * The lesson writer's `planned` stamp starts with this (TEACH-110 part b; `WRITER_VERSION` in
  * `@tj/generation`, which a test keeps equal). Only its lessons render at their key stage.
@@ -595,7 +594,10 @@ export function boundAgeBand(lesson: StagedLesson | null | undefined): string | 
   return planned?.startsWith(WRITER_STAMP_PREFIX) ? (lesson?.ageBand ?? undefined) : undefined;
 }
 
-/** A lesson's theme at its own key stage, ungated (generation and the type-scale audit). */
+/**
+ * A lesson's theme at its own key stage, ungated: generation and the type-scale audit. Renderers
+ * use `renderTheme`, which binds the stage only for writer lessons.
+ */
 export const lessonTheme = (lesson: { themeId?: string | null; ageBand?: string | null }): Theme =>
   getTheme(lesson.themeId, lesson.ageBand);
 

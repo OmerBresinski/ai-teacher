@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { WRITER_BUNDLE_ID, WRITER_BUNDLES, type WriterBundle, writerBundle } from "./bundle";
 import { schemaText, type WriterStage } from "./schema";
 
@@ -11,20 +13,48 @@ import { schemaText, type WriterStage } from "./schema";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const STAGES: WriterStage[] = ["KS1", "KS2", "KS3-5"];
-/** sha256 of the pinned `T/schema.<stage>.json` files. */
-const SCHEMA_PINS: Record<WriterStage, string> = {
-  KS1: "27d4461357460a33b30e38a689d4c6031fad34109726e1df3cb2954be73036d4",
-  KS2: "ba83b39f6601c093637fa4e4bedd0ded582ed4280759a991f64331411f4bc035",
-  "KS3-5": "f85239d5ad9cb42b956cfe7e1bf2362c770a5955cf6b30dc88f04d5ba23a0bce",
-};
-
+/**
+ * The lab's pins for each bundle, copied from the evidence's `ab/PINS.json` (its sha256 at copy
+ * time is in the file): the test compares the shipped bytes with these, never with the generated
+ * module's own record.
+ */
+const labPins = (id: string) =>
+  JSON.parse(readFileSync(join(import.meta.dir, `fixtures/pins/${id}.json`), "utf8")) as {
+    sourceSha256: string;
+    pins: Record<string, string>;
+  };
+/** Inputs the lab generated its pinned files from; it never pinned them, so they are not compared. */
+const UNPINNED = new Set([
+  "T/layouts.KS1.txt",
+  "T/layouts.KS2.txt",
+  "T/layouts.KS3-5.txt",
+  "T/caps.KS1.json",
+  "T/caps.KS2.json",
+  "T/caps.KS3-5.json",
+  "shared/diagram-kinds.json",
+]);
 const BUNDLES = Object.values(WRITER_BUNDLES) as WriterBundle[];
 
 describe.each(BUNDLES.map((b) => [b.id, b] as const))("writer bundle %s", (_id, b) => {
-  test.each(Object.entries(b.pins))("%s is its pinned bytes", (name, pin) => {
+  const lab = labPins(b.id);
+  test("the pin fixture names its source", () =>
+    expect(lab.sourceSha256).toMatch(/^[0-9a-f]{64}$/));
+  test.each(Object.entries(b.pins))("%s is the lab's pinned bytes", (name, pin) => {
     const text = (b as unknown as Record<string, string>)[name] as string;
     expect(typeof text).toBe("string");
-    expect(sha(text)).toBe(pin.sha256);
+    const want = lab.pins[pin.file];
+    if (want === undefined) {
+      expect(UNPINNED.has(pin.file)).toBe(true);
+      return;
+    }
+    expect(sha(text)).toBe(want);
+  });
+
+  test("the schema builder gives the lab's pinned schema files at 9–12 on every stage", () => {
+    for (const st of STAGES)
+      expect(sha(schemaText(st, { min: 9, max: 12 }, b))).toBe(
+        lab.pins[`T/schema.${st}.json`] as string,
+      );
   });
 
   test("the writer hash (system text and schema, 3 stages, at 9–12) is the bundle's pinned one", () => {
@@ -54,10 +84,6 @@ describe("the shipped bundle", () => {
   test("is base4, the evidence's pinned writer (T hash 18057b0c7aa8)", () => {
     expect(WRITER_BUNDLE_ID).toBe("base4");
     expect(writerBundle().tHash).toBe("18057b0c7aa8");
-  });
-  test("its schema builder gives the pinned schema files at 9–12 on every stage", () => {
-    for (const st of STAGES)
-      expect(sha(schemaText(st, { min: 9, max: 12 }, writerBundle("base4")))).toBe(SCHEMA_PINS[st]);
   });
 });
 

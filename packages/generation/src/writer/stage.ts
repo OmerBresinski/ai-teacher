@@ -66,11 +66,12 @@ import {
 } from "./notes";
 import { writerSchema } from "./schema";
 import {
+  isFatal,
   SMALL_MODEL,
   WRITER_EFFORT,
-  WRITER_MAX_TOKENS,
   WRITER_MODEL,
   type WriterServices,
+  writerMaxTokens,
 } from "./services";
 
 /*
@@ -89,8 +90,11 @@ import {
 type S = Record<string, unknown>;
 
 export class WriterIncompleteError extends Error {
+  /** A `length` finish: the same request stops at the same cap, so a retry would only pay twice. */
+  readonly deterministic: boolean;
   constructor(readonly why: string) {
     super(`writer output incomplete: ${why}`);
+    this.deterministic = why.startsWith("finish_reason length");
     this.name = "WriterIncompleteError";
   }
 }
@@ -199,7 +203,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           user: localise(user),
           schema,
           name: "lesson",
-          maxTokens: WRITER_MAX_TOKENS,
+          maxTokens: writerMaxTokens(brief.slides.max),
         },
         () => {},
       );
@@ -275,6 +279,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       name: "pupil_objectives",
       maxTokens: 1500,
     }).catch((e) => {
+      if (isFatal(e)) throw e;
       log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
       return undefined;
     });
@@ -451,6 +456,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       schema: repairSchemaFor(stageKey),
       name: "slide",
     }).catch((e) => {
+      if (isFatal(e)) throw e;
       log({ ev: "repair-error", slide: i + 1, err: String(e).slice(0, 200) });
       return undefined;
     });
@@ -534,9 +540,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       guard,
       exempt,
     });
+    // A restaged slide is never sent back to repair (FOR-CODE item 5), not even for fit: one
+    // that overflows goes to the fixed fallback below. (The lab harness ran its fit loop here.)
     if (ok) {
-      const left = over();
-      if (left.length) await fitLoop({ slide: i + 1, faults: left });
       if (!over().length) return mode === "reroute" ? "rerouted" : "rewrite";
       log({ ev: "restage-overflow", slide: i + 1, mode });
     }
