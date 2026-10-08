@@ -326,6 +326,10 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
       )
         fail(`b4-ex ${id}: changes more than the number-line and line-graph example lines`);
     }
+    // base5 (D32/D33): every A/B brief is England, where locale3's line compiles away; so polish2's
+    // request byte for byte.
+    if (a === "base5" && (jd.length || b.system !== r.system))
+      fail(`base5 ${id}: its England request differs from polish2's`);
     if (a === "base4" && (jd.length || b.system !== r.system))
       fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);
     if (a === "base3" && (jd.length || b.system !== r.system))

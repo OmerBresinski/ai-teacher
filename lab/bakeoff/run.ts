@@ -2,20 +2,31 @@
 // Usage: bun lab/bakeoff/run.ts --arm T --cap 0.25 [--pg 5616] [--out <runsDir>] [--replay <main.txt>]
 //        [--no-visuals] [--no-notes] [--no-repair] [--no-render] <brief-id> [...]
 // Keys are read from ~/.dayback-openai-key and ~/.dayback-pexels-key (never printed).
-import { existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import {
   useJudgeImage,
   useJudgeVersion,
   usePhotoGate,
 } from "../../packages/generation/src/stages/illustrate";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
+import { embedCostUsd, imageCostUsd } from "../../packages/images/src/index";
 import { onLabelDrop, setDiagramPolish } from "../../packages/slides/src/diagrams/polish";
-import { abPolish, abPolish2, isAbArm, pictureVersions, pinFaults, setAbArm } from "./ab/arms";
+import {
+  abPolish,
+  abPolish2,
+  isAbArm,
+  pictureVersions,
+  pinFaults,
+  setAbArm,
+  setAbCodeArm,
+} from "./ab/arms";
+import { createCache, loadRun, loadStore, type ReqForm, seedStore, summary } from "./ab/cache";
+import { legacyImporter } from "./ab/cache-import";
 import { photoGate } from "./ab/polish";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
 import { renderLesson } from "./render";
-import { BAKEOFF } from "./services";
+import { BAKEOFF, PRICES, type Usage, usd } from "./services";
 
 /** Arms register here; K and R add theirs on their branches. */
 export const ARMS: Record<string, ArmPlugin> = { T: armT };
@@ -40,11 +51,23 @@ const VALUED = new Set([
   "--replay-repair",
   "--challenge",
   "--objectives-from",
+  "--code-arm",
 ]);
+// Response cache (ab/CACHE.md): `--replay <runDir>` (a directory) replays that run's recorded calls
+// (or imports an older run's logs); a file is still a recorded writer stream (`--replay <main.txt>`).
+const replayArg = opt("--replay");
+const replayDir = replayArg && statSync(replayArg).isDirectory() ? replayArg : undefined;
+const streamReplay = replayDir ? undefined : replayArg;
 const briefs = args.filter((a, i) => !a.startsWith("--") && !VALUED.has(args[i - 1] ?? ""));
 // A/B (7 Oct): `--arm base|a1|a2|a3` runs arm T with that A/B arm's pinned writer prompt and schema.
 const armArg = opt("--arm", "T") as string;
 if (isAbArm(armArg)) setAbArm(armArg);
+// Cache: `--code-arm <arm>` runs that arm's code switches on this arm's prompts (a code-only A/B).
+const codeArmArg = opt("--code-arm");
+if (codeArmArg) {
+  if (!isAbArm(codeArmArg)) throw new Error(`--code-arm ${codeArmArg} is not an A/B arm`);
+  setAbCodeArm(codeArmArg);
+}
 // Round 6: the arm's picture judge (judge20 = v20; every other arm v17).
 useJudgeVersion(pictureVersions(isAbArm(armArg) ? armArg : undefined).judge);
 // Round 6: the arm's picture director (dir-stage and y1fix = v12; every other arm v11).
@@ -65,7 +88,7 @@ const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));
 // A/B: a paid run only on the pinned prompt and schema files (ab/check.ts --pin wrote PINS.json).
-if (isAbArm(armArg) && cap > 0 && !opt("--replay")) {
+if (isAbArm(armArg) && cap > 0 && !streamReplay && !flag("--offline")) {
   const bad = pinFaults(armArg);
   if (bad.length) {
     console.error(`A/B arm ${armArg}: refusing a paid run:\n  ${bad.join("\n  ")}`);
@@ -73,6 +96,29 @@ if (isAbArm(armArg) && cap > 0 && !opt("--replay")) {
   }
 }
 const runs = opt("--out", `${BAKEOFF}/runs`) as string;
+const realFetch = globalThis.fetch;
+/** A fresh call's cost from its request and reported usage (cache records; spend is booked as before). */
+function callUsd(f: ReqForm, u0: unknown): number {
+  const u = (u0 ?? {}) as Record<string, number & Record<string, number>>;
+  const j = (f.body as { json?: { model?: string } } | null)?.json;
+  const model = String(j?.model ?? "").replace(/^openai\//, "");
+  if (/\/chat\/completions|\/responses/.test(f.url) && PRICES[model])
+    return usd(model, {
+      prompt_tokens: u.prompt_tokens ?? u.input_tokens ?? 0,
+      completion_tokens: u.completion_tokens ?? u.output_tokens ?? 0,
+      prompt_tokens_details: {
+        cached_tokens: (u.prompt_tokens_details ?? u.input_tokens_details)?.cached_tokens ?? 0,
+      },
+    } as Usage);
+  if (/\/images\//.test(f.url))
+    return imageCostUsd({
+      inputTokens: u.input_tokens ?? 0,
+      outputTokens: u.output_tokens ?? 0,
+      imageInputTokens: u.input_tokens_details?.image_tokens ?? 0,
+    });
+  if (/\/embeddings/.test(f.url)) return embedCostUsd(u.total_tokens ?? 0);
+  return 0;
+}
 for (const id of briefs) {
   const bf = `${BAKEOFF}/briefs/${id}.json`;
   if (!existsSync(bf)) throw new Error(`no brief ${bf}`);
@@ -88,13 +134,42 @@ for (const id of briefs) {
     console.log(`SKIP ${id}: ${outDir} exists (use a fresh --out)`);
     continue;
   }
+  // Reads come only from the replayed run (or the whole store with --cache-any): a run without
+  // --replay calls fresh, and a changed request never matches a recorded key, so it is called fresh.
+  const src = replayDir
+    ? [`${replayDir}/T/${id}`, `${replayDir}/${id}`, replayDir].find(
+        (d) => existsSync(`${d}/calls.jsonl`) || existsSync(`${d}/request.json`),
+      )
+    : undefined;
+  const noCache = flag("--no-cache");
+  const fromRun = src && !noCache ? loadRun(src) : undefined;
+  if (src && fromRun) seedStore(src);
+  const policy = noCache
+    ? "fresh (--no-cache)"
+    : flag("--cache-any")
+      ? "any stored response (--cache-any)"
+      : src
+        ? `replay ${src}${fromRun ? "" : " (imported from its logs)"}`
+        : "fresh (no --replay)";
+  const cache = createCache(
+    {
+      runDir: outDir,
+      source: noCache ? undefined : flag("--cache-any") ? loadStore(undefined) : fromRun,
+      sourceBlobs: src ? [`${src}/calls/blobs`] : [],
+      offline: flag("--offline"),
+      importers: src && !noCache && !fromRun ? [legacyImporter(src)] : [],
+      price: callUsd,
+    },
+    realFetch,
+  );
+  globalThis.fetch = cache.fetch;
   const r = await runLesson({
     arm,
     brief,
     outDir,
     capUsd: cap,
     pgPort: Number(opt("--pg", "5616")),
-    replay: opt("--replay"),
+    replay: streamReplay,
     noVisuals: flag("--no-visuals"),
     ...(opt("--reuse-visuals") ? { reuseVisuals: opt("--reuse-visuals") } : {}),
     ...(opt("--generic") === "generate" ? { generic: "generate" as const } : {}),
@@ -111,6 +186,18 @@ for (const id of briefs) {
     modelTheme: flag("--model-theme"),
     ...(opt("--bank-cap") ? { bankCapUsd: Number(opt("--bank-cap")) } : {}),
   });
+  await cache.drain();
+  globalThis.fetch = realFetch;
+  const cs = summary(
+    cache.stats,
+    policy,
+    src && !noCache
+      ? "requests unchanged vs the replayed run are served from it at $0; changed ones are called fresh"
+      : "every call fresh (recorded for later replays)",
+  );
+  appendFileSync(`${outDir}/log.jsonl`, `${JSON.stringify(cs)}\n`);
+  writeFileSync(`${outDir}/cache.json`, JSON.stringify(cs, null, 1));
+  console.log(id, "cache", JSON.stringify({ ...cs, byStage: undefined }));
   console.log(
     id,
     JSON.stringify({
