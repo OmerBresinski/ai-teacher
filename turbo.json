@@ -64,7 +64,17 @@
         "!skills-lock.json"
       ]
     },
-    "transit": { "dependsOn": ["^transit"] },
+    "transit": {
+      "dependsOn": ["^transit"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
+    },
     "test": {
       "dependsOn": ["transit", "//#test:scripts"],
       "env": [

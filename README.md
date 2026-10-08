@@ -29,7 +29,7 @@ Everyday commands (all run through Turborepo, see [ADR 0002](docs/adr/0002-turbo
 | `bun run lint`             | Biome check per workspace + root config files                    |
 | `bun run lint:fix`         | Same, applying safe fixes                                        |
 | `bun run format`           | Biome format (write)                                             |
-| `bun run typecheck`        | `tsc --noEmit` per workspace, dependencies first                 |
+| `bun run typecheck`        | `tsc --noEmit` per workspace, all at once                        |
 | `bun run test`             | Unit/integration tests (`bun test` in every workspace)           |
 | `bun run test:e2e`         | Playwright + axe, after `build` ([`docs/testing.md`](docs/testing.md)) |
 | `bun run verify-bootstrap` | End-to-end check of this scaffold (`scripts/verify-bootstrap.sh`) |
@@ -268,9 +268,8 @@ that override generic skill advice. Sources, pinned commits, re-install commands
   `turbo.json` it has `dependsOn: ["transit", "//#typecheck:root"]`: the `transit` node (which
   `test` uses too) puts every dependency's inputs into the cache key, so a change in `@tj/domain`
   still re-typechecks its dependents, but the packages run at once instead of waiting for each
-  other (it was `^typecheck` until TEACH-190 part f, a chain that ran root, config, domain,
-  slides, generation, api, api-client and web one after another; 66 s in CI). The cost: a type
-  error in a shared package is also reported by every package that imports it.
+  other. The cost: a type error in a shared package is also reported by every package that
+  imports it.
 - `build` is only meaningful for **apps** (`apps/api` and `apps/worker` bundle with
   `bun build --target=bun`; `apps/web` with `vite build`) and for packages that opt in (e.g.
   `@tj/domain` may add a `tsup` build to verify tree-shaking). `build` keeps
