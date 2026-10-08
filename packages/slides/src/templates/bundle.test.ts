@@ -48,7 +48,9 @@ describe("@tj/slides/templates", () => {
     '"node:fs"',
     "writeFileSync",
     "fit-table.ts",
-    "slot-limits.ts",
+    // The slot-limit CLI by its own export: the table it generated (diagrams/slot-limits.gen.ts,
+    // on the diagrams subpath since TEACH-247) names the CLI's file in its note.
+    "slotLimitsSource",
     "pupil-words.ts",
   ];
 

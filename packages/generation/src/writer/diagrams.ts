@@ -21,6 +21,7 @@ import {
   drawDiagram,
   drawerJsonSchema,
   dropNulls,
+  fromMeaning,
   MEANING_SCHEMAS,
   meaningFaults,
   mendSpec,
@@ -34,6 +35,7 @@ import {
   withBuilds,
   withLongLabels,
 } from "@tj/slides/diagrams";
+import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage } from "@tj/slides/themes";
 
 type J = Record<string, unknown>;
@@ -482,6 +484,42 @@ export function writerDiagramElement(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The lab's slot check (`services.ts` slotFault): the spec laid out in a diagram-text (side) or
+ * big-diagram (full) slide by the writer's own layout; its diagram faults, none when it fits.
+ */
+export const layoutSlotProbe: SlotProbe = (spec, slot, stage, theme) => {
+  const r = layoutTemplate(
+    {
+      template: slot === "full" ? "big-diagram" : "diagram-text",
+      heading: "Heading",
+      lead: "What this shows.",
+      points: ["One point", "Another point"],
+      figure: { diagram: fromMeaning(spec) },
+    } as never,
+    atKeyStage(theme, stage),
+    stage as never,
+  ) as { diagram?: string[] };
+  return r.diagram ?? [];
+};
+
+/** The writer's question templates: a drawing there keeps the answer back. */
+export const QUESTION_TEMPLATES = new Set(["hinge", "question-set", "practice", "exit-ticket"]);
+
+/** Each drawn diagram on a laid-out slide with its build count (Present plays them). */
+export function withBuildCounts<T extends { elements: unknown[] }>(slide: T): T {
+  let changed = false;
+  const elements = slide.elements.map((e) => {
+    const el = e as ImageElement;
+    if (el?.type !== "image" || el.name !== "Diagram" || typeof el.src !== "string") return e;
+    const n = buildCount(svgOfDataUrl(el.src) ?? "");
+    if (!n) return e;
+    changed = true;
+    return { ...el, builds: n };
+  });
+  return changed ? { ...slide, elements } : slide;
 }
 
 /** The measured slot limit, re-exported for the stage's ask lines. */

@@ -6,6 +6,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "@tj/slides/templates";
+import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
 
 /*
@@ -41,7 +42,15 @@ export type VisualAsk =
       fixedShape?: boolean;
       set?: string;
     }
-  | { key: string; type: "diagram"; kind: string; shows: string; labels: string[] };
+  | {
+      key: string;
+      type: "diagram";
+      kind: string;
+      shows: string;
+      labels: string[];
+      /** R2 (TEACH-247): the writer's own spec for a structured kind; code draws it. */
+      spec?: unknown;
+    };
 /** What the stage knows about one visual when it lays a slide out. */
 export type VisualState =
   | { status: "pending" }
@@ -360,6 +369,22 @@ export function toInput(
   }
 }
 
+/**
+ * A diagram figure's ask (`arm-t.ts` r2Ask): a structured figure is the writer's own spec and its
+ * words stand in for labels; a freeform figure keeps `{kind, shows, labels}` for the drawer.
+ */
+function diagramVisualAsk(key: string, f: S): VisualAsk {
+  const spec = writerSpecOf(f);
+  const base = {
+    key,
+    type: "diagram" as const,
+    kind: String(f.kind),
+    shows: String(f.shows ?? ""),
+  };
+  if (spec) return { ...base, labels: labelsOf(spec), spec };
+  return { ...base, labels: Array.isArray(f.labels) ? (f.labels as string[]) : [] };
+}
+
 /** The visuals one finished slide asks for (keys unique within the slide). */
 export function visualsOf(
   raw: S,
@@ -377,7 +402,7 @@ export function visualsOf(
   return figs.map(
     ({ key, f }): VisualAsk =>
       isDia(f)
-        ? { key, type: "diagram", kind: f.kind, shows: f.shows, labels: f.labels ?? [] }
+        ? diagramVisualAsk(key, f as unknown as S)
         : {
             key,
             type: "photo",

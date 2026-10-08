@@ -596,6 +596,24 @@ async function iconDataUrl(
   }
 }
 
+/** An SVG data URL drawn to a PNG at `scale` times its box; undefined without a DOM or on failure. */
+async function svgAsPng(src: string, w: number, h: number, scale = 2): Promise<string | undefined> {
+  if (typeof document === "undefined" || typeof Image === "undefined") return undefined;
+  try {
+    const image = await loadImage(src);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return undefined;
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const png = canvas.toDataURL("image/png");
+    return png.startsWith("data:image/png") ? png : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -1154,7 +1172,12 @@ async function drawImage(
   theme: Theme,
   imageOrigin: string | undefined,
 ): Promise<void> {
-  const data = await toDataUrl(element.src, imageOrigin);
+  // A drawn diagram (an SVG data URL) goes in as a PNG: PowerPoint, Keynote and Slides import
+  // differ on SVG, a bitmap at twice the box reads the same everywhere (TEACH-247).
+  const data =
+    (element.src.startsWith("data:image/svg+xml")
+      ? await svgAsPng(element.src, element.w, element.h)
+      : undefined) ?? (await toDataUrl(element.src, imageOrigin));
   if (!data) {
     drawMissingImage(pptxSlide, element, theme);
     return;

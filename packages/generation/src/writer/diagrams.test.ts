@@ -4,6 +4,7 @@ import { stripBuilds, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { DIAGRAM_SAMPLES, MEANING_SAMPLES, openaiSchemaFaults } from "@tj/slides/diagrams";
 
 import { getTheme } from "@tj/slides/themes";
+import pinnedDefs from "./bundles/base4/diagram-defs.gen.json" with { type: "json" };
 import {
   acceptWriterSpec,
   type DrawerCall,
@@ -333,5 +334,23 @@ describe("builds on the slide's element", () => {
       const parts = (row.specs[0] as J).steps ?? (row.specs[0] as J).bars;
       if (Array.isArray(parts) && parts.length > 1) expect(el.builds ?? 0).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("the writer's pinned diagram defs are the drawer's own schema (TEACH-110 part b data)", () => {
+  test("every dg-<kind>-<slot> def in base4's diagram-defs.gen.json equals r2Def", () => {
+    const defs = pinnedDefs as unknown as Record<string, Record<string, unknown>>;
+    let n = 0;
+    for (const st of STAGES)
+      for (const [name, def] of Object.entries(defs[st] ?? {})) {
+        const m = /^dg-(.+)-(side|full)$/.exec(name);
+        if (!m) continue;
+        expect(
+          r2Def(m[1] as (typeof R2_KINDS)[number], st, m[2] as "side" | "full"),
+          `${st} ${name}`,
+        ).toEqual(def as J);
+        n += 1;
+      }
+    expect(n).toBeGreaterThan(80);
   });
 });
