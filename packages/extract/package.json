@@ -18,14 +18,14 @@
   },
   "dependencies": {
     "@tj/domain": "workspace:*",
-    "fast-xml-parser": "5.11.1",
+    "fast-xml-parser": "5.11.2",
     "jszip": "3.10.2",
-    "mammoth": "1.12.3",
+    "mammoth": "1.13.0",
     "unpdf": "1.8.1"
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
-    "docx": "9.7.2",
+    "docx": "9.8.1",
     "pdf-lib": "1.17.1",
     "typescript": "5.9.3"
   }
