@@ -53,7 +53,7 @@
       "cache": false
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "//#typecheck:root"],
+      "dependsOn": ["transit", "//#typecheck:root"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/infra/env.contract.ts",
@@ -64,7 +64,17 @@
         "!skills-lock.json"
       ]
     },
-    "transit": { "dependsOn": ["^transit"] },
+    "transit": {
+      "dependsOn": ["^transit"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.agents/**",
+        "!**/.claude/**",
+        "!**/.opencode/**",
+        "!AGENTS.md",
+        "!skills-lock.json"
+      ]
+    },
     "test": {
       "dependsOn": ["transit", "//#test:scripts"],
       "env": [
