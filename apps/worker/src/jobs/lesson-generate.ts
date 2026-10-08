@@ -6,6 +6,7 @@ import {
   plannerOf,
   resumeFrom,
   resumeFromObjectivesFirst,
+  resumeFromWriter,
 } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import type { WorkerDeps } from "../deps";
@@ -35,10 +36,15 @@ export const lessonGenerateJob = defineJob<"lesson.generate", WorkerDeps>(
         if (lesson.plan?.state !== "confirmed") throw new NonRetryableError("plan not confirmed");
         // The lesson's own stamp decides the path (TEACH-93): an objectives-first checkpoint holds
         // the objectives only, and the facts step runs here; the flag is not read.
+        // A writer-stamped lesson (TEACH-110 part b) resumes at the writer, never through
+        // `resumeFrom`: the legacy order would read its `planned` row as a legacy plan.
+        const planner = plannerOf(lesson);
         const from =
-          plannerOf(lesson) === "objectives-first"
-            ? resumeFromObjectivesFirst(lesson)
-            : resumeFrom(lesson);
+          planner === "writer"
+            ? resumeFromWriter(lesson)
+            : planner === "objectives-first"
+              ? resumeFromObjectivesFirst(lesson)
+              : resumeFrom(lesson);
         if (from === "check-input" || from === "plan" || from === "objectives") {
           throw new NonRetryableError("lesson is not planned");
         }

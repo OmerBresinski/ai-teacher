@@ -16,6 +16,7 @@ import {
   type PipelineOptions,
   type PipelineState,
   runLessonPipeline,
+  StageFailure,
 } from "@tj/generation";
 import { storePhoto } from "@tj/images";
 import { type JobContext, NonRetryableError } from "@tj/jobs";
@@ -136,6 +137,11 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       // Before a skeleton exists there is no certified checkpoint to finish as a partial Lesson.
       // Keep the title already persisted, release its lock and avoid repeating an unaffordable call.
       if (error instanceof BudgetExceeded) {
+        throw new NonRetryableError(error.message, { cause: error });
+      }
+      // The writer stopped at its token cap (TEACH-110 part b): the same request stops the same
+      // way, so it fails now instead of paying for a retry.
+      if (error instanceof StageFailure && error.reason === "writer-length") {
         throw new NonRetryableError(error.message, { cause: error });
       }
       if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {

@@ -67,9 +67,11 @@ export {
   PLANNER_EFFORT,
   type PlannerEffortOption,
   runObjectivesStep,
+  writerObjectives,
 } from "./stages/objectives";
 export {
   isObjectivesFirstStamp,
+  isWriterStamp,
   OBJECTIVES_FIRST_CHECKPOINT,
   OBJECTIVES_FIRST_ORDER,
   OBJECTIVES_FIRST_VERSION,
@@ -79,6 +81,11 @@ export {
   plannerFor,
   plannerOf,
   resumeFromObjectivesFirst,
+  resumeFromWriter,
+  WRITER_CHECKPOINT,
+  WRITER_ORDER,
+  WRITER_PLANNED_VERSION,
+  type WriterStageName,
 } from "./stages/objectives-first";
 export { materialiseObjectives, materialiseTitle, plan } from "./stages/plan";
 export {
@@ -101,6 +108,7 @@ export {
   sourceUnitOf,
   type TruncatedSource,
 } from "./stages/source-texts";
+export { slideRange, write, writerBrief } from "./stages/write";
 export * from "./types";
 export {
   checkInputStep,
@@ -117,3 +125,7 @@ export {
   type StepName,
 } from "./workflow";
 export * from "./worksheet";
+export { WRITER_VERSION, writerRoute } from "./writer/ai-services";
+export { DIAGRAM_CONTRACT, writerDrawerSystem } from "./writer/diagram-contract.gen";
+export { SMALL_MODEL, WRITER_EFFORT, WRITER_MODEL } from "./writer/services";
+export { runWriter, WriterIncompleteError } from "./writer/stage";

@@ -1,0 +1,5400 @@
+{
+  "KS1": {
+    "dg-bar-model-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 3 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 10 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 22 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 12 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "each label at most 8 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 22 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 4,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 26 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 10 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 12 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 5 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-side": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-side" },
+        { "$ref": "#/$defs/dg-number-line-side" },
+        { "$ref": "#/$defs/dg-line-graph-side" },
+        { "$ref": "#/$defs/dg-bar-chart-side" },
+        { "$ref": "#/$defs/dg-pie-side" },
+        { "$ref": "#/$defs/dg-table-side" },
+        { "$ref": "#/$defs/dg-flow-side" },
+        { "$ref": "#/$defs/dg-cycle-side" },
+        { "$ref": "#/$defs/dg-timeline-side" },
+        { "$ref": "#/$defs/dg-layers-side" },
+        { "$ref": "#/$defs/dg-venn-side" },
+        { "$ref": "#/$defs/dg-equal-groups-side" },
+        { "$ref": "#/$defs/dg-fraction-shapes-side" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "dg-bar-model-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 3 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 14 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 24 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 26 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 5,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 22 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 60 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 14 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 9 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-full": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-full" },
+        { "$ref": "#/$defs/dg-number-line-full" },
+        { "$ref": "#/$defs/dg-line-graph-full" },
+        { "$ref": "#/$defs/dg-bar-chart-full" },
+        { "$ref": "#/$defs/dg-pie-full" },
+        { "$ref": "#/$defs/dg-table-full" },
+        { "$ref": "#/$defs/dg-flow-full" },
+        { "$ref": "#/$defs/dg-cycle-full" },
+        { "$ref": "#/$defs/dg-timeline-full" },
+        { "$ref": "#/$defs/dg-layers-full" },
+        { "$ref": "#/$defs/dg-venn-full" },
+        { "$ref": "#/$defs/dg-carroll-full" },
+        { "$ref": "#/$defs/dg-equal-groups-full" },
+        { "$ref": "#/$defs/dg-fraction-shapes-full" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "diagram-freeform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "shows", "labels"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["labelled-diagram", "particles", "hydrograph", "river", "cubes"]
+        },
+        "shows": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "KS1:order": [
+    "picture",
+    "figure",
+    "title",
+    "explain",
+    "visual-text",
+    "big-visual",
+    "picture-sequence",
+    "compare",
+    "steps",
+    "equation-hero",
+    "hinge",
+    "question-set",
+    "practice",
+    "exit-ticket",
+    "discussion",
+    "dg-bar-model-side",
+    "dg-number-line-side",
+    "dg-line-graph-side",
+    "dg-bar-chart-side",
+    "dg-pie-side",
+    "dg-table-side",
+    "dg-flow-side",
+    "dg-cycle-side",
+    "dg-timeline-side",
+    "dg-layers-side",
+    "dg-venn-side",
+    "dg-equal-groups-side",
+    "dg-fraction-shapes-side",
+    "diagram-side",
+    "dg-bar-model-full",
+    "dg-number-line-full",
+    "dg-line-graph-full",
+    "dg-bar-chart-full",
+    "dg-pie-full",
+    "dg-table-full",
+    "dg-flow-full",
+    "dg-cycle-full",
+    "dg-timeline-full",
+    "dg-layers-full",
+    "dg-venn-full",
+    "dg-carroll-full",
+    "dg-equal-groups-full",
+    "dg-fraction-shapes-full",
+    "diagram-full",
+    "diagram-freeform"
+  ],
+  "KS2": {
+    "dg-bar-model-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 3 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 14 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 22 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 14 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "each label at most 8 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 32 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 4,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 26 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 18 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 10 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 9 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-side": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-side" },
+        { "$ref": "#/$defs/dg-number-line-side" },
+        { "$ref": "#/$defs/dg-line-graph-side" },
+        { "$ref": "#/$defs/dg-bar-chart-side" },
+        { "$ref": "#/$defs/dg-pie-side" },
+        { "$ref": "#/$defs/dg-table-side" },
+        { "$ref": "#/$defs/dg-flow-side" },
+        { "$ref": "#/$defs/dg-cycle-side" },
+        { "$ref": "#/$defs/dg-timeline-side" },
+        { "$ref": "#/$defs/dg-layers-side" },
+        { "$ref": "#/$defs/dg-venn-side" },
+        { "$ref": "#/$defs/dg-carroll-side" },
+        { "$ref": "#/$defs/dg-equal-groups-side" },
+        { "$ref": "#/$defs/dg-fraction-shapes-side" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "dg-bar-model-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 3 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 18 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 10 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 30 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 26 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 60 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 18 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 22 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 9 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-full": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-full" },
+        { "$ref": "#/$defs/dg-number-line-full" },
+        { "$ref": "#/$defs/dg-line-graph-full" },
+        { "$ref": "#/$defs/dg-bar-chart-full" },
+        { "$ref": "#/$defs/dg-pie-full" },
+        { "$ref": "#/$defs/dg-table-full" },
+        { "$ref": "#/$defs/dg-flow-full" },
+        { "$ref": "#/$defs/dg-cycle-full" },
+        { "$ref": "#/$defs/dg-timeline-full" },
+        { "$ref": "#/$defs/dg-layers-full" },
+        { "$ref": "#/$defs/dg-venn-full" },
+        { "$ref": "#/$defs/dg-carroll-full" },
+        { "$ref": "#/$defs/dg-equal-groups-full" },
+        { "$ref": "#/$defs/dg-fraction-shapes-full" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "diagram-freeform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "shows", "labels"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["labelled-diagram", "particles", "hydrograph", "river", "cubes"]
+        },
+        "shows": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "KS2:order": [
+    "picture",
+    "figure",
+    "title",
+    "explain",
+    "visual-text",
+    "big-visual",
+    "picture-sequence",
+    "compare",
+    "steps",
+    "equation-hero",
+    "hinge",
+    "question-set",
+    "practice",
+    "exit-ticket",
+    "discussion",
+    "dg-bar-model-side",
+    "dg-number-line-side",
+    "dg-line-graph-side",
+    "dg-bar-chart-side",
+    "dg-pie-side",
+    "dg-table-side",
+    "dg-flow-side",
+    "dg-cycle-side",
+    "dg-timeline-side",
+    "dg-layers-side",
+    "dg-venn-side",
+    "dg-carroll-side",
+    "dg-equal-groups-side",
+    "dg-fraction-shapes-side",
+    "diagram-side",
+    "dg-bar-model-full",
+    "dg-number-line-full",
+    "dg-line-graph-full",
+    "dg-bar-chart-full",
+    "dg-pie-full",
+    "dg-table-full",
+    "dg-flow-full",
+    "dg-cycle-full",
+    "dg-timeline-full",
+    "dg-layers-full",
+    "dg-venn-full",
+    "dg-carroll-full",
+    "dg-equal-groups-full",
+    "dg-fraction-shapes-full",
+    "diagram-full",
+    "diagram-freeform"
+  ],
+  "KS3-5": {
+    "dg-bar-model-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 5 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 18 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 10 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 20 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "each label at most 8 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 22 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 26 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 14 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-side": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 13 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-side": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-side" },
+        { "$ref": "#/$defs/dg-number-line-side" },
+        { "$ref": "#/$defs/dg-line-graph-side" },
+        { "$ref": "#/$defs/dg-bar-chart-side" },
+        { "$ref": "#/$defs/dg-pie-side" },
+        { "$ref": "#/$defs/dg-table-side" },
+        { "$ref": "#/$defs/dg-flow-side" },
+        { "$ref": "#/$defs/dg-cycle-side" },
+        { "$ref": "#/$defs/dg-timeline-side" },
+        { "$ref": "#/$defs/dg-layers-side" },
+        { "$ref": "#/$defs/dg-venn-side" },
+        { "$ref": "#/$defs/dg-carroll-side" },
+        { "$ref": "#/$defs/dg-equal-groups-side" },
+        { "$ref": "#/$defs/dg-fraction-shapes-side" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "dg-bar-model-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-model"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "A name to the left of the bar (whose share).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "whole": {
+                "anyOf": [
+                  {
+                    "description": "The bar's whole quantity; code splits it into equal parts and labels them.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "parts": {
+                "anyOf": [
+                  {
+                    "description": "How many equal parts the whole is split into.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "values": {
+                "anyOf": [
+                  {
+                    "description": "Unequal parts: each part's quantity, in order (instead of whole and parts).",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "anyOf": [
+                  {
+                    "description": "How many parts, from the left, are shaded.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unknown": {
+                "anyOf": [
+                  {
+                    "description": "What pupils find: whole shows the total as ?, each shows every part as ?.",
+                    "type": "string",
+                    "enum": ["none", "whole", "each"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "description": "The unit: \"£\", \"cm\", \"kg\" (code places it).",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["label", "whole", "parts", "values", "shaded", "unknown", "unit"]
+          }
+        },
+        "combined": {
+          "anyOf": [
+            { "description": "true labels the total of all the bars together.", "type": "boolean" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "bars", "combined"],
+      "additionalProperties": false
+    },
+    "dg-number-line-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["number-line"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "labelEvery": {
+          "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+        },
+        "points": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "open": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+                },
+                "required": ["value", "label", "open"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 5 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "jumps": {
+          "anyOf": [
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "description": "at most 10 characters" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "from": { "type": "number" }, "to": { "type": "number" } },
+              "required": ["from", "to"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "min",
+        "max",
+        "step",
+        "labelEvery",
+        "points",
+        "jumps",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "dg-line-graph-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["line-graph"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "x": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "at most 30 characters" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+          },
+          "required": ["label", "min", "max", "step"],
+          "additionalProperties": false
+        },
+        "y2": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "step": {
+                  "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }]
+                }
+              },
+              "required": ["label", "min", "max", "step"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "qualitative": {
+          "anyOf": [
+            {
+              "description": "true: the shape of a trend with no real numbers; axes keep their names and show no numbers.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        },
+        "series": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  { "type": "string", "description": "at most 20 characters" },
+                  { "type": "null" }
+                ]
+              },
+              "points": {
+                "minItems": 2,
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              },
+              "style": {
+                "anyOf": [
+                  { "type": "string", "enum": ["line", "bars", "tangent"] },
+                  { "type": "null" }
+                ]
+              },
+              "axis": {
+                "anyOf": [{ "type": "string", "enum": ["left", "right"] }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "points", "style", "axis"],
+            "additionalProperties": false
+          }
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" }
+                },
+                "required": ["from", "to", "label"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "annotations": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 24 characters" }
+                },
+                "required": ["x", "y", "label"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 12 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "intervals": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "number" },
+                  "to": { "type": "number" },
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "y": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+                },
+                "required": ["from", "to", "label", "y"],
+                "additionalProperties": false
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "x",
+        "y",
+        "y2",
+        "qualitative",
+        "series",
+        "segments",
+        "annotations",
+        "intervals"
+      ],
+      "additionalProperties": false
+    },
+    "dg-bar-chart-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["bar-chart"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "style": {
+          "anyOf": [
+            { "type": "string", "enum": ["bars", "pictogram", "tally"] },
+            { "type": "null" }
+          ]
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string", "description": "at most 30 characters" }
+              },
+              "required": ["label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "bars": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 16 characters" },
+              "value": { "type": "number", "minimum": 0 }
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 10 characters in this slot"
+        },
+        "per": { "anyOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] }
+      },
+      "required": ["kind", "shows", "alt", "title", "style", "x", "y", "bars", "per"],
+      "additionalProperties": false
+    },
+    "dg-pie-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["pie"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "slices": {
+          "anyOf": [
+            {
+              "minItems": 2,
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "description": "at most 20 characters" },
+                  "value": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "required": ["label", "value"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 30 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "parts": {
+          "anyOf": [{ "type": "integer", "minimum": 2, "maximum": 12 }, { "type": "null" }]
+        },
+        "shaded": {
+          "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 12 }, { "type": "null" }]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "slices", "parts", "shaded"],
+      "additionalProperties": false
+    },
+    "dg-table-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["table"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "header": {
+          "anyOf": [
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 20 characters" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": { "type": "string", "description": "at most 28 characters" }
+          },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "header", "rows"],
+      "additionalProperties": false
+    },
+    "dg-flow-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["flow"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "nodes": {
+          "minItems": 2,
+          "maxItems": 6,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "Each box once: a short phrase or one equation. A box the flow returns to is still listed once.; each label at most 32 characters in this slot"
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The box the arrow leaves (0-based index into nodes)."
+              },
+              "to": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "enum": ["out"] }
+                ],
+                "description": "The box the arrow reaches; the same box as from is a loop; \"out\" is an arrow leaving the drawing (lost, forgotten, removed)."
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "description": "The change or cause along the arrow, one or two words.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["from", "to", "label"],
+            "additionalProperties": false
+          },
+          "description": "Arrows between boxes. Code lays out a chain, a branch, a cycle or a model with loops from these."
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "nodes", "links"],
+      "additionalProperties": false
+    },
+    "dg-cycle-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["cycle"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "steps": {
+          "minItems": 3,
+          "maxItems": 5,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 32 characters" },
+          "description": "each label at most 32 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "steps"],
+      "additionalProperties": false
+    },
+    "dg-timeline-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["timeline"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": {
+          "type": "string",
+          "description": "at most 200 characters; One sentence a screen reader hears: what the drawing shows."
+        },
+        "title": { "type": "null" },
+        "events": {
+          "minItems": 2,
+          "maxItems": 7,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "at most 14 characters; The date as pupils read it (\"AD 43\", \"November 1923\")."
+              },
+              "text": {
+                "type": "string",
+                "description": "at most 40 characters; What happened, in a few words."
+              }
+            },
+            "required": ["date", "text"],
+            "additionalProperties": false
+          },
+          "description": "Events; code sorts them by date and spaces them by the time between them.; each label at most 60 characters in this slot"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "description": "A highlighted span between two of the events' dates.",
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span starts, as written on an event."
+                },
+                "to": {
+                  "type": "string",
+                  "description": "at most 14 characters; The date the span ends, as written on an event."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "at most 24 characters; What the span is."
+                }
+              },
+              "required": ["from", "to", "label"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "events", "period"],
+      "additionalProperties": false
+    },
+    "dg-layers-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["layers"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "layers": {
+          "minItems": 3,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string", "description": "at most 24 characters" },
+              "thickness": {
+                "anyOf": [{ "type": "number", "minimum": 1, "maximum": 3 }, { "type": "null" }]
+              }
+            },
+            "required": ["label", "thickness"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 20 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "layers"],
+      "additionalProperties": false
+    },
+    "dg-venn-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["venn"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "sets": {
+          "minItems": 2,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 20 characters" }
+        },
+        "items": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "description": "at most 16 characters" },
+                  "in": {
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 2 }
+                  }
+                },
+                "required": ["text", "in"],
+                "additionalProperties": false
+              },
+              "description": "each label at most 24 characters in this slot"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "sets", "items"],
+      "additionalProperties": false
+    },
+    "dg-carroll-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["carroll"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "rows": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cols": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": { "type": "string", "description": "at most 18 characters" }
+        },
+        "cells": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "maxItems": 5,
+              "type": "array",
+              "items": { "type": "string", "description": "at most 16 characters" }
+            }
+          },
+          "description": "each label at most 24 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "rows", "cols", "cells"],
+      "additionalProperties": false
+    },
+    "dg-equal-groups-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["equal-groups"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "total": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 40,
+          "description": "How many counters in all."
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "How many equal groups they are shared into."
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "description": "rings: each group circled; rows: each group a row, for an array or repeated adding.",
+              "type": "string",
+              "enum": ["rings", "rows"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "show_count": {
+          "anyOf": [
+            {
+              "description": "Which groups show how many they hold: each, only the first, or none.",
+              "type": "string",
+              "enum": ["each", "one", "none"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "description": "true when pupils find how many are in each group: the count shows as ?.",
+              "type": "boolean"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "shows",
+        "alt",
+        "title",
+        "total",
+        "groups",
+        "layout",
+        "show_count",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "dg-fraction-shapes-full": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["fraction-shapes"] },
+        "shows": { "type": "string", "description": "what the drawing is for, in a sentence" },
+        "alt": { "type": "string", "description": "at most 200 characters" },
+        "title": { "type": "null" },
+        "shapes": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": ["circle", "square", "rectangle", "bar"],
+                "description": "The whole."
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "description": "How many equal parts the whole is cut into."
+              },
+              "cut": {
+                "anyOf": [
+                  {
+                    "description": "How it is cut: auto, vertical strips, horizontal strips, a grid (4, 6, 8, 9 or 12 parts) or diagonals (a square or rectangle in 2 or 4). A circle is always cut into equal sectors.",
+                    "type": "string",
+                    "enum": ["auto", "vertical", "horizontal", "grid", "diagonal"]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "shaded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many parts are shaded (0 for a shape pupils shade)."
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "description": "A name set under the shape: a letter pupils are pointed to, or a fraction.",
+                    "type": "string"
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["shape", "parts", "cut", "shaded", "name"],
+            "additionalProperties": false
+          },
+          "description": "each label at most 13 characters in this slot"
+        }
+      },
+      "required": ["kind", "shows", "alt", "title", "shapes"],
+      "additionalProperties": false
+    },
+    "diagram-full": {
+      "anyOf": [
+        { "$ref": "#/$defs/dg-bar-model-full" },
+        { "$ref": "#/$defs/dg-number-line-full" },
+        { "$ref": "#/$defs/dg-line-graph-full" },
+        { "$ref": "#/$defs/dg-bar-chart-full" },
+        { "$ref": "#/$defs/dg-pie-full" },
+        { "$ref": "#/$defs/dg-table-full" },
+        { "$ref": "#/$defs/dg-flow-full" },
+        { "$ref": "#/$defs/dg-cycle-full" },
+        { "$ref": "#/$defs/dg-timeline-full" },
+        { "$ref": "#/$defs/dg-layers-full" },
+        { "$ref": "#/$defs/dg-venn-full" },
+        { "$ref": "#/$defs/dg-carroll-full" },
+        { "$ref": "#/$defs/dg-equal-groups-full" },
+        { "$ref": "#/$defs/dg-fraction-shapes-full" },
+        { "$ref": "#/$defs/diagram-freeform" }
+      ]
+    },
+    "diagram-freeform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "shows", "labels"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["labelled-diagram", "particles", "hydrograph", "river", "cubes"]
+        },
+        "shows": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "KS3-5:order": [
+    "picture",
+    "figure",
+    "title",
+    "explain",
+    "visual-text",
+    "big-visual",
+    "picture-sequence",
+    "compare",
+    "steps",
+    "equation-hero",
+    "hinge",
+    "question-set",
+    "practice",
+    "exit-ticket",
+    "discussion",
+    "dg-bar-model-side",
+    "dg-number-line-side",
+    "dg-line-graph-side",
+    "dg-bar-chart-side",
+    "dg-pie-side",
+    "dg-table-side",
+    "dg-flow-side",
+    "dg-cycle-side",
+    "dg-timeline-side",
+    "dg-layers-side",
+    "dg-venn-side",
+    "dg-carroll-side",
+    "dg-equal-groups-side",
+    "dg-fraction-shapes-side",
+    "diagram-side",
+    "dg-bar-model-full",
+    "dg-number-line-full",
+    "dg-line-graph-full",
+    "dg-bar-chart-full",
+    "dg-pie-full",
+    "dg-table-full",
+    "dg-flow-full",
+    "dg-cycle-full",
+    "dg-timeline-full",
+    "dg-layers-full",
+    "dg-venn-full",
+    "dg-carroll-full",
+    "dg-equal-groups-full",
+    "dg-fraction-shapes-full",
+    "diagram-full",
+    "diagram-freeform"
+  ]
+}

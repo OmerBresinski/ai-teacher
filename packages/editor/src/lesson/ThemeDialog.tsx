@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
 import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
 import { newSlide } from "../model/factories";
-import { getTheme, THEMES } from "../model/themes";
+import { getTheme, renderTheme, THEMES } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { useHistory, useLesson } from "./document-context";
@@ -331,8 +331,8 @@ export function GeneratingThemeDialog({
  */
 export function displayInTheme<L extends Lesson>(lesson: L, themeId: string | null | undefined): L {
   if (!themeId || themeId === lesson.themeId) return lesson;
-  const from = getTheme(lesson.themeId);
-  const to = getTheme(themeId);
+  const from = renderTheme(lesson);
+  const to = renderTheme(lesson, themeId);
   return {
     ...lesson,
     themeId: to.id,

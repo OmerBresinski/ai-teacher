@@ -13,7 +13,7 @@ import {
   SOURCE_TEXT_MAX_CHARS,
   StageFailure,
 } from "../types";
-import { OBJECTIVES_FIRST_VERSION } from "./objectives-first";
+import { OBJECTIVES_FIRST_VERSION, WRITER_PLANNED_VERSION } from "./objectives-first";
 import { existingTitle, materialiseObjectives, materialiseTitle } from "./plan";
 import { audienceOf, planClassFor, shapeOf } from "./shared";
 import { selectSourceTexts } from "./source-texts";
@@ -79,6 +79,8 @@ export interface ObjectivesStepReport {
 }
 
 export interface ObjectivesStepOptions {
+  /** The `planned` stamp (the writer planner stamps its own, TEACH-110 part b). */
+  plannedStamp?: string;
   effort?: PlannerEffortOption;
 }
 
@@ -205,7 +207,7 @@ export async function runObjectivesStep(
       jobId: deps.context.jobId,
       stage: "planned",
       startedAt,
-      promptVersions: { planned: OBJECTIVES_FIRST_VERSION },
+      promptVersions: { planned: options.plannedStamp ?? OBJECTIVES_FIRST_VERSION },
       usage: deps.budget.totals(),
       findings: [],
     },
@@ -221,6 +223,14 @@ export async function runObjectivesStep(
 /** The workflow step: the objectives step without its report. */
 export async function objectives(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   return (await runObjectivesStep(state, deps)).state;
+}
+
+/** The writer planner's objectives step: the same step, stamped with the writer's planned version. */
+export async function writerObjectives(
+  state: PipelineState,
+  deps: PipelineDeps,
+): Promise<PipelineState> {
+  return (await runObjectivesStep(state, deps, { plannedStamp: WRITER_PLANNED_VERSION })).state;
 }
 
 /** A rebuilt objectives slide under the id of the one it replaces, so the editor keeps it. */

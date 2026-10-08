@@ -214,7 +214,7 @@ export interface VerifyResult {
  * document it was writing. Plan and Generate failures fail the job; Evaluate and Repair failures
  * are recorded as findings by the stage itself and never reach here.
  */
-export type StageFailureReason = "timeout" | "objectives-check";
+export type StageFailureReason = "timeout" | "objectives-check" | "writer-length";
 
 export class StageFailure extends Error {
   override readonly name: string = "StageFailure";

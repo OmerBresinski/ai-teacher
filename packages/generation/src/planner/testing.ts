@@ -1,5 +1,5 @@
 import type { FakeCall } from "@tj/ai";
-import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
+import { createFakeAi, type FakeReply, type FakeScriptEntry } from "@tj/ai/testing";
 import type { Lesson } from "@tj/domain/documents";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
 import { FIXTURES, sampleBriefLesson } from "../testing";
@@ -118,10 +118,20 @@ export function labAi(
     evaluate?: unknown;
     /** The input check's answer (default: no findings). */
     checkInput?: unknown;
+    /** Answers a call first when it returns a string (the writer stage's calls, TEACH-110 part b). */
+    extra?: (call: FakeCall) => string | FakeReply | undefined;
+    /** The client's per-call route, as the worker sets it. */
+    route?: Parameters<typeof createFakeAi>[0] extends infer O
+      ? O extends { route?: infer R }
+        ? R
+        : never
+      : never;
   } = {},
 ) {
   let objectivesCalls = 0;
   const fallback: FakeScriptEntry = async (call) => {
+    const own = options.extra?.(call);
+    if (own !== undefined) return own;
     const version = call.context?.promptVersion ?? "";
     if (version.startsWith("check-input")) return json(options.checkInput ?? { findings: [] });
     if (version.startsWith("plan-objectives"))
@@ -159,7 +169,7 @@ export function labAi(
     if (version.startsWith("repair")) return json(FIXTURES.repair);
     throw new Error(`unexpected call: ${version}`);
   };
-  return createFakeAi({ fallback, usage });
+  return createFakeAi({ fallback, usage, ...(options.route ? { route: options.route } : {}) });
 }
 
 export const versionsOf = (ai: ReturnType<typeof labAi>) =>

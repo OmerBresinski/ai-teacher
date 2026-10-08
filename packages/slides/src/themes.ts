@@ -572,9 +572,44 @@ export function getTheme(id: string | undefined | null, ageBand?: string | null)
   return b;
 }
 
-/** A lesson's theme at the lesson's own key stage. Nothing on master calls it yet (TEACH-110 part b). */
+/**
+ * The lesson writer's `planned` stamp starts with this (TEACH-110 part b; `WRITER_VERSION` in
+ * `@tj/generation`, which a test keeps equal). Only its lessons render at their key stage.
+ */
+export const WRITER_STAMP_PREFIX = "lesson-writer.";
+
+type StagedLesson = {
+  themeId?: string | null;
+  ageBand?: string | null;
+  generation?: { promptVersions?: { planned?: string } } | null;
+};
+
+/**
+ * The age band a lesson renders at: its own for a lesson the writer planner wrote, none for every
+ * other lesson. Production lessons already carry `ageBand`, so binding it for all of them would
+ * restyle every existing deck; the writer's lessons are laid out at their stage and must render so.
+ */
+export function boundAgeBand(lesson: StagedLesson | null | undefined): string | undefined {
+  const planned = lesson?.generation?.promptVersions?.planned;
+  return planned?.startsWith(WRITER_STAMP_PREFIX) ? (lesson?.ageBand ?? undefined) : undefined;
+}
+
+/**
+ * A lesson's theme at its own key stage, ungated: generation and the type-scale audit. Renderers
+ * use `renderTheme`, which binds the stage only for writer lessons.
+ */
 export const lessonTheme = (lesson: { themeId?: string | null; ageBand?: string | null }): Theme =>
   getTheme(lesson.themeId, lesson.ageBand);
+
+/**
+ * The theme a lesson renders with (editor, presenter, print, export): `themeId` (default the
+ * lesson's; a re-theme's target) at the age band `boundAgeBand` allows, so only writer lessons
+ * are bound to their stage.
+ */
+export const renderTheme = (
+  lesson: StagedLesson | null | undefined,
+  themeId: string | null | undefined = lesson?.themeId,
+): Theme => getTheme(themeId, boundAgeBand(lesson));
 
 /**
  * What a piece of text is doing on the slide. The legibility floor is a property

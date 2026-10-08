@@ -1,0 +1,90 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": null,
+      "misconceptions": "Pupils may treat the figures as exact limits. The model gives approximate characteristics; for example, STM capacity is often expressed as about 7 ± 2 chunks, and chunking can change how much information counts as one item.",
+      "background": "These are the model’s proposed typical properties, not universal measurements. Coding means the form in which information is represented, such as sound or meaning.",
+      "run": "Spend about 4 minutes comparing the stores as a class. Ask pupils to identify how each store differs in coding, capacity and duration, then link each characteristic to a store."
+    },
+    {
+      "n": 4,
+      "answers": null,
+      "misconceptions": "Pupils may assume information moves automatically from the sensory register to STM, or that everything in STM enters LTM. Attention selects some sensory information for STM; transfer to LTM is associated with rehearsal in this model.",
+      "background": "The arrows represent proposed information flow, not a guarantee that every item travels through every store. Retrieval is the route by which information in LTM becomes available in STM.",
+      "run": "Spend about 3 minutes tracing the route together. Ask pupils what process moves information into STM and what the model proposes can help it reach LTM."
+    },
+    {
+      "n": 5,
+      "answers": null,
+      "misconceptions": "Pupils may think repeating the code proves it has entered LTM. Rehearsal can maintain information in STM, while the model proposes that prolonged rehearsal can transfer it to LTM; transfer is not guaranteed.",
+      "background": "Maintenance rehearsal means repeating information without necessarily adding meaning or linking it to existing knowledge.",
+      "run": "Spend about 4 minutes talking through the example. Ask pupils to name the store and process at each transition, then have them explain why remembering it the next day involves retrieval."
+    },
+    {
+      "n": 6,
+      "answers": [
+        "Attention; the information moves from the sensory register to STM.",
+        "Repeating it maintains it in STM during rehearsal. Twenty seconds is within the typical duration of STM, but repetition alone does not guarantee transfer to LTM.",
+        "Retrieval brings the information from LTM into STM. LTM is mainly coded semantically."
+      ],
+      "misconceptions": "Pupils may call repetition attention: attention selects information for STM, while maintenance rehearsal keeps it active there. They may also assume 20 seconds automatically transfers the code to LTM; rehearsal can maintain STM without guaranteeing long-term storage.",
+      "background": "A code made of digits can be rehearsed acoustically in STM even though LTM is described as mainly semantic. The model describes typical coding, not the only possible coding in each store.",
+      "run": "Give pupils about 5 minutes to write one short explanation for each stage independently. Then take answers in order and clarify the difference between attention and rehearsal."
+    },
+    {
+      "n": 7,
+      "answers": null,
+      "misconceptions": "Pupils may read the model’s claim as saying that any repetition creates a lasting memory. Distinguish maintaining information briefly through repetition from the proposed transfer after prolonged rehearsal; the example illustrates that repetition need not guarantee later recall.",
+      "background": "This distinction is useful when evaluating the model: rehearsal is central to its proposed transfer route, but simply repeating something does not always produce durable learning.",
+      "run": "Spend about 4 minutes discussing the example and model claim. Ask pupils to explain how the code can remain available while being used yet be forgotten later."
+    },
+    {
+      "n": 8,
+      "answers": null,
+      "misconceptions": "Pupils may attribute both the early- and final-word advantages to one store. In the model’s account, early words benefit from rehearsal and LTM transfer, while final words are still available in STM. The counting delay reduces the latter advantage by occupying STM.",
+      "background": "Serial position curves typically show better recall for words at the beginning and end of a list than for those in the middle. A filled delay is used to prevent participants from simply rehearsing the final items.",
+      "run": "Spend about 5 minutes interpreting the graph together. Have pupils identify the early- and final-word advantages and compare immediate recall with recall after the filled delay."
+    },
+    {
+      "n": 9,
+      "answers": [
+        "Early words receive more rehearsal and are more likely to enter LTM, producing the primacy effect. Final words remain available in STM at immediate recall, producing the recency effect.",
+        "Counting occupies STM and prevents continued rehearsal of the final words, so their recency advantage falls. Early words already transferred to LTM, so the primacy advantage remains.",
+        "The different effects of the delay are consistent with separate STM and LTM stores: the delay disrupts the STM-based recency effect but not the LTM-based primacy effect. They support this account but do not prove the whole model, because the findings can have other explanations and do not establish every feature of the stores."
+      ],
+      "misconceptions": "Pupils may say the delay erases all memory, despite primacy remaining; it mainly disrupts the final-word advantage in this account. They may also claim the findings prove the model. Say they support a separate-store explanation, but evidence consistent with a theory is not proof of every part of it.",
+      "background": "Glanzer and Cunitz’s serial-position findings are used as evidence for distinct short- and long-term contributions to recall. The counting task is a filled delay because it occupies attention and limits rehearsal.",
+      "run": "Allow about 6 minutes for individual written responses. Then compare explanations in pairs, checking that each links the delay or position effect to a store or process."
+    },
+    {
+      "n": 10,
+      "answers": null,
+      "misconceptions": "Pupils may conclude that KF had no STM, or that his case disproves separate STM and LTM stores. His differing verbal and visual performance challenges the idea of one unitary STM store; it does not by itself disprove the distinction between STM and LTM.",
+      "background": "KF’s case study is associated with Shallice and Warrington’s investigation of memory after brain injury. Case studies can give detailed evidence about an individual but cannot establish that everyone’s memory is organised in the same way.",
+      "run": "Spend about 4 minutes discussing what the contrast between verbal and visual performance implies. Ask pupils to state precisely which part of the model the case challenges."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "The counting delay reduced recall of final words but spared early words. This supports separate STM and LTM stores because the delay disrupts information still available in STM, while rehearsed early words in LTM remain recallable.",
+        "KF’s verbal STM was severely impaired, while his visual STM was relatively better preserved. This challenges the model’s description of STM as one unitary store because different components appear to be affected differently.",
+        "KF challenges the claim that STM is a single store, not the distinction between STM and LTM. His differing verbal and visual performance suggests STM has components, but does not show that separate STM and LTM stores do not exist."
+      ],
+      "misconceptions": "Pupils may use KF to claim that the entire multi-store model is disproved. Keep the target clear: the case challenges a unitary STM store. Conversely, the serial-position result supports separate stores but does not prove the model; describe it as supporting evidence rather than conclusive proof.",
+      "background": "AQA evaluation answers are stronger when they connect a claim to evidence and explain what the evidence supports or challenges. KF’s case is a challenge to the structure of STM, whereas the serial-position findings support separate STM and LTM contributions.",
+      "run": "Give pupils about 7 minutes to write the two evaluation paragraphs and the stretch response. Ask them to use claim, evidence and explanation in each, then review one response for each side as a class."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "Her attention is directed to the message, so the platform number may not transfer from the sensory register into STM. It may therefore be lost from the brief sensory trace.",
+        "Repeating the number is maintenance rehearsal that keeps it available in STM while she boards. Without rehearsal, STM is mainly acoustic and lasts about 18–30 seconds.",
+        "Retrieval brings information from LTM into STM. LTM is mainly coded semantically, has potentially unlimited capacity and can last a lifetime."
+      ],
+      "misconceptions": "Pupils may say Leila remembers the announcement because she heard it, even though attention was elsewhere; hearing alone does not ensure transfer to STM. They may also confuse rehearsal with retrieval: repetition maintains information in STM, while retrieval brings stored information from LTM into STM.",
+      "background": "The examples apply the proposed stages of information flow to everyday situations. The coding, capacity and duration figures describe typical properties in the model, rather than fixed limits for every memory.",
+      "run": "Allow about 6 minutes for pupils to write an explanation of each situation. Take responses in order and check that each identifies the relevant store and process."
+    }
+  ]
+}

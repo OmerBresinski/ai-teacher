@@ -1,7 +1,7 @@
 import type { Id, Lesson, Theme } from "@tj/domain/documents";
 import { useEffect, useRef } from "react";
 import * as reducers from "../model/reducers";
-import { getTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { fitMigrationMessage, fitVersionOf, measureInputsOf, planFitMigration } from "./fit-plan";
 import { lintAsDrawn } from "./lint";
 import { createMeasurer, warmMeasurer, whenFontsReady } from "./measure";
@@ -72,7 +72,7 @@ export function runFitMigration(deps: FitMigrationDeps): FitMigrationOutcome {
   // Ask whether the editor is quiet before measuring anything.
   if (!isIdle()) return { ran: false, tidied: 0, deferred: true };
 
-  const theme = getTheme(lesson.themeId);
+  const theme = renderTheme(lesson);
   const measure = measurer(theme);
 
   // One forced layout for the whole deck rather than one per box.

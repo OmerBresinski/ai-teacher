@@ -1,5 +1,5 @@
 import type { Lesson, Theme } from "@tj/domain/documents";
-import { getTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { isFitStale, measureInputsOf, planFitMigration } from "./fit-plan";
 import { lintAsDrawn } from "./lint";
 import { createMeasurer, warmMeasurer } from "./measure";
@@ -26,7 +26,7 @@ export type RefitDeps = {
 export function refitStaleLesson(lesson: Lesson, deps: RefitDeps = {}): Lesson {
   if (!isFitStale(lesson)) return lesson;
   const { measurer = createMeasurer, warm = warmMeasurer } = deps;
-  const theme = getTheme(lesson.themeId);
+  const theme = renderTheme(lesson);
   const measure = measurer(theme);
   warm(
     lesson.slides.flatMap((slide) => measureInputsOf(slide)),

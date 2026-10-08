@@ -1,0 +1,85 @@
+{
+  "slides": [
+    {
+      "n": 3,
+      "answers": null,
+      "misconceptions": "Pupils may think any two pieces make halves, even if they are different sizes. Remind them that equal parts must be the same size. A quarter is one of four equal parts, not simply a small piece.",
+      "background": "A shape can be split into equal parts in different ways. The parts do not need to have a particular orientation; what matters is that they are equal in size.",
+      "run": "Take about 3 minutes. Read the definitions together. Ask pupils to point to one half and one quarter in the diagram, then explain what makes the parts equal."
+    },
+    {
+      "n": 4,
+      "answers": [
+        "A: quarter. B: half.",
+        "A is one of four equal parts. B is one of two equal parts."
+      ],
+      "misconceptions": "Pupils may call A a half because it is shaded, or call B a quarter because it is a small part of the square. Focus on the number of equal parts in the whole shape: four for A and two for B.",
+      "background": "A fraction name describes how many equal parts the whole is split into, and how many of those parts are being considered. Here, one part is shaded in each shape.",
+      "run": "Take about 4 minutes. Give pupils time to look at A and B, then ask them to say the name of each shaded part and explain their choices to a partner."
+    },
+    {
+      "n": 5,
+      "answers": null,
+      "misconceptions": "Pupils may think that any shape cut into two pieces shows halves. A half must be one of two equal-sized parts; compare the areas of the pieces, not just their number.",
+      "background": "Equal halves do not have to look alike or be placed symmetrically. They must have the same area.",
+      "run": "Take about 3 minutes. Ask pupils to compare the pieces in A and B. Invite them to explain why A shows halves and B does not."
+    },
+    {
+      "n": 6,
+      "answers": ["6 counters in each group; half of 12 is 6."],
+      "misconceptions": "Pupils may count both groups together and answer 12, or make groups with different numbers of counters. Show that each group must have the same number, and that one group is half of the total.",
+      "background": "Sharing equally into two groups is a practical way to find half. The two groups together still make the original total.",
+      "run": "Take about 5 minutes. Model sharing 12 counters into two equal groups. Have pupils make the groups with counters or draw them, then count one group."
+    },
+    {
+      "n": 7,
+      "answers": ["Half of 16 is 8.", "Half of 10 is 5.", "Half of 20 is 10."],
+      "misconceptions": "Pupils may give the total number of counters instead of the number in one group, or share unevenly. Check that the two groups have the same amount before counting one group.",
+      "background": "These totals are even, so they can be shared exactly into two equal groups. Pupils can also use known doubles: 8 and 8 make 16, for example.",
+      "run": "Take about 7 minutes. Pupils draw two groups for each total and share the counters equally. Ask them to write the number in one group as their answer."
+    },
+    {
+      "n": 8,
+      "answers": ["3 counters in each group; a quarter of 12 is 3."],
+      "misconceptions": "Pupils may divide 12 into two groups and answer 6, or make four groups that are not equal. Remind them that a quarter means one of four equal groups.",
+      "background": "Four groups of 3 make 12, so one group is a quarter of the total. Sharing counters one at a time around the four groups helps keep them equal.",
+      "run": "Take about 5 minutes. Model sharing 12 counters into four equal groups. Pupils can make or draw the groups, then count the counters in one group."
+    },
+    {
+      "n": 9,
+      "answers": ["A quarter of 16 is 4.", "A quarter of 8 is 2.", "A quarter of 4 is 1."],
+      "misconceptions": "Pupils may split the counters into two groups instead of four, giving half rather than a quarter. Have them count the groups first, then check that each group is equal.",
+      "background": "The totals are all multiples of four, so they can be shared equally into four groups. The answer is the number in one group.",
+      "run": "Take about 7 minutes. Pupils draw four groups for each total, share the counters equally, and write the amount in one group."
+    },
+    {
+      "n": 10,
+      "answers": ["Four groups of 5."],
+      "misconceptions": "“Five groups of 4” uses the right total but the wrong number of groups; a quarter needs four equal groups. “Two groups of 10” finds halves, not quarters. Correct these by asking pupils how many equal groups make a quarter, then checking that 4 groups of 5 make 20.",
+      "background": "The order in a grouping statement matters: four groups of five means four equal groups, each containing five objects. Both five groups of four and four groups of five total 20, but only the latter finds a quarter.",
+      "run": "Take about 4 minutes. Pupils choose the sharing that finds a quarter of 20 and explain why the other two do not. Check that they focus on having four equal groups."
+    },
+    {
+      "n": 11,
+      "answers": [
+        "Half of 18 is 9.",
+        "A quarter of 20 is 5.",
+        "Half of 8 is 4; a quarter of 8 is 2."
+      ],
+      "misconceptions": "Pupils may use two groups for every question, including quarters, or give the total instead of the amount in one group. Match the number of equal groups to the fraction: two for a half and four for a quarter.",
+      "background": "The same total can be shared in different ways: 8 makes groups of 4 when shared into two, and groups of 2 when shared into four.",
+      "run": "Take about 8 minutes. Pupils work independently or with a partner, drawing equal groups and writing each answer. Ask them to show two groups for halves and four groups for quarters."
+    },
+    {
+      "n": 12,
+      "answers": [
+        "A square split into four equal parts, with one part shaded.",
+        "7 birds stay.",
+        "15 beads are not red."
+      ],
+      "misconceptions": "Pupils may split the square into four unequal parts; check that each part is the same size. For the birds, 7 is the number that fly away, but the question asks how many stay: half of 14 is also 7. For the beads, 5 are red, but 15 are not red; the two amounts must total 20.",
+      "background": "The bird problem asks for the amount left after half flies away. Since half of 14 is 7, the other half is also 7. In the bead problem, one quarter of 20 is 5, leaving 15.",
+      "run": "Take about 10 minutes. Pupils draw and shade the square, then solve the two word problems using drawings or equal groups. Ask them to label their working and check that their answers fit what each question asks."
+    }
+  ]
+}

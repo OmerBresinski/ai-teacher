@@ -1,0 +1,2533 @@
+{
+  "version": 1,
+  "id": "bakeoff-T-y1-science-animals-young",
+  "title": "Animals and their young",
+  "themeId": "splash",
+  "fitVersion": 3,
+  "subject": "Science",
+  "ageBand": "ks1",
+  "yearGroup": "Year 1",
+  "language": "en-GB",
+  "createdAt": "2026-10-08T12:16:27.134Z",
+  "updatedAt": "2026-10-08T12:16:27.134Z",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "elements": [
+        {
+          "id": "f9cf3kAHxg",
+          "type": "text",
+          "x": 64,
+          "y": 93,
+          "w": 344,
+          "h": 245,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Animals and their young"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "style": {
+            "preset": "title",
+            "autoHeight": false,
+            "fontSize": 77,
+            "lineHeight": 1.06,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#FFFFFF",
+            "valign": "bottom"
+          }
+        },
+        {
+          "id": "bpoBrR28fr",
+          "type": "text",
+          "x": 64,
+          "y": 358,
+          "w": 344,
+          "h": 90,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which animals can you name?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Subtitle",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#FFFFFF"
+          }
+        },
+        {
+          "id": "elH6WlW2nT",
+          "type": "image",
+          "name": "Photo",
+          "x": 452,
+          "y": 48,
+          "w": 444,
+          "h": 444,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b70-78cd-7095-99ec-53f0c2be3345.jpg",
+          "alt": "A speckled cow stands proudly on a lush green pasture under a bright sky.",
+          "request": "Four separate photographs of familiar adult animals. adult cow. adult sheep. adult hen. adult dog",
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "pexels",
+            "id": "37383409",
+            "pageUrl": "https://www.pexels.com/photo/majestic-speckled-cow-on-a-green-pasture-37383409/",
+            "photographer": "Nabi Dastaran",
+            "photographerUrl": "https://www.pexels.com/@nabi-dastaran-445027047",
+            "evidence": {
+              "visible": ["adult cow", "full body", "clear markings"],
+              "count": "one",
+              "alt": "A speckled cow stands proudly on a lush green pasture under a bright sky.",
+              "promptVersion": "pick-or-requery-photo.v17",
+              "thumbnail": "https://images.pexels.com/photos/37383409/pexels-photo-37383409.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          },
+          "style": "photo"
+        }
+      ],
+      "background": {
+        "color": "#0A5CA2"
+      },
+      "notes": ""
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "X7nr7PVeTd",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Today we are learning to"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "CmA-s1XzKO",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 175,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "pDc1__-8os",
+          "type": "text",
+          "x": 128,
+          "y": 172,
+          "w": 656,
+          "h": 139,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Match cows and calves, sheep and lambs, hens and chicks, and dogs and puppies, naming each adult animal and its young."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "r1ck6y02um",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 338,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "GJyAOu3Rnn",
+          "type": "text",
+          "x": 128,
+          "y": 335,
+          "w": 656,
+          "h": 139,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Describe how a chick changes as it grows into a hen, including getting bigger and growing adult feathers."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s3",
+      "kind": "image-text",
+      "elements": [
+        {
+          "id": "EwHPhb2CXr",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Adult animals"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "fTHN25L7Zy",
+          "type": "text",
+          "x": 64,
+          "y": 191,
+          "w": 392,
+          "h": 90,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Say each animal’s name."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "YoVfa-TNQ7",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 322,
+          "w": 12,
+          "h": 12,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "zVgp8tQ30X",
+          "type": "text",
+          "x": 97,
+          "y": 305,
+          "w": 359,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "cow • sheep"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "MsjOLoFLDp",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 66,
+          "y": 387,
+          "w": 12,
+          "h": 12,
+          "fill": "#0A5CA2",
+          "name": "Bullet"
+        },
+        {
+          "id": "eU23lc3DX6",
+          "type": "text",
+          "x": 97,
+          "y": 370,
+          "w": 359,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "hen • dog"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "XoNxlDf8tW",
+          "type": "image",
+          "name": "Photo",
+          "x": 504,
+          "y": 194,
+          "w": 392,
+          "h": 261,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b70-7997-77e1-b78c-aaecee856999.jpg",
+          "alt": "A Texas Longhorn standing in a wide grassy pasture with hills in the background.",
+          "request": "Four separate adult animal photographs in reading order: cow, sheep, hen, dog. adult cow. adult sheep. adult hen. adult dog",
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "pexels",
+            "id": "7021727",
+            "pageUrl": "https://www.pexels.com/photo/photo-of-a-brown-and-white-cow-with-long-horns-7021727/",
+            "photographer": "Roxanne Minnish",
+            "photographerUrl": "https://www.pexels.com/@roxanne-minnish-2936023",
+            "evidence": {
+              "visible": ["full-grown cow", "four-legged body"],
+              "count": "one",
+              "alt": "A Texas Longhorn standing in a wide grassy pasture with hills in the background.",
+              "promptVersion": "pick-or-requery-photo.v17",
+              "thumbnail": "https://images.pexels.com/photos/7021727/pexels-photo-7021727.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          },
+          "style": "photo"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s4",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "ieiUi-LcID",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Adults and their young"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "b_Ar8srk6q",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 116,
+          "w": 404,
+          "h": 404,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Panel",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "x3eOcgnerb",
+          "type": "image",
+          "name": "Photo",
+          "x": 74,
+          "y": 126,
+          "w": 384,
+          "h": 280,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117d5-3f10-7163-a4c3-aae407c56225.bin",
+          "alt": "A mother cow and her calf strolling in a lush green field on a sunny day.",
+          "request": "An adult cow beside a small calf. adult cow. small calf",
+          "crop": {
+            "x": 0.04261398176291792,
+            "y": 0,
+            "w": 0.9147720364741642,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "12429216",
+            "pageUrl": "https://www.pexels.com/photo/a-cattle-and-its-calf-12429216/",
+            "evidence": {
+              "alt": "A mother cow and her calf strolling in a lush green field on a sunny day.",
+              "count": "several",
+              "visible": ["adult cow", "small calf", "same kind and colouring"],
+              "thumbnail": "https://images.pexels.com/photos/12429216/pexels-photo-12429216.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280",
+              "promptVersion": "pick-or-requery-photo.v17"
+            },
+            "provider": "pexels",
+            "photographer": "Mohan Nannapaneni",
+            "photographerUrl": "https://www.pexels.com/@mnannapaneni"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "91Cdodd7VG",
+          "type": "text",
+          "x": 74,
+          "y": 414,
+          "w": 384,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "cow → calf"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "dejooi9y9h",
+          "type": "text",
+          "x": 74,
+          "y": 463,
+          "w": 384,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A calf is a young cow."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "kJ9iAS8z9g",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 492,
+          "y": 116,
+          "w": 404,
+          "h": 404,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Panel",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "WYjzjoELba",
+          "type": "image",
+          "name": "Photo",
+          "x": 502,
+          "y": 126,
+          "w": 384,
+          "h": 280,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11782-7318-7782-86ee-602317d003fa.png",
+          "alt": "An adult sheep stands beside a much smaller lamb, both fully visible against a simple grassy background.",
+          "request": "An adult sheep beside a small lamb. adult sheep. small lamb",
+          "subjects": [
+            {
+              "name": "adult sheep",
+              "x": 0.1,
+              "y": 0.02,
+              "w": 0.51,
+              "h": 0.97
+            },
+            {
+              "name": "small lamb",
+              "x": 0.58,
+              "y": 0.35,
+              "w": 0.30000000000000004,
+              "h": 0.64
+            },
+            {
+              "name": "same kind and colouring",
+              "x": 0.1,
+              "y": 0.02,
+              "w": 0.78,
+              "h": 0.97
+            }
+          ],
+          "crop": {
+            "x": 0.03285714285714286,
+            "y": 0,
+            "w": 0.9142857142857143,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "01a11782-7318-7781-827b-958f8495b1cb",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "41xBC9zJ6F",
+          "type": "text",
+          "x": 502,
+          "y": 414,
+          "w": 384,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "sheep → lamb"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "eESxmrLCY8",
+          "type": "text",
+          "x": 502,
+          "y": 463,
+          "w": 384,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A lamb is a young sheep."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s5",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "PU7W1w6C3G",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find the young"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "L6E6Ijnd3S",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 183,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "48ktz42QL6",
+          "type": "text",
+          "x": 128,
+          "y": 180,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Point to the cow and its young."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "1zlpQlpomW",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 247,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "P4WRbBLM0I",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 270,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "BanN5Swmok",
+          "type": "text",
+          "x": 128,
+          "y": 267,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Point to the sheep and its young."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "BYMupJNw1S",
+          "type": "shape",
+          "shape": "rect",
+          "x": 64,
+          "y": 334,
+          "w": 760,
+          "h": 1,
+          "fill": "#BFE1F0",
+          "name": "Rule"
+        },
+        {
+          "id": "01WPIY1-vu",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 357,
+          "w": 41,
+          "h": 41,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 23,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "ab30SmS5JD",
+          "type": "text",
+          "x": 128,
+          "y": 354,
+          "w": 696,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Name both young animals."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "v1JDJPbNNp",
+          "type": "text",
+          "x": 128,
+          "y": 429,
+          "w": 696,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Look and say: cow: calf; sheep, lamb."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s6",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "daIbmkYOmA",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "More adults and young"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "2AWdynUjxa",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 119,
+          "w": 404,
+          "h": 398,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Panel",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "a0_XhMtUgE",
+          "type": "image",
+          "name": "Photo",
+          "x": 74,
+          "y": 129,
+          "w": 384,
+          "h": 288,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117d6-8c5c-747a-8912-6e68d4c437bd.png",
+          "alt": "A brown hen stands beside a small fluffy chick, with both birds clearly visible against a simple background.",
+          "request": "An adult hen beside a small chick. adult hen. small fluffy chick",
+          "subjects": [
+            {
+              "name": "adult hen",
+              "x": 0.13,
+              "y": 0.04,
+              "w": 0.5,
+              "h": 0.85
+            },
+            {
+              "name": "small fluffy chick",
+              "x": 0.55,
+              "y": 0.54,
+              "w": 0.21999999999999997,
+              "h": 0.44999999999999996
+            },
+            {
+              "name": "same kind and colouring",
+              "x": 0.13,
+              "y": 0.04,
+              "w": 0.64,
+              "h": 0.95
+            }
+          ],
+          "crop": {
+            "x": 0.005555555555555591,
+            "y": 0,
+            "w": 0.8888888888888888,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "01a117d6-8c5c-7479-bf39-5056c56e87a2",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "Bp8uvBHYOt",
+          "type": "text",
+          "x": 74,
+          "y": 425,
+          "w": 384,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "hen → chick"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "cnTGI8Wx8x",
+          "type": "text",
+          "x": 74,
+          "y": 467,
+          "w": 384,
+          "h": 40,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A chick is a young chicken."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "VMkSCU4VAQ",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 492,
+          "y": 119,
+          "w": 404,
+          "h": 398,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Panel",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "9jrMFPvqN3",
+          "type": "image",
+          "name": "Photo",
+          "x": 502,
+          "y": 129,
+          "w": 384,
+          "h": 288,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117a3-6550-771e-a9b8-0b92fa5b762a.png",
+          "alt": "An adult dog stands beside a small puppy of the same breed, with both clearly visible against a simple, uncluttered background.",
+          "request": "An adult dog beside a small puppy. adult dog. small puppy",
+          "subjects": [
+            {
+              "name": "adult dog",
+              "x": 0.17,
+              "y": 0.04,
+              "w": 0.3999999999999999,
+              "h": 0.94
+            },
+            {
+              "name": "small puppy",
+              "x": 0.54,
+              "y": 0.38,
+              "w": 0.22999999999999998,
+              "h": 0.6
+            },
+            {
+              "name": "same kind and colouring",
+              "x": 0.17,
+              "y": 0.04,
+              "w": 0.6,
+              "h": 0.94
+            }
+          ],
+          "crop": {
+            "x": 0.02555555555555561,
+            "y": 0,
+            "w": 0.8888888888888888,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "01a117a3-6550-771d-b54f-66ac532089e3",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "kxO13F-G3K",
+          "type": "text",
+          "x": 502,
+          "y": 425,
+          "w": 384,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "dog → puppy"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "MRX4Q3PSHJ",
+          "type": "text",
+          "x": 502,
+          "y": 467,
+          "w": 384,
+          "h": 40,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A puppy is a young dog."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s7",
+      "kind": "starter",
+      "elements": [
+        {
+          "id": "22vbVgsypy",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Match each adult"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "RvyyDkqQad",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 174,
+          "w": 35,
+          "h": 35,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 19,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "zUNnNGqACE",
+          "type": "text",
+          "x": 119,
+          "y": 172,
+          "w": 337,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Point to the hen and its young."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "sJ4fEYQgJv",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 265,
+          "w": 35,
+          "h": 35,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 19,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "qObP3OHVJP",
+          "type": "text",
+          "x": 119,
+          "y": 263,
+          "w": 337,
+          "h": 79,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Point to the dog and its young."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "kyKD9_OtuE",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 64,
+          "y": 356,
+          "w": 35,
+          "h": 35,
+          "fill": "#0A5CA2",
+          "name": "Marker",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 19,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "LBlVkNirXl",
+          "type": "text",
+          "x": 119,
+          "y": 354,
+          "w": 337,
+          "h": 40,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Name both young animals."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "7UcqZmuoxT",
+          "type": "text",
+          "x": 119,
+          "y": 405,
+          "w": 337,
+          "h": 38,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Look and say."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Instruction",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 28,
+            "lineHeight": 1.35,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        },
+        {
+          "id": "00ioC88aEv",
+          "type": "image",
+          "name": "Photo",
+          "x": 504,
+          "y": 194,
+          "w": 392,
+          "h": 261,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b70-9dfa-74b2-b7f1-352cf86c68ce.png",
+          "alt": "A four-panel photo shows an adult hen and chick, and an adult dog and puppy, in separate panels.",
+          "request": "Four equally sized separate photo panels: adult hen upper left, puppy upper right, adult dog lower left, chick lower right; no connecting lines. adult hen. small puppy. adult dog. small fluffy chick",
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "01a11b70-9dfa-74b1-b955-e9fd8a3cc90f",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "style": "photo"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s8",
+      "kind": "discussion",
+      "elements": [
+        {
+          "id": "RqEQ4uNs_t",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What will change?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "9ort49_hWv",
+          "type": "text",
+          "x": 64,
+          "y": 234,
+          "w": 392,
+          "h": 134,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Tell your partner how this chick might change as it grows."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "MIu08Zck_v",
+          "type": "image",
+          "name": "Photo",
+          "x": 504,
+          "y": 194,
+          "w": 392,
+          "h": 261,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a117db-ff88-7182-9337-72d7c369f90c.png",
+          "alt": "A newly hatched chick stands with its whole small body visible, showing its fluffy covering and tiny wings.",
+          "request": "A newly hatched female chick standing with its whole body visible. small body. soft fluffy covering. short wings",
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "01a117db-ff88-7181-9a64-580c8ef896df",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "style": "photo"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s9",
+      "kind": "image-text",
+      "elements": [
+        {
+          "id": "5lc1AQ6QjX",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A chick grows into a hen"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "AhTI2Ozrc6",
+          "type": "image",
+          "name": "Photo",
+          "x": 64,
+          "y": 160,
+          "w": 248,
+          "h": 221,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/sets/01a11b70-e3ee-722a-820d-66a0718b1aca.png",
+          "alt": "A newly hatched female chick, with soft down and no full adult feather covering, photographed at the same scale as the later stages",
+          "request": "A newly hatched female chick, with soft down and no full adult feather covering, photographed at the same scale as the later stages. small body. soft fluffy covering. short wings",
+          "subjects": [
+            {
+              "name": "small body",
+              "x": 0.32,
+              "y": 0.37,
+              "w": 0.36000000000000004,
+              "h": 0.53
+            },
+            {
+              "name": "soft fluffy covering",
+              "x": 0.35,
+              "y": 0.4,
+              "w": 0.31000000000000005,
+              "h": 0.42999999999999994
+            },
+            {
+              "name": "short wings",
+              "x": 0.33,
+              "y": 0.47,
+              "w": 0.23999999999999994,
+              "h": 0.22999999999999998
+            }
+          ],
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "generated",
+            "id": "01a11b70-e3ee-722a-820d-66a0718b1aca",
+            "pageUrl": "https://openai.com/policies/",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/",
+            "licence": "generated (openai-2026-10)"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "G26yUewYF-",
+          "type": "text",
+          "x": 64,
+          "y": 395,
+          "w": 248,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Small and fluffy"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          }
+        },
+        {
+          "id": "sM-5HeU7_B",
+          "type": "line",
+          "name": "Arrow",
+          "x": 320,
+          "y": 261,
+          "w": 28,
+          "h": 20,
+          "from": {
+            "x": 0,
+            "y": 0.5
+          },
+          "to": {
+            "x": 1,
+            "y": 0.5
+          },
+          "stroke": "#0A5CA2",
+          "strokeWidth": 4,
+          "arrowEnd": true
+        },
+        {
+          "id": "HOf7Z_HW74",
+          "type": "image",
+          "name": "Photo",
+          "x": 356,
+          "y": 160,
+          "w": 248,
+          "h": 221,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/sets/01a11b70-e3fd-7573-9c4f-ef7388698aac.png",
+          "alt": "An older female chick of the same breed, larger with emerging wing feathers and some remaining down, not yet fully adult",
+          "request": "An older female chick of the same breed, larger with emerging wing feathers and some remaining down, not yet fully adult. larger body. growing wing feathers. remaining soft fluff",
+          "subjects": [
+            {
+              "name": "larger body",
+              "x": 0.26,
+              "y": 0.15,
+              "w": 0.45999999999999996,
+              "h": 0.65
+            },
+            {
+              "name": "growing wing feathers",
+              "x": 0.3,
+              "y": 0.38,
+              "w": 0.3,
+              "h": 0.28
+            },
+            {
+              "name": "remaining soft fluff",
+              "x": 0.39,
+              "y": 0.47,
+              "w": 0.29000000000000004,
+              "h": 0.25
+            }
+          ],
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "generated",
+            "id": "01a11b70-e3fd-7573-9c4f-ef7388698aac",
+            "pageUrl": "https://openai.com/policies/",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/",
+            "licence": "generated (openai-2026-10)"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "8u1GB_-FBL",
+          "type": "text",
+          "x": 356,
+          "y": 395,
+          "w": 248,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Bigger; feathers grow"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          }
+        },
+        {
+          "id": "KYsfe-pEeh",
+          "type": "line",
+          "name": "Arrow",
+          "x": 612,
+          "y": 261,
+          "w": 28,
+          "h": 20,
+          "from": {
+            "x": 0,
+            "y": 0.5
+          },
+          "to": {
+            "x": 1,
+            "y": 0.5
+          },
+          "stroke": "#0A5CA2",
+          "strokeWidth": 4,
+          "arrowEnd": true
+        },
+        {
+          "id": "sPn4uKc-NW",
+          "type": "image",
+          "name": "Photo",
+          "x": 648,
+          "y": 160,
+          "w": 248,
+          "h": 221,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/sets/01a11b70-e40a-7403-a591-14e27960121a.png",
+          "alt": "A fully grown hen of the same breed, larger still and covered with adult feathers",
+          "request": "A fully grown hen of the same breed, larger still and covered with adult feathers. large adult body. full feather covering. long tail feathers",
+          "subjects": [
+            {
+              "name": "large adult body",
+              "x": 0.28,
+              "y": 0.09,
+              "w": 0.44999999999999996,
+              "h": 0.7100000000000001
+            },
+            {
+              "name": "full feather covering",
+              "x": 0.28,
+              "y": 0.09,
+              "w": 0.44999999999999996,
+              "h": 0.7100000000000001
+            },
+            {
+              "name": "long tail feathers",
+              "x": 0.18,
+              "y": 0.23,
+              "w": 0.2,
+              "h": 0.42000000000000004
+            }
+          ],
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "generated",
+            "id": "01a11b70-e40a-7403-a591-14e27960121a",
+            "pageUrl": "https://openai.com/policies/",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/",
+            "licence": "generated (openai-2026-10)"
+          },
+          "style": "photo"
+        },
+        {
+          "id": "0RV1O-Xycq",
+          "type": "text",
+          "x": 648,
+          "y": 395,
+          "w": 248,
+          "h": 93,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Hen with adult feathers"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#10252F",
+            "align": "center"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s10",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "GyRx3mDz3K",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Put them in order"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "2vTzsnPZHI",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 267,
+          "fill": "#d6e8f3",
+          "radius": 26,
+          "name": "Panel"
+        },
+        {
+          "id": "lZO0MbIStG",
+          "type": "image",
+          "name": "Diagram",
+          "x": 86,
+          "y": 182,
+          "w": 788,
+          "h": 223,
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20657%20186%22%20width%3D%22788%22%20height%3D%22223%22%20role%3D%22img%22%20aria-label%3D%22A%20chick%20grows%20in%20order%20from%20a%20small%2C%20fluffy%20newly%20hatched%20chick%20to%20an%20older%20chick%20and%20then%20a%20fully%20grown%20hen.%22%3E%3Ctitle%3EA%20chick%20grows%20in%20order%20from%20a%20small%2C%20fluffy%20newly%20hatched%20chick%20to%20an%20older%20chick%20and%20then%20a%20fully%20grown%20hen.%3C%2Ftitle%3E%3Ctext%20font-family%3D%22'Fredoka%20Variable'%2C%20'Trebuchet%20MS'%2C%20sans-serif%22%20font-size%3D%2231%22%20font-weight%3D%22600%22%20fill%3D%22%230A5CA2%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22328.5%22%20y%3D%2224.8%22%3EChick%20growth%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20transform%3D%22translate(0%2C52.7)%22%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cline%20x1%3D%22187.4%22%20y1%3D%2266.65%22%20x2%3D%22224.76%22%20y2%3D%2266.65%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22229.8%2C66.65%20223.5%2C70.43%20224.45%2C66.65%20223.5%2C62.87%22%20fill%3D%22%2310252F%22%2F%3E%3Cline%20x1%3D%22419.2%22%20y1%3D%2266.65%22%20x2%3D%22456.56%22%20y2%3D%2266.65%22%20stroke%3D%22%2310252F%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpolygon%20points%3D%22461.6%2C66.65%20455.3%2C70.43%20456.25%2C66.65%20455.3%2C62.87%22%20fill%3D%22%2310252F%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%226.45%22%20width%3D%22181.4%22%20height%3D%22120.4%22%20rx%3D%2214%22%20fill%3D%22%23dde8f2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2292.7%22%20y%3D%2242.85%22%3ENewly%3C%2Ftspan%3E%3Ctspan%20x%3D%2292.7%22%20y%3D%2276.45%22%3Ehatched%3C%2Ftspan%3E%3Ctspan%20x%3D%2292.7%22%20y%3D%22110.05%22%3Echick%2C%20fluffy%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22233.8%22%20y%3D%226.45%22%20width%3D%22181.4%22%20height%3D%22120.4%22%20rx%3D%2214%22%20fill%3D%22%23dde8f2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22324.5%22%20y%3D%2259.65%22%3EOlder%20chick%2C%3C%2Ftspan%3E%3Ctspan%20x%3D%22324.5%22%20y%3D%2293.25%22%3Ebigger%3C%2Ftspan%3E%3C%2Ftext%3E%3Crect%20x%3D%22465.6%22%20y%3D%226.45%22%20width%3D%22181.4%22%20height%3D%22120.4%22%20rx%3D%2214%22%20fill%3D%22%23dde8f2%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Nunito%20Variable'%2C%20Verdana%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22500%22%20fill%3D%22%2310252F%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22556.3%22%20y%3D%2259.65%22%3EHen%2C%20fully%3C%2Ftspan%3E%3Ctspan%20x%3D%22556.3%22%20y%3D%2293.25%22%3Egrown%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A chick grows in order from a small, fluffy newly hatched chick to an older chick and then a fully grown hen.",
+          "fit": "contain"
+        },
+        {
+          "id": "0YLOMwJcPa",
+          "type": "text",
+          "x": 64,
+          "y": 441,
+          "w": 832,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Point from youngest to oldest. Say what changes."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s11",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "_hsDaoTLTM",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "More than getting bigger"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "q-8gRac4Hb",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 64,
+          "y": 116,
+          "w": 404,
+          "h": 404,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Panel",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "HUE5j5wDNR",
+          "type": "image",
+          "name": "Photo",
+          "x": 74,
+          "y": 126,
+          "w": 384,
+          "h": 280,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b70-e2cd-7707-9ece-f5f6195bfb82.jpg",
+          "alt": "A close-up portrait of a fluffy black and white baby chick with a yellow beak.",
+          "request": "Close view of a newly hatched chick showing its down. soft fluffy down. small chick wing",
+          "subjects": [
+            {
+              "name": "soft fluffy down",
+              "x": 0.18,
+              "y": 0.14,
+              "w": 0.56,
+              "h": 0.6799999999999999
+            },
+            {
+              "name": "small chick wing",
+              "x": 0.08,
+              "y": 0.48,
+              "w": 0.53,
+              "h": 0.44000000000000006
+            }
+          ],
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "pexels",
+            "id": "37818188",
+            "pageUrl": "https://www.pexels.com/photo/adorable-black-and-white-baby-chick-close-up-37818188/",
+            "photographer": "Erwin Bosman",
+            "photographerUrl": "https://www.pexels.com/@erwin-bosman-118283",
+            "evidence": {
+              "visible": ["soft fluffy down", "small chick wing"],
+              "count": "one",
+              "alt": "A close-up portrait of a fluffy black and white baby chick with a yellow beak.",
+              "promptVersion": "pick-or-requery-photo.v17",
+              "thumbnail": "https://images.pexels.com/photos/37818188/pexels-photo-37818188.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          },
+          "style": "photo"
+        },
+        {
+          "id": "kvv4XSSxth",
+          "type": "text",
+          "x": 74,
+          "y": 414,
+          "w": 384,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "chick"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "GlHwUbLW2d",
+          "type": "text",
+          "x": 74,
+          "y": 463,
+          "w": 384,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Soft and fluffy"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "BY8AAMhFNb",
+          "type": "shape",
+          "shape": "rounded",
+          "x": 492,
+          "y": 116,
+          "w": 404,
+          "h": 404,
+          "fill": "#FFFFFF",
+          "radius": 16,
+          "name": "Panel",
+          "stroke": "#BFE1F0",
+          "strokeWidth": 1
+        },
+        {
+          "id": "TFSBvx7c2y",
+          "type": "image",
+          "name": "Photo",
+          "x": 502,
+          "y": 126,
+          "w": 384,
+          "h": 280,
+          "src": "/files/0e7a1000-0000-4000-8000-000000000e7a/images/01a11b71-0184-76ce-a520-eb50e0e33188.jpg",
+          "alt": "A hen with beige plumage gracefully spreads its wings atop a farm coop in a rural outdoor setting.",
+          "request": "Close view of an adult hen showing its wing and body feathers. overlapping adult feathers. long wing feathers",
+          "subjects": [
+            {
+              "name": "overlapping body feathers",
+              "x": 0.56,
+              "y": 0.3,
+              "w": 0.2599999999999999,
+              "h": 0.54
+            },
+            {
+              "name": "long wing feathers",
+              "x": 0.44,
+              "y": 0.14,
+              "w": 0.32,
+              "h": 0.39
+            }
+          ],
+          "crop": {
+            "x": 0.08522796352583584,
+            "y": 0,
+            "w": 0.9147720364741642,
+            "h": 1
+          },
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "provider": "pexels",
+            "id": "38323062",
+            "pageUrl": "https://www.pexels.com/photo/graceful-hen-perching-on-outdoor-chicken-coop-38323062/",
+            "photographer": "Erwin Bosman",
+            "photographerUrl": "https://www.pexels.com/@erwin-bosman-118283",
+            "evidence": {
+              "visible": ["overlapping body feathers", "long wing feathers"],
+              "count": "one",
+              "alt": "A hen with beige plumage gracefully spreads its wings atop a farm coop in a rural outdoor setting.",
+              "promptVersion": "pick-or-requery-photo.v17",
+              "thumbnail": "https://images.pexels.com/photos/38323062/pexels-photo-38323062.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          },
+          "style": "photo"
+        },
+        {
+          "id": "elzMM4cmEC",
+          "type": "text",
+          "x": 502,
+          "y": 414,
+          "w": 384,
+          "h": 45,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "hen"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Label",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "laWRWYV-LP",
+          "type": "text",
+          "x": 502,
+          "y": 463,
+          "w": 384,
+          "h": 47,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Adult feathers"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Text",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s12",
+      "kind": "discussion",
+      "elements": [
+        {
+          "id": "kHzlKMv8jc",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 58,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What happens next?"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 51,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0
+          }
+        },
+        {
+          "id": "PMAz8zgft2",
+          "type": "text",
+          "x": 64,
+          "y": 212,
+          "w": 392,
+          "h": 179,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "This young bird is not fully grown. Tell your partner two ways it will change."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 33,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "padding": 0,
+            "color": "#10252F"
+          }
+        },
+        {
+          "id": "O089iGwP0u",
+          "type": "image",
+          "name": "Photo",
+          "x": 504,
+          "y": 194,
+          "w": 392,
+          "h": 261,
+          "src": "/files/0b0b0000-0000-4000-8000-00000000ba4c/bank/01a11b71-0033-70c9-854f-6bdd5569aa35.png",
+          "alt": "A partly grown female chicken standing alone, with emerging wing feathers and remaining soft down visible.",
+          "request": "A partly grown female chicken with emerging wing feathers and visible remaining down, standing alone. partly grown body. developing wing feathers. remaining soft fluff",
+          "fit": "cover",
+          "radius": 26,
+          "source": {
+            "id": "01a11b71-0033-70c8-aa2d-f1f2bbcbf9d1",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "style": "photo"
+        }
+      ],
+      "notes": ""
+    }
+  ],
+  "bakeoff": {
+    "arm": "T",
+    "brief": "y1-science-animals-young",
+    "objectives": [
+      {
+        "teacher": "Match cows and calves, sheep and lambs, hens and chicks, and dogs and puppies, naming each adult animal and its young.",
+        "pupil": "Match cows and calves, sheep and lambs, hens and chicks, and dogs and puppies, naming each adult animal and its young."
+      },
+      {
+        "teacher": "Describe how a chick changes as it grows into a hen, including getting bigger and growing adult feathers.",
+        "pupil": "Describe how a chick changes as it grows into a hen, including getting bigger and growing adult feathers."
+      }
+    ]
+  }
+}

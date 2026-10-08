@@ -9,7 +9,7 @@ import { evaluate } from "./stages/evaluate";
 import { facts } from "./stages/facts";
 import { generate } from "./stages/generate";
 import { illustrate } from "./stages/illustrate";
-import { objectives } from "./stages/objectives";
+import { objectives, writerObjectives } from "./stages/objectives";
 import {
   OBJECTIVES_FIRST_CHECKPOINT,
   OBJECTIVES_FIRST_ORDER,
@@ -17,9 +17,14 @@ import {
   type Planner,
   plannerFor,
   resumeFromObjectivesFirst,
+  resumeFromWriter,
+  WRITER_CHECKPOINT,
+  WRITER_ORDER,
+  type WriterStageName,
 } from "./stages/objectives-first";
 import { plan } from "./stages/plan";
 import { repair } from "./stages/repair";
+import { write } from "./stages/write";
 import {
   emptyImageCounts,
   type PipelineDeps,
@@ -96,7 +101,7 @@ export function resumeFrom(lesson: Lesson): PipelineStageName | null {
 }
 
 /** A step of either workflow: the legacy stages, or the objectives-first ones (TEACH-93). */
-export type StepName = PipelineStageName | ObjectivesFirstStageName;
+export type StepName = PipelineStageName | ObjectivesFirstStageName | WriterStageName;
 
 /** How one workflow orders its steps and finds where a lesson resumes. */
 interface StepOrder<S extends StepName> {
@@ -115,6 +120,12 @@ const OBJECTIVES_FIRST: StepOrder<ObjectivesFirstStageName> = {
   order: OBJECTIVES_FIRST_ORDER,
   checkpoint: OBJECTIVES_FIRST_CHECKPOINT,
   resume: resumeFromObjectivesFirst,
+};
+
+const WRITER: StepOrder<WriterStageName> = {
+  order: WRITER_ORDER,
+  checkpoint: WRITER_CHECKPOINT,
+  resume: resumeFromWriter,
 };
 
 /** Whether `stage` runs for a lesson resuming at `from` and stopping after `stopAfter`. */
@@ -215,6 +226,22 @@ export const objectivesFirstWorkflow = createWorkflow({
   .then(stageStep("repair", repair, OBJECTIVES_FIRST))
   .commit();
 
+/**
+ * The writer planner (TEACH-110 part b, behind `AI_LESSON_PLANNER=writer`): the input check,
+ * master's objectives step (the plan screen's checkpoint, stamped for the writer), then the
+ * lesson writer, which checks, repairs and writes notes itself.
+ */
+export const writerWorkflow = createWorkflow({
+  id: "lesson-writer",
+  description: "Check input → Objectives → Write for one lesson (TEACH-110)",
+  inputSchema: StateSchema,
+  outputSchema: StateSchema,
+})
+  .then(stageStep("check-input", checkInput, WRITER))
+  .then(stageStep("objectives", writerObjectives, WRITER))
+  .then(stageStep("write", write, WRITER))
+  .commit();
+
 export interface PipelineInput {
   lesson: Lesson;
   /** Legacy (ADR 0025 §4): the worksheet row id the worker minted; unread since ADR 0030. */
@@ -276,10 +303,17 @@ export async function runLessonPipeline(
   const startedAt = Date.now();
   const planner = plannerFor(input.lesson, options.planner);
   const steps: StepOrder<StepName> =
-    planner === "objectives-first"
-      ? (OBJECTIVES_FIRST as StepOrder<StepName>)
-      : (LEGACY as StepOrder<StepName>);
-  const workflow = planner === "objectives-first" ? objectivesFirstWorkflow : lessonWorkflow;
+    planner === "writer"
+      ? (WRITER as StepOrder<StepName>)
+      : planner === "objectives-first"
+        ? (OBJECTIVES_FIRST as StepOrder<StepName>)
+        : (LEGACY as StepOrder<StepName>);
+  const workflow =
+    planner === "writer"
+      ? writerWorkflow
+      : planner === "objectives-first"
+        ? objectivesFirstWorkflow
+        : lessonWorkflow;
   const from = steps.resume(input.lesson);
   const requestContext = new RequestContext();
   requestContext.setRaw(RESUME_KEY, from);
@@ -318,7 +352,8 @@ export async function runLessonPipeline(
     if (result.status !== "success") {
       const stashed = requestContext.getRaw(FAILURE_KEY);
       if (requestContext.hasRaw(FAILURE_KEY)) throw stashed;
-      const stage = from === "objectives" || from === "facts" ? "plan" : from;
+      const stage =
+        from === "objectives" || from === "facts" ? "plan" : from === "write" ? "generate" : from;
       throw new StageFailure(stage ?? "check-input", "The lesson workflow could not finish.");
     }
     final = result.result;

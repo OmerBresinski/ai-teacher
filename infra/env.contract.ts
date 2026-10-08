@@ -840,10 +840,10 @@ const CONTRACT = [
     vercel: "n/a",
     setBy: "manual",
     format: "enum",
-    values: ["legacy", "objectives-first"],
+    values: ["legacy", "objectives-first", "writer"],
     files: ["worker"],
     description:
-      "Which planner plans a new lesson (TEACH-93, ADR 0033). `objectives-first` (default since the decision of 25–26 Sept 2026, SHIP-H-PLAN §3 item 9): `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. `legacy`: the skeleton and facts calls in `lesson.plan`. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `legacy`.",
+      "Which planner plans a new lesson (TEACH-93, ADR 0033). `objectives-first` (default since the decision of 25–26 Sept 2026, SHIP-H-PLAN §3 item 9): `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. `legacy`: the skeleton and facts calls in `lesson.plan`. `writer` (TEACH-110 part b, off until TEACH-238): `lesson.plan` makes the same objectives call, stamped for the writer; `lesson.generate` runs the base4 lesson writer (one streamed `gpt-6.1-sol` call) and its own checks, repair and notes. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `legacy`.",
   },
   {
     name: "AI_LESSON_COST_WARN_USD",

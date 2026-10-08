@@ -6,7 +6,7 @@ import {
 } from "@tj/domain/documents";
 import { cn, Kbd } from "@tj/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { Controls } from "./Controls";
 import { EndCard, type NextLesson } from "./EndCard";
 import { NotesPanel } from "./NotesPanel";
@@ -100,7 +100,7 @@ function PresentSurface({
   // The key handler is bound once; `ink` is a new object per committed stroke (its `inkVersion`
   // is how the layers subscribe), so the handler takes the stable `clearInk` callback instead.
   const clearInk = ink.clearInk;
-  const theme = getTheme(lesson.themeId);
+  const theme = renderTheme(lesson);
   const fullscreen = useFullscreen();
   const [jump, setJump] = useState("");
 

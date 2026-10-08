@@ -1,0 +1,1524 @@
+{
+  "groups": {
+    "KS1": {
+      "heading": 34,
+      "formula": 62,
+      "formulaBesideFigure": 28,
+      "layouts": {
+        "title": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "with picture",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 100,
+              "ceiling": 100,
+              "limit": { "item": 100, "total": 122, "shown": 122 }
+            },
+            {
+              "label": "no picture",
+              "counts": {},
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 292, "shown": 292 }
+            }
+          ]
+        },
+        "visual-text": {
+          "fields": ["lead", "points"],
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": { "points": 0 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 188,
+              "ceiling": 188,
+              "limit": { "item": 188, "total": 229, "shown": 105 }
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 50,
+              "ceiling": 124,
+              "limit": { "item": 124, "total": 183, "shown": 105 }
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 28,
+              "ceiling": 100,
+              "limit": { "item": 100, "total": 136, "shown": 105 }
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": { "points": 1 },
+              "figure": true,
+              "keyCards": true,
+              "chars": 50,
+              "ceiling": 94,
+              "keyLabel": 16,
+              "limit": { "item": 94, "total": 122, "shown": 105 }
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": true,
+              "chars": 22,
+              "ceiling": 22,
+              "keyLabel": 16,
+              "limit": { "item": 22, "total": 80, "shown": 80 }
+            }
+          ]
+        },
+        "big-visual": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 100,
+              "ceiling": 100,
+              "limit": { "item": 100, "total": 122, "shown": 122 }
+            }
+          ]
+        },
+        "picture-sequence": {
+          "fields": ["captions"],
+          "variants": [
+            {
+              "label": "2 pictures",
+              "counts": { "sequence": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 40,
+              "ceiling": 40,
+              "limit": { "item": 40, "total": 97, "shown": 97 }
+            },
+            {
+              "label": "3 pictures",
+              "counts": { "sequence": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 26,
+              "ceiling": 30,
+              "limit": { "item": 30, "total": 95, "shown": 95 }
+            },
+            {
+              "label": "4 pictures",
+              "counts": { "sequence": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 20,
+              "ceiling": 22,
+              "limit": { "item": 22, "total": 97, "shown": 97 }
+            }
+          ]
+        },
+        "compare": {
+          "fields": ["column text"],
+          "variants": [
+            {
+              "label": "2 columns",
+              "counts": { "columns": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 148,
+              "ceiling": 148,
+              "columnLabel": 12,
+              "limit": { "item": 148, "total": 361, "shown": 361 }
+            },
+            {
+              "label": "3 columns",
+              "counts": { "columns": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 86,
+              "ceiling": 86,
+              "columnLabel": 12,
+              "limit": { "item": 86, "total": 314, "shown": 314 }
+            },
+            {
+              "label": "2 columns with pictures",
+              "counts": { "columns": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 24,
+              "ceiling": 24,
+              "columnLabel": 12,
+              "limit": { "item": 24, "total": 58, "shown": 58 }
+            },
+            {
+              "label": "3 columns with pictures",
+              "counts": { "columns": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 56,
+              "ceiling": 56,
+              "columnLabel": 12,
+              "limit": { "item": 56, "total": 204, "shown": 204 }
+            }
+          ]
+        },
+        "steps": {
+          "fields": ["points"],
+          "variants": [
+            {
+              "label": "3 steps",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 94,
+              "ceiling": 224,
+              "limit": { "item": 224, "total": 344, "shown": 344 }
+            },
+            {
+              "label": "4 steps",
+              "counts": { "points": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 50,
+              "ceiling": 182,
+              "limit": { "item": 182, "total": 244, "shown": 244 }
+            },
+            {
+              "label": "5 steps",
+              "counts": { "points": 5 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 48,
+              "ceiling": 94,
+              "limit": { "item": 94, "total": 292, "shown": 292 }
+            },
+            {
+              "label": "3 steps with a picture or diagram",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 44,
+              "ceiling": 106,
+              "limit": { "item": 106, "total": 161, "shown": 161 }
+            },
+            {
+              "label": "4 steps with a picture or diagram",
+              "counts": { "points": 4 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 26,
+              "ceiling": 86,
+              "limit": { "item": 86, "total": 126, "shown": 126 }
+            }
+          ]
+        },
+        "equation-hero": {
+          "fields": ["points"],
+          "variants": [
+            {
+              "label": "formula + 2 lines",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 100,
+              "ceiling": 144,
+              "limit": { "item": 144, "total": 244, "shown": 244 }
+            },
+            {
+              "label": "formula + 3 lines",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 48,
+              "ceiling": 100,
+              "limit": { "item": 100, "total": 175, "shown": 175 }
+            },
+            {
+              "label": "formula + 4 lines",
+              "counts": { "points": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 0,
+              "ceiling": 0
+            },
+            {
+              "label": "formula + 2 lines with a picture or diagram",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 40,
+              "ceiling": 56,
+              "limit": { "item": 56, "total": 97, "shown": 97 }
+            },
+            {
+              "label": "formula + 3 lines with a picture or diagram",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 22,
+              "ceiling": 40,
+              "limit": { "item": 40, "total": 80, "shown": 80 }
+            }
+          ]
+        },
+        "discussion": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "prompt alone",
+              "counts": {},
+              "figure": false,
+              "keyCards": false,
+              "chars": 188,
+              "ceiling": 188,
+              "limit": { "item": 188, "total": 229, "shown": 229 }
+            },
+            {
+              "label": "prompt with picture",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 188,
+              "ceiling": 188,
+              "limit": { "item": 188, "total": 229, "shown": 229 }
+            }
+          ]
+        },
+        "explain": {
+          "fields": ["lead", "points"],
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": { "points": 0 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 292, "shown": 292 }
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 118,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 431, "shown": 431 }
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 64,
+              "ceiling": 216,
+              "limit": { "item": 216, "total": 312, "shown": 312 }
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": { "points": 1 },
+              "figure": false,
+              "keyCards": true,
+              "chars": 118,
+              "ceiling": 212,
+              "keyLabel": 16,
+              "limit": { "item": 212, "total": 287, "shown": 287 }
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": true,
+              "chars": 54,
+              "ceiling": 54,
+              "keyLabel": 16,
+              "limit": { "item": 54, "total": 197, "shown": 197 }
+            }
+          ]
+        },
+        "hinge": {
+          "fields": ["options"],
+          "variants": [
+            {
+              "label": "3 options",
+              "counts": { "options": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 62,
+              "ceiling": 80,
+              "stem": 99,
+              "limit": { "item": 80, "total": 347, "shown": 347 }
+            },
+            {
+              "label": "4 options",
+              "counts": { "options": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 40,
+              "ceiling": 40,
+              "stem": 64,
+              "limit": { "item": 40, "total": 273, "shown": 273 }
+            }
+          ]
+        },
+        "question-set": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 54,
+              "instruction": 50,
+              "charsNoInstruction": 100,
+              "ceiling": 144,
+              "ceilingNoInstruction": 188,
+              "limit": { "item": 144, "total": 258, "instruction": 50, "shown": 201 },
+              "limitBare": { "item": 188, "total": 366, "shown": 201 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 50,
+              "instruction": 50,
+              "charsNoInstruction": 54,
+              "ceiling": 100,
+              "ceilingNoInstruction": 144,
+              "limit": { "item": 100, "total": 305, "instruction": 50, "shown": 201 },
+              "limitBare": { "item": 144, "total": 305, "shown": 201 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 40,
+              "instruction": 30,
+              "charsNoInstruction": 44,
+              "ceiling": 86,
+              "ceilingNoInstruction": 106,
+              "limit": { "item": 86, "total": 183, "instruction": 30, "shown": 183 },
+              "limitBare": { "item": 106, "total": 183, "shown": 183 }
+            }
+          ]
+        },
+        "practice": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 54,
+              "instruction": 50,
+              "charsNoInstruction": 100,
+              "ceiling": 144,
+              "ceilingNoInstruction": 188,
+              "limit": { "item": 144, "total": 258, "instruction": 50, "shown": 201 },
+              "limitBare": { "item": 188, "total": 366, "shown": 201 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 50,
+              "instruction": 50,
+              "charsNoInstruction": 54,
+              "ceiling": 100,
+              "ceilingNoInstruction": 144,
+              "limit": { "item": 100, "total": 305, "instruction": 50, "shown": 201 },
+              "limitBare": { "item": 144, "total": 305, "shown": 201 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 40,
+              "instruction": 30,
+              "charsNoInstruction": 44,
+              "ceiling": 86,
+              "ceilingNoInstruction": 106,
+              "limit": { "item": 86, "total": 183, "instruction": 30, "shown": 183 },
+              "limitBare": { "item": 106, "total": 183, "shown": 183 }
+            }
+          ]
+        },
+        "exit-ticket": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 54,
+              "instruction": 50,
+              "charsNoInstruction": 100,
+              "ceiling": 144,
+              "ceilingNoInstruction": 188,
+              "limit": { "item": 144, "total": 258, "instruction": 50, "shown": 201 },
+              "limitBare": { "item": 188, "total": 366, "shown": 201 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 50,
+              "instruction": 50,
+              "charsNoInstruction": 54,
+              "ceiling": 100,
+              "ceilingNoInstruction": 144,
+              "limit": { "item": 100, "total": 305, "instruction": 50, "shown": 201 },
+              "limitBare": { "item": 144, "total": 305, "shown": 201 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 40,
+              "instruction": 30,
+              "charsNoInstruction": 44,
+              "ceiling": 86,
+              "ceilingNoInstruction": 106,
+              "limit": { "item": 86, "total": 183, "instruction": 30, "shown": 183 },
+              "limitBare": { "item": 106, "total": 183, "shown": 183 }
+            }
+          ]
+        }
+      }
+    },
+    "KS2": {
+      "heading": 68,
+      "formula": 62,
+      "formulaBesideFigure": 28,
+      "layouts": {
+        "title": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "with picture",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 100,
+              "ceiling": 100,
+              "limit": { "item": 100, "total": 134, "shown": 134 }
+            },
+            {
+              "label": "no picture",
+              "counts": {},
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 321, "shown": 321 }
+            }
+          ]
+        },
+        "visual-text": {
+          "fields": ["lead", "points"],
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": { "points": 0 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 321, "shown": 228 }
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 64,
+              "ceiling": 164,
+              "limit": { "item": 164, "total": 257, "shown": 228 }
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 54,
+              "ceiling": 136,
+              "limit": { "item": 136, "total": 289, "shown": 228 }
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": { "points": 1 },
+              "figure": true,
+              "keyCards": true,
+              "chars": 86,
+              "ceiling": 136,
+              "keyLabel": 16,
+              "limit": { "item": 136, "total": 230, "shown": 228 }
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": true,
+              "chars": 28,
+              "ceiling": 54,
+              "headingMax": 36,
+              "keyLabel": 16,
+              "limit": { "item": 54, "total": 112, "shown": 112 }
+            }
+          ]
+        },
+        "big-visual": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 112,
+              "ceiling": 112,
+              "limit": { "item": 112, "total": 150, "shown": 150 }
+            }
+          ]
+        },
+        "picture-sequence": {
+          "fields": ["captions"],
+          "variants": [
+            {
+              "label": "2 pictures",
+              "counts": { "sequence": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 48,
+              "ceiling": 48,
+              "limit": { "item": 48, "total": 128, "shown": 128 }
+            },
+            {
+              "label": "3 pictures",
+              "counts": { "sequence": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 30,
+              "ceiling": 30,
+              "limit": { "item": 30, "total": 120, "shown": 120 }
+            },
+            {
+              "label": "4 pictures",
+              "counts": { "sequence": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 20,
+              "ceiling": 22,
+              "headingMax": 36,
+              "limit": { "item": 22, "total": 107, "shown": 107 }
+            }
+          ]
+        },
+        "compare": {
+          "fields": ["column text"],
+          "variants": [
+            {
+              "label": "2 columns",
+              "counts": { "columns": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 188,
+              "ceiling": 188,
+              "columnLabel": 12,
+              "limit": { "item": 188, "total": 503, "shown": 503 }
+            },
+            {
+              "label": "3 columns",
+              "counts": { "columns": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 112,
+              "ceiling": 124,
+              "columnLabel": 12,
+              "limit": { "item": 124, "total": 450, "shown": 450 }
+            },
+            {
+              "label": "2 columns with pictures",
+              "counts": { "columns": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 30,
+              "ceiling": 30,
+              "headingMax": 32,
+              "columnLabel": 12,
+              "limit": { "item": 30, "total": 80, "shown": 80 }
+            },
+            {
+              "label": "3 columns with pictures",
+              "counts": { "columns": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 54,
+              "ceiling": 56,
+              "columnLabel": 12,
+              "limit": { "item": 56, "total": 217, "shown": 217 }
+            }
+          ]
+        },
+        "steps": {
+          "fields": ["points"],
+          "variants": [
+            {
+              "label": "3 steps",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 108,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 434, "shown": 434 }
+            },
+            {
+              "label": "4 steps",
+              "counts": { "points": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 102,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 546, "shown": 546 }
+            },
+            {
+              "label": "5 steps",
+              "counts": { "points": 5 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 54,
+              "ceiling": 158,
+              "limit": { "item": 158, "total": 361, "shown": 361 }
+            },
+            {
+              "label": "3 steps with a picture or diagram",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 56,
+              "ceiling": 152,
+              "limit": { "item": 152, "total": 225, "shown": 225 }
+            },
+            {
+              "label": "4 steps with a picture or diagram",
+              "counts": { "points": 4 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 52,
+              "ceiling": 130,
+              "limit": { "item": 130, "total": 278, "shown": 278 }
+            }
+          ]
+        },
+        "equation-hero": {
+          "fields": ["points"],
+          "variants": [
+            {
+              "label": "formula + 2 lines",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 108,
+              "ceiling": 166,
+              "limit": { "item": 166, "total": 289, "shown": 289 }
+            },
+            {
+              "label": "formula + 3 lines",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 54,
+              "ceiling": 106,
+              "limit": { "item": 106, "total": 217, "shown": 217 }
+            },
+            {
+              "label": "formula + 4 lines",
+              "counts": { "points": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 52,
+              "ceiling": 52,
+              "limit": { "item": 52, "total": 278, "shown": 278 }
+            },
+            {
+              "label": "formula + 2 lines with a picture or diagram",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 44,
+              "ceiling": 72,
+              "limit": { "item": 72, "total": 117, "shown": 117 }
+            },
+            {
+              "label": "formula + 3 lines with a picture or diagram",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 22,
+              "ceiling": 40,
+              "headingMax": 36,
+              "limit": { "item": 40, "total": 88, "shown": 88 }
+            }
+          ]
+        },
+        "discussion": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "prompt alone",
+              "counts": {},
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 321, "shown": 321 }
+            },
+            {
+              "label": "prompt with picture",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 321, "shown": 321 }
+            }
+          ]
+        },
+        "explain": {
+          "fields": ["lead", "points"],
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": { "points": 0 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 321, "shown": 321 }
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 132,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 530, "shown": 530 }
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 124,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 664, "shown": 664 }
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": { "points": 1 },
+              "figure": false,
+              "keyCards": true,
+              "chars": 178,
+              "ceiling": 240,
+              "keyLabel": 16,
+              "limit": { "item": 240, "total": 477, "shown": 477 }
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": true,
+              "chars": 62,
+              "ceiling": 124,
+              "keyLabel": 16,
+              "limit": { "item": 124, "total": 249, "shown": 249 }
+            }
+          ]
+        },
+        "hinge": {
+          "fields": ["options"],
+          "variants": [
+            {
+              "label": "3 options",
+              "counts": { "options": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 76,
+              "ceiling": 100,
+              "stem": 122,
+              "limit": { "item": 100, "total": 469, "shown": 469 }
+            },
+            {
+              "label": "4 options",
+              "counts": { "options": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 52,
+              "ceiling": 80,
+              "stem": 83,
+              "limit": { "item": 80, "total": 389, "shown": 389 }
+            }
+          ]
+        },
+        "question-set": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 112,
+              "instruction": 56,
+              "charsNoInstruction": 112,
+              "ceiling": 212,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 212, "total": 525, "instruction": 71, "shown": 301 },
+              "limitBare": { "item": 240, "total": 525, "shown": 301 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 62,
+              "instruction": 56,
+              "charsNoInstruction": 64,
+              "ceiling": 164,
+              "ceilingNoInstruction": 212,
+              "limit": { "item": 164, "total": 407, "instruction": 71, "shown": 301 },
+              "limitBare": { "item": 212, "total": 407, "shown": 301 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 54,
+              "instruction": 30,
+              "charsNoInstruction": 56,
+              "ceiling": 130,
+              "ceilingNoInstruction": 152,
+              "limit": { "item": 130, "total": 257, "instruction": 38, "shown": 257 },
+              "limitBare": { "item": 152, "total": 257, "shown": 257 }
+            }
+          ]
+        },
+        "practice": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 112,
+              "instruction": 56,
+              "charsNoInstruction": 112,
+              "ceiling": 212,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 212, "total": 525, "instruction": 71, "shown": 301 },
+              "limitBare": { "item": 240, "total": 525, "shown": 301 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 62,
+              "instruction": 56,
+              "charsNoInstruction": 64,
+              "ceiling": 164,
+              "ceilingNoInstruction": 212,
+              "limit": { "item": 164, "total": 407, "instruction": 71, "shown": 301 },
+              "limitBare": { "item": 212, "total": 407, "shown": 301 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 54,
+              "instruction": 30,
+              "charsNoInstruction": 56,
+              "ceiling": 130,
+              "ceilingNoInstruction": 152,
+              "limit": { "item": 130, "total": 257, "instruction": 38, "shown": 257 },
+              "limitBare": { "item": 152, "total": 257, "shown": 257 }
+            }
+          ]
+        },
+        "exit-ticket": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 112,
+              "instruction": 56,
+              "charsNoInstruction": 112,
+              "ceiling": 212,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 212, "total": 525, "instruction": 71, "shown": 301 },
+              "limitBare": { "item": 240, "total": 525, "shown": 301 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 62,
+              "instruction": 56,
+              "charsNoInstruction": 64,
+              "ceiling": 164,
+              "ceilingNoInstruction": 212,
+              "limit": { "item": 164, "total": 407, "instruction": 71, "shown": 301 },
+              "limitBare": { "item": 212, "total": 407, "shown": 301 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 54,
+              "instruction": 30,
+              "charsNoInstruction": 56,
+              "ceiling": 130,
+              "ceilingNoInstruction": 152,
+              "limit": { "item": 130, "total": 257, "instruction": 38, "shown": 257 },
+              "limitBare": { "item": 152, "total": 257, "shown": 257 }
+            }
+          ]
+        }
+      }
+    },
+    "KS3-5": {
+      "heading": 74,
+      "formula": 68,
+      "formulaBesideFigure": 28,
+      "layouts": {
+        "title": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "with picture",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 150,
+              "ceiling": 150,
+              "limit": { "item": 150, "total": 226, "shown": 226 }
+            },
+            {
+              "label": "no picture",
+              "counts": {},
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 362, "shown": 362 }
+            }
+          ]
+        },
+        "visual-text": {
+          "fields": ["lead", "points"],
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": { "points": 0 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 362, "shown": 236 }
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 106,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 480, "shown": 236 }
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 68,
+              "ceiling": 224,
+              "limit": { "item": 224, "total": 410, "shown": 236 }
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": { "points": 1 },
+              "figure": true,
+              "keyCards": true,
+              "chars": 130,
+              "ceiling": 224,
+              "keyLabel": 16,
+              "limit": { "item": 224, "total": 392, "shown": 236 }
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": true,
+              "chars": 64,
+              "ceiling": 130,
+              "keyLabel": 16,
+              "limit": { "item": 130, "total": 289, "shown": 236 }
+            }
+          ]
+        },
+        "big-visual": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "caption",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 130,
+              "ceiling": 130,
+              "limit": { "item": 130, "total": 196, "shown": 196 }
+            }
+          ]
+        },
+        "picture-sequence": {
+          "fields": ["captions"],
+          "variants": [
+            {
+              "label": "2 pictures",
+              "counts": { "sequence": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 56,
+              "ceiling": 56,
+              "limit": { "item": 56, "total": 169, "shown": 169 }
+            },
+            {
+              "label": "3 pictures",
+              "counts": { "sequence": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 34,
+              "ceiling": 40,
+              "limit": { "item": 40, "total": 154, "shown": 154 }
+            },
+            {
+              "label": "4 pictures",
+              "counts": { "sequence": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 22,
+              "ceiling": 24,
+              "headingMax": 42,
+              "limit": { "item": 24, "total": 132, "shown": 132 }
+            }
+          ]
+        },
+        "compare": {
+          "fields": ["column text"],
+          "variants": [
+            {
+              "label": "2 columns",
+              "counts": { "columns": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "columnLabel": 12,
+              "limit": { "item": 240, "total": 724, "shown": 724 }
+            },
+            {
+              "label": "3 columns",
+              "counts": { "columns": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 148,
+              "ceiling": 148,
+              "columnLabel": 12,
+              "limit": { "item": 148, "total": 670, "shown": 670 }
+            },
+            {
+              "label": "2 columns with pictures",
+              "counts": { "columns": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 72,
+              "ceiling": 72,
+              "headingMax": 38,
+              "columnLabel": 12,
+              "limit": { "item": 72, "total": 217, "shown": 217 }
+            },
+            {
+              "label": "3 columns with pictures",
+              "counts": { "columns": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 80,
+              "ceiling": 80,
+              "columnLabel": 12,
+              "limit": { "item": 80, "total": 362, "shown": 362 }
+            }
+          ]
+        },
+        "steps": {
+          "fields": ["points"],
+          "variants": [
+            {
+              "label": "3 steps",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 184,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 833, "shown": 833 }
+            },
+            {
+              "label": "4 steps",
+              "counts": { "points": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 126,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 761, "shown": 761 }
+            },
+            {
+              "label": "5 steps",
+              "counts": { "points": 5 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 72,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 543, "shown": 543 }
+            },
+            {
+              "label": "3 steps with a picture or diagram",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 98,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 443, "shown": 443 }
+            },
+            {
+              "label": "4 steps with a picture or diagram",
+              "counts": { "points": 4 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 66,
+              "ceiling": 224,
+              "limit": { "item": 224, "total": 398, "shown": 398 }
+            }
+          ]
+        },
+        "equation-hero": {
+          "fields": ["points"],
+          "variants": [
+            {
+              "label": "formula + 2 lines",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 124,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 374, "shown": 374 }
+            },
+            {
+              "label": "formula + 3 lines",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 68,
+              "ceiling": 182,
+              "limit": { "item": 182, "total": 308, "shown": 308 }
+            },
+            {
+              "label": "formula + 4 lines",
+              "counts": { "points": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 64,
+              "ceiling": 124,
+              "limit": { "item": 124, "total": 386, "shown": 386 }
+            },
+            {
+              "label": "formula + 2 lines with a picture or diagram",
+              "counts": { "points": 2 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 56,
+              "ceiling": 106,
+              "limit": { "item": 106, "total": 169, "shown": 169 }
+            },
+            {
+              "label": "formula + 3 lines with a picture or diagram",
+              "counts": { "points": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 30,
+              "ceiling": 80,
+              "limit": { "item": 80, "total": 135, "shown": 135 }
+            }
+          ]
+        },
+        "discussion": {
+          "fields": ["lead"],
+          "variants": [
+            {
+              "label": "prompt alone",
+              "counts": {},
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 362, "shown": 362 }
+            },
+            {
+              "label": "prompt with picture",
+              "counts": {},
+              "figure": true,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 362, "shown": 362 }
+            }
+          ]
+        },
+        "explain": {
+          "fields": ["lead", "points"],
+          "variants": [
+            {
+              "label": "lead + 0 points",
+              "counts": { "points": 0 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 240,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 362, "shown": 362 }
+            },
+            {
+              "label": "lead + 2 points",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 224,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 1014, "shown": 1014 }
+            },
+            {
+              "label": "lead + 3 points",
+              "counts": { "points": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 156,
+              "ceiling": 240,
+              "limit": { "item": 240, "total": 942, "shown": 942 }
+            },
+            {
+              "label": "lead + 1 key card",
+              "counts": { "points": 1 },
+              "figure": false,
+              "keyCards": true,
+              "chars": 240,
+              "ceiling": 240,
+              "keyLabel": 16,
+              "limit": { "item": 240, "total": 724, "shown": 724 }
+            },
+            {
+              "label": "lead + 2 key cards",
+              "counts": { "points": 2 },
+              "figure": false,
+              "keyCards": true,
+              "chars": 146,
+              "ceiling": 240,
+              "keyLabel": 16,
+              "limit": { "item": 240, "total": 661, "shown": 661 }
+            }
+          ]
+        },
+        "hinge": {
+          "fields": ["options"],
+          "variants": [
+            {
+              "label": "3 options",
+              "counts": { "options": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 106,
+              "ceiling": 144,
+              "stem": 170,
+              "limit": { "item": 144, "total": 736, "shown": 238 }
+            },
+            {
+              "label": "4 options",
+              "counts": { "options": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 90,
+              "ceiling": 100,
+              "stem": 144,
+              "limit": { "item": 100, "total": 761, "shown": 238 }
+            }
+          ]
+        },
+        "question-set": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 136,
+              "instruction": 66,
+              "charsNoInstruction": 198,
+              "ceiling": 240,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 240, "total": 715, "instruction": 77, "shown": 497 },
+              "limitBare": { "item": 240, "total": 896, "shown": 497 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 72,
+              "instruction": 66,
+              "charsNoInstruction": 130,
+              "ceiling": 240,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 240, "total": 534, "instruction": 77, "shown": 497 },
+              "limitBare": { "item": 240, "total": 785, "shown": 497 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 90,
+              "instruction": 36,
+              "charsNoInstruction": 98,
+              "ceiling": 224,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 224, "total": 462, "instruction": 42, "shown": 462 },
+              "limitBare": { "item": 240, "total": 462, "shown": 462 }
+            }
+          ]
+        },
+        "practice": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 136,
+              "instruction": 66,
+              "charsNoInstruction": 198,
+              "ceiling": 240,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 240, "total": 715, "instruction": 77, "shown": 497 },
+              "limitBare": { "item": 240, "total": 896, "shown": 497 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 72,
+              "instruction": 66,
+              "charsNoInstruction": 130,
+              "ceiling": 240,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 240, "total": 534, "instruction": 77, "shown": 497 },
+              "limitBare": { "item": 240, "total": 785, "shown": 497 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 90,
+              "instruction": 36,
+              "charsNoInstruction": 98,
+              "ceiling": 224,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 224, "total": 462, "instruction": 42, "shown": 462 },
+              "limitBare": { "item": 240, "total": 462, "shown": 462 }
+            }
+          ]
+        },
+        "exit-ticket": {
+          "fields": ["questions"],
+          "variants": [
+            {
+              "label": "3 questions",
+              "counts": { "questions": 3 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 136,
+              "instruction": 66,
+              "charsNoInstruction": 198,
+              "ceiling": 240,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 240, "total": 715, "instruction": 77, "shown": 497 },
+              "limitBare": { "item": 240, "total": 896, "shown": 497 }
+            },
+            {
+              "label": "4 questions",
+              "counts": { "questions": 4 },
+              "figure": false,
+              "keyCards": false,
+              "chars": 72,
+              "instruction": 66,
+              "charsNoInstruction": 130,
+              "ceiling": 240,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 240, "total": 534, "instruction": 77, "shown": 497 },
+              "limitBare": { "item": 240, "total": 785, "shown": 497 }
+            },
+            {
+              "label": "3 questions with a figure",
+              "counts": { "questions": 3 },
+              "figure": true,
+              "keyCards": false,
+              "chars": 90,
+              "instruction": 36,
+              "charsNoInstruction": 98,
+              "ceiling": 224,
+              "ceilingNoInstruction": 240,
+              "limit": { "item": 224, "total": 462, "instruction": 42, "shown": 462 },
+              "limitBare": { "item": 240, "total": 462, "shown": 462 }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

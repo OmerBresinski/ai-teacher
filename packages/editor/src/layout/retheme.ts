@@ -1,6 +1,6 @@
 import type { Id, Lesson, Slide, Theme } from "@tj/domain/documents";
 import * as reducers from "../model/reducers";
-import { getTheme } from "../model/themes";
+import { renderTheme } from "../model/themes";
 import { measureInputsOf } from "./fit-plan";
 import { lintAsDrawn } from "./lint";
 import type { Measurer } from "./reflow";
@@ -38,7 +38,7 @@ export function fitLessonToTheme(
   lesson: Lesson,
   measure: Measurer,
 ): { lesson: Lesson; outcome: RethemeOutcome } {
-  const theme = getTheme(lesson.themeId);
+  const theme = renderTheme(lesson);
   let out = lesson;
   const tidied: Id[] = [];
   const overflow: Id[] = [];
@@ -86,8 +86,8 @@ export function rethemeLesson(
   measure: Measurer,
 ): { lesson: Lesson; outcome: RethemeOutcome } {
   if (lesson.themeId === themeId) return { lesson, outcome: { tidied: [], overflow: [] } };
-  const from = getTheme(lesson.themeId);
-  const to = getTheme(themeId);
+  const from = renderTheme(lesson);
+  const to = renderTheme(lesson, themeId);
   const themed = reducers.setTheme(lesson, themeId);
   const recoloured = { ...themed, slides: themed.slides.map((s) => recolourSlide(s, from, to)) };
   return fitLessonToTheme(recoloured, measure);

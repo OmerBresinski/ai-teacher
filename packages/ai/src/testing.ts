@@ -3,7 +3,7 @@ import type { LanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { createConfiguredAi, DEFAULT_MODEL_IDS, DEFAULT_REGION } from "./create-ai";
-import type { AiCallContext, ConfiguredAi } from "./types";
+import type { AiCallContext, ConfiguredAi, CreateAiOptions } from "./types";
 
 export interface FakeAiUsage {
   inputTokens?: number | undefined;
@@ -40,6 +40,8 @@ export interface FakeCall {
 export interface FakeReply {
   text: string;
   usage?: FakeAiUsage | undefined;
+  /** How the call ended (default `stop`): `length` stands in for a call that hit its token cap. */
+  finishReason?: "stop" | "length" | "content-filter" | "error" | undefined;
 }
 
 /** A function entry may be async, so a test can hold a call open (concurrency, cancellation). */
@@ -60,6 +62,8 @@ export interface CreateFakeAiOptions {
   modelIds?: Partial<Record<ModelClassType, string>> | undefined;
   logger?: pino.Logger | undefined;
   error?: unknown;
+  /** The same per-call route the real client takes (the writer's route, TEACH-110 part b). */
+  route?: CreateAiOptions["route"];
 }
 
 export type FakeAi = ConfiguredAi & {
@@ -148,7 +152,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     const resolved = typeof entry === "function" ? await entry(call) : entry;
     const reply: FakeReply = typeof resolved === "string" ? { text: resolved } : resolved;
     call.usage = reply.usage ?? options.usage ?? {};
-    return { text: reply.text, usage: usageForFake(call.usage) };
+    return { text: reply.text, usage: usageForFake(call.usage), finishReason: reply.finishReason };
   };
 
   const ai = createConfiguredAi({
@@ -156,13 +160,14 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     region: DEFAULT_REGION,
     modelIds,
     logger,
+    ...(options.route ? { route: options.route } : {}),
     createModel: (modelClass, modelId, context) =>
       new MockLanguageModelV4({
         provider: "bedrock",
         modelId,
         doGenerate: async (call) => {
           if (options.error !== undefined) throw options.error;
-          const { text, usage } = await nextReply(
+          const { text, usage, finishReason } = await nextReply(
             modelClass,
             modelId,
             context,
@@ -172,7 +177,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
           );
           return {
             content: [{ type: "text", text }],
-            finishReason: { unified: "stop", raw: undefined },
+            finishReason: { unified: finishReason ?? "stop", raw: undefined },
             usage,
             warnings: [],
           };
@@ -184,7 +189,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 controller.error(options.error);
                 return;
               }
-              const { text, usage } = await nextReply(
+              const { text, usage, finishReason } = await nextReply(
                 modelClass,
                 modelId,
                 context,
@@ -197,7 +202,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
               controller.enqueue({ type: "text-end", id: "fake-text" });
               controller.enqueue({
                 type: "finish",
-                finishReason: { unified: "stop", raw: undefined },
+                finishReason: { unified: finishReason ?? "stop", raw: undefined },
                 usage,
               });
               controller.close();
