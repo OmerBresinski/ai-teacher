@@ -93,11 +93,11 @@ function Pill({
       type="button"
       {...rest}
       className={cn(
-        "inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-[13px] leading-4 transition-colors disabled:cursor-default disabled:opacity-50",
+        "inline-flex h-8 cursor-pointer items-center rounded-full text-[13px] leading-4 transition-colors disabled:cursor-default disabled:opacity-50",
         focusRing,
         tone === "primary"
-          ? "bg-primary-fill font-semibold text-primary-foreground enabled:hover:bg-primary-fill-hover"
-          : "font-medium text-ink-2 enabled:hover:bg-accent enabled:hover:text-foreground",
+          ? "bg-primary-fill px-3 font-semibold text-primary-foreground enabled:hover:bg-primary-fill-hover"
+          : "px-2 font-medium text-ink-2 enabled:hover:bg-accent enabled:hover:text-foreground",
         className,
       )}
     />
