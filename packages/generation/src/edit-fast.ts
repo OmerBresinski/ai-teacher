@@ -43,6 +43,8 @@ export const EDIT_INSTRUCTION_MAX = 500;
 export const EditFastOutputSchema = z.object({
   action: z.enum(["edit", "refuse", "escalate"]),
   reason: z.string().nullable(),
+  /** A refusal's one-tap offer: an instruction the teacher could send instead, else null. */
+  offer: z.string().nullable(),
   changes: z.array(
     z.object({ target: z.string(), text: z.string().nullable(), node_json: z.string().nullable() }),
   ),
@@ -66,6 +68,8 @@ export type EditFastRequest = {
   /** The selected text box; absent → the whole slide (any of its text boxes may change). */
   elementId?: string | undefined;
   instruction: string;
+  /** The thread's last turns, oldest first (the prompt shows 3); `slides` are paths (`s4`). */
+  history?: EditFastInput["history"];
 };
 
 /** One text box's new content. */
@@ -88,6 +92,8 @@ export type EditFastResult =
       ms: number;
       /** Which check refused, when code refused: logged, and picks the pane's one-tap alternative. */
       check?: "fit" | "leak" | "scope" | "shape" | "model" | undefined;
+      /** The model's one-tap offer on its own refusal: an instruction the teacher can send. */
+      offer?: string | undefined;
     };
 
 export interface EditFastDeps {
@@ -164,6 +170,7 @@ export function packEditFast(req: EditFastRequest): EditFastInput {
       ? { target: targetOf(slidePath, el.id), text: richDocToPlainText(el.doc) }
       : { target: slidePath }),
     instruction: req.instruction,
+    ...(req.history && req.history.length > 0 ? { history: req.history.slice(-3) } : {}),
   };
 }
 
@@ -392,6 +399,9 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
       schema: EditFastOutputSchema,
       maxOutputTokens: EDIT_FAST_MAX_OUTPUT_TOKENS,
       timeoutMs: EDIT_FAST_TIMEOUT_MS,
+      // Every key of the schema is required (nullable), so strict mode accepts it: off-schema
+      // answers (`type` for `action`) are refused by the provider rather than retried here.
+      strict: true,
     });
 
   let attempts = 0;
@@ -408,6 +418,7 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
         attempts,
         ms: ms(),
         check: "model",
+        ...(out.offer?.trim() ? { offer: out.offer.trim().slice(0, EDIT_INSTRUCTION_MAX) } : {}),
       };
     if (out.action === "escalate")
       return {

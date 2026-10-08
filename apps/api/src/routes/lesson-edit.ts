@@ -41,6 +41,17 @@ export const LessonEditBodySchema = z.strictObject({
   elementId: z.string().min(1).max(64).optional(),
   /** The input guard runs on the instruction before any model sees it, as on a brief. */
   instruction: guarded(z.string().trim().min(1).max(EDIT_INSTRUCTION_MAX)),
+  /** The thread's last 3 turns, oldest first, for follow-ups ("a bit more"). */
+  history: z
+    .array(
+      z.strictObject({
+        instruction: guarded(z.string().trim().min(1).max(EDIT_INSTRUCTION_MAX)),
+        summary: z.string().max(300),
+        slides: z.array(z.string().regex(/^s\d{1,3}$/)).max(40),
+      }),
+    )
+    .max(3)
+    .optional(),
 });
 
 export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined) {
@@ -84,7 +95,13 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
       }
       try {
         const result = await editFast(
-          { lesson, slide, elementId: body.elementId, instruction: body.instruction },
+          {
+            lesson,
+            slide,
+            elementId: body.elementId,
+            instruction: body.instruction,
+            history: body.history,
+          },
           {
             ai,
             logger,
@@ -120,6 +137,7 @@ export function lessonEditRoutes(unsafeDb: ScopableDb, ai: CreatedAi | undefined
             reason: result.reason,
             ms: result.ms,
             ...(result.action !== "no-change" && result.check ? { check: result.check } : {}),
+            ...(result.action === "refuse" && result.offer ? { offer: result.offer } : {}),
           },
           200,
         );

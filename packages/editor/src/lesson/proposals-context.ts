@@ -13,7 +13,13 @@ import type { RegenerateTarget } from "./use-editor-session";
  * What the editor sends for an edit with a prompt (TEACH-97): the slide as it is now and the
  * selected text box, or no box for the whole slide.
  */
-export type PromptEditRequest = { slide: Slide; elementId?: Id | undefined; instruction: string };
+export type PromptEditRequest = {
+  slide: Slide;
+  elementId?: Id | undefined;
+  instruction: string;
+  /** The thread's last 3 turns, oldest first; `slides` are the changed slides' paths (`s4`). */
+  history?: { instruction: string; summary: string; slides: string[] }[] | undefined;
+};
 
 /**
  * The answer: each changed box's new doc and a one-line summary to apply as one undo step, or a
@@ -28,6 +34,8 @@ export type PromptEditAnswer =
       need?: string | undefined;
       /** Which check refused ("fit", "leak", …), when code refused. */
       check?: string | undefined;
+      /** A refusal's one-tap offer: an instruction the teacher can send instead. */
+      offer?: string | undefined;
     };
 
 export type ProposalsApi = {

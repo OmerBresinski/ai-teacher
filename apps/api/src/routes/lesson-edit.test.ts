@@ -36,6 +36,22 @@ describe("POST /lessons/:id/edit", () => {
     ["a slide that is not a slide", { slide: { id: "x" }, elementId: "q", instruction: "Shorter" }],
     ["an unknown key", { slide: multipleChoiceSlide(), elementId: "q", instruction: "x", y: 1 }],
     [
+      "more than 3 history turns",
+      {
+        slide: multipleChoiceSlide(),
+        instruction: "a bit more",
+        history: [1, 2, 3, 4].map(() => ({ instruction: "x", summary: "y", slides: [] })),
+      },
+    ],
+    [
+      "a history slide that is not a path",
+      {
+        slide: multipleChoiceSlide(),
+        instruction: "a bit more",
+        history: [{ instruction: "x", summary: "y", slides: ["slide 4"] }],
+      },
+    ],
+    [
       "an overlong instruction",
       { slide: multipleChoiceSlide(), elementId: "q", instruction: "x".repeat(501) },
     ],

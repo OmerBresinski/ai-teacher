@@ -153,6 +153,23 @@ describe("Edit with Dayback pane", () => {
     );
   });
 
+  test("the model's one-tap offer under a refusal sends that instruction", async () => {
+    const { clickBox, say, pane, onPromptEdit } = setup(() =>
+      Promise.resolve({
+        action: "refuse",
+        reason: "That would give the answer away.",
+        offer: "Add a hint instead",
+        check: "model",
+      }),
+    );
+    clickBox();
+    await say("Put the answer in the question");
+    await act(async () => {
+      fireEvent.click(within(pane()).getByRole("button", { name: "Add a hint instead" }));
+    });
+    expect(onPromptEdit.mock.calls[1]?.[0].instruction).toBe("Add a hint instead");
+  });
+
   test("the whole lesson is answered in the pane, with this slide as the one-tap alternative", async () => {
     const { say, pane, onPromptEdit, chip } = setup((req) =>
       Promise.resolve(edit(req, "Easier.", "Made it easier.")),
@@ -196,6 +213,9 @@ describe("Edit with Dayback pane", () => {
     await waitFor(() => expect(onPromptEdit).toHaveBeenCalledTimes(2));
     const second = onPromptEdit.mock.calls[1]?.[0] as PromptEditRequest;
     expect(second.instruction).toBe("Make it harder");
+    expect(second.history).toEqual([
+      { instruction: "Make it harder", summary: "Slide 1: Made it harder.", slides: ["s1"] },
+    ]);
     expect(second.slide.id).toBe(read().slides[1]?.id as string);
     await waitFor(() => expect(textOf(read(), 1)).toBe("Make it harder done"));
     await say("undo that");
@@ -238,9 +258,9 @@ describe("thread helpers", () => {
   };
 
   test("follow-ups resolve in code", () => {
-    expect(resolveFollowUp(lesson, [applied], "a bit more", { slideId: s2 })).toMatchObject({
+    expect(resolveFollowUp(lesson, [applied], "a bit more", { slideId: s2 })).toEqual({
       kind: "send",
-      instruction: "Make it easier",
+      instruction: "a bit more",
       scope: applied.scope,
     });
     expect(

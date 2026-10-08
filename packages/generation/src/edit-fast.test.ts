@@ -45,6 +45,7 @@ const answer = (target: string, text: string | null, extra: Partial<EditFastOutp
   JSON.stringify({
     action: "edit",
     reason: null,
+    offer: null,
     changes: [{ target, text, node_json: null }],
     summary: "Made it shorter.",
     ...extra,
@@ -69,6 +70,7 @@ describe("editFast (TEACH-97 part d)", () => {
     expect(ai.calls).toHaveLength(1);
     expect(ai.calls[0]?.modelClass).toBe("small");
     expect(JSON.stringify(ai.calls[0]?.providerOptions)).toContain('"reasoningEffort":"none"');
+    expect(JSON.stringify(ai.calls[0]?.providerOptions)).toContain('"strictJsonSchema":true');
     const prompt = ai.calls[0]?.promptText ?? "";
     expect(editFastPrompt.system.startsWith("You edit the part of a school lesson")).toBe(true);
     expect(prompt).toContain(`Selected element: ${T} = "Water warms up`);
@@ -120,18 +122,24 @@ describe("editFast (TEACH-97 part d)", () => {
     const refuse = JSON.stringify({
       action: "refuse",
       reason: "That would make the slide untrue.",
+      offer: "Make the wording simpler",
       changes: [],
       summary: "",
     });
     const escalate = JSON.stringify({
       action: "escalate",
       reason: "needs a new slide",
+      offer: null,
       changes: [],
       summary: "",
     });
     const req = { lesson: lesson(), slide: contentSlide(), elementId: "b", instruction: "x" };
     const a = await editFast(req, { ai: createFakeAi({ script: [refuse] }), logger });
-    expect(a).toMatchObject({ action: "refuse", reason: "That would make the slide untrue." });
+    expect(a).toMatchObject({
+      action: "refuse",
+      reason: "That would make the slide untrue.",
+      offer: "Make the wording simpler",
+    });
     const b = await editFast(req, { ai: createFakeAi({ script: [escalate] }), logger });
     expect(b).toMatchObject({ action: "escalate", reason: EDIT_MESSAGES.needsMore });
   });
@@ -149,6 +157,7 @@ describe("editFast (TEACH-97 part d)", () => {
     const out = JSON.stringify({
       action: "edit",
       reason: null,
+      offer: null,
       changes: [
         { target: "s4/elements/h/text", text: "Evaporating", node_json: null },
         { target: T, text: "Water warms up and becomes a gas.", node_json: null },
@@ -166,6 +175,28 @@ describe("editFast (TEACH-97 part d)", () => {
     const prompt = ai.calls[0]?.promptText ?? "";
     expect(prompt).not.toContain("Selected element:");
     expect(prompt).toContain("Slide s4:");
+  });
+
+  test("the thread's last 3 turns reach the prompt", async () => {
+    const ai = createFakeAi({ script: [answer(T, "Water becomes a gas.")] });
+    const history = [1, 2, 3, 4].map((i) => ({
+      instruction: `Ask ${i}`,
+      summary: `Did ${i}.`,
+      slides: ["s4"],
+    }));
+    await editFast(
+      {
+        lesson: lesson(),
+        slide: contentSlide(),
+        elementId: "b",
+        instruction: "a bit more",
+        history,
+      },
+      { ai, logger },
+    );
+    const prompt = ai.calls[0]?.promptText ?? "";
+    expect(prompt).toContain('Teacher: "Ask 4" -> Did 4. [s4]');
+    expect(prompt).not.toContain("Ask 1");
   });
 
   test("a slide-scope change on another slide is retried as out of scope", async () => {

@@ -16,6 +16,7 @@ import {
   type Alternative,
   canUndo,
   type EditScope,
+  historyOf,
   readThread,
   resolveFollowUp,
   type Suggestion,
@@ -262,7 +263,10 @@ export function EditChatPane({
       pending.current = { id, controller };
       let answer: PromptEditAnswer;
       try {
-        answer = await onPromptEdit({ slide, elementId, instruction }, controller.signal);
+        answer = await onPromptEdit(
+          { slide, elementId, instruction, history: historyOf(current, thread) },
+          controller.signal,
+        );
       } catch {
         answer = { action: "failed", reason: controller.signal.aborted ? STOPPED : FAILED };
       }
@@ -282,8 +286,9 @@ export function EditChatPane({
         }));
         return;
       }
-      const alternative: Alternative | undefined =
-        answer.check === "fit"
+      const alternative: Alternative | undefined = answer.offer
+        ? { label: answer.offer, instruction: answer.offer, scope: target }
+        : answer.check === "fit"
           ? {
               label: "Try a shorter version",
               instruction: `${instruction}. Keep it short.`,

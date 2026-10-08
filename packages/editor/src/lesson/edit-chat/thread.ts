@@ -149,8 +149,8 @@ function baseInstruction(thread: readonly Turn[]): Turn | undefined {
 /**
  * A follow-up resolved in code (research `chain.ts` `resolve`): "next slide", "previous slide" and
  * "slide N" move the scope to that slide; "do the same" and "that one too" repeat the last applied
- * instruction there; "a bit more" or "again" repeat it on its own target; "undo that" reverts the
- * last applied change. Anything else is sent as typed, on the chip's scope.
+ * instruction there; "a bit more" or "again" go, as said, to the last change's target (the history
+ * says what they refer to); "undo that" reverts the last applied change. Anything else is sent as typed, on the chip's scope.
  */
 export function resolveFollowUp(
   lesson: Lesson,
@@ -173,9 +173,31 @@ export function resolveFollowUp(
   const base = baseInstruction(thread);
   if (base && SAME.test(lower))
     return { kind: "send", instruction: base.instruction, scope: moved, note: base.said };
-  if (base && MODIFIER.test(text))
-    return { kind: "send", instruction: base.instruction, scope: base.scope, note: base.said };
+  // "a bit more" is sent as said, on the last change's target: the thread history in the request
+  // tells the model what "more" refers to.
+  if (base && MODIFIER.test(text)) return { kind: "send", instruction: text, scope: base.scope };
   return { kind: "send", instruction: text, scope: moved };
+}
+
+/**
+ * The thread's last 3 finished turns, oldest first, as the fast call's history: what was asked,
+ * the reply the teacher saw, and the slides a change touched (`s4`).
+ */
+export function historyOf(
+  lesson: Lesson,
+  thread: readonly Turn[],
+): { instruction: string; summary: string; slides: string[] }[] {
+  return thread
+    .filter((t) => t.reply.kind !== "pending" && t.instruction.trim() !== "")
+    .slice(-3)
+    .map((t) => {
+      const n = t.change && !t.change.undone ? slideNumber(lesson, t.change.slideId) : 0;
+      return {
+        instruction: (t.instruction === "undo" ? t.said : t.instruction).slice(0, 500),
+        summary: t.reply.text.slice(0, 300),
+        slides: n > 0 ? [`s${n}`] : [],
+      };
+    });
 }
 
 /* ------------------------------------------------------------------ */

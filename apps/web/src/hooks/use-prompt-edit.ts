@@ -24,6 +24,9 @@ export function usePromptEdit(lessonId: string) {
               slide: request.slide,
               ...(request.elementId ? { elementId: request.elementId } : {}),
               instruction: request.instruction,
+              ...(request.history && request.history.length > 0
+                ? { history: request.history }
+                : {}),
             },
           },
           sessionRequest(queryClient, signal),
