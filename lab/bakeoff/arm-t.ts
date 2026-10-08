@@ -10,7 +10,7 @@ import {
   type TemplateInput,
   type TemplatePoint,
 } from "../../packages/slides/src/templates/index";
-import { abArm, abFiles, abLib, abPolish, abR1t3, abR2 } from "./ab/arms";
+import { abArm, abFiles, abLib, abR1t3, abR2, abTitleSub } from "./ab/arms";
 import { polishTitleLead, protectSources } from "./ab/polish";
 import { labelsOf, writerSpecOf } from "./ab/r2";
 import { ANY_POINTING } from "./checks";
@@ -275,7 +275,7 @@ export function toInput(
       return {
         template,
         heading,
-        lead: abPolish() ? polishTitleLead(ctx.brief) : lead,
+        lead: abTitleSub() ? polishTitleLead(ctx.brief) : lead,
         figure: fig("picture"),
       };
     case "objectives":

@@ -343,6 +343,25 @@ for (const a of AB_ARMS.filter((x) => AB_REF[x])) {
         ))
     )
       fail(`checkdef ${id}: changes more than base5's flow line`);
+    // base6 (rootcause/base5-loss.txt): base4's England request with the recall clause cut from the
+    // flow line (base5's cut) and, once prompt-engineer fills shared/opener.txt, one opener sentence
+    // in that same line. One line out, one in; no schema path.
+    if (a === "base6") {
+      const cut = " a first slide that recalls the earlier learning this lesson builds on;";
+      const anchor = "Plan these where they fit this topic and year group:";
+      const out = sd.del[0] ?? "";
+      const inn = sd.add[0] ?? "";
+      const [pre, post] = out.replace(cut, "").split(anchor);
+      if (
+        jd.length ||
+        sd.del.length !== 1 ||
+        sd.add.length !== 1 ||
+        !out.includes(cut) ||
+        !inn.startsWith(pre ?? "\0") ||
+        !inn.endsWith(`${anchor}${post}`)
+      )
+        fail(`base6 ${id}: changes more than base4's flow line (recall cut + opener slot)`);
+    }
     if (a === "base4" && (jd.length || b.system !== r.system))
       fail(`base4 ${id}: its request differs from b3-r2 (base4 is b3-r2's files)`);
     if (a === "base3" && (jd.length || b.system !== r.system))

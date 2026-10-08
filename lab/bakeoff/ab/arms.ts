@@ -45,6 +45,7 @@ export const AB_ARMS = [
   "base5",
   "checkdef",
   "locale4",
+  "base6",
 ] as const;
 export type AbArm = (typeof AB_ARMS)[number];
 export const isAbArm = (x: unknown): x is AbArm => AB_ARMS.includes(x as AbArm);
@@ -75,6 +76,10 @@ export const AB_CONFIG: Record<
     checkDef?: boolean;
     /** locale4: stock captions keep only the teacher's place (ab/caption.ts). */
     captions?: boolean;
+    /** base6: polish's code title subtitle only (polishTitleLead), without the rest of polish. */
+    titleSub?: boolean;
+    /** base6: polish's snug filled flow and cycle nodes only (no label gap gate, no strips). */
+    snugNodes?: boolean;
   }
 > = {
   base: { ask: false, kinds: [], meaningKinds: [], delta: "round 5 writer prompt and schema" },
@@ -382,6 +387,22 @@ export const AB_CONFIG: Record<
     delta:
       "base5 + picture captions and alt text drop a closing stock place name unless it is the teacher's country or the slide names it (code; prompts = base5)",
   },
+  // base6 (8 Oct, rootcause/base5-loss.txt NEXT CANDIDATE): base4's code + polish's title subtitle
+  // and snug flow/cycle nodes only. No per-label refit, no "never drop the diagram" (base4's clash
+  // then picture fallback), no label gap gate, no strips, no 768 px judge, no photo gate. Writer
+  // files = locale3's (base4 + country line) with base5's recall-clause removal and one opener slot
+  // (shared/opener.txt, filled by prompt-engineer; empty = no line).
+  base6: {
+    ask: false,
+    kinds: ["equal-groups", "fraction-shapes"],
+    meaningKinds: [],
+    fixes: true,
+    r2: true,
+    titleSub: true,
+    snugNodes: true,
+    delta:
+      "base4 + code title subtitle + snug nodes; recall clause removed, locale3's country line, one opener line (slot)",
+  },
   "b4-ex": {
     ask: false,
     kinds: ["equal-groups", "fraction-shapes"],
@@ -437,6 +458,7 @@ export const AB_REF: Partial<Record<AbArm, { ref: AbArm; same?: [AbArm, AbArm] }
   base5: { ref: "polish2" },
   checkdef: { ref: "base5" },
   locale4: { ref: "base5" },
+  base6: { ref: "base4" },
 };
 
 /** The run's arm (run.ts sets it once; undefined = the old shared prompts/T path). */
@@ -469,6 +491,13 @@ export const abStageBank = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].st
 /** polish: rootcause/uk-seasons.md code fixes (ab/polish.ts). */
 export const abPolish = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish) : false);
 export const abCaptions = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].captions) : false);
+/** The code title subtitle (polishTitleLead): polish and its descendants, and base6. */
+export const abTitleSub = () =>
+  code()
+    ? Boolean(AB_CONFIG[code() as AbArm].polish || AB_CONFIG[code() as AbArm].titleSub)
+    : false;
+/** Snug filled flow and cycle nodes alone (base6); polish arms get them through setDiagramPolish. */
+export const abSnugNodes = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].snugNodes) : false);
 export const abPolish2 = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].polish2) : false);
 export const abObjRetry = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].objRetry) : false);
 export const abCheckDef = () => (code() ? Boolean(AB_CONFIG[code() as AbArm].checkDef) : false);

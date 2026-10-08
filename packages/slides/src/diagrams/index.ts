@@ -20,7 +20,14 @@ import { drawLineGraph } from "./line-graph";
 import { fromMeaning } from "./meaning";
 import { simplerDiagrams } from "./normalise";
 import { drawNumberLine } from "./number-line";
-import { diagramPolish, drawStrips, labelGapFaults, type Strips, StripsSchema } from "./polish";
+import {
+  drawStrips,
+  labelGapFaults,
+  polishGapGate,
+  polishStrips,
+  type Strips,
+  StripsSchema,
+} from "./polish";
 import { type DiagramSpec, DiagramSpecSchema } from "./schema";
 import { finished, laddered, look, WEIGHT } from "./style";
 import { type Ctx, context, type DrawnText, esc, mix, n, text, titleCtx, wrap } from "./svg";
@@ -87,7 +94,7 @@ export function parseDiagram(spec: unknown): DiagramSpec | undefined {
   const r = DiagramSpecSchema.safeParse(spec);
   if (r.success) return r.data;
   // BAKEOFF polish arm: the strips kind parses only while the switch is on (polish.ts).
-  if (diagramPolish() && (spec as { kind?: unknown })?.kind === "strips") {
+  if (polishStrips() && (spec as { kind?: unknown })?.kind === "strips") {
     const st = StripsSchema.safeParse(spec);
     return st.success ? (st.data as unknown as DiagramSpec) : undefined;
   }
@@ -602,7 +609,7 @@ export function diagramFaults(
     }
   }
   // BAKEOFF polish arm: labels that touch at all are a fault (drawDiagram refits, then drops it).
-  if (diagramPolish()) out.push(...labelGapFaults(rec));
+  if (polishGapGate()) out.push(...labelGapFaults(rec));
   out.push(...samePanels(s));
   return [...new Set(out)];
 }

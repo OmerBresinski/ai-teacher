@@ -41,7 +41,27 @@ let gate: LabelGate = "diagram";
 export function setDiagramPolish(v: boolean, labelGate: LabelGate = "diagram"): void {
   on = v;
   gate = labelGate;
+  parts = { nodes: v, gapGate: v, strips: v };
 }
+/**
+ * The switch's three drawing parts, separately (base6, 8 Oct): snug filled flow and cycle nodes, the
+ * label gap gate, and the strips kind. setDiagramPolish(v) sets all three to v, so polish, polish2
+ * and the arms built on them draw exactly as before.
+ */
+export type PolishParts = { nodes: boolean; gapGate: boolean; strips: boolean };
+let parts: PolishParts = { nodes: false, gapGate: false, strips: false };
+/** Turn on only some parts (base6: `{ nodes: true }`); the label gate stays "diagram". */
+export function setDiagramParts(p: Partial<PolishParts>): void {
+  parts = { nodes: !!p.nodes, gapGate: !!p.gapGate, strips: !!p.strips };
+  on = parts.nodes || parts.gapGate || parts.strips;
+  gate = "diagram";
+}
+/** Snug flow and cycle nodes with the polish fill. */
+export const polishNodes = (): boolean => on && parts.nodes;
+/** Labels that touch at all are a readability fault. */
+export const polishGapGate = (): boolean => on && parts.gapGate;
+/** The strips kind parses and draws. */
+export const polishStrips = (): boolean => on && parts.strips;
 export const labelGate = (): LabelGate => gate;
 /** Where a dropped label is reported (run.ts points it at the run log). */
 /**
@@ -154,11 +174,14 @@ export const diagramPolish = (): boolean => on;
 /** Run `f` with the switch at `v`, then restore it (synchronous; tests and the before/after renders). */
 export function withDiagramPolish<T>(v: boolean, f: () => T): T {
   const was = on;
+  const wasParts = parts;
   on = v;
+  parts = { nodes: v, gapGate: v, strips: v };
   try {
     return f();
   } finally {
     on = was;
+    parts = wasParts;
   }
 }
 

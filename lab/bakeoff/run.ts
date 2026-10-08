@@ -10,10 +10,15 @@ import {
 } from "../../packages/generation/src/stages/illustrate";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
 import { embedCostUsd, imageCostUsd } from "../../packages/images/src/index";
-import { onLabelDrop, setDiagramPolish } from "../../packages/slides/src/diagrams/polish";
+import {
+  onLabelDrop,
+  setDiagramParts,
+  setDiagramPolish,
+} from "../../packages/slides/src/diagrams/polish";
 import {
   abPolish,
   abPolish2,
+  abSnugNodes,
   isAbArm,
   pictureVersions,
   pinFaults,
@@ -84,6 +89,9 @@ if (abPolish2()) {
   setDiagramPolish(true);
   useJudgeImage(768);
   usePhotoGate(photoGate((e) => console.error(JSON.stringify({ t: Date.now(), ...e }))));
+} else if (abSnugNodes()) {
+  // base6: only the snug filled nodes; base4's judge input, no photo gate, no gap gate, no strips.
+  setDiagramParts({ nodes: true });
 }
 const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);

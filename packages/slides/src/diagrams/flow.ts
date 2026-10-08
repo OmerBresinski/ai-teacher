@@ -6,7 +6,7 @@
 import { type KeyStage, keyStage } from "../themes";
 import { finishOf } from "./finish";
 import { LIMITS } from "./limits";
-import { diagramPolish, nodeFill, snug } from "./polish";
+import { nodeFill, polishNodes, snug } from "./polish";
 import type { Flow } from "./schema";
 import { STROKE, sub, WEIGHT } from "./style";
 import { arrow, arrowHead, type Ctx, n, text, textWidth, wrap } from "./svg";
@@ -41,7 +41,7 @@ function boxSize(x: Ctx, boxes: Box[], labels: string[]): number {
 function box(x: Ctx, b: Box, label: string, fs: number): string {
   const { c } = x;
   const lines = boxLines(x, b, label, fs) ?? wrap(label, x, b.w - fs * 0.9, 3, fs, WEIGHT.name);
-  if (diagramPolish()) return polishBox(x, b, lines, fs);
+  if (polishNodes()) return polishBox(x, b, lines, fs);
   return `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(x.fs * 0.5)}" fill="${c.tint}" stroke="${c.accent}" stroke-width="${STROKE.line}"/>${text(x, b.cx, b.cy, lines, { weight: WEIGHT.name, fs })}`;
 }
 
@@ -431,7 +431,7 @@ function graph(f: Flow, x: Ctx, fullW: number, fullH: number): string {
         if (!b || !l) return;
         void s;
         out.push(
-          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${diagramPolish() ? nodeFill(c, !!x.dark) : c.tint}"${diagramPolish() ? "" : ` stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"`}/>`,
+          `<rect x="${n(b.cx - b.w / 2)}" y="${n(b.cy - b.h / 2)}" width="${n(b.w)}" height="${n(b.h)}" rx="${n(fs * finishOf(x).radius.box)}" fill="${polishNodes() ? nodeFill(c, !!x.dark) : c.tint}"${polishNodes() ? "" : ` stroke="${c.accent}" stroke-width="${finishOf(x).stroke.box}"`}/>`,
           text(x, b.cx, b.cy, l, { weight: WEIGHT.name, fs }),
         );
       });
@@ -601,7 +601,7 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
       w: bw,
       h: bh,
     };
-    return diagramPolish() ? snugBox(x, b0, f.steps[i]?.label ?? "", fs) : b0;
+    return polishNodes() ? snugBox(x, b0, f.steps[i]?.label ?? "", fs) : b0;
   });
   const out: string[] = [];
   const style = { fs: noteFs, fill: c.ink, weight: WEIGHT.label };
@@ -641,7 +641,7 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     const b = boxes[i];
     const lines = plan.lines[i];
     if (!b || !lines) return;
-    if (diagramPolish()) {
+    if (polishNodes()) {
       out.push(polishBox(x, b, lines, fs));
       return;
     }
@@ -678,7 +678,7 @@ function cycle(f: Flow, x: Ctx, w: number, h: number): string {
   const widest = Math.max(base, w * (k <= 4 ? 0.48 : 0.4));
   let boxes = ring(base);
   for (let i = 1; i <= 4 && !fitsIn(boxes); i++) boxes = ring(base + ((widest - base) * i) / 4);
-  if (diagramPolish()) {
+  if (polishNodes()) {
     const f0 = boxSize(x, boxes, labels);
     boxes = boxes.map((b, i) => snugBox(x, b, labels[i] ?? "", f0));
   }
