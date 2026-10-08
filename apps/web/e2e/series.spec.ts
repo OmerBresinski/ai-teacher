@@ -1,4 +1,4 @@
-import { expectNoSeriousA11yViolations } from "./a11y";
+import { expectNoSeriousA11yViolations, settled } from "./a11y";
 
 import { expect, type SeededPaths, test } from "./fixtures";
 
@@ -116,7 +116,7 @@ test.describe("series detail", () => {
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(page.getByRole("heading", { name: "The Romans" })).toBeVisible();
-    await page.waitForTimeout(400);
+    await settled(page, "html");
     await expectNoSeriousA11yViolations(page, "/series/:id (dark)");
   });
 });

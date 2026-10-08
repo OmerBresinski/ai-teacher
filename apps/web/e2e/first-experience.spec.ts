@@ -1,20 +1,38 @@
-import { expect, test } from "@playwright/test";
+/**
+ * `/dev/first-experience` (dev and preview builds): the creation flow over a local fixture that
+ * paces slides with timers (`editor-preview.tsx`: the first after 2,600 ms, then one every
+ * 2,400 ms, then 1,800 ms to ready) and a GSAP story. Tests that wait on that pacing install
+ * Playwright's clock before the page loads and step it with `runFor`, which fires every timer and
+ * animation frame on the way, instead of waiting in real time (TEACH-250).
+ */
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 const PATH = "/dev/first-experience";
+const FIRST_SLIDE_MS = 2_600;
+const NEXT_SLIDE_MS = 2_400;
 
-async function openObjectives(page: import("@playwright/test").Page) {
+/** Steps the fixture's pacing, one slide interval at a time, until the preview is ready. */
+async function runUntilReady(page: Page, preview: Locator) {
+  for (let step = 0; step < 20; step++) {
+    if ((await preview.getAttribute("data-preview-state")) === "ready") return;
+    await page.clock.runFor(NEXT_SLIDE_MS);
+  }
+  await expect(preview).toHaveAttribute("data-preview-state", "ready");
+}
+
+async function openObjectives(page: Page) {
   await page.goto(PATH);
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByTestId("creation-objectives")).toBeVisible();
 }
 
-async function openWorksheets(page: import("@playwright/test").Page) {
+async function openWorksheets(page: Page) {
   await openObjectives(page);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByTestId("creation-worksheet")).toBeVisible();
 }
 
-async function openGenerating(page: import("@playwright/test").Page) {
+async function openGenerating(page: Page) {
   await openWorksheets(page);
   await page.getByRole("button", { name: "Just the slides" }).click();
   const preview = page.getByTestId("creation-generating");
@@ -109,6 +127,7 @@ test.describe("first-experience design preview", () => {
   test("rapid navigation leaves one complete handover scene with one visible owner", async ({
     page,
   }) => {
+    await page.clock.install();
     await page.goto(PATH);
     await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page.getByRole("combobox", { name: "Activity type" })).toBeEnabled();
@@ -116,7 +135,7 @@ test.describe("first-experience design preview", () => {
     await page.getByRole("button", { name: "Back to the brief" }).click();
     await page.getByRole("button", { name: "Skip planning" }).click();
     await expect(page.getByTestId("creation-worksheet")).toBeVisible();
-    await page.waitForTimeout(2_400);
+    await page.clock.runFor(2_400);
 
     const scene = page.locator(".handover-stage .production-scene");
     await expect(scene).toHaveCount(1);
@@ -151,7 +170,7 @@ test.describe("first-experience design preview", () => {
   test("slides populate progressively, preserve selection, and hand over without a layout jump", async ({
     page,
   }) => {
-    test.setTimeout(40_000);
+    await page.clock.install();
     const preview = await openGenerating(page);
     const surface = page.locator(".creation-editor-surface");
     const before = await surface.boundingBox();
@@ -161,21 +180,24 @@ test.describe("first-experience design preview", () => {
       name: /^Slide \d+$/,
     });
     await expect(thumbs).toHaveCount(0);
-    await expect(thumbs).toHaveCount(1, { timeout: 7_000 });
-    await expect(thumbs).toHaveCount(2, { timeout: 4_000 });
+    await page.clock.runFor(FIRST_SLIDE_MS);
+    await expect(thumbs).toHaveCount(1);
+    await page.clock.runFor(NEXT_SLIDE_MS);
+    await expect(thumbs).toHaveCount(2);
     await thumbs.first().click();
     await expect(thumbs.first()).toHaveAttribute("aria-current", "true");
     const selectedId = await page.locator("[data-canvas-slide]").getAttribute("data-canvas-slide");
     expect(selectedId).toBeTruthy();
 
-    await expect(thumbs).toHaveCount(3, { timeout: 4_000 });
+    await page.clock.runFor(NEXT_SLIDE_MS);
+    await expect(thumbs).toHaveCount(3);
     await expect(thumbs.first()).toHaveAttribute("aria-current", "true");
     await expect(page.locator("[data-canvas-slide]")).toHaveAttribute(
       "data-canvas-slide",
       selectedId ?? "",
     );
 
-    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 25_000 });
+    await runUntilReady(page, preview);
     await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
     await expect(page.locator("[data-canvas] [data-slide-root]")).toHaveAttribute(
       "data-slide-id",
@@ -188,29 +210,31 @@ test.describe("first-experience design preview", () => {
   });
 
   test("Back and Start again unmount the local generation fixture", async ({ page }) => {
-    test.setTimeout(20_000);
+    await page.clock.install();
     await openGenerating(page);
     await page.getByRole("button", { name: "Start again" }).click();
     await expect(page.getByTestId("creation-brief")).toBeVisible();
-    await page.waitForTimeout(5_200);
+    await page.clock.runFor(5_200);
     await expect(page.getByTestId("creation-generating")).toHaveCount(0);
 
     await openGenerating(page);
     await page.getByRole("button", { name: "Back to worksheets" }).click();
     await expect(page.getByTestId("creation-worksheet")).toBeVisible();
-    await page.waitForTimeout(5_200);
+    await page.clock.runFor(5_200);
     await expect(page.getByTestId("creation-generating")).toHaveCount(0);
   });
 
   test("only the characters whose work was asked for appear: slides only is Slides' own entrance", async ({
     page,
   }) => {
+    await page.clock.install();
     await openGenerating(page);
     const stage = page.locator(".creation-generation-actor .handover-stage");
     // Slides enters on its own (beat 12); Worksheet never comes on and nothing is handed over.
     await expect(stage).toHaveAttribute("data-beat", "12");
     await expect(stage).toHaveAttribute("data-holder", "Slides");
-    const worksheetSeen = await stage.evaluate(
+    // Every frame of the next 2 s of the story's time, played by the clock rather than waited out.
+    const sampled = stage.evaluate(
       (root) =>
         new Promise<boolean>((resolve) => {
           let seen = false;
@@ -227,7 +251,8 @@ test.describe("first-experience design preview", () => {
           look();
         }),
     );
-    expect(worksheetSeen).toBe(false);
+    await page.clock.runFor(2_000);
+    expect(await sampled).toBe(false);
     await expect(stage).toHaveAttribute("data-beat", "3", { timeout: 4_000 });
   });
 
@@ -242,11 +267,11 @@ test.describe("first-experience design preview", () => {
   test("Check stays with the finished lesson until the teacher starts working", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    await page.clock.install();
     const preview = await openGenerating(page);
-    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    await runUntilReady(page, preview);
     await expect(page.getByRole("button", { name: "Rename lesson" })).toBeVisible();
-    await page.waitForTimeout(8_000);
+    await page.clock.runFor(8_000);
     // The sign-off is done, but Check has not walked off on its own and its column is still there.
     await expect(page.locator(".creation-generation-actor")).toHaveCount(1);
     await expect(preview).toHaveAttribute("data-story-finished", "false");
@@ -258,10 +283,11 @@ test.describe("first-experience design preview", () => {
   test("the selected-theme callout under the stage opens the picker and re-themes made and arriving slides", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    await page.clock.install();
     const preview = await openGenerating(page);
+    await page.clock.runFor(FIRST_SLIDE_MS);
     const callout = page.locator("[data-generating-theme] [data-theme-callout]");
-    await expect(callout).toBeVisible({ timeout: 15_000 });
+    await expect(callout).toBeVisible();
     await expect(callout).toHaveText(/^Theme · /);
     // Nothing else opens the picker: no rail entry while the lesson is made.
     await expect(page.locator("[data-theme-callout]")).toHaveCount(1);
@@ -270,7 +296,7 @@ test.describe("first-experience design preview", () => {
         .locator("[data-canvas] [data-slide-root]")
         .first()
         .evaluate((el) => getComputedStyle(el).backgroundColor);
-    await expect(page.locator("[data-canvas-slide]")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("[data-canvas-slide]")).toBeVisible();
     const before = await slideBg();
     await callout.click();
     const dialog = page.getByRole("dialog", { name: "Theme" });
@@ -281,7 +307,7 @@ test.describe("first-experience design preview", () => {
     await expect(callout).toHaveAttribute("data-theme-callout", "night-lab");
     await expect.poll(slideBg).not.toBe(before);
     const nightLab = await slideBg();
-    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    await runUntilReady(page, preview);
     // Editable: the same callout sits in the top bar and the slide rail has none.
     const toolbar = page.locator("[data-topbar] [data-theme-callout]");
     await expect(toolbar).toBeVisible({ timeout: 5_000 });
@@ -293,9 +319,11 @@ test.describe("first-experience design preview", () => {
   });
 
   test("Cancel in the picker goes back to the theme the callout named", async ({ page }) => {
+    await page.clock.install();
     await openGenerating(page);
+    await page.clock.runFor(FIRST_SLIDE_MS);
     const callout = page.locator("[data-generating-theme] [data-theme-callout]");
-    await expect(callout).toBeVisible({ timeout: 15_000 });
+    await expect(callout).toBeVisible();
     const opening = await callout.getAttribute("data-theme-callout");
     const other = opening === "night-lab" ? "playground" : "night-lab";
     await callout.click();
@@ -309,11 +337,12 @@ test.describe("first-experience design preview", () => {
   test("on a phone the callout is visible under the slides and in the top bar, never in More", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.install();
     const preview = await openGenerating(page);
+    await page.clock.runFor(FIRST_SLIDE_MS);
     const callout = page.locator("[data-generating-theme] [data-theme-callout]");
-    await expect(callout).toBeVisible({ timeout: 15_000 });
+    await expect(callout).toBeVisible();
     const box = await callout.boundingBox();
     if (!box) throw new Error("theme callout missing");
     expect(box.x).toBeGreaterThanOrEqual(0);
@@ -322,7 +351,7 @@ test.describe("first-experience design preview", () => {
     const dialog = page.getByRole("dialog", { name: "Theme" });
     await expect(dialog.locator("[data-theme-tile]")).toHaveCount(10);
     await dialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(preview).toHaveAttribute("data-preview-state", "ready", { timeout: 30_000 });
+    await runUntilReady(page, preview);
     const toolbar = page.locator("[data-topbar] [data-theme-callout]");
     await expect(toolbar).toBeVisible({ timeout: 5_000 });
     const bar = await toolbar.boundingBox();

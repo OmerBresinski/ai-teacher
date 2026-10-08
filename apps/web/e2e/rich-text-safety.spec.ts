@@ -105,6 +105,7 @@ test.describe("rich-text link safety (TEACH-277)", () => {
       await expect(page.locator(".td-rt a", { hasText: "AUDIT LINK" })).toHaveCount(0);
       const before = page.url();
       await text.click({ force: true });
+      // Negative check: the click must neither run script nor navigate.
       await page.waitForTimeout(150);
       expect(await page.evaluate((m) => document.body.dataset[m], MARKER)).toBeUndefined();
       expect(page.url()).toBe(before);

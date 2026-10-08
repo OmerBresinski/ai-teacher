@@ -133,21 +133,14 @@ test.describe("auth", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.clock.install();
     await page.goto("/sign-in");
     // Slides and Worksheet climb out from behind the card on arrival (sign-in-cast.spec.ts),
-    // Worksheet a beat after Slides; measure once both are up.
-    const googleButton = page.getByRole("button", { name: "Continue with Google" });
-    await expect
-      .poll(async () => {
-        const [slides, activity, button] = [
-          await page.locator(cast("slides")).boundingBox(),
-          await page.locator(cast("activity")).boundingBox(),
-          await googleButton.boundingBox(),
-        ];
-        return slides && activity && button ? slides.y < button.y && activity.y < button.y : false;
-      })
-      .toBe(true);
-    const google = await googleButton.boundingBox();
+    // Worksheet a beat after Slides: `cast-rig.ts` `enter` ends the climb 1.23 s after the stage
+    // goes live (0.15 s delay, 0.18 s stagger, 0.9 s climb). Play that on the clock, then measure.
+    await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
+    await page.clock.runFor(1_300);
+    const google = await page.getByRole("button", { name: "Continue with Google" }).boundingBox();
     const heading = await page.getByRole("heading", { level: 1 }).boundingBox();
     const box = async (kind: Parameters<typeof cast>[0]) => {
       const character = page.locator(cast(kind));

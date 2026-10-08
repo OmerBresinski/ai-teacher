@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expectNoSeriousA11yViolations } from "./a11y";
+import { expectNoSeriousA11yViolations, settled } from "./a11y";
 import { expect, type SeededPaths, test } from "./fixtures";
 
 /*
@@ -46,7 +46,7 @@ test.describe("worksheet recipes", () => {
     await d.getByRole("button", { name: "Check", exact: true }).click();
     await expect(cards).toHaveCount(3);
     // The dialog arrives over a fade; axe reads contrast through it, so let the motion finish.
-    await page.waitForTimeout(400);
+    await settled(page);
     await expectNoSeriousA11yViolations(page, "/w/:id (Add a block open)");
     await page.keyboard.press("Escape");
     await expect(d).toBeHidden();

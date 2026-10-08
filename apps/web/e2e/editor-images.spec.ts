@@ -367,6 +367,7 @@ test.describe("editor images", () => {
     await page.goto(EDITOR(paths));
     await openPhotos(page, "river");
     await expect(panel(page).getByRole("button", { name: "River bend" })).toBeVisible();
+    // Opt-in screenshot only (never in the gated run): let the thumbnails finish fading in.
     await page.waitForTimeout(500);
     await page.screenshot({ path: "/tmp/teach-158-photos.png" });
   });

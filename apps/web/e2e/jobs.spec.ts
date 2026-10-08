@@ -42,7 +42,7 @@ test.describe("jobs / SSE demo", () => {
     await expect
       .poll(async () => (await eventTexts(page)).map(describe), { timeout: 15_000 })
       .toContain("cancelled");
-    // Give a would-be stray `completed` time to arrive; it must not.
+    // Negative check: give a would-be stray `completed` time to arrive; it must not.
     await page.waitForTimeout(700);
     const events = (await eventTexts(page)).map(describe);
     expect(events.at(-1)).toBe("cancelled");

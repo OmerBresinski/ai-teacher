@@ -252,6 +252,13 @@ Traces and screenshots are kept for failures only; in CI a failed shard uploads 
 - Isolation in e2e comes from fresh users (`uniqueEmail()`), not truncation; do not assert on
   global counts.
 - A `REQUIRE_TEST_DB` failure is an environment problem (`bun run doctor`), not a flake.
+- Time-based UI (fixture pacing, GSAP motion, idle timers) runs on Playwright's clock:
+  `page.clock.install()` before the first `page.goto` (and before any init script that reads
+  `performance.now()`), then `page.clock.runFor(ms)`, which fires every timer and animation frame
+  on the way (prefer it to `fastForward`, whose single jump GSAP's lag smoothing shortens). CSS
+  animations are not faked: wait for them with `settled()` from `e2e/a11y.ts`. `waitForTimeout`
+  is only for a negative check (something must not happen) or an idle window, at most 700 ms,
+  with a comment saying which (TEACH-250).
 
 ## CI
 

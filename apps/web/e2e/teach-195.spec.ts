@@ -102,6 +102,7 @@ test.describe("answers on the sheet (TEACH-195)", () => {
     await expect(page.getByText("No answer yet").first()).toBeVisible();
     await page.keyboard.type("Three quarters", { delay: 20 });
     await expect(page.getByText("No answer yet")).toHaveCount(0);
+    // Idle window: the typing session closes after a pause, and only then saves.
     await page.waitForTimeout(700);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 5000 });
     // The shortcut turns the view off; the view is not saved, so a reload starts with it off.

@@ -58,6 +58,7 @@ test.describe("layout engine", () => {
   test("row 7: a lesson stored under the old floors is re-fitted once on open and stamped", async ({
     signedInPage: { page, paths },
   }) => {
+    await page.clock.install();
     await page.goto(paths.lesson("electricity"));
     await expect(page.getByRole("heading", { level: 1, name: "Simple circuits" })).toBeVisible();
     // The migration waits for fonts and an idle editor, then tidies the flagged slide once.
@@ -77,7 +78,8 @@ test.describe("layout engine", () => {
     await expect(page).toHaveURL(/\/lessons$|\/$/);
     await page.getByRole("link", { name: "Open Simple circuits" }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Simple circuits" })).toBeVisible();
-    await page.waitForTimeout(1_500);
+    // Give a second migration every timer it would need (the clock plays 1.5 s at once).
+    await page.clock.runFor(1_500);
     await expect(page.getByText(/tidied to fit the new text sizes/)).toHaveCount(0);
     await expect(undo).toBeDisabled();
     await expect(elements(page).first()).toBeVisible();

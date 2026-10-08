@@ -68,6 +68,7 @@ test.describe("worksheet print route", () => {
       document.fonts.ready.then(() => document.fonts.status),
     );
     expect(fontsReady).toBe("loaded");
+    // Negative check: a second print call must not follow the first.
     await page.waitForTimeout(500);
     expect(await page.evaluate(() => window.__prints)).toBe(1);
   });

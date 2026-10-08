@@ -54,7 +54,7 @@ test.describe("worksheet editor", () => {
     await page.keyboard.type(" abc", { delay: 30 });
     await expect(pm).toHaveText(`${original} abc`);
     await expect(page.getByText("Unsaved changes")).toBeVisible();
-    // Pause past the idle window so the session closes, then undo: the whole burst goes.
+    // Idle window: pause past it so the session closes, then undo: the whole burst goes.
     await page.waitForTimeout(700);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
     await page.keyboard.press(process.platform === "darwin" ? "Meta+z" : "Control+z");
