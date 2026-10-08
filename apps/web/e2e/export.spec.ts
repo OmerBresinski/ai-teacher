@@ -46,6 +46,7 @@ test.describe("lesson print route", () => {
     await expect(page.getByRole("button", { name: "Back to the library" })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => window.__prints)).toBe(1);
     await expect(page.locator("html")).toHaveAttribute("data-capture-ready", "true");
+    // Negative check: a second print call must not follow the first.
     await page.waitForTimeout(300);
     expect(await page.evaluate(() => window.__prints)).toBe(1);
   });

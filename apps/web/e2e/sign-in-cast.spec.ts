@@ -3,6 +3,11 @@
  * mount (ADR 0028) and reacting to the form, and the card easing between heights. With reduced
  * motion GSAP is never fetched and the cast stays still. Transforms and paths are read straight
  * off the SVG the rig writes to.
+ *
+ * Motion runs on Playwright's clock (TEACH-250): each test installs it before its first script runs
+ * and steps it with `runFor`, which fires every timer and animation frame on the way, so GSAP's
+ * tweens play out in full without waiting in real time. The card-height test keeps real time: it
+ * spans a real Turnstile check and api call.
  */
 import type { Page } from "@playwright/test";
 import { expect, test, uniqueEmail } from "./fixtures";
@@ -57,21 +62,23 @@ test("the cast arrives from behind the card and keeps moving", async ({ page }) 
       ? (await response.text()).includes("GreenSock")
       : false,
   );
+  await page.clock.install();
   await page.goto("/sign-in");
   await gsap;
   const stage = page.locator("[data-cast-stage]");
   await expect(stage).toHaveAttribute("data-cast-stage", "live");
   await expect(page.locator('[data-cast="slides"]')).toBeInViewport();
   const first = await bodyOf(page, "support");
-  await page.waitForTimeout(700);
+  await page.clock.runFor(700);
   expect(await bodyOf(page, "support")).not.toBe(first);
 });
 
 test("Slides climbs out from behind the card instead of popping in", async ({ page }) => {
+  await page.clock.install();
   const offsets = await recordEveryFrame(page, '[data-cast="slides"]', "offsetY");
   await page.goto("/sign-in");
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
-  await page.waitForTimeout(2000);
+  await page.clock.runFor(2000);
   const moving = (await offsets()).filter((y) => y !== 0);
   expect(Math.max(...moving)).toBeGreaterThan(100); // it started below the card's top edge
   // ...and was nearly home before GSAP let go, not still hidden (the 27 Sep bug: ~180px, then a snap).
@@ -81,34 +88,36 @@ test("Slides climbs out from behind the card instead of popping in", async ({ pa
 
 test("the cast says hello on arrival", async ({ page }) => {
   // Plan's hello opens its arms (its homepage gesture); the ambient sway alone stays under 1°.
+  await page.clock.install();
   const angles = await recordEveryFrame(page, '[data-cast="support"] .arm-left', "rotation");
   await page.goto("/sign-in");
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
-  await page.waitForTimeout(3500);
+  await page.clock.runFor(3500);
   expect(Math.max(...(await angles()))).toBeGreaterThan(8);
 });
 
 test("the cast reads along while you type and celebrates when the link is sent", async ({
   page,
 }) => {
+  await page.clock.install();
   await page.goto("/sign-in");
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "live");
-  await page.waitForTimeout(2500); // the hello
+  await page.clock.runFor(2500); // the hello
   const eye = page.locator('[data-cast="slides"] .eye').first();
   const field = page.getByLabel("Email address");
   await field.click();
   await field.pressSequentially("a");
-  await page.waitForTimeout(400);
+  await page.clock.runFor(400);
   const early = Number(await eye.getAttribute("cx"));
   await field.pressSequentially(uniqueEmail("cast").slice(1), { delay: 15 });
-  await page.waitForTimeout(400);
+  await page.clock.runFor(400);
   // The caret moved right, and so did the eyes.
   expect(Number(await eye.getAttribute("cx"))).toBeGreaterThan(early);
 
   const before = smileDepth(await mouthOf(page, "answers"));
   await page.getByRole("button", { name: "Email me a link" }).click();
   await expect(page.getByRole("status")).toHaveText(/Check your inbox/);
-  await page.waitForTimeout(1200);
+  await page.clock.runFor(1200);
   expect(smileDepth(await mouthOf(page, "answers"))).toBeGreaterThan(before);
 });
 
@@ -157,6 +166,7 @@ test("the card eases to its new height when the link is sent", async ({ page }) 
 
 test("with reduced motion the cast never moves and GSAP is never fetched", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.install();
   const scripts: string[] = [];
   page.on("request", (request) => {
     if (request.resourceType() === "script") scripts.push(request.url());
@@ -165,11 +175,12 @@ test("with reduced motion the cast never moves and GSAP is never fetched", async
   await expect(page.locator("[data-cast-stage]")).toHaveAttribute("data-cast-stage", "still");
   await expect(page.locator('[data-cast="slides"]')).toBeInViewport();
   const first = await bodyOf(page, "support");
-  await page.waitForTimeout(800);
+  await page.clock.runFor(800);
   expect(await bodyOf(page, "support")).toBe(first);
-  // Every chunk this page fetched, read for GSAP's banner: none of them may be GSAP.
+  // Every chunk this page fetched, read for GSAP's banner: none of them may be GSAP. Read with
+  // Bun's fetch: `page.request` here sometimes never answered (the reduced-motion flake on master).
   for (const url of scripts.filter((url) => isOwnScript(page, url))) {
-    const body = await (await page.request.get(url)).text();
+    const body = await (await fetch(url, { signal: AbortSignal.timeout(5_000) })).text();
     expect(body, url).not.toContain("GreenSock");
   }
 });

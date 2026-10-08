@@ -10,8 +10,13 @@ const status = (page: import("@playwright/test").Page) => page.getByRole("status
  */
 async function escapePresent(page: import("@playwright/test").Page): Promise<void> {
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(250);
-  if (page.url().includes("/present")) await page.keyboard.press("Escape");
+  const left = await page
+    .waitForURL((url) => !url.pathname.includes("/present"), { timeout: 300 })
+    .then(
+      () => true,
+      () => false,
+    );
+  if (!left) await page.keyboard.press("Escape");
 }
 
 test.describe("present mode", () => {

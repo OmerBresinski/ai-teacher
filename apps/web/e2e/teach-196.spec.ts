@@ -122,6 +122,7 @@ test.describe("TEACH-196 success criteria in the self-assessment strip", () => {
     });
     await page.keyboard.type(" Yes.", { delay: 20 });
     await expect(field).toHaveText(`${original} Yes.`);
+    // Idle window: the typing session closes after a pause, and only then saves.
     await page.waitForTimeout(700);
     await expect(page.getByText("Saved", { exact: true })).toBeVisible();
     // The remove controls show only while the pointer or focus is in the strip.

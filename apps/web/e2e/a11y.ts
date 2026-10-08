@@ -73,3 +73,27 @@ export async function expectNoSeriousA11yViolations(
     `axe (${label}): ${blocking.length} serious/critical violation(s)\n${formatViolations(blocking)}`,
   ).toEqual([]);
 }
+
+/**
+ * Waits for the animations under the last open dialog or menu (or under `selector`; `"html"` for
+ * the whole page) to finish: axe reads contrast through a fade, so it scans after the motion, not
+ * after a fixed delay. A finished fade can start another (a staggered entrance), so it looks again
+ * until none is left, a few rounds at most. Infinite animations (spinners, idle loops) are left
+ * out, since they never finish.
+ */
+export async function settled(page: Page, selector = '[role="dialog"], [role="menu"]') {
+  await page
+    .locator(selector)
+    .last()
+    .evaluate(async (el) => {
+      for (let round = 0; round < 5; round++) {
+        const running = el
+          .getAnimations({ subtree: true })
+          .filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity)
+          .filter((animation) => animation.playState !== "finished");
+        if (running.length === 0) return;
+        await Promise.all(running.map((animation) => animation.finished.catch(() => undefined)));
+        await new Promise(requestAnimationFrame);
+      }
+    });
+}

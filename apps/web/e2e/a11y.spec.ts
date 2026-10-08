@@ -6,7 +6,6 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Page } from "@playwright/test";
 import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
 import {
@@ -17,16 +16,8 @@ import {
   newLesson,
   newSlide,
 } from "@tj/editor/starter";
-import { expectNoSeriousA11yViolations } from "./a11y";
+import { expectNoSeriousA11yViolations, settled } from "./a11y";
 import { E2E_API_URL, E2E_WEB_URL, expect, type SeededPaths, test, uniqueEmail } from "./fixtures";
-
-// axe reads contrast through the arrival fade: wait for animations, not a fixed delay.
-async function settled(page: Page) {
-  const surface = page.locator('[role="dialog"], [role="menu"]').last();
-  await surface.evaluate((el) =>
-    Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished)),
-  );
-}
 
 test.describe("accessibility (axe)", () => {
   test("/ (signed in) has no serious or critical violations", async ({

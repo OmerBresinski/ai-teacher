@@ -1,4 +1,4 @@
-import { expectNoSeriousA11yViolations } from "./a11y";
+import { expectNoSeriousA11yViolations, settled } from "./a11y";
 import { expect, test } from "./fixtures";
 
 test.describe("empty Workspace", () => {
@@ -171,7 +171,8 @@ test.describe("library shell", () => {
     await page.goto("/lessons");
     await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
     await expect(page).toHaveTitle("Lessons · DayBack");
-    // Hover preloads run loaders but must not move the return target (committed navigations only).
+    // Negative check: hover preloads run loaders but must not move the return target (committed
+    // navigations only).
     await page.getByRole("link", { name: /^Worksheets\b/ }).hover();
     await page.waitForTimeout(300);
     await page.goto(paths.lesson("demo-water-cycle"));
@@ -276,7 +277,7 @@ test.describe("library shell", () => {
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
-    await page.waitForTimeout(200);
+    await settled(page, "html");
     await expectNoSeriousA11yViolations(page, "/ (dark)");
     await page.goto("/lessons");
     await expectNoSeriousA11yViolations(page, "/lessons (dark)");
@@ -291,7 +292,7 @@ test.describe("library shell", () => {
     // its axe coverage is added there.
     async function scanDialog(label: string) {
       await expect(page.getByRole("dialog")).toBeVisible();
-      await page.waitForTimeout(500);
+      await settled(page);
       await expectNoSeriousA11yViolations(page, label, '[role="dialog"]');
     }
     // New worksheet is the creation flow since TEACH-184 (scanned in `worksheet-create`).
@@ -306,7 +307,7 @@ test.describe("library shell", () => {
     await page.evaluate(() => localStorage.setItem("tj-theme", "dark"));
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await page.waitForTimeout(500);
+    await settled(page, "html");
     await scanAll("dark");
   });
 

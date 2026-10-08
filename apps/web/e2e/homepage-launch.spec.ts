@@ -109,6 +109,7 @@ for (const javaScriptEnabled of [false, true]) {
       const topic = page.getByRole("textbox", { name: "What are you teaching?" });
       await topic.press("Enter");
       await page.getByRole("button", { name: "Create a lesson" }).first().click();
+      // Negative check: an empty field must not navigate.
       await page.waitForTimeout(200);
       expect(page.url()).toBe(`${site}/`);
       expect(requests.filter((request) => request.includes("?topic="))).toEqual([]);
