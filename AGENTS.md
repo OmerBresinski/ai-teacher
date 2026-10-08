@@ -41,6 +41,13 @@ ticket, **read the code paths it touches** — never describe them from memory o
   `user`; route modules must not leak Bun-only types into `AppType`; pino drops `undefined`.
 - Give a full acceptance table (setup → expected status/body/log lines), the test file names and
   the cases in each, and the exact PR title (≤ 100 chars, commitlint).
+- **Test level.** An acceptance row is a `bun test` by default (happy-dom and Testing Library,
+  `installFakeApi`, `renderEditor`/`renderWorksheetEditor`, route options called directly). It is a
+  Playwright test only when it needs one of: a journey across pages and the real api or worker; a
+  real caret, typing or selection in ProseMirror; a pointer drag or a hit by coordinates; layout
+  measurement or computed CSS; print media or a download; fullscreen or a new tab; sign-in, sessions
+  or cookies; an axe scan. A ticket that adds a Playwright test names which of these it needs.
+  (`docs/testing.md`, "Which level a test belongs at".)
 - Say what is out of scope and which ADR decides each design choice, so the implementor does not
   re-open it.
 

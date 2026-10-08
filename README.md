@@ -32,6 +32,7 @@ Everyday commands (all run through Turborepo, see [ADR 0002](docs/adr/0002-turbo
 | `bun run typecheck`        | `tsc --noEmit` per workspace, all at once                        |
 | `bun run test`             | Unit/integration tests (`bun test` in every workspace)           |
 | `bun run test:e2e`         | Playwright + axe, after `build` ([`docs/testing.md`](docs/testing.md)) |
+| `bun run test:e2e:smoke`   | In `apps/web`: the `@smoke` e2e journeys only, about a minute     |
 | `bun run verify-bootstrap` | End-to-end check of this scaffold (`scripts/verify-bootstrap.sh`) |
 
 ## Local development

@@ -10,6 +10,8 @@ bun run test --filter=@tj/api      # one workspace
 bun run test:e2e                   # Playwright (builds @tj/web first)
 ```
 
+Which runner an acceptance row belongs to: "Which level a test belongs at" below.
+
 ## Runners and the naming rule
 
 One unit runner (`bun test`), one browser runner (Playwright). A file's **suffix and location**
@@ -32,6 +34,26 @@ Rules:
   no `root`). Use `bun run test` / `bun run test --filter=<workspace>`.
 - `src/**/*.test-d.tsx` files are compile-time contracts checked by `tsc` (`bun run typecheck`),
   not executed — Bun's discovery glob matches `.test.`, `_test_`, `.spec.`, `_spec_` only.
+
+## Which level a test belongs at
+
+An acceptance row is a `bun test` by default (happy-dom and Testing Library, `installFakeApi`,
+`renderEditor`/`renderWorksheetEditor`, route options called directly). It is a Playwright test only
+when it needs one of: a journey across pages and the real api or worker; a real caret, typing or
+selection in ProseMirror; a pointer drag or a hit by coordinates; layout measurement or computed
+CSS; print media or a download; fullscreen or a new tab; sign-in, sessions or cookies; an axe scan.
+A ticket that adds a Playwright test names which of these it needs.
+
+This is the rule `packages/editor/AGENTS.md` already gives for the editor ("What needs a real caret,
+pointer or download is Playwright's", [`packages/editor/AGENTS.md`](../packages/editor/AGENTS.md)),
+applied to every app and package. Most acceptance rows of a screen (what is shown, what a click or a
+key sends, what is refused) are page or component tests; the e2e suite keeps the journeys and what
+only a real browser can check. TEACH-301 moved 45 e2e tests that broke it.
+
+A test that covers a new user journey gets the `@smoke` tag (`test("…", { tag: "@smoke" }, async (…)
+=> …)`, or on a `test.describe`); detail tests do not. `bun run test:e2e:smoke` in `apps/web` runs
+that set in about a minute, for a quick check before pushing. The merge check stays the full suite
+in its six shards.
 
 ## React workspaces: preloads in `@tj/config/bun-test`
 
@@ -234,6 +256,7 @@ bunx --bun playwright install chromium           # once per Playwright version
 bun run test:e2e                                 # from the root, via turbo (build first)
 cd apps/web && bun --bun playwright test         # directly (the Playwright runner runs on Bun)
 cd apps/web && bun --bun playwright test auth    # one file
+cd apps/web && bun run test:e2e:smoke            # the @smoke journeys only, about a minute
 cd apps/web && bun --bun playwright test --ui    # or `bun run test:e2e:ui`
 cd apps/web && bun --bun playwright show-report  # html report (playwright-report/)
 cd apps/web && bun --bun playwright show-trace test-results/<test>/trace.zip
