@@ -133,7 +133,7 @@ export const StripsSchema = z
           /** How many units are light (daytime). */
           light: z.number().int().min(0),
           /** The first light unit (0-based); centred in the row when absent. */
-          start: z.number().int().min(0).optional(),
+          start: z.number().int().min(0).nullable().optional(),
         }),
       )
       .min(STRIPS_LIMITS.rows.min)
@@ -143,7 +143,7 @@ export const StripsSchema = z
     s.rows.forEach((r, i) => {
       if (r.light > s.units)
         ctx.addIssue({ code: "custom", path: ["rows", i, "light"], message: "more than units" });
-      if (r.start !== undefined && r.start + r.light > s.units)
+      if (r.start != null && r.start + r.light > s.units)
         ctx.addIssue({ code: "custom", path: ["rows", i, "start"], message: "runs past the row" });
     });
   });
@@ -180,7 +180,7 @@ const moonMark = (cx: number, cy: number, r: number, fill: string) =>
   `<path d="M${n(cx + r * 0.3)},${n(cy - r * 0.95)} A${n(r)},${n(r)} 0 1 0 ${n(cx + r * 0.3)},${n(cy + r * 0.95)} A${n(r * 0.78)},${n(r * 0.78)} 0 0 1 ${n(cx + r * 0.3)},${n(cy - r * 0.95)} Z" fill="${fill}"/>`;
 
 /** The first light unit of a row: its own start, or centred. */
-export const lightStart = (units: number, r: { light: number; start?: number }) =>
+export const lightStart = (units: number, r: { light: number; start?: number | null }) =>
   r.start ?? Math.floor((units - r.light) / 2);
 
 export function drawStrips(s: Strips, x: Ctx & { themeId?: string }, w: number, h: number): string {
