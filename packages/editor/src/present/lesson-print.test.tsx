@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { lesson as baseLesson, creditedLesson } from "@tj/domain/documents/fixtures";
 import { LessonPrint } from "./LessonPrint";
 
