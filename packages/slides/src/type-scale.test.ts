@@ -3,13 +3,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Lesson, TextPreset } from "@tj/domain/documents";
 import { resolveTextStyle, steppedDown } from "./text-style";
-import { getTheme, keyStage, lessonTheme, type TextRole, typeScale, withKeyStage } from "./themes";
+import { atKeyStage, getTheme, lessonTheme, type TextRole, typeScale } from "./themes";
 
 /**
  * FIX-TYPE: one type scale per key stage. The five FULL-RUN regen decks, redrawn on this code
  * (Splash for Y1/Y5, Studio for Y7/Y9/Y10), are read the way the presenter reads them (the theme
- * bound to the lesson's age band, no process-wide stage) and the way generation laid them out (the
- * process-wide stage): every text element must land on a step of its lesson's scale.
+ * bound to the lesson's age band) and the way generation lays them out (a copy of the catalogue
+ * theme read at the stage, `atKeyStage`; master has no process-wide stage): every text element must
+ * land on a step of its lesson's scale.
  */
 const DIR = join(import.meta.dir, "fixtures", "type-audit");
 const decks = readdirSync(DIR)
@@ -64,7 +65,7 @@ describe("one type scale per key stage (FULL-RUN regen decks)", () => {
   for (const lesson of decks) {
     const name = lesson.yearGroup ?? lesson.id;
     test(`${name}: every text element sits on a step of its stage's scale, read as the presenter reads it`, () => {
-      expect(keyStage()).toBeUndefined();
+      expect(typeScale(getTheme(lesson.themeId))).toBeUndefined();
       const theme = lessonTheme(lesson);
       const scale = typeScale(theme);
       expect(scale).toBeDefined();
@@ -79,15 +80,12 @@ describe("one type scale per key stage (FULL-RUN regen decks)", () => {
       expect(off).toEqual([]);
     });
 
-    test(`${name}: generation (process-wide stage) and the presenter (bound theme) draw the same sizes`, () => {
+    test(`${name}: generation (a staged copy) and the presenter (bound theme) draw the same sizes`, () => {
       const bound = lessonTheme(lesson);
       for (const s of lesson.slides)
         for (const e of walk(s.elements)) {
           const asDrawn = drawn(e, bound)?.size;
-          const asLaidOut = withKeyStage(
-            lesson.ageBand,
-            () => drawn(e, getTheme(lesson.themeId))?.size,
-          );
+          const asLaidOut = drawn(e, atKeyStage(getTheme(lesson.themeId), lesson.ageBand))?.size;
           expect(asLaidOut).toBe(asDrawn);
         }
     });
