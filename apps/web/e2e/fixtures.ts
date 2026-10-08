@@ -96,7 +96,8 @@ export async function signIn(
  * `callbackURL`, better-auth answers 200 JSON with the cookies (host-only `localhost`, so the web
  * page on another port sends them too). The call goes through Bun's `fetch`, not `page.request`:
  * under `bun --bun playwright` Playwright's request client throws on any response that sets a
- * cookie ("… cannot be parsed as a URL"). The page is not moved.
+ * cookie ("… cannot be parsed as a URL"; Playwright 1.62.1 on Bun 1.3.6). Retry `page.request`
+ * after bumping either. The page is not moved.
  */
 export async function signInByApi(
   page: Page,

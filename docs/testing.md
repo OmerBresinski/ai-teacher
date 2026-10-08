@@ -195,8 +195,9 @@ Fixtures (`e2e/fixtures.ts`) — import `test`/`expect` from here:
   session and the demo library seeded (`ids` maps demo keys to the server's uuids, `paths` builds
   routes from them; `test.use({ seed: false })` starts from an empty Workspace). Implementation
   (`signInByApi`): `POST /auth/sign-in/magic-link` like the form does, read the link back from
-  `GET /__test/last-magic-link`, spend its token with `GET /auth/magic-link/verify` through
-  `page.request` (the browser context's cookie jar), `POST /__test/seed-library`, then one
+  `GET /__test/last-magic-link`, spend its token with `GET /auth/magic-link/verify` through Bun's
+  `fetch` and copy the session cookies into the browser context (`page.request` throws on a
+  response that sets a cookie under `bun --bun playwright`), `POST /__test/seed-library`, then one
   `page.goto("/")`.
 - `signIn(page, request, email?, callbackPath?)` signs in through the screens (confirm page and
   its Sign in button) for the specs about signing in; `requestMagicLink`, `lastMagicLink`,
