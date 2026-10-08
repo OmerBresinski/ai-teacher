@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { stageReuseOk } from "../../../packages/generation/src/stages/photo-bank";
 import { isStageRequest } from "../../../packages/generation/src/stages/picture-director";
 import { AB_CONFIG, abMatch6, abOrphan6, abStage6, setAbArm, setAbCodeArm } from "./arms";
-import { isStageText, orphansAfterFit, unmatchedItems } from "./pics6";
+import { isStageText, orphansAfterFit, stageReuse, unmatchedItems } from "./pics6";
 import { seenOf } from "./stage2";
 
 afterEach(() => {
@@ -112,6 +112,53 @@ describe("stage6 (c)", () => {
     expect(isStageText("A red tractor in a muddy field")).toBe(false);
     expect(isStageRequest({} as never, plan("A red tractor in a muddy field"), isStageText)).toBe(
       false,
+    );
+  });
+});
+
+describe("stage6 reuse rule, tightened 9 Oct (stageReuse)", () => {
+  const stock = (alt: string) => ({ source: { provider: "pexels" }, alt });
+  test("the y1 hen row: a partly grown request never reuses a 'young black chicken' caption", () => {
+    expect(
+      stageReuse(
+        {
+          text: "A partly grown female chicken of a breed not shown earlier, with developing wing feathers",
+        },
+        stock("Close-up of a curious young black chicken with textured feathers"),
+      ),
+    ).toBe(false);
+  });
+  test("a caption that names the same stages is reused (cow and calf, stock)", () => {
+    expect(
+      stageReuse(
+        { text: "An adult cow standing beside a calf" },
+        stock("A mother cow and her calf strolling in a lush green field on a sunny day."),
+      ),
+    ).toBe(true);
+  });
+  test("a young animal's sex is not asked of the caption; a ruled-out stage is not wanted", () => {
+    expect(
+      stageReuse(
+        { text: "A newly hatched female chick standing alone" },
+        {
+          source: { provider: "generated" },
+          alt: "A newly hatched chick stands with its whole small body visible",
+        },
+      ),
+    ).toBe(true);
+    expect(
+      stageReuse(
+        { text: "A farmyard scene with an adult cow, sheep, hen and dog, with no young animals" },
+        {
+          source: { provider: "generated" },
+          alt: "A clear photo montage of an adult cow, sheep, hen and dog",
+        },
+      ),
+    ).toBe(true);
+  });
+  test("a row made for a stage request is always reused", () => {
+    expect(stageReuse({ text: "a lamb" }, { source: { provider: "generated" }, stage: true })).toBe(
+      true,
     );
   });
 });

@@ -5,7 +5,7 @@
 // bun lab/bakeoff/ab/pics6scan.ts [runGlob]
 import { existsSync, readFileSync } from "node:fs";
 import { AB } from "./arms";
-import { isStageText, orphansAfterFit, unmatchedItems } from "./pics6";
+import { isStageText, orphansAfterFit, stageReuse, unmatchedItems } from "./pics6";
 import { seenOf } from "./stage2";
 
 type J = Record<string, unknown>;
@@ -28,6 +28,9 @@ let multi = 0;
 let unmatchedHits = 0;
 let reuses = 0;
 let stageReuses = 0;
+let refused = 0;
+let fresh = 0;
+let picturesUsd = 0;
 for (const d of dirs) {
   // orphan6
   for (const r of lines(`${d}/repair.jsonl`)) {
@@ -74,20 +77,40 @@ for (const d of dirs) {
       }
     }
   });
-  // stage6
+  // stage6: the tightened rule (stageReuse) on each library reuse whose request names a stage, with
+  // the reused row as the lesson shipped it (provider, caption); and what a fresh picture cost here.
   const shows = new Map<string, string>();
   for (const e of lines(`${d}/log.jsonl`)) {
     if (e.ev === "picture-start") shows.set(String(e.key), String(e.shows ?? ""));
-    if (e.ev === "picture-outcome" && e.via === "library") {
+    if (e.ev === "picture-outcome") {
+      if (e.via === "generated" || e.via === "fetched") fresh++;
+      if (e.via !== "library") continue;
       reuses++;
       const t = shows.get(String(e.key)) ?? "";
-      if (isStageText(t)) {
-        stageReuses++;
-        console.log(`stage6 ${tag(d)} ${e.key}: reuse refused for "${t.slice(0, 90)}"`);
+      if (!isStageText(t)) continue;
+      stageReuses++;
+      const i = Number(String(e.key).split(":")[0]);
+      const el = ((slides[i]?.elements ?? []) as J[]).find(
+        (x) => x.type === "image" && String(x.request ?? "").startsWith(t.slice(0, 40)),
+      );
+      if (!el) continue; // the shipped element is not found (dropped later): no row to judge
+      const src = (el.source ?? {}) as { provider?: string };
+      const ok = stageReuse(
+        { text: t },
+        { source: { provider: src.provider ?? "generated" }, alt: String(el.alt ?? "") },
+      );
+      if (!ok) {
+        refused++;
+        console.log(
+          `stage6 ${tag(d)} ${e.key}: refused (${src.provider ?? "?"}) "${t.slice(0, 70)}" vs "${String(el?.alt ?? "").slice(0, 60)}"`,
+        );
       }
     }
   }
+  try {
+    picturesUsd += Number((JSON.parse(readFileSync(`${d}/cost.json`, "utf8")) as J).pictures ?? 0);
+  } catch {}
 }
 console.log(
-  `SUMMARY lessons ${dirs.length}; orphan6 ${orphanHits}/${fits} fit repairs on pictured slides; match6 ${unmatchedHits}/${multi} several-thing pictures; stage6 ${stageReuses}/${reuses} library reuses`,
+  `SUMMARY lessons ${dirs.length}; orphan6 ${orphanHits}/${fits} fit repairs on pictured slides; match6 ${unmatchedHits}/${multi} several-thing pictures; stage6 ${refused}/${reuses} library reuses refused (first rule: ${stageReuses}); a fresh picture ~$${(picturesUsd / Math.max(1, fresh)).toFixed(4)} (${fresh} fresh)`,
 );

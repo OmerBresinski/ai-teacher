@@ -8,6 +8,7 @@ import {
   useJudgeVersion,
   usePhotoGate,
 } from "../../packages/generation/src/stages/illustrate";
+import { useStageReuse } from "../../packages/generation/src/stages/photo-bank";
 import { useDirectorVersion } from "../../packages/generation/src/stages/picture-director";
 import { embedCostUsd, imageCostUsd } from "../../packages/images/src/index";
 import { setParticleLabelMend } from "../../packages/slides/src/diagrams/labels3";
@@ -23,6 +24,7 @@ import {
   abPolish,
   abPolish2,
   abSnugNodes,
+  abStage6,
   isAbArm,
   pictureVersions,
   pinFaults,
@@ -32,6 +34,7 @@ import {
 import { createCache, loadRun, loadStore, type ReqForm, seedStore, summary } from "./ab/cache";
 import { legacyImporter } from "./ab/cache-import";
 import { lessonDone, moveToCrashed } from "./ab/done";
+import { stageReuse } from "./ab/pics6";
 import { photoGate } from "./ab/polish";
 import { armT } from "./arm-t";
 import { type ArmPlugin, type Brief, runLesson } from "./harness";
@@ -101,6 +104,8 @@ if (abPolish2()) {
 if (abPlotZone()) setPlotZone(true);
 // labels3 (faults-3-6-8 #3): the particles label mend, on its own.
 if (abLabels3()) setParticleLabelMend(true);
+// stage6 (faults-3-6-8 #6c, tightened 9 Oct): stage requests reuse by stageReuse, not y1fix's rule.
+if (abStage6()) useStageReuse(stageReuse);
 const arm = ARMS[isAbArm(armArg) ? "T" : armArg];
 if (!arm) throw new Error(`no arm ${opt("--arm")}; have ${Object.keys(ARMS).join(", ")}`);
 const cap = Number(opt("--cap", "0.25"));

@@ -190,11 +190,21 @@ export interface BankOutcome {
  */
 /** BAKEOFF y1fix bank rule: a stage request reuses only a generated row made for a stage request. */
 export function stageReuseOk(
-  req: Pick<BankRequest, "stage">,
-  hit: Pick<MadePicture, "source" | "stage">,
+  req: Pick<BankRequest, "stage"> & Partial<Pick<BankRequest, "text">>,
+  hit: Pick<MadePicture, "source" | "stage"> & { alt?: string; about?: string },
 ): boolean {
   if (!req.stage) return true;
+  if (stageRule) return stageRule(req, hit);
   return hit.source.provider === "generated" && hit.stage === true;
+}
+/** BAKEOFF stage6 (follow-up 9 Oct): a stage request's own reuse rule (unset = y1fix's rule above). */
+export type StageReuseRule = (
+  req: Partial<Pick<BankRequest, "text">>,
+  hit: Pick<MadePicture, "source" | "stage"> & { alt?: string; about?: string },
+) => boolean;
+let stageRule: StageReuseRule | undefined;
+export function useStageReuse(rule: StageReuseRule | undefined): void {
+  stageRule = rule;
 }
 
 export async function findPicture(
